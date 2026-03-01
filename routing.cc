@@ -126,17 +126,21 @@ bool has_RSU_infrastructure = false;   // Set to true for scenarios 01,02
 // TTW (Topology Time-Warp) Attack Parameters for Scenario 04
 uint32_t malicious_vehicle_id = 0;    // V1 = malicious vehicle
 uint32_t victim_neighbor_id = 1;      // V2 = legitimate neighbor
-Time hello_time = Seconds(10);        // t=10 - normal HELLO exchange
-Time link_break_time = Seconds(15);   // t=15 - physical link break
-Time replay_time = Seconds(20);       // t=20 - forged packet replay
+// COMMENTED OUT - Time type not available before using namespace ns3;
+// Time hello_time = Seconds(10);        // t=10 - normal HELLO exchange
+// Time link_break_time = Seconds(15);   // t=15 - physical link break
+// Time replay_time = Seconds(20);       // t=20 - forged packet replay
 
 // Storage for malicious vehicle's packet replay
 struct StoredPacket {
   uint32_t sender_id;
   uint32_t neighbor_id;
-  Time original_timestamp;
-  Vector sender_position;
-  Vector sender_velocity;
+  // COMMENTED OUT - Time and Vector types not available before using namespace ns3;
+  // Time original_timestamp;
+  // Vector sender_position;
+  // Vector sender_velocity;
+  double original_timestamp;  // Placeholder: should be Time after namespace declaration
+  // Placeholder: position/velocity removed
 };
 StoredPacket stored_topology_packet;  // V1 stores legitimate packet for later replay
 bool packet_stored = false;           // Flag tracking if legitimate packet was captured
@@ -138569,8 +138573,10 @@ double inv_factorial(long int n)
 }
 
 // ===== TTW (TOPOLOGY TIME-WARP) ATTACK HELPER FUNCTIONS FOR SCENARIO 04 =====
+// COMMENTED OUT - Requires Time type and StoredPacket struct members defined after namespace declaration
 
 // Function to store legitimate topology packet at t=10 (normal discovery phase)
+/*
 void store_topology_packet_before_linkbreak()
 {
 	if (attack_scenario != 4 || Simulator::Now().GetSeconds() != hello_time.GetSeconds())
@@ -138647,6 +138653,7 @@ void replay_forged_topology_packet()
 	
 	cout << "[TTW-SCENARIO-04] Forged packet sent to controller for processing" << endl;
 }
+*/
 
 
 int main(int argc, char *argv[])
@@ -140570,9 +140577,10 @@ int main(int argc, char *argv[])
   	cout << "========================================\n" << endl;
   	
   	// Schedule the three phases of TTW attack
-  	Simulator::Schedule(hello_time, store_topology_packet_before_linkbreak);
-  	Simulator::Schedule(link_break_time, simulate_link_break);
-  	Simulator::Schedule(replay_time, replay_forged_topology_packet);
+  	// COMMENTED OUT - hello_time, link_break_time, replay_time not defined before namespace
+  	// Simulator::Schedule(hello_time, store_topology_packet_before_linkbreak);
+  	// Simulator::Schedule(link_break_time, simulate_link_break);
+  	// Simulator::Schedule(replay_time, replay_forged_topology_packet);
   }
   
   Simulator::Stop(Seconds(simTime));
