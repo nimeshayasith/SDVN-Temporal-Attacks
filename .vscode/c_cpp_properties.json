@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/nimesha/ns-allinone-3.35/ns-3.35/build",
+                "/home/nimesha/ns-allinone-3.35/ns-3.35/build/ns3",
+                "/home/nimesha/ns-allinone-3.35/ns-3.35/src/**",
+                "/usr/include/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++-11",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
