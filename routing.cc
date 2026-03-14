@@ -138728,6 +138728,46 @@ int main(int argc, char *argv[])
 //   		Vehicle_Nodes.Create(N_Vehicles); 
 //   	}
 //   }
+
+ if (routing_test == false && attack_scenario == 0)
+  {
+      if(N_Vehicles > 0)
+      {
+          Vehicle_Nodes.Create(N_Vehicles);
+      }
+  }
+  else if (attack_scenario == 4)
+  {
+      // TTW Attack Scenario 4: 2 vehicles, no RSUs
+      // V0 = malicious (stationary), V1 = victim (moves away at 20 m/s)
+      // At t=10: distance=200m (IN range, HELLO works)
+      // At t=15: distance=300m (link breaks)
+      // At t=20: distance=400m (confirmed broken before replay)
+      Vehicle_Nodes.Create(N_Vehicles);
+
+      MobilityHelper attack_mobility;
+      attack_mobility.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
+
+      Ptr<ListPositionAllocator> attackPosAlloc = CreateObject<ListPositionAllocator>();
+      attackPosAlloc->Add(Vector(0.0, 0.0, 0.0));   // V0 attacker — stationary
+      attackPosAlloc->Add(Vector(0.0, 0.0, 0.0));   // V1 victim   — starts same pos
+
+      attack_mobility.SetPositionAllocator(attackPosAlloc);
+      attack_mobility.Install(Vehicle_Nodes);
+
+      // V0 stays still
+      Ptr<ConstantVelocityMobilityModel> mob_v0 =
+          DynamicCast<ConstantVelocityMobilityModel>(
+              Vehicle_Nodes.Get(malicious_vehicle_id)->GetObject<MobilityModel>());
+      mob_v0->SetVelocity(Vector(0.0, 0.0, 0.0));
+
+      // V1 moves at 20 m/s along x-axis
+      Ptr<ConstantVelocityMobilityModel> mob_v1 =
+          DynamicCast<ConstantVelocityMobilityModel>(
+              Vehicle_Nodes.Get(victim_neighbor_id)->GetObject<MobilityModel>());
+      mob_v1->SetVelocity(Vector(20.0, 0.0, 0.0));
+  }
+
   
   else
   {
