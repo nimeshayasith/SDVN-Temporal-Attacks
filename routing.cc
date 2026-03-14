@@ -139251,11 +139251,20 @@ int main(int argc, char *argv[])
 	  		vehicle_mobility.SetPositionAllocator ("ns3::GridPositionAllocator","MinX", DoubleValue (650.0),"MinY", DoubleValue (1000.0), "DeltaX", DoubleValue (delta_x/2),"DeltaY", DoubleValue (delta_y),"GridWidth", UintegerValue (14),"LayoutType", StringValue ("RowFirst"));
 	  	}
   }
-  if(routing_test == false)
+//   if(routing_test == false)
+//   {
+//   	vehicle_mobility.Install(Vehicle_Nodes);
+//   }
+//   update_mobility();
+
+  if(routing_test == false && attack_scenario == 0)
   {
-  	vehicle_mobility.Install(Vehicle_Nodes);
+      vehicle_mobility.Install(Vehicle_Nodes);
   }
-  update_mobility();
+  if (attack_scenario == 0)
+  {
+      update_mobility();
+  }
  
   
    if (mobility_scenario == 1)//non-urban mobility
