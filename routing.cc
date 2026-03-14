@@ -138721,13 +138721,13 @@ int main(int argc, char *argv[])
   
   controller_Node.Create(1);
   management_Node.Create(1); 
-  if (routing_test == false)
-  {
-  	  if(N_Vehicles > 0)
-  	{ 
-  		Vehicle_Nodes.Create(N_Vehicles); 
-  	}
-  }
+//   if (routing_test == false)
+//   {
+//   	  if(N_Vehicles > 0)
+//   	{ 
+//   		Vehicle_Nodes.Create(N_Vehicles); 
+//   	}
+//   }
   
   else
   {
