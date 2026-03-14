@@ -15,8 +15,6 @@
 #include "ns3/internet-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/node.h"
-#include "ns3/core-module.h"
-//#include "ns3/ns3-ai-module.h"
 #include "ns3/log.h"
 #include "ns3/tag.h"
 #include "ns3/vector.h"
@@ -26,12 +24,8 @@
 #include "ns3/mac64-address.h"
 #include "ns3/constant-acceleration-mobility-model.h"
 #include "ns3/mobility-model.h"
-#include "ns3/nstime.h"
 #include "ns3/event-id.h"
 #include "ns3/wifi-mac-queue.h"
-//#include "ns3/console-color.h"
-#include <iomanip>      // std::setprecision
-#include <cmath>
 #include "ns3/socket.h"
 #include "ns3/application.h"
 #include "ns3/udp-socket.h"
@@ -41,28 +35,33 @@
 #include "ns3/ipv4-header.h"
 #include "ns3/udp-header.h"
 #include "ns3/ns2-mobility-helper.h"
-#include "string.h"
-#include "cstdlib"
-#include "sstream"
-#include "iostream"
-#include "fstream"
-#include "vector"
+#include <string>
 #include <cstdlib>
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <iomanip>
 #include <limits.h>
 #include <bits/stdc++.h>
 
+using namespace std;
+using namespace ns3;
 
-#define max 40
+NS_LOG_COMPONENT_DEFINE ("vanet");
 
-#define max1 1
-#define max2 2
-#define max3 3
-#define max4 4
-#define max5 5
-#define max6 6
-#define max7 7
-#define max8 8
-#define max9 9
+// ── defines — unchanged ──────────────────────────────────────────────────────
+#define max   40
+#define max1   1
+#define max2   2
+#define max3   3
+#define max4   4
+#define max5   5
+#define max6   6
+#define max7   7
+#define max8   8
+#define max9   9
 #define max10 10
 #define max11 11
 #define max12 12
@@ -80,94 +79,291 @@
 #define max24 24
 #define max25 25
 
+// ── simulation parameters — unchanged ────────────────────────────────────────
 int lambda = 30;
 
-const int Flow_size = 55;
-uint32_t flow_size = 55;
-uint32_t attack_scenario      = 0;
-uint32_t malicious_vehicle_id = 0;
-uint32_t victim_neighbor_id   = 1;
-
+const int Flow_size  = 55;
+uint32_t  flow_size  = 55;
 const int total_size = 100;
-uint32_t N_RSUs = 0;  //Disabled for scenario 04 - malicious vehicle without RSU
+
+uint32_t N_RSUs     = 0;
 uint32_t N_Vehicles = 80;
 
 const int flows = 2;
 
-int routing_algorithm = 4; //0-ECMP, 1-RR, 2-QR-SDN, 3-RLMR, 4-proposed, 5-DCMR
-int experiment_number = 3; //0 - qos, 1 - flow_size (packet arrival rate), 2 - mobility, 3 - network size
+int routing_algorithm = 4;
+int experiment_number = 3;
 
 double simTime = 240;
 
-uint16_t N_eNodeBs = 1+ N_Vehicles/40;
-int var = N_Vehicles+N_RSUs;
-uint32_t large=50000;
+uint16_t N_eNodeBs            = 1 + N_Vehicles/40;
+int      var                  = N_Vehicles + N_RSUs;
+uint32_t large                = 50000;
 
-double optimization_frequency = 1.0;
-double optimization_period = 1.0/optimization_frequency;
+double optimization_frequency  = 1.0;
+double optimization_period     = 1.0/optimization_frequency;
 double data_transmission_frequency = 1.0;
-double data_transmission_period = 1.0/data_transmission_frequency;
-double entropy_threshold = 0.005;
-double routing_frequency = data_transmission_frequency;
-double contention_threshold = 0.0;
+double data_transmission_period    = 1.0/data_transmission_frequency;
+double entropy_threshold       = 0.005;
+double routing_frequency       = data_transmission_frequency;
+double contention_threshold    = 0.0;
 double link_lifetime_threshold = 0.400;
-int mobility_scenario = 0;// 0 - urban, 1 - non-urban, 2 - highway
-int architecture = 0; // 0 - centralized, 1 - distributed, 2 - hybrid
-int maxspeed = 80;	
-
-int paper = 1; //0-optimization, 1 -architecture
-
-// ===== ATTACK SCENARIO CONFIGURATION =====
-// Scenario options:
-// 01 = Malicious Controller + With RSU
-// 02 = Malicious Vehicle + With RSU  
-// 03 = Malicious Controller + Without RSU
-// 04 = Malicious Vehicle + Without RSU (INITIAL IMPLEMENTATION)
-int attack_scenario = 4;  // Select scenario: 1-4
-bool is_malicious_controller = false;  // Set to true for scenarios 01,03
-bool has_RSU_infrastructure = false;   // Set to true for scenarios 01,02
-
-// TTW (Topology Time-Warp) Attack Parameters for Scenario 04
-uint32_t malicious_vehicle_id = 0;    // V1 = malicious vehicle
-uint32_t victim_neighbor_id = 1;      // V2 = legitimate neighbor
-// COMMENTED OUT - Time type not available before using namespace ns3;
-// Time hello_time = Seconds(10);        // t=10 - normal HELLO exchange
-// Time link_break_time = Seconds(15);   // t=15 - physical link break
-// Time replay_time = Seconds(20);       // t=20 - forged packet replay
-
-// Storage for malicious vehicle's packet replay
-struct StoredPacket {
-  uint32_t sender_id;
-  uint32_t neighbor_id;
-  // COMMENTED OUT - Time and Vector types not available before using namespace ns3;
-  // Time original_timestamp;
-  // Vector sender_position;
-  // Vector sender_velocity;
-  double original_timestamp;  // Placeholder: should be Time after namespace declaration
-  // Placeholder: position/velocity removed
-};
-StoredPacket stored_topology_packet;  // V1 stores legitimate packet for later replay
-bool packet_stored = false;           // Flag tracking if legitimate packet was captured
+int    mobility_scenario       = 0;
+int    architecture            = 0;
+int    maxspeed                = 80;
+int    paper                   = 1;
 
 uint32_t flow_packet_size = 100;
-uint32_t qf = 1;
-uint32_t AIFSN = 0;
-double B_max = 0.0;
-double latency_max = 0.0;
-double loss_max = 0.0;
+uint32_t qf     = 1;
+uint32_t AIFSN  = 0;
+double   B_max  = 0.0;
+double   latency_max = 0.0;
+double   loss_max    = 0.0;
 uint32_t CW_max = 0;
-double AIFS = 0.0;
+double   AIFS   = 0.0;
 
 double mu1 = 0.10;
 double mu2 = 1.00;
 double mu3 = 0.50;
 
-
-bool training = false; //true if training data set for machine learnng is generated
+bool training       = false;
 bool training_delay = false;
 
-using namespace std;
-using namespace ns3;
+// ─────────────────────────────────────────────────────────────────────────────
+// ATTACK PARAMETERS
+// ERROR 1+2+3 FIX: each variable declared EXACTLY ONCE, one type only
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ERROR 1 FIX: was declared twice (uint32_t=0 AND int=4). Keep ONE declaration.
+//              Default = 0 (no attack). Pass --attack_scenario=4 on command line.
+uint32_t attack_scenario = 0;
+
+// ERROR 2 FIX: was declared twice. Keep ONE declaration.
+uint32_t malicious_vehicle_id = 0;   // V0 = attacker
+
+// ERROR 3 FIX: was declared twice. Keep ONE declaration.
+uint32_t victim_neighbor_id = 1;     // V1 = victim
+
+// These two booleans are fine — keep them, they are declared only once
+bool is_malicious_controller  = false;  // true for scenarios 01, 03
+bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
+
+// Attack timing constants — now safe to use Seconds() because
+// "using namespace ns3" is already declared above
+// ERROR 4 FIX: uncommented now that namespace is declared earlier
+static const double TTW_HELLO_TIME  = 10.0;   // t=10: HELLO exchange
+static const double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks
+static const double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TTW TOPOLOGY PACKET STRUCT
+// ERROR 5 FIX: you had TWO different structs (StoredPacket + TopologyPacket
+// from the implementation file). Merge into ONE struct used everywhere.
+// ─────────────────────────────────────────────────────────────────────────────
+
+struct TopologyPacket {
+    uint32_t src_id;         // node sending the update
+    uint32_t seen_id;        // neighbor being reported
+    double   timestamp;      // simulation time when link was observed
+    bool     is_forged;      // true = attacker tampered this packet
+};
+
+// Attacker's stored copy of old packet  ← step ③ in your diagram
+TopologyPacket ttw_stored_packet;
+bool           ttw_packet_stored = false;
+
+// Controller's belief about the network topology
+// key = "srcId_seenId",  value = most recent TopologyPacket received
+std::map<std::string, TopologyPacket> ttw_controller_table;
+
+// DSRC communication range — matches your 802.11p Phy settings
+static const double TTW_COMM_RANGE = 300.0;
+
+// Log file for attack events
+std::ofstream ttw_log;
+
+
+// =============================================================================
+// TTW ATTACK FUNCTIONS — paste these before main()
+// (Exact same functions from ttw_attack_s4_implementation.cc)
+// =============================================================================
+
+// ── Log file init ─────────────────────────────────────────────────────────────
+void TTW_InitLog()
+{
+    ttw_log.open("ttw_attack_scenario4.txt", std::ios::out | std::ios::trunc);
+    ttw_log << std::fixed << std::setprecision(3);
+    ttw_log << "========================================================\n";
+    ttw_log << "  TTW Attack Scenario 4 — Malicious Vehicle, No RSUs   \n";
+    ttw_log << "========================================================\n\n";
+    ttw_log << "  t=10  ①  V2V HELLO exchange\n";
+    ttw_log << "  t=10  ②  Topology updates to controller\n";
+    ttw_log << "  t=10  ③  Attacker stores old packet\n";
+    ttw_log << "  t=15      Link breaks physically\n";
+    ttw_log << "  t=20  ④  Attacker forges timestamp\n";
+    ttw_log << "  t=20  ⑤  Forged packet sent to controller\n";
+    ttw_log << "  t=20  ⑥  Controller issues faulty routing\n\n";
+    ttw_log << "========================================================\n\n";
+    NS_LOG_INFO("[TTW-S4] Log opened: ttw_attack_scenario4.txt");
+}
+
+// ── STEP 1: V2V HELLO beacon ──────────────────────────────────────────────────
+void TTW_SendHelloBeacon(Ptr<Node> sender, Ptr<Node> receiver)
+{
+    double now = Simulator::Now().GetSeconds();
+
+    Ptr<MobilityModel> mob_s = sender->GetObject<MobilityModel>();
+    Ptr<MobilityModel> mob_r = receiver->GetObject<MobilityModel>();
+    if (!mob_s || !mob_r) { NS_LOG_WARN("[TTW-S4] mobility model missing"); return; }
+
+    Vector ps = mob_s->GetPosition();
+    Vector pr = mob_r->GetPosition();
+    double dist = std::sqrt(std::pow(ps.x-pr.x,2.0) + std::pow(ps.y-pr.y,2.0));
+    bool   ok   = (dist <= TTW_COMM_RANGE);
+
+    NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-1 HELLO"
+                << "  V" << sender->GetId() << "->V" << receiver->GetId()
+                << "  dist=" << dist << "m"
+                << (ok ? "  DELIVERED" : "  OUT-OF-RANGE"));
+
+    ttw_log << "[t=" << now << "]  STEP ①  HELLO\n"
+            << "  V" << sender->GetId()   << " pos=(" << ps.x << "," << ps.y << ")\n"
+            << "  V" << receiver->GetId() << " pos=(" << pr.x << "," << pr.y << ")\n"
+            << "  dist=" << dist << "m  "
+            << (ok ? "DELIVERED — neighbor discovered\n\n"
+                   : "DROPPED   — out of range\n\n");
+}
+
+// ── STEP 2: Legitimate topology update ───────────────────────────────────────
+void TTW_SendTopologyUpdate(Ptr<Node> vehicle, uint32_t seen_id, double obs_time)
+{
+    double now = Simulator::Now().GetSeconds();
+
+    TopologyPacket pkt;
+    pkt.src_id    = vehicle->GetId();
+    pkt.seen_id   = seen_id;
+    pkt.timestamp = obs_time;
+    pkt.is_forged = false;
+
+    std::string key = std::to_string(pkt.src_id) + "_" + std::to_string(pkt.seen_id);
+
+    bool already_newer = (ttw_controller_table.count(key) &&
+                          ttw_controller_table[key].timestamp >= pkt.timestamp);
+    if (!already_newer)
+    {
+        ttw_controller_table[key] = pkt;
+        NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-2 TOPO-UPDATE"
+                    << "  V" << pkt.src_id << "->Controller"
+                    << "  <V" << pkt.src_id << " sees V" << pkt.seen_id
+                    << ", t=" << pkt.timestamp << ">  ACCEPTED");
+
+        ttw_log << "[t=" << now << "]  STEP ②  TOPOLOGY UPDATE (legitimate)\n"
+                << "  V" << pkt.src_id << " -> Controller\n"
+                << "  Packet : <V" << pkt.src_id << " sees V" << pkt.seen_id
+                << ", t=" << pkt.timestamp << ">\n"
+                << "  Result : ACCEPTED — link V" << pkt.src_id
+                << "<->V" << pkt.seen_id << " marked ACTIVE\n\n";
+    }
+}
+
+// ── STEP 3: Attacker stores own packet ───────────────────────────────────────
+void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
+{
+    double now = Simulator::Now().GetSeconds();
+
+    ttw_stored_packet = {src_id, dst_id, obs_time, false};
+    ttw_packet_stored = true;
+
+    NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-3 PACKET STORED"
+                << "  old_packet=<V" << src_id << " sees V" << dst_id
+                << ", t=" << obs_time << ">");
+
+    ttw_log << "[t=" << now << "]  STEP ③  ATTACKER STORES PACKET\n"
+            << "  old_packet : <V" << src_id << " sees V" << dst_id
+            << ", t=" << obs_time << ">\n"
+            << "  Status     : Stored — awaiting replay at t="
+            << TTW_REPLAY_TIME << "\n\n"
+            << "  NOTE: Link V" << src_id << "<->V" << dst_id
+            << " will break at t=" << TTW_LINK_BREAK << "\n"
+            << "  Controller will NOT receive a link-down notification.\n\n";
+}
+
+// ── STEPS 4+5+6: Replay attack ───────────────────────────────────────────────
+void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
+                      uint32_t  src_id,   uint32_t  dst_id,
+                      double    forged_time)
+{
+    double now = Simulator::Now().GetSeconds();
+
+    if (!ttw_packet_stored)
+    {
+        NS_LOG_WARN("[TTW-S4] No stored packet — was TTW_StorePacket called?");
+        ttw_log << "[t=" << now << "]  REPLAY FAILED — no stored packet!\n\n";
+        return;
+    }
+
+    // Verify link is physically broken
+    Ptr<MobilityModel> ma = attacker->GetObject<MobilityModel>();
+    Ptr<MobilityModel> mv = victim->GetObject<MobilityModel>();
+    Vector pa = ma->GetPosition(), pv = mv->GetPosition();
+    double dist = std::sqrt(std::pow(pa.x-pv.x,2.0)+std::pow(pa.y-pv.y,2.0));
+
+    // STEP 4: Build forged packet
+    TopologyPacket forged = {src_id, dst_id, forged_time, true};
+
+    ttw_log << "[t=" << now << "]  STEP ④  FORGING TIMESTAMP\n"
+            << "  Original : <V" << src_id << " sees V" << dst_id
+            << ", t=" << ttw_stored_packet.timestamp << ">\n"
+            << "  Forged   : <V" << src_id << " sees V" << dst_id
+            << ", t=" << forged_time << ">  MALICIOUS\n"
+            << "  Physical link distance : " << dist << " m  "
+            << (dist > TTW_COMM_RANGE ? "BROKEN\n\n" : "WARNING still in range!\n\n");
+
+    // STEP 5: Send to controller
+    std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
+    ttw_controller_table[key] = forged;
+
+    NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-5 REPLAY SENT"
+                << "  <V" << src_id << " sees V" << dst_id
+                << ", t=" << forged_time << ">  CONTROLLER DECEIVED");
+
+    ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET -> CONTROLLER\n"
+            << "  Controller ACCEPTED (cannot detect forgery)\n\n";
+
+    // STEP 6: Log faulty routing consequence
+    ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
+            << "  Controller believes V" << src_id << "<->V" << dst_id
+            << " ACTIVE at t=" << forged_time << "\n"
+            << "  Physical reality : link BROKEN (dist=" << dist << "m)\n"
+            << "  Consequence : packets routed via ghost link will be DROPPED\n"
+            << "  Topology timeline CORRUPTED — wrong global topology\n\n";
+
+    NS_LOG_INFO("[TTW-S4] ATTACK COMPLETE — ghost link V"
+                << src_id << "<->V" << dst_id << " injected");
+
+    // Final topology table dump
+    ttw_log << "  Final Controller Topology Table:\n"
+            << "  Src   Dst   Timestamp   Forged?\n"
+            << "  ──────────────────────────────────\n";
+    for (auto& e : ttw_controller_table)
+    {
+        TopologyPacket& p = e.second;
+        ttw_log << "  V" << p.src_id  << "  ->  V" << p.seen_id
+                << "    t=" << p.timestamp
+                << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+    }
+    ttw_log << "\n========================================================\n"
+            << "  TTW ATTACK SCENARIO 4 COMPLETE\n"
+            << "========================================================\n";
+    ttw_log.flush();
+}
+
+// =============================================================================
+// END OF GLOBALS / ATTACK FUNCTIONS SECTION
+// main() follows below
+// =============================================================================
+
+
 
 NS_LOG_COMPONENT_DEFINE ("vanet");
 
@@ -92959,7 +93155,6 @@ void CustomMetaDataUnicastTagN2522::Deserialize (TagBuffer i)
 
 
 
-
 void CustomMetaDataUnicastTagN2522::Print (std::ostream &os) const
 {
   os << "Custom Data --- Node ";
@@ -138575,89 +138770,6 @@ double inv_factorial(long int n)
 		return 1.0;
 	}
 }
-
-// ===== TTW (TOPOLOGY TIME-WARP) ATTACK HELPER FUNCTIONS FOR SCENARIO 04 =====
-// COMMENTED OUT - Requires Time type and StoredPacket struct members defined after namespace declaration
-
-// Function to store legitimate topology packet at t=10 (normal discovery phase)
-/*
-void store_topology_packet_before_linkbreak()
-{
-	if (attack_scenario != 4 || Simulator::Now().GetSeconds() != hello_time.GetSeconds())
-		return;
-		
-	// Simulate V1 detecting V2 and storing the legitimate topology update
-	packet_stored = true;
-	stored_topology_packet.sender_id = malicious_vehicle_id;      // V1
-	stored_topology_packet.neighbor_id = victim_neighbor_id;      // V2
-	stored_topology_packet.original_timestamp = Simulator::Now(); // t=10s
-	
-	// Get current position of malicious vehicle (V1)
-	if (Vehicle_Nodes.GetN() > malicious_vehicle_id)
-	{
-		Ptr<MobilityModel> mobility = Vehicle_Nodes.Get(malicious_vehicle_id)->GetObject<MobilityModel>();
-		if (mobility)
-		{
-			stored_topology_packet.sender_position = mobility->GetPosition();
-			stored_topology_packet.sender_velocity = mobility->GetVelocity();
-		}
-	}
-	
-	cout << "[TTW-SCENARIO-04] At t=" << Simulator::Now().GetSeconds() 
-	     << "s: V1 STORED legitimate topology packet: <V1 sees V2, t=10>" << endl;
-}
-
-// Function to simulate link break at t=15 (physical disconnection)
-void simulate_link_break()
-{
-	if (attack_scenario != 4 || Simulator::Now().GetSeconds() != link_break_time.GetSeconds())
-		return;
-	
-	// At t=15, V1 and V2 move out of range
-	// In a real scenario, this would be triggered by mobility model
-	// For now, we just log that the link is broken
-	
-	cout << "[TTW-SCENARIO-04] At t=" << Simulator::Now().GetSeconds() 
-	     << "s: LINK BREAK OCCURS - V1 and V2 move out of communication range" << endl;
-	cout << "[TTW-SCENARIO-04] Physical V1-V2 link is now BROKEN" << endl;
-}
-
-// Function to replay forged topology packet at t=20 with modified timestamp
-void replay_forged_topology_packet()
-{
-	if (attack_scenario != 4)
-		return;
-		
-	if (Simulator::Now().GetSeconds() != replay_time.GetSeconds())
-		return;
-	
-	if (!packet_stored)
-	{
-		cout << "[TTW-SCENARIO-04] WARNING: No stored packet to replay at t=" 
-		     << Simulator::Now().GetSeconds() << "s" << endl;
-		return;
-	}
-	
-	// V1 (malicious vehicle) replays the stored packet with FORGED TIMESTAMP
-	cout << "[TTW-SCENARIO-04] === TTW ATTACK INITIATED ===" << endl;
-	cout << "[TTW-SCENARIO-04] At t=" << Simulator::Now().GetSeconds() << "s:" << endl;
-	cout << "[TTW-SCENARIO-04] V1 REPLAYS stored topology packet with FORGED timestamp" << endl;
-	cout << "[TTW-SCENARIO-04] Original packet: <V1 sees V2, t=" << stored_topology_packet.original_timestamp.GetSeconds() << ">" << endl;
-	cout << "[TTW-SCENARIO-04] Forged packet:   <V1 sees V2, t=" << Simulator::Now().GetSeconds() << ">" << endl;
-	cout << "[TTW-SCENARIO-04] Impact: Controller believes V1-V2 link is ACTIVE but it's BROKEN!" << endl;
-	cout << "[TTW-SCENARIO-04] Result: Wrong global topology, faulty routing decisions" << endl;
-	
-	// In a full implementation, this would involve:
-	// 1. Creating a packet with CustomDataTag1 containing:
-	//    - sender_id = V1
-	//    - neighbor_id = V2  
-	//    - timestamp = Simulator::Now() (FORGED - should be 10, but we set to 20)
-	// 2. Sending it as if it were a fresh topology update
-	// 3. Controller processes it as a fresh discovery (not replay)
-	
-	cout << "[TTW-SCENARIO-04] Forged packet sent to controller for processing" << endl;
-}
-*/
 
 
 int main(int argc, char *argv[])
