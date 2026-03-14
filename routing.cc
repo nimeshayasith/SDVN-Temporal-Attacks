@@ -51,6 +51,7 @@
 #include <limits.h>
 #include <bits/stdc++.h>
 
+
 #define max 40
 
 #define max1 1
@@ -83,6 +84,9 @@ int lambda = 30;
 
 const int Flow_size = 55;
 uint32_t flow_size = 55;
+uint32_t attack_scenario      = 0;
+uint32_t malicious_vehicle_id = 0;
+uint32_t victim_neighbor_id   = 1;
 
 const int total_size = 100;
 uint32_t N_RSUs = 0;  //Disabled for scenario 04 - malicious vehicle without RSU
@@ -140600,37 +140604,72 @@ int main(int argc, char *argv[])
 	    anim.UpdateNodeSize(node_management->GetId(),20.0,20.0);
     }
  
-  //AnimationInterface anim("/home/nimesha/ns-allinone-3.35/ns-3.35/routing.xml"); 
+
   
-  /*
-  for (uint32_t i=0; i<Custom_Nodes.GetN() ; i++)
+    if (attack_scenario == 4)
   {
-  	anim.UpdateNodeColor(Custom_Nodes.Get(i),255,255,0);//RSUs in yellow color
-  	Ptr <Node> ni = DynamicCast <Node> (Custom_Nodes.Get(i));
-  	anim.UpdateNodeSize(ni->GetId(),20.0,20.0);
+      std::cout << "\n========================================" << std::endl;
+      std::cout << "SCENARIO 04 - TTW ATTACK CONFIGURED"      << std::endl;
+      std::cout << "Malicious Vehicle : V" << malicious_vehicle_id << std::endl;
+      std::cout << "Victim Neighbor   : V" << victim_neighbor_id   << std::endl;
+      std::cout << "Timeline:"                                  << std::endl;
+      std::cout << "  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller" << std::endl;
+      std::cout << "  t=10s  STEP 3   : Attacker stores old_packet <V"
+                << malicious_vehicle_id << " sees V" << victim_neighbor_id
+                << ", t=10>"                                    << std::endl;
+      std::cout << "  t=15s           : Physical link breaks (V"
+                << victim_neighbor_id << " out of range)"       << std::endl;
+      std::cout << "  t=20s  STEP 4+5 : Forged packet replayed to controller" << std::endl;
+      std::cout << "  t=20s  STEP 6   : Controller has wrong topology" << std::endl;
+      std::cout << "========================================\n" << std::endl;
+
+      // ── STEP 1: V2V HELLO exchange at t=10 (both directions) ──────────────
+      Simulator::Schedule(
+          Seconds(10.000),
+          &TTW_SendHelloBeacon,
+          Vehicle_Nodes.Get(victim_neighbor_id),      // V1 → V0
+          Vehicle_Nodes.Get(malicious_vehicle_id));
+
+      Simulator::Schedule(
+          Seconds(10.001),
+          &TTW_SendHelloBeacon,
+          Vehicle_Nodes.Get(malicious_vehicle_id),    // V0 → V1
+          Vehicle_Nodes.Get(victim_neighbor_id));
+
+      // ── STEP 2: Legitimate topology updates to controller at t=10.1 ───────
+      Simulator::Schedule(
+          Seconds(10.100),
+          &TTW_SendTopologyUpdate,
+          Vehicle_Nodes.Get(malicious_vehicle_id),    // V0 reports
+          victim_neighbor_id,                         // sees V1
+          10.0);                                      // at t=10
+
+      Simulator::Schedule(
+          Seconds(10.101),
+          &TTW_SendTopologyUpdate,
+          Vehicle_Nodes.Get(victim_neighbor_id),      // V1 reports
+          malicious_vehicle_id,                       // sees V0
+          10.0);                                      // at t=10
+
+      // ── STEP 3: Attacker stores own packet at t=10.2 ──────────────────────
+      Simulator::Schedule(
+          Seconds(10.200),
+          &TTW_StorePacket,
+          malicious_vehicle_id,                       // V0 attacker
+          victim_neighbor_id,                         // V1 victim
+          10.0);                                      // original timestamp
+
+      // ── STEPS 4+5+6: Replay attack at t=20 ───────────────────────────────
+      Simulator::Schedule(
+          Seconds(20.000),
+          &TTW_ReplayAttack,
+          Vehicle_Nodes.Get(malicious_vehicle_id),    // attacker node
+          Vehicle_Nodes.Get(victim_neighbor_id),      // victim node
+          malicious_vehicle_id,                       // V0 id
+          victim_neighbor_id,                         // V1 id
+          20.0);                                      // forged timestamp
   }
-  */
-  
-  // ===== SCHEDULE TTW ATTACK FOR SCENARIO 04 =====
-  if (attack_scenario == 4)
-  {
-  	cout << "\n========================================" << endl;
-  	cout << "SCENARIO 04 - TTW ATTACK CONFIGURED" << endl;
-  	cout << "Malicious Vehicle: V" << malicious_vehicle_id << endl;
-  	cout << "Victim Neighbor: V" << victim_neighbor_id << endl;
-  	cout << "Timeline:" << endl;
-  	cout << "  t=10s  - Normal HELLO exchange, V1 stores: <V1 sees V2, t=10>" << endl;
-  	cout << "  t=15s  - Physical link break (V1-V2 out of range)" << endl;
-  	cout << "  t=20s  - V1 replays with FORGED timestamp: <V1 sees V2, t=20>" << endl;
-  	cout << "  Result - Controller has wrong topology (link should be broken)" << endl;
-  	cout << "========================================\n" << endl;
-  	
-  	// Schedule the three phases of TTW attack
-  	// COMMENTED OUT - hello_time, link_break_time, replay_time not defined before namespace
-  	// Simulator::Schedule(hello_time, store_topology_packet_before_linkbreak);
-  	// Simulator::Schedule(link_break_time, simulate_link_break);
-  	// Simulator::Schedule(replay_time, replay_forged_topology_packet);
-  }
+
   
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
