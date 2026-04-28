@@ -47,7 +47,7 @@
 #include <bits/stdc++.h>
 
 using namespace std;
-using namespace ns3;
+using namespace ns3;hjhjhj
 
 NS_LOG_COMPONENT_DEFINE ("vanet");
 
@@ -181,7 +181,7 @@ static const double TTW_COMM_RANGE = 300.0;
 
 // Log file for attack events
 std::ofstream ttw_log;
-
+ 
 
 // =============================================================================
 // TTW ATTACK FUNCTIONS — paste these before main()
@@ -363,9 +363,6 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 // main() follows below
 // =============================================================================
 
-
-
-NS_LOG_COMPONENT_DEFINE ("vanet");
 
 class CustomDataTag : public Tag {
 public:
@@ -140166,7 +140163,8 @@ int main(int argc, char *argv[])
 				  Simulator::Schedule (Seconds (t), set_dsrc_initial_timestamp);
 			}
 			*/
-			
+			if (attack_scenario == 0)
+			{
 		  	//DSRC flow instantiation
 		  	double t0 = 0;
 			for (double t=t0+0.999; t<simTime-1; t=t+data_transmission_period)//All official data transmissions begin at t=0
@@ -140430,7 +140428,7 @@ int main(int argc, char *argv[])
 
 				  }
 			}
-			
+		}
 		
 			
 			
@@ -140673,155 +140671,285 @@ int main(int argc, char *argv[])
   Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/ns3::RegularWifiMac/DcaTxop/Queue/Enqueue",MakeCallback (&Enqueue));
   //Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/ns3::RegularWifiMac/DcaTxop/Queue/Dequeue",MakeCallback (&Dequeue)); 
   
-  AnimationInterface anim("routing-animation.xml");  
+//   AnimationInterface anim("routing-animation.xml");  
 
-  if (N_RSUs > 0)
-  {
-	  for (uint32_t i=0; i<RSU_Nodes.GetN() ; i++)
-	  {
-	  	anim.UpdateNodeColor(RSU_Nodes.Get(i),255,255,0);//RSUs in yellow color
-	  	Ptr <Node> ni = DynamicCast <Node> (RSU_Nodes.Get(i));
-	  	anim.UpdateNodeSize(ni->GetId(),20.0,20.0);
-	  }
-  }
+//   if (N_RSUs > 0)
+//   {
+// 	  for (uint32_t i=0; i<RSU_Nodes.GetN() ; i++)
+// 	  {
+// 	  	anim.UpdateNodeColor(RSU_Nodes.Get(i),255,255,0);//RSUs in yellow color
+// 	  	Ptr <Node> ni = DynamicCast <Node> (RSU_Nodes.Get(i));
+// 	  	anim.UpdateNodeSize(ni->GetId(),20.0,20.0);
+// 	  }
+//   }
   
-  if (N_Vehicles > 0)
-  {
-	  for (uint32_t i=0; i<Vehicle_Nodes.GetN() ; i++)
-	  {
-	  	anim.UpdateNodeColor(Vehicle_Nodes.Get(i),0,255,0);//vehicle nodes are green color
-	  	Ptr <Node> ni = DynamicCast <Node> (Vehicle_Nodes.Get(i));
-	  	anim.UpdateNodeSize(ni->GetId(),20.0,20.0);
-	  }
+//   if (N_Vehicles > 0)
+//   {
+// 	  for (uint32_t i=0; i<Vehicle_Nodes.GetN() ; i++)
+// 	  {
+// 	  	anim.UpdateNodeColor(Vehicle_Nodes.Get(i),0,255,0);//vehicle nodes are green color
+// 	  	Ptr <Node> ni = DynamicCast <Node> (Vehicle_Nodes.Get(i));
+// 	  	anim.UpdateNodeSize(ni->GetId(),20.0,20.0);
+// 	  }
 	   
-	  if (architecture !=1)
-	  {
-		  for (uint32_t i=0; i<other_stationary_LTE_nodes.GetN() ; i++)
-		  {
-		  	anim.UpdateNodeColor(other_stationary_LTE_nodes.Get(i),0,0,255);//LTE stationary nodes are blue color
-		  	Ptr <Node> ni = DynamicCast <Node> (other_stationary_LTE_nodes.Get(i));
-		  	anim.UpdateNodeSize(ni->GetId(),20.0,20.0);
-		  }
-	  }
-  }
+// 	  if (architecture !=1)
+// 	  {
+// 		  for (uint32_t i=0; i<other_stationary_LTE_nodes.GetN() ; i++)
+// 		  {
+// 		  	anim.UpdateNodeColor(other_stationary_LTE_nodes.Get(i),0,0,255);//LTE stationary nodes are blue color
+// 		  	Ptr <Node> ni = DynamicCast <Node> (other_stationary_LTE_nodes.Get(i));
+// 		  	anim.UpdateNodeSize(ni->GetId(),20.0,20.0);
+// 		  }
+// 	  }
+//   }
   
-    if (architecture != 1)
-    {
-	    anim.UpdateNodeColor(controller_Node.Get(0),255,0,255);//controller node is purple color.
-	    Ptr <Node> node_controller = DynamicCast <Node> (controller_Node.Get(0));
-	    anim.UpdateNodeSize(node_controller->GetId(),20.0,20.0);
+//     if (architecture != 1)
+//     {
+// 	    anim.UpdateNodeColor(controller_Node.Get(0),255,0,255);//controller node is purple color.
+// 	    Ptr <Node> node_controller = DynamicCast <Node> (controller_Node.Get(0));
+// 	    anim.UpdateNodeSize(node_controller->GetId(),20.0,20.0);
 	    
-	    anim.UpdateNodeColor(management_Node.Get(0),255,0,0);//management node is red color.
-	    Ptr <Node> node_management = DynamicCast <Node> (management_Node.Get(0));
-	    anim.UpdateNodeSize(node_management->GetId(),20.0,20.0);
-    }
+// 	    anim.UpdateNodeColor(management_Node.Get(0),255,0,0);//management node is red color.
+// 	    Ptr <Node> node_management = DynamicCast <Node> (management_Node.Get(0));
+// 	    anim.UpdateNodeSize(node_management->GetId(),20.0,20.0);
+//     }
  
 
-  
-    if (attack_scenario == 4)
+
+  AnimationInterface anim("routing-animation.xml");
+
+  // ── TTW Attack Scenario 4: reposition controller, hide all other nodes ─────
+  if (attack_scenario == 4)
   {
+      // V0 stays at (0,0), V1 moves along x-axis
+      // Controller sits centered above at (200, 400)
+      Ptr<ConstantVelocityMobilityModel> mdl_ctrl =
+          DynamicCast<ConstantVelocityMobilityModel>(
+              controller_Node.Get(0)->GetObject<MobilityModel>());
+      mdl_ctrl->SetPosition(Vector(200.0, 400.0, 0));
+      mdl_ctrl->SetVelocity(Vector(0.0, 0.0, 0.0));
+
+      // Hide management server — not in attack diagram
+      anim.UpdateNodeColor(management_Node.Get(0), 255, 255, 255);
+      anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 0.1, 0.1);
+      anim.UpdateNodeDescription(management_Node.Get(0), "");
+
+      // Hide all background LTE infrastructure nodes
+      // (PGW, eNodeB, SGW, remote host — NS3 needs them but they are
+      if (N_Vehicles > 0 && architecture != 1)
+      {
+          for (uint32_t i = 0; i < other_stationary_LTE_nodes.GetN(); i++)
+          {
+              anim.UpdateNodeColor(
+                  other_stationary_LTE_nodes.Get(i), 255, 255, 255);
+              anim.UpdateNodeSize(
+                  other_stationary_LTE_nodes.Get(i)->GetId(), 0.1, 0.1);
+              anim.UpdateNodeDescription(
+                  other_stationary_LTE_nodes.Get(i), "");
+          }
+      }
+  }
+
+  // ── Default node colors (normal simulation) ───────────────────────────────
+  if (N_RSUs > 0)
+  {
+      for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
+      {
+          anim.UpdateNodeColor(RSU_Nodes.Get(i), 255, 255, 0); // yellow
+          Ptr<Node> ni = DynamicCast<Node>(RSU_Nodes.Get(i));
+          anim.UpdateNodeSize(ni->GetId(), 20.0, 20.0);
+      }
+  }
+
+  if (N_Vehicles > 0)
+  {
+      for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++)
+      {
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(i), 0, 255, 0); // green default
+          Ptr<Node> ni = DynamicCast<Node>(Vehicle_Nodes.Get(i));
+          anim.UpdateNodeSize(ni->GetId(), 20.0, 20.0);
+      }
+
+      if (architecture != 1)
+      {
+          for (uint32_t i = 0; i < other_stationary_LTE_nodes.GetN(); i++)
+          {
+              anim.UpdateNodeColor(
+                  other_stationary_LTE_nodes.Get(i), 0, 0, 255); // blue
+              Ptr<Node> ni =
+                  DynamicCast<Node>(other_stationary_LTE_nodes.Get(i));
+              anim.UpdateNodeSize(ni->GetId(), 20.0, 20.0);
+          }
+      }
+  }
+
+  if (architecture != 1)
+  {
+      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255); // purple
+      Ptr<Node> node_controller = DynamicCast<Node>(controller_Node.Get(0));
+      anim.UpdateNodeSize(node_controller->GetId(), 20.0, 20.0);
+
+      anim.UpdateNodeColor(management_Node.Get(0), 255, 0, 0);   // red
+      Ptr<Node> node_management = DynamicCast<Node>(management_Node.Get(0));
+      anim.UpdateNodeSize(node_management->GetId(), 20.0, 20.0);
+  }
+
+  // ── TTW Attack Scenario 4: override vehicle + controller appearance ────────
+  // This runs AFTER the default color loop above so it takes effect
+  if (attack_scenario == 4)
+  {
+      // V0 — RED attacker (larger so it stands out)
+      anim.UpdateNodeColor(
+          Vehicle_Nodes.Get(malicious_vehicle_id), 255, 0, 0);
+      anim.UpdateNodeSize(
+          Vehicle_Nodes.Get(malicious_vehicle_id)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeDescription(
+          Vehicle_Nodes.Get(malicious_vehicle_id), "V1-Attacker");
+
+      // V1 — BLUE victim (matches "normal vehicle" feel from your diagram)
+      anim.UpdateNodeColor(
+          Vehicle_Nodes.Get(victim_neighbor_id), 0, 150, 255);
+      anim.UpdateNodeSize(
+          Vehicle_Nodes.Get(victim_neighbor_id)->GetId(), 25.0, 25.0);
+      anim.UpdateNodeDescription(
+          Vehicle_Nodes.Get(victim_neighbor_id), "V2-Victim");
+
+      // Controller — purple, clearly labeled, repositioned above vehicles
+      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 25.0, 25.0);
+      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+  }
+
+  // ===========================================================================
+  // SCHEDULE TTW ATTACK — Scenario 4
+  // ===========================================================================
+
+  if (attack_scenario == 4)
+  {
+      TTW_InitLog();
+
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 04 - TTW ATTACK CONFIGURED"      << std::endl;
       std::cout << "Malicious Vehicle : V" << malicious_vehicle_id << std::endl;
       std::cout << "Victim Neighbor   : V" << victim_neighbor_id   << std::endl;
       std::cout << "Timeline:"                                  << std::endl;
-      std::cout << "  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller" << std::endl;
+      std::cout << "  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller"
+                << std::endl;
       std::cout << "  t=10s  STEP 3   : Attacker stores old_packet <V"
                 << malicious_vehicle_id << " sees V" << victim_neighbor_id
                 << ", t=10>"                                    << std::endl;
       std::cout << "  t=15s           : Physical link breaks (V"
                 << victim_neighbor_id << " out of range)"       << std::endl;
-      std::cout << "  t=20s  STEP 4+5 : Forged packet replayed to controller" << std::endl;
-      std::cout << "  t=20s  STEP 6   : Controller has wrong topology" << std::endl;
+      std::cout << "  t=20s  STEP 4+5 : Forged packet replayed to controller"
+                << std::endl;
+      std::cout << "  t=20s  STEP 6   : Controller has wrong topology"
+                << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      // ── STEP 1: V2V HELLO exchange at t=10 (both directions) ──────────────
+      // ── STEP 1: V2V HELLO exchange at t=10 ──────────────────────────────
       Simulator::Schedule(
-          Seconds(10.000),
-          &TTW_SendHelloBeacon,
-          Vehicle_Nodes.Get(victim_neighbor_id),      // V1 → V0
+          Seconds(10.000), &TTW_SendHelloBeacon,
+          Vehicle_Nodes.Get(victim_neighbor_id),       // V2 → V1
           Vehicle_Nodes.Get(malicious_vehicle_id));
 
       Simulator::Schedule(
-          Seconds(10.001),
-          &TTW_SendHelloBeacon,
-          Vehicle_Nodes.Get(malicious_vehicle_id),    // V0 → V1
+          Seconds(10.001), &TTW_SendHelloBeacon,
+          Vehicle_Nodes.Get(malicious_vehicle_id),     // V1 → V2
           Vehicle_Nodes.Get(victim_neighbor_id));
 
-      // ── STEP 2: Legitimate topology updates to controller at t=10.1 ───────
+      // ── STEP 2: Legitimate topology updates → controller ─────────────────
       Simulator::Schedule(
-          Seconds(10.100),
-          &TTW_SendTopologyUpdate,
-          Vehicle_Nodes.Get(malicious_vehicle_id),    // V0 reports
-          victim_neighbor_id,                         // sees V1
-          10.0);                                      // at t=10
+          Seconds(10.100), &TTW_SendTopologyUpdate,
+          Vehicle_Nodes.Get(malicious_vehicle_id),     // V1 reports
+          victim_neighbor_id,                          // sees V2
+          10.0);
 
       Simulator::Schedule(
-          Seconds(10.101),
-          &TTW_SendTopologyUpdate,
-          Vehicle_Nodes.Get(victim_neighbor_id),      // V1 reports
-          malicious_vehicle_id,                       // sees V0
-          10.0);                                      // at t=10
+          Seconds(10.101), &TTW_SendTopologyUpdate,
+          Vehicle_Nodes.Get(victim_neighbor_id),       // V2 reports
+          malicious_vehicle_id,                        // sees V1
+          10.0);
 
-      // ── STEP 3: Attacker stores own packet at t=10.2 ──────────────────────
+      // ── STEP 3: Attacker stores own packet ───────────────────────────────
       Simulator::Schedule(
-          Seconds(10.200),
-          &TTW_StorePacket,
-          malicious_vehicle_id,                       // V0 attacker
-          victim_neighbor_id,                         // V1 victim
-          10.0);                                      // original timestamp
+          Seconds(10.200), &TTW_StorePacket,
+          malicious_vehicle_id,
+          victim_neighbor_id,
+          10.0);
 
-      // ── STEPS 4+5+6: Replay attack at t=20 ───────────────────────────────
+      // ── STEPS 4+5+6: Replay attack at t=20 ──────────────────────────────
       Simulator::Schedule(
-          Seconds(20.000),
-          &TTW_ReplayAttack,
-          Vehicle_Nodes.Get(malicious_vehicle_id),    // attacker node
-          Vehicle_Nodes.Get(victim_neighbor_id),      // victim node
-          malicious_vehicle_id,                       // V0 id
-          victim_neighbor_id,                         // V1 id
-          20.0);                                      // forged timestamp
+          Seconds(20.000), &TTW_ReplayAttack,
+          Vehicle_Nodes.Get(malicious_vehicle_id),
+          Vehicle_Nodes.Get(victim_neighbor_id),
+          malicious_vehicle_id,
+          victim_neighbor_id,
+          20.0);
+
+      // ── NetAnim visual packets ────────────────────────────────────────────
+      // Send real UDP packets so NetAnim draws animated arrows.
+      // apps layout: index 0=controller, 1=management, (u+2)=vehicle u
+      Ptr<SimpleUdpApplication> app_v1 =
+          DynamicCast<SimpleUdpApplication>(
+              apps.Get(malicious_vehicle_id + 2));   // attacker app
+
+      Ptr<SimpleUdpApplication> app_v2 =
+          DynamicCast<SimpleUdpApplication>(
+              apps.Get(victim_neighbor_id + 2));     // victim app
+
+      Ptr<SimpleUdpApplication> app_ctrl =
+          DynamicCast<SimpleUdpApplication>(apps.Get(0)); // controller app
+
+      // t=10.000 : STEP 1 — HELLO  V2 → V1
+      Simulator::Schedule(
+          Seconds(10.000), &send_LTE_routing_data_alone,
+          app_v2,
+          Vehicle_Nodes.Get(victim_neighbor_id),
+          Vehicle_Nodes.Get(malicious_vehicle_id),
+          victim_neighbor_id);
+
+      // t=10.005 : STEP 1 — HELLO reply  V1 → V2
+      Simulator::Schedule(
+          Seconds(10.005), &send_LTE_routing_data_alone,
+          app_v1,
+          Vehicle_Nodes.Get(malicious_vehicle_id),
+          Vehicle_Nodes.Get(victim_neighbor_id),
+          malicious_vehicle_id);
+
+      // t=10.100 : STEP 2 — V1 legitimate topology update → Controller
+      Simulator::Schedule(
+          Seconds(10.100), &send_LTE_routing_data_alone,
+          app_v1,
+          Vehicle_Nodes.Get(malicious_vehicle_id),
+          controller_Node.Get(0),
+          malicious_vehicle_id);
+
+      // t=10.110 : STEP 2 — V2 legitimate topology update → Controller
+      Simulator::Schedule(
+          Seconds(10.110), &send_LTE_routing_data_alone,
+          app_v2,
+          Vehicle_Nodes.Get(victim_neighbor_id),
+          controller_Node.Get(0),
+          victim_neighbor_id);
+
+      // t=20.000 : STEP 5 — V1 (RED attacker) sends FORGED packet → Controller
+      //            V2 is now at x=400 — 400m away — link is physically broken
+      //            This is the key malicious arrow in NetAnim
+      Simulator::Schedule(
+          Seconds(20.000), &send_LTE_routing_data_alone,
+          app_v1,
+          Vehicle_Nodes.Get(malicious_vehicle_id),
+          controller_Node.Get(0),
+          malicious_vehicle_id);
   }
 
-  
+  // ===========================================================================
+  // RUN SIMULATION
+  // ===========================================================================
+
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
   Simulator::Destroy();
-  
- 
-  //apb.SetFinish();
-  return 0;  
+
+  return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
