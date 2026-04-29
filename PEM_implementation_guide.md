@@ -156,7 +156,7 @@ What happens:
 Current threshold:
 
 ```cpp
-static const double PEM_ALERT_THRESHOLD = 1.0;
+static const double PEM_SCORE_THRESHOLD = 0.12;
 ```
 
 Current budget target from the project:
@@ -412,15 +412,22 @@ If all of these are connected, the logic path exists.
 Run the simulation with the TTW attack scenario and inspect:
 
 - `ttw_attack_scenario4.txt`
-- the routing CSV output file
+- `pem_event_log.csv`
+- `pem_run_summary.csv`
 
 Expected behavior:
 
 - attack injected around `20.000 s`
 - alert raised around `20.050 s`
 - `detection_latency_ms` around `50`
-- `within_budget = 1`
-- `phase` moves from `under_attack` to `post_mitigation`
+- `pem_run_summary.csv` shows `tp >= 1`, `fp = 0`, strong `mcc` / `auroc`
+- the detection event in `pem_event_log.csv` shows the TTW signatures and `alert_raised = 1`
+
+Important:
+
+- `pem_run_summary.csv` is written near the end of the simulation, so the run must finish normally
+- if you stop the run early with `Ctrl+C`, the summary row may not be written
+- NetAnim output is currently written to `scratch/routing-animation.xml`
 
 ### 3. Experimental proof for the report
 

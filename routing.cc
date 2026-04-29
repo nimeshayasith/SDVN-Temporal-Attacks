@@ -272,7 +272,7 @@ extern NodeContainer Vehicle_Nodes;
 static double
 PemSafeSqrt(double value)
 {
-    return std::sqrt(std::max(0.0, value));
+    return std::sqrt(value < 0.0 ? 0.0 : value);
 }
 
 static double
@@ -441,7 +441,7 @@ static std::string
 PemGetLinkKey(uint32_t srcId, uint32_t dstId)
 {
     const uint32_t a = std::min(srcId, dstId);
-    const uint32_t b = std::max(srcId, dstId);
+    const uint32_t b = (srcId < dstId) ? dstId : srcId;
     return std::to_string(a) + "_" + std::to_string(b);
 }
 
@@ -139636,7 +139636,6 @@ void begin_sending_RSU_data_agent()
 
 void print_time()
 {
-	cout<<"current time is "<<Simulator::Now().GetSeconds()<<endl;
 }
 
 double inv_factorial(long int n)
@@ -141600,7 +141599,7 @@ int main(int argc, char *argv[])
  
 
 
-  AnimationInterface anim("routing-animation.xml");
+  AnimationInterface anim("scratch/routing-animation.xml");
 
   // ── TTW Attack Scenario 4: reposition controller, hide all other nodes ─────
   if (attack_scenario == 4)

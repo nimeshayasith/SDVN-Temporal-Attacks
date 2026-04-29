@@ -91,7 +91,7 @@ Use this when you want to measure whether the detector catches the attack, compu
 - `ttw_attack_scenario4.txt` is written
 - PEM detector runs 50 ms after the attack (t=20.050)
 - `pem_event_log.csv` is written (one row per network event)
-- `pem_run_summary.csv` is written (one row per run with TP/TN/FP/FN/MCC/AUROC/Tdet)
+- `pem_run_summary.csv` is written near the end of the run at `t = simTime - 0.001`
 - If alert is raised → ghost link is removed from controller table (mitigation)
 
 ### Command (ns-3.35 style — `waf`):
@@ -131,8 +131,17 @@ cd /home/nimesha/ns-allinone-3.35/ns-3.35/
 ttw_attack_scenario4.txt     ← attack timeline log (same as Mode 1)
 pem_event_log.csv             ← one row per event (beacon, topology update, heartbeat)
 pem_run_summary.csv           ← one row with TP, TN, FP, FN, MCC, AUROC, Tdet
-NetAnim XML output            ← if AnimationInterface is enabled
+scratch/routing-animation.xml ← NetAnim XML output
 routing result CSVs           ← normal routing metrics with phase column
+```
+
+### Viewing NetAnim
+
+From the NetAnim build folder:
+
+```bash
+cd /home/nimesha/ns-allinone-3.35/netanim-3.108/
+./NetAnim ../ns-3.35/scratch/routing-animation.xml
 ```
 
 ---
@@ -178,6 +187,8 @@ Your project requires **mean ± std** over **5 runs**. Use different RNG seeds f
 
 Each run appends one row to `pem_run_summary.csv`.
 After 5 runs, open the CSV and compute mean ± std for: MCC, AUROC, Tdet, PDR, Te2e.
+
+> If you want a clean single-run CSV, delete old `pem_event_log.csv` / `pem_run_summary.csv` first or move them aside. The current code appends summary rows across runs.
 
 ---
 
@@ -227,9 +238,11 @@ Open `pem_event_log.csv` and verify:
 
 ```
 ✅ Rows before t=20:   phase=baseline, attack_label=0, alert_raised=0
-✅ Row at t≈20.050:    phase=under_attack, attack_label=1, alert_raised=1
-✅ Rows after alert:   phase=post_mitigation
+✅ Row at t≈20.050:    attack_label=1, alert_raised=1
+✅ Detection + mitigation also appears in ttw_attack_scenario4.txt
 ```
+
+> Important: let the simulation finish normally. If you stop it early with `Ctrl+C`, `pem_run_summary.csv` may not get its final row because the summary writer is scheduled just before `t = simTime`.
 
 ---
 
@@ -262,7 +275,8 @@ if (attack_scenario == 4)
 |---|---|---|
 | `pem_event_log.csv` not created | `attack_scenario` ≠ 4 | Use `--attack_scenario=4` |
 | `ttw_attack_scenario4.txt` empty | `TTW_InitLog()` not called | Check `attack_scenario == 4` branch in `main()` |
-| File not found errors | Hardcoded paths to `/home/nimesha/...` | Update all CSV paths in `write_csv_...` functions |
-| Compilation fails | Missing `using namespace ns3` before attack variables | Already fixed in current `routing.cc` |
-| `pem_run_summary.csv` has 0 rows | Simulation ended before PEM write was called | Increase `--simTime` to at least `25` |
+| `NetAnim: command not found` | Binary is not on your `PATH` | Run `./NetAnim ../ns-3.35/scratch/routing-animation.xml` from `netanim-3.108/` |
+| NetAnim cannot find XML | Wrong file location | Open `scratch/routing-animation.xml` from the ns-3 root |
+| Compilation fails near `std::max(...)` | Legacy `#define max 40` macro collides with PEM helpers | Already fixed in current `routing.cc` |
+| `pem_run_summary.csv` has 0 new rows | Simulation was interrupted before final summary write | Let the run reach `t = simTime` without `Ctrl+C` |
 | Detection latency = -1 | Alert was never raised | Check score threshold `PEM_SCORE_THRESHOLD = 0.12` |
