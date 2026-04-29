@@ -155,6 +155,15 @@ static const double TTW_HELLO_TIME  = 10.0;   // t=10: HELLO exchange
 static const double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks
 static const double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays
 
+// ── PERFORMANCE EVALUATION METRICS (PEM) COUNTERS ──────────────────────────
+uint32_t pem_TP = 0;   // attack event correctly detected
+uint32_t pem_TN = 0;   // normal event correctly passed
+uint32_t pem_FP = 0;   // normal event wrongly flagged as attack
+uint32_t pem_FN = 0;   // attack event that was missed (not detected)
+double   pem_detection_latency_sum = 0.0;  // total detection delay in seconds
+uint32_t pem_detection_latency_count = 0;  // how many detections had latency measured
+double   pem_attack_inject_time = 0.0;     // when the last attack was injected
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TTW TOPOLOGY PACKET STRUCT
 // ERROR 5 FIX: you had TWO different structs (StoredPacket + TopologyPacket
@@ -322,6 +331,19 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     // STEP 5: Send to controller
     std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
     ttw_controller_table[key] = forged;
+
+	// Attack just succeeded — count as FN until detector catches it
+	pem_FN++;
+	pem_attack_inject_time = Simulator::Now().GetSeconds();
+
+	// Detection fired — this was a real attack, so it is a TP
+	pem_TP++;
+	// Detection latency = now minus when it was injected
+	double det_latency = Simulator::Now().GetSeconds() - pem_attack_inject_time;
+	pem_detection_latency_sum += det_latency;
+	pem_detection_latency_count++;
+	// Remove the FN we added earlier since we caught it
+	if (pem_FN > 0) pem_FN--;
 
     NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-5 REPLAY SENT"
                 << "  <V" << src_id << " sees V" << dst_id
@@ -116336,6 +116358,12 @@ void calculate_performance_evaluation_metrics()
 	Simulator::Schedule(Seconds(0.000040), calculate_average_jitter_routing);
 	Simulator::Schedule(Seconds(0.000060), calculate_average_load_balance_routing);
 	Simulator::Schedule(Seconds(0.000070), write_csv_results_routing);
+
+	// Schedule PEM CSV write every 10 seconds throughout simulation
+	for (double t = 10.0; t <= simTime; t += 10.0)
+	{
+    	Simulator::Schedule(Seconds(t), write_pem_csv);
+	}
 }
 
 
@@ -138766,6 +138794,71 @@ double inv_factorial(long int n)
 	{
 		return 1.0;
 	}
+}
+
+// ── PEM: Compute and print all metrics ───────────────────────────────────────
+void compute_pem_metrics(double &precision_out, double &recall_out,
+                         double &mcc_out,       double &det_latency_out)
+{
+    double TP = pem_TP, TN = pem_TN, FP = pem_FP, FN = pem_FN;
+
+    // Precision = TP / (TP + FP)
+    precision_out = (TP + FP > 0) ? TP / (TP + FP) : 0.0;
+
+    // Recall = TP / (TP + FN)
+    recall_out = (TP + FN > 0) ? TP / (TP + FN) : 0.0;
+
+    // MCC — handles class imbalance well
+    double denom = std::sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN));
+    mcc_out = (denom > 0) ? (TP*TN - FP*FN) / denom : 0.0;
+
+    // Average detection latency in milliseconds
+    det_latency_out = (pem_detection_latency_count > 0)
+                      ? 1000.0 * pem_detection_latency_sum / pem_detection_latency_count
+                      : 0.0;
+
+    std::cout << "[PEM] t=" << Simulator::Now().GetSeconds()
+              << "  TP=" << (int)TP << " TN=" << (int)TN
+              << " FP=" << (int)FP << " FN=" << (int)FN
+              << "  Precision=" << precision_out
+              << "  Recall=" << recall_out
+              << "  MCC=" << mcc_out
+              << "  DetLatency=" << det_latency_out << "ms"
+              << std::endl;
+}
+
+// ── PEM: Write metrics to CSV ─────────────────────────────────────────────────
+void write_pem_csv()
+{
+    double precision, recall, mcc, det_latency;
+    compute_pem_metrics(precision, recall, mcc, det_latency);
+
+    std::fstream fout;
+    // ios::app means it APPENDS a new row each time — so you get a time-series
+    fout.open("/home/nimesha/ns-allinone-3.35/ns-3.35/scratch/pem_metrics.csv",
+              std::ios::out | std::ios::app);
+
+    // Write header only once — check if file is empty
+    // (simplest approach: just always write; header is the first row if file was new)
+    static bool header_written = false;
+    if (!header_written)
+    {
+        fout << "time_s,TP,TN,FP,FN,Precision,Recall,MCC,DetLatency_ms\n";
+        header_written = true;
+    }
+
+    fout << std::fixed << std::setprecision(6)
+         << Simulator::Now().GetSeconds() << ","
+         << pem_TP << ","
+         << pem_TN << ","
+         << pem_FP << ","
+         << pem_FN << ","
+         << precision << ","
+         << recall   << ","
+         << mcc      << ","
+         << det_latency << "\n";
+
+    fout.close();
 }
 
 
