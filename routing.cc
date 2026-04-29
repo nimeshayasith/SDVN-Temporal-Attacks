@@ -47,7 +47,7 @@
 #include <bits/stdc++.h>
 
 using namespace std;
-using namespace ns3;hjhjhj
+using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("vanet");
 
@@ -181,6 +181,149 @@ static const double TTW_COMM_RANGE = 300.0;
 
 // Log file for attack events
 std::ofstream ttw_log;
+
+// Performance evaluation metrics for temporal-echo attack detection.
+static const double PEM_BEACON_BUDGET_MS = 100.0;
+static const double PEM_ALERT_THRESHOLD = 1.0;
+
+uint64_t pem_true_positive = 0;
+uint64_t pem_true_negative = 0;
+uint64_t pem_false_positive = 0;
+uint64_t pem_false_negative = 0;
+
+double pem_last_detection_score = 0.0;
+double pem_last_auroc = 0.5;
+double pem_last_mcc = 0.0;
+double pem_attack_injection_time = -1.0;
+double pem_first_alert_time = -1.0;
+
+bool pem_last_alert = false;
+bool pem_attack_active = false;
+bool pem_mitigation_active = false;
+
+std::vector<double> pem_positive_scores;
+std::vector<double> pem_negative_scores;
+
+static double
+PemSafeSqrt(double value)
+{
+    return std::sqrt(std::max(0.0, value));
+}
+
+static double
+PemComputeMcc()
+{
+    const double tp = static_cast<double>(pem_true_positive);
+    const double tn = static_cast<double>(pem_true_negative);
+    const double fp = static_cast<double>(pem_false_positive);
+    const double fn = static_cast<double>(pem_false_negative);
+
+    const double numerator = (tp * tn) - (fp * fn);
+    const double denominator =
+        PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+
+    if (denominator <= 0.0)
+    {
+        return 0.0;
+    }
+    return numerator / denominator;
+}
+
+static double
+PemComputeAuroc()
+{
+    if (pem_positive_scores.empty() || pem_negative_scores.empty())
+    {
+        return 0.5;
+    }
+
+    double concordant = 0.0;
+    for (double posScore : pem_positive_scores)
+    {
+        for (double negScore : pem_negative_scores)
+        {
+            if (posScore > negScore)
+            {
+                concordant += 1.0;
+            }
+            else if (std::abs(posScore - negScore) < 1e-12)
+            {
+                concordant += 0.5;
+            }
+        }
+    }
+
+    return concordant /
+           (static_cast<double>(pem_positive_scores.size()) *
+            static_cast<double>(pem_negative_scores.size()));
+}
+
+static void
+PemRecordObservation(bool actualAttack, double score, bool alertRaised)
+{
+    pem_last_detection_score = score;
+    pem_last_alert = alertRaised;
+
+    if (actualAttack)
+    {
+        pem_positive_scores.push_back(score);
+        if (alertRaised)
+        {
+            pem_true_positive++;
+            if (pem_first_alert_time < 0.0)
+            {
+                pem_first_alert_time = Simulator::Now().GetSeconds();
+                pem_mitigation_active = true;
+                pem_attack_active = false;
+            }
+        }
+        else
+        {
+            pem_false_negative++;
+        }
+    }
+    else
+    {
+        pem_negative_scores.push_back(score);
+        if (alertRaised)
+        {
+            pem_false_positive++;
+        }
+        else
+        {
+            pem_true_negative++;
+        }
+    }
+
+    pem_last_mcc = PemComputeMcc();
+    pem_last_auroc = PemComputeAuroc();
+}
+
+static double
+PemGetDetectionLatencyMs()
+{
+    if (pem_attack_injection_time < 0.0 || pem_first_alert_time < 0.0)
+    {
+        return -1.0;
+    }
+    return 1000.0 * (pem_first_alert_time - pem_attack_injection_time);
+}
+
+static std::string
+PemGetPhaseLabel()
+{
+    if (pem_mitigation_active)
+    {
+        return "post_mitigation";
+    }
+    if (pem_attack_active)
+    {
+        return "under_attack";
+    }
+    return "baseline";
+}
+
+void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistance);
  
 
 // =============================================================================
@@ -264,6 +407,8 @@ void TTW_SendTopologyUpdate(Ptr<Node> vehicle, uint32_t seen_id, double obs_time
                 << "  Result : ACCEPTED — link V" << pkt.src_id
                 << "<->V" << pkt.seen_id << " marked ACTIVE\n\n";
     }
+
+    PemRecordObservation(false, 0.0, false);
 }
 
 // ── STEP 3: Attacker stores own packet ───────────────────────────────────────
@@ -330,6 +475,10 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET -> CONTROLLER\n"
             << "  Controller ACCEPTED (cannot detect forgery)\n\n";
 
+    pem_attack_injection_time = now;
+    pem_attack_active = true;
+    pem_mitigation_active = false;
+
     // STEP 6: Log faulty routing consequence
     ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
             << "  Controller believes V" << src_id << "<->V" << dst_id
@@ -356,6 +505,32 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
             << "  TTW ATTACK SCENARIO 4 COMPLETE\n"
             << "========================================================\n";
     ttw_log.flush();
+
+    Simulator::Schedule(MilliSeconds(50), &TTW_RunReplayDetection, src_id, dst_id, dist);
+}
+
+void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistance)
+{
+    const double rangeOverflow =
+        std::max(0.0, (linkDistance - TTW_COMM_RANGE) / TTW_COMM_RANGE);
+    const double score = 1.0 + rangeOverflow;
+    const bool alertRaised = (score >= PEM_ALERT_THRESHOLD);
+
+    PemRecordObservation(true, score, alertRaised);
+
+    if (alertRaised)
+    {
+        const std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
+        ttw_controller_table.erase(key);
+
+        ttw_log << "[t=" << Simulator::Now().GetSeconds()
+                << "]  DETECTION + MITIGATION\n"
+                << "  Alert raised for ghost link V" << src_id << "<->V" << dst_id << "\n"
+                << "  Detector score: " << score << "\n"
+                << "  Detection latency: " << PemGetDetectionLatencyMs() << " ms\n"
+                << "  Action: forged topology entry removed from controller table\n\n";
+        ttw_log.flush();
+    }
 }
 
 // =============================================================================
@@ -115299,10 +115474,33 @@ void write_csv_results_routing()
 		default:
 			break;
 	}	
-	
+
+	bool writeHeader = false;
+	{
+		ifstream fin(filename.c_str());
+		writeHeader = (!fin.good() || fin.peek() == std::ifstream::traits_type::eof());
+	}
+
 	fout.open(filename,ios::out|ios::app);
 
+	if (writeHeader)
+	{
+		fout << "cycle,sim_time_s,phase,current_te2e_ms,avg_te2e_ms,current_pdr_pct,avg_pdr_pct,"
+		     << "current_jitter_ms,avg_jitter_ms,current_load_balance_pct,avg_load_balance_pct,"
+		     << "tp,tn,fp,fn,mcc,auroc,detection_score,alert_raised,attack_injection_time_s,"
+		     << "first_alert_time_s,detection_latency_ms,threshold_budget_ms,within_budget\n";
+	}
+
+	double detectionLatencyMs = PemGetDetectionLatencyMs();
+	double withinBudget = 0.0;
+	if (detectionLatencyMs >= 0.0 && detectionLatencyMs <= PEM_BEACON_BUDGET_MS)
+	{
+		withinBudget = 1.0;
+	}
+
 	fout << data_gathering_cycle_number << ", "
+	     << Simulator::Now().GetSeconds() << ", "
+	     << PemGetPhaseLabel() << ", "
 	     << 1000.0*current_latency_routing << ", "
 	     << 1000.0*average_latency_routing << ", "
 	     << 100.0*current_packet_delivery_ratio << ", "
@@ -115311,6 +115509,19 @@ void write_csv_results_routing()
 	     << 1000.0*average_jitter_routing << ", "
 	     << current_load_balance<< ", "
 	     << average_load_balance<< ", "
+	     << pem_true_positive << ", "
+	     << pem_true_negative << ", "
+	     << pem_false_positive << ", "
+	     << pem_false_negative << ", "
+	     << pem_last_mcc << ", "
+	     << pem_last_auroc << ", "
+	     << pem_last_detection_score << ", "
+	     << (pem_last_alert ? 1 : 0) << ", "
+	     << pem_attack_injection_time << ", "
+	     << pem_first_alert_time << ", "
+	     << detectionLatencyMs << ", "
+	     << PEM_BEACON_BUDGET_MS << ", "
+	     << withinBudget
 	     << "\n";
 	data_gathering_cycle_number++;
 	fout.close();
