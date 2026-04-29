@@ -184,7 +184,41 @@ std::ofstream ttw_log;
 
 // Performance evaluation metrics for temporal-echo attack detection.
 static const double PEM_BEACON_BUDGET_MS = 100.0;
-static const double PEM_ALERT_THRESHOLD = 1.0;
+static const double PEM_BEACON_INTERVAL_S = 0.100;
+static const double PEM_PROPAGATION_EPSILON_S = 0.020;
+static const double PEM_HEARTBEAT_WINDOW_S = 0.400;
+static const double PEM_SCORE_THRESHOLD = 0.12;
+static const double PEM_ME_TOLERANCE_MU = 0.30;
+static const double PEM_ME_DELTA_MAX = 1.0;
+static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
+
+enum PemEventType
+{
+    PEM_EVENT_BEACON = 0,
+    PEM_EVENT_TOPOLOGY_UPDATE = 1,
+    PEM_EVENT_HEARTBEAT = 2
+};
+
+struct PemEvent
+{
+    double sim_time;
+    PemEventType type;
+    uint32_t physical_sender_id;
+    uint32_t claimed_sender_id;
+    uint32_t reporter_id;
+    uint32_t link_src_id;
+    uint32_t link_dst_id;
+    double sender_timestamp;
+    double reception_timestamp;
+    Vector reporter_position;
+    Vector link_src_position;
+    Vector link_dst_position;
+    bool attack_label;
+    bool triggered[9];
+    double score;
+    bool alert_raised;
+    double detection_latency_ms;
+};
 
 uint64_t pem_true_positive = 0;
 uint64_t pem_true_negative = 0;
@@ -203,6 +237,23 @@ bool pem_mitigation_active = false;
 
 std::vector<double> pem_positive_scores;
 std::vector<double> pem_negative_scores;
+std::deque<PemEvent> pem_event_window;
+std::map<uint32_t, std::vector<PemEvent> > pem_sender_event_history;
+std::map<uint32_t, std::vector<PemEvent> > pem_heartbeat_history;
+std::map<std::string, std::vector<PemEvent> > pem_link_report_history;
+std::map<std::string, double> pem_previous_path_counts;
+std::vector<PemEvent> pem_all_events;
+double pem_under_attack_pdr_sum = 0.0;
+double pem_under_attack_te2e_sum = 0.0;
+double pem_post_mitigation_pdr_sum = 0.0;
+double pem_post_mitigation_te2e_sum = 0.0;
+uint64_t pem_under_attack_snapshots = 0;
+uint64_t pem_post_mitigation_snapshots = 0;
+bool pem_event_csv_header_written = false;
+bool pem_summary_csv_header_written = false;
+extern double current_packet_delivery_ratio;
+extern double current_latency_routing;
+extern NodeContainer Vehicle_Nodes;
 
 static double
 PemSafeSqrt(double value)
@@ -323,7 +374,568 @@ PemGetPhaseLabel()
     return "baseline";
 }
 
+static std::string PemEventTypeToString(PemEventType type);
+static std::string PemGetLinkKey(uint32_t srcId, uint32_t dstId);
+static void PemTrimSlidingWindow(double nowSeconds);
+static double PemEstimateLambdaHat();
+static uint32_t PemComputePathCount(uint32_t srcId, uint32_t dstId);
+static std::string PemTriggeredSignatureString(const bool triggered[9]);
+static void PemWriteEventCsv(const PemEvent& event);
+static void PemWriteRunSummaryCsv();
+static void PemCaptureRoutingPhaseMetrics();
+static void PemEmitEvent(PemEventType type,
+                         uint32_t physicalSenderId,
+                         uint32_t claimedSenderId,
+                         uint32_t reporterId,
+                         uint32_t linkSrcId,
+                         uint32_t linkDstId,
+                         double senderTimestamp,
+                         double receptionTimestamp,
+                         const Vector& reporterPosition,
+                         const Vector& linkSrcPosition,
+                         const Vector& linkDstPosition,
+                         bool attackLabel);
+static void PemEmitHeartbeatEvent(uint32_t physicalSenderId,
+                                  uint32_t claimedSenderId,
+                                  double senderTimestamp,
+                                  bool attackLabel);
+static void PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId);
+static void PemEmitVehicleHeartbeat(uint32_t senderId,
+                                    uint32_t claimedSenderId,
+                                    double senderTimestamp,
+                                    bool attackLabel);
+
 void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistance);
+
+static std::string
+PemEventTypeToString(PemEventType type)
+{
+    switch (type)
+    {
+        case PEM_EVENT_BEACON:
+            return "beacon";
+        case PEM_EVENT_TOPOLOGY_UPDATE:
+            return "topology_update";
+        case PEM_EVENT_HEARTBEAT:
+            return "heartbeat";
+        default:
+            return "unknown";
+    }
+}
+
+static std::string
+PemGetLinkKey(uint32_t srcId, uint32_t dstId)
+{
+    const uint32_t a = std::min(srcId, dstId);
+    const uint32_t b = std::max(srcId, dstId);
+    return std::to_string(a) + "_" + std::to_string(b);
+}
+
+static void
+PemTrimSlidingWindow(double nowSeconds)
+{
+    while (!pem_event_window.empty() &&
+           (nowSeconds - pem_event_window.front().reception_timestamp) > PEM_HEARTBEAT_WINDOW_S)
+    {
+        pem_event_window.pop_front();
+    }
+}
+
+static double
+PemEstimateLambdaHat()
+{
+    std::set<uint32_t> activeVehicles;
+    for (std::deque<PemEvent>::const_iterator it = pem_event_window.begin();
+         it != pem_event_window.end();
+         ++it)
+    {
+        if (it->type == PEM_EVENT_BEACON)
+        {
+            activeVehicles.insert(it->claimed_sender_id);
+        }
+    }
+    if (TTW_COMM_RANGE <= 0.0)
+    {
+        return 0.0;
+    }
+    return static_cast<double>(activeVehicles.size()) / (2.0 * TTW_COMM_RANGE);
+}
+
+static uint32_t
+PemCountPathsDfs(const std::map<uint32_t, std::set<uint32_t> >& graph,
+                 uint32_t current,
+                 uint32_t target,
+                 std::set<uint32_t>& visited,
+                 uint32_t depth,
+                 uint32_t maxDepth)
+{
+    if (current == target)
+    {
+        return 1;
+    }
+    if (depth >= maxDepth)
+    {
+        return 0;
+    }
+
+    visited.insert(current);
+    uint32_t count = 0;
+    std::map<uint32_t, std::set<uint32_t> >::const_iterator it = graph.find(current);
+    if (it != graph.end())
+    {
+        for (std::set<uint32_t>::const_iterator n = it->second.begin();
+             n != it->second.end();
+             ++n)
+        {
+            if (visited.count(*n) == 0)
+            {
+                count += PemCountPathsDfs(graph, *n, target, visited, depth + 1, maxDepth);
+                if (count >= 8)
+                {
+                    break;
+                }
+            }
+        }
+    }
+    visited.erase(current);
+    return count;
+}
+
+static uint32_t
+PemComputePathCount(uint32_t srcId, uint32_t dstId)
+{
+    std::map<uint32_t, std::set<uint32_t> > graph;
+    for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
+         it != ttw_controller_table.end();
+         ++it)
+    {
+        const TopologyPacket& pkt = it->second;
+        graph[pkt.src_id].insert(pkt.seen_id);
+        graph[pkt.seen_id].insert(pkt.src_id);
+    }
+
+    if (graph.count(srcId) == 0 || graph.count(dstId) == 0)
+    {
+        return 0;
+    }
+
+    std::set<uint32_t> visited;
+    return PemCountPathsDfs(graph, srcId, dstId, visited, 0, 5);
+}
+
+static std::string
+PemTriggeredSignatureString(const bool triggered[9])
+{
+    static const char* labels[9] = {
+        "TTW-S1", "TTW-S2", "TTW-S3",
+        "BSHH-S1", "BSHH-S2", "BSHH-S3",
+        "ME-S1", "ME-S2", "ME-S3"
+    };
+
+    std::ostringstream out;
+    bool first = true;
+    for (uint32_t i = 0; i < 9; ++i)
+    {
+        if (triggered[i])
+        {
+            if (!first)
+            {
+                out << "|";
+            }
+            out << labels[i];
+            first = false;
+        }
+    }
+    if (first)
+    {
+        return "none";
+    }
+    return out.str();
+}
+
+static void
+PemWriteCsvHeaderIfNeeded(const std::string& filename,
+                          const std::string& header,
+                          bool& alreadyWritten)
+{
+    if (alreadyWritten)
+    {
+        return;
+    }
+
+    std::ifstream fin(filename.c_str());
+    const bool needsHeader =
+        (!fin.good() || fin.peek() == std::ifstream::traits_type::eof());
+    fin.close();
+
+    if (needsHeader)
+    {
+        std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
+        fout << header << "\n";
+    }
+
+    alreadyWritten = true;
+}
+
+static void
+PemWriteEventCsv(const PemEvent& event)
+{
+    const std::string filename = "pem_event_log.csv";
+    PemWriteCsvHeaderIfNeeded(
+        filename,
+        "sim_time_s,event_type,physical_sender_id,claimed_sender_id,reporter_id,link_src_id,link_dst_id,"
+        "sender_timestamp_s,reception_timestamp_s,attack_label,triggered_signatures,score,alert_raised,"
+        "phase,detection_latency_ms,reporter_x,reporter_y,link_src_x,link_src_y,link_dst_x,link_dst_y",
+        pem_event_csv_header_written);
+
+    std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
+    fout << event.sim_time << ","
+         << PemEventTypeToString(event.type) << ","
+         << event.physical_sender_id << ","
+         << event.claimed_sender_id << ","
+         << event.reporter_id << ","
+         << event.link_src_id << ","
+         << event.link_dst_id << ","
+         << event.sender_timestamp << ","
+         << event.reception_timestamp << ","
+         << (event.attack_label ? 1 : 0) << ","
+         << PemTriggeredSignatureString(event.triggered) << ","
+         << event.score << ","
+         << (event.alert_raised ? 1 : 0) << ","
+         << PemGetPhaseLabel() << ","
+         << event.detection_latency_ms << ","
+         << event.reporter_position.x << ","
+         << event.reporter_position.y << ","
+         << event.link_src_position.x << ","
+         << event.link_src_position.y << ","
+         << event.link_dst_position.x << ","
+         << event.link_dst_position.y << "\n";
+}
+
+static void
+PemWriteRunSummaryCsv()
+{
+    const std::string filename = "pem_run_summary.csv";
+    PemWriteCsvHeaderIfNeeded(
+        filename,
+        "run_id,attack_scenario,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,"
+        "pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,total_events",
+        pem_summary_csv_header_written);
+
+    const double pdrAttack =
+        (pem_under_attack_snapshots > 0)
+            ? (100.0 * pem_under_attack_pdr_sum / static_cast<double>(pem_under_attack_snapshots))
+            : 0.0;
+    const double pdrMitigation =
+        (pem_post_mitigation_snapshots > 0)
+            ? (100.0 * pem_post_mitigation_pdr_sum / static_cast<double>(pem_post_mitigation_snapshots))
+            : 0.0;
+    const double te2eAttack =
+        (pem_under_attack_snapshots > 0)
+            ? (1000.0 * pem_under_attack_te2e_sum / static_cast<double>(pem_under_attack_snapshots))
+            : 0.0;
+    const double te2eMitigation =
+        (pem_post_mitigation_snapshots > 0)
+            ? (1000.0 * pem_post_mitigation_te2e_sum / static_cast<double>(pem_post_mitigation_snapshots))
+            : 0.0;
+
+    std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
+    fout << RngSeedManager::GetRun() << ","
+         << attack_scenario << ","
+         << pem_true_positive << ","
+         << pem_true_negative << ","
+         << pem_false_positive << ","
+         << pem_false_negative << ","
+         << pem_last_mcc << ","
+         << pem_last_auroc << ","
+         << PemGetDetectionLatencyMs() << ","
+         << pdrAttack << ","
+         << pdrMitigation << ","
+         << te2eAttack << ","
+         << te2eMitigation << ","
+         << pem_all_events.size() << "\n";
+}
+
+static void
+PemCaptureRoutingPhaseMetrics()
+{
+    if (pem_attack_active)
+    {
+        pem_under_attack_pdr_sum += current_packet_delivery_ratio;
+        pem_under_attack_te2e_sum += current_latency_routing;
+        pem_under_attack_snapshots++;
+    }
+    else if (pem_mitigation_active)
+    {
+        pem_post_mitigation_pdr_sum += current_packet_delivery_ratio;
+        pem_post_mitigation_te2e_sum += current_latency_routing;
+        pem_post_mitigation_snapshots++;
+    }
+}
+
+static void
+PemEvaluateEvent(PemEvent& event)
+{
+    std::fill(event.triggered, event.triggered + 9, false);
+    PemTrimSlidingWindow(event.reception_timestamp);
+
+    if ((event.type == PEM_EVENT_BEACON || event.type == PEM_EVENT_TOPOLOGY_UPDATE) &&
+        (event.reception_timestamp - event.sender_timestamp) >
+            (PEM_BEACON_INTERVAL_S + PEM_PROPAGATION_EPSILON_S))
+    {
+        event.triggered[0] = true;
+    }
+
+    std::map<uint32_t, std::vector<PemEvent> >::iterator senderIt =
+        pem_sender_event_history.find(event.claimed_sender_id);
+    if ((event.type == PEM_EVENT_BEACON || event.type == PEM_EVENT_TOPOLOGY_UPDATE) &&
+        senderIt != pem_sender_event_history.end())
+    {
+        for (std::vector<PemEvent>::const_reverse_iterator it = senderIt->second.rbegin();
+             it != senderIt->second.rend();
+             ++it)
+        {
+            if ((it->type == PEM_EVENT_BEACON || it->type == PEM_EVENT_TOPOLOGY_UPDATE) &&
+                it->reception_timestamp < event.reception_timestamp &&
+                it->sender_timestamp > event.sender_timestamp)
+            {
+                event.triggered[1] = true;
+                break;
+            }
+        }
+    }
+
+    const std::string linkKey = PemGetLinkKey(event.link_src_id, event.link_dst_id);
+    std::map<std::string, std::vector<PemEvent> >::iterator linkIt =
+        pem_link_report_history.find(linkKey);
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && linkIt != pem_link_report_history.end())
+    {
+        std::set<uint32_t> reporters;
+        for (std::vector<PemEvent>::const_iterator it = linkIt->second.begin();
+             it != linkIt->second.end();
+             ++it)
+        {
+            if (it->reporter_id != event.reporter_id &&
+                std::abs(it->sender_timestamp - event.sender_timestamp) > PEM_BEACON_INTERVAL_S)
+            {
+                event.triggered[2] = true;
+            }
+            reporters.insert(it->reporter_id);
+        }
+        reporters.insert(event.reporter_id);
+
+        const double lambdaHat = PemEstimateLambdaHat();
+        const double rhoMax =
+            (1.0 + PEM_ME_TOLERANCE_MU) * (2.0 * TTW_COMM_RANGE * lambdaHat);
+        if (static_cast<double>(reporters.size()) > rhoMax && rhoMax >= 1.0)
+        {
+            event.triggered[6] = true;
+        }
+    }
+
+    if (event.type == PEM_EVENT_HEARTBEAT)
+    {
+        for (std::deque<PemEvent>::const_iterator it = pem_event_window.begin();
+             it != pem_event_window.end();
+             ++it)
+        {
+            if (it->type == PEM_EVENT_HEARTBEAT &&
+                it->physical_sender_id != event.physical_sender_id &&
+                it->claimed_sender_id == event.claimed_sender_id)
+            {
+                event.triggered[3] = true;
+                break;
+            }
+        }
+
+        std::map<uint32_t, std::vector<PemEvent> >::iterator hbIt =
+            pem_heartbeat_history.find(event.claimed_sender_id);
+        if (hbIt != pem_heartbeat_history.end() && !hbIt->second.empty())
+        {
+            const PemEvent& previousHeartbeat = hbIt->second.back();
+            if (event.sender_timestamp < previousHeartbeat.sender_timestamp)
+            {
+                event.triggered[4] = true;
+            }
+        }
+
+        bool beaconSeen = false;
+        for (std::deque<PemEvent>::const_iterator it = pem_event_window.begin();
+             it != pem_event_window.end();
+             ++it)
+        {
+            if (it->type == PEM_EVENT_BEACON &&
+                it->claimed_sender_id == event.claimed_sender_id &&
+                (event.reception_timestamp - it->reception_timestamp) <= PEM_HEARTBEAT_WINDOW_S)
+            {
+                beaconSeen = true;
+                break;
+            }
+        }
+        if (!beaconSeen)
+        {
+            event.triggered[5] = true;
+        }
+    }
+
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+    {
+        const uint32_t currentPathCount =
+            PemComputePathCount(event.link_src_id, event.link_dst_id);
+        const double previousCount = pem_previous_path_counts[linkKey];
+        if ((static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
+        {
+            event.triggered[7] = true;
+        }
+        pem_previous_path_counts[linkKey] = static_cast<double>(currentPathCount);
+
+        const double distanceToSrc =
+            std::sqrt(std::pow(event.reporter_position.x - event.link_src_position.x, 2.0) +
+                      std::pow(event.reporter_position.y - event.link_src_position.y, 2.0));
+        const double distanceToDst =
+            std::sqrt(std::pow(event.reporter_position.x - event.link_dst_position.x, 2.0) +
+                      std::pow(event.reporter_position.y - event.link_dst_position.y, 2.0));
+        const double nearestDistance = std::min(distanceToSrc, distanceToDst);
+        if (nearestDistance > TTW_COMM_RANGE)
+        {
+            event.triggered[8] = true;
+        }
+    }
+
+    double score = 0.0;
+    for (uint32_t i = 0; i < 9; ++i)
+    {
+        if (event.triggered[i])
+        {
+            score += (1.0 / 9.0);
+        }
+    }
+    event.score = score;
+    event.alert_raised = (score > PEM_SCORE_THRESHOLD);
+
+    PemRecordObservation(event.attack_label, event.score, event.alert_raised);
+    event.detection_latency_ms =
+        event.alert_raised ? PemGetDetectionLatencyMs() : -1.0;
+
+    pem_event_window.push_back(event);
+    pem_all_events.push_back(event);
+    pem_sender_event_history[event.claimed_sender_id].push_back(event);
+    if (event.type == PEM_EVENT_HEARTBEAT)
+    {
+        pem_heartbeat_history[event.claimed_sender_id].push_back(event);
+    }
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+    {
+        pem_link_report_history[linkKey].push_back(event);
+    }
+
+    PemWriteEventCsv(event);
+}
+
+static void
+PemEmitEvent(PemEventType type,
+             uint32_t physicalSenderId,
+             uint32_t claimedSenderId,
+             uint32_t reporterId,
+             uint32_t linkSrcId,
+             uint32_t linkDstId,
+             double senderTimestamp,
+             double receptionTimestamp,
+             const Vector& reporterPosition,
+             const Vector& linkSrcPosition,
+             const Vector& linkDstPosition,
+             bool attackLabel)
+{
+    PemEvent event;
+    event.sim_time = Simulator::Now().GetSeconds();
+    event.type = type;
+    event.physical_sender_id = physicalSenderId;
+    event.claimed_sender_id = claimedSenderId;
+    event.reporter_id = reporterId;
+    event.link_src_id = linkSrcId;
+    event.link_dst_id = linkDstId;
+    event.sender_timestamp = senderTimestamp;
+    event.reception_timestamp = receptionTimestamp;
+    event.reporter_position = reporterPosition;
+    event.link_src_position = linkSrcPosition;
+    event.link_dst_position = linkDstPosition;
+    event.attack_label = attackLabel;
+    event.score = 0.0;
+    event.alert_raised = false;
+    event.detection_latency_ms = -1.0;
+
+    PemEvaluateEvent(event);
+}
+
+static void
+PemEmitHeartbeatEvent(uint32_t physicalSenderId,
+                      uint32_t claimedSenderId,
+                      double senderTimestamp,
+                      bool attackLabel)
+{
+    Vector reporterPosition(0.0, 0.0, 0.0);
+    Vector endpointPosition(0.0, 0.0, 0.0);
+    PemEmitEvent(PEM_EVENT_HEARTBEAT,
+                 physicalSenderId,
+                 claimedSenderId,
+                 physicalSenderId,
+                 claimedSenderId,
+                 claimedSenderId,
+                 senderTimestamp,
+                 Simulator::Now().GetSeconds(),
+                 reporterPosition,
+                 endpointPosition,
+                 endpointPosition,
+                 attackLabel);
+}
+
+static void
+PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
+{
+    if (senderId >= Vehicle_Nodes.GetN() || receiverId >= Vehicle_Nodes.GetN())
+    {
+        return;
+    }
+
+    Ptr<MobilityModel> senderMobility = Vehicle_Nodes.Get(senderId)->GetObject<MobilityModel>();
+    Ptr<MobilityModel> receiverMobility = Vehicle_Nodes.Get(receiverId)->GetObject<MobilityModel>();
+    if (!senderMobility || !receiverMobility)
+    {
+        return;
+    }
+
+    Vector senderPosition = senderMobility->GetPosition();
+    Vector receiverPosition = receiverMobility->GetPosition();
+    const double distance =
+        std::sqrt(std::pow(senderPosition.x - receiverPosition.x, 2.0) +
+                  std::pow(senderPosition.y - receiverPosition.y, 2.0));
+    if (distance > TTW_COMM_RANGE)
+    {
+        return;
+    }
+
+    PemEmitEvent(PEM_EVENT_BEACON,
+                 senderId,
+                 senderId,
+                 senderId,
+                 senderId,
+                 receiverId,
+                 Simulator::Now().GetSeconds(),
+                 Simulator::Now().GetSeconds(),
+                 senderPosition,
+                 senderPosition,
+                 receiverPosition,
+                 false);
+}
+
+static void
+PemEmitVehicleHeartbeat(uint32_t senderId,
+                        uint32_t claimedSenderId,
+                        double senderTimestamp,
+                        bool attackLabel)
+{
+    PemEmitHeartbeatEvent(senderId, claimedSenderId, senderTimestamp, attackLabel);
+}
  
 
 // =============================================================================
@@ -407,8 +1019,32 @@ void TTW_SendTopologyUpdate(Ptr<Node> vehicle, uint32_t seen_id, double obs_time
                 << "  Result : ACCEPTED — link V" << pkt.src_id
                 << "<->V" << pkt.seen_id << " marked ACTIVE\n\n";
     }
+    Ptr<MobilityModel> reporterMobility = vehicle->GetObject<MobilityModel>();
+    Vector reporterPosition =
+        reporterMobility ? reporterMobility->GetPosition() : Vector(0.0, 0.0, 0.0);
+    Vector neighborPosition(0.0, 0.0, 0.0);
+    if (seen_id < Vehicle_Nodes.GetN())
+    {
+        Ptr<MobilityModel> neighborMobility =
+            Vehicle_Nodes.Get(seen_id)->GetObject<MobilityModel>();
+        if (neighborMobility)
+        {
+            neighborPosition = neighborMobility->GetPosition();
+        }
+    }
 
-    PemRecordObservation(false, 0.0, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
+                 pkt.src_id,
+                 pkt.src_id,
+                 pkt.src_id,
+                 pkt.src_id,
+                 pkt.seen_id,
+                 pkt.timestamp,
+                 now,
+                 reporterPosition,
+                 reporterPosition,
+                 neighborPosition,
+                 false);
 }
 
 // ── STEP 3: Attacker stores own packet ───────────────────────────────────────
@@ -511,14 +1147,41 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
 void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistance)
 {
-    const double rangeOverflow =
-        std::max(0.0, (linkDistance - TTW_COMM_RANGE) / TTW_COMM_RANGE);
-    const double score = 1.0 + rangeOverflow;
-    const bool alertRaised = (score >= PEM_ALERT_THRESHOLD);
+    Vector reporterPosition(0.0, 0.0, 0.0);
+    Vector sourcePosition(0.0, 0.0, 0.0);
+    Vector destinationPosition(0.0, 0.0, 0.0);
+    if (src_id < Vehicle_Nodes.GetN())
+    {
+        Ptr<MobilityModel> srcMobility = Vehicle_Nodes.Get(src_id)->GetObject<MobilityModel>();
+        if (srcMobility)
+        {
+            reporterPosition = srcMobility->GetPosition();
+            sourcePosition = srcMobility->GetPosition();
+        }
+    }
+    if (dst_id < Vehicle_Nodes.GetN())
+    {
+        Ptr<MobilityModel> dstMobility = Vehicle_Nodes.Get(dst_id)->GetObject<MobilityModel>();
+        if (dstMobility)
+        {
+            destinationPosition = dstMobility->GetPosition();
+        }
+    }
 
-    PemRecordObservation(true, score, alertRaised);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
+                 src_id,
+                 src_id,
+                 src_id,
+                 src_id,
+                 dst_id,
+                 ttw_stored_packet.timestamp,
+                 Simulator::Now().GetSeconds(),
+                 reporterPosition,
+                 sourcePosition,
+                 destinationPosition,
+                 true);
 
-    if (alertRaised)
+    if (pem_last_alert)
     {
         const std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
         ttw_controller_table.erase(key);
@@ -526,7 +1189,8 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
         ttw_log << "[t=" << Simulator::Now().GetSeconds()
                 << "]  DETECTION + MITIGATION\n"
                 << "  Alert raised for ghost link V" << src_id << "<->V" << dst_id << "\n"
-                << "  Detector score: " << score << "\n"
+                << "  Link distance: " << linkDistance << " m\n"
+                << "  Detector score: " << pem_last_detection_score << "\n"
                 << "  Detection latency: " << PemGetDetectionLatencyMs() << " ms\n"
                 << "  Action: forged topology entry removed from controller table\n\n";
         ttw_log.flush();
@@ -115475,32 +116139,9 @@ void write_csv_results_routing()
 			break;
 	}	
 
-	bool writeHeader = false;
-	{
-		ifstream fin(filename.c_str());
-		writeHeader = (!fin.good() || fin.peek() == std::ifstream::traits_type::eof());
-	}
-
 	fout.open(filename,ios::out|ios::app);
 
-	if (writeHeader)
-	{
-		fout << "cycle,sim_time_s,phase,current_te2e_ms,avg_te2e_ms,current_pdr_pct,avg_pdr_pct,"
-		     << "current_jitter_ms,avg_jitter_ms,current_load_balance_pct,avg_load_balance_pct,"
-		     << "tp,tn,fp,fn,mcc,auroc,detection_score,alert_raised,attack_injection_time_s,"
-		     << "first_alert_time_s,detection_latency_ms,threshold_budget_ms,within_budget\n";
-	}
-
-	double detectionLatencyMs = PemGetDetectionLatencyMs();
-	double withinBudget = 0.0;
-	if (detectionLatencyMs >= 0.0 && detectionLatencyMs <= PEM_BEACON_BUDGET_MS)
-	{
-		withinBudget = 1.0;
-	}
-
 	fout << data_gathering_cycle_number << ", "
-	     << Simulator::Now().GetSeconds() << ", "
-	     << PemGetPhaseLabel() << ", "
 	     << 1000.0*current_latency_routing << ", "
 	     << 1000.0*average_latency_routing << ", "
 	     << 100.0*current_packet_delivery_ratio << ", "
@@ -115509,19 +116150,6 @@ void write_csv_results_routing()
 	     << 1000.0*average_jitter_routing << ", "
 	     << current_load_balance<< ", "
 	     << average_load_balance<< ", "
-	     << pem_true_positive << ", "
-	     << pem_true_negative << ", "
-	     << pem_false_positive << ", "
-	     << pem_false_negative << ", "
-	     << pem_last_mcc << ", "
-	     << pem_last_auroc << ", "
-	     << pem_last_detection_score << ", "
-	     << (pem_last_alert ? 1 : 0) << ", "
-	     << pem_attack_injection_time << ", "
-	     << pem_first_alert_time << ", "
-	     << detectionLatencyMs << ", "
-	     << PEM_BEACON_BUDGET_MS << ", "
-	     << withinBudget
 	     << "\n";
 	data_gathering_cycle_number++;
 	fout.close();
@@ -116546,6 +117174,7 @@ void calculate_performance_evaluation_metrics()
 	Simulator::Schedule(Seconds(0.000020), calculate_average_packet_delivery_ratio_routing);
 	Simulator::Schedule(Seconds(0.000040), calculate_average_jitter_routing);
 	Simulator::Schedule(Seconds(0.000060), calculate_average_load_balance_routing);
+	Simulator::Schedule(Seconds(0.000065), PemCaptureRoutingPhaseMetrics);
 	Simulator::Schedule(Seconds(0.000070), write_csv_results_routing);
 }
 
@@ -141068,6 +141697,31 @@ int main(int argc, char *argv[])
           Vehicle_Nodes.Get(malicious_vehicle_id),     // V1 → V2
           Vehicle_Nodes.Get(victim_neighbor_id));
 
+      Simulator::Schedule(
+          Seconds(10.000), &PemEmitVehicleBeacon,
+          victim_neighbor_id,
+          malicious_vehicle_id);
+
+      Simulator::Schedule(
+          Seconds(10.001), &PemEmitVehicleBeacon,
+          malicious_vehicle_id,
+          victim_neighbor_id);
+
+      Simulator::Schedule(
+          Seconds(10.020), &PemEmitVehicleHeartbeat,
+          malicious_vehicle_id,
+          malicious_vehicle_id,
+          10.020,
+          false);
+
+      Simulator::Schedule(
+          Seconds(10.030), &PemEmitVehicleHeartbeat,
+          victim_neighbor_id,
+          victim_neighbor_id,
+          10.030,
+          false);
+
+
       // ── STEP 2: Legitimate topology updates → controller ─────────────────
       Simulator::Schedule(
           Seconds(10.100), &TTW_SendTopologyUpdate,
@@ -141158,6 +141812,7 @@ int main(int argc, char *argv[])
   // RUN SIMULATION
   // ===========================================================================
 
+  Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
   Simulator::Destroy();
