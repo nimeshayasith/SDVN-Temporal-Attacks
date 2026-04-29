@@ -192,6 +192,20 @@ static const double PEM_ME_TOLERANCE_MU = 0.30;
 static const double PEM_ME_DELTA_MAX = 1.0;
 static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
 
+// Signature weights — sum = 1.0
+// TTW (S0,S1,S2): timestamp/replay evidence, highest weight
+// BSHH (S3,S4,S5): identity/heartbeat anomaly, mid weight
+// ME (S6,S7,S8): topology-density anomaly, lower weight
+static const double PEM_WEIGHTS[9] = {
+    0.15, 0.15, 0.10,   // TTW-S1, TTW-S2, TTW-S3
+    0.15, 0.10, 0.10,   // BSHH-S1, BSHH-S2, BSHH-S3
+    0.10, 0.075, 0.075  // ME-S1, ME-S2, ME-S3
+};
+
+// Temporal decay time-constant for window history pressure
+// Separate from PEM_HEARTBEAT_WINDOW_S so it can be tuned independently
+static const double PEM_DECAY_TAU_S = 0.200;
+
 enum PemEventType
 {
     PEM_EVENT_BEACON = 0,
@@ -802,14 +816,44 @@ PemEvaluateEvent(PemEvent& event)
         }
     }
 
+    // ── STEP 1+2: Weighted signature scoring ─────────────────────────────────
+    // Each signature has an individual weight reflecting its evidential strength.
+    // TTW signatures (S0,S1) carry the most weight because they are direct
+    // timestamp / ordering contradictions. ME geometric hints (S7,S8) carry
+    // the least because they are circumstantial.
     double score = 0.0;
     for (uint32_t i = 0; i < 9; ++i)
     {
         if (event.triggered[i])
         {
-            score += (1.0 / 9.0);
+            score += PEM_WEIGHTS[i];
         }
     }
+
+    // ── STEP 3: Temporal pressure from window history ─────────────────────────
+    // "Temporal echo" means recent, repeated suspicious events matter more.
+    // We accumulate exponentially-decayed scores of past events in the sliding
+    // window — events close in time contribute fully, older ones fade.
+    // This is NOT applied as a multiplier on the current score (which would
+    // suppress isolated attack events). Instead it is added as a separate
+    // "pressure" term, capped so it cannot dominate the weighted score.
+    double temporalPressure = 0.0;
+    const double now = event.reception_timestamp;
+    for (std::deque<PemEvent>::const_iterator it = pem_event_window.begin();
+         it != pem_event_window.end();
+         ++it)
+    {
+        if (it->score > 0.0)
+        {
+            const double age = now - it->reception_timestamp;
+            temporalPressure += it->score * std::exp(-age / PEM_DECAY_TAU_S);
+        }
+    }
+    // Scale and cap: max contribution from history = 30% of full weighted score
+    const double PEM_PRESSURE_CAP = 0.30;
+    temporalPressure = std::min(temporalPressure * 0.05, PEM_PRESSURE_CAP);
+    score += temporalPressure;
+
     event.score = score;
     event.alert_raised = (score > PEM_SCORE_THRESHOLD);
 
