@@ -452,8 +452,9 @@ Every time the detector makes a decision:
 | File | When Created | What to Check |
 |---|---|---|
 | `ttw_attack_scenario4.txt` | Always when `attack_scenario=4` | All 6 steps present, detection + mitigation logged |
-| `pem_event_log.csv` | Always when `attack_scenario=4` | Row at t≈20.050: `alert_raised=1`, `phase=under_attack` |
+| `pem_event_log.csv` | Always when `attack_scenario=4` | Row at t≈20.050: `alert_raised=1`, attack signatures triggered |
 | `pem_run_summary.csv` | End of each run | `tp≥1`, `fp=0`, `mcc>0.5`, `tdet_ms≈50` |
+| `scratch/routing-animation.xml` | When `AnimationInterface` is enabled | Open this file in NetAnim to watch the visual flow |
 
 ### `pem_event_log.csv` Key Columns
 
@@ -501,6 +502,9 @@ Step 4: Run one of the commands below
 
 After 5 runs → open `pem_run_summary.csv` → compute **mean ± std** for MCC, AUROC, Tdet.
 
+Important:
+the summary row is written right before the simulation ends, so if you stop the run early with `Ctrl+C`, `pem_run_summary.csv` may not receive a new row.
+
 ---
 
 ## Part 10 — Complete Change Log
@@ -514,6 +518,9 @@ After 5 runs → open `pem_run_summary.csv` → compute **mean ± std** for MCC,
 | Fix 3 | 145 | Removed duplicate `victim_neighbor_id` | Compile error — declared twice |
 | Fix 4 | 49–50 | Moved `using namespace ns3` to top | Compile error — types used before namespace |
 | Fix 5 | 164–169 | Merged two structs into one `TopologyPacket` | Type mismatch — two definitions of same concept |
+| Fix 6 | PEM helper section | Replaced `std::max(...)` in PEM helpers | Avoided collision with legacy `#define max 40` macro |
+| Fix 7 | NetAnim setup | Changed animation output to `scratch/routing-animation.xml` | Avoided runtime file-open issues and made the XML location explicit |
+| Fix 8 | `print_time()` | Removed noisy `current time is ...` console output | Cleaner runs without changing simulation behavior |
 
 ### New Additions
 
@@ -560,6 +567,7 @@ After 5 runs → open `pem_run_summary.csv` → compute **mean ± std** for MCC,
   ttw_attack_scenario4.txt  →  Human-readable attack log
   pem_event_log.csv         →  Every event with score
   pem_run_summary.csv       →  TP/TN/FP/FN/MCC/AUROC/Tdet
+  scratch/routing-animation.xml → NetAnim visualization XML
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   PAPER TARGET METRICS
