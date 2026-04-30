@@ -29,6 +29,9 @@ Countering Temporal-Echo Topology Poisoning Attacks in SDVNs
 12. [Running 5-Experiment Statistics for the Report](#12-running-5-experiment-statistics-for-the-report)
 13. [NetAnim Visualization Color Guide](#13-netanim-visualization-color-guide)
 14. [Common Errors and Fixes](#14-common-errors-and-fixes)
+15. [Running Attacks Without Detection (attack-only mode)](#15-running-attacks-without-detection-attack-only-mode)
+16. [Per-Scenario NetAnim XML Files](#16-per-scenario-netanim-xml-files)
+17. [PEM Accuracy Improvements (ME-S1 and ME-S3)](#17-pem-accuracy-improvements-me-s1-and-me-s3)
 
 ---
 
@@ -328,6 +331,82 @@ BSHH needs all vehicles within range (to legitimately exchange heartbeats first)
 ME needs the echo reporters to be outside comm range (to trigger the position anomaly).
 Without correct initial positions and velocities, the PEM detection scores may not
 match what the project proposal specifies.
+
+---
+
+### Change 10 — Added `--detection_enabled` command-line flag
+
+**What was added** (in `main()`, `CommandLine` block):
+
+```cpp
+cmd.AddValue("detection_enabled",
+             "1=run attack WITH PEM detection+mitigation (default), "
+             "0=run attack ONLY, PEM logs but never mitigates",
+             detection_enabled);
+```
+
+And the corresponding global (declared near other PEM globals):
+
+```cpp
+bool detection_enabled = true;   // default: detection ON
+```
+
+The flag gates the alert inside `PemEvaluateEvent`:
+
+```cpp
+event.alert_raised = detection_enabled && (score > PEM_SCORE_THRESHOLD);
+```
+
+**Why:** To compare the network performance with and without the detection layer.
+When `detection_enabled = 0`, the attack fires and the ghost link stays in the controller
+table (no mitigation). PDR stays low for the whole simulation — this gives you the
+worst-case PDR for the report comparison table:
+
+| Run mode | What you measure |
+|---|---|
+| `--detection_enabled=1` (default) | PDR recovery after detection; Tdet |
+| `--detection_enabled=0` | Worst-case PDR; attack effect without any defence |
+
+---
+
+### Change 11 — Added per-scenario named XML files to `XML/` folder
+
+**What was added** (in `main()`, immediately before `Simulator::Run()`):
+
+```cpp
+std::system("mkdir -p /home/nimesha/ns-allinone-3.35/ns-3.35/XML");
+static const char* scenario_xml_names[] = {
+    "00_Baseline_No_Attack",
+    "01_TTW_S1_Malicious_Vehicle",
+    "02_TTW_S2_Malicious_RSU",
+    ...
+    "12_ME_S4_Malicious_Controller_With_RSU"
+};
+uint32_t safe_scenario = (attack_scenario <= 12) ? attack_scenario : 0;
+std::string anim_xml_path = std::string("/home/nimesha/ns-allinone-3.35/ns-3.35/XML/")
+                            + scenario_xml_names[safe_scenario] + ".xml";
+AnimationInterface anim(anim_xml_path);
+```
+
+**Why:** Previously every run overwrote the same `routing-animation.xml` file.
+Running all 12 scenarios in sequence would keep only the last one.
+Now each scenario writes its own named file — 13 files total (scenarios 0–12) — into a
+dedicated `XML/` folder, making it easy to open any scenario's animation without re-running.
+
+---
+
+### Change 12 — Improved ME-S1 local density check and added ME-S3 RSSI condition
+
+These are PEM accuracy improvements. See Section 17 for full details.
+
+**Summary of what changed:**
+- ME-S1 (signature 6): replaced global vehicle count estimate with local density
+  (only vehicles whose beacon was received within 300m of the specific link are counted).
+  Prevents false negatives in small simulations.
+- ME-S3 (signature 8): added RSSI (signal strength) check alongside the position check,
+  matching the full project proposal formula: `d > r_comm OR RSSI < RSSI_min`.
+- `pem_event_log.csv`: added `rssi_reporter_dbm` as the 22nd column, recording the
+  synthetic signal strength for every topology-update event.
 
 ---
 
@@ -749,8 +828,25 @@ If `total_score ≥ 0.12`, an alert is raised:
 ### What PEM writes at end of simulation
 
 `PemWriteRunSummaryCsv()` is called at `simTime − 0.001` seconds and writes one row to
-`pem_run_summary.csv` with: `tp, tn, fp, fn, mcc, auroc, tdet_ms, pdr_under_attack_pct,
-pdr_post_mitigation_pct, te2e_under_attack_ms, te2e_post_mitigation_ms`.
+`pem_run_summary.csv` with:
+`run_id, attack_scenario, detection_enabled, tp, tn, fp, fn, mcc, auroc, tdet_ms,
+pdr_under_attack_pct, pdr_post_mitigation_pct, te2e_under_attack_ms, te2e_post_mitigation_ms`
+(15 columns total). The `detection_enabled` column (0 or 1) makes it immediately clear
+in your results table which rows came from attack-only runs versus full detection runs.
+
+### Detection vs identification
+
+PEM provides two levels of information:
+
+| Level | What it tells you | How |
+|---|---|---|
+| **Detection** | Binary: was an attack happening? | `alert_raised = 1` |
+| **Family identification** | Which family: TTW / BSHH / ME? | Which signature group fired (0-2 = TTW, 3-5 = BSHH, 6-8 = ME) |
+| **Scenario identification** | Which placement: S1/S2/S3/S4? | Requires the full-stack GNN (out of scope for PEM alone) |
+
+PEM can tell you "a TTW attack is happening" but cannot distinguish S1 from S2.
+That fine-grained identification is the job of the GNN layer that sits on top of PEM.
+For the FYP, PEM's family-level identification is sufficient for the detection metrics.
 
 ---
 
@@ -896,11 +992,36 @@ All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 ./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=12"
 ```
 
+### Attack-only mode (no detection/mitigation)
+
+Add `--detection_enabled=0` to any attack run command.
+The ghost link is never removed — the attack stays active for the full simulation.
+Use this to measure worst-case PDR impact.
+
+```bash
+# Example: TTW-S2, attack fires but PEM never mitigates
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2 --detection_enabled=0"
+
+# Example: ME-S1, attack fires but PEM never mitigates
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=9 --detection_enabled=0"
+```
+
+### Attack + detection mode (default)
+
+`--detection_enabled=1` is the default; you do not need to write it explicitly.
+These two commands are equivalent:
+
+```bash
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=1"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=1 --detection_enabled=1"
+```
+
 ### Read results immediately after any run
 
 ```bash
-# Replace N with the scenario number
-cat ttw_s2_attack_log.txt      # TTW-S2 step-by-step log
+# Step-by-step attack log for each scenario
+cat ttw_attack_scenario4.txt   # TTW-S1 (historical filename, kept for compatibility)
+cat ttw_s2_attack_log.txt      # TTW-S2
 cat ttw_s3_attack_log.txt      # TTW-S3
 cat ttw_s4_attack_log.txt      # TTW-S4
 cat bshh_s1_attack_log.txt     # BSHH-S1
@@ -912,8 +1033,12 @@ cat me_s2_attack_log.txt       # ME-S2
 cat me_s3_attack_log.txt       # ME-S3
 cat me_s4_attack_log.txt       # ME-S4
 
-cat pem_run_summary.csv        # Detection metrics (MCC, AUROC, Tdet, PDR)
-cat pem_event_log.csv          # Per-event PEM log
+cat pem_run_summary.csv        # Detection metrics (MCC, AUROC, Tdet, PDR) — 15 columns
+cat pem_event_log.csv          # Per-event PEM log — 22 columns (incl. rssi_reporter_dbm)
+
+# NetAnim XML files — in named files under XML/ folder
+ls ~/ns-allinone-3.35/ns-3.35/XML/
+# Opens the correct file in NetAnim for the scenario you just ran
 ```
 
 ---
@@ -948,7 +1073,7 @@ Human-readable step-by-step trace. Example excerpt from TTW-S2:
   Latency: 50.0 ms
 ```
 
-### `pem_event_log.csv` — per-event detection log
+### `pem_event_log.csv` — per-event detection log (22 columns)
 
 | Column | Meaning |
 |---|---|
@@ -956,31 +1081,57 @@ Human-readable step-by-step trace. Example excerpt from TTW-S2:
 | `event_type` | 0=beacon, 1=topology update, 2=heartbeat |
 | `physical_sender_id` | Who actually sent it (9999 = controller internal fabrication) |
 | `claimed_sender_id` | Who the packet claims to be from |
-| `triggered_signatures` | Bitmask of which of the 9 signatures fired (e.g., `00001001` = sigs 0 and 3) |
+| `reporter_id` | Who forwarded it to the controller |
+| `link_src_id` | Source node of the reported link |
+| `link_dst_id` | Destination node of the reported link |
+| `sender_timestamp` | Timestamp inside the packet |
+| `reception_time_s` | When the controller received it |
+| `reporter_x`, `reporter_y` | Reporter node position |
+| `link_src_x`, `link_src_y` | Link source position |
+| `link_dst_x`, `link_dst_y` | Link destination position |
+| `triggered_signatures` | 9-character bitmask, one char per signature (e.g., `100000010` = sigs 0 and 7 fired) |
 | `score` | Weighted sum of triggered signature weights |
-| `alert_raised` | 1 = PEM raised an alert (true positive or false positive), 0 = passed |
+| `alert_raised` | 1 = alert raised (detection enabled AND score ≥ 0.12), 0 = passed |
+| `actual_attack` | 1 = this event was injected by an attack function, 0 = benign |
 | `phase` | `pre_attack`, `under_attack`, or `post_mitigation` |
-| `detection_latency_ms` | Milliseconds from attack injection to this alert (blank if no alert) |
+| `detection_latency_ms` | ms from attack injection to this alert (−1 if no alert) |
+| `rssi_reporter_dbm` | Synthetic RSSI of reporter to link (log-distance path-loss model). Used in ME-S3 check. |
 
-### `pem_run_summary.csv` — the table for your report
+> **Note on `rssi_reporter_dbm`:** This column always appears. For non-ME events (TTW, BSHH, baseline)
+> it holds the placeholder value `PEM_SIGNAL_PLACEHOLDER` (−999). The real computation runs
+> only for topology-update events where ME-S3 signature evaluation is relevant.
 
-| Column | Target value (from project proposal) | Meaning |
-|---|---|---|
-| `tp` | ≥ 1 | True positives: attacks correctly detected |
-| `tn` | high | True negatives: benign events correctly passed |
-| `fp` | 0 ideally | False positives: benign events wrongly flagged |
-| `fn` | 0 ideally | False negatives: attack events missed |
-| `mcc` | > 0.85 | Matthews Correlation Coefficient (−1 worst, +1 perfect) |
-| `auroc` | > 0.90 | Area Under ROC Curve (0.5 = random, 1.0 = perfect) |
-| `tdet_ms` | < 100 ms | Detection latency (must be within one beacon interval) |
-| `pdr_under_attack_pct` | — | Packet delivery ratio while attack is active (lower = attack effective) |
-| `pdr_post_mitigation_pct` | near baseline | PDR after PEM removes ghost entry (should recover) |
+### `pem_run_summary.csv` — the table for your report (15 columns)
 
-A good result row looks like:
+| Column | Position | Target value | Meaning |
+|---|---|---|---|
+| `run_id` | 1 | — | Sequential run number |
+| `attack_scenario` | 2 | — | 0–12 |
+| `detection_enabled` | 3 | — | 1 = detection+mitigation on, 0 = attack-only mode |
+| `tp` | 4 | ≥ 1 | True positives: attacks correctly detected |
+| `tn` | 5 | high | True negatives: benign events correctly passed |
+| `fp` | 6 | 0 ideally | False positives: benign events wrongly flagged |
+| `fn` | 7 | 0 ideally | False negatives: attack events missed |
+| `mcc` | 8 | > 0.85 | Matthews Correlation Coefficient (−1 worst, +1 perfect) |
+| `auroc` | 9 | > 0.90 | Area Under ROC Curve (0.5 = random, 1.0 = perfect) |
+| `tdet_ms` | 10 | < 100 ms | Detection latency (must be within one beacon interval) |
+| `pdr_under_attack_pct` | 11 | — | PDR while attack is active (lower = attack more effective) |
+| `pdr_post_mitigation_pct` | 12 | near baseline | PDR after PEM removes ghost entry |
+| `te2e_under_attack_ms` | 13 | — | End-to-end latency under attack |
+| `te2e_post_mitigation_ms` | 14 | near baseline | End-to-end latency after mitigation |
+
+A good result row (detection enabled):
 ```
-run_id,attack_scenario,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_post_mitigation_pct
-1,2,3,97,0,0,1.000,1.000,50.1,79.2,95.8
+run_id,attack_scenario,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_post_mitigation_pct,...
+1,2,1,3,97,0,0,1.000,1.000,50.1,79.2,95.8,...
 ```
+
+An attack-only run row (no detection):
+```
+1,2,0,0,0,0,3,0.000,0.500,-1.0,38.5,38.5,...
+```
+`mcc = 0` and `tdet_ms = -1` because no alert ever fired. PDR stays low for the entire run
+because the ghost link was never removed.
 
 ---
 
@@ -990,47 +1141,76 @@ The report requires 5 independent runs per scenario with different random seeds.
 
 ### Shell script — save as `run_5_experiments.sh`
 
+The script now accepts an optional 4th argument for `detection_enabled` (default 1).
+Run all 5 seeds twice — once with detection, once without — to get both PDR columns for
+the report comparison table.
+
 ```bash
 #!/bin/bash
-# Usage: bash run_5_experiments.sh <scenario_id> <N_Vehicles> <N_RSUs>
+# Usage: bash run_5_experiments.sh <scenario_id> <N_Vehicles> <N_RSUs> [detection_enabled]
+# Examples:
+#   bash run_5_experiments.sh 2 4 1        # attack + detection (default)
+#   bash run_5_experiments.sh 2 4 1 0      # attack only (no mitigation)
 SCENARIO=$1
 N_VEH=${2:-4}
 N_RSU=${3:-0}
+DET=${4:-1}                        # detection_enabled flag (1=default, 0=attack-only)
 
 cd ~/ns-3.35
-mkdir -p results/scenario_${SCENARIO}
+
+OUTDIR="results/scenario_${SCENARIO}_det${DET}"
+mkdir -p "${OUTDIR}"
 
 for SEED in 1 2 3 4 5; do
-    echo "=== Run $SEED / 5 (scenario=$SCENARIO) ==="
-    rm -f pem_event_log.csv pem_run_summary.csv *.txt routing-animation.xml
+    echo "=== Run $SEED / 5 (scenario=$SCENARIO, detection=$DET) ==="
+    rm -f pem_event_log.csv pem_run_summary.csv *.txt
 
     ./waf --run "scratch/routing \
         --simTime=60 --N_Vehicles=${N_VEH} --N_RSUs=${N_RSU} \
-        --attack_scenario=${SCENARIO} --RngRun=${SEED}"
+        --attack_scenario=${SCENARIO} \
+        --detection_enabled=${DET} \
+        --RngRun=${SEED}"
 
-    cp pem_run_summary.csv results/scenario_${SCENARIO}/run_${SEED}_summary.csv
-    cp pem_event_log.csv   results/scenario_${SCENARIO}/run_${SEED}_events.csv
+    cp pem_run_summary.csv "${OUTDIR}/run_${SEED}_summary.csv"
+    cp pem_event_log.csv   "${OUTDIR}/run_${SEED}_events.csv"
 done
-echo "Done. Results in results/scenario_${SCENARIO}/"
+echo "Done. Results in ${OUTDIR}/"
 ```
 
-### Run commands for all 12 scenarios
+### Run commands for all 12 scenarios — with detection
 
 ```bash
 chmod +x run_5_experiments.sh
 
-bash run_5_experiments.sh  1  2 0    # TTW-S1
-bash run_5_experiments.sh  2  4 1    # TTW-S2
-bash run_5_experiments.sh  3  4 0    # TTW-S3
-bash run_5_experiments.sh  4  4 1    # TTW-S4
-bash run_5_experiments.sh  5  4 0    # BSHH-S1
-bash run_5_experiments.sh  6  4 1    # BSHH-S2
-bash run_5_experiments.sh  7  4 0    # BSHH-S3
-bash run_5_experiments.sh  8  4 1    # BSHH-S4
-bash run_5_experiments.sh  9  6 0    # ME-S1
-bash run_5_experiments.sh 10  6 1    # ME-S2
-bash run_5_experiments.sh 11  6 0    # ME-S3
-bash run_5_experiments.sh 12  6 1    # ME-S4
+bash run_5_experiments.sh  1  2 0 1    # TTW-S1  + detection
+bash run_5_experiments.sh  2  4 1 1    # TTW-S2  + detection
+bash run_5_experiments.sh  3  4 0 1    # TTW-S3  + detection
+bash run_5_experiments.sh  4  4 1 1    # TTW-S4  + detection
+bash run_5_experiments.sh  5  4 0 1    # BSHH-S1 + detection
+bash run_5_experiments.sh  6  4 1 1    # BSHH-S2 + detection
+bash run_5_experiments.sh  7  4 0 1    # BSHH-S3 + detection
+bash run_5_experiments.sh  8  4 1 1    # BSHH-S4 + detection
+bash run_5_experiments.sh  9  6 0 1    # ME-S1   + detection
+bash run_5_experiments.sh 10  6 1 1    # ME-S2   + detection
+bash run_5_experiments.sh 11  6 0 1    # ME-S3   + detection
+bash run_5_experiments.sh 12  6 1 1    # ME-S4   + detection
+```
+
+### Run commands for all 12 scenarios — attack only (no detection)
+
+```bash
+bash run_5_experiments.sh  1  2 0 0    # TTW-S1  attack only
+bash run_5_experiments.sh  2  4 1 0    # TTW-S2  attack only
+bash run_5_experiments.sh  3  4 0 0    # TTW-S3  attack only
+bash run_5_experiments.sh  4  4 1 0    # TTW-S4  attack only
+bash run_5_experiments.sh  5  4 0 0    # BSHH-S1 attack only
+bash run_5_experiments.sh  6  4 1 0    # BSHH-S2 attack only
+bash run_5_experiments.sh  7  4 0 0    # BSHH-S3 attack only
+bash run_5_experiments.sh  8  4 1 0    # BSHH-S4 attack only
+bash run_5_experiments.sh  9  6 0 0    # ME-S1   attack only
+bash run_5_experiments.sh 10  6 1 0    # ME-S2   attack only
+bash run_5_experiments.sh 11  6 0 0    # ME-S3   attack only
+bash run_5_experiments.sh 12  6 1 0    # ME-S4   attack only
 ```
 
 ### Compute mean ± std — save as `compute_stats.py`
@@ -1039,30 +1219,42 @@ bash run_5_experiments.sh 12  6 1    # ME-S4
 import pandas as pd, glob, sys
 
 scenario_id = sys.argv[1]
-files = glob.glob(f"results/scenario_{scenario_id}/run_*_summary.csv")
+det = sys.argv[2] if len(sys.argv) > 2 else "1"   # default: detection runs
+
+files = glob.glob(f"results/scenario_{scenario_id}_det{det}/run_*_summary.csv")
+if not files:
+    print(f"No files found for scenario {scenario_id} det={det}")
+    sys.exit(1)
+
 df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
 
 cols = ['mcc', 'auroc', 'tdet_ms',
         'pdr_under_attack_pct', 'pdr_post_mitigation_pct',
         'te2e_under_attack_ms', 'te2e_post_mitigation_ms']
 
-print(f"\n=== Scenario {scenario_id} (n={len(df)}) ===")
+label = "with detection" if det == "1" else "attack-only (no detection)"
+print(f"\n=== Scenario {scenario_id} — {label} (n={len(df)}) ===")
 for col in cols:
     if col in df.columns:
         print(f"  {col:35s}: {df[col].mean():.3f} ± {df[col].std():.3f}")
 ```
 
 ```bash
-python3 compute_stats.py 1     # TTW-S1 stats
-python3 compute_stats.py 9     # ME-S1 stats
-# etc.
+python3 compute_stats.py 1 1   # TTW-S1, with detection
+python3 compute_stats.py 1 0   # TTW-S1, attack-only (PDR impact without defence)
+python3 compute_stats.py 9 1   # ME-S1,  with detection
+python3 compute_stats.py 9 0   # ME-S1,  attack-only
 ```
 
 ---
 
 ## 13. NetAnim Visualization Color Guide
 
-Open `routing-animation.xml` in the NetAnim application after any run.
+Each simulation run now writes its own named XML file to the `XML/` folder instead of
+overwriting a single `routing-animation.xml`. See Section 16 for the full file list and
+how to open them.
+
+Open the relevant XML file in the NetAnim application:
 
 | Colour | Node role |
 |---|---|
@@ -1136,6 +1328,217 @@ rm -f routing-animation.xml pem_event_log.csv pem_run_summary.csv *.txt
 
 ---
 
+## 15. Running Attacks Without Detection (attack-only mode)
+
+### Why you need attack-only runs
+
+The project report needs to show two things side by side:
+1. How badly the attack degrades PDR without any defence.
+2. How well the detection+mitigation restores PDR.
+
+To compare these you need two sets of runs for each scenario:
+
+```
+Normal run (detection_enabled=1):
+  → PDR drops during attack → PEM fires alert → ghost link removed → PDR recovers
+  → Report shows: pdr_under_attack vs pdr_post_mitigation (both in one run)
+
+Attack-only run (detection_enabled=0):
+  → PDR drops during attack → ghost link STAYS → PDR stays low for entire simulation
+  → Report shows: worst-case PDR without any defence mechanism
+```
+
+### What `--detection_enabled=0` actually does in routing.cc
+
+Only one line of code is affected:
+
+```cpp
+// In PemEvaluateEvent(), at the point where the alert decision is made:
+event.alert_raised = detection_enabled && (score > PEM_SCORE_THRESHOLD);
+```
+
+When `detection_enabled = false`:
+- PEM still computes scores and writes to `pem_event_log.csv` (the log is always written)
+- `alert_raised` is always 0 — no alert fires
+- No ghost entry is ever removed from `ttw_controller_table` or `bshh_controller_liveness_table`
+- The summary CSV records `tp = 0`, `mcc = 0`, `tdet_ms = -1` for the run
+
+### Run commands comparison
+
+```bash
+# TTW-S2 — with detection (ghost link removed at t≈20.05s, PDR recovers)
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2 --detection_enabled=1"
+
+# TTW-S2 — attack only (ghost link stays, PDR never recovers)
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2 --detection_enabled=0"
+
+# Compare the pdr_post_mitigation_pct column between the two runs
+# The gap between them quantifies the benefit of the detection layer
+```
+
+### What to expect in `pem_run_summary.csv`
+
+```
+# With detection (detection_enabled=1):
+run_id,attack_scenario,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,...
+1,2,1,3,97,0,0,1.000,1.000,50.2,78.4,95.1,...
+
+# Attack only (detection_enabled=0):
+1,2,0,0,0,0,3,0.000,0.500,-1.0,38.5,38.5,...
+```
+
+The `pdr_post_mitigation_pct` in the attack-only row equals `pdr_under_attack_pct`
+because there is no mitigation — PDR stays at the attack-degraded level.
+
+---
+
+## 16. Per-Scenario NetAnim XML Files
+
+### What changed
+
+Previously every run wrote `routing-animation.xml` in the NS-3 working directory,
+overwriting the previous run's file. Now each run writes a named file inside
+`/home/nimesha/ns-allinone-3.35/ns-3.35/XML/`:
+
+```
+XML/
+├── 00_Baseline_No_Attack.xml
+├── 01_TTW_S1_Malicious_Vehicle.xml
+├── 02_TTW_S2_Malicious_RSU.xml
+├── 03_TTW_S3_Malicious_Controller_No_RSU.xml
+├── 04_TTW_S4_Malicious_Controller_With_RSU.xml
+├── 05_BSHH_S1_Malicious_Vehicle.xml
+├── 06_BSHH_S2_Malicious_RSU.xml
+├── 07_BSHH_S3_Malicious_Controller_No_RSU.xml
+├── 08_BSHH_S4_Malicious_Controller_With_RSU.xml
+├── 09_ME_S1_Malicious_Vehicles.xml
+├── 10_ME_S2_Malicious_RSU.xml
+├── 11_ME_S3_Malicious_Controller_No_RSU.xml
+└── 12_ME_S4_Malicious_Controller_With_RSU.xml
+```
+
+### How to list and open them
+
+```bash
+# List all XML files
+ls ~/ns-allinone-3.35/ns-3.35/XML/
+
+# Check file sizes (non-zero = simulation wrote data)
+ls -lh ~/ns-allinone-3.35/ns-3.35/XML/
+
+# Open a specific scenario in NetAnim (Linux)
+# Replace the path with the actual NetAnim binary location on your machine
+netanim ~/ns-allinone-3.35/ns-3.35/XML/02_TTW_S2_Malicious_RSU.xml
+
+# Or from within the NetAnim GUI: File → Open → navigate to XML/ folder
+```
+
+### The XML folder is created automatically
+
+The code runs `std::system("mkdir -p /home/nimesha/ns-allinone-3.35/ns-3.35/XML")` at
+simulation startup. If the folder already exists the `mkdir -p` command does nothing —
+no error. The folder does NOT need to be created manually.
+
+### What you see in NetAnim for each scenario
+
+When you open an XML file in NetAnim and press Play:
+- **Red nodes** — the attacker(s). Large red = high-priority attacker.
+- **Blue nodes** — victim vehicles (the ones being targeted).
+- **Green nodes** — uninvolved bystander vehicles.
+- **Orange nodes** — legitimate RSU relay (present in S4 variants but not malicious).
+- **Purple or red node far from vehicles** — the SDN controller.
+- **Arrows between nodes** — simulated packet transmissions (HELLO, topology updates, forged packets).
+
+The attack forgery step is visible as an arrow from the attacker to the controller
+at t=20s for TTW, t=10s for BSHH/ME.
+
+---
+
+## 17. PEM Accuracy Improvements (ME-S1 and ME-S3)
+
+These changes were made to fix two issues where PEM was not detecting ME attacks
+reliably in small simulations. No new attack scenarios were added — only the
+detection logic for existing ME signatures was improved.
+
+### Problem 1: ME-S1 was not firing in small simulations
+
+**Signature 6 (ME-S1):** Fires when the number of reporters for a link exceeds the
+expected density bound: `reporters > (1 + tolerance) × expected_reporters`.
+
+**Old code:** Used a global vehicle density estimate: divided total active vehicles by the
+road length to get λ̂, then computed expected reporters as `2 × r_comm × λ̂`.
+With 6 vehicles spread over a long road, λ̂ was very small, making the bound too large.
+Example: 6 vehicles, λ̂ = 0.01, rhoMax ≈ 7.8 → 4 reporters never exceeded 7.8 → signature never fired.
+
+**New code:** Uses local density. Instead of counting all vehicles, it counts only the
+vehicles whose recent beacon was received within `r_comm = 300m` of the specific link's
+endpoints:
+
+```cpp
+std::set<uint32_t> vehiclesNearLink;
+for (each recent beacon event w in PEM window) {
+    double dToSrc = distance(w.position, link_src_position);
+    double dToDst = distance(w.position, link_dst_position);
+    if (min(dToSrc, dToDst) <= TTW_COMM_RANGE)
+        vehiclesNearLink.insert(w.claimed_sender_id);
+}
+double localRhoMax = (1.0 + PEM_ME_TOLERANCE_MU) * vehiclesNearLink.size();
+double effectiveRhoMax = max(localRhoMax, 2.0);   // floor: never less than 2
+if (reporters.size() > effectiveRhoMax) triggered[6] = true;
+```
+
+**Why this works for ME scenarios:** In ME-S1, V2 and V3 (the echo attackers) are placed
+at (700,0) and (850,0) — more than 300m from the real link at (0,0)↔(100,0). Their
+beacons do NOT appear in `vehiclesNearLink`. Only V0 and V1 do. So `vehiclesNearLink = 2`,
+`effectiveRhoMax = 2.6`, and 4 reporters fires the signature.
+
+---
+
+### Problem 2: ME-S3 RSSI check was missing
+
+**Signature 8 (ME-S3):** The project proposal formula is:
+
+```
+Trigger if: d(reporter, link) > r_comm  OR  RSSI(reporter → link) < RSSI_min
+```
+
+**Old code:** Only checked the distance condition (`d > r_comm`). The RSSI condition was not implemented.
+
+**New code:** Both conditions are evaluated. A synthetic RSSI is computed from the
+log-distance path-loss model:
+
+```cpp
+const double safeDistance = max(nearestDistance, 1.0);   // prevent log(0)
+const double syntheticRSSI = PEM_RSSI_REF_DBM
+    - 10.0 * PEM_PATH_LOSS_EXP * log10(safeDistance);
+event.rssi_reporter_dbm = syntheticRSSI;
+
+const bool positionOutOfRange = (nearestDistance > TTW_COMM_RANGE);
+const bool rssiTooWeak        = (syntheticRSSI < PEM_RSSI_MIN_DBM);
+if (positionOutOfRange || rssiTooWeak) triggered[8] = true;
+```
+
+**The three path-loss constants (defined as globals):**
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `PEM_RSSI_REF_DBM` | −40.0 dBm | Reference RSSI at 1m |
+| `PEM_PATH_LOSS_EXP` | 2.75 | Path-loss exponent (urban DSRC typical value) |
+| `PEM_RSSI_MIN_DBM` | −108.1 dBm | Threshold = −40 − 10×2.75×log10(300) = −40 − 68.1 |
+
+**Why `log10(300)` is precomputed as a literal (2.4771):** C++ does not allow `std::log10`
+inside a `static const double` initializer at file scope. Using the literal
+`10.0 * 2.75 * 2.4771 = 68.12` makes the constant compile cleanly:
+`PEM_RSSI_MIN_DBM = −40.0 − 68.12 = −108.1 dBm`.
+
+**Why both conditions together:** The distance check and the RSSI check are theoretically
+equivalent (path-loss is monotone in distance). Using both provides defence against edge
+cases such as GPS spoofing: an attacker might forge its position to appear inside 300m,
+but the signal strength (derived from physics, not the packet's claimed position) still
+reveals the true distance.
+
+---
+
 ## Appendix — Complete Scenario Reference Card
 
 ```
@@ -1162,11 +1565,23 @@ KEY CONSTANTS IN routing.cc:
   Detection budget     : 100 ms    (PEM_BEACON_BUDGET_MS)
   PEM score threshold  : 0.12      (PEM_SCORE_THRESHOLD)
   Controller sentinel  : 9999u     (physical_sender_id for internal attacks)
+  RSSI reference       : −40.0 dBm (PEM_RSSI_REF_DBM, at 1m)
+  Path-loss exponent   : 2.75      (PEM_PATH_LOSS_EXP, urban DSRC)
+  RSSI minimum         : −108.1 dBm (PEM_RSSI_MIN_DBM, threshold at 300m edge)
 
 ATTACK INJECTION TIMES:
   TTW  : attack injects at t=20s (after link breaks at t=15s)
   BSHH : attack injects at t=10s (after exchange at t=5s)
   ME   : attack injects at t=10.1s (0.1s after real discovery at t=10s)
+
+NEW FLAG:
+  --detection_enabled=1  (default) attack + PEM detection + mitigation
+  --detection_enabled=0            attack only — ghost link stays, PDR impact visible
+
+OUTPUT FILE LOCATIONS:
+  pem_event_log.csv        : 22 columns (incl. rssi_reporter_dbm)
+  pem_run_summary.csv      : 15 columns (incl. detection_enabled as col 3)
+  XML/<scenario_name>.xml  : per-scenario NetAnim animation (in XML/ folder)
 
 PEM TARGET METRICS (project proposal):
   MCC    > 0.85
@@ -1179,3 +1594,4 @@ PEM TARGET METRICS (project proposal):
 ---
 
 *Written by Nimesha Yasith | FYP — Department of EIE, University of Ruhuna | 2026-04-30*
+*Updated 2026-04-30: added --detection_enabled flag, per-scenario XML files, ME-S1/S3 PEM improvements, updated CSV column layouts.*
