@@ -1,580 +1,1181 @@
-# Team Notes — Complete Project Understanding
-> **For:** Team members who are new to the codebase  
-> **File explained:** `routing.cc` (the main simulation file)  
-> **After reading this:** You will understand what the project does, what was broken, what was fixed, and how the whole detection system works.
+# SDVN Temporal-Echo Attack Implementation — Team Notes
+
+**Project:** A Transfer-Learned GNN and Blockchain-Based Framework for Temporal Fraud Detection:
+Countering Temporal-Echo Topology Poisoning Attacks in SDVNs
+**Department:** EIE, University of Ruhuna
+**Supervisors:** Dr. Nilmantha Wijesekara | Dr. Prabath Weerasingha
+**Main file:** `routing.cc` (place inside `ns-3.35/scratch/` on Linux)
+**Simulator:** NS-3.35 on Ubuntu Linux
+
+> **Purpose of this document:** A complete explanation for team members who were not involved
+> in this coding session. After reading, you will understand what was already in the code,
+> what was added, why every change was made, and exactly how to run and test all 12 scenarios.
 
 ---
 
-## Part 1 — What Is This Project?
+## Table of Contents
 
-### Step-by-Step: How the Network Works (Normal Case)
-
-```
-Step 1: Vehicles drive on a road, broadcasting their location every 0.1 seconds (beacon)
-
-Step 2: Nearby vehicles hear each other's beacons and report:
-        "I can see Vehicle B right now"  →  sent to RSU or directly to Controller
-
-Step 3: Controller receives all reports and builds a TOPOLOGY MAP:
-        [ V0 ↔ V1 ]  [ V1 ↔ V2 ]  [ V2 ↔ V3 ]
-
-Step 4: Controller uses this map to route data:
-        "Send packet from V0 to V3 via: V0 → V1 → V2 → V3"
-
-Step 5: Packets travel along the chosen path and reach the destination ✅
-```
-
-### The Security Problem — Step by Step
-
-```
-Step 1: Attacker captures a VALID old topology packet
-        (e.g., "V0 sees V1, observed at t=10s")
-
-Step 2: V0 and V1 move apart — the real link breaks at t=15s
-        Controller is NOT told about the break
-
-Step 3: Attacker changes the timestamp: 10s → 20s  (FORGED)
-
-Step 4: Attacker sends the forged packet to the Controller
-        Controller sees: "V0 sees V1, observed at t=20s"  — looks fresh!
-
-Step 5: Controller updates its map — believes V0↔V1 is still active
-
-Step 6: Controller routes packets through V0→V1 — but V1 is gone!
-        All packets are DROPPED ❌
-```
-
-### Three Attack Families
-
-| # | Full Name | Short Name | Core Technique |
-|---|---|---|---|
-| 1 | Topology Time-Warp | **TTW** | Replay old topology packet with forged timestamp |
-| 2 | Beacon State Heartbeat Hijack | **BSHH** | Replay old heartbeat pretending vehicle is still alive |
-| 3 | Multipath Echo | **ME** | Inject duplicate link reports to create phantom paths |
+1. [What is This Project?](#1-what-is-this-project)
+2. [What Was Already There Before We Started](#2-what-was-already-there-before-we-started)
+3. [What Was Added — Summary of All Changes](#3-what-was-added--summary-of-all-changes)
+4. [Understanding the Three Attack Families](#4-understanding-the-three-attack-families)
+5. [Attack Scenario ID Map (Quick Reference)](#5-attack-scenario-id-map-quick-reference)
+6. [Detailed Attack Flows — All 12 Scenarios](#6-detailed-attack-flows--all-12-scenarios)
+7. [How Detection Works (PEM)](#7-how-detection-works-pem)
+8. [Data Structures Added to routing.cc](#8-data-structures-added-to-routingcc)
+9. [Build and Setup on Linux](#9-build-and-setup-on-linux)
+10. [All Run Commands](#10-all-run-commands)
+11. [Understanding the Output Files](#11-understanding-the-output-files)
+12. [Running 5-Experiment Statistics for the Report](#12-running-5-experiment-statistics-for-the-report)
+13. [NetAnim Visualization Color Guide](#13-netanim-visualization-color-guide)
+14. [Common Errors and Fixes](#14-common-errors-and-fixes)
 
 ---
 
-## Part 2 — The 5 Compile Errors That Were Fixed
+## 1. What is This Project?
 
-> Before fixes, the code would **not compile at all**. These must be fixed first.
+### The system being simulated
 
-### Error Summary Table
+An **SDVN (Software-Defined Vehicular Network)** is a road network where vehicles (V),
+Road-Side Units (RSUs), and a central SDN Controller communicate wirelessly.
+The controller collects **topology updates** — messages saying "V0 can see V1 right now,
+at time T" — and uses this to decide routing: which path to use to send packets from A to B.
 
-| Error # | Variable / Item | Problem | Fix Applied |
-|---|---|---|---|
-| 1 | `attack_scenario` | Declared twice — `uint32_t` AND `int` | Kept one `uint32_t` at line 139 |
-| 2 | `malicious_vehicle_id` | Declared twice | Kept one at line 142 |
-| 3 | `victim_neighbor_id` | Declared twice | Kept one at line 145 |
-| 4 | `using namespace ns3` | Placed too late — types used before namespace | Moved to line 50 |
-| 5 | `TopologyPacket` + `StoredPacket` | Two structs for same concept | Merged into one struct at lines 164–169 |
+```
+  [Vehicle V0] ←—— DSRC 300m ——→ [Vehicle V1]
+        |                               |
+        └──── sends topology update ────┘
+                         |
+                         ▼
+                 [SDN Controller]  ← makes ALL routing decisions
+                         |
+                 [RSU] (optional) ← can relay/aggregate updates
+```
+
+The DSRC (Dedicated Short-Range Communication) range is **300 metres**.
+If two vehicles are farther apart than 300m, they cannot communicate directly.
+
+### The problem: temporal-echo attacks
+
+An attacker who is part of this network (a compromised vehicle, RSU, or controller) can
+**poison the controller's view of the topology** by replaying old or forged control messages.
+The controller then believes a link exists (or a vehicle is alive) when it no longer is.
+It installs routes over these "ghost" links — packets are sent but never arrive.
+
+### Our goal
+
+Implement all 12 attack variants in NS-3.35 and measure how well the
+**PEM (Performance Evaluation Metrics)** detection layer catches each one:
+MCC, AUROC, detection latency (Tdet), and Packet Delivery Ratio (PDR).
 
 ---
 
-### Error 1 — Duplicate Variable
+## 2. What Was Already There Before We Started
 
-**Before (broken):**
+Before this round of work, `routing.cc` already contained:
+
+| Already Done | Description |
+|---|---|
+| Full SDVN simulation framework | Vehicle mobility, WAVE/DSRC radio, routing algorithms |
+| `TopologyPacket` struct | Data structure for a topology update: `{src_id, seen_id, timestamp, is_forged}` |
+| `ttw_controller_table` | The `std::map` that IS the controller's topology belief — everything in here the controller treats as truth |
+| **TTW-S1 attack (was scenario 4)** | One working attack: malicious vehicle replaying a forged timestamp |
+| Full PEM layer | 9 detection signatures, MCC/AUROC computation, CSV output |
+| `PemEmitEvent()` | Feeds a topology event into the detector |
+| `PemEmitHeartbeatEvent()` | Feeds a heartbeat event into the detector |
+| `PemEmitVehicleBeacon()` | Registers a legitimate beacon (for baseline detection history) |
+| CSV output functions | Auto-writes `pem_run_summary.csv` and `pem_event_log.csv` |
+
+**What was missing:** The remaining 11 attack scenarios existed only as written descriptions
+in the project proposal PDF — none were coded. This session implemented all of them.
+
+---
+
+## 3. What Was Added — Summary of All Changes
+
+All changes are inside `routing.cc`. No other file was modified.
+Here is every change, in order, with the reason for each decision.
+
+---
+
+### Change 1 — Remapped TTW-S1 from scenario 4 to scenario 1
+
+**What changed:** Every `if (attack_scenario == 4)` that belonged to TTW-S1 was changed to
+`if (attack_scenario == 1)`. There were four such places in the file:
+- Mobility setup block
+- First animation block (controller node repositioning)
+- Second animation block (node colours)
+- Scheduling header block (the console printout)
+
+**Why this was necessary:** The original code used `attack_scenario = 4` for TTW-S1 by
+accident — probably because it was the 4th scenario implemented during development.
+Our project plan defines 12 scenarios numbered 1–12 across three families. TTW-S1 is
+logically scenario 1. Slot 4 needed to be freed for TTW-S4 (malicious controller + RSU).
+Without this remap, the numbering would have a gap and TTW-S4 would have no slot.
+
+---
+
+### Change 2 — Added the `AttackScenarioId` enum
+
+**What was added** (around line 185, after the TTW-S1 globals):
+
 ```cpp
-uint32_t attack_scenario = 0;   // line 100
-// ...hundreds of lines later...
-int attack_scenario = 4;        // ← ILLEGAL: declared again
+enum AttackScenarioId {
+    ATTACK_NONE               = 0,
+    TTW_S1_MAL_VEH_NO_RSU    = 1,
+    TTW_S2_MAL_RSU            = 2,
+    TTW_S3_MAL_CTRL_NO_RSU    = 3,
+    TTW_S4_MAL_CTRL_WITH_RSU  = 4,
+    BSHH_S1_MAL_VEH_NO_RSU   = 5,
+    BSHH_S2_MAL_RSU           = 6,
+    BSHH_S3_MAL_CTRL_NO_RSU   = 7,
+    BSHH_S4_MAL_CTRL_WITH_RSU = 8,
+    ME_S1_MAL_VEH_NO_RSU      = 9,
+    ME_S2_MAL_RSU             = 10,
+    ME_S3_MAL_CTRL_NO_RSU     = 11,
+    ME_S4_MAL_CTRL_WITH_RSU   = 12
+};
 ```
 
-**After (fixed, line 139):**
-```cpp
-// ERROR 1 FIX: Keep ONE declaration only
-uint32_t attack_scenario = 0;   // change via: --attack_scenario=4
-```
+**Why:** Without an enum, the scenario integers are magic numbers. The enum makes it
+immediately clear in code that `attack_scenario == 6` means "BSHH-S2 = malicious RSU"
+without needing to cross-reference a document. It also prevents typos.
 
 ---
 
-### Error 2 & 3 — Same Pattern
+### Change 3 — Added TTW-S2 / S3 / S4 global variables
 
-**After fix (lines 142, 145):**
+**What was added** (after the TTW-S1 globals block):
+
 ```cpp
-uint32_t malicious_vehicle_id = 0;   // V0 is the attacker
-uint32_t victim_neighbor_id   = 1;   // V1 is the victim
+// One block per variant, e.g. for TTW-S2:
+static const double TTWS2_HELLO_TIME  = 10.0;  // t=10: vehicles exchange HELLO
+static const double TTWS2_LINK_BREAK  = 15.0;  // t=15: physical link breaks
+static const double TTWS2_REPLAY_TIME = 20.0;  // t=20: RSU replays forged packet
+TopologyPacket ttws2_stored_packet;             // the old packet the RSU saved
+bool           ttws2_packet_stored = false;     // guard: only replay if stored
+std::ofstream  ttws2_log;                       // log file for this variant
 ```
+
+Same pattern for S3 and S4 (with `TTWS3_INTERNAL_REPLAY` instead of `TTWS3_LINK_BREAK`
+because internal controller attacks have no separate "link break" event — the controller
+simply refuses to expire the entry).
+
+**Why separate variables per variant:** Each simulation run executes exactly one scenario.
+Separate variables prevent state leakage between variants and make it safe to have all
+scenario code in one file. Separate log files (`ttw_s2_attack_log.txt`, etc.) make
+per-run results immediately identifiable.
 
 ---
 
-### Error 4 — Namespace Too Late
+### Change 4 — Added `HeartbeatPacket` struct and BSHH globals
 
-**Step-by-step explanation:**
-```
-1. NS-3 puts all its tools (Seconds, Vector, Simulator...) inside namespace ns3
-2. To use them without typing ns3:: every time, you write: using namespace ns3;
-3. PROBLEM: attack constants used Seconds() BEFORE the namespace line
-4. FIX: Move "using namespace ns3;" to line 50 — before everything else
-```
+**What was added:**
 
-**Before → After:**
 ```cpp
-// BEFORE: namespace declared too late
-// ... (attack constants here using Seconds()) ...
-using namespace ns3;   // too late — compiler already gave up
-
-// AFTER: namespace at the very top
-using namespace std;
-using namespace ns3;   // line 50 — now covers the whole file
-// ... (attack constants here — now Seconds() works) ...
-```
-
----
-
-### Error 5 — Duplicate Struct
-
-**Before (broken):**
-```cpp
-struct StoredPacket {          // defined in one place
-    double originalTimestamp;
-    uint32_t sourceId;
-    uint32_t neighborId;
+struct HeartbeatPacket {
+    uint32_t claimed_sender_id;   // whose identity this heartbeat CLAIMS to be from
+    uint32_t physical_sender_id;  // who ACTUALLY transmitted it (differs in an attack)
+    double   timestamp;           // when the heartbeat was originally generated
+    bool     is_replayed;         // true = this is a stored replay, not a fresh heartbeat
 };
 
-struct TopologyPacket {        // defined AGAIN in another place
-    uint32_t src_id;
-    uint32_t seen_id;
-    double timestamp;
-};
+HeartbeatPacket bshh_stored_heartbeat;
+bool            bshh_heartbeat_stored = false;
+std::map<uint32_t, HeartbeatPacket> bshh_controller_liveness_table;
+// key = vehicle_id, value = most recent heartbeat accepted for that vehicle
+std::ofstream   bshh_log;
 ```
 
-**After (fixed, lines 164–169):**
+**Why a new struct was needed:** TTW attacks replay topology (link state) packets.
+BSHH attacks replay heartbeat (liveness) packets — a completely different message type.
+Heartbeats carry two identity fields: `claimed_sender_id` (whose name is on the packet)
+versus `physical_sender_id` (who actually sent the radio signal). In a normal network
+these are always the same. In a BSHH attack, V2 physically sends a packet claiming
+to be V1 — so they differ. The `HeartbeatPacket` struct captures this distinction.
+
+The `bshh_controller_liveness_table` represents what the controller currently believes
+about the aliveness of each vehicle. When the attacker overwrites an entry with stale
+data, the controller makes wrong routing decisions.
+
+---
+
+### Change 5 — Added `MEEchoReport` struct and ME globals
+
+**What was added:**
+
 ```cpp
+struct MEEchoReport {
+    uint32_t link_src;          // V0 — one end of the real physical link
+    uint32_t link_dst;          // V1 — other end of the real physical link
+    uint32_t false_reporter;    // V2 or V3 — the attacker claiming to have observed it
+    double   timestamp;
+    bool     is_echo;           // always true: this is a forged echo entry
+};
+
+std::vector<MEEchoReport> me_echo_reports;  // all echo entries injected this run
+std::ofstream me_log;
+```
+
+**Why a new struct was needed:** ME attacks neither fake a broken link (TTW) nor fake
+vehicle liveness (BSHH). They take a *real, active* link V0↔V1 and make the controller
+believe additional reporters (V2, V3) also independently observed that link. The
+`MEEchoReport` captures the difference between the real link and the fake reporter —
+something neither `TopologyPacket` nor `HeartbeatPacket` can express cleanly.
+
+---
+
+### Change 6 — Added `extern` declarations for RSU_Nodes and controller_Node
+
+**What was added** (after the existing `extern NodeContainer Vehicle_Nodes;`):
+
+```cpp
+extern NodeContainer RSU_Nodes;
+extern NodeContainer controller_Node;
+```
+
+**Why:** New attack functions for TTW-S2/S4, BSHH-S2/S4, ME-S2/S4 need to access the
+RSU node's NS3 global node ID (`RSU_Nodes.Get(0)->GetId()`) and the controller node
+for NetAnim colour coding. These containers are declared and filled inside `main()`,
+which appears later in the file. The `extern` keyword lets functions defined before
+`main()` use them without causing a compile error.
+
+---
+
+### Change 7 — Added all 11 new attack function sets
+
+**What was added:** Approximately 1,000 lines of C++ functions inserted before `main()`.
+Each attack variant follows this function pattern:
+
+```
+<VARIANT>_InitLog()               Opens log file, writes the attack timeline header.
+<VARIANT>_LegitimateExchange()    Simulates the normal benign communication step.
+                                  Calls PemEmitEvent(..., false) — not an attack event.
+<VARIANT>_StorePacket/Heartbeat() Attacker saves the legitimate packet for later replay.
+<VARIANT>_ReplayAttack()          Injects the forged packet into ttw_controller_table
+                                  (or bshh_controller_liveness_table for BSHH).
+                                  Sets pem_attack_injection_time = now.
+                                  Sets pem_attack_active = true.
+                                  Calls PemEmitEvent(..., true) — the attack label.
+```
+
+For controller-internal attacks (S3/S4 variants of all three families), there is
+no external packet — the controller tampers with its own state:
+
+```
+<VARIANT>_ReceiveLegitimateUpdates()  Normal vehicles send to controller (benign PEM calls).
+<VARIANT>_StorePacketInternal()       Controller secretly keeps the old packet.
+<VARIANT>_InternalReplay()            Controller overwrites its own table with stale data.
+                                      physical_sender_id = 9999u (see sentinel note below).
+```
+
+For ME attacks, the pattern is:
+```
+<VARIANT>_LegitimateDiscovery()   Real link V0↔V1 is reported normally (benign PEM calls).
+<VARIANT>_EchoAttack()            Fake reporters echo the same link (attack PEM calls).
+```
+
+**Key design decision — controller sentinel value `9999u`:**
+For internal controller attacks (S3 and S4 of all three families), the controller
+fabricates entries in its own table. There is no external physical sender.
+The `PemEmitEvent()` function requires a `physical_sender_id` argument. We use
+`9999u` as a sentinel meaning "the controller itself fabricated this."
+This ensures the PEM detector's BSHH-S1 signature still fires correctly, because
+`physical_sender = 9999` is never equal to any real vehicle's claimed identity.
+This value was chosen because it is far outside any realistic node ID range
+(NS-3 assigns IDs starting from 0 sequentially).
+
+**Key design decision — no lambda functions:**
+NS-3.35's `Simulator::Schedule()` requires plain function pointers — it does not safely
+support C++ lambda captures. All detection-runner logic (e.g., `TTWS2_RunDetection`,
+`TTWS3_RunDetection`) was written as named `static void` functions defined *immediately
+before* the attack functions that call them. This avoids both lambda issues and
+C++ forward-declaration problems.
+
+---
+
+### Change 8 — Added mobility setup for new scenario groups
+
+**What was added** (in `main()`, in the mobility configuration section):
+
+```cpp
+else if (attack_scenario == 2 || attack_scenario == 3 || attack_scenario == 4) {
+    // TTW-S2/S3/S4:
+    // V0 at (0,0), stationary — the victim
+    // V1 starts near (0,0) and moves at 20 m/s — so it is within range at t=10,
+    //   passes 300m (link break) at t=15, and is clearly gone by t=20
+    // Other vehicles placed at y=400 (out of range, irrelevant to attack)
+}
+else if (attack_scenario >= 5 && attack_scenario <= 8) {
+    // BSHH-S1..S4:
+    // All vehicles spaced 150m apart along the x-axis.
+    // At 150m spacing, every vehicle is within the 300m DSRC range of its neighbours.
+    // All vehicles can exchange heartbeats with each other.
+}
+else if (attack_scenario >= 9 && attack_scenario <= 12) {
+    // ME-S1..S4:
+    // V0 at (0,0), V1 at (100,0) — the REAL link (100m apart, well within 300m)
+    // V2 at (700,0), V3 at (850,0) — the echo ATTACKERS
+    // V2 and V3 are >300m from V0/V1 — physically impossible to have observed the link
+    // This intentional distance mismatch triggers PEM signature ME-S3:
+    //   "reporter position is outside comm range of the reported link endpoints"
+}
+```
+
+**Why mobility matters:** Each attack family has different physical requirements.
+TTW needs a link that physically breaks (V1 must drive out of range).
+BSHH needs all vehicles within range (to legitimately exchange heartbeats first).
+ME needs the echo reporters to be outside comm range (to trigger the position anomaly).
+Without correct initial positions and velocities, the PEM detection scores may not
+match what the project proposal specifies.
+
+---
+
+### Change 9 — Added 11 scheduling blocks in main()
+
+**What was added** (immediately before the `// RUN SIMULATION` comment, at the end of
+`main()`): 11 `if (attack_scenario == N)` blocks, one per new scenario (2 through 12).
+
+Each block does five things:
+
+1. **Prerequisite check** — For RSU-required scenarios (2, 4, 6, 8, 10, 12):
+   ```cpp
+   if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
+       std::cout << "[ERROR] Scenario N requires --N_RSUs=1. Aborting.\n";
+       return 1;
+   }
+   ```
+
+2. **Console summary** — Prints who is attacking whom and the timeline so the user
+   can verify the correct scenario is running without opening a log file.
+
+3. **InitLog call** — Opens the variant-specific log file (e.g., `ttw_s2_attack_log.txt`).
+
+4. **Simulator::Schedule calls** — Queues each attack phase at the correct simulated time:
+   ```cpp
+   Simulator::Schedule(Seconds(10.0), &TTWS2_VehiclesToRSU, v1_id, v2_id, rsu_id, 10.0);
+   Simulator::Schedule(Seconds(10.1), &TTWS2_RSUForwardAggregated, rsu_id, v1_id, v2_id, 10.0);
+   Simulator::Schedule(Seconds(10.2), &TTWS2_StorePacket, v1_id, v2_id, 10.0);
+   Simulator::Schedule(Seconds(20.0), &TTWS2_ReplayAttack, rsu_id, v1_id, v2_id, 20.0);
+   ```
+   NS-3 is fully event-driven — nothing happens unless explicitly scheduled.
+   The small offsets (0.1s, 0.2s) ensure steps happen in the correct order.
+
+5. **NetAnim colours** — Tags each node with a colour and label so the visual replay
+   in NetAnim immediately shows who is attacking whom (see colour guide in Section 13).
+
+---
+
+## 4. Understanding the Three Attack Families
+
+### TTW — Topology Time-Warp
+
+**What gets attacked:** The controller's topology table (`ttw_controller_table`).
+
+**The core trick:** A link V0↔V1 is real at time T=10. At T=15 the link breaks
+(V1 drives away). The attacker later injects a packet saying "V0 sees V1 at T=20"
+— claiming the link is *still active* after it has physically broken.
+The controller believes this and keeps the ghost route installed.
+
+The **forgery is the timestamp**. The content of the packet (V0 once saw V1) was true
+at T=10, so it looks authentic. Only the timestamp is wrong.
+
+**The four placements:**
+
+| | Where the forgery happens |
+|---|---|
+| S1 | A malicious **vehicle** (V0) does the replay over V2V |
+| S2 | A malicious **RSU** does the replay (it sits between vehicles and controller) |
+| S3 | The **controller itself** is compromised and replays its own stale table entry internally |
+| S4 | Same as S3 but the topology arrived via RSU aggregation before being stored |
+
+---
+
+### BSHH — Beacon State Heartbeat Hijack
+
+**What gets attacked:** The controller's vehicle liveness table (`bshh_controller_liveness_table`).
+
+**The core trick:** Vehicles periodically send heartbeats: "I am V0, I am alive at T."
+An attacker stores an old heartbeat from V0 (alive at T=0) and replays it later.
+The controller now has two conflicting liveness entries for V0:
+- The real one: V0 alive at T=5
+- The replayed stale one: V0 alive at T=0
+
+This makes the controller think V0 is at an old position or still present when it has left.
+
+**Key difference from TTW:** TTW poisons topology (link presence). BSHH poisons
+identity/liveness (vehicle presence). Different PEM signatures detect each.
+
+**The four placements:** Same S1/S2/S3/S4 pattern as TTW.
+
+---
+
+### ME — Multipath Echo
+
+**What gets attacked:** The controller's path inference (it counts reporters to infer routes).
+
+**The core trick:** V0 and V1 have a real link. Normally V0 and V1 are the only reporters
+of this link. The attacker makes additional nodes (V2, V3) also report the same link —
+as if V2 and V3 independently observed V0 and V1 communicating. The controller sees
+four reporters for one link and infers intermediate nodes exist:
+
+```
+Real topology:     V0 ——— V1
+Phantom topology:  V0 — V2 — V1
+                   V0 — V3 — V1
+                   V0 — V2 — V3 — V1
+```
+
+Packets routed via phantom paths arrive at V2/V3, who have no real route to V1, and drop.
+
+**Key difference from TTW and BSHH:** ME does not replay *old* packets. It duplicates a
+*current* observation through false witnesses. Detection relies on density (too many
+reporters) and position (V2 is 700m from V0/V1 — impossible to have observed the link).
+
+---
+
+## 5. Attack Scenario ID Map (Quick Reference)
+
+| ID | Name | Attacker | RSU Required? |
+|----|------|----------|--------------|
+| 0 | Baseline | None | No |
+| 1 | TTW-S1 | Malicious vehicle (V0) | No |
+| 2 | TTW-S2 | Malicious RSU | **Yes** |
+| 3 | TTW-S3 | Malicious controller | No |
+| 4 | TTW-S4 | Malicious controller | **Yes** |
+| 5 | BSHH-S1 | Malicious vehicle (V1) | No |
+| 6 | BSHH-S2 | Malicious RSU | **Yes** |
+| 7 | BSHH-S3 | Malicious controller | No |
+| 8 | BSHH-S4 | Malicious controller | **Yes** |
+| 9 | ME-S1 | Malicious vehicles V2 + V3 | No |
+| 10 | ME-S2 | Malicious RSU | **Yes** |
+| 11 | ME-S3 | Malicious controller | No |
+| 12 | ME-S4 | Malicious controller | **Yes** |
+
+**Rule:** Any scenario with an even number ≥ 2 and any scenario 4 requires `--N_RSUs=1`.
+More precisely: scenarios 2, 4, 6, 8, 10, 12 require RSU.
+
+---
+
+## 6. Detailed Attack Flows — All 12 Scenarios
+
+### Scenario 0 — Baseline (no attack)
+
+No attack code runs. PEM records all events as benign (TN = true negatives).
+Use this as the comparison baseline PDR and latency for the report.
+
+---
+
+### Scenario 1 — TTW-S1 (Malicious Vehicle, No RSU)
+
+```
+Nodes: V0 = attacker, V1 = victim. No RSU.
+Node positions: V0 at (0,0) stationary. V1 starts near V0, moves at 20 m/s.
+
+t=10.0s  V0 ←—HELLO——→ V1   V2V DSRC exchange (both within 300m)
+t=10.0s  V0 → Controller : <V0 sees V1, timestamp=10>   LEGITIMATE, accepted
+t=10.0s  V1 → Controller : <V1 sees V0, timestamp=10>   LEGITIMATE, accepted
+t=10.2s  V0 stores internally : <V0 sees V1, timestamp=10>
+t=15.0s  V1 reaches 300m from V0 — physical link BREAKS
+t=20.0s  V0 forges timestamp : <V0 sees V1, timestamp=20>   MALICIOUS
+t=20.0s  V0 → Controller : forged packet
+         Controller updates table: V0↔V1 ACTIVE at t=20  ← GHOST LINK (ATTACK SUCCESS)
+t=20.05s PEM detection fires (50 ms after injection)
+         Signature 0: timestamp anomaly detected
+         Score > 0.12 → ALERT → ghost entry removed from table
+```
+
+Log file: `ttw_attack_scenario4.txt` (name kept for backward compatibility with existing test scripts)
+
+---
+
+### Scenario 2 — TTW-S2 (Malicious RSU)
+
+```
+Nodes: V0, V1 = victims. RSU_0 = attacker. RSU required.
+
+t=10.0s  V0 ←—HELLO——→ V1   V2V exchange
+t=10.0s  V0 → RSU_0 : <V0 sees V1, t=10>   normal vehicle-to-RSU update
+t=10.0s  V1 → RSU_0 : <V1 sees V0, t=10>   normal vehicle-to-RSU update
+t=10.1s  RSU_0 (normal) → Controller : aggregated [V0↔V1, t=10]   LEGITIMATE
+t=10.2s  RSU_0 (malicious) stores : <V0 sees V1, t=10>   ← saves for replay
+t=15.0s  Physical link V0↔V1 BREAKS (V1 drives away)
+t=20.0s  RSU_0 forges : <V0 sees V1, timestamp=20>
+t=20.0s  RSU_0 → Controller : forged packet
+         Controller: V0↔V1 ACTIVE  ← GHOST LINK (ATTACK SUCCESS)
+t=20.05s PEM: TTWS2_RunDetection fires, signature 0 + 1, alert raised
+```
+
+Log file: `ttw_s2_attack_log.txt`
+
+---
+
+### Scenario 3 — TTW-S3 (Malicious Controller, No RSU)
+
+```
+Nodes: V0, V1 = victims. Controller = attacker. No RSU.
+No external packet is ever forged — the controller manipulates itself.
+
+t=10.0s  V0 → Controller : <V0 sees V1, t=10>   LEGITIMATE
+t=10.0s  V1 → Controller : <V1 sees V0, t=10>   LEGITIMATE
+         Controller accepts these and also secretly saves: <V0 sees V1, t=10>
+t=10.1s  Controller stores stale copy internally.
+t=15.0s  Physical link BREAKS.
+         A normal controller would expire the t=10 entry after the timeout.
+         The malicious controller does NOT expire it.
+t=20.0s  Controller internally overwrites its table:
+           ttw_controller_table["0_1"] = {src=0, seen=1, timestamp=20, is_forged=true}
+           physical_sender_id = 9999 (sentinel: controller itself)
+         Controller believes V0↔V1 ACTIVE  ← ATTACK SUCCESS (no packet sent)
+         PEM fires inline at t=20.
+```
+
+Log file: `ttw_s3_attack_log.txt`
+
+---
+
+### Scenario 4 — TTW-S4 (Malicious Controller, With RSU)
+
+```
+Nodes: V0, V1 = victims. RSU_0 = legitimate relay. Controller = attacker.
+RSU required. Data path: V → RSU → Controller.
+
+t=10.0s  V0, V1 → RSU_0 : their topology updates (normal V2RSU)
+t=10.0s  RSU_0 → Controller : aggregated update [V0↔V1, t=10]   LEGITIMATE
+         Controller saves stale copy: <V0 sees V1, t=10>
+t=15.0s  Physical link BREAKS.
+t=20.0s  Controller internal replay: <V0 sees V1, timestamp=20>   FORGED
+         Same outcome as Scenario 3.  ← ATTACK SUCCESS
+```
+
+Log file: `ttw_s4_attack_log.txt`
+
+---
+
+### Scenario 5 — BSHH-S1 (Malicious Vehicle, No RSU)
+
+```
+Nodes: V0 = victim. V1 = attacker. No RSU.
+
+Background: At t=0, a heartbeat exchange happened.
+  V1 secretly saved: Heartbeat(claimed=V0, physical=V0, t=0)
+
+t=5.0s   V0 ←→ V1 : mutual heartbeat exchange (normal V2V)
+t=5.0s   V0 → Controller : Heartbeat(sender=V0, t=5)   LEGITIMATE
+t=5.0s   V1 → Controller : Heartbeat(sender=V1, t=5)   LEGITIMATE
+         Controller liveness table: V0 last alive at t=5, V1 last alive at t=5.
+
+t=5.1s   V1 formally stores the old heartbeat for replay: Heartbeat(claimed=V0, t=0)
+
+t=10.0s  V1 → Controller : Heartbeat(claimed_sender=V0, physical_sender=V1, t=0)
+           V1 impersonates V0 sending an OLD heartbeat directly to the controller.
+         Controller now has conflicting entries for V0:
+           real entry   : V0 alive at t=5
+           stale replay : V0 alive at t=0  (sent by V1, not V0)
+         Controller is confused about V0's actual state  ← ATTACK SUCCESS
+
+PEM fires:
+  BSHH-S1 (signature 3): physical_sender(V1) ≠ claimed_sender(V0)
+  BSHH-S2 (signature 4): sender_timestamp(0) < previous known timestamp(5) — out of order
+```
+
+Log file: `bshh_s1_attack_log.txt`
+
+---
+
+### Scenario 6 — BSHH-S2 (Malicious RSU)
+
+```
+Nodes: V0 = victim. V1 = normal vehicle. RSU_0 = attacker. RSU required.
+
+t=5.0s   V0, V1 → RSU_0 : heartbeats (normal V2RSU)
+t=5.0s   RSU_0 → Controller : aggregated heartbeats [V0(t=5), V1(t=5)]   LEGITIMATE
+t=5.1s   RSU_0 stores old heartbeat : Heartbeat(claimed=V0, t=0)
+
+t=10.0s  RSU_0 → Controller : Heartbeat(claimed_sender=V0, physical_sender=RSU_0, t=0)
+           RSU impersonates V0 sending a stale heartbeat directly to controller.
+         Controller liveness for V0 becomes stale  ← ATTACK SUCCESS
+```
+
+Log file: `bshh_s2_attack_log.txt`
+
+---
+
+### Scenario 7 — BSHH-S3 (Malicious Controller, No RSU)
+
+```
+Nodes: V0, V1 = victims. Controller = attacker. No RSU.
+
+t=5.0s   V0 → Controller : Heartbeat(V0, t=5)   LEGITIMATE
+t=5.0s   V1 → Controller : Heartbeat(V1, t=5)   LEGITIMATE
+t=5.1s   Controller secretly saves stale copies:
+           Heartbeat(claimed=V0, physical=9999, t=0)
+           Heartbeat(claimed=V1, physical=9999, t=0)
+
+t=10.0s  Controller internally replaces its liveness table:
+           bshh_controller_liveness_table[0] ← stale V0 at t=0
+           bshh_controller_liveness_table[1] ← stale V1 at t=0
+         Controller now believes V0 and V1 were last alive at t=0, not t=5.
+         Routes are calculated using old vehicle state  ← ATTACK SUCCESS
+```
+
+Log file: `bshh_s3_attack_log.txt`
+
+---
+
+### Scenario 8 — BSHH-S4 (Malicious Controller, With RSU)
+
+Same as Scenario 7. The only difference is that heartbeats arrive via RSU aggregation
+(V → RSU → Controller) rather than directly (V → Controller).
+The internal stale replay at t=10 is identical to S3.
+
+Log file: `bshh_s4_attack_log.txt`
+
+---
+
+### Scenario 9 — ME-S1 (Malicious Vehicles, No RSU)
+
+```
+Nodes: V0↔V1 = real link. V2, V3 = echo attackers. No RSU.
+Positions: V0=(0,0), V1=(100,0), V2=(700,0), V3=(850,0)
+NOTE: V2 and V3 are more than 300m from V0/V1 — outside DSRC range.
+      They physically cannot have observed the V0↔V1 link.
+
+t=10.0s  V0 ←—HELLO——→ V1   real 100m link, normal exchange
+t=10.0s  V0 → Controller : <V0 sees V1, t=10>   LEGITIMATE
+t=10.0s  V1 → Controller : <V1 sees V0, t=10>   LEGITIMATE
+
+t=10.1s  V2 → Controller : <V0 sees V1, t=10>   ECHO (V2 never observed this link)
+t=10.1s  V3 → Controller : <V0 sees V1, t=10>   ECHO (V3 never observed this link)
+
+Controller has 4 reporters for the V0↔V1 link. Infers:
+  Path 1: V0 → V1          REAL
+  Path 2: V0 → V2 → V1     PHANTOM (V2 is 700m from V0)
+  Path 3: V0 → V3 → V1     PHANTOM (V3 is 850m from V0)
+  Path 4: V0 → V2 → V3 → V1  PHANTOM
+Packets routed on phantom paths are dropped  ← ATTACK SUCCESS
+
+PEM fires:
+  ME-S1 (signature 6): 4 reporters > expected density bound (≈ 2)
+  ME-S3 (signature 8): V2 position (700m) and V3 position (850m) are both
+                        outside the 300m comm range of the V0↔V1 link
+```
+
+Log file: `me_s1_attack_log.txt`
+
+---
+
+### Scenario 10 — ME-S2 (Malicious RSU)
+
+```
+Nodes: V0↔V1 = real link. RSU_0 = attacker. RSU required.
+
+t=10.0s  V0, V1 → RSU_0 : their legitimate topology updates
+t=10.0s  RSU_0 (normal) → Controller : aggregated [V0↔V1, t=10]   LEGITIMATE
+t=10.1s  RSU_0 (malicious) injects additional entries into a second controller message:
+           <V0 sees V1, reported by phantom V2, t=10>   FORGED
+           <V0 sees V1, reported by phantom V3, t=10>   FORGED
+         physical_sender = RSU_0, claimed_sender = V2 (or V3) for each forged entry
+         Controller infers phantom paths via V2 and V3  ← ATTACK SUCCESS
+```
+
+Log file: `me_s2_attack_log.txt`
+
+---
+
+### Scenario 11 — ME-S3 (Malicious Controller, No RSU)
+
+```
+Nodes: V0↔V1 = real link. V2 = normal vehicle. Controller = attacker. No RSU.
+
+t=10.0s  V0, V1, V2 → Controller : their own legitimate topology updates
+t=10.1s  Controller (malicious) internally fabricates and adds to its database:
+           <V0 sees V1, reporter = phantom V2, t=10>   FORGED
+           <V0 sees V1, reporter = phantom V3, t=10>   FORGED
+           physical_sender_id = 9999 (controller itself fabricated these)
+         Controller infers phantom paths  ← ATTACK SUCCESS
+         No external packet was ever sent.
+```
+
+Log file: `me_s3_attack_log.txt`
+
+---
+
+### Scenario 12 — ME-S4 (Malicious Controller, With RSU)
+
+Same as Scenario 11. V0/V1 first report to RSU_0, which aggregates and forwards to the
+controller. The controller then fabricates phantom echo entries internally, identical to S3.
+
+Log file: `me_s4_attack_log.txt`
+
+---
+
+## 7. How Detection Works (PEM)
+
+The PEM layer runs automatically — you do not need to trigger it manually.
+Every time an attack function calls `PemEmitEvent()` or `PemEmitHeartbeatEvent()`,
+PEM evaluates all 9 signatures against that event.
+
+### The 9 detection signatures
+
+| Index | Family | Name | What it checks |
+|---|---|---|---|
+| 0 | TTW | S1 | `reception_time − sender_timestamp > beacon_interval + epsilon` (timestamp too far in the past) |
+| 1 | TTW | S2 | A newer reception but older sender timestamp than a previous event for the same link (replay contradiction) |
+| 2 | TTW | S3 | Same link reported by different reporters with timestamp gap > beacon interval |
+| 3 | BSHH | S1 | physical_sender_id ≠ claimed_sender_id (someone is impersonating another node) |
+| 4 | BSHH | S2 | sender_timestamp < previous_timestamp for same identity (out-of-order — old packet) |
+| 5 | BSHH | S3 | Heartbeat arrived but no matching beacon was seen for same identity in the recent window |
+| 6 | ME | S1 | Reporter count for a link exceeds the expected density bound: `ρ > (1+0.3)·2R·λ̂` |
+| 7 | ME | S2 | Path count for a link increased by more than `Δmax = 1.0` in one update |
+| 8 | ME | S3 | Reporter's position is outside the DSRC communication range of the reported link's endpoints |
+
+### Weighted score and alert threshold
+
+```
+PEM_WEIGHTS    = [0.15, 0.15, 0.10,   // TTW
+                  0.15, 0.10, 0.10,   // BSHH
+                  0.10, 0.075, 0.075] // ME
+                  (sum = 1.0)
+
+PEM_SCORE_THRESHOLD = 0.12
+```
+
+If `total_score ≥ 0.12`, an alert is raised:
+- The ghost entry is removed from the controller table
+- The event is recorded as a true positive (TP)
+- Detection latency is computed: `Tdet = alert_time − pem_attack_injection_time` (ms)
+
+### What PEM writes at end of simulation
+
+`PemWriteRunSummaryCsv()` is called at `simTime − 0.001` seconds and writes one row to
+`pem_run_summary.csv` with: `tp, tn, fp, fn, mcc, auroc, tdet_ms, pdr_under_attack_pct,
+pdr_post_mitigation_pct, te2e_under_attack_ms, te2e_post_mitigation_ms`.
+
+---
+
+## 8. Data Structures Added to routing.cc
+
+### Existing before our changes
+
+```cpp
+// The core topology structure
 struct TopologyPacket {
-    uint32_t src_id;       // who sent the update
-    uint32_t seen_id;      // who they reported seeing
-    double   timestamp;    // when they saw them
-    bool     is_forged;    // true = attacker tampered this
+    uint32_t src_id;      // node reporting the link
+    uint32_t seen_id;     // neighbour being reported
+    double   timestamp;   // simulation time when link was observed
+    bool     is_forged;   // set true by attacker functions
 };
+
+// THE controller topology table — what the controller "believes"
+// key = "src_id_seen_id"  e.g. "0_1" means V0 sees V1
+// Attacker inserts forged entries here to poison routing
+std::map<std::string, TopologyPacket> ttw_controller_table;
+```
+
+### New: HeartbeatPacket (for BSHH family)
+
+```cpp
+struct HeartbeatPacket {
+    uint32_t claimed_sender_id;   // whose identity the heartbeat CLAIMS
+    uint32_t physical_sender_id;  // who ACTUALLY transmitted it
+    double   timestamp;           // when generated
+    bool     is_replayed;         // true = stored replay, not a fresh heartbeat
+};
+
+// THE controller liveness table — what the controller believes about vehicle aliveness
+// key = vehicle_id
+std::map<uint32_t, HeartbeatPacket> bshh_controller_liveness_table;
+```
+
+### New: MEEchoReport (for ME family)
+
+```cpp
+struct MEEchoReport {
+    uint32_t link_src;          // V0 — one end of the real link
+    uint32_t link_dst;          // V1 — other end of the real link
+    uint32_t false_reporter;    // V2 or V3 — attacker claiming to have observed it
+    double   timestamp;
+    bool     is_echo;           // always true for forged entries
+};
+
+// All echo reports injected during this simulation run
+std::vector<MEEchoReport> me_echo_reports;
 ```
 
 ---
 
-## Part 3 — The TTW Attack (What Currently Runs)
+## 9. Build and Setup on Linux
 
-### Scenario Setup
+### Step 1 — Copy routing.cc to NS-3 scratch directory
 
-| Role | Vehicle | Behaviour |
-|---|---|---|
-| Attacker | V0 (Vehicle 0) | Malicious — stores and replays packets |
-| Victim | V1 (Vehicle 1) | Innocent — drives away at t=15s |
-| Controller | Central node | Receives topology updates, makes routing decisions |
-| RSU | None | Not used in this scenario |
+```bash
+cp routing.cc ~/ns-3.35/scratch/routing.cc
+```
+
+### Step 2 — Fix the stray text after namespace declaration (if present)
+
+```bash
+grep -n "using namespace ns3;" ~/ns-3.35/scratch/routing.cc
+# If you see "using namespace ns3;hjhjhj" → fix it:
+sed -i 's/using namespace ns3;hjhjhj/using namespace ns3;/' ~/ns-3.35/scratch/routing.cc
+```
+
+### Step 3 — Build
+
+```bash
+cd ~/ns-3.35
+./waf build 2>&1 | tee build_log.txt
+# Check for errors:
+grep "error:" build_log.txt
+```
+
+### Step 4 — Run baseline first (generates CSV files needed internally)
+
+```bash
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=0"
+```
 
 ---
 
-### Attack Timeline — Step by Step
+## 10. All Run Commands
 
-| Time | Step | What Happens | Code Function |
-|---|---|---|---|
-| t = 0s | Start | Vehicles start moving | `main()` |
-| t = 10s | ① HELLO | V0 and V1 are close. They exchange HELLO beacons | `TTW_SendHelloBeacon()` |
-| t = 10s | ② UPDATE | V0 sends legitimate topology update to Controller | `TTW_SendTopologyUpdate()` |
-| t = 10s | ③ STORE | V0 secretly saves a copy of the packet | `TTW_StorePacket()` |
-| t = 15s | BREAK | V0 and V1 drive apart. Physical link breaks. Controller not told. | (mobility model) |
-| t = 20s | ④ FORGE | V0 changes timestamp on stored packet: 10.0 → 20.0 | `TTW_ReplayAttack()` |
-| t = 20s | ⑤ SEND | V0 sends forged packet. Controller accepts it as fresh. | `TTW_ReplayAttack()` |
-| t = 20s | ⑥ DAMAGE | Controller believes ghost link V0↔V1 is active. Packets lost. | `TTW_ReplayAttack()` |
-| t = 20.05s | DETECT | PEM detector checks the event 50ms later | `TTW_RunReplayDetection()` |
+All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
+
+### Baseline
+
+```bash
+./waf --run "scratch/routing --simTime=60 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=0"
+```
+
+### TTW family
+
+```bash
+# TTW-S1: Malicious Vehicle
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=1"
+
+# TTW-S2: Malicious RSU
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
+
+# TTW-S3: Malicious Controller, No RSU
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=3"
+
+# TTW-S4: Malicious Controller, With RSU
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=4"
+```
+
+### BSHH family
+
+```bash
+# BSHH-S1: Malicious Vehicle
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=5"
+
+# BSHH-S2: Malicious RSU
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=6"
+
+# BSHH-S3: Malicious Controller, No RSU
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=7"
+
+# BSHH-S4: Malicious Controller, With RSU
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=8"
+```
+
+### ME family
+
+```bash
+# ME-S1: Malicious Vehicles  (needs ≥4 vehicles: V0,V1=real link; V2,V3=attackers)
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=9"
+
+# ME-S2: Malicious RSU
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=10"
+
+# ME-S3: Malicious Controller, No RSU
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=11"
+
+# ME-S4: Malicious Controller, With RSU
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=12"
+```
+
+### Read results immediately after any run
+
+```bash
+# Replace N with the scenario number
+cat ttw_s2_attack_log.txt      # TTW-S2 step-by-step log
+cat ttw_s3_attack_log.txt      # TTW-S3
+cat ttw_s4_attack_log.txt      # TTW-S4
+cat bshh_s1_attack_log.txt     # BSHH-S1
+cat bshh_s2_attack_log.txt     # BSHH-S2
+cat bshh_s3_attack_log.txt     # BSHH-S3
+cat bshh_s4_attack_log.txt     # BSHH-S4
+cat me_s1_attack_log.txt       # ME-S1
+cat me_s2_attack_log.txt       # ME-S2
+cat me_s3_attack_log.txt       # ME-S3
+cat me_s4_attack_log.txt       # ME-S4
+
+cat pem_run_summary.csv        # Detection metrics (MCC, AUROC, Tdet, PDR)
+cat pem_event_log.csv          # Per-event PEM log
+```
 
 ---
 
-### What the Log File Shows
+## 11. Understanding the Output Files
 
-After running, open `ttw_attack_scenario4.txt`. You should see:
+### Attack log file (e.g., `ttw_s2_attack_log.txt`)
+
+Human-readable step-by-step trace. Example excerpt from TTW-S2:
 
 ```
-[t=10.000]  STEP ①  HELLO
-  V0 pos=(x, y)   V1 pos=(x, y)
-  dist=XXm  DELIVERED — neighbor discovered
+[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_4
+  V0 -> RSU : <V0 sees V1, t=10>
+  V1 -> RSU : <V1 sees V0, t=10>
 
-[t=10.000]  STEP ②  TOPOLOGY UPDATE (legitimate)
-  V0 → Controller
-  Packet: <V0 sees V1, t=10.000>
-  Result: ACCEPTED — link V0↔V1 marked ACTIVE
-
-[t=10.000]  STEP ③  ATTACKER STORES PACKET
-  Stored: <V0 sees V1, t=10.000>
+[t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V0 sees V1, t=10>
   Awaiting replay at t=20
 
 [t=20.000]  STEP ④  FORGING TIMESTAMP
-  Original: t=10.000   →   Forged: t=20.000  MALICIOUS
-
-[t=20.000]  STEP ⑤  FORGED PACKET → CONTROLLER
-  Controller ACCEPTED — cannot detect forgery
+  Original : <V0 sees V1, t=10>
+  Forged   : <V0 sees V1, t=20>  MALICIOUS
 
 [t=20.000]  STEP ⑥  FAULTY ROUTING DECISION
-  Ghost link V0↔V1 active in controller table
-  Physical reality: BROKEN
+  Controller believes V0<->V1 ACTIVE at t=20
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
 
 [t=20.050]  DETECTION + MITIGATION
-  Alert raised!  Score: 0.30  Latency: 50ms
-  Forged entry removed from controller table
+  Ghost link V0<->V1 removed
+  Score: 0.30
+  Latency: 50.0 ms
 ```
 
----
-
-## Part 4 — The Detection System (PEM Layer)
-
-### What PEM Stands For
-
-**P**erformance **E**valuation **M**etrics
-
-It is the detection system layered on top of the attack simulation. It watches every packet event and scores it for suspiciousness.
-
----
-
-### The 9 Detection Signatures
-
-Every incoming event is checked against 9 binary questions. If the answer is "suspicious" → that signature is **triggered**.
-
-#### TTW Group — Timestamp / Replay Anomalies
-
-| Index | Name | Plain English Question | Triggers When |
-|---|---|---|---|
-| S0 | TTW-S1 | Did this packet arrive too late? | `reception_time − sender_time > beacon_interval + tolerance` |
-| S1 | TTW-S2 | Does the time order contradict itself? | Newer reception but older sender timestamp than a previous event |
-| S2 | TTW-S3 | Do different nodes disagree on when they saw this link? | Two reporters have timestamps more than one beacon interval apart |
-
-#### BSHH Group — Identity / Heartbeat Anomalies
-
-| Index | Name | Plain English Question | Triggers When |
-|---|---|---|---|
-| S3 | BSHH-S1 | Are two physical vehicles claiming the same identity? | Different physical sender IDs claim same vehicle ID in window |
-| S4 | BSHH-S2 | Did the heartbeat timestamp go backward? | Current heartbeat timestamp < previous heartbeat timestamp |
-| S5 | BSHH-S3 | Heartbeat without proof of presence? | No beacon from this vehicle seen in the sliding window |
-
-#### ME Group — Topology / Density Anomalies
-
-| Index | Name | Plain English Question | Triggers When |
-|---|---|---|---|
-| S6 | ME-S1 | Too many reporters for this link? | Reporter count > `(1 + mu) × 2 × range × density` |
-| S7 | ME-S2 | Did path count jump suddenly? | Path count increased by more than `PEM_ME_DELTA_MAX = 1` |
-| S8 | ME-S3 | Reporter too far away to have seen this link? | Reporter distance > `TTW_COMM_RANGE = 300m` from both endpoints |
-
----
-
-## Part 5 — Scoring System
-
-### Problem with Old Code
-
-**Before (broken logic):**
-```cpp
-// Every signature adds exactly the same amount — NO justification
-score += (1.0 / 9.0);   // = 0.111 each
-```
-
-**Why this is wrong:**
-
-| Signature | Evidence Type | Equal weight makes sense? |
-|---|---|---|
-| S1 (TTW-S2) | Direct timestamp contradiction | Should be HIGH weight |
-| S0 (TTW-S1) | Packet arrived late | Should be HIGH weight |
-| S8 (ME-S3) | Reporter position hint | Should be LOW weight |
-| S7 (ME-S2) | Path count change | Should be LOW weight |
-
-Treating a **direct timestamp contradiction** the same as a **geometric hint** is academically unjustifiable.
-
----
-
-### Step-by-Step: New Weighted Scoring
-
-**Step 1 — New constants added (lines 195–203):**
-```cpp
-static const double PEM_WEIGHTS[9] = {
-    0.15, 0.15, 0.10,   // TTW-S0, TTW-S1, TTW-S2  ← highest (direct evidence)
-    0.15, 0.10, 0.10,   // BSHH-S3, BSHH-S4, BSHH-S5 ← medium
-    0.10, 0.075, 0.075  // ME-S6, ME-S7, ME-S8      ← lowest (circumstantial)
-};
-// Total: 0.15+0.15+0.10 + 0.15+0.10+0.10 + 0.10+0.075+0.075 = 1.000 ✅
-```
-
-**Step 2 — New score loop (lines 824–831):**
-```cpp
-double score = 0.0;
-for (uint32_t i = 0; i < 9; ++i)
-{
-    if (event.triggered[i])
-    {
-        score += PEM_WEIGHTS[i];   // each adds its own weight
-    }
-}
-```
-
-**Step 3 — Example for TTW replay event:**
-
-| Signature | Triggered? | Weight Added |
-|---|---|---|
-| S0 (TTW-S1) | ✅ Yes — packet arrived 10s late | +0.15 |
-| S1 (TTW-S2) | ✅ Yes — timestamp contradiction | +0.15 |
-| S2 (TTW-S3) | ❌ No | +0.00 |
-| S3–S8 | ❌ No | +0.00 |
-| **Total score** | | **0.30** |
-| Alert threshold | | 0.12 |
-| **Alert raised?** | | **✅ YES (0.30 > 0.12)** |
-
----
-
-### Temporal Pressure — Why and How
-
-#### The Concept
-
-> **"Temporal Echo"** means: suspicious activity happening repeatedly and recently should make the system MORE alarmed.
-
-#### The Wrong Way (Bug in the original proposal)
-
-```cpp
-// ❌ WRONG — do not use this
-double timeDiff = now - pem_event_window.back().reception_timestamp;
-decayFactor = exp(-timeDiff / 0.400);
-score *= decayFactor;   // BUG: if timeDiff=10s → decayFactor ≈ 0 → attack missed!
-```
-
-**Why it fails:**
-
-| Situation | timeDiff | decayFactor | Result |
-|---|---|---|---|
-| Events every 0.1s | 0.1s | 0.78 | Score reduced a little |
-| 10s quiet then attack | 10.0s | ≈0.000 | **Score → zero → attack MISSED ❌** |
-
-#### The Correct Way (What was implemented)
-
-**Step-by-step logic:**
-
-```
-Step 1: Compute weighted score from current event's signatures
-        score = sum of PEM_WEIGHTS[i] for triggered signatures
-
-Step 2: Look back at all past events in the sliding window (last 0.4 seconds)
-        For each past event that had a suspicious score:
-            age = now − past_event.reception_timestamp
-            contribution = past_event.score × exp(−age / 0.200)
-            temporalPressure += contribution
-
-        → Recent past events contribute FULLY
-        → Older past events FADE naturally
-
-Step 3: Scale and cap the pressure
-        temporalPressure = min(temporalPressure × 0.05, 0.30)
-        → History can add AT MOST 0.30 to the score
-        → Prevents false alarms from history alone
-
-Step 4: Final score = weighted_score + temporalPressure
-        event.score = score
-
-Step 5: Check against threshold
-        alert_raised = (score > 0.12)
-```
-
-**Code (lines 833–855):**
-```cpp
-double temporalPressure = 0.0;
-const double now = event.reception_timestamp;
-
-for (each past event in pem_event_window)
-{
-    if (past_event.score > 0.0)
-    {
-        double age = now - past_event.reception_timestamp;
-        temporalPressure += past_event.score * exp(-age / PEM_DECAY_TAU_S);
-    }
-}
-
-temporalPressure = min(temporalPressure * 0.05, 0.30);
-score += temporalPressure;
-```
-
-**Behaviour comparison:**
-
-| Scenario | Temporal Pressure Effect | Result |
-|---|---|---|
-| Single isolated attack event | `temporalPressure ≈ 0` (empty window) | Full weighted score — **not suppressed** ✅ |
-| Burst of echoes (ME attack) | `temporalPressure` builds up | Score increases → **detects faster** ✅ |
-| Normal traffic | All past scores ≈ 0 → no pressure | No false alarm boost ✅ |
-
----
-
-## Part 6 — All New Constants Explained
-
-| Constant | Value | Meaning |
-|---|---|---|
-| `PEM_BEACON_BUDGET_MS` | 100.0 ms | Detection must happen within 100ms (one beacon cycle) |
-| `PEM_BEACON_INTERVAL_S` | 0.100 s | Vehicles beacon every 0.1 seconds |
-| `PEM_PROPAGATION_EPSILON_S` | 0.020 s | Tolerance for radio delay |
-| `PEM_HEARTBEAT_WINDOW_S` | 0.400 s | How far back the sliding window looks |
-| `PEM_SCORE_THRESHOLD` | 0.12 | Score above this → alert fires |
-| `PEM_ME_TOLERANCE_MU` | 0.30 | 30% tolerance margin for density check |
-| `PEM_ME_DELTA_MAX` | 1.0 | Max allowed path count jump |
-| `PEM_WEIGHTS[9]` | see above | Signature weights, sum = 1.0 |
-| `PEM_DECAY_TAU_S` | 0.200 s | Time constant for temporal pressure decay |
-
----
-
-## Part 7 — Detection Metrics for the Paper
-
-### The Confusion Matrix
-
-Every time the detector makes a decision:
-
-| | Detector says: **ATTACK** | Detector says: **NORMAL** |
-|---|---|---|
-| **Reality: ATTACK** | ✅ True Positive (TP) | ❌ False Negative (FN) — missed |
-| **Reality: NORMAL** | ❌ False Positive (FP) — false alarm | ✅ True Negative (TN) |
-
-**Goal:** Maximize TP and TN. Minimize FP and FN.
-
----
-
-### Metric Definitions
-
-| Metric | Formula | Interpretation | Target |
-|---|---|---|---|
-| **MCC** | `(TP×TN − FP×FN) / sqrt(...)` | +1 = perfect, 0 = random, -1 = wrong | > 0.5 |
-| **AUROC** | Concordant pairs / all pairs | 1.0 = perfect separation, 0.5 = random | > 0.85 |
-| **Tdet** | `first_alert_time − attack_injection_time` (ms) | How fast the attack was caught | < 100 ms |
-| **PDR** | Delivered packets / sent packets (%) | Higher is better | Compare baseline vs attack |
-| **Te2e** | Avg packet travel time (ms) | Lower is better | Compare baseline vs attack |
-
----
-
-### Phase Labels in CSV
-
-| Phase | Meaning | Expected PDR | Expected Te2e |
-|---|---|---|---|
-| `baseline` | Before attack injection | High (≥ 90%) | Low |
-| `under_attack` | After attack, before detection | **Drops** | **Rises** |
-| `post_mitigation` | After alert raised | Recovers | Recovers |
-
----
-
-## Part 8 — Output Files After Running
-
-| File | When Created | What to Check |
-|---|---|---|
-| `ttw_attack_scenario4.txt` | Always when `attack_scenario=4` | All 6 steps present, detection + mitigation logged |
-| `pem_event_log.csv` | Always when `attack_scenario=4` | Row at t≈20.050: `alert_raised=1`, attack signatures triggered |
-| `pem_run_summary.csv` | End of each run | `tp≥1`, `fp=0`, `mcc>0.5`, `tdet_ms≈50` |
-| `scratch/routing-animation.xml` | When `AnimationInterface` is enabled | Open this file in NetAnim to watch the visual flow |
-
-### `pem_event_log.csv` Key Columns
+### `pem_event_log.csv` — per-event detection log
 
 | Column | Meaning |
 |---|---|
-| `sim_time_s` | When the event happened |
-| `attack_label` | 0 = normal event, 1 = attack event |
-| `triggered_signatures` | e.g. `TTW-S1\|TTW-S2` |
-| `score` | Suspicion score (0 to ~1.3) |
-| `alert_raised` | 1 if alert fired |
-| `phase` | baseline / under_attack / post_mitigation |
-| `detection_latency_ms` | Time to detect (-1 if no alert) |
+| `sim_time_s` | When the event occurred |
+| `event_type` | 0=beacon, 1=topology update, 2=heartbeat |
+| `physical_sender_id` | Who actually sent it (9999 = controller internal fabrication) |
+| `claimed_sender_id` | Who the packet claims to be from |
+| `triggered_signatures` | Bitmask of which of the 9 signatures fired (e.g., `00001001` = sigs 0 and 3) |
+| `score` | Weighted sum of triggered signature weights |
+| `alert_raised` | 1 = PEM raised an alert (true positive or false positive), 0 = passed |
+| `phase` | `pre_attack`, `under_attack`, or `post_mitigation` |
+| `detection_latency_ms` | Milliseconds from attack injection to this alert (blank if no alert) |
+
+### `pem_run_summary.csv` — the table for your report
+
+| Column | Target value (from project proposal) | Meaning |
+|---|---|---|
+| `tp` | ≥ 1 | True positives: attacks correctly detected |
+| `tn` | high | True negatives: benign events correctly passed |
+| `fp` | 0 ideally | False positives: benign events wrongly flagged |
+| `fn` | 0 ideally | False negatives: attack events missed |
+| `mcc` | > 0.85 | Matthews Correlation Coefficient (−1 worst, +1 perfect) |
+| `auroc` | > 0.90 | Area Under ROC Curve (0.5 = random, 1.0 = perfect) |
+| `tdet_ms` | < 100 ms | Detection latency (must be within one beacon interval) |
+| `pdr_under_attack_pct` | — | Packet delivery ratio while attack is active (lower = attack effective) |
+| `pdr_post_mitigation_pct` | near baseline | PDR after PEM removes ghost entry (should recover) |
+
+A good result row looks like:
+```
+run_id,attack_scenario,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_post_mitigation_pct
+1,2,3,97,0,0,1.000,1.000,50.1,79.2,95.8
+```
 
 ---
 
-## Part 9 — How to Run
+## 12. Running 5-Experiment Statistics for the Report
 
-### Step-by-Step: First Time Setup
+The report requires 5 independent runs per scenario with different random seeds.
 
+### Shell script — save as `run_5_experiments.sh`
+
+```bash
+#!/bin/bash
+# Usage: bash run_5_experiments.sh <scenario_id> <N_Vehicles> <N_RSUs>
+SCENARIO=$1
+N_VEH=${2:-4}
+N_RSU=${3:-0}
+
+cd ~/ns-3.35
+mkdir -p results/scenario_${SCENARIO}
+
+for SEED in 1 2 3 4 5; do
+    echo "=== Run $SEED / 5 (scenario=$SCENARIO) ==="
+    rm -f pem_event_log.csv pem_run_summary.csv *.txt routing-animation.xml
+
+    ./waf --run "scratch/routing \
+        --simTime=60 --N_Vehicles=${N_VEH} --N_RSUs=${N_RSU} \
+        --attack_scenario=${SCENARIO} --RngRun=${SEED}"
+
+    cp pem_run_summary.csv results/scenario_${SCENARIO}/run_${SEED}_summary.csv
+    cp pem_event_log.csv   results/scenario_${SCENARIO}/run_${SEED}_events.csv
+done
+echo "Done. Results in results/scenario_${SCENARIO}/"
 ```
-Step 1: Copy routing.cc into:
-        /home/nimesha/ns-allinone-3.35/ns-3.35/scratch/
 
-Step 2: Open terminal and navigate to ns-3 folder:
-        cd /home/nimesha/ns-allinone-3.35/ns-3.35/
+### Run commands for all 12 scenarios
 
-Step 3: Build the simulation:
-        ./waf build
+```bash
+chmod +x run_5_experiments.sh
 
-Step 4: Run one of the commands below
+bash run_5_experiments.sh  1  2 0    # TTW-S1
+bash run_5_experiments.sh  2  4 1    # TTW-S2
+bash run_5_experiments.sh  3  4 0    # TTW-S3
+bash run_5_experiments.sh  4  4 1    # TTW-S4
+bash run_5_experiments.sh  5  4 0    # BSHH-S1
+bash run_5_experiments.sh  6  4 1    # BSHH-S2
+bash run_5_experiments.sh  7  4 0    # BSHH-S3
+bash run_5_experiments.sh  8  4 1    # BSHH-S4
+bash run_5_experiments.sh  9  6 0    # ME-S1
+bash run_5_experiments.sh 10  6 1    # ME-S2
+bash run_5_experiments.sh 11  6 0    # ME-S3
+bash run_5_experiments.sh 12  6 1    # ME-S4
 ```
 
-### Run Commands
+### Compute mean ± std — save as `compute_stats.py`
 
-| Goal | Command |
+```python
+import pandas as pd, glob, sys
+
+scenario_id = sys.argv[1]
+files = glob.glob(f"results/scenario_{scenario_id}/run_*_summary.csv")
+df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
+
+cols = ['mcc', 'auroc', 'tdet_ms',
+        'pdr_under_attack_pct', 'pdr_post_mitigation_pct',
+        'te2e_under_attack_ms', 'te2e_post_mitigation_ms']
+
+print(f"\n=== Scenario {scenario_id} (n={len(df)}) ===")
+for col in cols:
+    if col in df.columns:
+        print(f"  {col:35s}: {df[col].mean():.3f} ± {df[col].std():.3f}")
+```
+
+```bash
+python3 compute_stats.py 1     # TTW-S1 stats
+python3 compute_stats.py 9     # ME-S1 stats
+# etc.
+```
+
+---
+
+## 13. NetAnim Visualization Color Guide
+
+Open `routing-animation.xml` in the NetAnim application after any run.
+
+| Colour | Node role |
 |---|---|
-| **Baseline** (no attack) | `./waf --run "scratch/routing --simTime=30 --attack_scenario=0"` |
-| **Attack only** (no detection) | `./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=1"` |
-| **Attack + Detection** ← main | `./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=4"` |
-| **Run 1 of 5** (for paper) | `./waf --run "scratch/routing --attack_scenario=4 --RngRun=1"` |
-| **Run 2 of 5** | `./waf --run "scratch/routing --attack_scenario=4 --RngRun=2"` |
-| **Run 3 of 5** | `./waf --run "scratch/routing --attack_scenario=4 --RngRun=3"` |
-| **Run 4 of 5** | `./waf --run "scratch/routing --attack_scenario=4 --RngRun=4"` |
-| **Run 5 of 5** | `./waf --run "scratch/routing --attack_scenario=4 --RngRun=5"` |
+| RED (255, 0, 0) — large | Malicious attacker node (vehicle, RSU, or controller) |
+| BLUE (0, 150–200, 255) | Victim node |
+| GREEN (0, 255, 100) | Normal / uninvolved vehicle |
+| ORANGE (255, 200, 0) | RSU that is in the data path but NOT malicious (S4 variants) |
+| PURPLE (255, 0, 255) | Controller when it is NOT the attacker |
+| RED (255, 0, 0) — large | Controller when it IS the attacker (S3/S4 variants) |
 
-After 5 runs → open `pem_run_summary.csv` → compute **mean ± std** for MCC, AUROC, Tdet.
+Node labels visible in NetAnim:
 
-Important:
-the summary row is written right before the simulation ends, so if you stop the run early with `Ctrl+C`, `pem_run_summary.csv` may not receive a new row.
-
----
-
-## Part 10 — Complete Change Log
-
-### Bug Fixes
-
-| # | Line(s) | What Changed | Why |
-|---|---|---|---|
-| Fix 1 | 139 | Removed duplicate `attack_scenario` | Compile error — declared twice |
-| Fix 2 | 142 | Removed duplicate `malicious_vehicle_id` | Compile error — declared twice |
-| Fix 3 | 145 | Removed duplicate `victim_neighbor_id` | Compile error — declared twice |
-| Fix 4 | 49–50 | Moved `using namespace ns3` to top | Compile error — types used before namespace |
-| Fix 5 | 164–169 | Merged two structs into one `TopologyPacket` | Type mismatch — two definitions of same concept |
-| Fix 6 | PEM helper section | Replaced `std::max(...)` in PEM helpers | Avoided collision with legacy `#define max 40` macro |
-| Fix 7 | NetAnim setup | Changed animation output to `scratch/routing-animation.xml` | Avoided runtime file-open issues and made the XML location explicit |
-| Fix 8 | `print_time()` | Removed noisy `current time is ...` console output | Cleaner runs without changing simulation behavior |
-
-### New Additions
-
-| Category | Lines | What Was Added | Purpose |
-|---|---|---|---|
-| Attack timing | 154–156 | `TTW_HELLO_TIME`, `TTW_LINK_BREAK`, `TTW_REPLAY_TIME` | Clear timeline constants |
-| Attack state | 172–183 | `ttw_stored_packet`, `ttw_controller_table`, `ttw_log` | Store attacker's data and log |
-| PEM constants | 185–193 | 8 threshold/parameter constants | Configure the detector |
-| Weights | 195–203 | `PEM_WEIGHTS[9]` | Weighted signature scoring |
-| Decay tau | 207 | `PEM_DECAY_TAU_S = 0.200` | Temporal pressure time constant |
-| Event type | 209–214 | `PemEventType` enum | Label beacon/topology/heartbeat |
-| Event struct | 216–235 | `PemEvent` struct (16 fields) | Store all info about one event |
-| Counters | 237–256 | TP/TN/FP/FN, score, timing, phase flags | Track detection state |
-| Math functions | 272–389 | MCC, AUROC, latency, phase label | Compute metrics |
-| CSV output | 556–671 | Event CSV + summary CSV writers | Export results to file |
-| 9-sig detector | 690–877 | `PemEvaluateEvent()` | Core detection logic |
-| Weighted loop | 824–831 | Replaced `1/9` with `PEM_WEIGHTS[i]` | Fix equal-weight problem |
-| Temporal pressure | 833–855 | History-based decay loop | Make score time-aware |
-| Event emitters | 879–955 | `PemEmitEvent`, beacon/heartbeat helpers | Connect events to detector |
-| TTW functions | 956–1212 | 6 TTW attack functions | Implement the attack scenario |
+| Label | Meaning |
+|---|---|
+| `V1-Victim`, `V2-Victim` | Nodes being targeted by the attack |
+| `V2-Attacker` | The malicious vehicle |
+| `RSU-Attacker` | Malicious RSU (scenarios 2, 6, 10) |
+| `RSU-In-Path` | Legitimate RSU relay, not attacking (scenarios 4, 8, 12) |
+| `Controller-Attacker` | Malicious controller (scenarios 3, 4, 7, 8, 11, 12) |
+| `V1-Real`, `V2-Real` | The endpoints of the real physical link (ME attacks) |
+| `V3-Echo`, `V4-Echo` | Malicious echo reporters (ME attacks) |
 
 ---
 
-## Quick Reference Card
+## 14. Common Errors and Fixes
+
+### Error: `[ERROR] TTW-S2 requires --N_RSUs=1. Aborting.`
+
+Scenarios 2, 4, 6, 8, 10, 12 all require at least one RSU. Add `--N_RSUs=1` to the command.
+
+```bash
+# Wrong:
+./waf --run "scratch/routing --attack_scenario=2"
+# Correct:
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
+```
+
+### Error: `pem_run_summary.csv` is empty or missing
+
+The simulation was stopped early (Ctrl+C) before `PemWriteRunSummaryCsv()` ran at
+`simTime − 0.001`. Let it finish. For quick tests use `--simTime=25`.
+
+### Error: `MCC = 0` in the summary
+
+No attack event reached PEM with `attack_label = true`. Check:
+1. Is `attack_scenario` the right number?
+2. Is `simTime` long enough? TTW injects at t=20 → needs `simTime > 20`. BSHH/ME inject at t=10 → needs `simTime > 10`.
+3. For RSU scenarios: did you pass `--N_RSUs=1`?
+
+### Error: `No such file or directory` for optimization CSV files
+
+Run the baseline simulation first to generate them:
+```bash
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --attack_scenario=0"
+```
+
+### Error: `Segmentation fault`
+
+Usually a node index is out of bounds. The most common cause: `N_Vehicles` is too small
+for the scenario (e.g., ME needs 4 vehicles for V0, V1, V2, V3). Use at least
+`--N_Vehicles=4` for TTW/BSHH and `--N_Vehicles=6` for ME.
+
+### NetAnim shows no arrows or movement
+
+The `routing-animation.xml` file may be from a previous run. Always clear old output files
+before a new run, or the new run appends and the timestamps become confusing:
+```bash
+rm -f routing-animation.xml pem_event_log.csv pem_run_summary.csv *.txt
+./waf --run "scratch/routing ..."
+```
+
+---
+
+## Appendix — Complete Scenario Reference Card
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ATTACK SCENARIO VALUES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  --attack_scenario=0   →  No attack (baseline only)
-  --attack_scenario=1   →  Attack, no detection
-  --attack_scenario=4   →  Attack + PEM detection ← USE THIS
+ID  FAMILY   ATTACKER                   RSU?  simTime  N_Vehicles  N_RSUs
+────────────────────────────────────────────────────────────────────────────
+ 0  None     —                          No      60         10          0
+ 1  TTW-S1   Malicious vehicle V0       No      30          2          0
+ 2  TTW-S2   Malicious RSU              YES     30          4          1
+ 3  TTW-S3   Malicious controller       No      30          4          0
+ 4  TTW-S4   Malicious controller       YES     30          4          1
+ 5  BSHH-S1  Malicious vehicle V1       No      20          4          0
+ 6  BSHH-S2  Malicious RSU              YES     20          4          1
+ 7  BSHH-S3  Malicious controller       No      20          4          0
+ 8  BSHH-S4  Malicious controller       YES     20          4          1
+ 9  ME-S1    Malicious vehicles V2+V3   No      20          6          0
+10  ME-S2    Malicious RSU              YES     20          6          1
+11  ME-S3    Malicious controller       No      20          6          0
+12  ME-S4    Malicious controller       YES     20          6          1
+────────────────────────────────────────────────────────────────────────────
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  KEY THRESHOLDS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  PEM_SCORE_THRESHOLD = 0.12   →  score > 0.12 = alert
-  PEM_DECAY_TAU_S     = 0.200  →  200ms temporal decay
-  TTW attack:  S0(0.15) + S1(0.15) = 0.30 > 0.12 ✅
+KEY CONSTANTS IN routing.cc:
+  DSRC range           : 300 m     (TTW_COMM_RANGE)
+  Beacon interval      : 100 ms    (PEM_BEACON_INTERVAL_S = 0.1)
+  Detection budget     : 100 ms    (PEM_BEACON_BUDGET_MS)
+  PEM score threshold  : 0.12      (PEM_SCORE_THRESHOLD)
+  Controller sentinel  : 9999u     (physical_sender_id for internal attacks)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  OUTPUT FILES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ttw_attack_scenario4.txt  →  Human-readable attack log
-  pem_event_log.csv         →  Every event with score
-  pem_run_summary.csv       →  TP/TN/FP/FN/MCC/AUROC/Tdet
-  scratch/routing-animation.xml → NetAnim visualization XML
+ATTACK INJECTION TIMES:
+  TTW  : attack injects at t=20s (after link breaks at t=15s)
+  BSHH : attack injects at t=10s (after exchange at t=5s)
+  ME   : attack injects at t=10.1s (0.1s after real discovery at t=10s)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  PAPER TARGET METRICS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  MCC    > 0.5
-  AUROC  > 0.85
-  Tdet   < 100 ms  (expected ≈ 50 ms)
-  Run simulation 5× with RngRun=1..5 for mean ± std
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PEM TARGET METRICS (project proposal):
+  MCC    > 0.85
+  AUROC  > 0.90
+  Tdet   < 100 ms
+  PDR post-mitigation should recover to near-baseline
+────────────────────────────────────────────────────────────────────────────
 ```
+
+---
+
+*Written by Nimesha Yasith | FYP — Department of EIE, University of Ruhuna | 2026-04-30*
