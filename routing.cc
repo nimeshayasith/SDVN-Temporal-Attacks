@@ -323,6 +323,14 @@ double pem_attack_injection_time = -1.0;
 double pem_first_alert_time = -1.0;
 
 bool pem_last_alert = false;
+
+// ── Detection enable/disable flag ────────────────────────────────────────────
+// When false: PEM still logs every event (signatures, score) but alert_raised
+// is forced to false.  This means no mitigation fires (ghost entries are never
+// removed), so the controller stays poisoned for the whole run.
+// Use --detection_enabled=0 to measure raw attack damage without any response,
+// and --detection_enabled=1 (default) for the normal attack-plus-detection run.
+bool detection_enabled = true;
 bool pem_attack_active = false;
 bool pem_mitigation_active = false;
 
@@ -713,7 +721,7 @@ PemWriteRunSummaryCsv()
     const std::string filename = "pem_run_summary.csv";
     PemWriteCsvHeaderIfNeeded(
         filename,
-        "run_id,attack_scenario,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,"
+        "run_id,attack_scenario,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,"
         "pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,total_events",
         pem_summary_csv_header_written);
 
@@ -737,6 +745,7 @@ PemWriteRunSummaryCsv()
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
     fout << RngSeedManager::GetRun() << ","
          << attack_scenario << ","
+         << (detection_enabled ? 1 : 0) << ","
          << pem_true_positive << ","
          << pem_true_negative << ","
          << pem_false_positive << ","
@@ -977,7 +986,10 @@ PemEvaluateEvent(PemEvent& event)
     score += temporalPressure;
 
     event.score = score;
-    event.alert_raised = (score > PEM_SCORE_THRESHOLD);
+    // Alert only fires when detection is enabled. When detection_enabled=false,
+    // PEM logs the score/signatures but never acts on them, so the controller
+    // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
+    event.alert_raised = detection_enabled && (score > PEM_SCORE_THRESHOLD);
 
     PemRecordObservation(event.attack_label, event.score, event.alert_raised);
     event.detection_latency_ms =
@@ -140854,9 +140866,13 @@ int main(int argc, char *argv[])
     cmd.AddValue ("routing_test", "routing_test", routing_test);
     cmd.AddValue ("routing_algorithm", "routing_algorithm", routing_algorithm);
     cmd.AddValue ("qf", "qf", qf);
-    cmd.AddValue ("attack_scenario", "attack_scenario (1-4)", attack_scenario);
+    cmd.AddValue ("attack_scenario", "attack_scenario (0=none,1-12=attack variants)", attack_scenario);
     cmd.AddValue ("malicious_vehicle_id", "malicious_vehicle_id", malicious_vehicle_id);
     cmd.AddValue ("victim_neighbor_id", "victim_neighbor_id", victim_neighbor_id);
+    cmd.AddValue ("detection_enabled",
+                  "1=run attack WITH PEM detection+mitigation (default), "
+                  "0=run attack ONLY, PEM logs but never mitigates",
+                  detection_enabled);
     cmd.Parse (argc, argv);	
     
     if (routing_test == true)
