@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(python3 -c ' *)",
-      "Bash(grep -v \"//\")"
+      "Bash(grep -v \"//\")",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
