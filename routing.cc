@@ -478,7 +478,6 @@ PemGetPhaseLabel()
 static std::string PemEventTypeToString(PemEventType type);
 static std::string PemGetLinkKey(uint32_t srcId, uint32_t dstId);
 static void PemTrimSlidingWindow(double nowSeconds);
-static double PemEstimateLambdaHat();
 static uint32_t PemComputePathCount(uint32_t srcId, uint32_t dstId);
 static std::string PemTriggeredSignatureString(const bool triggered[9]);
 static void PemWriteEventCsv(const PemEvent& event);
@@ -540,26 +539,6 @@ PemTrimSlidingWindow(double nowSeconds)
     {
         pem_event_window.pop_front();
     }
-}
-
-static double
-PemEstimateLambdaHat()
-{
-    std::set<uint32_t> activeVehicles;
-    for (std::deque<PemEvent>::const_iterator it = pem_event_window.begin();
-         it != pem_event_window.end();
-         ++it)
-    {
-        if (it->type == PEM_EVENT_BEACON)
-        {
-            activeVehicles.insert(it->claimed_sender_id);
-        }
-    }
-    if (TTW_COMM_RANGE <= 0.0)
-    {
-        return 0.0;
-    }
-    return static_cast<double>(activeVehicles.size()) / (2.0 * TTW_COMM_RANGE);
 }
 
 static uint32_t
@@ -855,7 +834,7 @@ PemEvaluateEvent(PemEvent& event)
         // triggers even when the sliding window has seen very few beacons.
         const double localRhoMax =
             (1.0 + PEM_ME_TOLERANCE_MU) * static_cast<double>(vehiclesNearLink.size());
-        const double effectiveRhoMax = std::max(localRhoMax, 2.0);
+        const double effectiveRhoMax = std::fmax(localRhoMax, 2.0);
         if (static_cast<double>(reporters.size()) > effectiveRhoMax)
         {
             event.triggered[6] = true;
@@ -935,7 +914,7 @@ PemEvaluateEvent(PemEvent& event)
         //   RSSI(d) = PEM_RSSI_REF_DBM − 10·n·log10(d)
         //   If RSSI at the reporter's distance < RSSI_min(r_comm), the reporter
         //   could not have received the signal even if its GPS were just inside range.
-        const double safeDistance = std::max(nearestDistance, 1.0);  // avoid log(0)
+        const double safeDistance = std::fmax(nearestDistance, 1.0);  // avoid log(0)
         const double syntheticRSSI = PEM_RSSI_REF_DBM
             - 10.0 * PEM_PATH_LOSS_EXP * std::log10(safeDistance);
         event.rssi_reporter_dbm = syntheticRSSI;
