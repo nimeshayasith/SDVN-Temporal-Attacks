@@ -118700,7 +118700,7 @@ void transmit_solution()
 {
 	read_csv();
 	//After getting the solution, unicast the solution to the nodes.
-	for (uint32_t u=0;u< total_size;u++)
+	for (uint32_t u = 0; u < (N_Vehicles + N_RSUs); ++u)
 	{
 		if (u < (N_Vehicles))
 		{
@@ -118723,7 +118723,7 @@ void transmit_delta_values()
 {
 	//read_csv();
 	//After getting the solution, unicast the solution to the nodes.
-	for (uint32_t u=0;u< total_size;u++)
+	for (uint32_t u = 0; u < (N_Vehicles + N_RSUs); ++u)
 	{
 		if (u < (N_Vehicles))
 		{
