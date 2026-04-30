@@ -142792,7 +142792,34 @@ int main(int argc, char *argv[])
  
 
 
-  AnimationInterface anim("scratch/routing-animation.xml");
+  // ── Build per-scenario NetAnim XML filename ──────────────────────────────────
+  // Creates: /home/nimesha/ns-allinone-3.35/ns-3.35/XML/<attack_name>.xml
+  // The XML/ directory is created automatically if it does not exist.
+  {
+      // Ensure the output directory exists (runs once, no-op if already present)
+      std::system("mkdir -p /home/nimesha/ns-allinone-3.35/ns-3.35/XML");
+  }
+  static const char* scenario_xml_names[] = {
+      "00_Baseline_No_Attack",                    // 0
+      "01_TTW_S1_Malicious_Vehicle",              // 1
+      "02_TTW_S2_Malicious_RSU",                  // 2
+      "03_TTW_S3_Malicious_Controller_No_RSU",    // 3
+      "04_TTW_S4_Malicious_Controller_With_RSU",  // 4
+      "05_BSHH_S1_Malicious_Vehicle",             // 5
+      "06_BSHH_S2_Malicious_RSU",                 // 6
+      "07_BSHH_S3_Malicious_Controller_No_RSU",   // 7
+      "08_BSHH_S4_Malicious_Controller_With_RSU", // 8
+      "09_ME_S1_Malicious_Vehicles",              // 9
+      "10_ME_S2_Malicious_RSU",                   // 10
+      "11_ME_S3_Malicious_Controller_No_RSU",     // 11
+      "12_ME_S4_Malicious_Controller_With_RSU"    // 12
+  };
+  uint32_t safe_scenario = (attack_scenario <= 12) ? attack_scenario : 0;
+  std::string anim_xml_path = std::string("/home/nimesha/ns-allinone-3.35/ns-3.35/XML/")
+                              + scenario_xml_names[safe_scenario] + ".xml";
+  std::cout << "[NetAnim] Writing animation to: " << anim_xml_path << std::endl;
+
+  AnimationInterface anim(anim_xml_path);
 
   // ── TTW-S1: reposition controller, hide all other nodes ─────────────────────
   if (attack_scenario == 1)
