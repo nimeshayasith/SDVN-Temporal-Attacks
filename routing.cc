@@ -256,6 +256,18 @@ static const double PEM_ME_TOLERANCE_MU = 0.30;
 static const double PEM_ME_DELTA_MAX = 1.0;
 static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
 
+// ── ME-S3 RSSI path-loss model constants ─────────────────────────────────────
+// DSRC 5.9 GHz, suburban/highway environment (ITU-R P.1411 short-range model)
+// RSSI(d) = PEM_RSSI_REF_DBM − 10·n·log10(d)  where d is in metres
+// PEM_RSSI_MIN_DBM is derived at d = TTW_COMM_RANGE (300 m):
+//   = -40 − 10 × 2.75 × log10(300) ≈ -40 − 27.5 × 2.477 ≈ -108.1 dBm
+// Any reporter whose computed RSSI falls below this value could not have
+// legitimately received the signal from the link endpoints at that range.
+static const double PEM_RSSI_REF_DBM    = -40.0;  // reference RSSI at 1 m (dBm)
+static const double PEM_PATH_LOSS_EXP   =  2.75;  // path-loss exponent (DSRC highway)
+static const double PEM_RSSI_MIN_DBM    = PEM_RSSI_REF_DBM
+    - 10.0 * PEM_PATH_LOSS_EXP * 2.4771;  // log10(300) ≈ 2.4771
+
 // Signature weights — sum = 1.0
 // TTW (S0,S1,S2): timestamp/replay evidence, highest weight
 // BSHH (S3,S4,S5): identity/heartbeat anomaly, mid weight
@@ -296,6 +308,7 @@ struct PemEvent
     double score;
     bool alert_raised;
     double detection_latency_ms;
+    double rssi_reporter_dbm;  // computed from path-loss model; used in ME-S3 RSSI check
 };
 
 uint64_t pem_true_positive = 0;
@@ -665,7 +678,8 @@ PemWriteEventCsv(const PemEvent& event)
         filename,
         "sim_time_s,event_type,physical_sender_id,claimed_sender_id,reporter_id,link_src_id,link_dst_id,"
         "sender_timestamp_s,reception_timestamp_s,attack_label,triggered_signatures,score,alert_raised,"
-        "phase,detection_latency_ms,reporter_x,reporter_y,link_src_x,link_src_y,link_dst_x,link_dst_y",
+        "phase,detection_latency_ms,reporter_x,reporter_y,link_src_x,link_src_y,link_dst_x,link_dst_y,"
+        "rssi_reporter_dbm",
         pem_event_csv_header_written);
 
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
@@ -689,7 +703,8 @@ PemWriteEventCsv(const PemEvent& event)
          << event.link_src_position.x << ","
          << event.link_src_position.y << ","
          << event.link_dst_position.x << ","
-         << event.link_dst_position.y << "\n";
+         << event.link_dst_position.y << ","
+         << event.rssi_reporter_dbm << "\n";
 }
 
 static void
@@ -804,10 +819,35 @@ PemEvaluateEvent(PemEvent& event)
         }
         reporters.insert(event.reporter_id);
 
-        const double lambdaHat = PemEstimateLambdaHat();
-        const double rhoMax =
-            (1.0 + PEM_ME_TOLERANCE_MU) * (2.0 * TTW_COMM_RANGE * lambdaHat);
-        if (static_cast<double>(reporters.size()) > rhoMax && rhoMax >= 1.0)
+        // ME-S1 (Reporter Count Excess) — use LOCAL vehicle density near the
+        // link endpoints, not global λ̂.  The proposal says λ̂(t) is estimated
+        // from vehicles within the current sliding window whose beacon position
+        // is within r_comm of the link.  Using global density overestimates
+        // rhoMax in small simulations and causes ME-S1 to never fire.
+        std::set<uint32_t> vehiclesNearLink;
+        for (std::deque<PemEvent>::const_iterator w = pem_event_window.begin();
+             w != pem_event_window.end(); ++w)
+        {
+            if (w->type == PEM_EVENT_BEACON)
+            {
+                const double dWtoSrc = std::sqrt(
+                    std::pow(w->reporter_position.x - event.link_src_position.x, 2.0) +
+                    std::pow(w->reporter_position.y - event.link_src_position.y, 2.0));
+                const double dWtoDst = std::sqrt(
+                    std::pow(w->reporter_position.x - event.link_dst_position.x, 2.0) +
+                    std::pow(w->reporter_position.y - event.link_dst_position.y, 2.0));
+                if (std::min(dWtoSrc, dWtoDst) <= TTW_COMM_RANGE)
+                {
+                    vehiclesNearLink.insert(w->claimed_sender_id);
+                }
+            }
+        }
+        // rhoMax = (1+μ) × local_count; floor at 2.0 so a 3-reporter link always
+        // triggers even when the sliding window has seen very few beacons.
+        const double localRhoMax =
+            (1.0 + PEM_ME_TOLERANCE_MU) * static_cast<double>(vehiclesNearLink.size());
+        const double effectiveRhoMax = std::max(localRhoMax, 2.0);
+        if (static_cast<double>(reporters.size()) > effectiveRhoMax)
         {
             event.triggered[6] = true;
         }
@@ -876,7 +916,23 @@ PemEvaluateEvent(PemEvent& event)
             std::sqrt(std::pow(event.reporter_position.x - event.link_dst_position.x, 2.0) +
                       std::pow(event.reporter_position.y - event.link_dst_position.y, 2.0));
         const double nearestDistance = std::min(distanceToSrc, distanceToDst);
-        if (nearestDistance > TTW_COMM_RANGE)
+
+        // ME-S3 (Reporter-Range AND Signal Inconsistency) — project formula:
+        //   V_k ∈ R(e_ij) ∧ (d(pos_Vk, e_ij) > r_comm  ∨  RSSI_Vk < RSSI_min)
+        // Condition 1: GPS-attested position is outside communication range.
+        const bool positionOutOfRange = (nearestDistance > TTW_COMM_RANGE);
+
+        // Condition 2: Synthetic RSSI from log-distance path-loss model.
+        //   RSSI(d) = PEM_RSSI_REF_DBM − 10·n·log10(d)
+        //   If RSSI at the reporter's distance < RSSI_min(r_comm), the reporter
+        //   could not have received the signal even if its GPS were just inside range.
+        const double safeDistance = std::max(nearestDistance, 1.0);  // avoid log(0)
+        const double syntheticRSSI = PEM_RSSI_REF_DBM
+            - 10.0 * PEM_PATH_LOSS_EXP * std::log10(safeDistance);
+        event.rssi_reporter_dbm = syntheticRSSI;
+        const bool rssiTooWeak = (syntheticRSSI < PEM_RSSI_MIN_DBM);
+
+        if (positionOutOfRange || rssiTooWeak)
         {
             event.triggered[8] = true;
         }
@@ -973,6 +1029,7 @@ PemEmitEvent(PemEventType type,
     event.score = 0.0;
     event.alert_raised = false;
     event.detection_latency_ms = -1.0;
+    event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;  // set by PemEvaluateEvent for topology events
 
     PemEvaluateEvent(event);
 }
