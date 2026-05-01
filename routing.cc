@@ -1118,6 +1118,41 @@ PemEmitVehicleHeartbeat(uint32_t senderId,
  
 
 // =============================================================================
+// DSRC PACKET HELPERS — shared by all attack scenario "legitimate exchange" steps
+// =============================================================================
+
+static Ptr<WifiNetDevice> AttackGetDSRCDevice(Ptr<Node> node)
+{
+    for (uint32_t i = 0; i < node->GetNDevices(); i++) {
+        Ptr<WifiNetDevice> w = DynamicCast<WifiNetDevice>(node->GetDevice(i));
+        if (w) return w;
+    }
+    return nullptr;
+}
+
+static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
+{
+    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
+    if (!wdi) return;
+    Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
+    Vector pos = mob ? mob->GetPosition() : Vector(0,0,0);
+    Vector vel = mob ? mob->GetVelocity()  : Vector(0,0,0);
+    Vector acc(0,0,0);
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomDataTag1 tag;
+    uint32_t nid_arr[max1+1] = {};
+    nid_arr[0] = neighbor_node->GetId();
+    tag.SetNodeId(sender_node->GetId());
+    tag.SetNeighborids(nid_arr);
+    tag.SetPosition(pos);
+    tag.SetVelocity(vel);
+    tag.SetAcceleration(acc);
+    tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+}
+
+// =============================================================================
 // TTW ATTACK FUNCTIONS — paste these before main()
 // (Exact same functions from ttw_attack_s4_implementation.cc)
 // =============================================================================
@@ -1160,12 +1195,14 @@ void TTW_SendHelloBeacon(Ptr<Node> sender, Ptr<Node> receiver)
                 << "  dist=" << dist << "m"
                 << (ok ? "  DELIVERED" : "  OUT-OF-RANGE"));
 
-    ttw_log << "[t=" << now << "]  STEP ①  HELLO\n"
+    ttw_log << "[t=" << now << "]  STEP ①  HELLO  (real DSRC 802.11p packet)\n"
             << "  V" << sender->GetId()   << " pos=(" << ps.x << "," << ps.y << ")\n"
             << "  V" << receiver->GetId() << " pos=(" << pr.x << "," << pr.y << ")\n"
             << "  dist=" << dist << "m  "
             << (ok ? "DELIVERED — neighbor discovered\n\n"
                    : "DROPPED   — out of range\n\n");
+    AttackSendDSRCBeacon(sender, receiver);
+    AttackSendDSRCBeacon(receiver, sender);
 }
 
 // ── STEP 2: Legitimate topology update ───────────────────────────────────────
@@ -1457,6 +1494,10 @@ void TTWS2_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1606,6 +1647,10 @@ void TTWS3_ReceiveLegitimateUpdates(uint32_t v1_id, uint32_t v2_id, double obs_t
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1737,6 +1782,10 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
                  v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1823,6 +1872,10 @@ void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
@@ -1894,6 +1947,10 @@ void BSHH_S2_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
              << ", t=" << t << ")  ACCEPTED\n\n";
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void BSHH_S2_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
@@ -1965,6 +2022,10 @@ void BSHH_S3_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void BSHH_S3_StoreOldHeartbeats(uint32_t v1_id, uint32_t v2_id, double stored_time)
@@ -2038,6 +2099,10 @@ void BSHH_S4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doub
              << "  Heartbeat(V" << v2_id << ", t=" << t << ")  ACCEPTED\n\n";
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void BSHH_S4_StoreOldHeartbeats(uint32_t v1_id, uint32_t v2_id, double stored_time)
@@ -2121,6 +2186,10 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, double t)
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
@@ -2222,6 +2291,10 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, 
                  v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
@@ -2309,6 +2382,10 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, d
                  v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
@@ -2395,6 +2472,10 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doubl
                  v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
