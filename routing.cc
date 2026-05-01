@@ -1118,6 +1118,55 @@ PemEmitVehicleHeartbeat(uint32_t senderId,
  
 
 // =============================================================================
+// CustomHeartbeatTag — real NS-3 Tag for BSHH liveness heartbeat packets
+// Carries: claimed_sender_id (whose liveness), timestamp, is_replayed flag.
+// Serialized size = 4 + 8 + 1 = 13 bytes (compile-time constant).
+// =============================================================================
+
+class CustomHeartbeatTag : public Tag {
+public:
+    static TypeId GetTypeId(void);
+    virtual TypeId GetInstanceTypeId(void) const;
+    virtual uint32_t GetSerializedSize(void) const { return 13; }
+    virtual void Serialize(TagBuffer i) const {
+        i.WriteU32(m_claimedSenderId);
+        i.WriteDouble(m_timestamp);
+        i.WriteU8(m_isReplayed ? 1 : 0);
+    }
+    virtual void Deserialize(TagBuffer i) {
+        m_claimedSenderId = i.ReadU32();
+        m_timestamp       = i.ReadDouble();
+        m_isReplayed      = (i.ReadU8() != 0);
+    }
+    virtual void Print(std::ostream &os) const {
+        os << "HB claimed=" << m_claimedSenderId
+           << " t=" << m_timestamp
+           << " replayed=" << m_isReplayed;
+    }
+    uint32_t GetClaimedSenderId() const { return m_claimedSenderId; }
+    double   GetTimestamp()       const { return m_timestamp; }
+    bool     GetIsReplayed()      const { return m_isReplayed; }
+    void SetClaimedSenderId(uint32_t id) { m_claimedSenderId = id; }
+    void SetTimestamp(double t)          { m_timestamp = t; }
+    void SetIsReplayed(bool r)           { m_isReplayed = r; }
+    CustomHeartbeatTag() : m_claimedSenderId(0), m_timestamp(0.0), m_isReplayed(false) {}
+private:
+    uint32_t m_claimedSenderId;
+    double   m_timestamp;
+    bool     m_isReplayed;
+};
+NS_OBJECT_ENSURE_REGISTERED(CustomHeartbeatTag);
+TypeId CustomHeartbeatTag::GetTypeId(void) {
+    static TypeId tid = TypeId("ns3::CustomHeartbeatTag")
+        .SetParent<Tag>()
+        .AddConstructor<CustomHeartbeatTag>();
+    return tid;
+}
+TypeId CustomHeartbeatTag::GetInstanceTypeId(void) const {
+    return CustomHeartbeatTag::GetTypeId();
+}
+
+// =============================================================================
 // DSRC PACKET HELPERS — shared by all attack scenario "legitimate exchange" steps
 // =============================================================================
 
@@ -1148,6 +1197,56 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     tag.SetVelocity(vel);
     tag.SetAcceleration(acc);
     tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+}
+
+// =============================================================================
+// CSMA PACKET HELPER — RSU → Controller real UDP send over CSMA Ethernet
+// =============================================================================
+
+static Ipv4Address AttackGetControllerIP()
+{
+    Ptr<Ipv4> ipv4 = controller_Node.Get(0)->GetObject<Ipv4>();
+    if (!ipv4) return Ipv4Address("127.0.0.1");
+    uint32_t iface_idx = (N_Vehicles > 0) ? 1 : 0;
+    if (iface_idx >= ipv4->GetNInterfaces()) iface_idx = ipv4->GetNInterfaces() - 1;
+    return ipv4->GetAddress(iface_idx, 0).GetLocal();
+}
+
+static void AttackSendRSUToController(uint32_t rsu_index)
+{
+    if (rsu_index >= RSU_Nodes.GetN()) return;
+    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
+    Ptr<SimpleUdpApplication> udp_app =
+        DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
+    if (!udp_app) return;
+    Ipv4Address dest_ip = AttackGetControllerIP();
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomMetaDataUnicastTag0 tag;
+    tag.SetNodeId(rsu_node->GetId());
+    tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+                        udp_app, pkt, dest_ip, (uint16_t)7777);
+}
+
+// Sends a real DSRC 802.11p heartbeat broadcast from physical_sender_node.
+// claimed_sender_id = whose liveness is claimed (differs from sender in replay attacks).
+// hb_timestamp = timestamp inside the heartbeat (old value for replays).
+// is_replayed = true for BSHH attack forged packets.
+static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
+                                uint32_t claimed_sender_id,
+                                double hb_timestamp,
+                                bool is_replayed)
+{
+    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(physical_sender_node);
+    if (!wdi) return;
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomHeartbeatTag tag;
+    tag.SetClaimedSenderId(claimed_sender_id);
+    tag.SetTimestamp(hb_timestamp);
+    tag.SetIsReplayed(is_replayed);
     pkt->AddPacketTag(tag);
     wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
 }
@@ -1510,6 +1609,7 @@ void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
               << "  Result : ACCEPTED (legitimate aggregate)\n\n";
     NS_LOG_INFO("[TTW-S2] t=" << now << "s  RSU_" << rsu_id
                 << " forwarded aggregate to controller");
+    AttackSendRSUToController(rsu_id);
 }
 
 void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1786,6 +1886,7 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
     }
+    AttackSendRSUToController(rsu_id);
 }
 
 void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1875,6 +1976,8 @@ void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
     }
 }
 
@@ -1913,6 +2016,9 @@ void BSHH_S1_ReplayAttack(uint32_t attacker_id, uint32_t victim_id, double store
     NS_LOG_INFO("[BSHH-S1] t=" << now << "s  V" << attacker_id
                 << " replayed old HB claiming V" << victim_id);
     PemEmitHeartbeatEvent(attacker_id, victim_id, stored_time, true);
+    if (attacker_id < Vehicle_Nodes.GetN()) {
+        AttackSendHeartbeat(Vehicle_Nodes.Get(attacker_id), victim_id, stored_time, true);
+    }
 }
 
 // =============================================================================
@@ -1950,7 +2056,10 @@ void BSHH_S2_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
     }
+    AttackSendRSUToController(rsu_id);
 }
 
 void BSHH_S2_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
@@ -1987,6 +2096,10 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     NS_LOG_INFO("[BSHH-S2] t=" << now << "s  RSU_" << rsu_id
                 << " replayed old HB claiming V" << victim_id);
     PemEmitHeartbeatEvent(rsu_id, victim_id, stored_time, true);
+    AttackSendRSUToController(rsu_id);
+    if (rsu_id < RSU_Nodes.GetN()) {
+        AttackSendHeartbeat(RSU_Nodes.Get(rsu_id), victim_id, stored_time, true);
+    }
 }
 
 // =============================================================================
@@ -2025,6 +2138,8 @@ void BSHH_S3_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
     }
 }
 
@@ -2102,7 +2217,10 @@ void BSHH_S4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doub
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
     }
+    AttackSendRSUToController(rsu_id);
 }
 
 void BSHH_S4_StoreOldHeartbeats(uint32_t v1_id, uint32_t v2_id, double stored_time)
@@ -2295,6 +2413,7 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, 
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
     }
+    AttackSendRSUToController(rsu_id);
 }
 
 void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
@@ -2335,6 +2454,7 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
                  v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v4, rsu_id,
                  v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
+    AttackSendRSUToController(rsu_id);
 }
 
 // =============================================================================
@@ -2476,6 +2596,7 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doubl
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
     }
+    AttackSendRSUToController(rsu_id);
 }
 
 void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
@@ -122132,14 +122253,23 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 	CustomMetaDataBroadcastTag tag2;
 	if(pkt->PeekPacketTag(tag2))
 	{
-		
+
 		 //int combined_cost = 2 + (Now().GetMilliSeconds()-tag2.GetTimestamp().GetMilliSeconds());
 		 //add_neighbor_info(neighbordata_inst+destination_node_id,tag2.GetNodeId(), combined_cost);
 		 add_neighbor_info(neighbordata_inst+destination_node_id,tag2.GetNodeId()); //add current neighbor information
 		 refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
-		 uint32_t ns = getNeighborsize(neighbordata_inst+destination_node_id);	
+		 uint32_t ns = getNeighborsize(neighbordata_inst+destination_node_id);
 		 cout<<"received metadata broadcasted to"<<destination_node_id <<"neighbor size"<<ns<<endl;
 		std::cout << "Current neighbor size is "<<ns<<"Received packet from "<< tag2.GetNodeId()<<"to node "<<context[10]<<context[11] <<"of size "<<tag2.GetSerializedSize()<<"packet timestamp "<< tag2.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag2.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+	}
+
+	CustomHeartbeatTag hb_tag;
+	if (pkt->PeekPacketTag(hb_tag)) {
+		uint32_t claimed_id = hb_tag.GetClaimedSenderId();
+		double   hb_time    = hb_tag.GetTimestamp();
+		bool     replayed   = hb_tag.GetIsReplayed();
+		HeartbeatPacket hb  = {claimed_id, (uint32_t)destination_node_id, hb_time, replayed};
+		bshh_controller_liveness_table[claimed_id] = hb;
 	}
 }
 
