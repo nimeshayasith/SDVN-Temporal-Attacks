@@ -32,6 +32,8 @@ Countering Temporal-Echo Topology Poisoning Attacks in SDVNs
 15. [Running Attacks Without Detection (attack-only mode)](#15-running-attacks-without-detection-attack-only-mode)
 16. [Per-Scenario NetAnim XML Files](#16-per-scenario-netanim-xml-files)
 17. [PEM Accuracy Improvements (ME-S1 and ME-S3)](#17-pem-accuracy-improvements-me-s1-and-me-s3)
+18. [RSU and RSU Network Explained](#18-rsu-and-rsu-network-explained)
+19. [Questions and Answers — Conceptual Session](#19-questions-and-answers--conceptual-session-2026-05-01)
 
 ---
 
@@ -1595,7 +1597,144 @@ PEM TARGET METRICS (project proposal):
 
 ---
 
-## 18. Questions and Answers — Conceptual Session (2026-05-01)
+## 18. RSU and RSU Network Explained
+
+### What is an RSU?
+
+An RSU (Road-Side Unit) is a **fixed infrastructure node** placed beside the road —
+at intersections, on lamp posts, or along highways. Unlike vehicles, RSUs do not move.
+They stay at a fixed GPS coordinate for the entire simulation.
+
+---
+
+### Role in the SDVN Architecture
+
+```
+  [Vehicle V0] ←── DSRC 300m ──→ [RSU_0] ←── Wired Ethernet ──→ [SDN Controller]
+  [Vehicle V1] ←── DSRC 300m ──→ [RSU_0]
+  [Vehicle V2] ←── DSRC 300m ──→ [RSU_0]
+```
+
+RSUs sit between vehicles (wireless DSRC side) and the controller (wired backhaul side).
+
+| Task | What the RSU does |
+|---|---|
+| **Relay** | Receives DSRC beacons from vehicles within 300 m, forwards to controller |
+| **Aggregate** | Bundles multiple vehicle reports into one message — reduces controller load |
+| **Coverage extension** | Vehicles out of V2V range can still reach the controller via RSU |
+| **Attack role (S2)** | Malicious RSU intercepts, stores, and replays forged packets to controller |
+| **Relay role (S4)** | Legitimate RSU passes data to controller; the controller itself is the attacker |
+
+---
+
+### How RSUs Are Set Up in routing.cc
+
+```cpp
+// Declaration (line ~96898)
+NodeContainer RSU_Nodes;
+RSU_Nodes.Create(N_RSUs);        // controlled by --N_RSUs flag on command line
+
+// RSUs share the same 802.11p DSRC channel as vehicles
+dsrc_Nodes.Add(Vehicle_Nodes);
+dsrc_Nodes.Add(RSU_Nodes);       // RSUs get a WifiNetDevice through dsrc_Nodes
+
+// RSUs use ConstantPositionMobilityModel — they never move
+// Vehicles use WaypointMobilityModel — they move along road paths
+```
+
+---
+
+### RSU Coverage in a Real Deployment
+
+```
+Road:  ─────────────────────────────────────────────────────────────────
+               [RSU_0]           [RSU_1]           [RSU_2]
+               |←300m→|         |←300m→|         |←300m→|
+
+Vehicles moving along the road hand off from one RSU coverage zone to the next.
+Each RSU covers a 300 m radius (DSRC range = TTW_COMM_RANGE = 300 m).
+```
+
+In this project, `--N_RSUs=1` is used for all RSU-required attack scenarios. A single
+RSU is sufficient because the attack vehicles (V0, V1) are placed within 300 m of
+RSU_Nodes.Get(0) at simulation start.
+
+---
+
+### What the RSU Does in Each Attack Family
+
+#### TTW-S2 — Malicious RSU
+
+```
+t=10  V0 → RSU_0 : <V0 sees V1, t=10>    (legitimate DSRC beacon, RSU receives)
+t=10  V1 → RSU_0 : <V1 sees V0, t=10>    (legitimate DSRC beacon, RSU receives)
+t=10  RSU_0 → Controller : aggregate [V0↔V1, t=10]    LEGITIMATE forward
+
+      RSU_0 secretly stores: <V0 sees V1, t=10>  ← for later replay
+
+t=15  Physical link V0↔V1 breaks (V1 drives away beyond 300 m)
+t=20  RSU_0 forges timestamp and sends:
+      RSU_0 → Controller : <V0 sees V1, t=20>    FORGED
+      Controller believes V0↔V1 is still ACTIVE  ← ATTACK SUCCESS
+```
+
+#### TTW-S4 — Legitimate RSU, Malicious Controller
+
+```
+t=10  V0, V1 → RSU_0 : legitimate DSRC beacons
+t=10  RSU_0 → Controller : aggregate [V0↔V1, t=10]    LEGITIMATE (RSU is innocent)
+      Controller secretly saves: <V0 sees V1, t=10>
+
+t=15  Physical link breaks
+t=20  Controller INTERNALLY replays: <V0 sees V1, t=20>    FORGED (no external packet)
+      RSU did nothing wrong — the controller is the attacker in S4 variants
+```
+
+The same S2 vs S4 pattern applies to BSHH and ME families.
+
+---
+
+### RSU-Required Scenarios and Run Commands
+
+Scenarios 2, 4, 6, 8, 10, 12 all require `--N_RSUs=1`. The code aborts with an error
+if you forget it:
+
+```bash
+# Wrong — will print [ERROR] and abort:
+./waf --run "scratch/routing --attack_scenario=2"
+
+# Correct:
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
+```
+
+The guard inside each RSU scenario block in main():
+
+```cpp
+if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
+    std::cout << "[ERROR] This scenario requires --N_RSUs=1. Aborting.\n";
+    return 1;
+}
+```
+
+---
+
+### Vehicle vs RSU — Quick Comparison
+
+| Property | Vehicle | RSU |
+|---|---|---|
+| Moves? | Yes | **No** (fixed position) |
+| Has DSRC radio (802.11p)? | Yes | Yes |
+| Has wired link to controller? | No | **Yes** (Ethernet backhaul) |
+| Mobility model | `WaypointMobilityModel` | `ConstantPositionMobilityModel` |
+| Container | `Vehicle_Nodes` | `RSU_Nodes` |
+| Role in S1/S3 attacks | Attacker or victim | Not present (`--N_RSUs=0`) |
+| Role in S2 attacks | Victim | **Attacker** |
+| Role in S4 attacks | Victim | **Legitimate relay** (controller is attacker) |
+| Global NS-3 node ID | Assigned first (lower IDs) | Assigned after vehicles (higher IDs) |
+
+---
+
+## 19. Questions and Answers — Conceptual Session (2026-05-01)
 
 This section records every question that was raised about the implementation,
 the root cause of each issue, and exactly how it was resolved. Anyone reading this
@@ -1777,4 +1916,7 @@ writes are correct for those steps.
 
 *Written by Nimesha Yasith | FYP — Department of EIE, University of Ruhuna | 2026-04-30*
 *Updated 2026-04-30: added --detection_enabled flag, per-scenario XML files, ME-S1/S3 PEM improvements, updated CSV column layouts.*
-*Updated 2026-05-01: added Section 18 — Q&A session documenting custom data tags, DSRC, V2V implementation gap, and fix.*
+*Updated 2026-05-01: added Section 18 — RSU and RSU Network explanation; Section 19 — Q&A session documenting custom data tags, DSRC, V2V implementation gap, and fix.*
+
+
+
