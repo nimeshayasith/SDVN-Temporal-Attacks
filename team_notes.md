@@ -1593,5 +1593,188 @@ PEM TARGET METRICS (project proposal):
 
 ---
 
+---
+
+## 18. Questions and Answers — Conceptual Session (2026-05-01)
+
+This section records every question that was raised about the implementation,
+the root cause of each issue, and exactly how it was resolved. Anyone reading this
+can understand both what was wrong and why the fix works.
+
+---
+
+### Q1 — What are the custom data tags in routing.cc? Why are there so many?
+
+**Question:** The file defines dozens of classes like `CustomDataTag1`, `CustomDataTag2`,
+`CustomMetaDataUnicastTag0`–`CustomMetaDataUnicastTag25`. What are they and why are there
+so many nearly identical classes?
+
+**Answer:**
+
+In NS-3, a `Tag` is a metadata object attached to a `Packet`. Unlike a `Header`, it does
+not add bytes to the simulated packet size. Tags are used to pass cross-layer information
+(e.g., the sender's GPS position) alongside a packet without affecting measured overhead.
+
+Every NS-3 Tag class must implement `GetSerializedSize()`, which must return a
+**compile-time constant** — it cannot vary at runtime. This is the core constraint.
+
+The project needs to send arrays of neighbour IDs alongside beacons, and the array length
+varies (a vehicle with 3 neighbours needs a different-sized array than one with 7). Since
+the size must be constant, a separate class is required for each possible array length.
+
+There are three groups:
+
+| Group | Classes | Attached to | Why many? |
+|---|---|---|---|
+| `CustomDataTag` + `CustomDataTag1`–`20` | 21 | DSRC V2V broadcast beacons | One per possible neighbour count 0–20 |
+| `CustomDataUnicastTag_Routing` | 1 | Unicast routing packets | Array sized to compile-time constant `max1` — only one needed |
+| `CustomMetaDataUnicastTag0`–`25` | 26 | LTE uplink metadata to controller | One per possible neighbour count 0–25 |
+
+**Total: 48 Tag classes. All exist for the same reason: NS-3 fixed-size serialization constraint.**
+
+---
+
+### Q2 — What is DSRC?
+
+**Question:** What does DSRC stand for and how does it work in this project?
+
+**Answer:**
+
+DSRC = **Dedicated Short-Range Communication**. Standard: IEEE 802.11p (also called WAVE).
+
+| Property | Value |
+|---|---|
+| Frequency | 5.9 GHz |
+| Range | Up to 300–1000 m (project uses 300 m) |
+| Latency | ~1–10 ms |
+| Purpose | Vehicle-to-vehicle (V2V) and vehicle-to-infrastructure (V2I) safety messages |
+| Key advantage | No base station needed — vehicles communicate directly |
+
+In routing.cc, every vehicle broadcasts a DSRC beacon every 100 ms. The beacon carries
+the vehicle's position, velocity, acceleration, and its list of current neighbours.
+Any vehicle or RSU within 300 m picks it up via the `Rx()` callback. This is how the
+SDN controller learns the topology: vehicles overhear each other's DSRC beacons and
+report "I can see V1 right now" up through the control channel.
+
+The `CustomDataTag` family (see Q1) carries the payload of these DSRC beacon packets.
+
+---
+
+### Q3 — Did the attack functions use the custom data tags?
+
+**Question:** The attack scenarios (TTW, BSHH, ME) are supposed to model V2V communication.
+Did the attack code use the `CustomDataTag` mechanism to send real DSRC packets?
+
+**Answer: No.**
+
+The attack functions did not send any real NS-3 packets at all. They simulated V2V
+communication by directly writing to data structures and log files:
+
+```cpp
+// What the attack "HELLO exchange" actually did:
+ttw_log << "V0 <--HELLO--> V1\n";                    // just a log line
+ttw_controller_table["0_1"] = {0, 1, 10.0, false};   // direct table write
+```
+
+No `Packet` object was created, no socket was used, no `CustomDataTag` was attached.
+The communication existed only as text in a log file.
+
+---
+
+### Q4 — Is this a mistake?
+
+**Question:** Since the baseline scenario uses real NS-3 DSRC packets but the attack
+scenarios only pretend to send packets, was the implementation wrong?
+
+**Root cause:** Yes — it was a simplification that created an inconsistency:
+
+| | Baseline (scenario 0) | Attack scenarios (1–12) |
+|---|---|---|
+| V2V HELLO | Real NS-3 DSRC packet via `WifiNetDevice::Send()` | Log text only |
+| `Rx()` callback fires? | Yes — neighbour tables updated | No |
+| NetAnim shows real arrows? | Yes | Only manual animation arrows |
+| Consistent with NS-3 simulation? | Yes | No |
+
+For measuring PEM detection metrics (MCC, AUROC, Tdet) the simplification still gives
+correct numbers — the PEM logic does not care how a packet arrived, only what it contains.
+But for a complete NS-3 simulation where V2V communication is physically modelled, it was
+incomplete.
+
+---
+
+### Q5 — How was it fixed?
+
+**Fix implemented:** Two helper functions were added to routing.cc, and all 12 "legitimate
+exchange" functions were updated to call them.
+
+**Helper 1 — `AttackGetDSRCDevice(Ptr<Node>)`:**
+Iterates a node's device list and returns its `WifiNetDevice` (the 802.11p DSRC interface).
+This is needed because the `wifidevices` container is local to `main()` and cannot be
+accessed from the attack functions.
+
+```cpp
+static Ptr<WifiNetDevice> AttackGetDSRCDevice(Ptr<Node> node) {
+    for (uint32_t i = 0; i < node->GetNDevices(); i++) {
+        Ptr<WifiNetDevice> w = DynamicCast<WifiNetDevice>(node->GetDevice(i));
+        if (w) return w;
+    }
+    return nullptr;
+}
+```
+
+**Helper 2 — `AttackSendDSRCBeacon(sender_node, neighbor_node)`:**
+Creates a real NS-3 `Packet`, attaches a `CustomDataTag1` with the sender's current
+position/velocity from the mobility model, and sends via `WifiNetDevice::Send()` using
+MAC broadcast address and WAVE ethertype `0x88dc` — exactly the same mechanism as the
+baseline `dsrc_data_broadcast()`.
+
+```cpp
+static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node) {
+    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
+    if (!wdi) return;
+    // ... get position/velocity from mobility model ...
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomDataTag1 tag;
+    // ... attach tag with sender ID, neighbour ID, position, velocity ...
+    pkt->AddPacketTag(tag);
+    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);  // real DSRC send
+}
+```
+
+**12 functions modified** (2 DSRC calls added at the end of each):
+
+| Scenario | Function modified |
+|---|---|
+| 1 TTW-S1 | `TTW_SendHelloBeacon()` |
+| 2 TTW-S2 | `TTWS2_VehiclesToRSU()` |
+| 3 TTW-S3 | `TTWS3_ReceiveLegitimateUpdates()` |
+| 4 TTW-S4 | `TTWS4_VehiclesToRSU()` |
+| 5 BSHH-S1 | `BSHH_S1_LegitimateExchange()` |
+| 6 BSHH-S2 | `BSHH_S2_LegitimateExchange()` |
+| 7 BSHH-S3 | `BSHH_S3_LegitimateExchange()` |
+| 8 BSHH-S4 | `BSHH_S4_VehiclesToRSU()` |
+| 9 ME-S1 | `ME_S1_LegitimateDiscovery()` |
+| 10 ME-S2 | `ME_S2_LegitimateDiscovery()` |
+| 11 ME-S3 | `ME_S3_LegitimateDiscovery()` |
+| 12 ME-S4 | `ME_S4_VehiclesViaRSU()` |
+
+**What was NOT changed:** The replay/echo/internal-replay attack injection functions
+(`TTW_ReplayAttack`, `BSHH_S1_ReplayAttack`, `ME_S1_EchoAttack`, etc.) were left as
+direct table writes. These model control-plane forgeries — there is no physical DSRC
+radio event for a timestamp forgery or internal controller table manipulation, so direct
+writes are correct for those steps.
+
+**What changed in the simulation after the fix:**
+- The NS-3 `Rx()` receive callback (line ~121642) now fires when attack beacons arrive
+- `add_neighbor_info()` and `add_received_data_at_nodes()` are called — neighbour tables updated
+- NetAnim XML files now show real packet arrows between vehicles at the HELLO/heartbeat step
+- PEM detection metrics (MCC, AUROC, Tdet) are unaffected — `Rx()` does not touch
+  `ttw_controller_table` or `bshh_controller_liveness_table`
+
+**Commit:** `d81f3d0` — "Add real DSRC 802.11p packet sends to all 12 attack legitimate-exchange steps"
+
+---
+
 *Written by Nimesha Yasith | FYP — Department of EIE, University of Ruhuna | 2026-04-30*
 *Updated 2026-04-30: added --detection_enabled flag, per-scenario XML files, ME-S1/S3 PEM improvements, updated CSV column layouts.*
+*Updated 2026-05-01: added Section 18 — Q&A session documenting custom data tags, DSRC, V2V implementation gap, and fix.*
