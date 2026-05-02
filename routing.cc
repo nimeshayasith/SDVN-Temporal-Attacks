@@ -246,6 +246,42 @@ struct MEEchoReport {
 std::vector<MEEchoReport> me_echo_reports;
 std::ofstream me_log;
 
+// ── Channel delivery analysis (all scenarios; power values differ per scenario) ──
+// Index mapping: 0=Ch172, 1=Ch174, 2=Ch176, 3=Ch178(CCH), 4=Ch180, 5=Ch182, 6=Ch184
+static const double   CHANNEL_POWER_DBM[7] = {23.0, 26.5, 30.0, 33.5, 37.0, 40.5, 44.0};
+static const uint32_t CHANNEL_NUMBERS[7]   = {172,  174,  176,  178,  180,  182,  184};
+static const uint32_t CHANNEL_FREQ_MHZ[7]  = {5860, 5870, 5880, 5890, 5900, 5910, 5920};
+uint64_t channel_tx_count[7]    = {0, 0, 0, 0, 0, 0, 0};
+uint64_t channel_rx_end_count[7] = {0, 0, 0, 0, 0, 0, 0};
+
+// PhyTxBegin trace: fires on transmitter when Phy starts sending. Sig: (Ptr<const Packet>, double txPowerW)
+static void ChannelPhyTxBegin(uint32_t ch_idx, Ptr<const Packet>, double) {
+    channel_tx_count[ch_idx]++;
+}
+// PhyRxEnd trace: fires on receiver when Phy finishes reception attempt. Sig: (Ptr<const Packet>)
+static void ChannelPhyRxEnd(uint32_t ch_idx, Ptr<const Packet>) {
+    channel_rx_end_count[ch_idx]++;
+}
+// Writes channel_delivery_analysis.csv — call at simulation end.
+// avg_fanout = rx_end_count / tx_count: measures how many nodes received each broadcast.
+// Higher power → longer range → more receivers per TX → higher fanout.
+void WriteChannelAnalysisCsv() {
+    std::ofstream f("channel_delivery_analysis.csv");
+    f << "channel_number,frequency_mhz,power_dbm,tx_count,rx_end_count,avg_fanout\n";
+    for (int i = 0; i < 7; i++) {
+        double fanout = (channel_tx_count[i] > 0)
+                        ? (double)channel_rx_end_count[i] / (double)channel_tx_count[i]
+                        : 0.0;
+        f << CHANNEL_NUMBERS[i] << ","
+          << CHANNEL_FREQ_MHZ[i] << ","
+          << CHANNEL_POWER_DBM[i] << ","
+          << channel_tx_count[i] << ","
+          << channel_rx_end_count[i] << ","
+          << fanout << "\n";
+    }
+    f.close();
+}
+
 // Performance evaluation metrics for temporal-echo attack detection.
 static const double PEM_BEACON_BUDGET_MS = 100.0;
 static const double PEM_BEACON_INTERVAL_S = 0.100;
@@ -142080,20 +142116,27 @@ int main(int argc, char *argv[])
   }
   if (mobility_scenario == 1)
   {
-  	Phy.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = non-urban
-  	Phy_172.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_172.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_174.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_174.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_176.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_176.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_180.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_180.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_182.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_182.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_184.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_184.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
+    // Per-channel TX power — linear spread 23.0 to 44.0 dBm, step 3.5 dBm.
+    // Lower channel numbers get less power (shorter range, higher packet loss).
+    // Higher channel numbers get more power (longer range, better delivery).
+    // This deliberate gradient produces distinct per-channel PDR profiles that serve
+    // as feature dimensions for temporal-echo attack detection: a replayed packet
+    // arriving on a channel whose power signature does not match the sender's known
+    // profile is flagged as anomalous.
+    Phy_172.Set("TxPowerStart", DoubleValue(23.0));  // Ch 172  23.0 dBm — shortest reach
+    Phy_172.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_174.Set("TxPowerStart", DoubleValue(26.5));  // Ch 174  26.5 dBm
+    Phy_174.Set("TxPowerEnd",   DoubleValue(26.5));
+    Phy_176.Set("TxPowerStart", DoubleValue(30.0));  // Ch 176  30.0 dBm
+    Phy_176.Set("TxPowerEnd",   DoubleValue(30.0));
+    Phy.Set    ("TxPowerStart", DoubleValue(33.5));  // Ch 178  33.5 dBm — CCH mid-range
+    Phy.Set    ("TxPowerEnd",   DoubleValue(33.5));
+    Phy_180.Set("TxPowerStart", DoubleValue(37.0));  // Ch 180  37.0 dBm
+    Phy_180.Set("TxPowerEnd",   DoubleValue(37.0));
+    Phy_182.Set("TxPowerStart", DoubleValue(40.5));  // Ch 182  40.5 dBm
+    Phy_182.Set("TxPowerEnd",   DoubleValue(40.5));
+    Phy_184.Set("TxPowerStart", DoubleValue(44.0));  // Ch 184  44.0 dBm — longest reach
+    Phy_184.Set("TxPowerEnd",   DoubleValue(44.0));
   }
   if (mobility_scenario == 2)
   {
@@ -142352,7 +142395,32 @@ int main(int argc, char *argv[])
   wifidevices_180 = wifi_180.Install (Phy_180, Mac_180, dsrc_Nodes);
   wifidevices_182 = wifi_182.Install (Phy_182, Mac_182, dsrc_Nodes);
   wifidevices_184 = wifi_184.Install (Phy_184, Mac_184, dsrc_Nodes);
-  
+
+  // Connect per-channel Phy traces for channel_delivery_analysis.csv.
+  // PhyTxBegin fires on the transmitting node when the Phy begins sending.
+  // PhyRxEnd fires on every receiving node when the Phy finishes a reception
+  // attempt (success or error). avg_fanout = rx_end / tx reflects how many nodes
+  // captured each broadcast — higher power = wider reach = larger fanout.
+  {
+    auto connect_ch = [](NetDeviceContainer& devs, uint32_t ci) {
+        for (uint32_t i = 0; i < devs.GetN(); i++) {
+            Ptr<WifiNetDevice> wd = DynamicCast<WifiNetDevice>(devs.Get(i));
+            if (!wd || !wd->GetPhy()) continue;
+            wd->GetPhy()->TraceConnectWithoutContext("PhyTxBegin",
+                MakeBoundCallback(&ChannelPhyTxBegin, ci));
+            wd->GetPhy()->TraceConnectWithoutContext("PhyRxEnd",
+                MakeBoundCallback(&ChannelPhyRxEnd, ci));
+        }
+    };
+    connect_ch(wifidevices_172, 0u); // Ch 172  23.0 dBm
+    connect_ch(wifidevices_174, 1u); // Ch 174  26.5 dBm
+    connect_ch(wifidevices_176, 2u); // Ch 176  30.0 dBm
+    connect_ch(wifidevices,     3u); // Ch 178  33.5 dBm  CCH
+    connect_ch(wifidevices_180, 4u); // Ch 180  37.0 dBm
+    connect_ch(wifidevices_182, 5u); // Ch 182  40.5 dBm
+    connect_ch(wifidevices_184, 6u); // Ch 184  44.0 dBm
+  }
+
   NetDeviceContainer enbdevices;
   NetDeviceContainer uedevices;
   NodeContainer LTE_Nodes;
@@ -143832,6 +143900,7 @@ int main(int argc, char *argv[])
   // ===========================================================================
 
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
+  Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
   Simulator::Destroy();
