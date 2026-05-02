@@ -246,6 +246,42 @@ struct MEEchoReport {
 std::vector<MEEchoReport> me_echo_reports;
 std::ofstream me_log;
 
+// ── Channel delivery analysis (all scenarios; power values differ per scenario) ──
+// Index mapping: 0=Ch172, 1=Ch174, 2=Ch176, 3=Ch178(CCH), 4=Ch180, 5=Ch182, 6=Ch184
+static const double   CHANNEL_POWER_DBM[7] = {23.0, 26.5, 30.0, 33.5, 37.0, 40.5, 44.0};
+static const uint32_t CHANNEL_NUMBERS[7]   = {172,  174,  176,  178,  180,  182,  184};
+static const uint32_t CHANNEL_FREQ_MHZ[7]  = {5860, 5870, 5880, 5890, 5900, 5910, 5920};
+uint64_t channel_tx_count[7]    = {0, 0, 0, 0, 0, 0, 0};
+uint64_t channel_rx_end_count[7] = {0, 0, 0, 0, 0, 0, 0};
+
+// PhyTxBegin trace: fires on transmitter when Phy starts sending. Sig: (Ptr<const Packet>, double txPowerW)
+static void ChannelPhyTxBegin(uint32_t ch_idx, Ptr<const Packet>, double) {
+    channel_tx_count[ch_idx]++;
+}
+// PhyRxEnd trace: fires on receiver when Phy finishes reception attempt. Sig: (Ptr<const Packet>)
+static void ChannelPhyRxEnd(uint32_t ch_idx, Ptr<const Packet>) {
+    channel_rx_end_count[ch_idx]++;
+}
+// Writes channel_delivery_analysis.csv — call at simulation end.
+// avg_fanout = rx_end_count / tx_count: measures how many nodes received each broadcast.
+// Higher power → longer range → more receivers per TX → higher fanout.
+void WriteChannelAnalysisCsv() {
+    std::ofstream f("channel_delivery_analysis.csv");
+    f << "channel_number,frequency_mhz,power_dbm,tx_count,rx_end_count,avg_fanout\n";
+    for (int i = 0; i < 7; i++) {
+        double fanout = (channel_tx_count[i] > 0)
+                        ? (double)channel_rx_end_count[i] / (double)channel_tx_count[i]
+                        : 0.0;
+        f << CHANNEL_NUMBERS[i] << ","
+          << CHANNEL_FREQ_MHZ[i] << ","
+          << CHANNEL_POWER_DBM[i] << ","
+          << channel_tx_count[i] << ","
+          << channel_rx_end_count[i] << ","
+          << fanout << "\n";
+    }
+    f.close();
+}
+
 // Performance evaluation metrics for temporal-echo attack detection.
 static const double PEM_BEACON_BUDGET_MS = 100.0;
 static const double PEM_BEACON_INTERVAL_S = 0.100;
@@ -1097,6 +1133,140 @@ PemEmitVehicleHeartbeat(uint32_t senderId,
  
 
 // =============================================================================
+// CustomHeartbeatTag — real NS-3 Tag for BSHH liveness heartbeat packets
+// Carries: claimed_sender_id (whose liveness), timestamp, is_replayed flag.
+// Serialized size = 4 + 8 + 1 = 13 bytes (compile-time constant).
+// =============================================================================
+
+class CustomHeartbeatTag : public Tag {
+public:
+    static TypeId GetTypeId(void);
+    virtual TypeId GetInstanceTypeId(void) const;
+    virtual uint32_t GetSerializedSize(void) const { return 13; }
+    virtual void Serialize(TagBuffer i) const {
+        i.WriteU32(m_claimedSenderId);
+        i.WriteDouble(m_timestamp);
+        i.WriteU8(m_isReplayed ? 1 : 0);
+    }
+    virtual void Deserialize(TagBuffer i) {
+        m_claimedSenderId = i.ReadU32();
+        m_timestamp       = i.ReadDouble();
+        m_isReplayed      = (i.ReadU8() != 0);
+    }
+    virtual void Print(std::ostream &os) const {
+        os << "HB claimed=" << m_claimedSenderId
+           << " t=" << m_timestamp
+           << " replayed=" << m_isReplayed;
+    }
+    uint32_t GetClaimedSenderId() const { return m_claimedSenderId; }
+    double   GetTimestamp()       const { return m_timestamp; }
+    bool     GetIsReplayed()      const { return m_isReplayed; }
+    void SetClaimedSenderId(uint32_t id) { m_claimedSenderId = id; }
+    void SetTimestamp(double t)          { m_timestamp = t; }
+    void SetIsReplayed(bool r)           { m_isReplayed = r; }
+    CustomHeartbeatTag() : m_claimedSenderId(0), m_timestamp(0.0), m_isReplayed(false) {}
+private:
+    uint32_t m_claimedSenderId;
+    double   m_timestamp;
+    bool     m_isReplayed;
+};
+NS_OBJECT_ENSURE_REGISTERED(CustomHeartbeatTag);
+TypeId CustomHeartbeatTag::GetTypeId(void) {
+    static TypeId tid = TypeId("ns3::CustomHeartbeatTag")
+        .SetParent<Tag>()
+        .AddConstructor<CustomHeartbeatTag>();
+    return tid;
+}
+TypeId CustomHeartbeatTag::GetInstanceTypeId(void) const {
+    return CustomHeartbeatTag::GetTypeId();
+}
+
+// =============================================================================
+// DSRC PACKET HELPERS — shared by all attack scenario "legitimate exchange" steps
+// =============================================================================
+
+static Ptr<WifiNetDevice> AttackGetDSRCDevice(Ptr<Node> node)
+{
+    for (uint32_t i = 0; i < node->GetNDevices(); i++) {
+        Ptr<WifiNetDevice> w = DynamicCast<WifiNetDevice>(node->GetDevice(i));
+        if (w) return w;
+    }
+    return nullptr;
+}
+
+static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
+{
+    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
+    if (!wdi) return;
+    Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
+    Vector pos = mob ? mob->GetPosition() : Vector(0,0,0);
+    Vector vel = mob ? mob->GetVelocity()  : Vector(0,0,0);
+    Vector acc(0,0,0);
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomDataTag1 tag;
+    uint32_t nid_arr[max1+1] = {};
+    nid_arr[0] = neighbor_node->GetId();
+    tag.SetNodeId(sender_node->GetId());
+    tag.SetNeighborids(nid_arr);
+    tag.SetPosition(pos);
+    tag.SetVelocity(vel);
+    tag.SetAcceleration(acc);
+    tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+}
+
+// =============================================================================
+// CSMA PACKET HELPER — RSU → Controller real UDP send over CSMA Ethernet
+// =============================================================================
+
+static Ipv4Address AttackGetControllerIP()
+{
+    Ptr<Ipv4> ipv4 = controller_Node.Get(0)->GetObject<Ipv4>();
+    if (!ipv4) return Ipv4Address("127.0.0.1");
+    uint32_t iface_idx = (N_Vehicles > 0) ? 1 : 0;
+    if (iface_idx >= ipv4->GetNInterfaces()) iface_idx = ipv4->GetNInterfaces() - 1;
+    return ipv4->GetAddress(iface_idx, 0).GetLocal();
+}
+
+static void AttackSendRSUToController(uint32_t rsu_index)
+{
+    if (rsu_index >= RSU_Nodes.GetN()) return;
+    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
+    Ptr<SimpleUdpApplication> udp_app =
+        DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
+    if (!udp_app) return;
+    Ipv4Address dest_ip = AttackGetControllerIP();
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomMetaDataUnicastTag0 tag;
+    tag.SetNodeId(rsu_node->GetId());
+    tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+                        udp_app, pkt, dest_ip, (uint16_t)7777);
+}
+
+// Sends a real DSRC 802.11p heartbeat broadcast from physical_sender_node.
+// claimed_sender_id = whose liveness is claimed (differs from sender in replay attacks).
+// hb_timestamp = timestamp inside the heartbeat (old value for replays).
+// is_replayed = true for BSHH attack forged packets.
+static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
+                                uint32_t claimed_sender_id,
+                                double hb_timestamp,
+                                bool is_replayed)
+{
+    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(physical_sender_node);
+    if (!wdi) return;
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomHeartbeatTag tag;
+    tag.SetClaimedSenderId(claimed_sender_id);
+    tag.SetTimestamp(hb_timestamp);
+    tag.SetIsReplayed(is_replayed);
+    pkt->AddPacketTag(tag);
+    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+}
+
+// =============================================================================
 // TTW ATTACK FUNCTIONS — paste these before main()
 // (Exact same functions from ttw_attack_s4_implementation.cc)
 // =============================================================================
@@ -1139,12 +1309,14 @@ void TTW_SendHelloBeacon(Ptr<Node> sender, Ptr<Node> receiver)
                 << "  dist=" << dist << "m"
                 << (ok ? "  DELIVERED" : "  OUT-OF-RANGE"));
 
-    ttw_log << "[t=" << now << "]  STEP ①  HELLO\n"
+    ttw_log << "[t=" << now << "]  STEP ①  HELLO  (real DSRC 802.11p packet)\n"
             << "  V" << sender->GetId()   << " pos=(" << ps.x << "," << ps.y << ")\n"
             << "  V" << receiver->GetId() << " pos=(" << pr.x << "," << pr.y << ")\n"
             << "  dist=" << dist << "m  "
             << (ok ? "DELIVERED — neighbor discovered\n\n"
                    : "DROPPED   — out of range\n\n");
+    AttackSendDSRCBeacon(sender, receiver);
+    AttackSendDSRCBeacon(receiver, sender);
 }
 
 // ── STEP 2: Legitimate topology update ───────────────────────────────────────
@@ -1436,6 +1608,10 @@ void TTWS2_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1448,6 +1624,7 @@ void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
               << "  Result : ACCEPTED (legitimate aggregate)\n\n";
     NS_LOG_INFO("[TTW-S2] t=" << now << "s  RSU_" << rsu_id
                 << " forwarded aggregate to controller");
+    AttackSendRSUToController(rsu_id);
 }
 
 void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1585,6 +1762,10 @@ void TTWS3_ReceiveLegitimateUpdates(uint32_t v1_id, uint32_t v2_id, double obs_t
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1716,6 +1897,11 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
                  v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    AttackSendRSUToController(rsu_id);
 }
 
 void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
@@ -1802,6 +1988,12 @@ void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
+    }
 }
 
 void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
@@ -1839,6 +2031,9 @@ void BSHH_S1_ReplayAttack(uint32_t attacker_id, uint32_t victim_id, double store
     NS_LOG_INFO("[BSHH-S1] t=" << now << "s  V" << attacker_id
                 << " replayed old HB claiming V" << victim_id);
     PemEmitHeartbeatEvent(attacker_id, victim_id, stored_time, true);
+    if (attacker_id < Vehicle_Nodes.GetN()) {
+        AttackSendHeartbeat(Vehicle_Nodes.Get(attacker_id), victim_id, stored_time, true);
+    }
 }
 
 // =============================================================================
@@ -1873,6 +2068,13 @@ void BSHH_S2_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
              << ", t=" << t << ")  ACCEPTED\n\n";
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
+    }
+    AttackSendRSUToController(rsu_id);
 }
 
 void BSHH_S2_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
@@ -1909,6 +2111,10 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     NS_LOG_INFO("[BSHH-S2] t=" << now << "s  RSU_" << rsu_id
                 << " replayed old HB claiming V" << victim_id);
     PemEmitHeartbeatEvent(rsu_id, victim_id, stored_time, true);
+    AttackSendRSUToController(rsu_id);
+    if (rsu_id < RSU_Nodes.GetN()) {
+        AttackSendHeartbeat(RSU_Nodes.Get(rsu_id), victim_id, stored_time, true);
+    }
 }
 
 // =============================================================================
@@ -1944,6 +2150,12 @@ void BSHH_S3_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
+    }
 }
 
 void BSHH_S3_StoreOldHeartbeats(uint32_t v1_id, uint32_t v2_id, double stored_time)
@@ -2017,6 +2229,13 @@ void BSHH_S4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doub
              << "  Heartbeat(V" << v2_id << ", t=" << t << ")  ACCEPTED\n\n";
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
+        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
+    }
+    AttackSendRSUToController(rsu_id);
 }
 
 void BSHH_S4_StoreOldHeartbeats(uint32_t v1_id, uint32_t v2_id, double stored_time)
@@ -2100,6 +2319,10 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, double t)
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
@@ -2201,6 +2424,11 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, 
                  v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    AttackSendRSUToController(rsu_id);
 }
 
 void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
@@ -2241,6 +2469,7 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
                  v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v4, rsu_id,
                  v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
+    AttackSendRSUToController(rsu_id);
 }
 
 // =============================================================================
@@ -2288,6 +2517,10 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, d
                  v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
 }
 
 void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
@@ -2374,6 +2607,11 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doubl
                  v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    AttackSendRSUToController(rsu_id);
 }
 
 void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
@@ -122030,14 +122268,23 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 	CustomMetaDataBroadcastTag tag2;
 	if(pkt->PeekPacketTag(tag2))
 	{
-		
+
 		 //int combined_cost = 2 + (Now().GetMilliSeconds()-tag2.GetTimestamp().GetMilliSeconds());
 		 //add_neighbor_info(neighbordata_inst+destination_node_id,tag2.GetNodeId(), combined_cost);
 		 add_neighbor_info(neighbordata_inst+destination_node_id,tag2.GetNodeId()); //add current neighbor information
 		 refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
-		 uint32_t ns = getNeighborsize(neighbordata_inst+destination_node_id);	
+		 uint32_t ns = getNeighborsize(neighbordata_inst+destination_node_id);
 		 cout<<"received metadata broadcasted to"<<destination_node_id <<"neighbor size"<<ns<<endl;
 		std::cout << "Current neighbor size is "<<ns<<"Received packet from "<< tag2.GetNodeId()<<"to node "<<context[10]<<context[11] <<"of size "<<tag2.GetSerializedSize()<<"packet timestamp "<< tag2.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag2.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+	}
+
+	CustomHeartbeatTag hb_tag;
+	if (pkt->PeekPacketTag(hb_tag)) {
+		uint32_t claimed_id = hb_tag.GetClaimedSenderId();
+		double   hb_time    = hb_tag.GetTimestamp();
+		bool     replayed   = hb_tag.GetIsReplayed();
+		HeartbeatPacket hb  = {claimed_id, (uint32_t)destination_node_id, hb_time, replayed};
+		bshh_controller_liveness_table[claimed_id] = hb;
 	}
 }
 
@@ -122944,31 +123191,42 @@ void dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_inde
 void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_index)
 {
 	routing_time = false;
-	//uint32_t nid = node->GetId();
 	Mac48Address dest = Mac48Address::GetBroadcast();
-  	uint16_t protocolwave = 0x88dc;//ethertype for WAVE is set here.
-	Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (nd);
-	Ptr <Node> ni = DynamicCast <Node> (node);
+	uint16_t protocolwave = 0x88dc;
+	Ptr<Node> ni = DynamicCast<Node>(node);
 	CustomDataTag tag;
 	uint32_t nid = uint32_t(ni->GetId());
 	packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
-	cout<<"DSRC data Broadcasting from node "<<nid<<endl;
-	Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node->GetObject<MobilityModel>());
-	Vector posi = mdl->GetPosition();
+	cout << "DSRC data Broadcasting from node " << nid << " on all 7 channels" << endl;
+	Ptr<ConstantVelocityMobilityModel> mdl =
+		DynamicCast<ConstantVelocityMobilityModel>(node->GetObject<MobilityModel>());
+	Vector posi             = mdl->GetPosition();
 	Vector current_velocity = mdl->GetVelocity();
-	double delta_t = data_transmission_period;
-	Vector acceleration = calculate_acceleration(previous_velocity_dsrc[node_index],current_velocity,delta_t);
+	Vector acceleration     = calculate_acceleration(previous_velocity_dsrc[node_index],
+	                                                 current_velocity, data_transmission_period);
 	Time ti = Seconds(Simulator::Now().GetSeconds());
-	Ptr <Packet> packet_i = Create<Packet> (0);
 	tag.SetNodeId(nid);
 	tag.SetPosition(posi);
 	tag.SetVelocity(current_velocity);
 	tag.SetAcceleration(acceleration);
 	tag.SetTimestamp(ti);
-	packet_i->AddPacketTag(tag);
-	dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
-	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);	
-	cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+
+	// Broadcast on all 7 DSRC channels — each gets its own packet instance
+	NetDeviceContainer* ch_devs[7] = {
+		&wifidevices_172, &wifidevices_174, &wifidevices_176,
+		&wifidevices,     // Ch178 CCH
+		&wifidevices_180, &wifidevices_182, &wifidevices_184
+	};
+	for (int c = 0; c < 7; c++) {
+		if (node_index >= ch_devs[c]->GetN()) continue;
+		Ptr<WifiNetDevice> wdi = DynamicCast<WifiNetDevice>(ch_devs[c]->Get(node_index));
+		if (!wdi) continue;
+		Ptr<Packet> pkt = Create<Packet>(0);
+		pkt->AddPacketTag(tag);
+		dsrc_total_packet_size += pkt->GetSerializedSize();
+		Simulator::Schedule(Seconds(0), &WifiNetDevice::Send, wdi, pkt, dest, protocolwave);
+	}
+	cout << "dsrc total size is " << dsrc_total_packet_size << endl;
 	previous_velocity_dsrc[node_index] = current_velocity;
 }
 
@@ -124717,7 +124975,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		
 		Ptr <Ipv4> ipv4;  	
 	  	ipv4 = destination_node->GetObject<Ipv4>();
-		Ipv4InterfaceAddress iaddr = ipv4->GetAddress(2,0);//2nd IPv4 interface,0th address index
+		Ipv4InterfaceAddress iaddr = ipv4->GetAddress((N_Vehicles > 0 ? 1 : 0), 0);//CSMA interface of controller_Node
 		Ipv4Address dest_ip = iaddr.GetLocal();
 		Ptr <Packet> packet1 = Create <Packet> (0);
 		
@@ -141848,20 +142106,27 @@ int main(int argc, char *argv[])
   }
   if (mobility_scenario == 1)
   {
-  	Phy.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = non-urban
-  	Phy_172.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_172.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_174.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_174.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_176.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_176.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_180.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_180.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_182.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_182.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_184.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_184.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
+    // Per-channel TX power — linear spread 23.0 to 44.0 dBm, step 3.5 dBm.
+    // Lower channel numbers get less power (shorter range, higher packet loss).
+    // Higher channel numbers get more power (longer range, better delivery).
+    // This deliberate gradient produces distinct per-channel PDR profiles that serve
+    // as feature dimensions for temporal-echo attack detection: a replayed packet
+    // arriving on a channel whose power signature does not match the sender's known
+    // profile is flagged as anomalous.
+    Phy_172.Set("TxPowerStart", DoubleValue(23.0));  // Ch 172  23.0 dBm — shortest reach
+    Phy_172.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_174.Set("TxPowerStart", DoubleValue(26.5));  // Ch 174  26.5 dBm
+    Phy_174.Set("TxPowerEnd",   DoubleValue(26.5));
+    Phy_176.Set("TxPowerStart", DoubleValue(30.0));  // Ch 176  30.0 dBm
+    Phy_176.Set("TxPowerEnd",   DoubleValue(30.0));
+    Phy.Set    ("TxPowerStart", DoubleValue(33.5));  // Ch 178  33.5 dBm — CCH mid-range
+    Phy.Set    ("TxPowerEnd",   DoubleValue(33.5));
+    Phy_180.Set("TxPowerStart", DoubleValue(37.0));  // Ch 180  37.0 dBm
+    Phy_180.Set("TxPowerEnd",   DoubleValue(37.0));
+    Phy_182.Set("TxPowerStart", DoubleValue(40.5));  // Ch 182  40.5 dBm
+    Phy_182.Set("TxPowerEnd",   DoubleValue(40.5));
+    Phy_184.Set("TxPowerStart", DoubleValue(44.0));  // Ch 184  44.0 dBm — longest reach
+    Phy_184.Set("TxPowerEnd",   DoubleValue(44.0));
   }
   if (mobility_scenario == 2)
   {
@@ -142120,7 +142385,32 @@ int main(int argc, char *argv[])
   wifidevices_180 = wifi_180.Install (Phy_180, Mac_180, dsrc_Nodes);
   wifidevices_182 = wifi_182.Install (Phy_182, Mac_182, dsrc_Nodes);
   wifidevices_184 = wifi_184.Install (Phy_184, Mac_184, dsrc_Nodes);
-  
+
+  // Connect per-channel Phy traces for channel_delivery_analysis.csv.
+  // PhyTxBegin fires on the transmitting node when the Phy begins sending.
+  // PhyRxEnd fires on every receiving node when the Phy finishes a reception
+  // attempt (success or error). avg_fanout = rx_end / tx reflects how many nodes
+  // captured each broadcast — higher power = wider reach = larger fanout.
+  {
+    auto connect_ch = [](NetDeviceContainer& devs, uint32_t ci) {
+        for (uint32_t i = 0; i < devs.GetN(); i++) {
+            Ptr<WifiNetDevice> wd = DynamicCast<WifiNetDevice>(devs.Get(i));
+            if (!wd || !wd->GetPhy()) continue;
+            wd->GetPhy()->TraceConnectWithoutContext("PhyTxBegin",
+                MakeBoundCallback(&ChannelPhyTxBegin, ci));
+            wd->GetPhy()->TraceConnectWithoutContext("PhyRxEnd",
+                MakeBoundCallback(&ChannelPhyRxEnd, ci));
+        }
+    };
+    connect_ch(wifidevices_172, 0u); // Ch 172  23.0 dBm
+    connect_ch(wifidevices_174, 1u); // Ch 174  26.5 dBm
+    connect_ch(wifidevices_176, 2u); // Ch 176  30.0 dBm
+    connect_ch(wifidevices,     3u); // Ch 178  33.5 dBm  CCH
+    connect_ch(wifidevices_180, 4u); // Ch 180  37.0 dBm
+    connect_ch(wifidevices_182, 5u); // Ch 182  40.5 dBm
+    connect_ch(wifidevices_184, 6u); // Ch 184  44.0 dBm
+  }
+
   NetDeviceContainer enbdevices;
   NetDeviceContainer uedevices;
   NodeContainer LTE_Nodes;
@@ -142279,8 +142569,7 @@ int main(int argc, char *argv[])
 	  //{
 	  	//if (experiment_number != 5)
 	  	//{
-	  		/*
-	  		//DSRC nodes data broadcast 
+	  		//DSRC nodes data broadcast -- all 7 channels via centralized_dsrc_data_broadcast
 			for (double t=0.970; t<simTime-1; t=t+data_transmission_period)//All official data transmissions begin at t=0
 			{	
 				  //Go over all the wifi devices
@@ -142290,7 +142579,6 @@ int main(int argc, char *argv[])
 				  }
 				  Simulator::Schedule (Seconds (t), set_dsrc_initial_timestamp);
 			}
-			*/
 			if (attack_scenario == 0)
 			{
 		  	//DSRC flow instantiation
@@ -142484,7 +142772,7 @@ int main(int argc, char *argv[])
 					  for (uint32_t u=0; u<Vehicle_Nodes.GetN(); u++)
 					  {
 					  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (apps.Get(u+2));
-						Simulator::Schedule(Seconds(t+0.000025*u),send_LTE_routing_data_alone,udp_app,Vehicle_Nodes.Get(u),management_Node.Get(0), u);
+						Simulator::Schedule(Seconds(t+0.000025*u),send_LTE_data_agent,udp_app,Vehicle_Nodes.Get(u),controller_Node.Get(0), u);
 					  }
 					  //calculate the routing solution
 					  //unicast the solution back to nodes
@@ -142545,7 +142833,7 @@ int main(int argc, char *argv[])
 					  {
 					  	Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(u));	
 					  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(u));
-						Simulator::Schedule(Seconds(t+0.000050*u),RSU_routing_statusdataunicast_alone, udp_app, nu, management_Node.Get(0));
+						Simulator::Schedule(Seconds(t+0.000050*u),RSU_dataunicast_agent, udp_app, nu, controller_Node.Get(0));
 						if (u == (RSU_Nodes.GetN() - 1))
 						{
 							Simulator::Schedule(Seconds(t+0.000060*u),RSU_flowdata_unicast_alone, udp_app, nu, management_Node.Get(0));
@@ -143600,6 +143888,7 @@ int main(int argc, char *argv[])
   // ===========================================================================
 
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
+  Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
   Simulator::Destroy();
