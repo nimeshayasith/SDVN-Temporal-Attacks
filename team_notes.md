@@ -2586,75 +2586,48 @@ updated via `CustomDeltavaluesDownlinkUnicastTag` messages from the controller.
 
 ### `send_LTE_data_agent` (line 124900)
 
-**Purpose:** A selected **vehicle** agent aggregates all local topology knowledge it
-has accumulated (from received beacons) and uploads the full snapshot to the
-`management_Node` via LTE/UDP on port 7777.
+**Purpose:** Selected **vehicle** agent uploads full topology snapshot to `controller_Node` via LTE/UDP port 7777.
 
 **Signature:**
 ```cpp
 void send_LTE_data_agent(Ptr<SimpleUdpApplication> udp_app,
                           Ptr<Node> node_source,
-                          Ptr<Node> destination_node,   // always management_Node
+                          Ptr<Node> destination_node,   // controller_Node
                           uint32_t node_index)
 ```
 
-**What it does step by step:**
+**Steps:**
+1. Guard: `if (X_nodes[nid] == 1)`
+2. Gets position, velocity, acceleration from mobility model
+3. Calls `add_received_data_at_nodes()` → adds self to `data_at_nodes_inst`
+4. Extracts full topology from `data_at_nodes_inst[nid]` — all observed neighbours
+5. Packs into `CustomMetaDataUnicastTagN01x` (switch on neighbour count 1..max)
+6. Sends: `udp_app->SendPacket(packet1, controller_IP, 7777)`
 
-1. **Guard check:** `if (X_nodes[nid] == 1)` — only proceeds if this node is selected
-2. **Collect own state:** gets position, velocity, acceleration from mobility model
-3. **Add self to topology:** calls `add_received_data_at_nodes()` to include the node's
-   own entry in `data_at_nodes_inst`
-4. **Extract all known topology:** reads the full `data_at_nodes_inst[nid]` — every node
-   this vehicle has ever observed via DSRC beacons, including their positions, velocities,
-   accelerations, timestamps, and neighbour sets
-5. **Pack into tag:** selects a `CustomMetaDataUnicastTagN01x` tag variant based on the
-   neighbour count of each observed node (switch statement — N011 for 1 neighbour,
-   N012 for 2, ... N01max for maximum). Each tag entry carries: node ID + full
-   neighbour ID list
-6. **Send via LTE uplink:** `udp_app->SendPacket(packet1, management_node_IP, 7777)`
+**Destination IP (line 124999):** `ipv4->GetAddress((N_Vehicles > 0 ? 1 : 0), 0)` — controller's CSMA interface.
 
-**Scheduled by:** `begin_sending_LTE_data_agent()` — iterates all vehicles where
-`X_nodes[i] == 1`, staggered by 25 µs per agent:
-```cpp
-Simulator::Schedule(Seconds(0.000025*count), send_LTE_data_agent,
-                    udp_app, Vehicle_Nodes.Get(u-2), management_Node.Get(0), u-2);
-```
+> **Changed from:** `GetAddress(2,0)` (management_Node LTE interface — wrong for controller_Node which has no LTE).
 
-**Destination IP:** `management_Node`'s LTE interface — `ipv4->GetAddress(2,0)` (LTE
-is the 3rd interface on the management node, index 2).
+**Scheduled from main() (line 142796):** replaced `send_LTE_routing_data_alone` — old function (line 124369) sent only basic routing metrics. New function sends full topology snapshot.
 
 ---
 
 ### `RSU_dataunicast_agent` (line 132992)
 
-**Purpose:** Same as `send_LTE_data_agent` but the sender is an **RSU** and the
-transport is **CSMA Ethernet** (not LTE).
+**Purpose:** Same as `send_LTE_data_agent` but sender is an **RSU** over CSMA Ethernet.
 
 **Signature:**
 ```cpp
 void RSU_dataunicast_agent(Ptr<SimpleUdpApplication> udp_app,
-                            Ptr<Node> source_node,        // an RSU node
-                            Ptr<Node> destination_node)   // always management_Node
+                            Ptr<Node> source_node,
+                            Ptr<Node> destination_node)   // controller_Node
 ```
 
-**What it does:** Identical logic to `send_LTE_data_agent`:
-1. Guard: `X_nodes[nid] == 1`
-2. Collect RSU position/velocity/acceleration
-3. Add RSU self-entry to `data_at_nodes_inst`
-4. Extract full topology snapshot
-5. Pack into `CustomMetaDataUnicastTagN01x` tags (same switch logic)
-6. Send via CSMA Ethernet: `udp_app->SendPacket(packet1, dest_ip, 7777)`
+**Same steps as vehicle version.** Key differences:
+- Transport: CSMA Ethernet (not LTE)
+- Dest IP: `GetAddress(1,0)` when `N_Vehicles > 0`, else `GetAddress(0,0)` — already correct for `controller_Node` ✅
 
-**Key difference from vehicle version:**
-- No LTE — uses wired Ethernet path
-- Destination IP: `ipv4->GetAddress(1,0)` when `N_Vehicles > 0`, else `GetAddress(0,0)`
-  (management node's CSMA interface index depends on whether vehicle LTE is configured)
-
-**Scheduled by:** `begin_sending_RSU_data_agent()` — same pattern, staggered 50 µs:
-```cpp
-Simulator::Schedule(Seconds(0.000050*count), RSU_dataunicast_agent,
-                    udp_app, nu, management_Node.Get(0));
-```
+**Scheduled from main() (line 142857):** replaced `RSU_routing_statusdataunicast_alone` + `management_Node` → `RSU_dataunicast_agent` + `controller_Node`.
 
 ---
 
@@ -2662,21 +2635,21 @@ Simulator::Schedule(Seconds(0.000050*count), RSU_dataunicast_agent,
 
 | Aspect | `send_LTE_data_agent` | `RSU_dataunicast_agent` |
 |---|---|---|
-| Sender | Vehicle node | RSU node |
-| Transport | LTE uplink (UDP) | CSMA Ethernet (UDP) |
-| Destination | `management_Node` | `management_Node` |
-| Dest IP interface | `GetAddress(2,0)` (LTE) | `GetAddress(1,0)` (CSMA) |
-| Stagger | 25 µs per agent | 50 µs per agent |
-| Tag family | `CustomMetaDataUnicastTagN01x` | `CustomMetaDataUnicastTagN01x` |
+| Sender | Vehicle | RSU |
+| Transport | LTE UDP | CSMA Ethernet UDP |
+| Destination | `controller_Node` | `controller_Node` |
+| Dest IP | `GetAddress((N_Vehicles>0?1:0), 0)` | `GetAddress(1,0)` |
+| Stagger | 25 µs/agent | 50 µs/agent |
+| Tag family | `CustomMetaDataUnicastTagN01x` | Same |
 | Selection gate | `X_nodes[nid] == 1` | `X_nodes[nid] == 1` |
-| Payload | Full `data_at_nodes_inst` snapshot | Full `data_at_nodes_inst` snapshot |
+| Active | ✅ All runs | ✅ When N_RSUs > 0 |
 
----
+### Old vs New Scheduling (main())
 
-### What the management server does with this data
-
-`management_Node`'s `HandleReadOne()` receives the `CustomMetaDataUnicastTagN01x`
-tags and can rebuild the full network topology from the aggregated agent uploads.
+| Line | Old function | New function | Old destination | New destination |
+|---|---|---|---|---|
+| 142796 | `send_LTE_routing_data_alone` | `send_LTE_data_agent` | `management_Node` | `controller_Node` |
+| 142857 | `RSU_routing_statusdataunicast_alone` | `RSU_dataunicast_agent` | `management_Node` | `controller_Node` |
 This topology snapshot feeds the centralized RL/optimization algorithm that computes
 new routing decisions and sends `delta` values back down to nodes.
 
