@@ -29,6 +29,9 @@
 17. [Two-Layer Architecture: Radio Tags vs Controller Structs](#17-two-layer-architecture-radio-tags-vs-controller-structs)
 18. [Vehicle Mobility and SUMO Trace Files](#18-vehicle-mobility-and-sumo-trace-files)
 19. [Full Communication Stack Reference](#19-full-communication-stack-reference)
+20. [Data Transmission Functions Reference](#20-data-transmission-functions-reference)
+21. [SimpleUdpApplication — How It Works](#21-simpleudpapplication--how-it-works)
+22. [Node Roles and Architecture Modes](#22-node-roles-and-architecture-modes)
 
 ---
 
@@ -1099,6 +1102,7 @@ Step 10 — Commit and move to next variant
 | `me_s1_attack_log.txt` | ME-S1 run | (name this yourself) |
 | `pem_event_log.csv` | Every run | sim_time, event_type, triggered_signatures, score, alert_raised, phase |
 | `pem_run_summary.csv` | End of every run | tp, tn, fp, fn, mcc, auroc, tdet_ms, pdr pcts, te2e ms |
+| `channel_delivery_analysis.csv` | End of every run | channel_number, frequency_mhz, power_dbm, tx_count, rx_end_count, avg_fanout |
 | `routing-animation.xml` | Every run | NetAnim visualization |
 | `optimization_link_lifetime_data.csv` | Routing runs | Link lifetime data for ML optimization |
 
@@ -1297,17 +1301,64 @@ DSRC is used for:
 
 The DSRC spectrum is divided into 7 channels, each 10 MHz wide:
 
-| Channel | Frequency | Type | Purpose |
-|---------|-----------|------|---------|
-| **172** | 5.860 GHz | SCH | Service Channel — application data |
-| **174** | 5.870 GHz | SCH | Service Channel |
-| **176** | 5.880 GHz | SCH | Service Channel |
-| **178** | 5.890 GHz | **CCH** | **Control Channel — safety beacons, service ads** |
-| **180** | 5.900 GHz | SCH | Service Channel |
-| **182** | 5.910 GHz | SCH | Service Channel |
-| **184** | 5.920 GHz | SCH | Service Channel |
+| Channel | Frequency | Type | TX Power (mobility_scenario=1) | Purpose |
+|---------|-----------|------|-------------------------------|---------|
+| **172** | 5.860 GHz | SCH | **23.0 dBm** (shortest reach) | Service Channel — application data |
+| **174** | 5.870 GHz | SCH | **26.5 dBm** | Service Channel |
+| **176** | 5.880 GHz | SCH | **30.0 dBm** | Service Channel |
+| **178** | 5.890 GHz | **CCH** | **33.5 dBm** (mid-range) | **Control Channel — safety beacons, heartbeats** |
+| **180** | 5.900 GHz | SCH | **37.0 dBm** | Service Channel |
+| **182** | 5.910 GHz | SCH | **40.5 dBm** | Service Channel |
+| **184** | 5.920 GHz | SCH | **44.0 dBm** (longest reach) | Service Channel |
 
 Channel 178 is the **CCH (Control Channel)** — all safety-critical messages (beacons, heartbeats) go here. The other six are **SCH (Service Channels)** for application-level data.
+
+**Power in other scenarios:** Urban (mobility_scenario=0) uses 41 dBm on all channels. Highway (mobility_scenario=2) uses 44 dBm on all channels. Only `mobility_scenario=1` (rural/non-urban) assigns the per-channel gradient above.
+
+### Why Different Powers per Channel (mobility_scenario = 1)
+
+The 23–44 dBm gradient is intentional, not random:
+
+- **Lower power (23 dBm on Ch 172)** → shorter effective range (~150–200 m) → some broadcasts reach only nearby nodes → **packet delivery ratio drops**
+- **Higher power (44 dBm on Ch 184)** → longer effective range (~450–500 m) → broadcasts reach most nodes in area → **packet delivery ratio rises**
+
+This creates a measurable **per-channel PDR gradient** across the 7 channels. Under normal operation, each channel's delivery ratio follows this gradient predictably. When an attacker replays old packets:
+
+- A replayed packet will arrive on a channel whose power profile does **not** match the attacker node's known transmission profile at that distance
+- The attacker may transmit on the wrong channel or with wrong fanout statistics
+- PEM uses this per-channel delivery anomaly as an additional attack detection feature
+
+### Channel Analysis Output File
+
+`channel_delivery_analysis.csv` is written at the end of every simulation run. Columns:
+
+| Column | Meaning |
+|--------|---------|
+| `channel_number` | DSRC channel (172–184) |
+| `frequency_mhz` | Center frequency (5860–5920 MHz) |
+| `power_dbm` | TX power configured for mobility_scenario=1 |
+| `tx_count` | Total PhyTxBegin events on this channel (packets transmitted) |
+| `rx_end_count` | Total PhyRxEnd events on this channel (reception attempts) |
+| `avg_fanout` | rx_end_count / tx_count — how many nodes received each broadcast on average |
+
+**Interpreting avg_fanout:**
+- `avg_fanout` close to 1.0 → only 1 node received each broadcast (very low power, short range)
+- `avg_fanout` equal to `N_Vehicles - 1` → every vehicle received every broadcast (max range)
+- Under attack: fanout spikes on specific channels when the attacker echoes packets to extra nodes
+
+**How to read the CSV:**
+```bash
+cat channel_delivery_analysis.csv
+# Expected for mobility_scenario=1 with N_Vehicles=6:
+# channel_number,frequency_mhz,power_dbm,tx_count,rx_end_count,avg_fanout
+# 172,5860,23.0,240,192,0.80   ← low power, low fanout
+# 174,5870,26.5,240,264,1.10
+# 176,5880,30.0,240,360,1.50
+# 178,5890,33.5,240,480,2.00   ← CCH: mid fanout
+# 180,5900,37.0,240,600,2.50
+# 182,5910,40.5,240,720,3.00
+# 184,5920,44.0,240,960,4.00   ← high power, high fanout
+```
 
 ### How the 7 Channels Appear in `routing.cc`
 
@@ -1545,6 +1596,310 @@ The LTE hardware is fully configured in `routing.cc` (lines 141344–142307):
 However, the **scheduling calls** for LTE uplink are inside a `/* */` block comment (lines 142738–142818). This means LTE transmissions are intentionally disabled for attack scenario runs. The DSRC + CSMA path is used exclusively.
 
 **Do not re-enable LTE scheduling** unless explicitly needed — it would add interference to the attack timing and PEM scoring.
+
+---
+
+## 20. Data Transmission Functions Reference
+
+There are five data transmission functions in `routing.cc`. Only one is active during attack simulations. The others are legacy code from earlier architecture designs.
+
+### Active Function — `distributed_dsrc_data_broadcast` (line 124271)
+
+**Status:** ✅ Active — called every 100ms in the `paper == 0` loop in `main()`
+
+```cpp
+void distributed_dsrc_data_broadcast(Ptr<NetDevice> nd, Ptr<Node> node, uint32_t node_index)
+```
+
+- **Tag:** `CustomDataTag` — node ID, position, velocity, acceleration, timestamp
+- **Send:** 802.11p broadcast on Ch178 (`Mac48Address::GetBroadcast()`, `0x88dc`)
+- **Timestamp array:** `dsrc_packet_initial_timestamp[nid]` — recorded only when `paper == 0`
+- **Scheduled by:** the periodic loop in `main()`:
+  ```cpp
+  for (double t=0.40; t<simTime-1; t=t+data_transmission_period) {
+      for (uint32_t i=0; i<wifidevices.GetN(); i++) {
+          Simulator::Schedule(Seconds(t+0.0001*i),
+              distributed_dsrc_data_broadcast, wifidevices.Get(i), dsrc_Nodes.Get(i), i);
+      }
+  }
+  ```
+  Period = 100ms, start = t=0.40s, stagger = 0.1ms per vehicle to avoid collisions.
+
+---
+
+### Dead Code Functions — Not Used in Attack Scenarios
+
+#### `centralized_dsrc_data_broadcast` (line 123212) ❌ Commented out
+
+**Status:** Dead code — both scheduling calls are inside `/* */` block comments
+
+```cpp
+void centralized_dsrc_data_broadcast(Ptr<NetDevice> nd, Ptr<Node> node, uint32_t node_index)
+```
+
+- **Tag:** `CustomDataTag` — same fields as distributed version
+- **Send:** Same 802.11p broadcast on Ch178
+- **Differences from distributed:**
+  - Sets `routing_time = false` (not needed in distributed mode)
+  - Uses `packet_initial_timestamp[nid]` (unconditional, different array name)
+  - No `paper == 0` guard
+- **Was for:** Centralized architecture (`architecture == 0`) where a management server collected all vehicle data
+- **Replaced by:** `distributed_dsrc_data_broadcast`
+
+#### `centralized_dsrc_data_unicast` (line 123422) ❌ Dead code
+
+```cpp
+void centralized_dsrc_data_unicast(Ptr<NetDevice> source_nd, Ptr<Node> source_node,
+                                    uint32_t node_index, uint32_t destination)
+```
+
+- **Tag:** `CustomDataUnicastTag_Routing` — adds sender ID and destination ID for hop-by-hop routing
+- **Send:** 802.11p **unicast** to a specific next-hop MAC address (not broadcast)
+- **Routing:** calls `find_next_hop()` to look up the routing table before sending
+- **Called by:** `send_centralized_packets()` (also dead code)
+
+#### `send_centralized_packets` (line 123577) ❌ Dead code
+
+Orchestrator for centralized unicast delivery:
+1. Runs Dijkstra (`calculate_dijkstra_solution`) to build routing tables
+2. Schedules `centralized_dsrc_data_unicast` for each source→destination pair
+- Not scheduled in `main()` for any attack scenario
+
+#### `send_hybrid_packets` (line 123510) ❌ Not used in attack scenarios
+
+Orchestrator for hybrid architecture:
+1. Runs `calculate_dijkstra_stable_solution` (Dijkstra variant for stable paths)
+2. Uses a triangular wave pattern for transmission timing based on `data_gathering_cycle_number`
+3. Schedules `hybrid_data_unicast` for each source
+- `hybrid_data_unicast` decides per-hop: if both sender and next-hop are RSUs → CSMA Ethernet; otherwise → DSRC unicast
+
+### Architecture Map
+
+```
+Architecture        Broadcast Function                  Unicast Orchestrator       Status
+───────────────────────────────────────────────────────────────────────────────────────────
+Distributed         distributed_dsrc_data_broadcast     routing_dsrc_data_unicast  ✅ ACTIVE
+(paper == 0)        Ch178, every 100ms per vehicle      multi-channel, flow-based
+
+Centralized         centralized_dsrc_data_broadcast     send_centralized_packets   ❌ commented
+(architecture == 0) Ch178, same period                  → centralized_dsrc_         out
+                                                        data_unicast (Dijkstra)
+
+Hybrid              dsrc_metadata_broadcast             send_hybrid_packets        ❌ not used
+(architecture == 2) one-shot at t=0.4                   → hybrid_data_unicast       in attacks
+                                                        (DSRC or CSMA per hop)
+```
+
+**Key rule:** For all 12 attack scenarios in this project, `paper == 0` is always true, so only `distributed_dsrc_data_broadcast` fires. The centralized and hybrid functions are preserved for reference but do not execute.
+
+---
+
+## 21. SimpleUdpApplication — How It Works
+
+### What it is
+
+`SimpleUdpApplication` is a **custom NS-3 Application class** (line 97389), written specifically for this project. It is the **wired network socket layer** that lives on RSU and Controller nodes, enabling them to send and receive packets over the CSMA Ethernet network (IP/UDP on `10.1.1.0/24`).
+
+> **Important:** Vehicles use `WifiNetDevice::Send()` (DSRC radio) directly and do NOT use `SimpleUdpApplication`. Only RSUs and the Controller have it installed.
+
+### Installation in `main()`
+
+```cpp
+// One SimpleUdpApplication instance per RSU node (line 141452)
+for (uint32_t u = 0; u < RSU_Nodes.GetN(); u++) {
+    Ptr<SimpleUdpApplication> udp_app = Create<SimpleUdpApplication>();
+    RSU_Nodes.Get(u)->AddApplication(udp_app);
+    RSU_apps.Add(udp_app);
+}
+RSU_apps.Start(Seconds(0.00));
+RSU_apps.Stop(Seconds(simTime));
+```
+
+### Internal Structure — 3 Components
+
+#### 1. `StartApplication()` — opens sockets at simulation start
+
+```
+Port 7777  →  m_recv_socket1  →  HandleReadOne()   ← topology/routing/status data
+Port 9999  →  m_recv_socket2  →  HandleReadTwo()   ← secondary channel
+Send       →  m_send_socket   →  SendPacket()      ← outgoing CSMA packets
+```
+
+Both receive sockets listen on `0.0.0.0` (any interface) with `SetAllowBroadcast(true)`.
+
+#### 2. `SendPacket(packet, destIP, port)` — sends over CSMA Ethernet
+
+```cpp
+void SimpleUdpApplication::SendPacket(Ptr<Packet> packet, Ipv4Address destination, uint16_t port)
+{
+    m_send_socket->Connect(InetSocketAddress(destination, port));
+    m_send_socket->Send(packet);
+}
+```
+
+Always called with port 7777. Usage pattern:
+```cpp
+Ptr<SimpleUdpApplication> udp_app =
+    DynamicCast<SimpleUdpApplication>(RSU_apps.Get(rsu_index));
+Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+                    udp_app, packet, controllerIP, (uint16_t)7777);
+```
+
+#### 3. `HandleReadOne()` — the Controller receive handler (port 7777)
+
+When a packet arrives at the Controller, this function identifies the tag type and updates controller state. It handles all these tag types:
+
+| Tag type | What the controller does |
+|---|---|
+| `CustomDataUnicastTag_Routing` | Hop-by-hop forward: find next-hop via `find_next_hop()`, relay via DSRC or CSMA |
+| `CustomDeltavaluesDownlinkUnicastTag` | Update `delta_at_nodes_inst` — routing split ratios sent down to vehicles |
+| `CustomStatusDataUplinkTag1` | Update `routing_data_at_controller_inst` — vehicle position/velocity/acceleration |
+| `CustomFlowDataUplinkTag1` | Update flow demand table — source, destination, flow size, QoS |
+| `CustomDataTag` | Log basic beacon delivery delay |
+| `CustomMetaDataUnicastTag0` | Update `con_data_inst` — records CSMA/LTE packet delay for that node |
+| `CustomMetaDataUnicastTag1`+ | Similar metadata for other unicast tag variants |
+
+### Full Data Flow with udp_app
+
+```
+Vehicle (DSRC) ──802.11p──► RSU: Rx() callback fires
+                                │
+                                │  RSU builds Ptr<Packet> with tag attached
+                                │  Gets udp_app: RSU_apps.Get(rsu_index)
+                                │
+                                ▼
+                    udp_app->SendPacket(pkt, controllerIP, 7777)
+                                │
+                    CSMA Ethernet  10.1.1.x/24  UDP
+                                │
+                                ▼
+                    Controller: HandleReadOne() fires on port 7777
+                    PeekPacketTag() → identifies tag type
+                    Updates controller tables
+```
+
+### How Attack Functions Use udp_app
+
+The attack helper `AttackSendRSUToController(rsu_index)` uses the same mechanism to send forged packets from a malicious RSU to the controller:
+
+```cpp
+static void AttackSendRSUToController(uint32_t rsu_index) {
+    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
+    Ptr<SimpleUdpApplication> udp_app =
+        DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomMetaDataUnicastTag0 tag;
+    tag.SetNodeId(rsu_node->GetId());
+    tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+                        udp_app, pkt, AttackGetControllerIP(), (uint16_t)7777);
+}
+```
+
+The controller receives this exactly as it would a legitimate RSU packet — `HandleReadOne()` fires and processes the tag without knowing it is forged.
+
+### Getting the Controller IP
+
+```cpp
+static Ipv4Address AttackGetControllerIP() {
+    Ptr<Ipv4> ipv4 = controller_Node.Get(0)->GetObject<Ipv4>();
+    uint32_t iface_idx = (N_Vehicles > 0) ? 1 : 0;
+    return ipv4->GetAddress(iface_idx, 0).GetLocal();
+}
+```
+
+When `N_Vehicles > 0`, the controller's CSMA interface is index 1 (index 0 is loopback). When no vehicles are present, it is index 0.
+
+---
+
+## 22. Node Roles and Architecture Modes
+
+### The Two Server Nodes
+
+Two separate server nodes are created in `main()` (lines 141164–141165):
+
+```cpp
+controller_Node.Create(1);   // SDN Controller — routing decisions, attack target
+management_Node.Create(1);   // Management/Data Server — collects raw vehicle data
+```
+
+Both sit on the same CSMA Ethernet LAN (`10.1.1.0/24`) alongside all RSU nodes.
+They have different roles and are used in different architecture modes.
+
+### Control Variables
+
+```cpp
+int architecture = 0;   // 0=centralized, 1=distributed, 2=hybrid  (line 112)
+int paper        = 1;   // 0=proposed RL algorithm, 1=comparison baseline  (line 114)
+```
+
+### Three Architecture Modes
+
+#### Architecture 0 — Centralized (`architecture = 0`)
+
+```
+[Vehicle] ──DSRC──► [Vehicle] ──UDP/LTE──► [management_Node]
+                                                   │
+                                           collects all vehicle data
+                                           runs Dijkstra centrally
+                                           sends routes back down
+```
+
+- Vehicles send data directly to the **management server** — not the controller
+- `management_Node` is the destination
+- `centralized_dsrc_data_broadcast` + `send_centralized_packets` were built for this path
+- **These functions are now commented out — this mode is not used in attack scenarios**
+
+#### Architecture 1 + `paper = 0` — Distributed Proposed Algorithm
+
+```
+[Vehicle] ──DSRC broadcast──► [All nearby Vehicles + RSU]
+                               each node makes its OWN routing
+                               decision locally using RL algorithm
+```
+
+- No central server involved in routing
+- `distributed_dsrc_data_broadcast` fires every 100ms
+- `paper = 0` loop in `main()` schedules this
+
+#### Architecture 0 + `paper = 1` — Comparison Baselines (QRSDN, RLMR, DCMR)
+
+```
+[Vehicle] ──DSRC──► [RSU] ──CSMA/UDP──► [controller_Node]
+                                               │
+                                       computes routes centrally
+                                       sends delta values back down
+                                       to vehicles
+```
+
+- Vehicles send topology data → RSU → **controller_Node**
+- Controller runs the comparison algorithm and pushes split ratios (`delta` values) back
+- `SimpleUdpApplication` is the socket layer for RSU ↔ Controller communication
+
+### What Runs During Attack Scenarios
+
+For all 12 attack scenarios (`attack_scenario = 1–12`), the active data path is:
+
+```
+[Vehicle] ──DSRC (AttackSendDSRCBeacon / AttackSendHeartbeat)──► [Vehicles / RSU]
+                                │
+[RSU] ──CSMA/UDP (AttackSendRSUToController)──► [controller_Node]
+                                                        │
+                                           ttw_controller_table  ← POISONED
+                                           bshh_controller_liveness_table  ← POISONED
+```
+
+### Node Role Summary
+
+| Node | Role | Used in Attack Scenarios? |
+|---|---|---|
+| `Vehicle_Nodes` | Move around, send DSRC beacons | ✅ Yes — attacker and victim |
+| `RSU_Nodes` | Relay V2R packets to controller | ✅ Yes — in S2/S4 variants |
+| `controller_Node` | SDN controller, routing decisions — **the attack target** | ✅ Yes |
+| `management_Node` | Data collection server for centralized studies | ❌ No |
+
+> **Key point:** `management_Node` is only relevant in the old centralized architecture studies that preceded the attack work. For all 12 attack scenarios in this project, only `controller_Node` is targeted and only `controller_Node` runs `HandleReadOne()` to process incoming topology/heartbeat data.
 
 ---
 
