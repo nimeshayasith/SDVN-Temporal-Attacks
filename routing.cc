@@ -123212,31 +123212,42 @@ void dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_inde
 void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_index)
 {
 	routing_time = false;
-	//uint32_t nid = node->GetId();
 	Mac48Address dest = Mac48Address::GetBroadcast();
-  	uint16_t protocolwave = 0x88dc;//ethertype for WAVE is set here.
-	Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (nd);
-	Ptr <Node> ni = DynamicCast <Node> (node);
+	uint16_t protocolwave = 0x88dc;
+	Ptr<Node> ni = DynamicCast<Node>(node);
 	CustomDataTag tag;
 	uint32_t nid = uint32_t(ni->GetId());
 	packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
-	cout<<"DSRC data Broadcasting from node "<<nid<<endl;
-	Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node->GetObject<MobilityModel>());
-	Vector posi = mdl->GetPosition();
+	cout << "DSRC data Broadcasting from node " << nid << " on all 7 channels" << endl;
+	Ptr<ConstantVelocityMobilityModel> mdl =
+		DynamicCast<ConstantVelocityMobilityModel>(node->GetObject<MobilityModel>());
+	Vector posi             = mdl->GetPosition();
 	Vector current_velocity = mdl->GetVelocity();
-	double delta_t = data_transmission_period;
-	Vector acceleration = calculate_acceleration(previous_velocity_dsrc[node_index],current_velocity,delta_t);
+	Vector acceleration     = calculate_acceleration(previous_velocity_dsrc[node_index],
+	                                                 current_velocity, data_transmission_period);
 	Time ti = Seconds(Simulator::Now().GetSeconds());
-	Ptr <Packet> packet_i = Create<Packet> (0);
 	tag.SetNodeId(nid);
 	tag.SetPosition(posi);
 	tag.SetVelocity(current_velocity);
 	tag.SetAcceleration(acceleration);
 	tag.SetTimestamp(ti);
-	packet_i->AddPacketTag(tag);
-	dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
-	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);	
-	cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+
+	// Broadcast on all 7 DSRC channels — each gets its own packet instance
+	NetDeviceContainer* ch_devs[7] = {
+		&wifidevices_172, &wifidevices_174, &wifidevices_176,
+		&wifidevices,     // Ch178 CCH
+		&wifidevices_180, &wifidevices_182, &wifidevices_184
+	};
+	for (int c = 0; c < 7; c++) {
+		if (node_index >= ch_devs[c]->GetN()) continue;
+		Ptr<WifiNetDevice> wdi = DynamicCast<WifiNetDevice>(ch_devs[c]->Get(node_index));
+		if (!wdi) continue;
+		Ptr<Packet> pkt = Create<Packet>(0);
+		pkt->AddPacketTag(tag);
+		dsrc_total_packet_size += pkt->GetSerializedSize();
+		Simulator::Schedule(Seconds(0), &WifiNetDevice::Send, wdi, pkt, dest, protocolwave);
+	}
+	cout << "dsrc total size is " << dsrc_total_packet_size << endl;
 	previous_velocity_dsrc[node_index] = current_velocity;
 }
 
@@ -142579,8 +142590,7 @@ int main(int argc, char *argv[])
 	  //{
 	  	//if (experiment_number != 5)
 	  	//{
-	  		/*
-	  		//DSRC nodes data broadcast 
+	  		//DSRC nodes data broadcast -- all 7 channels via centralized_dsrc_data_broadcast
 			for (double t=0.970; t<simTime-1; t=t+data_transmission_period)//All official data transmissions begin at t=0
 			{	
 				  //Go over all the wifi devices
@@ -142590,7 +142600,6 @@ int main(int argc, char *argv[])
 				  }
 				  Simulator::Schedule (Seconds (t), set_dsrc_initial_timestamp);
 			}
-			*/
 			if (attack_scenario == 0)
 			{
 		  	//DSRC flow instantiation

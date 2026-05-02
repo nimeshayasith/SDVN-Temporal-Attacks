@@ -5,7 +5,9 @@
       "Bash(grep -v \"//\")",
       "Bash(git commit -m ' *)",
       "Bash(python3 -c \"print\\(142817 - 140850\\)\")",
-      "Bash(powershell -Command \"[int]\\(142817 - 140850\\)\")"
+      "Bash(powershell -Command \"[int]\\(142817 - 140850\\)\")",
+      "Bash(sed -i '142593s/.*/\\\\t  \\\\t\\\\t\\\\/\\\\/DSRC nodes data broadcast -- all 7 channels via centralized_dsrc_data_broadcast/' routing.cc)",
+      "Bash(sed -i '142594d' routing.cc)"
     ]
   }
 }

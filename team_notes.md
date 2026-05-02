@@ -38,6 +38,7 @@ Countering Temporal-Echo Topology Poisoning Attacks in SDVNs
 21. [Per-Channel TX Power and Channel Delivery Analysis](#21-per-channel-tx-power-and-channel-delivery-analysis)
 22. [Data Transmission Functions and UDP Application (2026-05-02)](#22-data-transmission-functions-and-udp-application-2026-05-02)
 23. [Node Roles, Architecture Modes, and centralized_dsrc_data_broadcast](#23-node-roles-architecture-modes-and-centralized_dsrc_data_broadcast)
+24. [Agent-Based Data Upload Functions — send_LTE_data_agent and RSU_dataunicast_agent](#24-agent-based-data-upload-functions--send_lte_data_agent-and-rsu_dataunicast_agent)
 
 ---
 
@@ -2561,6 +2562,128 @@ The function was written when the project was studying the centralized architect
 the centralized scheduling calls were commented out. The function was kept for
 comparison reference and documentation purposes. It has zero runtime cost since
 it is never scheduled.
+
+---
+
+---
+
+## 24. Agent-Based Data Upload Functions — send_LTE_data_agent and RSU_dataunicast_agent
+
+### Background — What is an "agent" here?
+
+The project has an RL (Reinforcement Learning) optimization layer where certain nodes
+are designated as **selected agents** — nodes chosen by the algorithm to upload their
+full local topology knowledge to the management server for centralized learning.
+
+The selection is tracked by the global boolean array `X_nodes[]` (line 97444):
+- `X_nodes[i] = 1` → node i is a selected agent → should upload
+- `X_nodes[i] = 0` → node i is not selected → stays silent
+
+`X_nodes` is initialized to `1` for all nodes (line 114392). During RL runs it can be
+updated via `CustomDeltavaluesDownlinkUnicastTag` messages from the controller.
+
+---
+
+### `send_LTE_data_agent` (line 124900)
+
+**Purpose:** A selected **vehicle** agent aggregates all local topology knowledge it
+has accumulated (from received beacons) and uploads the full snapshot to the
+`management_Node` via LTE/UDP on port 7777.
+
+**Signature:**
+```cpp
+void send_LTE_data_agent(Ptr<SimpleUdpApplication> udp_app,
+                          Ptr<Node> node_source,
+                          Ptr<Node> destination_node,   // always management_Node
+                          uint32_t node_index)
+```
+
+**What it does step by step:**
+
+1. **Guard check:** `if (X_nodes[nid] == 1)` — only proceeds if this node is selected
+2. **Collect own state:** gets position, velocity, acceleration from mobility model
+3. **Add self to topology:** calls `add_received_data_at_nodes()` to include the node's
+   own entry in `data_at_nodes_inst`
+4. **Extract all known topology:** reads the full `data_at_nodes_inst[nid]` — every node
+   this vehicle has ever observed via DSRC beacons, including their positions, velocities,
+   accelerations, timestamps, and neighbour sets
+5. **Pack into tag:** selects a `CustomMetaDataUnicastTagN01x` tag variant based on the
+   neighbour count of each observed node (switch statement — N011 for 1 neighbour,
+   N012 for 2, ... N01max for maximum). Each tag entry carries: node ID + full
+   neighbour ID list
+6. **Send via LTE uplink:** `udp_app->SendPacket(packet1, management_node_IP, 7777)`
+
+**Scheduled by:** `begin_sending_LTE_data_agent()` — iterates all vehicles where
+`X_nodes[i] == 1`, staggered by 25 µs per agent:
+```cpp
+Simulator::Schedule(Seconds(0.000025*count), send_LTE_data_agent,
+                    udp_app, Vehicle_Nodes.Get(u-2), management_Node.Get(0), u-2);
+```
+
+**Destination IP:** `management_Node`'s LTE interface — `ipv4->GetAddress(2,0)` (LTE
+is the 3rd interface on the management node, index 2).
+
+---
+
+### `RSU_dataunicast_agent` (line 132992)
+
+**Purpose:** Same as `send_LTE_data_agent` but the sender is an **RSU** and the
+transport is **CSMA Ethernet** (not LTE).
+
+**Signature:**
+```cpp
+void RSU_dataunicast_agent(Ptr<SimpleUdpApplication> udp_app,
+                            Ptr<Node> source_node,        // an RSU node
+                            Ptr<Node> destination_node)   // always management_Node
+```
+
+**What it does:** Identical logic to `send_LTE_data_agent`:
+1. Guard: `X_nodes[nid] == 1`
+2. Collect RSU position/velocity/acceleration
+3. Add RSU self-entry to `data_at_nodes_inst`
+4. Extract full topology snapshot
+5. Pack into `CustomMetaDataUnicastTagN01x` tags (same switch logic)
+6. Send via CSMA Ethernet: `udp_app->SendPacket(packet1, dest_ip, 7777)`
+
+**Key difference from vehicle version:**
+- No LTE — uses wired Ethernet path
+- Destination IP: `ipv4->GetAddress(1,0)` when `N_Vehicles > 0`, else `GetAddress(0,0)`
+  (management node's CSMA interface index depends on whether vehicle LTE is configured)
+
+**Scheduled by:** `begin_sending_RSU_data_agent()` — same pattern, staggered 50 µs:
+```cpp
+Simulator::Schedule(Seconds(0.000050*count), RSU_dataunicast_agent,
+                    udp_app, nu, management_Node.Get(0));
+```
+
+---
+
+### Comparison
+
+| Aspect | `send_LTE_data_agent` | `RSU_dataunicast_agent` |
+|---|---|---|
+| Sender | Vehicle node | RSU node |
+| Transport | LTE uplink (UDP) | CSMA Ethernet (UDP) |
+| Destination | `management_Node` | `management_Node` |
+| Dest IP interface | `GetAddress(2,0)` (LTE) | `GetAddress(1,0)` (CSMA) |
+| Stagger | 25 µs per agent | 50 µs per agent |
+| Tag family | `CustomMetaDataUnicastTagN01x` | `CustomMetaDataUnicastTagN01x` |
+| Selection gate | `X_nodes[nid] == 1` | `X_nodes[nid] == 1` |
+| Payload | Full `data_at_nodes_inst` snapshot | Full `data_at_nodes_inst` snapshot |
+
+---
+
+### What the management server does with this data
+
+`management_Node`'s `HandleReadOne()` receives the `CustomMetaDataUnicastTagN01x`
+tags and can rebuild the full network topology from the aggregated agent uploads.
+This topology snapshot feeds the centralized RL/optimization algorithm that computes
+new routing decisions and sends `delta` values back down to nodes.
+
+> **For attack scenarios:** These agent upload functions are **NOT called** in any
+> of the 12 attack scenarios. They are only active in the agent-based learning runs
+> (`paper == 1`, separate scheduling path). All attack detection runs use the
+> `controller_Node` path, not `management_Node`.
 
 ---
 
