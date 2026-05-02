@@ -32,6 +32,7 @@
 20. [Data Transmission Functions Reference](#20-data-transmission-functions-reference)
 21. [SimpleUdpApplication — How It Works](#21-simpleudpapplication--how-it-works)
 22. [Node Roles and Architecture Modes](#22-node-roles-and-architecture-modes)
+23. [Agent-Based Data Upload — send_LTE_data_agent and RSU_dataunicast_agent](#23-agent-based-data-upload--send_lte_data_agent-and-rsu_dataunicast_agent)
 
 ---
 
@@ -1900,6 +1901,58 @@ For all 12 attack scenarios (`attack_scenario = 1–12`), the active data path i
 | `management_Node` | Data collection server for centralized studies | ❌ No |
 
 > **Key point:** `management_Node` is only relevant in the old centralized architecture studies that preceded the attack work. For all 12 attack scenarios in this project, only `controller_Node` is targeted and only `controller_Node` runs `HandleReadOne()` to process incoming topology/heartbeat data.
+
+---
+
+## 23. Agent-Based Data Upload — send_LTE_data_agent and RSU_dataunicast_agent
+
+### The `X_nodes[]` Selection Gate
+
+Both functions are guarded by `X_nodes[nid] == 1` (line 97444). This global boolean array marks which nodes are **selected agents** — nodes chosen by the RL optimization layer to upload their full topology knowledge to the management server. Initialized to `1` for all nodes at line 114392; can be updated by the controller via `CustomDeltavaluesDownlinkUnicastTag`.
+
+### `send_LTE_data_agent` (line 124900)
+
+**Sender:** Vehicle node | **Transport:** LTE uplink UDP | **Destination:** `management_Node` port 7777
+
+```cpp
+void send_LTE_data_agent(Ptr<SimpleUdpApplication> udp_app,
+                          Ptr<Node> node_source,
+                          Ptr<Node> destination_node,   // management_Node
+                          uint32_t node_index)
+```
+
+**What it does:**
+1. Guards on `X_nodes[nid] == 1`
+2. Gets own position, velocity, acceleration from mobility model
+3. Calls `add_received_data_at_nodes()` to include self in `data_at_nodes_inst`
+4. Extracts the full topology snapshot — every node this vehicle has observed via DSRC beacons (positions, velocities, neighbour sets)
+5. Selects a `CustomMetaDataUnicastTagN01x` tag variant by neighbour count (switch on 1..max) and packs the snapshot
+6. Sends: `udp_app->SendPacket(packet1, management_IP, 7777)` via LTE (`GetAddress(2,0)`)
+
+**Scheduled by** `begin_sending_LTE_data_agent()`, staggered 25 µs per agent.
+
+### `RSU_dataunicast_agent` (line 132992)
+
+**Sender:** RSU node | **Transport:** CSMA Ethernet UDP | **Destination:** `management_Node` port 7777
+
+Identical logic to `send_LTE_data_agent` — same guard, same topology extraction, same `CustomMetaDataUnicastTagN01x` packing — except:
+- Uses CSMA Ethernet not LTE
+- Destination IP: `GetAddress(1,0)` when `N_Vehicles > 0`, else `GetAddress(0,0)`
+- Stagger: 50 µs per agent (via `begin_sending_RSU_data_agent()`)
+
+### Quick Comparison
+
+| | `send_LTE_data_agent` | `RSU_dataunicast_agent` |
+|---|---|---|
+| Sender | Vehicle | RSU |
+| Transport | LTE UDP | CSMA Ethernet UDP |
+| Dest IP | `GetAddress(2,0)` | `GetAddress(1,0)` |
+| Stagger | 25 µs/agent | 50 µs/agent |
+| Tag family | `CustomMetaDataUnicastTagN01x` | Same |
+| Used in attack scenarios? | ❌ No | ❌ No |
+
+> **These functions are NOT active in any of the 12 attack scenarios.** They are only
+> used in agent-based learning runs. All attack detection runs use `controller_Node`, not `management_Node`.
 
 ---
 
