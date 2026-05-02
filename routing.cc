@@ -124996,7 +124996,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		
 		Ptr <Ipv4> ipv4;  	
 	  	ipv4 = destination_node->GetObject<Ipv4>();
-		Ipv4InterfaceAddress iaddr = ipv4->GetAddress(2,0);//2nd IPv4 interface,0th address index
+		Ipv4InterfaceAddress iaddr = ipv4->GetAddress((N_Vehicles > 0 ? 1 : 0), 0);//CSMA interface of controller_Node
 		Ipv4Address dest_ip = iaddr.GetLocal();
 		Ptr <Packet> packet1 = Create <Packet> (0);
 		
@@ -142793,7 +142793,7 @@ int main(int argc, char *argv[])
 					  for (uint32_t u=0; u<Vehicle_Nodes.GetN(); u++)
 					  {
 					  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (apps.Get(u+2));
-						Simulator::Schedule(Seconds(t+0.000025*u),send_LTE_routing_data_alone,udp_app,Vehicle_Nodes.Get(u),management_Node.Get(0), u);
+						Simulator::Schedule(Seconds(t+0.000025*u),send_LTE_data_agent,udp_app,Vehicle_Nodes.Get(u),controller_Node.Get(0), u);
 					  }
 					  //calculate the routing solution
 					  //unicast the solution back to nodes
@@ -142854,7 +142854,7 @@ int main(int argc, char *argv[])
 					  {
 					  	Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(u));	
 					  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(u));
-						Simulator::Schedule(Seconds(t+0.000050*u),RSU_routing_statusdataunicast_alone, udp_app, nu, management_Node.Get(0));
+						Simulator::Schedule(Seconds(t+0.000050*u),RSU_dataunicast_agent, udp_app, nu, controller_Node.Get(0));
 						if (u == (RSU_Nodes.GetN() - 1))
 						{
 							Simulator::Schedule(Seconds(t+0.000060*u),RSU_flowdata_unicast_alone, udp_app, nu, management_Node.Get(0));

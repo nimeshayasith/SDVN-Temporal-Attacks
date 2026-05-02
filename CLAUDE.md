@@ -1912,12 +1912,12 @@ Both functions are guarded by `X_nodes[nid] == 1` (line 97444). This global bool
 
 ### `send_LTE_data_agent` (line 124900)
 
-**Sender:** Vehicle node | **Transport:** LTE uplink UDP | **Destination:** `management_Node` port 7777
+**Sender:** Vehicle node | **Transport:** LTE uplink UDP | **Destination:** `controller_Node` port 7777
 
 ```cpp
 void send_LTE_data_agent(Ptr<SimpleUdpApplication> udp_app,
                           Ptr<Node> node_source,
-                          Ptr<Node> destination_node,   // management_Node
+                          Ptr<Node> destination_node,   // controller_Node
                           uint32_t node_index)
 ```
 
@@ -1927,18 +1927,29 @@ void send_LTE_data_agent(Ptr<SimpleUdpApplication> udp_app,
 3. Calls `add_received_data_at_nodes()` to include self in `data_at_nodes_inst`
 4. Extracts the full topology snapshot — every node this vehicle has observed via DSRC beacons (positions, velocities, neighbour sets)
 5. Selects a `CustomMetaDataUnicastTagN01x` tag variant by neighbour count (switch on 1..max) and packs the snapshot
-6. Sends: `udp_app->SendPacket(packet1, management_IP, 7777)` via LTE (`GetAddress(2,0)`)
+6. Sends: `udp_app->SendPacket(packet1, controller_IP, 7777)` via `GetAddress((N_Vehicles > 0 ? 1 : 0), 0)` — controller's CSMA interface
 
 **Scheduled by** `begin_sending_LTE_data_agent()`, staggered 25 µs per agent.
 
+> **Change (routing.cc line 124999):** IP selection changed from hardcoded `GetAddress(2,0)` (management LTE interface) to `GetAddress((N_Vehicles > 0 ? 1 : 0), 0)` (controller CSMA interface). Matches logic in `AttackGetControllerIP()`.
+
 ### `RSU_dataunicast_agent` (line 132992)
 
-**Sender:** RSU node | **Transport:** CSMA Ethernet UDP | **Destination:** `management_Node` port 7777
+**Sender:** RSU node | **Transport:** CSMA Ethernet UDP | **Destination:** `controller_Node` port 7777
 
 Identical logic to `send_LTE_data_agent` — same guard, same topology extraction, same `CustomMetaDataUnicastTagN01x` packing — except:
 - Uses CSMA Ethernet not LTE
-- Destination IP: `GetAddress(1,0)` when `N_Vehicles > 0`, else `GetAddress(0,0)`
+- Destination IP: `GetAddress(1,0)` when `N_Vehicles > 0`, else `GetAddress(0,0)` — already correct for `controller_Node`
 - Stagger: 50 µs per agent (via `begin_sending_RSU_data_agent()`)
+
+### Scheduling in main() — What Replaced What
+
+| Old call (line) | New call | Destination |
+|---|---|---|
+| `send_LTE_routing_data_alone` (142796) | `send_LTE_data_agent` | `controller_Node` |
+| `RSU_routing_statusdataunicast_alone` (142857) | `RSU_dataunicast_agent` | `controller_Node` |
+
+`send_LTE_routing_data_alone` (line 124369) — old function, sent basic routing metrics only. Replaced by `send_LTE_data_agent` which sends the full topology snapshot.
 
 ### Quick Comparison
 
@@ -1946,13 +1957,11 @@ Identical logic to `send_LTE_data_agent` — same guard, same topology extractio
 |---|---|---|
 | Sender | Vehicle | RSU |
 | Transport | LTE UDP | CSMA Ethernet UDP |
-| Dest IP | `GetAddress(2,0)` | `GetAddress(1,0)` |
+| Destination | `controller_Node` | `controller_Node` |
+| Dest IP | `GetAddress((N_Vehicles>0?1:0), 0)` | `GetAddress(1,0)` |
 | Stagger | 25 µs/agent | 50 µs/agent |
 | Tag family | `CustomMetaDataUnicastTagN01x` | Same |
-| Used in attack scenarios? | ❌ No | ❌ No |
-
-> **These functions are NOT active in any of the 12 attack scenarios.** They are only
-> used in agent-based learning runs. All attack detection runs use `controller_Node`, not `management_Node`.
+| Active in runs? | ✅ Yes (all runs) | ✅ Yes (when N_RSUs > 0) |
 
 ---
 
