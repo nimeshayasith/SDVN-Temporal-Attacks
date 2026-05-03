@@ -92,6 +92,13 @@ BuildScenarioCsvPath(const std::string& folder, uint32_t scenario)
            + GetScenarioOutputName(scenario) + ".csv";
 }
 
+static std::string
+BuildLogPath(const std::string& filename)
+{
+    EnsureScenarioOutputDir("Logs_attacks");
+    return std::string(OUTPUT_ROOT_DIR) + "/Logs_attacks/" + filename;
+}
+
 // ── defines — unchanged ──────────────────────────────────────────────────────
 #define max   40
 #define max1   1
@@ -1284,7 +1291,7 @@ static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
 // ── Log file init ─────────────────────────────────────────────────────────────
 void TTW_InitLog()
 {
-    ttw_log.open("ttw_attack_scenario4.txt", std::ios::out | std::ios::trunc);
+    ttw_log.open(BuildLogPath("ttw_attack_scenario4.txt"), std::ios::out | std::ios::trunc);
     ttw_log << std::fixed << std::setprecision(3);
     ttw_log << "========================================================\n";
     ttw_log << "  TTW Attack Scenario 4 — Malicious Vehicle, No RSUs   \n";
@@ -1318,6 +1325,11 @@ void TTW_SendHelloBeacon(Ptr<Node> sender, Ptr<Node> receiver)
                 << "  V" << sender->GetId() << "->V" << receiver->GetId()
                 << "  dist=" << dist << "m"
                 << (ok ? "  DELIVERED" : "  OUT-OF-RANGE"));
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S1][t=" << now << "]  V" << sender->GetId()
+              << " --HELLO beacon--> V" << receiver->GetId()
+              << "  dist=" << dist << "m  "
+              << (ok ? "DELIVERED" : "OUT-OF-RANGE") << std::endl;
 
     ttw_log << "[t=" << now << "]  STEP ①  HELLO  (real DSRC 802.11p packet)\n"
             << "  V" << sender->GetId()   << " pos=(" << ps.x << "," << ps.y << ")\n"
@@ -1351,6 +1363,11 @@ void TTW_SendTopologyUpdate(Ptr<Node> vehicle, uint32_t seen_id, double obs_time
                     << "  V" << pkt.src_id << "->Controller"
                     << "  <V" << pkt.src_id << " sees V" << pkt.seen_id
                     << ", t=" << pkt.timestamp << ">  ACCEPTED");
+        std::cout << std::fixed << std::setprecision(3)
+                  << "[TTW-S1][t=" << now << "]  V" << pkt.src_id
+                  << " --topology update--> Controller"
+                  << "  <V" << pkt.src_id << " sees V" << pkt.seen_id
+                  << ", t=" << pkt.timestamp << ">  ACCEPTED" << std::endl;
 
         ttw_log << "[t=" << now << "]  STEP ②  TOPOLOGY UPDATE (legitimate)\n"
                 << "  V" << pkt.src_id << " -> Controller\n"
@@ -1398,6 +1415,10 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
     NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-3 PACKET STORED"
                 << "  old_packet=<V" << src_id << " sees V" << dst_id
                 << ", t=" << obs_time << ">");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S1][t=" << now << "]  V" << src_id
+              << " stored old packet <V" << src_id << " sees V" << dst_id
+              << ", t=" << obs_time << ">  (will replay at t=" << TTW_REPLAY_TIME << ")" << std::endl;
 
     ttw_log << "[t=" << now << "]  STEP ③  ATTACKER STORES PACKET\n"
             << "  old_packet : <V" << src_id << " sees V" << dst_id
@@ -1447,6 +1468,12 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-5 REPLAY SENT"
                 << "  <V" << src_id << " sees V" << dst_id
                 << ", t=" << forged_time << ">  CONTROLLER DECEIVED");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S1][t=" << now << "]  V" << src_id
+              << " --FORGED replay--> Controller"
+              << "  <V" << src_id << " sees V" << dst_id
+              << ", t=" << forged_time << ">  CONTROLLER DECEIVED"
+              << "  (link physically BROKEN  dist=" << dist << "m)" << std::endl;
 
     ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET -> CONTROLLER\n"
             << "  Controller ACCEPTED (cannot detect forgery)\n\n";
@@ -1465,6 +1492,8 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
     NS_LOG_INFO("[TTW-S4] ATTACK COMPLETE — ghost link V"
                 << src_id << "<->V" << dst_id << " injected");
+    std::cout << "[TTW-S1][t=" << now << "]  *** ATTACK COMPLETE ***  ghost link V"
+              << src_id << "<->V" << dst_id << " injected into controller table" << std::endl;
 
     // Final topology table dump
     ttw_log << "  Final Controller Topology Table:\n"
@@ -1571,7 +1600,7 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
 
 void TTWS2_InitLog()
 {
-    ttws2_log.open("ttw_s2_attack_log.txt", std::ios::out | std::ios::trunc);
+    ttws2_log.open(BuildLogPath("ttw_s2_attack_log.txt"), std::ios::out | std::ios::trunc);
     ttws2_log << std::fixed << std::setprecision(3);
     ttws2_log << "========================================================\n"
               << "  TTW Attack S2 — Malicious RSU                        \n"
@@ -1602,6 +1631,13 @@ void TTWS2_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
               << ", t=" << obs_time << ">\n"
               << "  V" << v2_id << " -> RSU : <V" << v2_id << " sees V" << v1_id
               << ", t=" << obs_time << ">\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S2][t=" << now << "]  V" << v1_id
+              << " --HELLO + topo--> RSU_" << rsu_id
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">" << std::endl;
+    std::cout << "[TTW-S2][t=" << now << "]  V" << v2_id
+              << " --HELLO + topo--> RSU_" << rsu_id
+              << "  <V" << v2_id << " sees V" << v1_id << ", t=" << obs_time << ">" << std::endl;
 
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     if (v1_id < Vehicle_Nodes.GetN()) {
@@ -1634,6 +1670,11 @@ void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
               << "  Result : ACCEPTED (legitimate aggregate)\n\n";
     NS_LOG_INFO("[TTW-S2] t=" << now << "s  RSU_" << rsu_id
                 << " forwarded aggregate to controller");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S2][t=" << now << "]  RSU_" << rsu_id
+              << " --aggregate forward--> Controller"
+              << "  [<V" << v1_id << " sees V" << v2_id << ">, <V" << v2_id
+              << " sees V" << v1_id << ">]  t=" << obs_time << "  ACCEPTED" << std::endl;
     AttackSendRSUToController(rsu_id);
 }
 
@@ -1647,6 +1688,10 @@ void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time)
               << ", t=" << obs_time << ">\n"
               << "  Awaiting replay at t=" << TTWS2_REPLAY_TIME << "\n"
               << "  Link will break at t=" << TTWS2_LINK_BREAK << "\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S2][t=" << now << "]  Malicious RSU stored old packet"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
+              << "  (link breaks t=" << TTWS2_LINK_BREAK << ", replay at t=" << TTWS2_REPLAY_TIME << ")" << std::endl;
 }
 
 void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double forged_time)
@@ -1691,6 +1736,11 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
     NS_LOG_INFO("[TTW-S2] t=" << now << "s  RSU_" << rsu_id
                 << " injected forged <V" << v1_id << " sees V" << v2_id
                 << ", t=" << forged_time << ">");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S2][t=" << now << "]  RSU_" << rsu_id
+              << " --FORGED replay--> Controller"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
+              << "  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(50), &TTWS2_RunDetection, rsu_id, v1_id, v2_id);
 }
 
@@ -1728,7 +1778,7 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
 
 void TTWS3_InitLog()
 {
-    ttws3_log.open("ttw_s3_attack_log.txt", std::ios::out | std::ios::trunc);
+    ttws3_log.open(BuildLogPath("ttw_s3_attack_log.txt"), std::ios::out | std::ios::trunc);
     ttws3_log << std::fixed << std::setprecision(3);
     ttws3_log << "========================================================\n"
               << "  TTW Attack S3 — Malicious Controller, No RSU         \n"
@@ -1757,6 +1807,13 @@ void TTWS3_ReceiveLegitimateUpdates(uint32_t v1_id, uint32_t v2_id, double obs_t
               << " sees V" << v2_id << ", t=" << obs_time << ">  ACCEPTED\n"
               << "  V" << v2_id << " -> Controller : <V" << v2_id
               << " sees V" << v1_id << ", t=" << obs_time << ">  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S3][t=" << now << "]  V" << v1_id
+              << " --topo update--> Controller  <V" << v1_id << " sees V" << v2_id
+              << ", t=" << obs_time << ">  ACCEPTED" << std::endl;
+    std::cout << "[TTW-S3][t=" << now << "]  V" << v2_id
+              << " --topo update--> Controller  <V" << v2_id << " sees V" << v1_id
+              << ", t=" << obs_time << ">  ACCEPTED" << std::endl;
 
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     if (v1_id < Vehicle_Nodes.GetN()) {
@@ -1788,6 +1845,10 @@ void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
               << ", t=" << obs_time << ">\n"
               << "  Link will break at t=" << TTWS3_LINK_BREAK
               << " — controller WILL NOT time out this entry\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S3][t=" << now << "]  Controller keeps stale copy"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
+              << "  (internal replay at t=" << TTWS3_INTERNAL_REPLAY << ")" << std::endl;
 }
 
 void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
@@ -1829,6 +1890,10 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     ttws3_log.flush();
     NS_LOG_INFO("[TTW-S3] t=" << now << "s  Controller poisoned table <V"
                 << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S3][t=" << now << "]  Controller --INTERNAL REPLAY--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
+              << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
     Simulator::Schedule(MilliSeconds(50), &TTWS3_RunDetection, v1_id, v2_id);
 }
 
@@ -1866,7 +1931,7 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
 
 void TTWS4_InitLog()
 {
-    ttws4_log.open("ttw_s4_attack_log.txt", std::ios::out | std::ios::trunc);
+    ttws4_log.open(BuildLogPath("ttw_s4_attack_log.txt"), std::ios::out | std::ios::trunc);
     ttws4_log << std::fixed << std::setprecision(3);
     ttws4_log << "========================================================\n"
               << "  TTW Attack S4 — Malicious Controller, With RSU       \n"
@@ -1893,6 +1958,10 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
               << " -> RSU_" << rsu_id << " -> Controller (legitimate aggregate)\n"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">  ACCEPTED\n"
               << "  <V" << v2_id << " sees V" << v1_id << ", t=" << obs_time << ">  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S4][t=" << now << "]  V" << v1_id << "/V" << v2_id
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">  ACCEPTED" << std::endl;
 
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     if (v1_id < Vehicle_Nodes.GetN()) {
@@ -1923,6 +1992,10 @@ void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
               << "  Stored : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
               << "  Will internally replay at t=" << TTWS4_INTERNAL_REPLAY << "\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S4][t=" << now << "]  Controller stores stale copy (from RSU aggregate)"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
+              << "  (internal replay at t=" << TTWS4_INTERNAL_REPLAY << ")" << std::endl;
 }
 
 void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
@@ -1961,6 +2034,10 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     ttws4_log.flush();
     NS_LOG_INFO("[TTW-S4-new] t=" << now << "s  Controller (RSU variant) poisoned table <V"
                 << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S4][t=" << now << "]  Controller --INTERNAL REPLAY (RSU path variant)--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
+              << "  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(50), &TTWS4_RunDetection, v1_id, v2_id);
 }
 
@@ -1970,7 +2047,7 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 
 void BSHH_S1_InitLog()
 {
-    bshh_log.open("bshh_s1_attack_log.txt", std::ios::out | std::ios::trunc);
+    bshh_log.open(BuildLogPath("bshh_s1_attack_log.txt"), std::ios::out | std::ios::trunc);
     bshh_log << std::fixed << std::setprecision(3);
     bshh_log << "========================================================\n"
              << "  BSHH Attack S1 — Malicious Vehicle, No RSU           \n"
@@ -1993,6 +2070,9 @@ void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
     bshh_log << "[t=" << now << "]  SETUP  Stored old heartbeat for attacker replay\n"
              << "  stored_packet : Heartbeat(Sender=V" << victim_id
              << ", t=" << stored_time << ")\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S1][t=" << now << "]  Stored old heartbeat for replay"
+              << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time << ")" << std::endl;
 }
 
 void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
@@ -2003,6 +2083,13 @@ void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
              << " : Heartbeat(Sender=V" << v1_id << ", t=" << t << ")\n"
              << "  V" << v2_id << " -> V" << v1_id
              << " : Heartbeat(Sender=V" << v2_id << ", t=" << t << ")\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S1][t=" << now << "]  V" << v1_id
+              << " --heartbeat--> V" << v2_id
+              << "  Heartbeat(Sender=V" << v1_id << ", t=" << t << ")  DELIVERED" << std::endl;
+    std::cout << "[BSHH-S1][t=" << now << "]  V" << v2_id
+              << " --heartbeat--> V" << v1_id
+              << "  Heartbeat(Sender=V" << v2_id << ", t=" << t << ")  DELIVERED" << std::endl;
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
@@ -2025,6 +2112,13 @@ void BSHH_S1_ForwardLegitimateHeartbeatsToController(uint32_t v1_id, uint32_t v2
              << v1_id << ", t=" << t << ")\n"
              << "  V" << v2_id << " -> Controller : Heartbeat(Sender=V"
              << v2_id << ", t=" << t << ")\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S1][t=" << now << "]  V" << v1_id
+              << " --heartbeat--> Controller  Heartbeat(Sender=V" << v1_id
+              << ", t=" << t << ")  ACCEPTED" << std::endl;
+    std::cout << "[BSHH-S1][t=" << now << "]  V" << v2_id
+              << " --heartbeat--> Controller  Heartbeat(Sender=V" << v2_id
+              << ", t=" << t << ")  ACCEPTED" << std::endl;
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
 }
@@ -2041,6 +2135,11 @@ void BSHH_S1_ReplayOldHeartbeatToVictim(uint32_t attacker_id, uint32_t victim_id
              << " : Heartbeat(Sender=V" << victim_id
              << ", t=" << stored_time << ")\n"
              << "  Victim receives a stale but previously legitimate heartbeat\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S1][t=" << now << "]  V" << attacker_id
+              << " --REPLAY old heartbeat--> V" << victim_id
+              << "  Heartbeat(claimed=V" << victim_id << ", t=" << stored_time
+              << ")  [MALICIOUS — attacker impersonates V" << victim_id << "]" << std::endl;
     if (attacker_id < Vehicle_Nodes.GetN()) {
         AttackSendHeartbeat(Vehicle_Nodes.Get(attacker_id), victim_id, stored_time, true);
     }
@@ -2059,6 +2158,11 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t victim_id, double s
              << victim_id << ", t=" << stored_time << ")\n"
              << "  Controller refreshes V" << victim_id
              << " liveness using stale timestamp t=" << stored_time << "\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S1][t=" << now << "]  V" << victim_id
+              << " --forwards stale heartbeat--> Controller"
+              << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time
+              << ")  Controller liveness POISONED" << std::endl;
     PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true);
 }
 
@@ -2077,6 +2181,11 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
     bshh_log.flush();
     NS_LOG_INFO("[BSHH-S1] t=" << now << "s  V" << attacker_id
                 << " hijacked old HB claiming V" << victim_id);
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S1][t=" << now << "]  V" << attacker_id
+              << " --HIJACK old heartbeat--> Controller"
+              << "  Heartbeat(physical=V" << attacker_id << ", claimed=V" << victim_id
+              << ", t=" << stored_time << ")  IMPERSONATION  *** ATTACK COMPLETE ***" << std::endl;
     PemEmitHeartbeatEvent(attacker_id, victim_id, stored_time, true);
 }
 
@@ -2098,7 +2207,7 @@ void BSHH_S1_LogFaultyRoutingConsequences(uint32_t attacker_id, uint32_t victim_
 
 void BSHH_S2_InitLog()
 {
-    bshh_log.open("bshh_s2_attack_log.txt", std::ios::out | std::ios::trunc);
+    bshh_log.open(BuildLogPath("bshh_s2_attack_log.txt"), std::ios::out | std::ios::trunc);
     bshh_log << std::fixed << std::setprecision(3);
     bshh_log << "========================================================\n"
              << "  BSHH Attack S2 — Malicious RSU                       \n"
@@ -2122,6 +2231,13 @@ void BSHH_S2_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
              << ", t=" << t << ")  ACCEPTED\n"
              << "  V" << v2_id << " -> RSU -> Controller : Heartbeat(V" << v2_id
              << ", t=" << t << ")  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S2][t=" << now << "]  V" << v1_id
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
+              << "  Heartbeat(V" << v1_id << ", t=" << t << ")  ACCEPTED" << std::endl;
+    std::cout << "[BSHH-S2][t=" << now << "]  V" << v2_id
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
+              << "  Heartbeat(V" << v2_id << ", t=" << t << ")  ACCEPTED" << std::endl;
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
@@ -2142,6 +2258,10 @@ void BSHH_S2_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
              << "  old_heartbeat : Heartbeat(V" << victim_id
              << ", t=" << stored_time << ")\n"
              << "  RSU will replay at t=10\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S2][t=" << now << "]  Malicious RSU stored old heartbeat"
+              << "  Heartbeat(V" << victim_id << ", t=" << stored_time
+              << ")  (replay at t=10)" << std::endl;
 }
 
 void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_time)
@@ -2166,6 +2286,11 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     bshh_log.flush();
     NS_LOG_INFO("[BSHH-S2] t=" << now << "s  RSU_" << rsu_id
                 << " replayed old HB claiming V" << victim_id);
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S2][t=" << now << "]  RSU_" << rsu_id
+              << " --REPLAY old heartbeat--> Controller"
+              << "  Heartbeat(physical=RSU_" << rsu_id << ", claimed=V" << victim_id
+              << ", t=" << stored_time << ")  *** ATTACK COMPLETE ***" << std::endl;
     PemEmitHeartbeatEvent(rsu_id, victim_id, stored_time, true);
     AttackSendRSUToController(rsu_id);
     {
@@ -2183,7 +2308,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
 
 void BSHH_S3_InitLog()
 {
-    bshh_log.open("bshh_s3_attack_log.txt", std::ios::out | std::ios::trunc);
+    bshh_log.open(BuildLogPath("bshh_s3_attack_log.txt"), std::ios::out | std::ios::trunc);
     bshh_log << std::fixed << std::setprecision(3);
     bshh_log << "========================================================\n"
              << "  BSHH Attack S3 — Malicious Controller, No RSU        \n"
@@ -2207,6 +2332,13 @@ void BSHH_S3_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
              << ", t=" << t << ")  ACCEPTED\n"
              << "  V" << v2_id << " -> Controller : Heartbeat(V" << v2_id
              << ", t=" << t << ")  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S3][t=" << now << "]  V" << v1_id
+              << " --heartbeat--> Controller  Heartbeat(V" << v1_id
+              << ", t=" << t << ")  ACCEPTED" << std::endl;
+    std::cout << "[BSHH-S3][t=" << now << "]  V" << v2_id
+              << " --heartbeat--> Controller  Heartbeat(V" << v2_id
+              << ", t=" << t << ")  ACCEPTED" << std::endl;
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
@@ -2227,6 +2359,11 @@ void BSHH_S3_StoreOldHeartbeats(uint32_t v1_id, uint32_t v2_id, double stored_ti
              << "  Stale HB for V" << v1_id << " : t=" << stored_time << "\n"
              << "  Stale HB for V" << v2_id << " : t=" << stored_time << "\n"
              << "  Will internally replay at t=10\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S3][t=" << now << "]  Controller stores stale copies"
+              << "  HB(V" << v1_id << ", t=" << stored_time << ")"
+              << "  HB(V" << v2_id << ", t=" << stored_time << ")"
+              << "  (internal replay at t=10)" << std::endl;
 }
 
 void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
@@ -2254,6 +2391,11 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
     bshh_log.flush();
     NS_LOG_INFO("[BSHH-S3] t=" << now << "s  Controller replayed stale HBs for V"
                 << v1_id << " and V" << v2_id);
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S3][t=" << now << "]  Controller --INTERNAL REPLAY--> own liveness table"
+              << "  HB(V" << v1_id << ", t=" << stored_time << ")"
+              << "  HB(V" << v2_id << ", t=" << stored_time << ")"
+              << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
     PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
 }
@@ -2264,7 +2406,7 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
 
 void BSHH_S4_InitLog()
 {
-    bshh_log.open("bshh_s4_attack_log.txt", std::ios::out | std::ios::trunc);
+    bshh_log.open(BuildLogPath("bshh_s4_attack_log.txt"), std::ios::out | std::ios::trunc);
     bshh_log << std::fixed << std::setprecision(3);
     bshh_log << "========================================================\n"
              << "  BSHH Attack S4 — Malicious Controller, With RSU      \n"
@@ -2287,6 +2429,11 @@ void BSHH_S4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doub
              << " -> RSU_" << rsu_id << " -> Controller (legitimate aggregate)\n"
              << "  Heartbeat(V" << v1_id << ", t=" << t << ")  ACCEPTED\n"
              << "  Heartbeat(V" << v2_id << ", t=" << t << ")  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S4][t=" << now << "]  V" << v1_id << "/V" << v2_id
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
+              << "  HB(V" << v1_id << ", t=" << t << ")  HB(V" << v2_id
+              << ", t=" << t << ")  ACCEPTED" << std::endl;
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
@@ -2306,6 +2453,11 @@ void BSHH_S4_StoreOldHeartbeats(uint32_t v1_id, uint32_t v2_id, double stored_ti
     bshh_log << "[t=" << now << "]  STEP ②  CONTROLLER STORES STALE COPIES (from RSU path)\n"
              << "  Stale HB for V" << v1_id << " : t=" << stored_time << "\n"
              << "  Stale HB for V" << v2_id << " : t=" << stored_time << "\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S4][t=" << now << "]  Controller stores stale copies (from RSU aggregate)"
+              << "  HB(V" << v1_id << ", t=" << stored_time << ")"
+              << "  HB(V" << v2_id << ", t=" << stored_time << ")"
+              << "  (internal replay at t=10)" << std::endl;
 }
 
 void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
@@ -2329,6 +2481,11 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
              << "  <- ATTACK SUCCESS\n\n";
     bshh_log.flush();
     NS_LOG_INFO("[BSHH-S4] t=" << now << "s  Controller (RSU variant) replayed stale HBs");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S4][t=" << now << "]  Controller --INTERNAL REPLAY (RSU path)--> own liveness table"
+              << "  HB(V" << v1_id << ", t=" << stored_time << ")"
+              << "  HB(V" << v2_id << ", t=" << stored_time << ")"
+              << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
     PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
 }
@@ -2339,7 +2496,7 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
 
 void ME_S1_InitLog()
 {
-    me_log.open("me_s1_attack_log.txt", std::ios::out | std::ios::trunc);
+    me_log.open(BuildLogPath("me_s1_attack_log.txt"), std::ios::out | std::ios::trunc);
     me_log << std::fixed << std::setprecision(3);
     me_log << "========================================================\n"
            << "  ME Attack S1 — Malicious Vehicles, No RSU             \n"
@@ -2365,6 +2522,13 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, double t)
            << " sees V" << v2_id << ", t=" << t << ">  (real reporter)\n"
            << "  V" << v2_id << " -> Controller : <V" << v2_id
            << " sees V" << v1_id << ", t=" << t << ">  (real reporter)\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S1][t=" << now << "]  V" << v1_id
+              << " --topo update--> Controller  <V" << v1_id << " sees V" << v2_id
+              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S1][t=" << now << "]  V" << v2_id
+              << " --topo update--> Controller  <V" << v2_id << " sees V" << v1_id
+              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     if (v1_id < Vehicle_Nodes.GetN()) {
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
@@ -2416,6 +2580,16 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
     me_log.flush();
     NS_LOG_INFO("[ME-S1] t=" << now << "s  V" << echo_v3 << " and V" << echo_v4
                 << " echoed link V" << link_src << "<->V" << link_dst);
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S1][t=" << now << "]  V" << echo_v3
+              << " --ECHO report--> Controller  <V" << link_src << " sees V" << link_dst
+              << ", t=" << t << ">  FALSE REPORTER  PHANTOM path V"
+              << link_src << "->V" << echo_v3 << "->V" << link_dst << std::endl;
+    std::cout << "[ME-S1][t=" << now << "]  V" << echo_v4
+              << " --ECHO report--> Controller  <V" << link_src << " sees V" << link_dst
+              << ", t=" << t << ">  FALSE REPORTER  PHANTOM path V"
+              << link_src << "->V" << echo_v4 << "->V" << link_dst
+              << "  *** ATTACK COMPLETE ***" << std::endl;
     Vector v3Pos(0.0,0.0,0.0), v4Pos(0.0,0.0,0.0);
     Vector vSrcPos(0.0,0.0,0.0), vDstPos(0.0,0.0,0.0);
     if (echo_v3 < Vehicle_Nodes.GetN()) {
@@ -2446,7 +2620,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
 
 void ME_S2_InitLog()
 {
-    me_log.open("me_s2_attack_log.txt", std::ios::out | std::ios::trunc);
+    me_log.open(BuildLogPath("me_s2_attack_log.txt"), std::ios::out | std::ios::trunc);
     me_log << std::fixed << std::setprecision(3);
     me_log << "========================================================\n"
            << "  ME Attack S2 — Malicious RSU                          \n"
@@ -2471,6 +2645,13 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, 
            << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED\n"
            << "  V" << v2_id << " -> RSU -> Controller : <V" << v2_id
            << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S2][t=" << now << "]  V" << v1_id
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED" << std::endl;
+    std::cout << "[ME-S2][t=" << now << "]  V" << v2_id
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
+              << "  <V" << v2_id << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED" << std::endl;
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     if (v1_id < Vehicle_Nodes.GetN()) {
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
@@ -2516,6 +2697,16 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
     me_log.flush();
     NS_LOG_INFO("[ME-S2] t=" << now << "s  RSU_" << rsu_id
                 << " injected echo reports for V" << false_v3 << " and V" << false_v4);
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S2][t=" << now << "]  RSU_" << rsu_id
+              << " --INJECTED echo--> Controller  <V" << v1_id << " sees V" << v2_id
+              << "> as-if-by V" << false_v3 << "  PHANTOM V"
+              << v1_id << "->V" << false_v3 << "->V" << v2_id << std::endl;
+    std::cout << "[ME-S2][t=" << now << "]  RSU_" << rsu_id
+              << " --INJECTED echo--> Controller  <V" << v1_id << " sees V" << v2_id
+              << "> as-if-by V" << false_v4 << "  PHANTOM V"
+              << v1_id << "->V" << false_v4 << "->V" << v2_id
+              << "  *** ATTACK COMPLETE ***" << std::endl;
     Vector rsuPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     for (uint32_t ri = 0; ri < RSU_Nodes.GetN(); ri++) {
         if (RSU_Nodes.Get(ri)->GetId() == rsu_id) {
@@ -2545,7 +2736,7 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
 
 void ME_S3_InitLog()
 {
-    me_log.open("me_s3_attack_log.txt", std::ios::out | std::ios::trunc);
+    me_log.open(BuildLogPath("me_s3_attack_log.txt"), std::ios::out | std::ios::trunc);
     me_log << std::fixed << std::setprecision(3);
     me_log << "========================================================\n"
            << "  ME Attack S3 — Malicious Controller, No RSU           \n"
@@ -2571,6 +2762,13 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, d
            << "  V" << v2_id << " -> Controller : <V" << v2_id
            << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n"
            << "  V" << v3_id << " -> Controller : own topology (unrelated)  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S3][t=" << now << "]  V" << v1_id
+              << " --topo update--> Controller  <V" << v1_id << " sees V" << v2_id
+              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S3][t=" << now << "]  V" << v2_id
+              << " --topo update--> Controller  <V" << v2_id << " sees V" << v1_id
+              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     if (v1_id < Vehicle_Nodes.GetN()) {
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
@@ -2616,6 +2814,14 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     me_log.flush();
     NS_LOG_INFO("[ME-S3] t=" << now << "s  Controller fabricated phantom paths via V"
                 << false_v3 << " and V" << false_v4);
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S3][t=" << now << "]  Controller --FABRICATED echo entry--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << "> as-if-by V" << false_v3
+              << "  PHANTOM V" << v1_id << "->V" << false_v3 << "->V" << v2_id << std::endl;
+    std::cout << "[ME-S3][t=" << now << "]  Controller --FABRICATED echo entry--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << "> as-if-by V" << false_v4
+              << "  PHANTOM V" << v1_id << "->V" << false_v4 << "->V" << v2_id
+              << "  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
     Vector ctrlPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     if (controller_Node.GetN() > 0) {
         Ptr<MobilityModel> mc = controller_Node.Get(0)->GetObject<MobilityModel>();
@@ -2641,7 +2847,7 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
 
 void ME_S4_InitLog()
 {
-    me_log.open("me_s4_attack_log.txt", std::ios::out | std::ios::trunc);
+    me_log.open(BuildLogPath("me_s4_attack_log.txt"), std::ios::out | std::ios::trunc);
     me_log << std::fixed << std::setprecision(3);
     me_log << "========================================================\n"
            << "  ME Attack S4 — Malicious Controller, With RSU         \n"
@@ -2665,6 +2871,10 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, doubl
            << " (legitimate aggregate)\n"
            << "  <V" << v1_id << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED\n"
            << "  <V" << v2_id << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n\n";
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S4][t=" << now << "]  V" << v1_id << "/V" << v2_id
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED" << std::endl;
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     if (v1_id < Vehicle_Nodes.GetN()) {
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
@@ -2711,6 +2921,14 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     me_log.flush();
     NS_LOG_INFO("[ME-S4] t=" << now << "s  Controller fabricated phantom paths via V"
                 << false_v3 << " and V" << false_v4);
+    std::cout << std::fixed << std::setprecision(3)
+              << "[ME-S4][t=" << now << "]  Controller --FABRICATED echo entry (RSU path)--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << "> as-if-by V" << false_v3
+              << "  PHANTOM V" << v1_id << "->V" << false_v3 << "->V" << v2_id << std::endl;
+    std::cout << "[ME-S4][t=" << now << "]  Controller --FABRICATED echo entry (RSU path)--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << "> as-if-by V" << false_v4
+              << "  PHANTOM V" << v1_id << "->V" << false_v4 << "->V" << v2_id
+              << "  *** ATTACK COMPLETE ***" << std::endl;
     Vector ctrlPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     if (controller_Node.GetN() > 0) {
         Ptr<MobilityModel> mc = controller_Node.Get(0)->GetObject<MobilityModel>();
@@ -143524,6 +143742,10 @@ int main(int argc, char *argv[])
           std::cout << "[ERROR] TTW-S2 requires --N_RSUs=1. Aborting.\n";
           return 1;
       }
+      if (N_Vehicles < 2) {
+          std::cout << "[ERROR] TTW-S2 requires --N_Vehicles=2 (V0=victim, V1=victim). Aborting.\n";
+          return 1;
+      }
       TTWS2_InitLog();
       uint32_t v1_id = 0, v2_id = 1;
       uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
@@ -143576,6 +143798,10 @@ int main(int argc, char *argv[])
 
   if (attack_scenario == 3)
   {
+      if (N_Vehicles < 2) {
+          std::cout << "[ERROR] TTW-S3 requires --N_Vehicles=2 (V0=victim, V1=victim). Aborting.\n";
+          return 1;
+      }
       TTWS3_InitLog();
       uint32_t v1_id = 0, v2_id = 1;
 
@@ -143622,6 +143848,10 @@ int main(int argc, char *argv[])
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] TTW-S4 requires --N_RSUs=1. Aborting.\n";
+          return 1;
+      }
+      if (N_Vehicles < 2) {
+          std::cout << "[ERROR] TTW-S4 requires --N_Vehicles=2 (V0=victim, V1=victim). Aborting.\n";
           return 1;
       }
       TTWS4_InitLog();
@@ -143671,6 +143901,10 @@ int main(int argc, char *argv[])
 
   if (attack_scenario == 5)
   {
+      if (N_Vehicles < 2) {
+          std::cout << "[ERROR] BSHH-S1 requires --N_Vehicles=2 (V0=victim, V1=attacker). Aborting.\n";
+          return 1;
+      }
       BSHH_S1_InitLog();
       uint32_t v1_id = 0; // victim
       uint32_t v2_id = 1; // attacker (malicious vehicle)
@@ -143732,6 +143966,10 @@ int main(int argc, char *argv[])
           std::cout << "[ERROR] BSHH-S2 requires --N_RSUs=1. Aborting.\n";
           return 1;
       }
+      if (N_Vehicles < 2) {
+          std::cout << "[ERROR] BSHH-S2 requires --N_Vehicles=2 (V0=victim, V1=victim). Aborting.\n";
+          return 1;
+      }
       BSHH_S2_InitLog();
       uint32_t v1_id = 0; // victim
       uint32_t v2_id = 1;
@@ -143772,6 +144010,10 @@ int main(int argc, char *argv[])
 
   if (attack_scenario == 7)
   {
+      if (N_Vehicles < 2) {
+          std::cout << "[ERROR] BSHH-S3 requires --N_Vehicles=2 (V0=victim, V1=victim). Aborting.\n";
+          return 1;
+      }
       BSHH_S3_InitLog();
       uint32_t v1_id = 0, v2_id = 1;
       static const double BSHH_S3_EXCHANGE_TIME = 5.0;
@@ -143810,6 +144052,10 @@ int main(int argc, char *argv[])
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] BSHH-S4 requires --N_RSUs=1. Aborting.\n";
+          return 1;
+      }
+      if (N_Vehicles < 2) {
+          std::cout << "[ERROR] BSHH-S4 requires --N_Vehicles=2 (V0=victim, V1=victim). Aborting.\n";
           return 1;
       }
       BSHH_S4_InitLog();
