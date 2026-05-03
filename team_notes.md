@@ -973,16 +973,16 @@ All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 
 ```bash
 # BSHH-S1: Malicious Vehicle
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=5"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=5"
 
 # BSHH-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=6"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=6"
 
 # BSHH-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=7"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=7"
 
 # BSHH-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=8"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=8"
 ```
 
 ### ME family
@@ -1195,10 +1195,10 @@ bash run_5_experiments.sh  1  2 0 1    # TTW-S1  + detection
 bash run_5_experiments.sh  2  2 1 1    # TTW-S2  + detection
 bash run_5_experiments.sh  3  2 0 1    # TTW-S3  + detection
 bash run_5_experiments.sh  4  2 1 1    # TTW-S4  + detection
-bash run_5_experiments.sh  5  4 0 1    # BSHH-S1 + detection
-bash run_5_experiments.sh  6  4 1 1    # BSHH-S2 + detection
-bash run_5_experiments.sh  7  4 0 1    # BSHH-S3 + detection
-bash run_5_experiments.sh  8  4 1 1    # BSHH-S4 + detection
+bash run_5_experiments.sh  5  2 0 1    # BSHH-S1 + detection
+bash run_5_experiments.sh  6  2 1 1    # BSHH-S2 + detection
+bash run_5_experiments.sh  7  2 0 1    # BSHH-S3 + detection
+bash run_5_experiments.sh  8  2 1 1    # BSHH-S4 + detection
 bash run_5_experiments.sh  9  4 0 1    # ME-S1   + detection
 bash run_5_experiments.sh 10  4 1 1    # ME-S2   + detection
 bash run_5_experiments.sh 11  4 0 1    # ME-S3   + detection
@@ -1212,10 +1212,10 @@ bash run_5_experiments.sh  1  2 0 0    # TTW-S1  attack only
 bash run_5_experiments.sh  2  2 1 0    # TTW-S2  attack only
 bash run_5_experiments.sh  3  2 0 0    # TTW-S3  attack only
 bash run_5_experiments.sh  4  2 1 0    # TTW-S4  attack only
-bash run_5_experiments.sh  5  4 0 0    # BSHH-S1 attack only
-bash run_5_experiments.sh  6  4 1 0    # BSHH-S2 attack only
-bash run_5_experiments.sh  7  4 0 0    # BSHH-S3 attack only
-bash run_5_experiments.sh  8  4 1 0    # BSHH-S4 attack only
+bash run_5_experiments.sh  5  2 0 0    # BSHH-S1 attack only
+bash run_5_experiments.sh  6  2 1 0    # BSHH-S2 attack only
+bash run_5_experiments.sh  7  2 0 0    # BSHH-S3 attack only
+bash run_5_experiments.sh  8  2 1 0    # BSHH-S4 attack only
 bash run_5_experiments.sh  9  4 0 0    # ME-S1   attack only
 bash run_5_experiments.sh 10  4 1 0    # ME-S2   attack only
 bash run_5_experiments.sh 11  4 0 0    # ME-S3   attack only
@@ -1558,10 +1558,10 @@ ID  FAMILY   ATTACKER                   RSU?  simTime  N_Vehicles  N_RSUs
  2  TTW-S2   Malicious RSU              YES     30          2          1
  3  TTW-S3   Malicious controller       No      30          2          0
  4  TTW-S4   Malicious controller       YES     30          2          1
- 5  BSHH-S1  Malicious vehicle V1       No      20          4          0
- 6  BSHH-S2  Malicious RSU              YES     20          4          1
- 7  BSHH-S3  Malicious controller       No      20          4          0
- 8  BSHH-S4  Malicious controller       YES     20          4          1
+ 5  BSHH-S1  Malicious vehicle V1       No      20          2          0
+ 6  BSHH-S2  Malicious RSU              YES     20          2          1
+ 7  BSHH-S3  Malicious controller       No      20          2          0
+ 8  BSHH-S4  Malicious controller       YES     20          2          1
  9  ME-S1    Malicious vehicles V2+V3   No      20          4          0
 10  ME-S2    Malicious RSU              YES     20          4          1
 11  ME-S3    Malicious controller       No      20          4          0

@@ -662,7 +662,7 @@ t=20  Controller internally replays: <V1 sees V2, t=20>  (forged timestamp)
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=4"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=4"
 ```
 
 ---
@@ -760,7 +760,7 @@ Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME),
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=5"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=5"
 ```
 
 ---
@@ -798,7 +798,7 @@ void BSHH_S2_ReplayAttack(Ptr<Node> rsu, uint32_t victim_id, double stored_time)
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=6"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=6"
 ```
 
 ---
@@ -828,7 +828,7 @@ t=10  Controller internally reprocesses old heartbeats AS IF they are current:
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=7"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=7"
 ```
 
 ---
@@ -842,7 +842,7 @@ t=10  Controller internally reprocesses old heartbeats AS IF they are current:
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=8"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=8"
 ```
 
 ---
