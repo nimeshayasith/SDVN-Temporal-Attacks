@@ -2457,6 +2457,13 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
     NS_LOG_INFO("[ME-S2] t=" << now << "s  RSU_" << rsu_id
                 << " injected echo reports for V" << false_v3 << " and V" << false_v4);
     Vector rsuPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
+    for (uint32_t ri = 0; ri < RSU_Nodes.GetN(); ri++) {
+        if (RSU_Nodes.Get(ri)->GetId() == rsu_id) {
+            Ptr<MobilityModel> m = RSU_Nodes.Get(ri)->GetObject<MobilityModel>();
+            if (m) rsuPos = m->GetPosition();
+            break;
+        }
+    }
     if (v1_id < Vehicle_Nodes.GetN()) {
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
         if (m) v1Pos = m->GetPosition();
@@ -2549,7 +2556,11 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     me_log.flush();
     NS_LOG_INFO("[ME-S3] t=" << now << "s  Controller fabricated phantom paths via V"
                 << false_v3 << " and V" << false_v4);
-    Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
+    Vector ctrlPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
+    if (controller_Node.GetN() > 0) {
+        Ptr<MobilityModel> mc = controller_Node.Get(0)->GetObject<MobilityModel>();
+        if (mc) ctrlPos = mc->GetPosition();
+    }
     if (v1_id < Vehicle_Nodes.GetN()) {
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
         if (m) v1Pos = m->GetPosition();
@@ -2559,9 +2570,9 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (m) v2Pos = m->GetPosition();
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, 9999u,
-                 v1_id, v2_id, t, now, v1Pos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
-                 v1_id, v2_id, t, now, v1Pos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
 }
 
 // =============================================================================
@@ -2638,7 +2649,13 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
            << " and V" << v1_id << "->V" << false_v4 << "->V" << v2_id << "\n"
            << "  <- ATTACK SUCCESS\n\n";
     me_log.flush();
-    Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
+    NS_LOG_INFO("[ME-S4] t=" << now << "s  Controller fabricated phantom paths via V"
+                << false_v3 << " and V" << false_v4);
+    Vector ctrlPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
+    if (controller_Node.GetN() > 0) {
+        Ptr<MobilityModel> mc = controller_Node.Get(0)->GetObject<MobilityModel>();
+        if (mc) ctrlPos = mc->GetPosition();
+    }
     if (v1_id < Vehicle_Nodes.GetN()) {
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
         if (m) v1Pos = m->GetPosition();
@@ -2648,9 +2665,9 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (m) v2Pos = m->GetPosition();
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, 9999u,
-                 v1_id, v2_id, t, now, v1Pos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
-                 v1_id, v2_id, t, now, v1Pos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
 }
 
 // =============================================================================
@@ -143837,6 +143854,12 @@ int main(int argc, char *argv[])
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 150, 255);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Real");
       }
+      if (N_Vehicles > 3) {
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(false_v3), 255, 165, 0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(false_v3), "V3-Phantom");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(false_v4), 255, 165, 0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(false_v4), "V4-Phantom");
+      }
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
@@ -143876,7 +143899,13 @@ int main(int argc, char *argv[])
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 150, 255);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Real");
       }
-      anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0); // orange RSU (in path)
+      if (N_Vehicles > 3) {
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(false_v3), 255, 165, 0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(false_v3), "V3-Phantom");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(false_v4), 255, 165, 0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(false_v4), "V4-Phantom");
+      }
+      anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0);
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
