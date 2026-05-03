@@ -143851,6 +143851,10 @@ int main(int argc, char *argv[])
 
   if (attack_scenario == 9)
   {
+      if (N_Vehicles < 4) {
+          std::cout << "[ERROR] ME-S1 requires --N_Vehicles=4 (V0,V1=real link; V2,V3=echo attackers). Aborting.\n";
+          return 1;
+      }
       ME_S1_InitLog();
       uint32_t v1_id = 0, v2_id = 1; // real link
       uint32_t v3_id = 2, v4_id = 3; // echo attackers
@@ -143896,6 +143900,10 @@ int main(int argc, char *argv[])
           std::cout << "[ERROR] ME-S2 requires --N_RSUs=1. Aborting.\n";
           return 1;
       }
+      if (N_Vehicles < 4) {
+          std::cout << "[ERROR] ME-S2 requires --N_Vehicles=4 (V0,V1=real link; V2,V3=phantom reporters). Aborting.\n";
+          return 1;
+      }
       ME_S2_InitLog();
       uint32_t v1_id = 0, v2_id = 1;   // real link
       uint32_t false_v3 = 2, false_v4 = 3; // phantom reporters
@@ -143933,6 +143941,10 @@ int main(int argc, char *argv[])
 
   if (attack_scenario == 11)
   {
+      if (N_Vehicles < 4) {
+          std::cout << "[ERROR] ME-S3 requires --N_Vehicles=4 (V0,V1=real link; V2,V3=phantom reporters). Aborting.\n";
+          return 1;
+      }
       ME_S3_InitLog();
       uint32_t v1_id = 0, v2_id = 1, v3_id = 2;
       uint32_t false_v3 = 2, false_v4 = 3;
@@ -143975,6 +143987,10 @@ int main(int argc, char *argv[])
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] ME-S4 requires --N_RSUs=1. Aborting.\n";
+          return 1;
+      }
+      if (N_Vehicles < 4) {
+          std::cout << "[ERROR] ME-S4 requires --N_Vehicles=4 (V0,V1=real link; V2,V3=phantom reporters). Aborting.\n";
           return 1;
       }
       ME_S4_InitLog();

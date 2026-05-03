@@ -960,13 +960,13 @@ All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 ./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=1"
 
 # TTW-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=2"
 
 # TTW-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=3"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=3"
 
 # TTW-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=4"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=4"
 ```
 
 ### BSHH family
@@ -988,17 +988,17 @@ All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 ### ME family
 
 ```bash
-# ME-S1: Malicious Vehicles  (needs ≥4 vehicles: V0,V1=real link; V2,V3=attackers)
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=9"
+# ME-S1: Malicious Vehicles  (4 vehicles: V0,V1=real link; V2,V3=attackers)
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=9"
 
 # ME-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=10"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=10"
 
 # ME-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=11"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=11"
 
 # ME-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=12"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=12"
 ```
 
 ### Attack-only mode (no detection/mitigation)
@@ -1012,7 +1012,7 @@ Use this to measure worst-case PDR impact.
 ./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2 --detection_enabled=0"
 
 # Example: ME-S1, attack fires but PEM never mitigates
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=9 --detection_enabled=0"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=9 --detection_enabled=0"
 ```
 
 ### Attack + detection mode (default)
@@ -1192,34 +1192,34 @@ echo "Done. Results in ${OUTDIR}/"
 chmod +x run_5_experiments.sh
 
 bash run_5_experiments.sh  1  2 0 1    # TTW-S1  + detection
-bash run_5_experiments.sh  2  4 1 1    # TTW-S2  + detection
-bash run_5_experiments.sh  3  4 0 1    # TTW-S3  + detection
-bash run_5_experiments.sh  4  4 1 1    # TTW-S4  + detection
+bash run_5_experiments.sh  2  2 1 1    # TTW-S2  + detection
+bash run_5_experiments.sh  3  2 0 1    # TTW-S3  + detection
+bash run_5_experiments.sh  4  2 1 1    # TTW-S4  + detection
 bash run_5_experiments.sh  5  4 0 1    # BSHH-S1 + detection
 bash run_5_experiments.sh  6  4 1 1    # BSHH-S2 + detection
 bash run_5_experiments.sh  7  4 0 1    # BSHH-S3 + detection
 bash run_5_experiments.sh  8  4 1 1    # BSHH-S4 + detection
-bash run_5_experiments.sh  9  6 0 1    # ME-S1   + detection
-bash run_5_experiments.sh 10  6 1 1    # ME-S2   + detection
-bash run_5_experiments.sh 11  6 0 1    # ME-S3   + detection
-bash run_5_experiments.sh 12  6 1 1    # ME-S4   + detection
+bash run_5_experiments.sh  9  4 0 1    # ME-S1   + detection
+bash run_5_experiments.sh 10  4 1 1    # ME-S2   + detection
+bash run_5_experiments.sh 11  4 0 1    # ME-S3   + detection
+bash run_5_experiments.sh 12  4 1 1    # ME-S4   + detection
 ```
 
 ### Run commands for all 12 scenarios — attack only (no detection)
 
 ```bash
 bash run_5_experiments.sh  1  2 0 0    # TTW-S1  attack only
-bash run_5_experiments.sh  2  4 1 0    # TTW-S2  attack only
-bash run_5_experiments.sh  3  4 0 0    # TTW-S3  attack only
-bash run_5_experiments.sh  4  4 1 0    # TTW-S4  attack only
+bash run_5_experiments.sh  2  2 1 0    # TTW-S2  attack only
+bash run_5_experiments.sh  3  2 0 0    # TTW-S3  attack only
+bash run_5_experiments.sh  4  2 1 0    # TTW-S4  attack only
 bash run_5_experiments.sh  5  4 0 0    # BSHH-S1 attack only
 bash run_5_experiments.sh  6  4 1 0    # BSHH-S2 attack only
 bash run_5_experiments.sh  7  4 0 0    # BSHH-S3 attack only
 bash run_5_experiments.sh  8  4 1 0    # BSHH-S4 attack only
-bash run_5_experiments.sh  9  6 0 0    # ME-S1   attack only
-bash run_5_experiments.sh 10  6 1 0    # ME-S2   attack only
-bash run_5_experiments.sh 11  6 0 0    # ME-S3   attack only
-bash run_5_experiments.sh 12  6 1 0    # ME-S4   attack only
+bash run_5_experiments.sh  9  4 0 0    # ME-S1   attack only
+bash run_5_experiments.sh 10  4 1 0    # ME-S2   attack only
+bash run_5_experiments.sh 11  4 0 0    # ME-S3   attack only
+bash run_5_experiments.sh 12  4 1 0    # ME-S4   attack only
 ```
 
 ### Compute mean ± std — save as `compute_stats.py`
@@ -1323,8 +1323,8 @@ Run the baseline simulation first to generate them:
 ### Error: `Segmentation fault`
 
 Usually a node index is out of bounds. The most common cause: `N_Vehicles` is too small
-for the scenario (e.g., ME needs 4 vehicles for V0, V1, V2, V3). Use at least
-`--N_Vehicles=4` for TTW/BSHH and `--N_Vehicles=6` for ME.
+for the scenario (e.g., ME needs 4 vehicles: V0, V1 = real link; V2, V3 = echo reporters). Use
+`--N_Vehicles=4` for all families (TTW, BSHH, ME). TTW-S1 can use as few as 2.
 
 ### NetAnim shows no arrows or movement
 
@@ -1555,17 +1555,17 @@ ID  FAMILY   ATTACKER                   RSU?  simTime  N_Vehicles  N_RSUs
 ────────────────────────────────────────────────────────────────────────────
  0  None     —                          No      60         10          0
  1  TTW-S1   Malicious vehicle V0       No      30          2          0
- 2  TTW-S2   Malicious RSU              YES     30          4          1
- 3  TTW-S3   Malicious controller       No      30          4          0
- 4  TTW-S4   Malicious controller       YES     30          4          1
+ 2  TTW-S2   Malicious RSU              YES     30          2          1
+ 3  TTW-S3   Malicious controller       No      30          2          0
+ 4  TTW-S4   Malicious controller       YES     30          2          1
  5  BSHH-S1  Malicious vehicle V1       No      20          4          0
  6  BSHH-S2  Malicious RSU              YES     20          4          1
  7  BSHH-S3  Malicious controller       No      20          4          0
  8  BSHH-S4  Malicious controller       YES     20          4          1
- 9  ME-S1    Malicious vehicles V2+V3   No      20          6          0
-10  ME-S2    Malicious RSU              YES     20          6          1
-11  ME-S3    Malicious controller       No      20          6          0
-12  ME-S4    Malicious controller       YES     20          6          1
+ 9  ME-S1    Malicious vehicles V2+V3   No      20          4          0
+10  ME-S2    Malicious RSU              YES     20          4          1
+11  ME-S3    Malicious controller       No      20          4          0
+12  ME-S4    Malicious controller       YES     20          4          1
 ────────────────────────────────────────────────────────────────────────────
 
 KEY CONSTANTS IN routing.cc:
