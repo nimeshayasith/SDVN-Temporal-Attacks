@@ -2168,8 +2168,12 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
                 << " replayed old HB claiming V" << victim_id);
     PemEmitHeartbeatEvent(rsu_id, victim_id, stored_time, true);
     AttackSendRSUToController(rsu_id);
-    if (rsu_id < RSU_Nodes.GetN()) {
-        AttackSendHeartbeat(RSU_Nodes.Get(rsu_id), victim_id, stored_time, true);
+    {
+        Ptr<Node> rsuNode = nullptr;
+        for (uint32_t ri = 0; ri < RSU_Nodes.GetN(); ri++) {
+            if (RSU_Nodes.Get(ri)->GetId() == rsu_id) { rsuNode = RSU_Nodes.Get(ri); break; }
+        }
+        if (rsuNode) AttackSendHeartbeat(rsuNode, victim_id, stored_time, true);
     }
 }
 
@@ -114361,11 +114365,13 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
 }
 
-static void AttackSendRSUToController(uint32_t rsu_index)
+static void AttackSendRSUToController(uint32_t rsu_global_id)
 {
-    if (rsu_index >= RSU_Nodes.GetN()) return;
-
-    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
+    Ptr<Node> rsu_node = nullptr;
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
+        if (RSU_Nodes.Get(i)->GetId() == rsu_global_id) { rsu_node = RSU_Nodes.Get(i); break; }
+    }
+    if (!rsu_node) return;
     Ptr<SimpleUdpApplication> udp_app =
         DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
     if (!udp_app) return;
