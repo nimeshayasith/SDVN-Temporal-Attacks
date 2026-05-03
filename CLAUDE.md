@@ -1569,10 +1569,16 @@ static Ipv4Address AttackGetControllerIP() {
 }
 
 // Sends a CSMA UDP packet from RSU to controller
-static void AttackSendRSUToController(uint32_t rsu_index) {
-    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
+// Parameter: rsu_global_id — the global NS-3 node ID (RSU_Nodes.Get(0)->GetId())
+static void AttackSendRSUToController(uint32_t rsu_global_id) {
+    Ptr<Node> rsu_node = nullptr;
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
+        if (RSU_Nodes.Get(i)->GetId() == rsu_global_id) { rsu_node = RSU_Nodes.Get(i); break; }
+    }
+    if (!rsu_node) return;
     Ptr<SimpleUdpApplication> udp_app =
         DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
+    if (!udp_app) return;
     Ptr<Packet> pkt = Create<Packet>(0);
     CustomMetaDataUnicastTag0 tag;
     tag.SetNodeId(rsu_node->GetId());
@@ -1583,7 +1589,8 @@ static void AttackSendRSUToController(uint32_t rsu_index) {
 }
 ```
 
-**Every BSHH and TTW RSU-forwarding function calls `AttackSendRSUToController(rsu_id)` to generate a real CSMA packet.** The controller's `HandleReadOne()` at line ~97345 receives it.
+**Every BSHH and TTW RSU-forwarding function calls `AttackSendRSUToController(rsu_id)` to generate a real CSMA packet.**
+**Pass the global node ID** (`RSU_Nodes.Get(0)->GetId()`), not the container index — the function does an internal lookup. The controller's `HandleReadOne()` at line ~97345 receives it.
 
 > **Interface index note:** When `N_Vehicles > 0`, the controller's CSMA interface is index 1 (index 0 is the loopback). When no vehicles are present, it is index 0. `AttackGetControllerIP()` handles this automatically.
 
@@ -1781,13 +1788,19 @@ Vehicle (DSRC) ──802.11p──► RSU: Rx() callback fires
 
 ### How Attack Functions Use udp_app
 
-The attack helper `AttackSendRSUToController(rsu_index)` uses the same mechanism to send forged packets from a malicious RSU to the controller:
+The attack helper `AttackSendRSUToController(rsu_global_id)` uses the same mechanism to send forged packets from a malicious RSU to the controller. **Always pass the global node ID** (`RSU_Nodes.Get(0)->GetId()`), not the container index:
 
 ```cpp
-static void AttackSendRSUToController(uint32_t rsu_index) {
-    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
+// rsu_global_id = RSU_Nodes.Get(0)->GetId()  — global NS-3 node ID
+static void AttackSendRSUToController(uint32_t rsu_global_id) {
+    Ptr<Node> rsu_node = nullptr;
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
+        if (RSU_Nodes.Get(i)->GetId() == rsu_global_id) { rsu_node = RSU_Nodes.Get(i); break; }
+    }
+    if (!rsu_node) return;
     Ptr<SimpleUdpApplication> udp_app =
         DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
+    if (!udp_app) return;
     Ptr<Packet> pkt = Create<Packet>(0);
     CustomMetaDataUnicastTag0 tag;
     tag.SetNodeId(rsu_node->GetId());
