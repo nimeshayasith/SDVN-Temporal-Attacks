@@ -568,7 +568,7 @@ Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME),
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=2"
 ```
 
 ---
@@ -633,7 +633,7 @@ Simulator::Schedule(Seconds(TTWS3_INTERNAL_REPLAY),
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=3"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=3"
 ```
 
 ---
@@ -942,7 +942,7 @@ Simulator::Schedule(Seconds(ME_S1_DISCOVERY_TIME + 0.1),
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=9"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=9"
 ```
 
 ---
@@ -985,7 +985,7 @@ void ME_S2_InjectEchoReports(Ptr<Node> rsu,
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=10"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=10"
 ```
 
 ---
@@ -1012,7 +1012,7 @@ Controller now infers phantom paths V1→V3→V2, V1→V4→V2
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=11"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=11"
 ```
 
 ---
@@ -1026,7 +1026,7 @@ Controller now infers phantom paths V1→V3→V2, V1→V4→V2
 
 **Run command:**
 ```bash
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=12"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=12"
 ```
 
 ---
