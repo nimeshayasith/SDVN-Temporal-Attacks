@@ -39,6 +39,8 @@ Countering Temporal-Echo Topology Poisoning Attacks in SDVNs
 22. [Data Transmission Functions and UDP Application (2026-05-02)](#22-data-transmission-functions-and-udp-application-2026-05-02)
 23. [Node Roles, Architecture Modes, and centralized_dsrc_data_broadcast](#23-node-roles-architecture-modes-and-centralized_dsrc_data_broadcast)
 24. [Agent-Based Data Upload Functions — send_LTE_data_agent and RSU_dataunicast_agent](#24-agent-based-data-upload-functions--send_lte_data_agent-and-rsu_dataunicast_agent)
+25. [Build Fix Notes — Forward Declarations and Helper Placement (2026-05-02)](#25-build-fix-notes--forward-declarations-and-helper-placement-2026-05-02)
+26. [Observed Run Note — TTW-S2 Command (2026-05-03)](#26-observed-run-note--ttw-s2-command-2026-05-03)
 
 ---
 
@@ -2569,6 +2571,81 @@ it is never scheduled.
 
 ## 24. Agent-Based Data Upload Functions — send_LTE_data_agent and RSU_dataunicast_agent
 
+## 25. Build Fix Notes — Forward Declarations and Helper Placement (2026-05-02)
+
+This section documents the build fix that was made after `./waf build` failed in
+`AttackSendDSRCBeacon()` and `AttackSendRSUToController()`.
+
+### What failed
+
+The compiler reported that these names were not declared:
+
+- `CustomDataTag1`
+- `CustomMetaDataUnicastTag0`
+- `SimpleUdpApplication`
+
+At first glance this looked like the classes were missing, but they were already present
+later in `routing.cc`.
+
+### Real cause
+
+The problem was **declaration order inside one very large source file**.
+
+These helper functions were defined early in the file:
+
+- `AttackSendDSRCBeacon(...)`
+- `AttackSendRSUToController(...)`
+
+But the classes they use are defined much later:
+
+- `CustomDataTag1`
+- `CustomMetaDataUnicastTag0`
+- `SimpleUdpApplication`
+
+In C++, a class must be known before code can create an object of that class or call one
+of its member functions through a typed pointer. Because the helper function bodies came
+too early, the compiler stopped with "not declared in this scope" errors.
+
+### What was changed
+
+The fix was intentionally small:
+
+1. The early function bodies were replaced with **forward declarations only**:
+   - `static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node);`
+   - `static void AttackSendRSUToController(uint32_t rsu_index);`
+2. The real implementations were moved to a later location in the file, after
+   `SimpleUdpApplication::SendPacket(...)`, where all required classes are already known.
+3. While moving `AttackSendRSUToController(...)`, the scheduled send call was verified and
+   kept in the correct form:
+
+```cpp
+Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+                    udp_app, pkt, dest_ip, static_cast<uint16_t>(7777));
+```
+
+### Why this fix is safe
+
+This change does **not** alter the attack logic, timing, packet contents, or scenario
+selection. It only changes where the compiler sees the helper function bodies.
+
+Behavior remains the same:
+
+- `AttackSendDSRCBeacon(...)` still creates a DSRC packet, attaches `CustomDataTag1`,
+  and broadcasts it on the Wi-Fi device.
+- `AttackSendRSUToController(...)` still creates a packet, attaches
+  `CustomMetaDataUnicastTag0`, and schedules `SimpleUdpApplication::SendPacket(...)`
+  to send the packet to the controller on UDP port `7777`.
+
+### Result
+
+After this change, the target built successfully with:
+
+```bash
+./waf build --targets=routing -j1
+```
+
+This confirms the failure was a compile-order issue, not a missing-feature issue.
+
 ### Background — What is an "agent" here?
 
 The project has an RL (Reinforcement Learning) optimization layer where certain nodes
@@ -2658,12 +2735,51 @@ new routing decisions and sends `delta` values back down to nodes.
 > (`paper == 1`, separate scheduling path). All attack detection runs use the
 > `controller_Node` path, not `management_Node`.
 
+## 26. Observed Run Note — TTW-S2 Command (2026-05-03)
+
+**Command used:**
+
+```bash
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
+```
+
+**What happened during this run:**
+
+- The first attempt did **not** fail inside the simulation logic. It failed in `waf` while trying to write `build/compile_commands.json`:
+
+```text
+OSError: [Errno 30] Read-only file system: '/home/nimesha/ns-allinone-3.35/ns-3.35/build/compile_commands.json'
+```
+
+- After rerunning with normal filesystem access, `waf` completed the build stage successfully.
+- The simulation then started correctly and printed:
+  - `Solution at controller cleared`
+  - NetAnim output path:
+    `/home/nimesha/ns-allinone-3.35/ns-3.35/XML/02_TTW_S2_Malicious_RSU.xml`
+  - TTW-S2 scenario banner:
+    - attacker = `RSU_0`
+    - victims = `V0` and `V1`
+    - replay log file = `ttw_s2_attack_log.txt`
+    - timeline = legitimate exchange at `t=10s`, link break at `t=15s`, replay at `t=20s`
+- Runtime output then continued with many DSRC broadcast / receive messages from the participating nodes. Example observations:
+  - vehicles broadcast on all 7 DSRC channels
+  - `dsrc total size` kept increasing
+  - packet receive logs showed microsecond-scale delays such as `153us`, `289us`, `454us`
+
+**Interpretation:**
+
+The command appears to **enter the TTW-S2 malicious RSU scenario correctly** and begins normal packet activity. During observation, it did **not** show an immediate crash after the scenario banner. The main issue seen was the initial `waf` filesystem write failure, not a logic failure in `routing.cc`.
+
+**Useful generated files from this run:**
+
+- `XML/02_TTW_S2_Malicious_RSU.xml`
+- `ttw_s2_attack_log.txt`
+
 ---
 
 *Written by Nimesha Yasith | FYP — Department of EIE, University of Ruhuna | 2026-04-30*
 *Updated 2026-04-30: added --detection_enabled flag, per-scenario XML files, ME-S1/S3 PEM improvements, updated CSV column layouts.*
 *Updated 2026-05-01: added Section 18 — RSU and RSU Network explanation; Section 19 — Q&A session documenting custom data tags, DSRC, V2V implementation gap, and fix.*
 *Updated 2026-05-02: added Section 20 — Q&A session (7 DSRC channels, mobility traces, two-layer architecture, CustomHeartbeatTag, RSU→Controller CSMA, LTE V2C status); Section 21 — per-channel TX power 23–44 dBm for mobility_scenario=1, channel_delivery_analysis.csv output; Section 22 — data transmission functions comparison (centralized vs distributed broadcast, send_centralized_packets, send_hybrid_packets), SimpleUdpApplication internals (3 sockets, HandleReadOne tag dispatch, attack usage); Section 23 — node roles (controller_Node vs management_Node), three architecture modes (centralized/distributed/hybrid), which mode runs in attack scenarios.*
-
-
+*Updated 2026-05-03: added Section 26 documenting an observed `TTW-S2` run for `--simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2`, including the initial `waf` filesystem error and the successful scenario startup details.*
 
