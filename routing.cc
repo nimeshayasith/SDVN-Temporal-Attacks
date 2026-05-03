@@ -51,6 +51,47 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("vanet");
 
+static const char* OUTPUT_ROOT_DIR = "/home/nimesha/ns-allinone-3.35/ns-3.35";
+
+static std::string
+GetScenarioOutputName(uint32_t scenario)
+{
+    static const char* scenario_names[] = {
+        "00_Baseline_No_Attack",
+        "01_TTW_S1_Malicious_Vehicle",
+        "02_TTW_S2_Malicious_RSU",
+        "03_TTW_S3_Malicious_Controller_No_RSU",
+        "04_TTW_S4_Malicious_Controller_With_RSU",
+        "05_BSHH_S1_Malicious_Vehicle",
+        "06_BSHH_S2_Malicious_RSU",
+        "07_BSHH_S3_Malicious_Controller_No_RSU",
+        "08_BSHH_S4_Malicious_Controller_With_RSU",
+        "09_ME_S1_Malicious_Vehicles",
+        "10_ME_S2_Malicious_RSU",
+        "11_ME_S3_Malicious_Controller_No_RSU",
+        "12_ME_S4_Malicious_Controller_With_RSU"
+    };
+
+    const uint32_t safe_scenario = (scenario <= 12) ? scenario : 0;
+    return scenario_names[safe_scenario];
+}
+
+static void
+EnsureScenarioOutputDir(const std::string& folder)
+{
+    const std::string cmd =
+        "mkdir -p " + std::string(OUTPUT_ROOT_DIR) + "/" + folder;
+    std::system(cmd.c_str());
+}
+
+static std::string
+BuildScenarioCsvPath(const std::string& folder, uint32_t scenario)
+{
+    EnsureScenarioOutputDir(folder);
+    return std::string(OUTPUT_ROOT_DIR) + "/" + folder + "/"
+           + GetScenarioOutputName(scenario) + ".csv";
+}
+
 // ── defines — unchanged ──────────────────────────────────────────────────────
 #define max   40
 #define max1   1
@@ -266,7 +307,9 @@ static void ChannelPhyRxEnd(uint32_t ch_idx, Ptr<const Packet>) {
 // avg_fanout = rx_end_count / tx_count: measures how many nodes received each broadcast.
 // Higher power → longer range → more receivers per TX → higher fanout.
 void WriteChannelAnalysisCsv() {
-    std::ofstream f("channel_delivery_analysis.csv");
+    const std::string filename =
+        BuildScenarioCsvPath("CHANNEL_DELIVERY_ANALYSIS", attack_scenario);
+    std::ofstream f(filename.c_str());
     f << "channel_number,frequency_mhz,power_dbm,tx_count,rx_end_count,avg_fanout\n";
     for (int i = 0; i < 7; i++) {
         double fanout = (channel_tx_count[i] > 0)
@@ -696,7 +739,8 @@ PemWriteCsvHeaderIfNeeded(const std::string& filename,
 static void
 PemWriteEventCsv(const PemEvent& event)
 {
-    const std::string filename = "pem_event_log.csv";
+    const std::string filename =
+        BuildScenarioCsvPath("PEM_EVENT_LOG", attack_scenario);
     PemWriteCsvHeaderIfNeeded(
         filename,
         "sim_time_s,event_type,physical_sender_id,claimed_sender_id,reporter_id,link_src_id,link_dst_id,"
@@ -733,7 +777,8 @@ PemWriteEventCsv(const PemEvent& event)
 static void
 PemWriteRunSummaryCsv()
 {
-    const std::string filename = "pem_run_summary.csv";
+    const std::string filename =
+        BuildScenarioCsvPath("PEM_RUN_SUMMARY", attack_scenario);
     PemWriteCsvHeaderIfNeeded(
         filename,
         "run_id,attack_scenario,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,"
@@ -1194,27 +1239,7 @@ static Ptr<WifiNetDevice> AttackGetDSRCDevice(Ptr<Node> node)
     return nullptr;
 }
 
-static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
-{
-    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
-    if (!wdi) return;
-    Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
-    Vector pos = mob ? mob->GetPosition() : Vector(0,0,0);
-    Vector vel = mob ? mob->GetVelocity()  : Vector(0,0,0);
-    Vector acc(0,0,0);
-    Ptr<Packet> pkt = Create<Packet>(0);
-    CustomDataTag1 tag;
-    uint32_t nid_arr[max1+1] = {};
-    nid_arr[0] = neighbor_node->GetId();
-    tag.SetNodeId(sender_node->GetId());
-    tag.SetNeighborids(nid_arr);
-    tag.SetPosition(pos);
-    tag.SetVelocity(vel);
-    tag.SetAcceleration(acc);
-    tag.SetTimestamp(Simulator::Now());
-    pkt->AddPacketTag(tag);
-    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
-}
+static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node);
 
 // =============================================================================
 // CSMA PACKET HELPER — RSU → Controller real UDP send over CSMA Ethernet
@@ -1229,22 +1254,7 @@ static Ipv4Address AttackGetControllerIP()
     return ipv4->GetAddress(iface_idx, 0).GetLocal();
 }
 
-static void AttackSendRSUToController(uint32_t rsu_index)
-{
-    if (rsu_index >= RSU_Nodes.GetN()) return;
-    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
-    Ptr<SimpleUdpApplication> udp_app =
-        DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
-    if (!udp_app) return;
-    Ipv4Address dest_ip = AttackGetControllerIP();
-    Ptr<Packet> pkt = Create<Packet>(0);
-    CustomMetaDataUnicastTag0 tag;
-    tag.SetNodeId(rsu_node->GetId());
-    tag.SetTimestamp(Simulator::Now());
-    pkt->AddPacketTag(tag);
-    Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
-                        udp_app, pkt, dest_ip, (uint16_t)7777);
-}
+static void AttackSendRSUToController(uint32_t rsu_index);
 
 // Sends a real DSRC 802.11p heartbeat broadcast from physical_sender_node.
 // claimed_sender_id = whose liveness is claimed (differs from sender in replay attacks).
@@ -1965,27 +1975,34 @@ void BSHH_S1_InitLog()
     bshh_log << "========================================================\n"
              << "  BSHH Attack S1 — Malicious Vehicle, No RSU           \n"
              << "========================================================\n\n"
-             << "  t=5   ①  Legitimate heartbeat exchange V1<->V2\n"
-             << "  t=5   ②  Attacker stores old HB from victim (t=0)\n"
-             << "  t=10  ③  Attacker replays old HB impersonating victim\n\n"
+             << "  t=5    ①  Legitimate heartbeat exchange V1<->V2\n"
+             << "  t=5    ②  Both forward honest heartbeats to controller\n"
+             << "  t=10   ③  Attacker replays old heartbeat to victim\n"
+             << "  t=10+  ④  Victim forwards old heartbeat to controller\n"
+             << "  t=10+  ⑤  Attacker hijacks same old heartbeat to controller\n"
+             << "  t=10+  ⑥  Controller holds conflicting stale liveness\n\n"
              << "========================================================\n\n";
     NS_LOG_INFO("[BSHH-S1] Log opened: bshh_s1_attack_log.txt");
+}
+
+void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
+{
+    double now = Simulator::Now().GetSeconds();
+    bshh_stored_heartbeat = {victim_id, victim_id, stored_time, false};
+    bshh_heartbeat_stored = true;
+    bshh_log << "[t=" << now << "]  SETUP  Stored old heartbeat for attacker replay\n"
+             << "  stored_packet : Heartbeat(Sender=V" << victim_id
+             << ", t=" << stored_time << ")\n\n";
 }
 
 void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    HeartbeatPacket hb1 = {v1_id, v1_id, t, false};
-    HeartbeatPacket hb2 = {v2_id, v2_id, t, false};
-    bshh_controller_liveness_table[v1_id] = hb1;
-    bshh_controller_liveness_table[v2_id] = hb2;
-    bshh_log << "[t=" << now << "]  STEP ①  LEGITIMATE HEARTBEAT EXCHANGE\n"
-             << "  V" << v1_id << " -> Controller : Heartbeat(V" << v1_id
-             << ", t=" << t << ")  ACCEPTED\n"
-             << "  V" << v2_id << " -> Controller : Heartbeat(V" << v2_id
-             << ", t=" << t << ")  ACCEPTED\n\n";
-    PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
-    PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+    bshh_log << "[t=" << now << "]  STEP ①  NORMAL HEARTBEAT EXCHANGE\n"
+             << "  V" << v1_id << " -> V" << v2_id
+             << " : Heartbeat(Sender=V" << v1_id << ", t=" << t << ")\n"
+             << "  V" << v2_id << " -> V" << v1_id
+             << " : Heartbeat(Sender=V" << v2_id << ", t=" << t << ")\n\n";
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
@@ -1996,44 +2013,83 @@ void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     }
 }
 
-void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
+void BSHH_S1_ForwardLegitimateHeartbeatsToController(uint32_t v1_id, uint32_t v2_id, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    bshh_stored_heartbeat = {victim_id, victim_id, stored_time, false};
-    bshh_heartbeat_stored = true;
-    bshh_log << "[t=" << now << "]  STEP ②  ATTACKER STORES OLD HEARTBEAT\n"
-             << "  old_heartbeat : Heartbeat(Sender=V" << victim_id
-             << ", t=" << stored_time << ")\n"
-             << "  Awaiting replay at t=10\n\n";
+    HeartbeatPacket hb1 = {v1_id, v1_id, t, false};
+    HeartbeatPacket hb2 = {v2_id, v2_id, t, false};
+    bshh_controller_liveness_table[v1_id] = hb1;
+    bshh_controller_liveness_table[v2_id] = hb2;
+    bshh_log << "[t=" << now << "]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER\n"
+             << "  V" << v1_id << " -> Controller : Heartbeat(Sender=V"
+             << v1_id << ", t=" << t << ")\n"
+             << "  V" << v2_id << " -> Controller : Heartbeat(Sender=V"
+             << v2_id << ", t=" << t << ")\n\n";
+    PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
+    PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
 }
 
-void BSHH_S1_ReplayAttack(uint32_t attacker_id, uint32_t victim_id, double stored_time)
+void BSHH_S1_ReplayOldHeartbeatToVictim(uint32_t attacker_id, uint32_t victim_id, double stored_time)
 {
     double now = Simulator::Now().GetSeconds();
     if (!bshh_heartbeat_stored) {
         NS_LOG_WARN("[BSHH-S1] No stored heartbeat!");
         return;
     }
-    HeartbeatPacket forged = {victim_id, attacker_id, stored_time, true};
-    bshh_controller_liveness_table[victim_id] = forged;
+    bshh_log << "[t=" << now << "]  STEP ③  ATTACKER REPLAYS OLD HEARTBEAT TO VICTIM\n"
+             << "  V" << attacker_id << " -> V" << victim_id
+             << " : Heartbeat(Sender=V" << victim_id
+             << ", t=" << stored_time << ")\n"
+             << "  Victim receives a stale but previously legitimate heartbeat\n\n";
+    if (attacker_id < Vehicle_Nodes.GetN()) {
+        AttackSendHeartbeat(Vehicle_Nodes.Get(attacker_id), victim_id, stored_time, true);
+    }
+}
+
+void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t victim_id, double stored_time)
+{
+    double now = Simulator::Now().GetSeconds();
+    HeartbeatPacket forwarded = {victim_id, victim_id, stored_time, true};
+    bshh_controller_liveness_table[victim_id] = forwarded;
     pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
-    bshh_log << "[t=" << now << "]  STEP ③  REPLAY ATTACK\n"
+    bshh_log << "[t=" << now << "]  STEP ④  VICTIM FORWARDS OLD HEARTBEAT TO CONTROLLER\n"
+             << "  V" << victim_id << " -> Controller : Heartbeat(Sender=V"
+             << victim_id << ", t=" << stored_time << ")\n"
+             << "  Controller refreshes V" << victim_id
+             << " liveness using stale timestamp t=" << stored_time << "\n\n";
+    PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true);
+}
+
+void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time)
+{
+    double now = Simulator::Now().GetSeconds();
+    HeartbeatPacket forged = {victim_id, attacker_id, stored_time, true};
+    bshh_controller_liveness_table[victim_id] = forged;
+    bshh_log << "[t=" << now << "]  STEP ⑤  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER\n"
              << "  V" << attacker_id << " -> Controller : Heartbeat(claimed=V"
              << victim_id << ", t=" << stored_time << ")\n"
              << "  physical_sender=V" << attacker_id
              << "  claimed_sender=V" << victim_id << "\n"
-             << "  Stale timestamp " << stored_time << " < fresh 5.0 -> BSHH-S2 triggered\n"
-             << "  Different physical sender -> BSHH-S1 triggered\n"
-             << "  <- ATTACK SUCCESS\n\n";
+             << "  Stale timestamp " << stored_time << " < fresh 5.0 -> replay evidence\n"
+             << "  Different physical sender -> impersonation evidence\n\n";
     bshh_log.flush();
     NS_LOG_INFO("[BSHH-S1] t=" << now << "s  V" << attacker_id
-                << " replayed old HB claiming V" << victim_id);
+                << " hijacked old HB claiming V" << victim_id);
     PemEmitHeartbeatEvent(attacker_id, victim_id, stored_time, true);
-    if (attacker_id < Vehicle_Nodes.GetN()) {
-        AttackSendHeartbeat(Vehicle_Nodes.Get(attacker_id), victim_id, stored_time, true);
-    }
+}
+
+void BSHH_S1_LogFaultyRoutingConsequences(uint32_t attacker_id, uint32_t victim_id)
+{
+    double now = Simulator::Now().GetSeconds();
+    bshh_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING CONSEQUENCES\n"
+             << "  Controller now holds conflicting stale liveness for V" << victim_id << "\n"
+             << "  latest physical_sender=V" << attacker_id
+             << "  claimed_sender=V" << victim_id << "\n"
+             << "  Packets may be routed using stale/non-existent links\n"
+             << "  Expected impact: packet loss, added delay, degraded PDR\n\n";
+    bshh_log.flush();
 }
 
 // =============================================================================
@@ -114281,6 +114337,49 @@ bool X_nodes[total_size+2];
     }
   }
 
+static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
+{
+    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
+    if (!wdi) return;
+
+    Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
+    Vector pos = mob ? mob->GetPosition() : Vector(0, 0, 0);
+    Vector vel = mob ? mob->GetVelocity() : Vector(0, 0, 0);
+    Vector acc(0, 0, 0);
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomDataTag1 tag;
+    uint32_t nid_arr[max1 + 1] = {};
+    nid_arr[0] = neighbor_node->GetId();
+
+    tag.SetNodeId(sender_node->GetId());
+    tag.SetNeighborids(nid_arr);
+    tag.SetPosition(pos);
+    tag.SetVelocity(vel);
+    tag.SetAcceleration(acc);
+    tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+}
+
+static void AttackSendRSUToController(uint32_t rsu_index)
+{
+    if (rsu_index >= RSU_Nodes.GetN()) return;
+
+    Ptr<Node> rsu_node = RSU_Nodes.Get(rsu_index);
+    Ptr<SimpleUdpApplication> udp_app =
+        DynamicCast<SimpleUdpApplication>(rsu_node->GetApplication(0));
+    if (!udp_app) return;
+
+    Ipv4Address dest_ip = AttackGetControllerIP();
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomMetaDataUnicastTag0 tag;
+    tag.SetNodeId(rsu_node->GetId());
+    tag.SetTimestamp(Simulator::Now());
+    pkt->AddPacketTag(tag);
+    Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+                        udp_app, pkt, dest_ip, static_cast<uint16_t>(7777));
+}
+
 
 
 /**
@@ -143152,28 +143251,9 @@ int main(int argc, char *argv[])
   // ── Build per-scenario NetAnim XML filename ──────────────────────────────────
   // Creates: /home/nimesha/ns-allinone-3.35/ns-3.35/XML/<attack_name>.xml
   // The XML/ directory is created automatically if it does not exist.
-  {
-      // Ensure the output directory exists (runs once, no-op if already present)
-      std::system("mkdir -p /home/nimesha/ns-allinone-3.35/ns-3.35/XML");
-  }
-  static const char* scenario_xml_names[] = {
-      "00_Baseline_No_Attack",                    // 0
-      "01_TTW_S1_Malicious_Vehicle",              // 1
-      "02_TTW_S2_Malicious_RSU",                  // 2
-      "03_TTW_S3_Malicious_Controller_No_RSU",    // 3
-      "04_TTW_S4_Malicious_Controller_With_RSU",  // 4
-      "05_BSHH_S1_Malicious_Vehicle",             // 5
-      "06_BSHH_S2_Malicious_RSU",                 // 6
-      "07_BSHH_S3_Malicious_Controller_No_RSU",   // 7
-      "08_BSHH_S4_Malicious_Controller_With_RSU", // 8
-      "09_ME_S1_Malicious_Vehicles",              // 9
-      "10_ME_S2_Malicious_RSU",                   // 10
-      "11_ME_S3_Malicious_Controller_No_RSU",     // 11
-      "12_ME_S4_Malicious_Controller_With_RSU"    // 12
-  };
-  uint32_t safe_scenario = (attack_scenario <= 12) ? attack_scenario : 0;
-  std::string anim_xml_path = std::string("/home/nimesha/ns-allinone-3.35/ns-3.35/XML/")
-                              + scenario_xml_names[safe_scenario] + ".xml";
+  EnsureScenarioOutputDir("XML");
+  std::string anim_xml_path = std::string(OUTPUT_ROOT_DIR) + "/XML/"
+                              + GetScenarioOutputName(attack_scenario) + ".xml";
   std::cout << "[NetAnim] Writing animation to: " << anim_xml_path << std::endl;
 
   AnimationInterface anim(anim_xml_path);
@@ -143589,25 +143669,41 @@ int main(int argc, char *argv[])
       uint32_t v1_id = 0; // victim
       uint32_t v2_id = 1; // attacker (malicious vehicle)
       static const double BSHH_S1_EXCHANGE_TIME = 5.0;
+      static const double BSHH_S1_FORWARD_TIME  = 5.010;
       static const double BSHH_S1_OLD_HB_TIME   = 0.0;
       static const double BSHH_S1_REPLAY_TIME   = 10.0;
+      static const double BSHH_S1_VICTIM_FORWARD_TIME = 10.010;
+      static const double BSHH_S1_HIJACK_TIME         = 10.020;
+      static const double BSHH_S1_CONSEQUENCE_TIME    = 10.030;
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED" << std::endl;
       std::cout << "Attacker : V" << v2_id << " (malicious vehicle)" << std::endl;
       std::cout << "Victim   : V" << v1_id << std::endl;
-      std::cout << "Timeline:"                                << std::endl;
-      std::cout << "  t=5s   STEP 1 : Legitimate HB exchange" << std::endl;
-      std::cout << "  t=5s   STEP 2 : Store old HB (t=0)"     << std::endl;
-      std::cout << "  t=10s  STEP 3 : Replay attack"          << std::endl;
+      std::cout << "Timeline:"                                                     << std::endl;
+      std::cout << "  t=5.000s  STEP 1 : Legitimate V1<->V2 heartbeat exchange"   << std::endl;
+      std::cout << "  t=5.010s  STEP 2 : Both send honest heartbeats to controller" << std::endl;
+      std::cout << "  t=10.000s STEP 3 : V2 replays old V1 heartbeat to V1"       << std::endl;
+      std::cout << "  t=10.010s STEP 4 : V1 forwards old heartbeat to controller"  << std::endl;
+      std::cout << "  t=10.020s STEP 5 : V2 hijacks same old heartbeat to controller" << std::endl;
+      std::cout << "  t=10.030s STEP 6 : Controller holds conflicting stale liveness" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
+      Simulator::Schedule(Seconds(0.0),
+          &BSHH_S1_StoreOldHeartbeat, v1_id, BSHH_S1_OLD_HB_TIME);
       Simulator::Schedule(Seconds(BSHH_S1_EXCHANGE_TIME),
           &BSHH_S1_LegitimateExchange, v1_id, v2_id, BSHH_S1_EXCHANGE_TIME);
-      Simulator::Schedule(Seconds(BSHH_S1_EXCHANGE_TIME + 0.1),
-          &BSHH_S1_StoreOldHeartbeat, v1_id, BSHH_S1_OLD_HB_TIME);
+      Simulator::Schedule(Seconds(BSHH_S1_FORWARD_TIME),
+          &BSHH_S1_ForwardLegitimateHeartbeatsToController,
+          v1_id, v2_id, BSHH_S1_EXCHANGE_TIME);
       Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME),
-          &BSHH_S1_ReplayAttack, v2_id, v1_id, BSHH_S1_OLD_HB_TIME);
+          &BSHH_S1_ReplayOldHeartbeatToVictim, v2_id, v1_id, BSHH_S1_OLD_HB_TIME);
+      Simulator::Schedule(Seconds(BSHH_S1_VICTIM_FORWARD_TIME),
+          &BSHH_S1_VictimForwardsOldHeartbeatToController, v1_id, BSHH_S1_OLD_HB_TIME);
+      Simulator::Schedule(Seconds(BSHH_S1_HIJACK_TIME),
+          &BSHH_S1_AttackerHijacksOldHeartbeatToController, v2_id, v1_id, BSHH_S1_OLD_HB_TIME);
+      Simulator::Schedule(Seconds(BSHH_S1_CONSEQUENCE_TIME),
+          &BSHH_S1_LogFaultyRoutingConsequences, v2_id, v1_id);
 
       if (N_Vehicles > 1) {
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 150, 255); // blue victim
