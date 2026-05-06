@@ -143514,46 +143514,55 @@ int main(int argc, char *argv[])
 
   AnimationInterface anim(anim_xml_path);
 
-  // ── TTW-S1: reposition controller, hide all other nodes ─────────────────────
-  if (attack_scenario == 1)
+  // ── Fixed positions: Controller at (850,850), RSU at (850,425) ──────────────
+  // Applied for all 12 attack variants so diagrams are consistent.
   {
-      // V0 stays at (0,0), V1 moves along x-axis
-      // Controller sits centered above at (200, 400)
       Ptr<ConstantVelocityMobilityModel> mdl_ctrl =
           DynamicCast<ConstantVelocityMobilityModel>(
               controller_Node.Get(0)->GetObject<MobilityModel>());
-      mdl_ctrl->SetPosition(Vector(200.0, 400.0, 0));
+      mdl_ctrl->SetPosition(Vector(850.0, 850.0, 0));
       mdl_ctrl->SetVelocity(Vector(0.0, 0.0, 0.0));
-
-      // Hide management server — not in attack diagram
-      anim.UpdateNodeColor(management_Node.Get(0), 255, 255, 255);
-      anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 0.1, 0.1);
-      anim.UpdateNodeDescription(management_Node.Get(0), "");
-
-      // Hide all background LTE infrastructure nodes
-      // (PGW, eNodeB, SGW, remote host — NS3 needs them but they are
-      if (N_Vehicles > 0 && architecture != 1)
+  }
+  if (N_RSUs > 0 && RSU_Nodes.GetN() > 0)
+  {
+      Ptr<ConstantVelocityMobilityModel> mdl_rsu =
+          DynamicCast<ConstantVelocityMobilityModel>(
+              RSU_Nodes.Get(0)->GetObject<MobilityModel>());
+      if (mdl_rsu)
       {
-          for (uint32_t i = 0; i < other_stationary_LTE_nodes.GetN(); i++)
-          {
-              anim.UpdateNodeColor(
-                  other_stationary_LTE_nodes.Get(i), 255, 255, 255);
-              anim.UpdateNodeSize(
-                  other_stationary_LTE_nodes.Get(i)->GetId(), 0.1, 0.1);
-              anim.UpdateNodeDescription(
-                  other_stationary_LTE_nodes.Get(i), "");
-          }
+          mdl_rsu->SetPosition(Vector(850.0, 425.0, 0));
+          mdl_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
       }
   }
 
-  // ── Default node colors (normal simulation) ───────────────────────────────
+  // ── Hide management server and LTE infrastructure — not in attack diagrams ──
+  anim.UpdateNodeColor(management_Node.Get(0), 255, 255, 255);
+  anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 0.1, 0.1);
+  anim.UpdateNodeDescription(management_Node.Get(0), "");
+
+  if (N_Vehicles > 0 && architecture != 1)
+  {
+      for (uint32_t i = 0; i < other_stationary_LTE_nodes.GetN(); i++)
+      {
+          anim.UpdateNodeColor(
+              other_stationary_LTE_nodes.Get(i), 255, 255, 255);
+          anim.UpdateNodeSize(
+              other_stationary_LTE_nodes.Get(i)->GetId(), 0.1, 0.1);
+          anim.UpdateNodeDescription(
+              other_stationary_LTE_nodes.Get(i), "");
+      }
+  }
+
+  // ── Default node colors and sizes ────────────────────────────────────────
+  // RSU: yellow 30×30 | Vehicles: green 30×30 | Controller: purple 30×30
+  // Management node is already hidden above — do not re-show it here.
   if (N_RSUs > 0)
   {
       for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
       {
           anim.UpdateNodeColor(RSU_Nodes.Get(i), 255, 255, 0); // yellow
           Ptr<Node> ni = DynamicCast<Node>(RSU_Nodes.Get(i));
-          anim.UpdateNodeSize(ni->GetId(), 20.0, 20.0);
+          anim.UpdateNodeSize(ni->GetId(), 30.0, 30.0);
       }
   }
 
@@ -143563,57 +143572,34 @@ int main(int argc, char *argv[])
       {
           anim.UpdateNodeColor(Vehicle_Nodes.Get(i), 0, 255, 0); // green default
           Ptr<Node> ni = DynamicCast<Node>(Vehicle_Nodes.Get(i));
-          anim.UpdateNodeSize(ni->GetId(), 20.0, 20.0);
-      }
-
-      if (architecture != 1)
-      {
-          for (uint32_t i = 0; i < other_stationary_LTE_nodes.GetN(); i++)
-          {
-              anim.UpdateNodeColor(
-                  other_stationary_LTE_nodes.Get(i), 0, 0, 255); // blue
-              Ptr<Node> ni =
-                  DynamicCast<Node>(other_stationary_LTE_nodes.Get(i));
-              anim.UpdateNodeSize(ni->GetId(), 20.0, 20.0);
-          }
+          anim.UpdateNodeSize(ni->GetId(), 30.0, 30.0);
       }
   }
 
-  if (architecture != 1)
-  {
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255); // purple
-      Ptr<Node> node_controller = DynamicCast<Node>(controller_Node.Get(0));
-      anim.UpdateNodeSize(node_controller->GetId(), 20.0, 20.0);
+  // Controller — purple, fixed at (850, 850), always visible
+  anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
+  anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
+  anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
 
-      anim.UpdateNodeColor(management_Node.Get(0), 255, 0, 0);   // red
-      Ptr<Node> node_management = DynamicCast<Node>(management_Node.Get(0));
-      anim.UpdateNodeSize(node_management->GetId(), 20.0, 20.0);
-  }
-
-  // ── TTW-S1: override vehicle + controller appearance ──────────────────────
-  // This runs AFTER the default color loop above so it takes effect
+  // ── TTW-S1: override vehicle appearance ──────────────────────────────────
+  // Runs AFTER the default color loop; controller already set purple 30×30.
   if (attack_scenario == 1)
   {
-      // V0 — RED attacker (larger so it stands out)
+      // V0 — RED attacker, slightly larger to stand out
       anim.UpdateNodeColor(
           Vehicle_Nodes.Get(malicious_vehicle_id), 255, 0, 0);
       anim.UpdateNodeSize(
-          Vehicle_Nodes.Get(malicious_vehicle_id)->GetId(), 30.0, 30.0);
+          Vehicle_Nodes.Get(malicious_vehicle_id)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(
           Vehicle_Nodes.Get(malicious_vehicle_id), "V1-Attacker");
 
-      // V1 — BLUE victim (matches "normal vehicle" feel from your diagram)
+      // V1 — BLUE victim
       anim.UpdateNodeColor(
           Vehicle_Nodes.Get(victim_neighbor_id), 0, 150, 255);
       anim.UpdateNodeSize(
-          Vehicle_Nodes.Get(victim_neighbor_id)->GetId(), 25.0, 25.0);
+          Vehicle_Nodes.Get(victim_neighbor_id)->GetId(), 30.0, 30.0);
       anim.UpdateNodeDescription(
           Vehicle_Nodes.Get(victim_neighbor_id), "V2-Victim");
-
-      // Controller — purple, clearly labeled, repositioned above vehicles
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 25.0, 25.0);
-      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
 
   // ===========================================================================
@@ -143818,9 +143804,8 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Victim");
       }
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 0, 0); // RED malicious RSU
-      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-Attacker");
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
 
@@ -143868,7 +143853,7 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Victim");
       }
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0); // RED malicious ctrl
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
@@ -143923,7 +143908,7 @@ int main(int argc, char *argv[])
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0); // orange RSU (in path)
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0); // RED malicious ctrl
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
@@ -143981,10 +143966,9 @@ int main(int argc, char *argv[])
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 150, 255); // blue victim
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Victim");
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 255, 0, 0);   // red attacker
-          anim.UpdateNodeSize(Vehicle_Nodes.Get(v2_id)->GetId(), 30.0, 30.0);
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(v2_id)->GetId(), 35.0, 35.0);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Attacker");
       }
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
 
@@ -144030,9 +144014,8 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Normal");
       }
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-Attacker");
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
 
@@ -144072,7 +144055,7 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Victim");
       }
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
@@ -144119,7 +144102,7 @@ int main(int argc, char *argv[])
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0); // orange RSU
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
@@ -144158,13 +144141,12 @@ int main(int argc, char *argv[])
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 150, 255);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Real");
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v3_id), 255, 0, 0);   // red echo
-          anim.UpdateNodeSize(Vehicle_Nodes.Get(v3_id)->GetId(), 30.0, 30.0);
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(v3_id)->GetId(), 35.0, 35.0);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v3_id), "V3-Echo");
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v4_id), 255, 0, 0);
-          anim.UpdateNodeSize(Vehicle_Nodes.Get(v4_id)->GetId(), 30.0, 30.0);
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(v4_id)->GetId(), 35.0, 35.0);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v4_id), "V4-Echo");
       }
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
 
@@ -144207,9 +144189,8 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Real");
       }
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-Attacker");
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
 
@@ -144253,7 +144234,7 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(false_v4), "V4-Phantom");
       }
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
@@ -144304,7 +144285,7 @@ int main(int argc, char *argv[])
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0);
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
