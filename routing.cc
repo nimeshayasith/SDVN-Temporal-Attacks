@@ -247,6 +247,29 @@ enum AttackScenarioId {
     ME_S4_MAL_CTRL_WITH_RSU   = 12
 };
 
+// ── Terminal output tee (mirrors std::cout to a log file) ───────────────────
+class TeeBuffer : public std::streambuf {
+public:
+    TeeBuffer(std::streambuf* orig, std::ofstream& file)
+        : m_orig(orig), m_file(file) {}
+protected:
+    int overflow(int c) override {
+        if (c != EOF) {
+            m_orig->sputc(c);
+            m_file.put(static_cast<char>(c));
+        }
+        return c;
+    }
+    std::streamsize xsputn(const char* s, std::streamsize n) override {
+        m_orig->sputn(s, n);
+        m_file.write(s, n);
+        return n;
+    }
+private:
+    std::streambuf* m_orig;
+    std::ofstream& m_file;
+};
+
 // ── TTW-S2 globals ────────────────────────────────────────────────────────────
 static const double TTWS2_HELLO_TIME  = 10.0;
 static const double TTWS2_LINK_BREAK  = 15.0;
@@ -141450,8 +141473,17 @@ int main(int argc, char *argv[])
                   "1=run attack WITH PEM detection+mitigation (default), "
                   "0=run attack ONLY, PEM logs but never mitigates",
                   detection_enabled);
-    cmd.Parse (argc, argv);	
-    
+    cmd.Parse (argc, argv);
+
+    // ── Auto-save terminal output to file ────────────────────────────────────
+    std::string term_log_name = "terminal_output_scenario_"
+                                + std::to_string(attack_scenario) + ".txt";
+    std::ofstream terminal_log_file(
+        BuildLogPath(term_log_name), std::ios::out | std::ios::trunc);
+    std::streambuf* orig_cout_buf = std::cout.rdbuf();
+    TeeBuffer tee_buf(orig_cout_buf, terminal_log_file);
+    std::cout.rdbuf(&tee_buf);
+
     if (routing_test == true)
     {
      	N_Vehicles = 22;
@@ -144285,6 +144317,10 @@ int main(int argc, char *argv[])
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
   Simulator::Destroy();
+
+  // ── Restore cout and flush terminal log ──────────────────────────────────
+  std::cout.rdbuf(orig_cout_buf);
+  terminal_log_file.close();
 
   return 0;
 }
