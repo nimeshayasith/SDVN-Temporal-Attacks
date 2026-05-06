@@ -2525,50 +2525,59 @@ void ME_S1_InitLog()
            << "  ME Attack S1 — Malicious Vehicles, No RSU             \n"
            << "========================================================\n\n"
            << "  t=10  ①  V1/V2 HELLO, legitimate topology reports\n"
+           << "  t=10  ①  V3/V4 HELLO, legitimate topology reports\n"
            << "  t=10  ②  V3/V4 echo V1<->V2 link to controller\n"
            << "            Controller infers phantom paths\n\n"
            << "========================================================\n\n";
     NS_LOG_INFO("[ME-S1] Log opened: me_s1_attack_log.txt");
 }
 
-void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, double t)
+void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
+                                uint32_t v3_id, uint32_t v4_id, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    TopologyPacket p1 = {v1_id, v2_id, t, false};
-    TopologyPacket p2 = {v2_id, v1_id, t, false};
-    std::string k1 = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    std::string k2 = std::to_string(v2_id) + "_" + std::to_string(v1_id);
-    ttw_controller_table[k1] = p1;
-    ttw_controller_table[k2] = p2;
+    // V1↔V2 real link
+    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    // V3↔V4 real link (echo attackers also have their own legitimate link)
+    ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
+    ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
     me_log << "[t=" << now << "]  STEP ①  LEGITIMATE TOPOLOGY DISCOVERY\n"
            << "  V" << v1_id << " -> Controller : <V" << v1_id
            << " sees V" << v2_id << ", t=" << t << ">  (real reporter)\n"
            << "  V" << v2_id << " -> Controller : <V" << v2_id
-           << " sees V" << v1_id << ", t=" << t << ">  (real reporter)\n\n";
+           << " sees V" << v1_id << ", t=" << t << ">  (real reporter)\n"
+           << "  V" << v3_id << " -> Controller : <V" << v3_id
+           << " sees V" << v4_id << ", t=" << t << ">  (real reporter)\n"
+           << "  V" << v4_id << " -> Controller : <V" << v4_id
+           << " sees V" << v3_id << ", t=" << t << ">  (real reporter)\n\n";
     std::cout << std::fixed << std::setprecision(3)
-              << "[ME-S1][t=" << now << "]  V" << v1_id
-              << " --topo update--> Controller  <V" << v1_id << " sees V" << v2_id
-              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
-    std::cout << "[ME-S1][t=" << now << "]  V" << v2_id
-              << " --topo update--> Controller  <V" << v2_id << " sees V" << v1_id
-              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
-    Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) pos1 = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) pos2 = m->GetPosition();
-    }
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id,
-                 v1_id, v2_id, t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
-                 v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+              << "[ME-S1][t=" << now << "]  V" << v1_id << " --topo--> Controller"
+              << "  <V" << v1_id << " sees V" << v2_id << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S1][t=" << now << "]  V" << v2_id << " --topo--> Controller"
+              << "  <V" << v2_id << " sees V" << v1_id << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S1][t=" << now << "]  V" << v3_id << " --topo--> Controller"
+              << "  <V" << v3_id << " sees V" << v4_id << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S1][t=" << now << "]  V" << v4_id << " --topo--> Controller"
+              << "  <V" << v4_id << " sees V" << v3_id << ">  ACCEPTED (real link)" << std::endl;
+    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
+    if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); }
+    if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); }
+    if (v3_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
+    if (v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id, v1_id, v2_id, t, now, pos1, pos1, pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id, v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, v4_id, t, now, pos3, pos3, pos4, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
+    PemEmitVehicleBeacon(v3_id, v4_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    if (v3_id < Vehicle_Nodes.GetN() && v4_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(v4_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v4_id), Vehicle_Nodes.Get(v3_id));
     }
 }
 
@@ -2599,6 +2608,8 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
            << "  (PHANTOM)\n"
            << "    V" << link_src << "->V" << echo_v4 << "->V" << link_dst
            << "  (PHANTOM)\n"
+           << "    V" << link_src << "->V" << echo_v3 << "->V" << echo_v4
+           << "->V" << link_dst << "  (PHANTOM)\n"
            << "  <- ATTACK SUCCESS\n\n";
     me_log.flush();
     NS_LOG_INFO("[ME-S1] t=" << now << "s  V" << echo_v3 << " and V" << echo_v4
@@ -2649,48 +2660,56 @@ void ME_S2_InitLog()
            << "  ME Attack S2 — Malicious RSU                          \n"
            << "========================================================\n\n"
            << "  t=10  ①  V1/V2 -> RSU -> Controller (legitimate)\n"
+           << "  t=10  ①  V3/V4 -> RSU -> Controller (legitimate)\n"
            << "  t=10  ②  RSU injects echo reports for V3/V4\n\n"
            << "========================================================\n\n";
     NS_LOG_INFO("[ME-S2] Log opened: me_s2_attack_log.txt");
 }
 
-void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double t)
+void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
+                                uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    TopologyPacket p1 = {v1_id, v2_id, t, false};
-    TopologyPacket p2 = {v2_id, v1_id, t, false};
-    std::string k1 = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    std::string k2 = std::to_string(v2_id) + "_" + std::to_string(v1_id);
-    ttw_controller_table[k1] = p1;
-    ttw_controller_table[k2] = p2;
+    // V1↔V2 real link
+    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    // V3↔V4 real link (echo reporters also have their own legitimate link via RSU)
+    ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
+    ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
     me_log << "[t=" << now << "]  STEP ①  LEGITIMATE DISCOVERY via RSU_" << rsu_id << "\n"
            << "  V" << v1_id << " -> RSU -> Controller : <V" << v1_id
            << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED\n"
            << "  V" << v2_id << " -> RSU -> Controller : <V" << v2_id
-           << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n\n";
+           << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n"
+           << "  V" << false_v3 << " -> RSU -> Controller : <V" << false_v3
+           << " sees V" << false_v4 << ", t=" << t << ">  ACCEPTED\n"
+           << "  V" << false_v4 << " -> RSU -> Controller : <V" << false_v4
+           << " sees V" << false_v3 << ", t=" << t << ">  ACCEPTED\n\n";
     std::cout << std::fixed << std::setprecision(3)
-              << "[ME-S2][t=" << now << "]  V" << v1_id
-              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
-              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED" << std::endl;
-    std::cout << "[ME-S2][t=" << now << "]  V" << v2_id
-              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
-              << "  <V" << v2_id << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED" << std::endl;
-    Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) pos1 = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) pos2 = m->GetPosition();
-    }
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, rsu_id,
-                 v1_id, v2_id, t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
-                 v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+              << "[ME-S2][t=" << now << "]  V" << v1_id << " --DSRC--> RSU_" << rsu_id
+              << " --CSMA--> Controller  <V" << v1_id << " sees V" << v2_id << ">  ACCEPTED" << std::endl;
+    std::cout << "[ME-S2][t=" << now << "]  V" << v2_id << " --DSRC--> RSU_" << rsu_id
+              << " --CSMA--> Controller  <V" << v2_id << " sees V" << v1_id << ">  ACCEPTED" << std::endl;
+    std::cout << "[ME-S2][t=" << now << "]  V" << false_v3 << " --DSRC--> RSU_" << rsu_id
+              << " --CSMA--> Controller  <V" << false_v3 << " sees V" << false_v4 << ">  ACCEPTED" << std::endl;
+    std::cout << "[ME-S2][t=" << now << "]  V" << false_v4 << " --DSRC--> RSU_" << rsu_id
+              << " --CSMA--> Controller  <V" << false_v4 << " sees V" << false_v3 << ">  ACCEPTED" << std::endl;
+    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
+    if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) pos1 = m->GetPosition(); }
+    if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
+    if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
+    if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    if (false_v3 < Vehicle_Nodes.GetN() && false_v4 < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v3), Vehicle_Nodes.Get(false_v4));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v4), Vehicle_Nodes.Get(false_v3));
     }
     AttackSendRSUToController(rsu_id);
 }
@@ -2715,7 +2734,11 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
            << ", t=" << t << "> reported by V" << false_v3 << "  (INJECTED)\n"
            << "  -> Controller : <V" << v1_id << " sees V" << v2_id
            << ", t=" << t << "> reported by V" << false_v4 << "  (INJECTED)\n"
-           << "  Phantom paths via V" << false_v3 << " and V" << false_v4 << "\n"
+           << "  Controller infers phantom paths:\n"
+           << "    V" << v1_id << "->V" << false_v3 << "->V" << v2_id << "  (PHANTOM)\n"
+           << "    V" << v1_id << "->V" << false_v4 << "->V" << v2_id << "  (PHANTOM)\n"
+           << "    V" << v1_id << "->V" << false_v3 << "->V" << false_v4
+           << "->V" << v2_id << "  (PHANTOM)\n"
            << "  <- ATTACK SUCCESS\n\n";
     me_log.flush();
     NS_LOG_INFO("[ME-S2] t=" << now << "s  RSU_" << rsu_id
@@ -2765,49 +2788,56 @@ void ME_S3_InitLog()
            << "  ME Attack S3 — Malicious Controller, No RSU           \n"
            << "========================================================\n\n"
            << "  t=10  ①  V1/V2 legitimate reports to controller\n"
+           << "  t=10  ①  V3/V4 legitimate reports to controller\n"
            << "  t=10  ②  Controller internally fabricates echo entries\n\n"
            << "========================================================\n\n";
     NS_LOG_INFO("[ME-S3] Log opened: me_s3_attack_log.txt");
 }
 
-void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, double t)
+void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
+                                uint32_t v3_id, uint32_t v4_id, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    TopologyPacket p1 = {v1_id, v2_id, t, false};
-    TopologyPacket p2 = {v2_id, v1_id, t, false};
-    std::string k1 = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    std::string k2 = std::to_string(v2_id) + "_" + std::to_string(v1_id);
-    ttw_controller_table[k1] = p1;
-    ttw_controller_table[k2] = p2;
+    // V1↔V2 real link
+    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    // V3↔V4 real link (phantom reporters' own legitimate link)
+    ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
+    ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
     me_log << "[t=" << now << "]  STEP ①  LEGITIMATE TOPOLOGY UPDATES\n"
            << "  V" << v1_id << " -> Controller : <V" << v1_id
            << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED\n"
            << "  V" << v2_id << " -> Controller : <V" << v2_id
            << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n"
-           << "  V" << v3_id << " -> Controller : own topology (unrelated)  ACCEPTED\n\n";
+           << "  V" << v3_id << " -> Controller : <V" << v3_id
+           << " sees V" << v4_id << ", t=" << t << ">  ACCEPTED\n"
+           << "  V" << v4_id << " -> Controller : <V" << v4_id
+           << " sees V" << v3_id << ", t=" << t << ">  ACCEPTED\n\n";
     std::cout << std::fixed << std::setprecision(3)
-              << "[ME-S3][t=" << now << "]  V" << v1_id
-              << " --topo update--> Controller  <V" << v1_id << " sees V" << v2_id
-              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
-    std::cout << "[ME-S3][t=" << now << "]  V" << v2_id
-              << " --topo update--> Controller  <V" << v2_id << " sees V" << v1_id
-              << ", t=" << t << ">  ACCEPTED (real link)" << std::endl;
-    Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) pos1 = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) pos2 = m->GetPosition();
-    }
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id,
-                 v1_id, v2_id, t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
-                 v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+              << "[ME-S3][t=" << now << "]  V" << v1_id << " --topo--> Controller"
+              << "  <V" << v1_id << " sees V" << v2_id << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S3][t=" << now << "]  V" << v2_id << " --topo--> Controller"
+              << "  <V" << v2_id << " sees V" << v1_id << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S3][t=" << now << "]  V" << v3_id << " --topo--> Controller"
+              << "  <V" << v3_id << " sees V" << v4_id << ">  ACCEPTED (real link)" << std::endl;
+    std::cout << "[ME-S3][t=" << now << "]  V" << v4_id << " --topo--> Controller"
+              << "  <V" << v4_id << " sees V" << v3_id << ">  ACCEPTED (real link)" << std::endl;
+    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
+    if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); }
+    if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); }
+    if (v3_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
+    if (v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id, v1_id, v2_id, t, now, pos1, pos1, pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id, v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, v4_id, t, now, pos3, pos3, pos4, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    if (v3_id < Vehicle_Nodes.GetN() && v4_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(v4_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v4_id), Vehicle_Nodes.Get(v3_id));
     }
 }
 
@@ -2831,8 +2861,11 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
            << "> as-reported-by V" << false_v3 << "  (FORGED internally)\n"
            << "  <V" << v1_id << " sees V" << v2_id << ", t=" << t
            << "> as-reported-by V" << false_v4 << "  (FORGED internally)\n"
-           << "  Phantom paths: V" << v1_id << "->V" << false_v3 << "->V" << v2_id
-           << " and V" << v1_id << "->V" << false_v4 << "->V" << v2_id << "\n"
+           << "  Controller infers phantom paths:\n"
+           << "    V" << v1_id << "->V" << false_v3 << "->V" << v2_id << "  (PHANTOM)\n"
+           << "    V" << v1_id << "->V" << false_v4 << "->V" << v2_id << "  (PHANTOM)\n"
+           << "    V" << v1_id << "->V" << false_v3 << "->V" << false_v4
+           << "->V" << v2_id << "  (PHANTOM)\n"
            << "  <- ATTACK SUCCESS (no external packet)\n\n";
     me_log.flush();
     NS_LOG_INFO("[ME-S3] t=" << now << "s  Controller fabricated phantom paths via V"
@@ -2876,44 +2909,49 @@ void ME_S4_InitLog()
            << "  ME Attack S4 — Malicious Controller, With RSU         \n"
            << "========================================================\n\n"
            << "  t=10  ①  V1/V2 -> RSU -> Controller (legitimate)\n"
+           << "  t=10  ①  V3/V4 -> RSU -> Controller (legitimate)\n"
            << "  t=10  ②  Controller internally fabricates echo entries\n\n"
            << "========================================================\n\n";
     NS_LOG_INFO("[ME-S4] Log opened: me_s4_attack_log.txt");
 }
 
-void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double t)
+void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
+                           uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    TopologyPacket p1 = {v1_id, v2_id, t, false};
-    TopologyPacket p2 = {v2_id, v1_id, t, false};
-    std::string k1 = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    std::string k2 = std::to_string(v2_id) + "_" + std::to_string(v1_id);
-    ttw_controller_table[k1] = p1;
-    ttw_controller_table[k2] = p2;
+    // V1↔V2 real link
+    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    // V3↔V4 real link (phantom reporters' own legitimate link via RSU)
+    ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
+    ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
     me_log << "[t=" << now << "]  STEP ①  TOPOLOGY VIA RSU_" << rsu_id
            << " (legitimate aggregate)\n"
            << "  <V" << v1_id << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED\n"
-           << "  <V" << v2_id << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n\n";
+           << "  <V" << v2_id << " sees V" << v1_id << ", t=" << t << ">  ACCEPTED\n"
+           << "  <V" << false_v3 << " sees V" << false_v4 << ", t=" << t << ">  ACCEPTED\n"
+           << "  <V" << false_v4 << " sees V" << false_v3 << ", t=" << t << ">  ACCEPTED\n\n";
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S4][t=" << now << "]  V" << v1_id << "/V" << v2_id
-              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller"
-              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << t << ">  ACCEPTED" << std::endl;
-    Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) pos1 = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) pos2 = m->GetPosition();
-    }
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, rsu_id,
-                 v1_id, v2_id, t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
-                 v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller  ACCEPTED" << std::endl;
+    std::cout << "[ME-S4][t=" << now << "]  V" << false_v3 << "/V" << false_v4
+              << " --DSRC--> RSU_" << rsu_id << " --CSMA--> Controller  ACCEPTED" << std::endl;
+    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
+    if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) pos1 = m->GetPosition(); }
+    if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
+    if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
+    if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    if (false_v3 < Vehicle_Nodes.GetN() && false_v4 < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v3), Vehicle_Nodes.Get(false_v4));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v4), Vehicle_Nodes.Get(false_v3));
     }
     AttackSendRSUToController(rsu_id);
 }
@@ -2938,8 +2976,11 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
            << "  (FORGED)\n"
            << "  <V" << v1_id << " sees V" << v2_id << "> as-if-by V" << false_v4
            << "  (FORGED)\n"
-           << "  Phantom paths: V" << v1_id << "->V" << false_v3 << "->V" << v2_id
-           << " and V" << v1_id << "->V" << false_v4 << "->V" << v2_id << "\n"
+           << "  Controller infers phantom paths:\n"
+           << "    V" << v1_id << "->V" << false_v3 << "->V" << v2_id << "  (PHANTOM)\n"
+           << "    V" << v1_id << "->V" << false_v4 << "->V" << v2_id << "  (PHANTOM)\n"
+           << "    V" << v1_id << "->V" << false_v3 << "->V" << false_v4
+           << "->V" << v2_id << "  (PHANTOM)\n"
            << "  <- ATTACK SUCCESS\n\n";
     me_log.flush();
     NS_LOG_INFO("[ME-S4] t=" << now << "s  Controller fabricated phantom paths via V"
@@ -144138,7 +144179,7 @@ int main(int argc, char *argv[])
       std::cout << "========================================\n" << std::endl;
 
       Simulator::Schedule(Seconds(ME_S1_DISCOVERY_TIME),
-          &ME_S1_LegitimateDiscovery, v1_id, v2_id, ME_S1_DISCOVERY_TIME);
+          &ME_S1_LegitimateDiscovery, v1_id, v2_id, v3_id, v4_id, ME_S1_DISCOVERY_TIME);
       Simulator::Schedule(Seconds(ME_S1_DISCOVERY_TIME + 0.1),
           &ME_S1_EchoAttack, v3_id, v4_id, v1_id, v2_id, ME_S1_DISCOVERY_TIME);
 
@@ -144184,7 +144225,7 @@ int main(int argc, char *argv[])
       std::cout << "========================================\n" << std::endl;
 
       Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME),
-          &ME_S2_LegitimateDiscovery, v1_id, v2_id, rsu_id, ME_S2_DISCOVERY_TIME);
+          &ME_S2_LegitimateDiscovery, v1_id, v2_id, rsu_id, false_v3, false_v4, ME_S2_DISCOVERY_TIME);
       Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1),
           &ME_S2_InjectEchoReports, rsu_id, v1_id, v2_id, false_v3, false_v4,
           ME_S2_DISCOVERY_TIME);
@@ -144223,7 +144264,7 @@ int main(int argc, char *argv[])
       std::cout << "========================================\n" << std::endl;
 
       Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME),
-          &ME_S3_LegitimateDiscovery, v1_id, v2_id, v3_id, ME_S3_DISCOVERY_TIME);
+          &ME_S3_LegitimateDiscovery, v1_id, v2_id, v3_id, false_v4, ME_S3_DISCOVERY_TIME);
       Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1),
           &ME_S3_InjectPhantomPaths, v1_id, v2_id, false_v3, false_v4,
           ME_S3_DISCOVERY_TIME);
@@ -144272,7 +144313,7 @@ int main(int argc, char *argv[])
       std::cout << "========================================\n" << std::endl;
 
       Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME),
-          &ME_S4_VehiclesViaRSU, v1_id, v2_id, rsu_id, ME_S4_DISCOVERY_TIME);
+          &ME_S4_VehiclesViaRSU, v1_id, v2_id, rsu_id, false_v3, false_v4, ME_S4_DISCOVERY_TIME);
       Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1),
           &ME_S4_InjectPhantomPaths, v1_id, v2_id, false_v3, false_v4,
           ME_S4_DISCOVERY_TIME);
