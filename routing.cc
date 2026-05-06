@@ -141543,45 +141543,50 @@ int main(int argc, char *argv[])
   else if (attack_scenario == 1)
   {
       // TTW-S1: Malicious Vehicle, No RSU
-      // V0 = malicious (stationary), V1 = victim (moves away at 20 m/s)
-      // At t=10: distance=200m (IN range, HELLO works)
-      // At t=15: distance=300m (link breaks)
-      // At t=20: distance=400m (confirmed broken before replay)
+      // V0 (attacker) starts at x=200, moves right slowly  (+3 m/s)
+      // V1 (victim)   starts at x=100, moves left  fast   (-13 m/s)
+      // Relative separation rate = 16 m/s  →  initial gap = 100 m
+      // At t=10: gap = 260 m  (IN range,  HELLO works)
+      // At t=15: gap = 340 m  (OUT of range, link breaks)
+      // At t=20: gap = 420 m  (confirmed broken before replay)
       Vehicle_Nodes.Create(N_Vehicles);
 
       MobilityHelper attack_mobility;
       attack_mobility.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
 
       Ptr<ListPositionAllocator> attackPosAlloc = CreateObject<ListPositionAllocator>();
-      attackPosAlloc->Add(Vector(0.0, 0.0, 0.0));   // V0 attacker — stationary
-      attackPosAlloc->Add(Vector(0.0, 0.0, 0.0));   // V1 victim   — starts same pos
+      attackPosAlloc->Add(Vector(200.0, 100.0, 0.0));  // V0 attacker — right side
+      attackPosAlloc->Add(Vector(100.0, 100.0, 0.0));  // V1 victim   — left side, 100 m gap
 
       attack_mobility.SetPositionAllocator(attackPosAlloc);
       attack_mobility.Install(Vehicle_Nodes);
 
-      // V0 stays still
+      // V0 moves right slowly (+3 m/s)
       Ptr<ConstantVelocityMobilityModel> mob_v0 =
           DynamicCast<ConstantVelocityMobilityModel>(
               Vehicle_Nodes.Get(malicious_vehicle_id)->GetObject<MobilityModel>());
-      mob_v0->SetVelocity(Vector(0.0, 0.0, 0.0));
+      mob_v0->SetVelocity(Vector(3.0, 0.0, 0.0));
 
-      // V1 moves at 20 m/s along x-axis
+      // V1 moves left fast (-13 m/s) — faster than V0, moves out of range
       Ptr<ConstantVelocityMobilityModel> mob_v1 =
           DynamicCast<ConstantVelocityMobilityModel>(
               Vehicle_Nodes.Get(victim_neighbor_id)->GetObject<MobilityModel>());
-      mob_v1->SetVelocity(Vector(20.0, 0.0, 0.0));
+      mob_v1->SetVelocity(Vector(-13.0, 0.0, 0.0));
   }
   else if (attack_scenario == 2 || attack_scenario == 3 || attack_scenario == 4)
   {
-      // TTW-S2/S3/S4: V0 stationary, V1 moves away — same timing as TTW-S1
+      // TTW-S2/S3/S4: same gap-and-velocity layout as TTW-S1
+      // V0 (slower) starts at x=200, moves right at +3 m/s
+      // V1 (faster) starts at x=100, moves left  at -13 m/s
+      // At t=10: gap=260 m (in range) | t=15: gap=340 m (link broken)
       Vehicle_Nodes.Create(N_Vehicles);
       MobilityHelper ttw_mob;
       ttw_mob.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
       Ptr<ListPositionAllocator> ttwPosAlloc = CreateObject<ListPositionAllocator>();
       for (uint32_t i = 0; i < N_Vehicles; i++) {
-          if (i == 0) ttwPosAlloc->Add(Vector(0.0, 0.0, 0.0));
-          else if (i == 1) ttwPosAlloc->Add(Vector(0.0, 0.0, 0.0));
-          else ttwPosAlloc->Add(Vector(static_cast<double>(i - 1) * 250.0, 400.0, 0.0));
+          if (i == 0)      ttwPosAlloc->Add(Vector(200.0, 100.0, 0.0));  // V0 slower
+          else if (i == 1) ttwPosAlloc->Add(Vector(100.0, 100.0, 0.0));  // V1 faster
+          else             ttwPosAlloc->Add(Vector(static_cast<double>(i - 1) * 250.0, 400.0, 0.0));
       }
       ttw_mob.SetPositionAllocator(ttwPosAlloc);
       ttw_mob.Install(Vehicle_Nodes);
@@ -141589,8 +141594,10 @@ int main(int argc, char *argv[])
           Ptr<ConstantVelocityMobilityModel> m =
               DynamicCast<ConstantVelocityMobilityModel>(
                   Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
-          if (i == 1)
-              m->SetVelocity(Vector(20.0, 0.0, 0.0)); // V1 moves away
+          if (i == 0)
+              m->SetVelocity(Vector(3.0, 0.0, 0.0));    // V0 right, slow
+          else if (i == 1)
+              m->SetVelocity(Vector(-13.0, 0.0, 0.0));  // V1 left, fast
           else
               m->SetVelocity(Vector(0.0, 0.0, 0.0));
       }
