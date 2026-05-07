@@ -2028,8 +2028,7 @@ These are two completely different layers serving different purposes:
 LAYER 1 — RADIO (NS-3 Tags, travel over the simulated wireless medium)
 ──────────────────────────────────────────────────────────────────────
 CustomDataTag1          → topology beacon (position, velocity, neighbour IDs, timestamp)
-CustomHeartbeatTag      → liveness heartbeat (claimed sender, timestamp, is_replayed)
-CustomMetaDataUnicastTag0  → RSU→Controller CSMA metadata packet
+CustomMetaDataUnicastTag0  → reused for BSHH heartbeat and RSU→Controller metadata (nodeId, timestamp)
 
 These are NS-3 Tag subclasses. They Serialize/Deserialize and travel inside
 Ptr<Packet> objects over WifiNetDevice (DSRC 802.11p) or SimpleUdpApplication (CSMA).
@@ -2053,48 +2052,28 @@ the control-plane consequence.
 
 ---
 
-### Q9 — What is CustomHeartbeatTag and why was it added?
+### Q9 — Why does BSHH reuse `CustomMetaDataUnicastTag0` instead of a separate heartbeat tag?
 
-**Question:** Where is `CustomHeartbeatTag` defined and what does it do?
+**Question:** We removed `CustomHeartbeatTag`. How is BSHH represented now?
 
 **Answer:**
 
-`CustomHeartbeatTag` is a 13-byte NS-3 Tag class added at line ~1121 of routing.cc.
-It carries BSHH heartbeat liveness information over the DSRC radio:
+BSHH now reuses `CustomMetaDataUnicastTag0` for heartbeat packets because the message
+needs only two fields:
+- `nodeId` for the claimed sender
+- `timestamp` for replay detection
 
-```cpp
-class CustomHeartbeatTag : public Tag {
-    // 13 bytes total:
-    uint32_t m_claimedSenderId;  // 4 bytes — whose identity this heartbeat claims
-    double   m_timestamp;         // 8 bytes — when the heartbeat was originally generated
-    bool     m_isReplayed;        // 1 byte  — 0 = legitimate, 1 = forged replay
-};
-```
+The replay state is inferred by comparing the received timestamp against the most recent
+timestamp stored in `bshh_controller_liveness_table`. That means a separate
+`is_replayed` field is not necessary.
 
-**Why it was needed:** Before this was added, BSHH heartbeats existed only as in-memory
-struct writes — the attacker simply wrote directly into `bshh_controller_liveness_table`.
-No real NS-3 packet was created, so:
-- `Rx()` never fired for heartbeats
-- NetAnim showed no heartbeat arrows
-- The radio channel was never actually used for heartbeat traffic
-- Channel delivery statistics for heartbeats were not counted
+This keeps the code simpler:
+- `CustomDataTag1` remains the topology beacon tag
+- `CustomMetaDataUnicastTag0` carries the BSHH heartbeat / metadata timing information
+- `HeartbeatPacket` remains the in-memory controller record for what was last accepted
 
-Adding `CustomHeartbeatTag` makes heartbeats real 802.11p DSRC packets. The `Rx()`
-callback (line ~122266) was extended to read this tag and update the liveness table:
-
-```cpp
-CustomHeartbeatTag hb_tag;
-if (pkt->PeekPacketTag(hb_tag)) {
-    HeartbeatPacket hb = {hb_tag.GetClaimedSenderId(),
-                          (uint32_t)destination_node_id,
-                          hb_tag.GetTimestamp(),
-                          hb_tag.GetIsReplayed()};
-    bshh_controller_liveness_table[hb_tag.GetClaimedSenderId()] = hb;
-}
-```
-
-The helper `AttackSendHeartbeat(node, claimed_id, timestamp, is_replayed)` was also added
-to send these packets from any node over the CCH 178 radio.
+The receiver side in `MacRx()` now peeks `CustomMetaDataUnicastTag0` for BSHH heartbeats
+and decides replay status from timestamp order.
 
 ---
 
@@ -2789,5 +2768,5 @@ The important change is that each scenario now has its own output set instead of
 *Written by Nimesha Yasith | FYP — Department of EIE, University of Ruhuna | 2026-04-30*
 *Updated 2026-04-30: added --detection_enabled flag, per-scenario XML files, ME-S1/S3 PEM improvements, updated CSV column layouts.*
 *Updated 2026-05-01: added Section 18 — RSU and RSU Network explanation; Section 19 — Q&A session documenting custom data tags, DSRC, V2V implementation gap, and fix.*
-*Updated 2026-05-02: added Section 20 — Q&A session (7 DSRC channels, mobility traces, two-layer architecture, CustomHeartbeatTag, RSU→Controller CSMA, LTE V2C status); Section 21 — per-channel TX power 23–44 dBm for mobility_scenario=1, channel_delivery_analysis.csv output; Section 22 — data transmission functions comparison (centralized vs distributed broadcast, send_centralized_packets, send_hybrid_packets), SimpleUdpApplication internals (3 sockets, HandleReadOne tag dispatch, attack usage); Section 23 — node roles (controller_Node vs management_Node), three architecture modes (centralized/distributed/hybrid), which mode runs in attack scenarios.*
+*Updated 2026-05-02: added Section 20 — Q&A session (7 DSRC channels, mobility traces, two-layer architecture, BSHH heartbeat reuse of CustomMetaDataUnicastTag0, RSU→Controller CSMA, LTE V2C status); Section 21 — per-channel TX power 23–44 dBm for mobility_scenario=1, channel_delivery_analysis.csv output; Section 22 — data transmission functions comparison (centralized vs distributed broadcast, send_centralized_packets, send_hybrid_packets), SimpleUdpApplication internals (3 sockets, HandleReadOne tag dispatch, attack usage); Section 23 — node roles (controller_Node vs management_Node), three architecture modes (centralized/distributed/hybrid), which mode runs in attack scenarios.*
 *Updated 2026-05-07: revised output layout to per-scenario CSV folders (`PEM_EVENT_LOG/`, `PEM_RUN_SUMMARY/`, `CHANNEL_DELIVERY_ANALYSIS/`), and updated Section 26 to record the scenario outputs/logs observed during the `ME-S1` and `TTW-S2` runs.*

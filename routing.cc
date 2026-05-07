@@ -99,6 +99,14 @@ BuildLogPath(const std::string& filename)
     return std::string(OUTPUT_ROOT_DIR) + "/Logs_attacks/" + filename;
 }
 
+static std::string
+BuildPcapPrefix(const std::string& prefix, uint32_t scenario)
+{
+    EnsureScenarioOutputDir("PCAP_FILES");
+    return std::string(OUTPUT_ROOT_DIR) + "/PCAP_FILES/"
+           + GetScenarioOutputName(scenario) + "_" + prefix;
+}
+
 // ── defines — unchanged ──────────────────────────────────────────────────────
 #define max   40
 #define max1   1
@@ -1222,55 +1230,6 @@ PemEmitVehicleHeartbeat(uint32_t senderId,
  
 
 // =============================================================================
-// CustomHeartbeatTag — real NS-3 Tag for BSHH liveness heartbeat packets
-// Carries: claimed_sender_id (whose liveness), timestamp, is_replayed flag.
-// Serialized size = 4 + 8 + 1 = 13 bytes (compile-time constant).
-// =============================================================================
-
-class CustomHeartbeatTag : public Tag {
-public:
-    static TypeId GetTypeId(void);
-    virtual TypeId GetInstanceTypeId(void) const;
-    virtual uint32_t GetSerializedSize(void) const { return 13; }
-    virtual void Serialize(TagBuffer i) const {
-        i.WriteU32(m_claimedSenderId);
-        i.WriteDouble(m_timestamp);
-        i.WriteU8(m_isReplayed ? 1 : 0);
-    }
-    virtual void Deserialize(TagBuffer i) {
-        m_claimedSenderId = i.ReadU32();
-        m_timestamp       = i.ReadDouble();
-        m_isReplayed      = (i.ReadU8() != 0);
-    }
-    virtual void Print(std::ostream &os) const {
-        os << "HB claimed=" << m_claimedSenderId
-           << " t=" << m_timestamp
-           << " replayed=" << m_isReplayed;
-    }
-    uint32_t GetClaimedSenderId() const { return m_claimedSenderId; }
-    double   GetTimestamp()       const { return m_timestamp; }
-    bool     GetIsReplayed()      const { return m_isReplayed; }
-    void SetClaimedSenderId(uint32_t id) { m_claimedSenderId = id; }
-    void SetTimestamp(double t)          { m_timestamp = t; }
-    void SetIsReplayed(bool r)           { m_isReplayed = r; }
-    CustomHeartbeatTag() : m_claimedSenderId(0), m_timestamp(0.0), m_isReplayed(false) {}
-private:
-    uint32_t m_claimedSenderId;
-    double   m_timestamp;
-    bool     m_isReplayed;
-};
-NS_OBJECT_ENSURE_REGISTERED(CustomHeartbeatTag);
-TypeId CustomHeartbeatTag::GetTypeId(void) {
-    static TypeId tid = TypeId("ns3::CustomHeartbeatTag")
-        .SetParent<Tag>()
-        .AddConstructor<CustomHeartbeatTag>();
-    return tid;
-}
-TypeId CustomHeartbeatTag::GetInstanceTypeId(void) const {
-    return CustomHeartbeatTag::GetTypeId();
-}
-
-// =============================================================================
 // DSRC PACKET HELPERS — shared by all attack scenario "legitimate exchange" steps
 // =============================================================================
 
@@ -1299,26 +1258,10 @@ static Ipv4Address AttackGetControllerIP()
 }
 
 static void AttackSendRSUToController(uint32_t rsu_index);
-
-// Sends a real DSRC 802.11p heartbeat broadcast from physical_sender_node.
-// claimed_sender_id = whose liveness is claimed (differs from sender in replay attacks).
-// hb_timestamp = timestamp inside the heartbeat (old value for replays).
-// is_replayed = true for BSHH attack forged packets.
 static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
                                 uint32_t claimed_sender_id,
                                 double hb_timestamp,
-                                bool is_replayed)
-{
-    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(physical_sender_node);
-    if (!wdi) return;
-    Ptr<Packet> pkt = Create<Packet>(0);
-    CustomHeartbeatTag tag;
-    tag.SetClaimedSenderId(claimed_sender_id);
-    tag.SetTimestamp(hb_timestamp);
-    tag.SetIsReplayed(is_replayed);
-    pkt->AddPacketTag(tag);
-    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
-}
+                                bool is_replayed);
 
 // =============================================================================
 // TTW ATTACK FUNCTIONS — paste these before main()
@@ -16390,6 +16333,26 @@ Time CustomMetaDataUnicastTag0::GetTimestamp() {
 
 void CustomMetaDataUnicastTag0::SetTimestamp(Time t) {
 	m_timestamp = t;
+}
+
+// Sends a real DSRC 802.11p heartbeat broadcast using the existing unicast metadata tag.
+// claimed_sender_id = whose liveness is claimed (differs from sender in replay attacks).
+// hb_timestamp = timestamp inside the heartbeat (old value for replays).
+// is_replayed is kept for scenario readability, but replay is inferred from timestamps.
+static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
+                                uint32_t claimed_sender_id,
+                                double hb_timestamp,
+                                bool is_replayed)
+{
+    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(physical_sender_node);
+    if (!wdi) return;
+    (void)is_replayed;
+    Ptr<Packet> pkt = Create<Packet>(0);
+    CustomMetaDataUnicastTag0 tag;
+    tag.SetNodeId(claimed_sender_id);
+    tag.SetTimestamp(Seconds(hb_timestamp));
+    pkt->AddPacketTag(tag);
+    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
 }
 
 
@@ -122717,12 +122680,16 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		std::cout << "Current neighbor size is "<<ns<<"Received packet from "<< tag2.GetNodeId()<<"to node "<<context[10]<<context[11] <<"of size "<<tag2.GetSerializedSize()<<"packet timestamp "<< tag2.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag2.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 
-	CustomHeartbeatTag hb_tag;
+	CustomMetaDataUnicastTag0 hb_tag;
 	if (pkt->PeekPacketTag(hb_tag)) {
-		uint32_t claimed_id = hb_tag.GetClaimedSenderId();
-		double   hb_time    = hb_tag.GetTimestamp();
-		bool     replayed   = hb_tag.GetIsReplayed();
-		HeartbeatPacket hb  = {claimed_id, (uint32_t)destination_node_id, hb_time, replayed};
+		uint32_t claimed_id = hb_tag.GetNodeId();
+		double   hb_time    = hb_tag.GetTimestamp().GetSeconds();
+		bool     replayed   = false;
+		auto hb_it = bshh_controller_liveness_table.find(claimed_id);
+		if (hb_it != bshh_controller_liveness_table.end()) {
+			replayed = (hb_time < hb_it->second.timestamp);
+		}
+		HeartbeatPacket hb  = {claimed_id, claimed_id, hb_time, replayed};
 		bshh_controller_liveness_table[claimed_id] = hb;
 	}
 }
@@ -141868,6 +141835,7 @@ int main(int argc, char *argv[])
 	  csma_nodes.Add(controller_Node);
 	  csma_nodes.Add(management_Node);  
 	  csmaDevices = csma.Install (csma_nodes);
+	  csma.EnablePcapAll (BuildPcapPrefix("csma_trace", attack_scenario));
   	  address.SetBase ("10.1.1.0", "255.255.255.0");
   	  stack.Install (csma_nodes);
   	  csmaInterfaces = address.Assign (csmaDevices);
@@ -142895,6 +142863,14 @@ int main(int argc, char *argv[])
   wifidevices_180 = wifi_180.Install (Phy_180, Mac_180, dsrc_Nodes);
   wifidevices_182 = wifi_182.Install (Phy_182, Mac_182, dsrc_Nodes);
   wifidevices_184 = wifi_184.Install (Phy_184, Mac_184, dsrc_Nodes);
+
+	  Phy.EnablePcapAll (BuildPcapPrefix("dsrc_ch178", attack_scenario));
+	  Phy_172.EnablePcapAll (BuildPcapPrefix("dsrc_ch172", attack_scenario));
+	  Phy_174.EnablePcapAll (BuildPcapPrefix("dsrc_ch174", attack_scenario));
+	  Phy_176.EnablePcapAll (BuildPcapPrefix("dsrc_ch176", attack_scenario));
+	  Phy_180.EnablePcapAll (BuildPcapPrefix("dsrc_ch180", attack_scenario));
+	  Phy_182.EnablePcapAll (BuildPcapPrefix("dsrc_ch182", attack_scenario));
+	  Phy_184.EnablePcapAll (BuildPcapPrefix("dsrc_ch184", attack_scenario));
 
   // Connect per-channel Phy traces for channel_delivery_analysis.csv.
   // PhyTxBegin fires on the transmitting node when the Phy begins sending.
