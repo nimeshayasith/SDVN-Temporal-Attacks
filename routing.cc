@@ -1806,6 +1806,8 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
 // TTW-S3: MALICIOUS CONTROLLER, NO RSU — attack_scenario == 3
 // =============================================================================
 
+static void TTWApplyGhostLinkToController(uint32_t src_id, uint32_t dst_id, double forged_time);
+
 static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
 {
     double now2 = Simulator::Now().GetSeconds();
@@ -1909,13 +1911,7 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
 
-    // Write directly to con_data_inst so the RL routing algorithm sees the ghost link.
-    // v1_id and v2_id are NS-3 node IDs when called from the fixed scheduling block.
-    (con_data_inst + v1_id)->neighborid[0] = v2_id;
-    (con_data_inst + v1_id)->neighborsize   = 1;
-    (con_data_inst + v1_id)->lastupdated    = forged_time;
-    for (uint32_t _i = 1; _i < (uint32_t)max; _i++)
-        (con_data_inst + v1_id)->neighborid[_i] = large;
+    TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
     pem_attack_injection_time = now;
     pem_attack_active = true;
@@ -2054,12 +2050,7 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
 
-    // Write directly to con_data_inst so the RL routing algorithm sees the ghost link.
-    (con_data_inst + v1_id)->neighborid[0] = v2_id;
-    (con_data_inst + v1_id)->neighborsize   = 1;
-    (con_data_inst + v1_id)->lastupdated    = forged_time;
-    for (uint32_t _i = 1; _i < (uint32_t)max; _i++)
-        (con_data_inst + v1_id)->neighborid[_i] = large;
+    TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
     pem_attack_injection_time = now;
     pem_attack_active = true;
@@ -97162,6 +97153,20 @@ void clear_controllerdata(struct controller_data * nd1)
 
 struct neighbor_data neighbordata_inst[total_size+2];
 struct controller_data con_data_inst[total_size+2];
+
+static void TTWApplyGhostLinkToController(uint32_t src_id, uint32_t dst_id, double forged_time)
+{
+    if (src_id >= (total_size + 2)) {
+        return;
+    }
+
+    (con_data_inst + src_id)->neighborid[0] = dst_id;
+    (con_data_inst + src_id)->neighborsize   = 1;
+    (con_data_inst + src_id)->lastupdated    = forged_time;
+    for (uint32_t i = 1; i < (uint32_t)max; i++) {
+        (con_data_inst + src_id)->neighborid[i] = large;
+    }
+}
 
 double sum_of_nodeids = 0;
 void nodeid_sum()
