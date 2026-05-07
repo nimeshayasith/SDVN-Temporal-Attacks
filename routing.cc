@@ -1665,7 +1665,7 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
                 << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
     }
     ttw_log << "\n========================================================\n"
-            << "  TTW ATTACK SCENARIO 4 COMPLETE\n"
+            << "  TTW ATTACK SCENARIO " << attack_scenario << " COMPLETE\n"
             << "========================================================\n";
     ttw_log.flush();
 
@@ -141753,6 +141753,17 @@ int main(int argc, char *argv[])
     // Populate attack-family flags and per-node/controller attacker membership.
     declare_attack_states();
     declare_attackers();
+
+    // Truncate CSV output files at the start of every run so that re-running
+    // the same scenario never produces duplicate rows from a previous run.
+    {
+        const std::string summary_path = BuildScenarioCsvPath("PEM_RUN_SUMMARY", attack_scenario);
+        const std::string event_path   = BuildScenarioCsvPath("PEM_EVENT_LOG",   attack_scenario);
+        std::ofstream(summary_path.c_str(), std::ios::out | std::ios::trunc).close();
+        std::ofstream(event_path.c_str(),   std::ios::out | std::ios::trunc).close();
+        pem_summary_csv_header_written = false;
+        pem_event_csv_header_written   = false;
+    }
 
     // ── Auto-save terminal output to file ────────────────────────────────────
     std::string term_log_name = "terminal_output_scenario_"
