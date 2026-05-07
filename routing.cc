@@ -200,7 +200,7 @@ bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 // "using namespace ns3" is already declared above
 // ERROR 4 FIX: uncommented now that namespace is declared earlier
 static const double TTW_HELLO_TIME  = 10.0;   // t=10: HELLO exchange
-static const double TTW_LINK_BREAK  = 12.5;   // t=12.5: physical link breaks (vehicles close at 16 m/s, gap crosses 300m at t=12.5)
+static const double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks
 static const double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ private:
 
 // ── TTW-S2 globals ────────────────────────────────────────────────────────────
 static const double TTWS2_HELLO_TIME  = 10.0;
-static const double TTWS2_LINK_BREAK  = 12.5;
+static const double TTWS2_LINK_BREAK  = 15.0;
 static const double TTWS2_REPLAY_TIME = 20.0;
 TopologyPacket ttws2_stored_packet;
 bool           ttws2_packet_stored = false;
@@ -294,7 +294,7 @@ std::ofstream  ttws2_log;
 
 // ── TTW-S3 globals ────────────────────────────────────────────────────────────
 static const double TTWS3_HELLO_TIME      = 10.0;
-static const double TTWS3_LINK_BREAK      = 12.5;
+static const double TTWS3_LINK_BREAK      = 15.0;
 static const double TTWS3_INTERNAL_REPLAY = 20.0;
 TopologyPacket ttws3_stored_packet;
 bool           ttws3_packet_stored = false;
@@ -302,7 +302,7 @@ std::ofstream  ttws3_log;
 
 // ── TTW-S4 globals ────────────────────────────────────────────────────────────
 static const double TTWS4_HELLO_TIME      = 10.0;
-static const double TTWS4_LINK_BREAK      = 12.5;
+static const double TTWS4_LINK_BREAK      = 15.0;
 static const double TTWS4_INTERNAL_REPLAY = 20.0;
 TopologyPacket ttws4_stored_packet;
 bool           ttws4_packet_stored = false;
@@ -1340,12 +1340,12 @@ void TTW_InitLog()
     ttw_log.open(BuildLogPath("ttw_attack_scenario4.txt"), std::ios::out | std::ios::trunc);
     ttw_log << std::fixed << std::setprecision(3);
     ttw_log << "========================================================\n";
-    ttw_log << "  TTW Attack Scenario 4 — Malicious Vehicle, No RSUs   \n";
+    ttw_log << "  TTW Attack Scenario 1 — Malicious Vehicle, No RSUs   \n";
     ttw_log << "========================================================\n\n";
     ttw_log << "  t=10    ①  V2V HELLO exchange\n";
     ttw_log << "  t=10    ②  Topology updates to controller\n";
     ttw_log << "  t=10    ③  Attacker stores old packet\n";
-    ttw_log << "  t=12.5      Link breaks physically\n";
+    ttw_log << "  t=15        Link breaks physically\n";
     ttw_log << "  t=20    ④  Attacker forges timestamp\n";
     ttw_log << "  t=20    ⑤  Forged packet sent to controller\n";
     ttw_log << "  t=20    ⑥  Controller issues faulty routing\n\n";
@@ -1671,7 +1671,7 @@ void TTWS2_InitLog()
               << "  t=10    ①  V2V HELLO + vehicles -> RSU\n"
               << "  t=10    ②  RSU aggregates + forwards to controller\n"
               << "  t=10    ③  Malicious RSU stores old packet\n"
-              << "  t=12.5      Link breaks physically\n"
+              << "  t=15        Link breaks physically\n"
               << "  t=20    ④  RSU forges timestamp\n"
               << "  t=20    ⑤  Forged packet sent to controller\n"
               << "  t=20    ⑥  Controller issues faulty routing\n\n"
@@ -1837,7 +1837,7 @@ void TTWS3_InitLog()
               << "========================================================\n\n"
               << "  t=10    ①  V2V HELLO + legitimate updates to controller\n"
               << "  t=10    ②  Controller stores legitimately + keeps stale copy\n"
-              << "  t=12.5      Link breaks physically\n"
+              << "  t=15        Link breaks physically\n"
               << "  t=20    ③  Controller internally replays stale entry\n"
               << "  t=20    ④  Controller table poisoned (no external packet)\n\n"
               << "========================================================\n\n";
@@ -1988,7 +1988,7 @@ void TTWS4_InitLog()
               << "========================================================\n\n"
               << "  t=10    ①  V1/V2 -> RSU -> Controller (legitimate)\n"
               << "  t=10    ②  Controller stores stale copy from RSU aggregate\n"
-              << "  t=12.5      Link breaks physically\n"
+              << "  t=15        Link breaks physically\n"
               << "  t=20    ③  Controller internally replays with forged timestamp\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S4-new] Log opened: ttw_s4_attack_log.txt");
@@ -143916,7 +143916,7 @@ int main(int argc, char *argv[])
       std::cout << "Timeline:"                                 << std::endl;
       std::cout << "  t=10s  STEP 1+2 : Vehicles -> RSU -> Controller (legit)" << std::endl;
       std::cout << "  t=10s  STEP 3   : RSU stores old packet"                 << std::endl;
-      std::cout << "  t=12.5s         : Physical link breaks"                  << std::endl;
+      std::cout << "  t=15s           : Physical link breaks"                  << std::endl;
       std::cout << "  t=20s  STEP 4+5 : RSU replays forged packet"             << std::endl;
       std::cout << "========================================\n" << std::endl;
 
@@ -143974,7 +143974,7 @@ int main(int argc, char *argv[])
       std::cout << "Victims       : NS3-ID=" << v1_id3 << " and NS3-ID=" << v2_id3 << std::endl;
       std::cout << "Timeline:"                                 << std::endl;
       std::cout << "  t=10s  STEP 1+2 : Legit updates -> controller, stores stale" << std::endl;
-      std::cout << "  t=12.5s         : Physical link breaks"                       << std::endl;
+      std::cout << "  t=15s           : Physical link breaks"                       << std::endl;
       std::cout << "  t=20s  STEP 3+4 : Controller internal replay (no ext packet)" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
@@ -144029,7 +144029,7 @@ int main(int argc, char *argv[])
       std::cout << "Victims       : NS3-ID=" << v1_id4 << " and NS3-ID=" << v2_id4 << std::endl;
       std::cout << "Timeline:"                                            << std::endl;
       std::cout << "  t=10s  STEP 1+2 : V1/V2 -> RSU -> Controller, ctrl stores stale" << std::endl;
-      std::cout << "  t=12.5s         : Physical link breaks"                           << std::endl;
+      std::cout << "  t=15s           : Physical link breaks"                           << std::endl;
       std::cout << "  t=20s  STEP 3   : Controller internal replay (RSU path variant)"  << std::endl;
       std::cout << "========================================\n" << std::endl;
 
