@@ -861,8 +861,9 @@ PemWriteRunSummaryCsv()
         BuildScenarioCsvPath("PEM_RUN_SUMMARY", attack_scenario);
     PemWriteCsvHeaderIfNeeded(
         filename,
-        "run_id,attack_scenario,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,"
-        "pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,total_events",
+        "run_id,attack_scenario,attack_percentage,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,"
+        "pdr_under_attack_pct,pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,"
+        "total_events",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -885,6 +886,7 @@ PemWriteRunSummaryCsv()
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
     fout << RngSeedManager::GetRun() << ","
          << attack_scenario << ","
+         << attack_percentage << ","
          << (detection_enabled ? 1 : 0) << ","
          << pem_true_positive << ","
          << pem_true_negative << ","
@@ -141754,16 +141756,7 @@ int main(int argc, char *argv[])
     declare_attack_states();
     declare_attackers();
 
-    // Truncate CSV output files at the start of every run so that re-running
-    // the same scenario never produces duplicate rows from a previous run.
-    {
-        const std::string summary_path = BuildScenarioCsvPath("PEM_RUN_SUMMARY", attack_scenario);
-        const std::string event_path   = BuildScenarioCsvPath("PEM_EVENT_LOG",   attack_scenario);
-        std::ofstream(summary_path.c_str(), std::ios::out | std::ios::trunc).close();
-        std::ofstream(event_path.c_str(),   std::ios::out | std::ios::trunc).close();
-        pem_summary_csv_header_written = false;
-        pem_event_csv_header_written   = false;
-    }
+    // CSV files use append mode — each run adds one row, preserving previous runs.
 
     // ── Auto-save terminal output to file ────────────────────────────────────
     std::string term_log_name = "terminal_output_scenario_"
