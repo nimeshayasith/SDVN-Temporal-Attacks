@@ -947,6 +947,27 @@ grep "error:" build_log.txt
 
 All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 
+### New parameters added (2026-05-07)
+
+Two new command-line parameters control attacker population density:
+
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `--attack_percentage` | 20 | Percentage (0–100) of vehicle nodes assigned as attackers |
+| `--controller_malicious_assumption` | 0 | Set to 1 to also activate controller-side attack flags |
+
+`attack_percentage` is a **research input** you set — it is not auto-detected.
+Vary it across runs (10, 20, 50, 80) to plot detection performance vs attacker density.
+The PEM metrics (MCC, AUROC, Tdet) are the **outputs** that measure detection effectiveness.
+
+After `cmd.Parse()`, the simulation prints a summary:
+```
+[declare_attackers] scenario=1  pct=20  N_Vehicles=10
+  TTW  nodes=2  controllers=0
+  BSHH nodes=0  controllers=0
+  ME   nodes=0  controllers=0
+```
+
 ### Baseline
 
 ```bash
@@ -956,49 +977,68 @@ All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 ### TTW family
 
 ```bash
-# TTW-S1: Malicious Vehicle
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=1"
+# TTW-S1: Malicious Vehicle, 20% attackers (default)
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20"
+
+# TTW-S1: Malicious Vehicle, 50% attackers (dense scenario)
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=50"
 
 # TTW-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=2"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=2 --attack_percentage=20"
 
 # TTW-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=3"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=3 --attack_percentage=20"
 
 # TTW-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=4"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=4 --attack_percentage=20"
 ```
 
 ### BSHH family
 
 ```bash
 # BSHH-S1: Malicious Vehicle
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=5"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=5 --attack_percentage=20"
 
 # BSHH-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=6"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=6 --attack_percentage=20"
 
 # BSHH-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=7"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=7 --attack_percentage=20"
 
 # BSHH-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=8"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=8 --attack_percentage=20"
 ```
 
 ### ME family
 
 ```bash
-# ME-S1: Malicious Vehicles  (4 vehicles: V0,V1=real link; V2,V3=attackers)
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=9"
+# ME-S1: Malicious Vehicles  (need ≥4 vehicles: V0,V1=real link; V2,V3=echo attackers)
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=9 --attack_percentage=20"
 
 # ME-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=10"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=10 --attack_percentage=20"
 
 # ME-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=11"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=11 --attack_percentage=20"
 
 # ME-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=12"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=12 --attack_percentage=20"
+```
+
+### Varying attack_percentage for report statistics
+
+```bash
+# Run the same scenario at four density levels to build a performance curve
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=10"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=50"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=80"
+```
+
+### Force controller malicious (even on vehicle-attacker scenarios)
+
+```bash
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20 --controller_malicious_assumption=1"
 ```
 
 ### Attack-only mode (no detection/mitigation)
@@ -1009,10 +1049,10 @@ Use this to measure worst-case PDR impact.
 
 ```bash
 # Example: TTW-S2, attack fires but PEM never mitigates
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2 --detection_enabled=0"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=2 --attack_percentage=20 --detection_enabled=0"
 
 # Example: ME-S1, attack fires but PEM never mitigates
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=9 --detection_enabled=0"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=9 --attack_percentage=20 --detection_enabled=0"
 ```
 
 ### Attack + detection mode (default)
@@ -1021,8 +1061,8 @@ Use this to measure worst-case PDR impact.
 These two commands are equivalent:
 
 ```bash
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=1"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=1 --detection_enabled=1"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20 --detection_enabled=1"
 ```
 
 ### Read results immediately after any run
@@ -1124,6 +1164,8 @@ Example excerpt from TTW-S2:
 | `run_id` | 1 | — | Sequential run number |
 | `attack_scenario` | 2 | — | 0–12 |
 | `detection_enabled` | 3 | — | 1 = detection+mitigation on, 0 = attack-only mode |
+| `attack_percentage` | — | set by you | Percentage of vehicle nodes assigned as attackers (input, not output) |
+| `controller_malicious_assumption` | — | 0 or 1 | Whether controller-side attack flags are also activated |
 | `tp` | 4 | ≥ 1 | True positives: attacks correctly detected |
 | `tn` | 5 | high | True negatives: benign events correctly passed |
 | `fp` | 6 | 0 ideally | False positives: benign events wrongly flagged |
