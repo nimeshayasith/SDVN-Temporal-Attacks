@@ -31,14 +31,14 @@ Your NS-3 simulator generates **simulated network packets** representing actual 
 └─────────────────────────────────────────┘
          ↓
 ┌─────────────────────────────────────────┐
-│ pem_event_log.csv (Detection Layer)     │
+│ PEM_EVENT_LOG/<scenario>.csv (Detection) │
 │  ↓                                       │
 │  What did the controller see?           │
 │  How did PEM score it?                  │
 └─────────────────────────────────────────┘
          ↓
 ┌─────────────────────────────────────────┐
-│ ttw_attack_scenario*.txt (Attack Log)   │
+│ *_attack_log.txt (Attack Log)           │
 │  ↓                                       │
 │  What did the attacker inject?          │
 │  At what timestamp?                     │
@@ -46,6 +46,15 @@ Your NS-3 simulator generates **simulated network packets** representing actual 
 ```
 
 This three-way cross-reference validates your entire attack → transmission → detection pipeline.
+
+### Quick Verification Flow
+
+For any scenario, verify the attack in this order:
+
+1. Check the scenario banner in the console output.
+2. Open the matching `*_attack_log.txt` file and confirm the timeline matches the expected steps.
+3. Inspect the matching Wireshark capture and compare packet timestamps against the log.
+4. Confirm PEM wrote the matching files in `PEM_EVENT_LOG/` and `PEM_RUN_SUMMARY/`.
 
 #### 3. **Attack Scenario Validation**
 
@@ -61,7 +70,7 @@ Your simulator uses 7 DSRC channels (172–184, with 178 as CCH). Wireshark can:
 - Filter packets by channel frequency
 - Measure per-channel delivery ratio (fanout)
 - Identify if attack packets deviate from normal channel usage patterns
-- Cross-reference with `channel_delivery_analysis.csv`
+- Cross-reference with `CHANNEL_DELIVERY_ANALYSIS/<scenario>.csv`
 
 ---
 
@@ -110,7 +119,7 @@ if (csmaHelper != nullptr) {
 cd ~/ns-3.35
 
 # Run a specific attack scenario with PCAP tracing enabled
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=4"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
 ```
 
 **Output files generated:**
@@ -182,6 +191,9 @@ tshark -r dsrc_trace-*.pcap -Y "arp || ip.version==4" -w filtered_packets.pcap
    - `CustomHeartbeatTag` — liveness heartbeat with claimed_sender, timestamp, is_replayed flag
    - `CustomMetaDataUnicastTag0` — RSU→Controller metadata
 
+   For BSHH-S1, use `attack_scenario=5` and confirm the replayed heartbeat claims `V1`
+   while physically coming from `V2`.
+
 ### Step 5: Apply Filters to Isolate Attack Events
 
 #### Filter by Simulation Time Window
@@ -218,6 +230,52 @@ udp.dstport == 7777  # controller's main port
 
 ---
 
+### ME-S1 (Multipath Echo, Malicious Vehicles, No RSU)
+
+**What to Look For:**
+- Multiple reporter packets for the same link `(V1, V2)`
+- Reporter nodes that are farther than 300m from the claimed link
+- Two attackers echoing the same legitimate observation
+
+**How to verify it quickly:**
+
+1. **Run the scenario:**
+   ```bash
+   ./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=9"
+   ```
+
+2. **Filter the capture window:**
+   ```
+   frame.time_relative >= 10 && frame.time_relative <= 12
+   ```
+
+3. **Inspect the reporter identity and link fields:**
+   - `eth.src` or `wlan.sa` for the physical reporter
+   - `CustomDataTag1.link_src` and `CustomDataTag1.link_dst` for the claimed link
+   - If the same link is echoed by multiple reporters, that is the attack pattern
+
+4. **Cross-check the outputs:**
+   ```bash
+   grep "STEP ②" me_s1_attack_log.txt
+   grep "attack_label=1" PEM_EVENT_LOG/09_ME_S1_Malicious_Vehicles.csv
+   cat CHANNEL_DELIVERY_ANALYSIS/09_ME_S1_Malicious_Vehicles.csv
+   ```
+
+5. **Expected interpretation:**
+   ```
+   Link (V1, V2) reported by V1 at 10.0s  → legitimate
+   Link (V1, V2) reported by V2 at 10.1s  → legitimate
+   Link (V1, V2) reported by V3 at 10.2s  → echo reporter, ME-S1
+   Link (V1, V2) reported by V4 at 10.3s  → echo reporter, ME-S1
+   ```
+
+**What the capture should show:**
+- The same link being repeated by extra reporters
+- The reporter identities corresponding to the attacker vehicles
+- Matching entries in `PEM_EVENT_LOG/09_ME_S1_Malicious_Vehicles.csv`
+
+---
+
 ## Specific Analysis for Your Attack Scenarios
 
 ### TTW (Topology Time-Warp) Attack
@@ -241,53 +299,73 @@ udp.dstport == 7777  # controller's main port
 
 3. **Cross-reference with logs:**
    ```bash
-   grep "REPLAY" ttw_attack_scenario4.txt
-   grep "attack_label=1" pem_event_log.csv
+   grep "REPLAY" ttw_s2_attack_log.txt
+   grep "attack_label=1" PEM_EVENT_LOG/02_TTW_S2_Malicious_RSU.csv
    ```
 
 4. **Example interpretation:**
    ```
    Packet 123: frame.time_relative=20.050s, CustomDataTag1.timestamp=10.100s
-   → TTW-S1 detected: old timestamp (10.1s) arriving at new time (20.05s)
+   → TTW-S2 detected: old timestamp (10.1s) arriving at new time (20.05s)
    ```
 
 ---
 
-### BSHH (Beacon State Heartbeat Hijack) Attack
+### BSHH-S1 (Beacon State Heartbeat Hijack, Malicious Vehicle, No RSU)
 
 **What to Look For:**
 - Heartbeat packets with **mismatched sender identities**
 - Same identity claimed by different source addresses
 - Old heartbeats (low timestamp) arriving after newer ones (high timestamp)
+- One packet replayed by `V2` but claiming to be from `V1`
 
 **Analysis Steps:**
 
-1. **Filter for heartbeat packets:**
+1. **Run the matching scenario:**
+   ```bash
+   ./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=5"
+   ```
+
+2. **Filter for heartbeat packets:**
    ```
    frame.time_relative >= 5 && frame.time_relative <= 15
    ```
 
-2. **Examine heartbeat tag fields:**
+3. **Examine heartbeat packet fields:**
    - `CustomHeartbeatTag.claimed_sender_id` — whose liveness is claimed (e.g., V1)
-   - `CustomHeartbeatTag.physical_sender_id` — who actually transmitted (e.g., V2 in hijack)
-   - If these differ → **potential hijack**
+   - `eth.src` or `wlan.sa` — who actually transmitted the packet on the air
+   - If the claimed sender and physical sender differ → **potential hijack**
    - `CustomHeartbeatTag.is_replayed` — flag set by attacker
 
-3. **Timeline analysis:**
+4. **Timeline analysis:**
    ```bash
    # Extract heartbeat timestamps
    tshark -r dsrc_trace-*.pcap -Y "CustomHeartbeatTag" -T fields \
      -e frame.time_relative \
+     -e eth.src \
      -e CustomHeartbeatTag.claimed_sender_id \
      -e CustomHeartbeatTag.timestamp \
+     -e CustomHeartbeatTag.is_replayed \
      | sort -k3 -n
    ```
 
-4. **Example interpretation:**
+5. **Expected interpretation for BSHH-S1:**
    ```
-   Time=5.0s  claimed_sender=V1  tag_timestamp=5.0   is_replayed=0  → legitimate
-   Time=10.0s claimed_sender=V1  tag_timestamp=0.0   is_replayed=1  → BSHH attack!
+   Time=5.0s  eth.src=V1  claimed_sender=V1  tag_timestamp=5.0  is_replayed=0  → legitimate
+   Time=10.0s eth.src=V2  claimed_sender=V1  tag_timestamp=0.0  is_replayed=1  → replay/hijack
    ```
+
+6. **Cross-check the run artifacts:**
+   ```bash
+   grep "STEP ③" bshh_s1_attack_log.txt
+   grep "claimed_sender_id" PEM_EVENT_LOG/05_BSHH_S1_Malicious_Vehicle.csv
+   cat PEM_RUN_SUMMARY/05_BSHH_S1_Malicious_Vehicle.csv
+   ```
+
+**What the capture should show:**
+- One normal heartbeat exchange at `t=5`
+- A replayed heartbeat at `t=10` with the same claimed sender (`V1`) but a different physical sender (`V2`)
+- PEM events written into `PEM_EVENT_LOG/05_BSHH_S1_Malicious_Vehicle.csv`
 
 ---
 
@@ -318,7 +396,8 @@ udp.dstport == 7777  # controller's main port
 3. **Identify echo anomalies:**
    - Find duplicate link reports `(V1, V2)` from multiple reporters V3, V4
    - Check positions: if V3 is >300m away from both V1 and V2 → **phantom reporter**
-   - Compare with `channel_delivery_analysis.csv` — normal fanout should be ~2–3, not 4–5
+   - Compare with `CHANNEL_DELIVERY_ANALYSIS/09_ME_S1_Malicious_Vehicles.csv` — normal fanout
+     should be ~2–3, not 4–5
 
 4. **Example interpretation:**
    ```
@@ -354,7 +433,7 @@ udp.dstport == 7777  # controller's main port
      > packet_times.txt
 
    # Compare with PEM event times
-   cut -d, -f1 pem_event_log.csv > pem_times.txt
+   cut -d, -f1 PEM_EVENT_LOG/09_ME_S1_Malicious_Vehicles.csv > pem_times.txt
    comm -23 <(sort packet_times.txt) <(sort pem_times.txt) > unmatched_packets.txt
    ```
 
@@ -366,7 +445,7 @@ udp.dstport == 7777  # controller's main port
      -e frame.time_relative | head -1)
 
    # Get first alert time from PEM
-   ALERT_TIME=$(grep "alert_raised=1" pem_event_log.csv | head -1 | cut -d, -f1)
+   ALERT_TIME=$(grep ",1," PEM_EVENT_LOG/09_ME_S1_Malicious_Vehicles.csv | head -1 | cut -d, -f1)
 
    # Compute detection latency (should be <100ms)
    python3 -c "print(f'Latency: {(float($ALERT_TIME) - float($ATTACK_TIME)) * 1000:.2f} ms')"
@@ -417,7 +496,7 @@ def find_detection_latency(attack_time, events):
 
 def main():
     wireshark_file = "wireshark_export.csv"
-    pem_file = "pem_event_log.csv"
+    pem_file = "PEM_EVENT_LOG/09_ME_S1_Malicious_Vehicles.csv"
     
     packets = load_wireshark_csv(wireshark_file)
     events = load_pem_csv(pem_file)
@@ -526,7 +605,7 @@ Before analyzing your attack scenarios, ensure:
 - [ ] Simulation runs successfully: `./waf --run "scratch/routing ..."`
 - [ ] PCAP files are generated: `ls -la dsrc_trace-*.pcap csma_trace-*.pcap`
 - [ ] CSV exports work: `tshark -r dsrc_trace-*.pcap -T fields ... > export.csv`
-- [ ] PEM logs are generated: `ls -la pem_event_log.csv pem_run_summary.csv`
+- [ ] PEM logs are generated: `ls -la PEM_EVENT_LOG/*.csv PEM_RUN_SUMMARY/*.csv`
 - [ ] Cross-reference script runs: `python3 wireshark_pem_correlator.py`
 
 ---
@@ -537,10 +616,10 @@ Before analyzing your attack scenarios, ensure:
 |------|------|--------|
 | **Packet inspection** | Wireshark GUI | Interactive visualization |
 | **Batch packet analysis** | `tshark` CLI | CSV, filtered PCAP |
-| **PEM detection validation** | `pem_event_log.csv` | Detection latency, scores |
-| **Attack logs** | `ttw_attack_scenario*.txt` | Timeline of attack steps |
+| **PEM detection validation** | `PEM_EVENT_LOG/<scenario>.csv` | Detection latency, scores |
+| **Attack logs** | `*_attack_log.txt` | Timeline of attack steps |
 | **Correlation** | Python script | Cross-check packet ↔ detection |
-| **Channel analysis** | `channel_delivery_analysis.csv` | Per-channel fanout, PDR |
+| **Channel analysis** | `CHANNEL_DELIVERY_ANALYSIS/<scenario>.csv` | Per-channel fanout, PDR |
 
 By combining **Wireshark packet capture**, **PEM event logs**, and **attack logs**, you can completely validate your temporal-echo attack implementation and detection mechanisms.
 
