@@ -200,7 +200,7 @@ bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 // "using namespace ns3" is already declared above
 // ERROR 4 FIX: uncommented now that namespace is declared earlier
 static const double TTW_HELLO_TIME  = 10.0;   // t=10: HELLO exchange
-static const double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks
+static const double TTW_LINK_BREAK  = 12.5;   // t=12.5: physical link breaks (vehicles close at 16 m/s, gap crosses 300m at t=12.5)
 static const double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -229,6 +229,20 @@ static const double TTW_COMM_RANGE = 300.0;
 
 // Log file for attack events
 std::ofstream ttw_log;
+
+// ── TTW real NS-3 pipeline attack state ──────────────────────────────────────
+// S1: vehicle intercepts send_LTE_data_agent
+bool     ttw_s1_attack_active    = false;
+double   ttw_s1_forged_timestamp = 0.0;
+uint32_t ttw_s1_attacker_ns3_id  = 0;
+uint32_t ttw_s1_victim_ns3_id    = 0;
+
+// S2: RSU intercepts RSU_dataunicast_agent
+bool     ttw_s2_attack_active    = false;
+uint32_t ttw_s2_rsu_ns3_id       = 0;
+uint32_t ttw_s2_v1_ns3_id        = 0;
+uint32_t ttw_s2_v2_ns3_id        = 0;
+// S3/S4: malicious controller writes con_data_inst directly (no flag needed)
 
 // ── Attack Scenario ID Enum ───────────────────────────────────────────────────
 enum AttackScenarioId {
@@ -272,7 +286,7 @@ private:
 
 // ── TTW-S2 globals ────────────────────────────────────────────────────────────
 static const double TTWS2_HELLO_TIME  = 10.0;
-static const double TTWS2_LINK_BREAK  = 15.0;
+static const double TTWS2_LINK_BREAK  = 12.5;
 static const double TTWS2_REPLAY_TIME = 20.0;
 TopologyPacket ttws2_stored_packet;
 bool           ttws2_packet_stored = false;
@@ -280,7 +294,7 @@ std::ofstream  ttws2_log;
 
 // ── TTW-S3 globals ────────────────────────────────────────────────────────────
 static const double TTWS3_HELLO_TIME      = 10.0;
-static const double TTWS3_LINK_BREAK      = 15.0;
+static const double TTWS3_LINK_BREAK      = 12.5;
 static const double TTWS3_INTERNAL_REPLAY = 20.0;
 TopologyPacket ttws3_stored_packet;
 bool           ttws3_packet_stored = false;
@@ -288,7 +302,7 @@ std::ofstream  ttws3_log;
 
 // ── TTW-S4 globals ────────────────────────────────────────────────────────────
 static const double TTWS4_HELLO_TIME      = 10.0;
-static const double TTWS4_LINK_BREAK      = 15.0;
+static const double TTWS4_LINK_BREAK      = 12.5;
 static const double TTWS4_INTERNAL_REPLAY = 20.0;
 TopologyPacket ttws4_stored_packet;
 bool           ttws4_packet_stored = false;
@@ -1312,6 +1326,15 @@ static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
 // =============================================================================
 
 // ── Log file init ─────────────────────────────────────────────────────────────
+// Helper: look up a Vehicle_Nodes entry by its NS-3 node ID
+static Ptr<Node> GetVehicleByNs3Id(uint32_t ns3_id) {
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
+        if (Vehicle_Nodes.Get(i)->GetId() == ns3_id)
+            return Vehicle_Nodes.Get(i);
+    }
+    return nullptr;
+}
+
 void TTW_InitLog()
 {
     ttw_log.open(BuildLogPath("ttw_attack_scenario4.txt"), std::ios::out | std::ios::trunc);
@@ -1319,13 +1342,13 @@ void TTW_InitLog()
     ttw_log << "========================================================\n";
     ttw_log << "  TTW Attack Scenario 4 — Malicious Vehicle, No RSUs   \n";
     ttw_log << "========================================================\n\n";
-    ttw_log << "  t=10  ①  V2V HELLO exchange\n";
-    ttw_log << "  t=10  ②  Topology updates to controller\n";
-    ttw_log << "  t=10  ③  Attacker stores old packet\n";
-    ttw_log << "  t=15      Link breaks physically\n";
-    ttw_log << "  t=20  ④  Attacker forges timestamp\n";
-    ttw_log << "  t=20  ⑤  Forged packet sent to controller\n";
-    ttw_log << "  t=20  ⑥  Controller issues faulty routing\n\n";
+    ttw_log << "  t=10    ①  V2V HELLO exchange\n";
+    ttw_log << "  t=10    ②  Topology updates to controller\n";
+    ttw_log << "  t=10    ③  Attacker stores old packet\n";
+    ttw_log << "  t=12.5      Link breaks physically\n";
+    ttw_log << "  t=20    ④  Attacker forges timestamp\n";
+    ttw_log << "  t=20    ⑤  Forged packet sent to controller\n";
+    ttw_log << "  t=20    ⑥  Controller issues faulty routing\n\n";
     ttw_log << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S4] Log opened: ttw_attack_scenario4.txt");
 }
@@ -1403,13 +1426,11 @@ void TTW_SendTopologyUpdate(Ptr<Node> vehicle, uint32_t seen_id, double obs_time
     Vector reporterPosition =
         reporterMobility ? reporterMobility->GetPosition() : Vector(0.0, 0.0, 0.0);
     Vector neighborPosition(0.0, 0.0, 0.0);
-    if (seen_id < Vehicle_Nodes.GetN())
     {
-        Ptr<MobilityModel> neighborMobility =
-            Vehicle_Nodes.Get(seen_id)->GetObject<MobilityModel>();
-        if (neighborMobility)
-        {
-            neighborPosition = neighborMobility->GetPosition();
+        Ptr<Node> neighborNode = GetVehicleByNs3Id(seen_id);
+        if (neighborNode) {
+            Ptr<MobilityModel> m = neighborNode->GetObject<MobilityModel>();
+            if (m) neighborPosition = m->GetPosition();
         }
     }
 
@@ -1542,21 +1563,18 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
     Vector reporterPosition(0.0, 0.0, 0.0);
     Vector sourcePosition(0.0, 0.0, 0.0);
     Vector destinationPosition(0.0, 0.0, 0.0);
-    if (src_id < Vehicle_Nodes.GetN())
     {
-        Ptr<MobilityModel> srcMobility = Vehicle_Nodes.Get(src_id)->GetObject<MobilityModel>();
-        if (srcMobility)
-        {
-            reporterPosition = srcMobility->GetPosition();
-            sourcePosition = srcMobility->GetPosition();
+        Ptr<Node> srcNode = GetVehicleByNs3Id(src_id);
+        if (srcNode) {
+            Ptr<MobilityModel> m = srcNode->GetObject<MobilityModel>();
+            if (m) { reporterPosition = m->GetPosition(); sourcePosition = m->GetPosition(); }
         }
     }
-    if (dst_id < Vehicle_Nodes.GetN())
     {
-        Ptr<MobilityModel> dstMobility = Vehicle_Nodes.Get(dst_id)->GetObject<MobilityModel>();
-        if (dstMobility)
-        {
-            destinationPosition = dstMobility->GetPosition();
+        Ptr<Node> dstNode = GetVehicleByNs3Id(dst_id);
+        if (dstNode) {
+            Ptr<MobilityModel> m = dstNode->GetObject<MobilityModel>();
+            if (m) destinationPosition = m->GetPosition();
         }
     }
 
@@ -1589,6 +1607,20 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
     }
 }
 
+// Arms the S1 pipeline intercept: called at t=19.9999 so the very next
+// send_LTE_data_agent call from the attacker node sends the forged packet.
+static void TTW_ActivateReplay_S1()
+{
+    ttw_s1_attack_active   = true;
+    ttw_s1_attacker_ns3_id = Vehicle_Nodes.Get(malicious_vehicle_id)->GetId();
+    ttw_s1_victim_ns3_id   = Vehicle_Nodes.Get(victim_neighbor_id)->GetId();
+    ttw_s1_forged_timestamp = TTW_REPLAY_TIME;
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S1][t=" << Simulator::Now().GetSeconds()
+              << "]  Pipeline armed: next UDP from NS3-ID=" << ttw_s1_attacker_ns3_id
+              << " will carry forged neighbor=" << ttw_s1_victim_ns3_id << std::endl;
+}
+
 // =============================================================================
 // TTW-S2: MALICIOUS RSU — attack_scenario == 2
 // =============================================================================
@@ -1597,14 +1629,8 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
 {
     double now2 = Simulator::Now().GetSeconds();
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) v1Pos = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) v2Pos = m->GetPosition();
-    }
+    { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
+    { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  rsu_id, v1_id, rsu_id,
                  v1_id, v2_id,
@@ -1621,6 +1647,20 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     }
 }
 
+// Arms the S2 pipeline intercept for the RSU.
+static void TTWS2_ActivateReplay(uint32_t rsu_ns3_id, uint32_t v1_ns3_id, uint32_t v2_ns3_id)
+{
+    ttw_s2_attack_active = true;
+    ttw_s2_rsu_ns3_id    = rsu_ns3_id;
+    ttw_s2_v1_ns3_id     = v1_ns3_id;
+    ttw_s2_v2_ns3_id     = v2_ns3_id;
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S2][t=" << Simulator::Now().GetSeconds()
+              << "]  Pipeline armed: RSU NS3-ID=" << rsu_ns3_id
+              << " will send forged topology V" << v1_ns3_id
+              << " sees V" << v2_ns3_id << std::endl;
+}
+
 void TTWS2_InitLog()
 {
     ttws2_log.open(BuildLogPath("ttw_s2_attack_log.txt"), std::ios::out | std::ios::trunc);
@@ -1628,13 +1668,13 @@ void TTWS2_InitLog()
     ttws2_log << "========================================================\n"
               << "  TTW Attack S2 — Malicious RSU                        \n"
               << "========================================================\n\n"
-              << "  t=10  ①  V2V HELLO + vehicles -> RSU\n"
-              << "  t=10  ②  RSU aggregates + forwards to controller\n"
-              << "  t=10  ③  Malicious RSU stores old packet\n"
-              << "  t=15      Link breaks physically\n"
-              << "  t=20  ④  RSU forges timestamp\n"
-              << "  t=20  ⑤  Forged packet sent to controller\n"
-              << "  t=20  ⑥  Controller issues faulty routing\n\n"
+              << "  t=10    ①  V2V HELLO + vehicles -> RSU\n"
+              << "  t=10    ②  RSU aggregates + forwards to controller\n"
+              << "  t=10    ③  Malicious RSU stores old packet\n"
+              << "  t=12.5      Link breaks physically\n"
+              << "  t=20    ④  RSU forges timestamp\n"
+              << "  t=20    ⑤  Forged packet sent to controller\n"
+              << "  t=20    ⑥  Controller issues faulty routing\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S2] Log opened: ttw_s2_attack_log.txt");
 }
@@ -1663,23 +1703,18 @@ void TTWS2_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
               << "  <V" << v2_id << " sees V" << v1_id << ", t=" << obs_time << ">" << std::endl;
 
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) pos1 = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) pos2 = m->GetPosition();
-    }
+    { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
+    { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id,
                  v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
-    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    {
+        Ptr<Node> n1 = GetVehicleByNs3Id(v1_id);
+        Ptr<Node> n2 = GetVehicleByNs3Id(v2_id);
+        if (n1 && n2) { AttackSendDSRCBeacon(n1, n2); AttackSendDSRCBeacon(n2, n1); }
     }
 }
 
@@ -1775,14 +1810,8 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
 {
     double now2 = Simulator::Now().GetSeconds();
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) v1Pos = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) v2Pos = m->GetPosition();
-    }
+    { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
+    { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
@@ -1806,11 +1835,11 @@ void TTWS3_InitLog()
     ttws3_log << "========================================================\n"
               << "  TTW Attack S3 — Malicious Controller, No RSU         \n"
               << "========================================================\n\n"
-              << "  t=10  ①  V2V HELLO + legitimate updates to controller\n"
-              << "  t=10  ②  Controller stores legitimately + keeps stale copy\n"
-              << "  t=15      Link breaks physically\n"
-              << "  t=20  ③  Controller internally replays stale entry\n"
-              << "  t=20  ④  Controller table poisoned (no external packet)\n\n"
+              << "  t=10    ①  V2V HELLO + legitimate updates to controller\n"
+              << "  t=10    ②  Controller stores legitimately + keeps stale copy\n"
+              << "  t=12.5      Link breaks physically\n"
+              << "  t=20    ③  Controller internally replays stale entry\n"
+              << "  t=20    ④  Controller table poisoned (no external packet)\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S3] Log opened: ttw_s3_attack_log.txt");
 }
@@ -1839,22 +1868,17 @@ void TTWS3_ReceiveLegitimateUpdates(uint32_t v1_id, uint32_t v2_id, double obs_t
               << ", t=" << obs_time << ">  ACCEPTED" << std::endl;
 
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) pos1 = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) pos2 = m->GetPosition();
-    }
+    { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
+    { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id,
                  v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
-    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    {
+        Ptr<Node> n1 = GetVehicleByNs3Id(v1_id);
+        Ptr<Node> n2 = GetVehicleByNs3Id(v2_id);
+        if (n1 && n2) { AttackSendDSRCBeacon(n1, n2); AttackSendDSRCBeacon(n2, n1); }
     }
 }
 
@@ -1884,6 +1908,15 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
+
+    // Write directly to con_data_inst so the RL routing algorithm sees the ghost link.
+    // v1_id and v2_id are NS-3 node IDs when called from the fixed scheduling block.
+    (con_data_inst + v1_id)->neighborid[0] = v2_id;
+    (con_data_inst + v1_id)->neighborsize   = 1;
+    (con_data_inst + v1_id)->lastupdated    = forged_time;
+    for (uint32_t _i = 1; _i < (uint32_t)max; _i++)
+        (con_data_inst + v1_id)->neighborid[_i] = large;
+
     pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -1928,14 +1961,8 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
 {
     double now2 = Simulator::Now().GetSeconds();
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) v1Pos = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) v2Pos = m->GetPosition();
-    }
+    { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
+    { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
@@ -1959,10 +1986,10 @@ void TTWS4_InitLog()
     ttws4_log << "========================================================\n"
               << "  TTW Attack S4 — Malicious Controller, With RSU       \n"
               << "========================================================\n\n"
-              << "  t=10  ①  V1/V2 -> RSU -> Controller (legitimate)\n"
-              << "  t=10  ②  Controller stores stale copy from RSU aggregate\n"
-              << "  t=15      Link breaks physically\n"
-              << "  t=20  ③  Controller internally replays with forged timestamp\n\n"
+              << "  t=10    ①  V1/V2 -> RSU -> Controller (legitimate)\n"
+              << "  t=10    ②  Controller stores stale copy from RSU aggregate\n"
+              << "  t=12.5      Link breaks physically\n"
+              << "  t=20    ③  Controller internally replays with forged timestamp\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S4-new] Log opened: ttw_s4_attack_log.txt");
 }
@@ -1987,21 +2014,16 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">  ACCEPTED" << std::endl;
 
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
-    if (v1_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();
-        if (m) pos1 = m->GetPosition();
-    }
-    if (v2_id < Vehicle_Nodes.GetN()) {
-        Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
-        if (m) pos2 = m->GetPosition();
-    }
+    { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
+    { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, rsu_id,
                  v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
-    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    {
+        Ptr<Node> n1 = GetVehicleByNs3Id(v1_id);
+        Ptr<Node> n2 = GetVehicleByNs3Id(v2_id);
+        if (n1 && n2) { AttackSendDSRCBeacon(n1, n2); AttackSendDSRCBeacon(n2, n1); }
     }
     AttackSendRSUToController(rsu_id);
 }
@@ -2031,6 +2053,14 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
+
+    // Write directly to con_data_inst so the RL routing algorithm sees the ghost link.
+    (con_data_inst + v1_id)->neighborid[0] = v2_id;
+    (con_data_inst + v1_id)->neighborsize   = 1;
+    (con_data_inst + v1_id)->lastupdated    = forged_time;
+    for (uint32_t _i = 1; _i < (uint32_t)max; _i++)
+        (con_data_inst + v1_id)->neighborid[_i] = large;
+
     pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -125286,7 +125316,34 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 	uint32_t nid = uint32_t(nu->GetId());
 	if (X_nodes[nid] == 1)
 	{
-		
+		// ── TTW-S1 pipeline intercept ────────────────────────────────────────
+		// When armed, replace the normal packet with a forged topology report
+		// that keeps the ghost link alive in con_data_inst at the controller.
+		if (ttw_s1_attack_active && nid == ttw_s1_attacker_ns3_id)
+		{
+			Ptr<Ipv4> _ipv4 = destination_node->GetObject<Ipv4>();
+			Ipv4Address _ctrl_ip = _ipv4->GetAddress((N_Vehicles > 0 ? 1 : 0), 0).GetLocal();
+			uint32_t _nbr[1] = { ttw_s1_victim_ns3_id };
+			CustomMetaDataUnicastTagN011 _forgedTag;
+			_forgedTag.Setneighborid(_nbr);
+			_forgedTag.Setnodeid(nid);
+			Ptr<Packet> _fp = Create<Packet>(0);
+			_fp->AddPacketTag(_forgedTag);
+			Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+			                    udp_app, _fp, _ctrl_ip, (uint16_t)7777);
+			ttw_s1_attack_active = false; // fire once per replay event
+			std::cout << std::fixed << std::setprecision(3)
+			          << "[TTW-S1][t=" << Simulator::Now().GetSeconds()
+			          << "]  PIPELINE: NS3-ID=" << nid
+			          << " injected forged neighbor=" << ttw_s1_victim_ns3_id
+			          << " into controller con_data_inst via UDP/7777" << std::endl;
+			if (ttw_log.is_open())
+			    ttw_log << "[t=" << Simulator::Now().GetSeconds()
+			            << "]  PIPELINE INTERCEPT fired: attacker " << nid
+			            << " sent forged CustomMetaDataUnicastTagN011 to controller\n\n";
+			return;
+		}
+
 		Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node_source->GetObject<MobilityModel>());
         	Vector posi = mdl->GetPosition();
 		Vector veli = mdl->GetVelocity();
@@ -133379,7 +133436,35 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 	uint32_t nid = uint32_t(nu->GetId());
 	if (X_nodes[nid] == 1)
 	{
-		
+		// ── TTW-S2 pipeline intercept ────────────────────────────────────────
+		// When armed, the malicious RSU sends a forged topology report instead
+		// of the real aggregate, poisoning con_data_inst at the controller.
+		if (ttw_s2_attack_active && nid == ttw_s2_rsu_ns3_id)
+		{
+			Ptr<Ipv4> _ipv4 = destination_node->GetObject<Ipv4>();
+			Ipv4Address _ctrl_ip = _ipv4->GetAddress((N_Vehicles > 0 ? 1 : 0), 0).GetLocal();
+			uint32_t _nbr[1] = { ttw_s2_v2_ns3_id };
+			CustomMetaDataUnicastTagN011 _forgedTag;
+			_forgedTag.Setneighborid(_nbr);
+			_forgedTag.Setnodeid(ttw_s2_v1_ns3_id);
+			Ptr<Packet> _fp = Create<Packet>(0);
+			_fp->AddPacketTag(_forgedTag);
+			Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
+			                    udp_app, _fp, _ctrl_ip, (uint16_t)7777);
+			ttw_s2_attack_active = false; // fire once per replay event
+			std::cout << std::fixed << std::setprecision(3)
+			          << "[TTW-S2][t=" << Simulator::Now().GetSeconds()
+			          << "]  PIPELINE: RSU NS3-ID=" << nid
+			          << " injected forged topology V" << ttw_s2_v1_ns3_id
+			          << " sees V" << ttw_s2_v2_ns3_id
+			          << " into controller con_data_inst via UDP/7777" << std::endl;
+			if (ttws2_log.is_open())
+			    ttws2_log << "[t=" << Simulator::Now().GetSeconds()
+			              << "]  PIPELINE INTERCEPT fired: RSU " << nid
+			              << " sent forged CustomMetaDataUnicastTagN011 to controller\n\n";
+			return;
+		}
+
 		Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (source_node->GetObject<MobilityModel>());
 		Vector posi = mdl->GetPosition();
 		Vector veli = mdl->GetVelocity();
@@ -143712,24 +143797,27 @@ int main(int argc, char *argv[])
           false);
 
 
+      uint32_t mal_ns3 = Vehicle_Nodes.Get(malicious_vehicle_id)->GetId();
+      uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_neighbor_id)->GetId();
+
       // ── STEP 2: Legitimate topology updates → controller ─────────────────
       Simulator::Schedule(
           Seconds(10.100), &TTW_SendTopologyUpdate,
           Vehicle_Nodes.Get(malicious_vehicle_id),     // V1 reports
-          victim_neighbor_id,                          // sees V2
+          vic_ns3,                                     // sees V2 (NS-3 ID)
           10.0);
 
       Simulator::Schedule(
           Seconds(10.101), &TTW_SendTopologyUpdate,
           Vehicle_Nodes.Get(victim_neighbor_id),       // V2 reports
-          malicious_vehicle_id,                        // sees V1
+          mal_ns3,                                     // sees V1 (NS-3 ID)
           10.0);
 
       // ── STEP 3: Attacker stores own packet ───────────────────────────────
       Simulator::Schedule(
           Seconds(10.200), &TTW_StorePacket,
-          malicious_vehicle_id,
-          victim_neighbor_id,
+          mal_ns3,
+          vic_ns3,
           10.0);
 
       // ── STEPS 4+5+6: Replay attack at t=20 ──────────────────────────────
@@ -143737,9 +143825,12 @@ int main(int argc, char *argv[])
           Seconds(20.000), &TTW_ReplayAttack,
           Vehicle_Nodes.Get(malicious_vehicle_id),
           Vehicle_Nodes.Get(victim_neighbor_id),
-          malicious_vehicle_id,
-          victim_neighbor_id,
+          mal_ns3,
+          vic_ns3,
           20.0);
+
+      // ── Arm the S1 pipeline intercept just before the t=20 send cycle ────
+      Simulator::Schedule(Seconds(19.9999), &TTW_ActivateReplay_S1);
 
       // ── NetAnim visual packets ────────────────────────────────────────────
       // Send real UDP packets so NetAnim draws animated arrows.
@@ -143813,17 +143904,19 @@ int main(int argc, char *argv[])
           return 1;
       }
       TTWS2_InitLog();
-      uint32_t v1_id = 0, v2_id = 1;
-      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
+      uint32_t v1_cidx = 0, v2_cidx = 1;                      // container indices
+      uint32_t v1_id   = Vehicle_Nodes.Get(v1_cidx)->GetId(); // NS-3 IDs
+      uint32_t v2_id   = Vehicle_Nodes.Get(v2_cidx)->GetId();
+      uint32_t rsu_id  = RSU_Nodes.Get(0)->GetId();
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 02 - TTW-S2 ATTACK CONFIGURED"   << std::endl;
       std::cout << "Attacker      : RSU_0 (malicious RSU)"    << std::endl;
-      std::cout << "Victims       : V" << v1_id << " and V" << v2_id << std::endl;
+      std::cout << "Victims       : NS3-ID=" << v1_id << " and NS3-ID=" << v2_id << std::endl;
       std::cout << "Timeline:"                                 << std::endl;
       std::cout << "  t=10s  STEP 1+2 : Vehicles -> RSU -> Controller (legit)" << std::endl;
       std::cout << "  t=10s  STEP 3   : RSU stores old packet"                 << std::endl;
-      std::cout << "  t=15s           : Physical link breaks"                  << std::endl;
+      std::cout << "  t=12.5s         : Physical link breaks"                  << std::endl;
       std::cout << "  t=20s  STEP 4+5 : RSU replays forged packet"             << std::endl;
       std::cout << "========================================\n" << std::endl;
 
@@ -143835,21 +143928,24 @@ int main(int argc, char *argv[])
           &TTWS2_StorePacket, v1_id, v2_id, TTWS2_HELLO_TIME);
       Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME),
           &TTWS2_ReplayAttack, rsu_id, v1_id, v2_id, TTWS2_REPLAY_TIME);
+      // Arm the S2 pipeline intercept just before the RSU's t=20 send cycle
+      Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME - 0.0001),
+          &TTWS2_ActivateReplay, rsu_id, v1_id, v2_id);
 
-      // PEM beacon/heartbeat baseline
+      // PEM beacon/heartbeat baseline (container indices for PEM)
       Simulator::Schedule(Seconds(TTWS2_HELLO_TIME),
-          &PemEmitVehicleBeacon, v1_id, v2_id);
+          &PemEmitVehicleBeacon, v1_cidx, v2_cidx);
       Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + 0.01),
-          &PemEmitVehicleHeartbeat, v1_id, v1_id, TTWS2_HELLO_TIME, false);
+          &PemEmitVehicleHeartbeat, v1_cidx, v1_cidx, TTWS2_HELLO_TIME, false);
       Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + 0.02),
-          &PemEmitVehicleHeartbeat, v2_id, v2_id, TTWS2_HELLO_TIME, false);
+          &PemEmitVehicleHeartbeat, v2_cidx, v2_cidx, TTWS2_HELLO_TIME, false);
 
-      // NetAnim colors
+      // NetAnim colors (container indices)
       if (N_Vehicles > 0) {
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 200, 255); // blue V1
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Victim");
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 255, 100); // green V2
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Victim");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_cidx), 0, 200, 255); // blue V1
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_cidx), "V1-Victim");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_cidx), 0, 255, 100); // green V2
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_cidx), "V2-Victim");
       }
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 0, 0); // RED malicious RSU
       anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 35.0, 35.0);
@@ -143868,37 +143964,39 @@ int main(int argc, char *argv[])
           return 1;
       }
       TTWS3_InitLog();
-      uint32_t v1_id = 0, v2_id = 1;
+      uint32_t v1_cidx3 = 0, v2_cidx3 = 1;                        // container indices
+      uint32_t v1_id3   = Vehicle_Nodes.Get(v1_cidx3)->GetId();    // NS-3 IDs
+      uint32_t v2_id3   = Vehicle_Nodes.Get(v2_cidx3)->GetId();
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 03 - TTW-S3 ATTACK CONFIGURED"   << std::endl;
       std::cout << "Attacker      : Controller (malicious)"   << std::endl;
-      std::cout << "Victims       : V" << v1_id << " and V" << v2_id << std::endl;
+      std::cout << "Victims       : NS3-ID=" << v1_id3 << " and NS3-ID=" << v2_id3 << std::endl;
       std::cout << "Timeline:"                                 << std::endl;
       std::cout << "  t=10s  STEP 1+2 : Legit updates -> controller, stores stale" << std::endl;
-      std::cout << "  t=15s           : Physical link breaks"                       << std::endl;
+      std::cout << "  t=12.5s         : Physical link breaks"                       << std::endl;
       std::cout << "  t=20s  STEP 3+4 : Controller internal replay (no ext packet)" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
       Simulator::Schedule(Seconds(TTWS3_HELLO_TIME),
-          &TTWS3_ReceiveLegitimateUpdates, v1_id, v2_id, TTWS3_HELLO_TIME);
+          &TTWS3_ReceiveLegitimateUpdates, v1_id3, v2_id3, TTWS3_HELLO_TIME);
       Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + 0.1),
-          &TTWS3_StorePacketInternal, v1_id, v2_id, TTWS3_HELLO_TIME);
+          &TTWS3_StorePacketInternal, v1_id3, v2_id3, TTWS3_HELLO_TIME);
       Simulator::Schedule(Seconds(TTWS3_INTERNAL_REPLAY),
-          &TTWS3_InternalReplay, v1_id, v2_id, TTWS3_INTERNAL_REPLAY);
+          &TTWS3_InternalReplay, v1_id3, v2_id3, TTWS3_INTERNAL_REPLAY);
 
       Simulator::Schedule(Seconds(TTWS3_HELLO_TIME),
-          &PemEmitVehicleBeacon, v1_id, v2_id);
+          &PemEmitVehicleBeacon, v1_cidx3, v2_cidx3);
       Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + 0.01),
-          &PemEmitVehicleHeartbeat, v1_id, v1_id, TTWS3_HELLO_TIME, false);
+          &PemEmitVehicleHeartbeat, v1_cidx3, v1_cidx3, TTWS3_HELLO_TIME, false);
       Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + 0.02),
-          &PemEmitVehicleHeartbeat, v2_id, v2_id, TTWS3_HELLO_TIME, false);
+          &PemEmitVehicleHeartbeat, v2_cidx3, v2_cidx3, TTWS3_HELLO_TIME, false);
 
       if (N_Vehicles > 1) {
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 200, 255);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Victim");
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 255, 100);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Victim");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_cidx3), 0, 200, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_cidx3), "V1-Victim");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_cidx3), 0, 255, 100);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_cidx3), "V2-Victim");
       }
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0); // RED malicious ctrl
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
@@ -143920,38 +144018,40 @@ int main(int argc, char *argv[])
           return 1;
       }
       TTWS4_InitLog();
-      uint32_t v1_id = 0, v2_id = 1;
-      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
+      uint32_t v1_cidx4 = 0, v2_cidx4 = 1;                        // container indices
+      uint32_t v1_id4   = Vehicle_Nodes.Get(v1_cidx4)->GetId();    // NS-3 IDs
+      uint32_t v2_id4   = Vehicle_Nodes.Get(v2_cidx4)->GetId();
+      uint32_t rsu_id4  = RSU_Nodes.Get(0)->GetId();
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 04 - TTW-S4 ATTACK CONFIGURED"   << std::endl;
       std::cout << "Attacker      : Controller (malicious, RSU in path)" << std::endl;
-      std::cout << "Victims       : V" << v1_id << " and V" << v2_id    << std::endl;
+      std::cout << "Victims       : NS3-ID=" << v1_id4 << " and NS3-ID=" << v2_id4 << std::endl;
       std::cout << "Timeline:"                                            << std::endl;
       std::cout << "  t=10s  STEP 1+2 : V1/V2 -> RSU -> Controller, ctrl stores stale" << std::endl;
-      std::cout << "  t=15s           : Physical link breaks"                           << std::endl;
+      std::cout << "  t=12.5s         : Physical link breaks"                           << std::endl;
       std::cout << "  t=20s  STEP 3   : Controller internal replay (RSU path variant)"  << std::endl;
       std::cout << "========================================\n" << std::endl;
 
       Simulator::Schedule(Seconds(TTWS4_HELLO_TIME),
-          &TTWS4_VehiclesToRSU, v1_id, v2_id, rsu_id, TTWS4_HELLO_TIME);
+          &TTWS4_VehiclesToRSU, v1_id4, v2_id4, rsu_id4, TTWS4_HELLO_TIME);
       Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + 0.1),
-          &TTWS4_StorePacketInternal, v1_id, v2_id, TTWS4_HELLO_TIME);
+          &TTWS4_StorePacketInternal, v1_id4, v2_id4, TTWS4_HELLO_TIME);
       Simulator::Schedule(Seconds(TTWS4_INTERNAL_REPLAY),
-          &TTWS4_InternalReplay, v1_id, v2_id, TTWS4_INTERNAL_REPLAY);
+          &TTWS4_InternalReplay, v1_id4, v2_id4, TTWS4_INTERNAL_REPLAY);
 
       Simulator::Schedule(Seconds(TTWS4_HELLO_TIME),
-          &PemEmitVehicleBeacon, v1_id, v2_id);
+          &PemEmitVehicleBeacon, v1_cidx4, v2_cidx4);
       Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + 0.01),
-          &PemEmitVehicleHeartbeat, v1_id, v1_id, TTWS4_HELLO_TIME, false);
+          &PemEmitVehicleHeartbeat, v1_cidx4, v1_cidx4, TTWS4_HELLO_TIME, false);
       Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + 0.02),
-          &PemEmitVehicleHeartbeat, v2_id, v2_id, TTWS4_HELLO_TIME, false);
+          &PemEmitVehicleHeartbeat, v2_cidx4, v2_cidx4, TTWS4_HELLO_TIME, false);
 
       if (N_Vehicles > 1) {
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 200, 255);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Victim");
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 255, 100);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Victim");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_cidx4), 0, 200, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_cidx4), "V1-Victim");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_cidx4), 0, 255, 100);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_cidx4), "V2-Victim");
       }
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0); // orange RSU (in path)
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
