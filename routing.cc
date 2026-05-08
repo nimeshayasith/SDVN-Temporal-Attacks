@@ -1622,7 +1622,8 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
             << ttw_physical_break_time << "s"
             << " (dist > " << TTW_COMM_RANGE << "m)\n"
             << "  Simulation declares it broken at t=" << TTW_LINK_BREAK
-            << "s — controller receives no link-down notification.\n\n";
+            << "s — controller receives no link-down notification.\n\n"
+            << std::setprecision(3);
 }
 
 // ── STEPS 4+5+6: Replay attack ───────────────────────────────────────────────
@@ -1645,14 +1646,15 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     Vector pa = ma->GetPosition(), pv = mv->GetPosition();
     double dist = std::sqrt(std::pow(pa.x-pv.x,2.0)+std::pow(pa.y-pv.y,2.0));
 
-    // STEP 4: Build forged packet
-    TopologyPacket forged = {src_id, dst_id, forged_time, true};
+    // STEP 4: Build replay packet — original stored timestamp is kept (no forgery)
+    const double stored_ts = ttw_stored_packets[src_id].timestamp;
+    TopologyPacket forged = {src_id, dst_id, stored_ts, true};
 
-    ttw_log << "[t=" << now << "]  STEP ④  FORGING TIMESTAMP\n"
-            << "  Original : <V" << src_id << " sees V" << dst_id
-            << ", t=" << ttw_stored_packets[src_id].timestamp << ">\n"
-            << "  Forged   : <V" << src_id << " sees V" << dst_id
-            << ", t=" << forged_time << ">  MALICIOUS\n"
+    ttw_log << "[t=" << now << "]  STEP ④  REPLAY ATTACK — STALE PACKET SENT\n"
+            << "  Stored packet : <V" << src_id << " sees V" << dst_id
+            << ", t=" << stored_ts << ">  (original observation at t=" << stored_ts << ")\n"
+            << "  Replay action : sent to controller at simulation time t=" << now
+            << " — link has been broken since t≈" << ttw_physical_break_time << "s\n"
             << "  Physical link distance : " << dist << " m  "
             << (dist > TTW_COMM_RANGE ? "BROKEN\n\n" : "WARNING still in range!\n\n");
 
@@ -1662,16 +1664,16 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
     NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-5 REPLAY SENT"
                 << "  <V" << src_id << " sees V" << dst_id
-                << ", t=" << forged_time << ">  CONTROLLER DECEIVED");
+                << ", t=" << stored_ts << ">  CONTROLLER DECEIVED");
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S1][t=" << now << "]  V" << src_id
-              << " --FORGED replay--> Controller"
+              << " --STALE replay--> Controller"
               << "  <V" << src_id << " sees V" << dst_id
-              << ", t=" << forged_time << ">  CONTROLLER DECEIVED"
+              << ", t=" << stored_ts << ">  CONTROLLER DECEIVED"
               << "  (link physically BROKEN  dist=" << dist << "m)" << std::endl;
 
-    ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET -> CONTROLLER\n"
-            << "  Controller ACCEPTED (cannot detect forgery)\n\n";
+    ttw_log << "[t=" << now << "]  STEP ⑤  STALE PACKET → CONTROLLER\n"
+            << "  Controller ACCEPTED stale packet (no replay protection)\n\n";
 
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
@@ -1682,14 +1684,15 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     const bool linkPhysicallyBroken = (dist > TTW_COMM_RANGE);
     ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
             << "  Controller believes V" << src_id << "<->V" << dst_id
-            << " ACTIVE at t=" << forged_time << "\n"
+            << " was ACTIVE at t=" << stored_ts
+            << " (stale entry — link broken since t≈" << ttw_physical_break_time << "s)\n"
             << "  Physical reality : link "
             << (linkPhysicallyBroken ? "BROKEN" : "ACTIVE")
             << " (dist=" << dist << "m)\n"
             << (linkPhysicallyBroken
                     ? "  Consequence : packets routed via ghost link will be DROPPED\n"
-                    : "  Consequence : controller holds forged timestamp — link will appear valid past its true expiry\n")
-            << "  Topology timeline CORRUPTED — controller has wrong temporal reference\n\n";
+                    : "  Consequence : controller holds stale entry — link will appear valid past its true expiry\n")
+            << "  Topology timeline CORRUPTED — controller has stale temporal reference\n\n";
 
     NS_LOG_INFO("[TTW-S4] ATTACK COMPLETE — ghost link V"
                 << src_id << "<->V" << dst_id << " injected");
@@ -143929,10 +143932,10 @@ int main(int argc, char *argv[])
       }
   }
 
-  // ── Hide management server and LTE infrastructure — not in attack diagrams ──
-  anim.UpdateNodeColor(management_Node.Get(0), 255, 255, 255);
-  anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 0.1, 0.1);
-  anim.UpdateNodeDescription(management_Node.Get(0), "");
+  // ── Management server — visible as orange node ──────────────────────────────
+  anim.UpdateNodeColor(management_Node.Get(0), 255, 140, 0);   // orange
+  anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 30.0, 30.0);
+  anim.UpdateNodeDescription(management_Node.Get(0), "Management");
 
   if (N_Vehicles > 0 && architecture != 1)
   {
