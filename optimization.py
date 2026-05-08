@@ -192,7 +192,7 @@ try:
 	for j in range(n):
 		print("Solution values: %s=%g, %s=%g" %(x[j].Varname, x[j].X, z[j].Varname, z[j].X))
 	
-	with open("/home/nilmantha/ns-allinone-3.35/ns-3.35/scratch/optimization_results.csv",'w',encoding='UTF8') as csvfile:
+	with open("/home/nimesha/ns-allinone-3.35/ns-3.35/scratch/optimization_results.csv",'w',encoding='UTF8') as csvfile:
 		writer = csv.writer(csvfile,delimiter=',',quotechar='"',quoting=csv.QUOTE_MINIMAL)
 		for i in range(n):
 			s1 = str(int(x[i].X))
@@ -209,4 +209,3 @@ except gp.GurobiError as e:
 
 except AttributeError:
     print('Encountered an attribute error')
-
