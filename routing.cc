@@ -256,6 +256,10 @@ struct TopologyPacket {
 TopologyPacket ttw_stored_packet;
 bool           ttw_packet_stored = false;
 
+// Per-attacker stored copies of old packets. Key = attacker NS-3 node ID.
+std::map<uint32_t, TopologyPacket> ttw_stored_packets;
+
+
 // Controller's belief about the network topology
 // key = "srcId_seenId",  value = most recent TopologyPacket received
 std::map<std::string, TopologyPacket> ttw_controller_table;
@@ -268,10 +272,20 @@ std::ofstream ttw_log;
 
 // ── TTW real NS-3 pipeline attack state ──────────────────────────────────────
 // S1: vehicle intercepts send_LTE_data_agent
-bool     ttw_s1_attack_active    = false;
-double   ttw_s1_forged_timestamp = 0.0;
-uint32_t ttw_s1_attacker_ns3_id  = 0;
-uint32_t ttw_s1_victim_ns3_id    = 0;
+// bool     ttw_s1_attack_active    = false;
+// double   ttw_s1_forged_timestamp = 0.0;
+// uint32_t ttw_s1_attacker_ns3_id  = 0;
+// uint32_t ttw_s1_victim_ns3_id    = 0;
+
+// ── TTW real NS-3 pipeline attack state ──────────────────────────────────────
+// S1: every malicious vehicle intercepts its own send_LTE_data_agent call.
+// Map: attacker NS-3 ID -> victim NS-3 ID.
+// Pending set: attackers that have not yet fired this cycle.
+bool                         ttw_s1_attack_active    = false;
+double                       ttw_s1_forged_timestamp = 0.0;
+std::map<uint32_t, uint32_t> ttw_s1_attacker_victim_map;
+std::set<uint32_t>           ttw_s1_pending_attackers;
+
 
 // S2: RSU intercepts RSU_dataunicast_agent
 bool     ttw_s2_attack_active    = false;
@@ -1569,8 +1583,11 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
 {
     double now = Simulator::Now().GetSeconds();
 
-    ttw_stored_packet = {src_id, dst_id, obs_time, false};
-    ttw_packet_stored = true;
+    //ttw_stored_packet = {src_id, dst_id, obs_time, false};
+    //ttw_packet_stored = true;
+
+	ttw_stored_packets[src_id] = {src_id, dst_id, obs_time, false};
+
 
     NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-3 PACKET STORED"
                 << "  old_packet=<V" << src_id << " sees V" << dst_id
@@ -1597,7 +1614,7 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 {
     double now = Simulator::Now().GetSeconds();
 
-    if (!ttw_packet_stored)
+    if (ttw_stored_packets.find(src_id) == ttw_stored_packets.end())
     {
         NS_LOG_WARN("[TTW-S4] No stored packet — was TTW_StorePacket called?");
         ttw_log << "[t=" << now << "]  REPLAY FAILED — no stored packet!\n\n";
@@ -1615,7 +1632,7 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
     ttw_log << "[t=" << now << "]  STEP ④  FORGING TIMESTAMP\n"
             << "  Original : <V" << src_id << " sees V" << dst_id
-            << ", t=" << ttw_stored_packet.timestamp << ">\n"
+            << ", t=" << ttw_stored_packets[src_id].timestamp << ">\n"
             << "  Forged   : <V" << src_id << " sees V" << dst_id
             << ", t=" << forged_time << ">  MALICIOUS\n"
             << "  Physical link distance : " << dist << " m  "
@@ -1638,9 +1655,10 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET -> CONTROLLER\n"
             << "  Controller ACCEPTED (cannot detect forgery)\n\n";
 
-    pem_attack_injection_time = now;
+    if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
+
 
     // STEP 6: Log faulty routing consequence
     ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
@@ -1700,7 +1718,7 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
                  src_id,
                  src_id,
                  dst_id,
-                 ttw_stored_packet.timestamp,
+                (ttw_stored_packets.count(src_id) ? ttw_stored_packets[src_id].timestamp : 0.0),
                  Simulator::Now().GetSeconds(),
                  reporterPosition,
                  sourcePosition,
@@ -1727,15 +1745,25 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
 // send_LTE_data_agent call from the attacker node sends the forged packet.
 static void TTW_ActivateReplay_S1()
 {
-    ttw_s1_attack_active   = true;
-    ttw_s1_attacker_ns3_id = Vehicle_Nodes.Get(malicious_vehicle_id)->GetId();
-    ttw_s1_victim_ns3_id   = Vehicle_Nodes.Get(victim_neighbor_id)->GetId();
+    if (ttw_s1_attacker_victim_map.empty()) {
+        std::cout << "[TTW-S1][t=" << Simulator::Now().GetSeconds()
+                  << "]  WARNING: no attackers registered in map" << std::endl;
+        return;
+    }
+    ttw_s1_attack_active    = true;
     ttw_s1_forged_timestamp = TTW_REPLAY_TIME;
+    ttw_s1_pending_attackers.clear();
+    for (auto& kv : ttw_s1_attacker_victim_map)
+        ttw_s1_pending_attackers.insert(kv.first);
+
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S1][t=" << Simulator::Now().GetSeconds()
-              << "]  Pipeline armed: next UDP from NS3-ID=" << ttw_s1_attacker_ns3_id
-              << " will carry forged neighbor=" << ttw_s1_victim_ns3_id << std::endl;
+              << "]  Pipeline armed: " << ttw_s1_pending_attackers.size() << " attacker(s)\n";
+    for (auto& kv : ttw_s1_attacker_victim_map)
+        std::cout << "    attacker NS3-ID=" << kv.first
+                  << " -> victim NS3-ID=" << kv.second << "\n";
 }
+
 
 // =============================================================================
 // TTW-S2: MALICIOUS RSU — attack_scenario == 2
@@ -125464,11 +125492,12 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		// ── TTW-S1 pipeline intercept ────────────────────────────────────────
 		// When armed, replace the normal packet with a forged topology report
 		// that keeps the ghost link alive in con_data_inst at the controller.
-		if (ttw_s1_attack_active && nid == ttw_s1_attacker_ns3_id)
+				if (ttw_s1_attack_active && ttw_s1_pending_attackers.count(nid))
 		{
+			uint32_t victim_ns3 = ttw_s1_attacker_victim_map[nid];
 			Ptr<Ipv4> _ipv4 = destination_node->GetObject<Ipv4>();
 			Ipv4Address _ctrl_ip = _ipv4->GetAddress((N_Vehicles > 0 ? 1 : 0), 0).GetLocal();
-			uint32_t _nbr[1] = { ttw_s1_victim_ns3_id };
+			uint32_t _nbr[1] = { victim_ns3 };
 			CustomMetaDataUnicastTagN011 _forgedTag;
 			_forgedTag.Setneighborid(_nbr);
 			_forgedTag.Setnodeid(nid);
@@ -125476,18 +125505,21 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 			_fp->AddPacketTag(_forgedTag);
 			Simulator::Schedule(Seconds(0), &SimpleUdpApplication::SendPacket,
 			                    udp_app, _fp, _ctrl_ip, (uint16_t)7777);
-			ttw_s1_attack_active = false; // fire once per replay event
+			ttw_s1_pending_attackers.erase(nid);
+			if (ttw_s1_pending_attackers.empty()) ttw_s1_attack_active = false;
 			std::cout << std::fixed << std::setprecision(3)
 			          << "[TTW-S1][t=" << Simulator::Now().GetSeconds()
 			          << "]  PIPELINE: NS3-ID=" << nid
-			          << " injected forged neighbor=" << ttw_s1_victim_ns3_id
+			          << " injected forged neighbor=" << victim_ns3
 			          << " into controller con_data_inst via UDP/7777" << std::endl;
 			if (ttw_log.is_open())
 			    ttw_log << "[t=" << Simulator::Now().GetSeconds()
 			            << "]  PIPELINE INTERCEPT fired: attacker " << nid
-			            << " sent forged CustomMetaDataUnicastTagN011 to controller\n\n";
+			            << " (victim=" << victim_ns3
+			            << ") sent forged CustomMetaDataUnicastTagN011 to controller\n\n";
 			return;
 		}
+
 
 		Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node_source->GetObject<MobilityModel>());
         	Vector posi = mdl->GetPosition();
@@ -143880,28 +143912,34 @@ int main(int argc, char *argv[])
   anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
   anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
 
-  // ── TTW-S1: override vehicle appearance ──────────────────────────────────
-  // Runs AFTER the default color loop; controller already set purple 30×30.
+  // ── TTW-S1: color all malicious nodes RED, all others BLUE ───────────────
   if (attack_scenario == 1)
   {
-      // V0 — RED attacker, slightly larger to stand out
-      anim.UpdateNodeColor(
-          Vehicle_Nodes.Get(malicious_vehicle_id), 255, 0, 0);
-      anim.UpdateNodeSize(
-          Vehicle_Nodes.Get(malicious_vehicle_id)->GetId(), 35.0, 35.0);
-      anim.UpdateNodeDescription(
-          Vehicle_Nodes.Get(malicious_vehicle_id), "V1-Attacker");
-
-      // V1 — BLUE victim
-      anim.UpdateNodeColor(
-          Vehicle_Nodes.Get(victim_neighbor_id), 0, 150, 255);
-      anim.UpdateNodeSize(
-          Vehicle_Nodes.Get(victim_neighbor_id)->GetId(), 30.0, 30.0);
-      anim.UpdateNodeDescription(
-          Vehicle_Nodes.Get(victim_neighbor_id), "V2-Victim");
+      for (uint32_t k = 0; k < N_Vehicles; k++)
+      {
+          if (ttw_malicious_nodes[k])
+          {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(k), 255, 0, 0);
+              anim.UpdateNodeSize(Vehicle_Nodes.Get(k)->GetId(), 35.0, 35.0);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(k),
+                  "V" + std::to_string(Vehicle_Nodes.Get(k)->GetId()) + "-Attacker");
+          }
+          else
+          {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(k), 0, 150, 255);
+              anim.UpdateNodeSize(Vehicle_Nodes.Get(k)->GetId(), 30.0, 30.0);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(k),
+                  "V" + std::to_string(Vehicle_Nodes.Get(k)->GetId()) + "-Victim");
+          }
+      }
   }
 
+
   // ===========================================================================
+  // SCHEDULE TTW-S1 ATTACK — Scenario 1
+  // ===========================================================================
+
+    // ===========================================================================
   // SCHEDULE TTW-S1 ATTACK — Scenario 1
   // ===========================================================================
 
@@ -143909,150 +143947,110 @@ int main(int argc, char *argv[])
   {
       TTW_InitLog();
 
+      // Build attacker and victim lists from ttw_malicious_nodes[]
+      std::vector<uint32_t> attacker_idx, victim_idx;
+      for (uint32_t k = 0; k < N_Vehicles; k++)
+      {
+          if (ttw_malicious_nodes[k]) attacker_idx.push_back(k);
+          else                         victim_idx.push_back(k);
+      }
+      if (attacker_idx.empty())
+      {
+          std::cout << "[TTW-S1] WARNING: attack_percentage=" << attack_percentage
+                    << " selected 0 attackers; falling back to V" << malicious_vehicle_id << std::endl;
+          attacker_idx.push_back(malicious_vehicle_id);
+      }
+      if (victim_idx.empty())
+          std::cout << "[TTW-S1] WARNING: every vehicle is malicious; attackers will target each other" << std::endl;
+
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 01 - TTW-S1 ATTACK CONFIGURED"   << std::endl;
-      std::cout << "Malicious Vehicle : V" << malicious_vehicle_id << std::endl;
-      std::cout << "Victim Neighbor   : V" << victim_neighbor_id   << std::endl;
-      std::cout << "Timeline:"                                  << std::endl;
-      std::cout << "  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller"
-                << std::endl;
-      std::cout << "  t=10s  STEP 3   : Attacker stores old_packet <V"
-                << malicious_vehicle_id << " sees V" << victim_neighbor_id
-                << ", t=10>"                                    << std::endl;
-      std::cout << "  t=15s           : Physical link breaks (V"
-                << victim_neighbor_id << " out of range)"       << std::endl;
-      std::cout << "  t=20s  STEP 4+5 : Forged packet replayed to controller"
-                << std::endl;
-      std::cout << "  t=20s  STEP 6   : Controller has wrong topology"
-                << std::endl;
+      std::cout << "Attackers (" << attacker_idx.size() << "): ";
+      for (uint32_t k : attacker_idx) std::cout << "V" << k << " ";
+      std::cout << std::endl;
+      std::cout << "Victim pool (" << victim_idx.size() << "): ";
+      for (uint32_t k : victim_idx)   std::cout << "V" << k << " ";
+      std::cout << std::endl;
+      std::cout << "Timeline:" << std::endl;
+      std::cout << "  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller" << std::endl;
+      std::cout << "  t=10s  STEP 3   : Each attacker stores old packet" << std::endl;
+      std::cout << "  t=15s           : Physical links break" << std::endl;
+      std::cout << "  t=20s  STEP 4+5 : Each attacker replays forged packet" << std::endl;
+      std::cout << "  t=20s  STEP 6   : Controller has wrong topology" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      // ── STEP 1: V2V HELLO exchange at t=10 ──────────────────────────────
-      Simulator::Schedule(
-          Seconds(10.000), &TTW_SendHelloBeacon,
-          Vehicle_Nodes.Get(victim_neighbor_id),       // V2 → V1
-          Vehicle_Nodes.Get(malicious_vehicle_id));
-
-      Simulator::Schedule(
-          Seconds(10.001), &TTW_SendHelloBeacon,
-          Vehicle_Nodes.Get(malicious_vehicle_id),     // V1 → V2
-          Vehicle_Nodes.Get(victim_neighbor_id));
-
-      Simulator::Schedule(
-          Seconds(10.000), &PemEmitVehicleBeacon,
-          victim_neighbor_id,
-          malicious_vehicle_id);
-
-      Simulator::Schedule(
-          Seconds(10.001), &PemEmitVehicleBeacon,
-          malicious_vehicle_id,
-          victim_neighbor_id);
-
-      Simulator::Schedule(
-          Seconds(10.020), &PemEmitVehicleHeartbeat,
-          malicious_vehicle_id,
-          malicious_vehicle_id,
-          10.020,
-          false);
-
-      Simulator::Schedule(
-          Seconds(10.030), &PemEmitVehicleHeartbeat,
-          victim_neighbor_id,
-          victim_neighbor_id,
-          10.030,
-          false);
-
-
-      uint32_t mal_ns3 = Vehicle_Nodes.Get(malicious_vehicle_id)->GetId();
-      uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_neighbor_id)->GetId();
-
-      // ── STEP 2: Legitimate topology updates → controller ─────────────────
-      Simulator::Schedule(
-          Seconds(10.100), &TTW_SendTopologyUpdate,
-          Vehicle_Nodes.Get(malicious_vehicle_id),     // V1 reports
-          vic_ns3,                                     // sees V2 (NS-3 ID)
-          10.0);
-
-      Simulator::Schedule(
-          Seconds(10.101), &TTW_SendTopologyUpdate,
-          Vehicle_Nodes.Get(victim_neighbor_id),       // V2 reports
-          mal_ns3,                                     // sees V1 (NS-3 ID)
-          10.0);
-
-      // ── STEP 3: Attacker stores own packet ───────────────────────────────
-      Simulator::Schedule(
-          Seconds(10.200), &TTW_StorePacket,
-          mal_ns3,
-          vic_ns3,
-          10.0);
-
-      // ── STEPS 4+5+6: Replay attack at t=20 ──────────────────────────────
-      Simulator::Schedule(
-          Seconds(20.000), &TTW_ReplayAttack,
-          Vehicle_Nodes.Get(malicious_vehicle_id),
-          Vehicle_Nodes.Get(victim_neighbor_id),
-          mal_ns3,
-          vic_ns3,
-          20.0);
-
-      // ── Arm the S1 pipeline intercept just before the t=20 send cycle ────
-      Simulator::Schedule(Seconds(19.9999), &TTW_ActivateReplay_S1);
-
-      // ── NetAnim visual packets ────────────────────────────────────────────
-      // Send real UDP packets so NetAnim draws animated arrows.
-      // apps layout: index 0=controller, 1=management, (u+2)=vehicle u
-      Ptr<SimpleUdpApplication> app_v1 =
-          DynamicCast<SimpleUdpApplication>(
-              apps.Get(malicious_vehicle_id + 2));   // attacker app
-
-      Ptr<SimpleUdpApplication> app_v2 =
-          DynamicCast<SimpleUdpApplication>(
-              apps.Get(victim_neighbor_id + 2));     // victim app
-
       Ptr<SimpleUdpApplication> app_ctrl =
-          DynamicCast<SimpleUdpApplication>(apps.Get(0)); // controller app
+          DynamicCast<SimpleUdpApplication>(apps.Get(0));
 
-      // t=10.000 : STEP 1 — HELLO  V2 → V1
-      Simulator::Schedule(
-          Seconds(10.000), &send_LTE_routing_data_alone,
-          app_v2,
-          Vehicle_Nodes.Get(victim_neighbor_id),
-          Vehicle_Nodes.Get(malicious_vehicle_id),
-          victim_neighbor_id);
+      for (uint32_t a = 0; a < (uint32_t)attacker_idx.size(); a++)
+      {
+          uint32_t attacker_cidx = attacker_idx[a];
+          uint32_t victim_cidx   = victim_idx.empty()
+                                   ? attacker_idx[(a + 1) % attacker_idx.size()]
+                                   : victim_idx[a % victim_idx.size()];
 
-      // t=10.005 : STEP 1 — HELLO reply  V1 → V2
-      Simulator::Schedule(
-          Seconds(10.005), &send_LTE_routing_data_alone,
-          app_v1,
-          Vehicle_Nodes.Get(malicious_vehicle_id),
-          Vehicle_Nodes.Get(victim_neighbor_id),
-          malicious_vehicle_id);
+          uint32_t mal_ns3 = Vehicle_Nodes.Get(attacker_cidx)->GetId();
+          uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_cidx)->GetId();
 
-      // t=10.100 : STEP 2 — V1 legitimate topology update → Controller
-      Simulator::Schedule(
-          Seconds(10.100), &send_LTE_routing_data_alone,
-          app_v1,
-          Vehicle_Nodes.Get(malicious_vehicle_id),
-          controller_Node.Get(0),
-          malicious_vehicle_id);
+          // Register attacker->victim pair for the pipeline intercept
+          ttw_s1_attacker_victim_map[mal_ns3] = vic_ns3;
 
-      // t=10.110 : STEP 2 — V2 legitimate topology update → Controller
-      Simulator::Schedule(
-          Seconds(10.110), &send_LTE_routing_data_alone,
-          app_v2,
-          Vehicle_Nodes.Get(victim_neighbor_id),
-          controller_Node.Get(0),
-          victim_neighbor_id);
+          Ptr<SimpleUdpApplication> app_attacker =
+              DynamicCast<SimpleUdpApplication>(apps.Get(attacker_cidx + 2));
+          Ptr<SimpleUdpApplication> app_victim =
+              DynamicCast<SimpleUdpApplication>(apps.Get(victim_cidx   + 2));
 
-      // t=20.000 : STEP 5 — V1 (RED attacker) sends FORGED packet → Controller
-      //            V2 is now at x=400 — 400m away — link is physically broken
-      //            This is the key malicious arrow in NetAnim
-      Simulator::Schedule(
-          Seconds(20.000), &send_LTE_routing_data_alone,
-          app_v1,
-          Vehicle_Nodes.Get(malicious_vehicle_id),
-          controller_Node.Get(0),
-          malicious_vehicle_id);
+          // STEP 1 — V2V HELLO exchange at t=10
+          Simulator::Schedule(Seconds(10.000), &TTW_SendHelloBeacon,
+              Vehicle_Nodes.Get(victim_cidx),   Vehicle_Nodes.Get(attacker_cidx));
+          Simulator::Schedule(Seconds(10.001), &TTW_SendHelloBeacon,
+              Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx));
+
+          Simulator::Schedule(Seconds(10.000), &PemEmitVehicleBeacon,
+              victim_cidx, attacker_cidx);
+          Simulator::Schedule(Seconds(10.001), &PemEmitVehicleBeacon,
+              attacker_cidx, victim_cidx);
+
+          Simulator::Schedule(Seconds(10.020), &PemEmitVehicleHeartbeat,
+              attacker_cidx, attacker_cidx, 10.020, false);
+          Simulator::Schedule(Seconds(10.030), &PemEmitVehicleHeartbeat,
+              victim_cidx,   victim_cidx,   10.030, false);
+
+          // STEP 2 — Legitimate topology updates -> controller
+          Simulator::Schedule(Seconds(10.100), &TTW_SendTopologyUpdate,
+              Vehicle_Nodes.Get(attacker_cidx), vic_ns3, 10.0);
+          Simulator::Schedule(Seconds(10.101), &TTW_SendTopologyUpdate,
+              Vehicle_Nodes.Get(victim_cidx),   mal_ns3, 10.0);
+
+          // STEP 3 — Attacker stores old packet
+          Simulator::Schedule(Seconds(10.200), &TTW_StorePacket,
+              mal_ns3, vic_ns3, 10.0);
+
+          // STEPS 4+5+6 — Replay attack at t=20
+          Simulator::Schedule(Seconds(20.000), &TTW_ReplayAttack,
+              Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
+              mal_ns3, vic_ns3, 20.0);
+
+          // NetAnim visual packets
+          Simulator::Schedule(Seconds(10.000), &send_LTE_routing_data_alone,
+              app_victim,   Vehicle_Nodes.Get(victim_cidx),
+              Vehicle_Nodes.Get(attacker_cidx), victim_cidx);
+          Simulator::Schedule(Seconds(10.005), &send_LTE_routing_data_alone,
+              app_attacker, Vehicle_Nodes.Get(attacker_cidx),
+              Vehicle_Nodes.Get(victim_cidx),   attacker_cidx);
+          Simulator::Schedule(Seconds(10.100), &send_LTE_routing_data_alone,
+              app_attacker, Vehicle_Nodes.Get(attacker_cidx),
+              controller_Node.Get(0), attacker_cidx);
+          Simulator::Schedule(Seconds(10.110), &send_LTE_routing_data_alone,
+              app_victim,   Vehicle_Nodes.Get(victim_cidx),
+              controller_Node.Get(0), victim_cidx);
+          Simulator::Schedule(Seconds(20.000), &send_LTE_routing_data_alone,
+              app_attacker, Vehicle_Nodes.Get(attacker_cidx),
+              controller_Node.Get(0), attacker_cidx);
+      }
+
+      // Single arming call — arms all attackers in ttw_s1_attacker_victim_map
+      Simulator::Schedule(Seconds(19.9999), &TTW_ActivateReplay_S1);
   }
 
   // ===========================================================================
