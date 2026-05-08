@@ -816,18 +816,26 @@ PemWriteCsvHeaderIfNeeded(const std::string& filename,
         return;
     }
 
-    std::ifstream fin(filename.c_str());
-    const bool needsHeader =
-        (!fin.good() || fin.peek() == std::ifstream::traits_type::eof());
-    fin.close();
+    // std::ifstream fin(filename.c_str());
+    // const bool needsHeader =
+    //     (!fin.good() || fin.peek() == std::ifstream::traits_type::eof());
+    // fin.close();
 
-    if (needsHeader)
-    {
-        std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
-        fout << header << "\n";
-    }
+    // if (needsHeader)
+    // {
+    //     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
+    //     fout << header << "\n";
+    // }
 
-    alreadyWritten = true;
+    // alreadyWritten = true;
+
+	// NEW — always start fresh at the beginning of each run.
+// alreadyWritten starts as false each simulation run, so this fires exactly
+// once per run and truncates any stale header from previous builds.
+std::ofstream fout(filename.c_str(), std::ios::out | std::ios::trunc);
+fout << header << "\n";
+alreadyWritten = true;
+
 }
 
 static void
