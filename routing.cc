@@ -235,9 +235,10 @@ bool me_malicious_controllers[4]   = {false, false, false, false};
 // Attack timing constants — now safe to use Seconds() because
 // "using namespace ns3" is already declared above
 // ERROR 4 FIX: uncommented now that namespace is declared earlier
-static const double TTW_HELLO_TIME  = 10.0;   // t=10: HELLO exchange
-static const double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks
-static const double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays
+double TTW_HELLO_TIME  = 10.0;   // t=10: HELLO exchange  (overridable via --ttw_hello_time)
+double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks (overridable via --ttw_link_break)
+double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays   (overridable via --ttw_replay_time)
+static const double TTW_DETECTION_DELAY_MS = 50.0; // PEM fires 50ms after replay
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TTW TOPOLOGY PACKET STRUCT
@@ -287,6 +288,11 @@ std::map<uint32_t, uint32_t> ttw_s1_attacker_victim_map;
 std::set<uint32_t>           ttw_s1_pending_attackers;
 
 
+// S1: pair-completion counter — used to print the banner exactly once
+uint32_t ttw_s1_total_pairs       = 0;
+uint32_t ttw_s1_completed_pairs   = 0;
+double   ttw_physical_break_time  = 0.0; // computed in main() after cmd.Parse
+
 // S2: RSU intercepts RSU_dataunicast_agent
 bool     ttw_s2_attack_active    = false;
 uint32_t ttw_s2_rsu_ns3_id       = 0;
@@ -334,26 +340,24 @@ private:
     std::ofstream& m_file;
 };
 
-// ── TTW-S2 globals ────────────────────────────────────────────────────────────
-static const double TTWS2_HELLO_TIME  = 10.0;
-static const double TTWS2_LINK_BREAK  = 15.0;
-static const double TTWS2_REPLAY_TIME = 20.0;
+// ── TTW-S2/S3/S4 globals ─────────────────────────────────────────────────────
+// Timing aliases — all scenarios share TTW_HELLO_TIME/LINK_BREAK/REPLAY_TIME
+// so a single --ttw_* cmd flag adjusts every variant simultaneously.
+#define TTWS2_HELLO_TIME     TTW_HELLO_TIME
+#define TTWS2_LINK_BREAK     TTW_LINK_BREAK
+#define TTWS2_REPLAY_TIME    TTW_REPLAY_TIME
+#define TTWS3_HELLO_TIME     TTW_HELLO_TIME
+#define TTWS3_LINK_BREAK     TTW_LINK_BREAK
+#define TTWS3_INTERNAL_REPLAY TTW_REPLAY_TIME
+#define TTWS4_HELLO_TIME     TTW_HELLO_TIME
+#define TTWS4_LINK_BREAK     TTW_LINK_BREAK
+#define TTWS4_INTERNAL_REPLAY TTW_REPLAY_TIME
 TopologyPacket ttws2_stored_packet;
 bool           ttws2_packet_stored = false;
 std::ofstream  ttws2_log;
-
-// ── TTW-S3 globals ────────────────────────────────────────────────────────────
-static const double TTWS3_HELLO_TIME      = 10.0;
-static const double TTWS3_LINK_BREAK      = 15.0;
-static const double TTWS3_INTERNAL_REPLAY = 20.0;
 TopologyPacket ttws3_stored_packet;
 bool           ttws3_packet_stored = false;
 std::ofstream  ttws3_log;
-
-// ── TTW-S4 globals ────────────────────────────────────────────────────────────
-static const double TTWS4_HELLO_TIME      = 10.0;
-static const double TTWS4_LINK_BREAK      = 15.0;
-static const double TTWS4_INTERNAL_REPLAY = 20.0;
 TopologyPacket ttws4_stored_packet;
 bool           ttws4_packet_stored = false;
 std::ofstream  ttws4_log;
@@ -1065,7 +1069,10 @@ PemEvaluateEvent(PemEvent& event)
                 break;
             }
         }
-        if (!beaconSeen)
+        // BSHH-S3 only fires when the physical sender is impersonating another
+        // node (physical != claimed). A node sending its own heartbeat is
+        // genuinely present, so an absent beacon is not suspicious.
+        if (!beaconSeen && event.physical_sender_id != event.claimed_sender_id)
         {
             event.triggered[5] = true;
         }
@@ -1611,8 +1618,11 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
             << "  Status     : Stored — awaiting replay at t="
             << TTW_REPLAY_TIME << "\n\n"
             << "  NOTE: Link V" << src_id << "<->V" << dst_id
-            << " will break at t=" << TTW_LINK_BREAK << "\n"
-            << "  Controller will NOT receive a link-down notification.\n\n";
+            << " physically breaks at t≈" << std::fixed << std::setprecision(1)
+            << ttw_physical_break_time << "s"
+            << " (dist > " << TTW_COMM_RANGE << "m)\n"
+            << "  Simulation declares it broken at t=" << TTW_LINK_BREAK
+            << "s — controller receives no link-down notification.\n\n";
 }
 
 // ── STEPS 4+5+6: Replay attack ───────────────────────────────────────────────
@@ -1669,20 +1679,25 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
 
     // STEP 6: Log faulty routing consequence
+    const bool linkPhysicallyBroken = (dist > TTW_COMM_RANGE);
     ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
             << "  Controller believes V" << src_id << "<->V" << dst_id
             << " ACTIVE at t=" << forged_time << "\n"
-            << "  Physical reality : link BROKEN (dist=" << dist << "m)\n"
-            << "  Consequence : packets routed via ghost link will be DROPPED\n"
-            << "  Topology timeline CORRUPTED — wrong global topology\n\n";
+            << "  Physical reality : link "
+            << (linkPhysicallyBroken ? "BROKEN" : "ACTIVE")
+            << " (dist=" << dist << "m)\n"
+            << (linkPhysicallyBroken
+                    ? "  Consequence : packets routed via ghost link will be DROPPED\n"
+                    : "  Consequence : controller holds forged timestamp — link will appear valid past its true expiry\n")
+            << "  Topology timeline CORRUPTED — controller has wrong temporal reference\n\n";
 
     NS_LOG_INFO("[TTW-S4] ATTACK COMPLETE — ghost link V"
                 << src_id << "<->V" << dst_id << " injected");
     std::cout << "[TTW-S1][t=" << now << "]  *** ATTACK COMPLETE ***  ghost link V"
               << src_id << "<->V" << dst_id << " injected into controller table" << std::endl;
 
-    // Final topology table dump
-    ttw_log << "  Final Controller Topology Table:\n"
+    // Per-pair topology snapshot (shows cumulative state at this moment)
+    ttw_log << "  Topology Table (after this pair's replay):\n"
             << "  Src   Dst   Timestamp   Forged?\n"
             << "  ──────────────────────────────────\n";
     for (auto& e : ttw_controller_table)
@@ -1692,12 +1707,19 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
                 << "    t=" << p.timestamp
                 << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
     }
-    ttw_log << "\n========================================================\n"
-            << "  TTW ATTACK SCENARIO " << attack_scenario << " COMPLETE\n"
-            << "========================================================\n";
+    ttw_log << "\n";
+
+    // Print the scenario-completion banner only after the last pair completes
+    ++ttw_s1_completed_pairs;
+    if (ttw_s1_completed_pairs >= ttw_s1_total_pairs)
+    {
+        ttw_log << "========================================================\n"
+                << "  TTW ATTACK SCENARIO " << attack_scenario << " COMPLETE\n"
+                << "========================================================\n";
+    }
     ttw_log.flush();
 
-    Simulator::Schedule(MilliSeconds(50), &TTW_RunReplayDetection, src_id, dst_id, dist);
+    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTW_RunReplayDetection, src_id, dst_id, dist);
 }
 
 void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistance)
@@ -1951,7 +1973,7 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
               << " --FORGED replay--> Controller"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
               << "  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***" << std::endl;
-    Simulator::Schedule(MilliSeconds(50), &TTWS2_RunDetection, rsu_id, v1_id, v2_id);
+    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS2_RunDetection, rsu_id, v1_id, v2_id);
 }
 
 // =============================================================================
@@ -2098,7 +2120,7 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "[TTW-S3][t=" << now << "]  Controller --INTERNAL REPLAY--> own table"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
               << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
-    Simulator::Schedule(MilliSeconds(50), &TTWS3_RunDetection, v1_id, v2_id);
+    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS3_RunDetection, v1_id, v2_id);
 }
 
 // =============================================================================
@@ -2234,7 +2256,7 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "[TTW-S4][t=" << now << "]  Controller --INTERNAL REPLAY (RSU path variant)--> own table"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
               << "  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
-    Simulator::Schedule(MilliSeconds(50), &TTWS4_RunDetection, v1_id, v2_id);
+    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS4_RunDetection, v1_id, v2_id);
 }
 
 // =============================================================================
@@ -141790,7 +141812,40 @@ int main(int argc, char *argv[])
                   "1=run attack WITH PEM detection+mitigation (default), "
                   "0=run attack ONLY, PEM logs but never mitigates",
                   detection_enabled);
+    cmd.AddValue ("ttw_hello_time",
+                  "Time (s) at which V2V HELLO exchange and topology updates fire (default 10)",
+                  TTW_HELLO_TIME);
+    cmd.AddValue ("ttw_link_break",
+                  "Time (s) at which the attacker's link is declared broken (default 15)",
+                  TTW_LINK_BREAK);
+    cmd.AddValue ("ttw_replay_time",
+                  "Time (s) at which the attacker replays the forged packet (default 20)",
+                  TTW_REPLAY_TIME);
     cmd.Parse (argc, argv);
+
+    // ── TTW mobility derived from cmd params — computed once after Parse ─────
+    // Constraint: at TTW_HELLO_TIME the pair must be IN range (<TTW_COMM_RANGE)
+    //             at TTW_LINK_BREAK the pair must be OUT of range (>TTW_COMM_RANGE)
+    // margin: 13.3% of comm range gives ~40 m on each side for the default 300 m.
+    const double ttw_range_margin =
+        TTW_COMM_RANGE * 0.133;
+    const double ttw_gap_at_hello = TTW_COMM_RANGE - ttw_range_margin;
+    const double ttw_gap_at_break = TTW_COMM_RANGE + ttw_range_margin;
+    const double ttw_sep_rate     =
+        (TTW_LINK_BREAK > TTW_HELLO_TIME)
+            ? (ttw_gap_at_break - ttw_gap_at_hello) / (TTW_LINK_BREAK - TTW_HELLO_TIME)
+            : 16.0;                              // fallback if times are equal
+    const double ttw_init_gap     = ttw_gap_at_hello - ttw_sep_rate * TTW_HELLO_TIME;
+    const double ttw_att_speed    = ttw_sep_rate * 0.20; // attacker: slow mover
+    const double ttw_vic_speed    = ttw_sep_rate * 0.80; // victim: fast mover (away)
+    const double ttw_vic_x0       = 100.0;               // victim base x (readable coords)
+    const double ttw_att_x0       = ttw_vic_x0 + ttw_init_gap; // attacker starts right of victim
+    const double ttw_lane_sep     = TTW_COMM_RANGE + 50.0;     // y-gap between pairs (out of range)
+    // gap(t) = ttw_init_gap + ttw_sep_rate * t = TTW_COMM_RANGE  →  physical break time:
+    ttw_physical_break_time = (ttw_sep_rate > 0.0)
+                              ? (TTW_COMM_RANGE - ttw_init_gap) / ttw_sep_rate
+                              : TTW_LINK_BREAK;
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Populate attack-family flags and per-node/controller attacker membership.
     declare_attack_states();
@@ -141878,38 +141933,38 @@ int main(int argc, char *argv[])
       attack_mobility.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
 
       Ptr<ListPositionAllocator> attackPosAlloc = CreateObject<ListPositionAllocator>();
-      attackPosAlloc->Add(Vector(200.0, 100.0, 0.0));  // V0 attacker — right side
-      attackPosAlloc->Add(Vector(100.0, 100.0, 0.0));  // V1 victim   — left side, 100 m gap
+      attackPosAlloc->Add(Vector(ttw_att_x0, 100.0, 0.0));  // V0 attacker — right of victim
+      attackPosAlloc->Add(Vector(ttw_vic_x0, 100.0, 0.0));  // V1 victim   — left side
 
       attack_mobility.SetPositionAllocator(attackPosAlloc);
       attack_mobility.Install(Vehicle_Nodes);
 
-      // V0 moves right slowly (+3 m/s)
+      // V0 moves right slowly (+ttw_att_speed)
       Ptr<ConstantVelocityMobilityModel> mob_v0 =
           DynamicCast<ConstantVelocityMobilityModel>(
               Vehicle_Nodes.Get(malicious_vehicle_id)->GetObject<MobilityModel>());
-      mob_v0->SetVelocity(Vector(3.0, 0.0, 0.0));
+      mob_v0->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0));
 
-      // V1 moves left fast (-13 m/s) — faster than V0, moves out of range
+      // V1 moves left fast (-ttw_vic_speed) — moves out of range by TTW_LINK_BREAK
       Ptr<ConstantVelocityMobilityModel> mob_v1 =
           DynamicCast<ConstantVelocityMobilityModel>(
               Vehicle_Nodes.Get(victim_neighbor_id)->GetObject<MobilityModel>());
-      mob_v1->SetVelocity(Vector(-13.0, 0.0, 0.0));
+      mob_v1->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0));
   }
   else if (attack_scenario == 2 || attack_scenario == 3 || attack_scenario == 4)
   {
-      // TTW-S2/S3/S4: same gap-and-velocity layout as TTW-S1
-      // V0 (slower) starts at x=200, moves right at +3 m/s
-      // V1 (faster) starts at x=100, moves left  at -13 m/s
-      // At t=10: gap=260 m (in range) | t=15: gap=340 m (link broken)
+      // TTW-S2/S3/S4: same gap-and-velocity layout as TTW-S1.
+      // V0/V1 use the same computed ttw_att/vic values; other vehicles are
+      // placed ttw_lane_sep apart in y so they don't interfere with the attack pair.
       Vehicle_Nodes.Create(N_Vehicles);
       MobilityHelper ttw_mob;
       ttw_mob.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
       Ptr<ListPositionAllocator> ttwPosAlloc = CreateObject<ListPositionAllocator>();
       for (uint32_t i = 0; i < N_Vehicles; i++) {
-          if (i == 0)      ttwPosAlloc->Add(Vector(200.0, 100.0, 0.0));  // V0 slower
-          else if (i == 1) ttwPosAlloc->Add(Vector(100.0, 100.0, 0.0));  // V1 faster
-          else             ttwPosAlloc->Add(Vector(static_cast<double>(i - 1) * 250.0, 400.0, 0.0));
+          if (i == 0)      ttwPosAlloc->Add(Vector(ttw_att_x0, 100.0, 0.0));
+          else if (i == 1) ttwPosAlloc->Add(Vector(ttw_vic_x0, 100.0, 0.0));
+          else             ttwPosAlloc->Add(Vector(static_cast<double>(i - 1) * ttw_lane_sep,
+                                                   ttw_lane_sep, 0.0));
       }
       ttw_mob.SetPositionAllocator(ttwPosAlloc);
       ttw_mob.Install(Vehicle_Nodes);
@@ -141918,9 +141973,9 @@ int main(int argc, char *argv[])
               DynamicCast<ConstantVelocityMobilityModel>(
                   Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
           if (i == 0)
-              m->SetVelocity(Vector(3.0, 0.0, 0.0));    // V0 right, slow
+              m->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0));
           else if (i == 1)
-              m->SetVelocity(Vector(-13.0, 0.0, 0.0));  // V1 left, fast
+              m->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0));
           else
               m->SetVelocity(Vector(0.0, 0.0, 0.0));
       }
@@ -143987,6 +144042,10 @@ int main(int argc, char *argv[])
       std::cout << "  t=20s  STEP 6   : Controller has wrong topology" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
+      // Set pair counter so TTW_ReplayAttack knows when to print the final banner
+      ttw_s1_total_pairs     = (uint32_t)attacker_idx.size();
+      ttw_s1_completed_pairs = 0;
+
       Ptr<SimpleUdpApplication> app_ctrl =
           DynamicCast<SimpleUdpApplication>(apps.Get(0));
 
@@ -143999,6 +144058,28 @@ int main(int argc, char *argv[])
 
           uint32_t mal_ns3 = Vehicle_Nodes.Get(attacker_cidx)->GetId();
           uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_cidx)->GetId();
+
+          // Each pair gets its own y-lane (300 m apart) so pairs don't interfere.
+          // Attacker at x=200 moves right (+3 m/s); victim at x=100 moves left
+          // (-13 m/s). Combined separation rate = 16 m/s, initial gap = 100 m.
+          //   At t=0:  gap = 100 m  (trivially in range)
+          //   At t=10: gap = 260 m  (HELLO delivered ✓)
+          //   At t=12.5: gap = 300 m (link breaks)
+          //   At t=15: gap = 340 m  (confirmed broken)
+          //   At t=20: gap = 420 m  (replay fired on broken link ✓)
+          {
+              const double y_lane = static_cast<double>(a) * ttw_lane_sep;
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(attacker_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(victim_cidx)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+          }
 
           // Register attacker->victim pair for the pipeline intercept
           ttw_s1_attacker_victim_map[mal_ns3] = vic_ns3;
