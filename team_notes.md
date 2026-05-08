@@ -40,7 +40,7 @@ Countering Temporal-Echo Topology Poisoning Attacks in SDVNs
 23. [Node Roles, Architecture Modes, and centralized_dsrc_data_broadcast](#23-node-roles-architecture-modes-and-centralized_dsrc_data_broadcast)
 24. [Agent-Based Data Upload Functions — send_LTE_data_agent and RSU_dataunicast_agent](#24-agent-based-data-upload-functions--send_lte_data_agent-and-rsu_dataunicast_agent)
 25. [Build Fix Notes — Forward Declarations and Helper Placement (2026-05-02)](#25-build-fix-notes--forward-declarations-and-helper-placement-2026-05-02)
-26. [Observed Run Note — TTW-S2 Command (2026-05-03)](#26-observed-run-note--ttw-s2-command-2026-05-03)
+26. [Observed Run Note — Scenario Outputs and Logs (2026-05-07)](#26-observed-run-note--scenario-outputs-and-logs-2026-05-07)
 
 ---
 
@@ -96,7 +96,7 @@ Before this round of work, `routing.cc` already contained:
 | `PemEmitEvent()` | Feeds a topology event into the detector |
 | `PemEmitHeartbeatEvent()` | Feeds a heartbeat event into the detector |
 | `PemEmitVehicleBeacon()` | Registers a legitimate beacon (for baseline detection history) |
-| CSV output functions | Auto-writes `pem_run_summary.csv` and `pem_event_log.csv` |
+| CSV output functions | Auto-writes per-scenario files in `PEM_RUN_SUMMARY/` and `PEM_EVENT_LOG/` |
 
 **What was missing:** The remaining 11 attack scenarios existed only as written descriptions
 in the project proposal PDF — none were coded. This session implemented all of them.
@@ -414,8 +414,8 @@ These are PEM accuracy improvements. See Section 17 for full details.
   Prevents false negatives in small simulations.
 - ME-S3 (signature 8): added RSSI (signal strength) check alongside the position check,
   matching the full project proposal formula: `d > r_comm OR RSSI < RSSI_min`.
-- `pem_event_log.csv`: added `rssi_reporter_dbm` as the 22nd column, recording the
-  synthetic signal strength for every topology-update event.
+- `PEM_EVENT_LOG/<scenario_name>.csv`: added `rssi_reporter_dbm` as the 22nd column,
+  recording the synthetic signal strength for every topology-update event.
 
 ---
 
@@ -837,7 +837,7 @@ If `total_score ≥ 0.12`, an alert is raised:
 ### What PEM writes at end of simulation
 
 `PemWriteRunSummaryCsv()` is called at `simTime − 0.001` seconds and writes one row to
-`pem_run_summary.csv` with:
+`PEM_RUN_SUMMARY/<scenario_name>.csv` with:
 `run_id, attack_scenario, detection_enabled, tp, tn, fp, fn, mcc, auroc, tdet_ms,
 pdr_under_attack_pct, pdr_post_mitigation_pct, te2e_under_attack_ms, te2e_post_mitigation_ms`
 (15 columns total). The `detection_enabled` column (0 or 1) makes it immediately clear
@@ -947,6 +947,27 @@ grep "error:" build_log.txt
 
 All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 
+### New parameters added (2026-05-07)
+
+Two new command-line parameters control attacker population density:
+
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `--attack_percentage` | 20 | Percentage (0–100) of vehicle nodes assigned as attackers |
+| `--controller_malicious_assumption` | 0 | Set to 1 to also activate controller-side attack flags |
+
+`attack_percentage` is a **research input** you set — it is not auto-detected.
+Vary it across runs (10, 20, 50, 80) to plot detection performance vs attacker density.
+The PEM metrics (MCC, AUROC, Tdet) are the **outputs** that measure detection effectiveness.
+
+After `cmd.Parse()`, the simulation prints a summary:
+```
+[declare_attackers] scenario=1  pct=20  N_Vehicles=10
+  TTW  nodes=2  controllers=0
+  BSHH nodes=0  controllers=0
+  ME   nodes=0  controllers=0
+```
+
 ### Baseline
 
 ```bash
@@ -956,49 +977,68 @@ All commands assume you are in `~/ns-3.35/`. Copy and paste directly.
 ### TTW family
 
 ```bash
-# TTW-S1: Malicious Vehicle
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=1"
+# TTW-S1: Malicious Vehicle, 20% attackers (default)
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20"
+
+# TTW-S1: Malicious Vehicle, 50% attackers (dense scenario)
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=50"
 
 # TTW-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=2"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=2 --attack_percentage=20"
 
 # TTW-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=3"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=3 --attack_percentage=20"
 
 # TTW-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=4"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=4 --attack_percentage=20"
 ```
 
 ### BSHH family
 
 ```bash
 # BSHH-S1: Malicious Vehicle
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=5"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=5 --attack_percentage=20"
 
 # BSHH-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=6"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=6 --attack_percentage=20"
 
 # BSHH-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=0 --attack_scenario=7"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=7 --attack_percentage=20"
 
 # BSHH-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=2 --N_RSUs=1 --attack_scenario=8"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=8 --attack_percentage=20"
 ```
 
 ### ME family
 
 ```bash
-# ME-S1: Malicious Vehicles  (4 vehicles: V0,V1=real link; V2,V3=attackers)
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=9"
+# ME-S1: Malicious Vehicles  (need ≥4 vehicles: V0,V1=real link; V2,V3=echo attackers)
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=9 --attack_percentage=20"
 
 # ME-S2: Malicious RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=10"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=10 --attack_percentage=20"
 
 # ME-S3: Malicious Controller, No RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=11"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=11 --attack_percentage=20"
 
 # ME-S4: Malicious Controller, With RSU
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=12"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=12 --attack_percentage=20"
+```
+
+### Varying attack_percentage for report statistics
+
+```bash
+# Run the same scenario at four density levels to build a performance curve
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=10"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=50"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=80"
+```
+
+### Force controller malicious (even on vehicle-attacker scenarios)
+
+```bash
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20 --controller_malicious_assumption=1"
 ```
 
 ### Attack-only mode (no detection/mitigation)
@@ -1009,10 +1049,10 @@ Use this to measure worst-case PDR impact.
 
 ```bash
 # Example: TTW-S2, attack fires but PEM never mitigates
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2 --detection_enabled=0"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=1 --attack_scenario=2 --attack_percentage=20 --detection_enabled=0"
 
 # Example: ME-S1, attack fires but PEM never mitigates
-./waf --run "scratch/routing --simTime=20 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=9 --detection_enabled=0"
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=9 --attack_percentage=20 --detection_enabled=0"
 ```
 
 ### Attack + detection mode (default)
@@ -1021,8 +1061,8 @@ Use this to measure worst-case PDR impact.
 These two commands are equivalent:
 
 ```bash
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=1"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=0 --attack_scenario=1 --detection_enabled=1"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20"
+./waf --run "scratch/routing --simTime=30 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1 --attack_percentage=20 --detection_enabled=1"
 ```
 
 ### Read results immediately after any run
@@ -1042,8 +1082,9 @@ cat me_s2_attack_log.txt       # ME-S2
 cat me_s3_attack_log.txt       # ME-S3
 cat me_s4_attack_log.txt       # ME-S4
 
-cat pem_run_summary.csv        # Detection metrics (MCC, AUROC, Tdet, PDR) — 15 columns
-cat pem_event_log.csv          # Per-event PEM log — 22 columns (incl. rssi_reporter_dbm)
+cat PEM_RUN_SUMMARY/05_BSHH_S1_Malicious_Vehicle.csv   # Detection metrics for BSHH-S1
+cat PEM_EVENT_LOG/05_BSHH_S1_Malicious_Vehicle.csv     # Per-event PEM log for BSHH-S1
+cat CHANNEL_DELIVERY_ANALYSIS/05_BSHH_S1_Malicious_Vehicle.csv  # Per-channel analysis
 
 # NetAnim XML files — in named files under XML/ folder
 ls ~/ns-allinone-3.35/ns-3.35/XML/
@@ -1056,7 +1097,13 @@ ls ~/ns-allinone-3.35/ns-3.35/XML/
 
 ### Attack log file (e.g., `ttw_s2_attack_log.txt`)
 
-Human-readable step-by-step trace. Example excerpt from TTW-S2:
+Human-readable step-by-step trace. Each scenario writes its own file, for example:
+
+- `ttw_s2_attack_log.txt`
+- `bshh_s1_attack_log.txt`
+- `me_s1_attack_log.txt`
+
+Example excerpt from TTW-S2:
 
 ```
 [t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_4
@@ -1117,6 +1164,8 @@ Human-readable step-by-step trace. Example excerpt from TTW-S2:
 | `run_id` | 1 | — | Sequential run number |
 | `attack_scenario` | 2 | — | 0–12 |
 | `detection_enabled` | 3 | — | 1 = detection+mitigation on, 0 = attack-only mode |
+| `attack_percentage` | — | set by you | Percentage of vehicle nodes assigned as attackers (input, not output) |
+| `controller_malicious_assumption` | — | 0 or 1 | Whether controller-side attack flags are also activated |
 | `tp` | 4 | ≥ 1 | True positives: attacks correctly detected |
 | `tn` | 5 | high | True negatives: benign events correctly passed |
 | `fp` | 6 | 0 ideally | False positives: benign events wrongly flagged |
@@ -1172,7 +1221,7 @@ mkdir -p "${OUTDIR}"
 
 for SEED in 1 2 3 4 5; do
     echo "=== Run $SEED / 5 (scenario=$SCENARIO, detection=$DET) ==="
-    rm -f pem_event_log.csv pem_run_summary.csv *.txt
+    rm -f PEM_EVENT_LOG/*.csv PEM_RUN_SUMMARY/*.csv CHANNEL_DELIVERY_ANALYSIS/*.csv *.txt
 
     ./waf --run "scratch/routing \
         --simTime=60 --N_Vehicles=${N_VEH} --N_RSUs=${N_RSU} \
@@ -1180,8 +1229,8 @@ for SEED in 1 2 3 4 5; do
         --detection_enabled=${DET} \
         --RngRun=${SEED}"
 
-    cp pem_run_summary.csv "${OUTDIR}/run_${SEED}_summary.csv"
-    cp pem_event_log.csv   "${OUTDIR}/run_${SEED}_events.csv"
+    cp PEM_RUN_SUMMARY/*.csv "${OUTDIR}/run_${SEED}_summary.csv"
+    cp PEM_EVENT_LOG/*.csv   "${OUTDIR}/run_${SEED}_events.csv"
 done
 echo "Done. Results in ${OUTDIR}/"
 ```
@@ -1331,7 +1380,8 @@ for the scenario (e.g., ME needs 4 vehicles: V0, V1 = real link; V2, V3 = echo r
 The `routing-animation.xml` file may be from a previous run. Always clear old output files
 before a new run, or the new run appends and the timestamps become confusing:
 ```bash
-rm -f routing-animation.xml pem_event_log.csv pem_run_summary.csv *.txt
+rm -f routing-animation.xml *.txt
+rm -f PEM_EVENT_LOG/*.csv PEM_RUN_SUMMARY/*.csv CHANNEL_DELIVERY_ANALYSIS/*.csv
 ./waf --run "scratch/routing ..."
 ```
 
@@ -1367,10 +1417,10 @@ event.alert_raised = detection_enabled && (score > PEM_SCORE_THRESHOLD);
 ```
 
 When `detection_enabled = false`:
-- PEM still computes scores and writes to `pem_event_log.csv` (the log is always written)
+- PEM still computes scores and writes to `PEM_EVENT_LOG/<scenario_name>.csv` (the log is always written)
 - `alert_raised` is always 0 — no alert fires
 - No ghost entry is ever removed from `ttw_controller_table` or `bshh_controller_liveness_table`
-- The summary CSV records `tp = 0`, `mcc = 0`, `tdet_ms = -1` for the run
+- The summary CSV records `tp = 0`, `mcc = 0`, `tdet_ms = -1` for the run in `PEM_RUN_SUMMARY/<scenario_name>.csv`
 
 ### Run commands comparison
 
@@ -1385,7 +1435,7 @@ When `detection_enabled = false`:
 # The gap between them quantifies the benefit of the detection layer
 ```
 
-### What to expect in `pem_run_summary.csv`
+### What to expect in `PEM_RUN_SUMMARY/<scenario_name>.csv`
 
 ```
 # With detection (detection_enabled=1):
@@ -1588,10 +1638,11 @@ NEW FLAG:
   --detection_enabled=0            attack only — ghost link stays, PDR impact visible
 
 OUTPUT FILE LOCATIONS:
-  pem_event_log.csv              : 22 columns (incl. rssi_reporter_dbm)
-  pem_run_summary.csv            : 15 columns (incl. detection_enabled as col 3)
-  channel_delivery_analysis.csv  : 6 columns — per-channel tx/rx/fanout analysis
-  XML/<scenario_name>.xml        : per-scenario NetAnim animation (in XML/ folder)
+  PEM_EVENT_LOG/<scenario_name>.csv         : 22 columns (incl. rssi_reporter_dbm)
+  PEM_RUN_SUMMARY/<scenario_name>.csv       : 15 columns (incl. detection_enabled as col 3)
+  CHANNEL_DELIVERY_ANALYSIS/<scenario_name>.csv : 6 columns — per-channel tx/rx/fanout analysis
+  XML/<scenario_name>.xml                   : per-scenario NetAnim animation (in XML/ folder)
+  *_attack_log.txt                          : per-scenario human-readable attack log
 
 PEM TARGET METRICS (project proposal):
   MCC    > 0.85
@@ -2019,8 +2070,7 @@ These are two completely different layers serving different purposes:
 LAYER 1 — RADIO (NS-3 Tags, travel over the simulated wireless medium)
 ──────────────────────────────────────────────────────────────────────
 CustomDataTag1          → topology beacon (position, velocity, neighbour IDs, timestamp)
-CustomHeartbeatTag      → liveness heartbeat (claimed sender, timestamp, is_replayed)
-CustomMetaDataUnicastTag0  → RSU→Controller CSMA metadata packet
+CustomMetaDataUnicastTag0  → reused for BSHH heartbeat and RSU→Controller metadata (nodeId, timestamp)
 
 These are NS-3 Tag subclasses. They Serialize/Deserialize and travel inside
 Ptr<Packet> objects over WifiNetDevice (DSRC 802.11p) or SimpleUdpApplication (CSMA).
@@ -2044,48 +2094,28 @@ the control-plane consequence.
 
 ---
 
-### Q9 — What is CustomHeartbeatTag and why was it added?
+### Q9 — Why does BSHH reuse `CustomMetaDataUnicastTag0` instead of a separate heartbeat tag?
 
-**Question:** Where is `CustomHeartbeatTag` defined and what does it do?
+**Question:** We removed `CustomHeartbeatTag`. How is BSHH represented now?
 
 **Answer:**
 
-`CustomHeartbeatTag` is a 13-byte NS-3 Tag class added at line ~1121 of routing.cc.
-It carries BSHH heartbeat liveness information over the DSRC radio:
+BSHH now reuses `CustomMetaDataUnicastTag0` for heartbeat packets because the message
+needs only two fields:
+- `nodeId` for the claimed sender
+- `timestamp` for replay detection
 
-```cpp
-class CustomHeartbeatTag : public Tag {
-    // 13 bytes total:
-    uint32_t m_claimedSenderId;  // 4 bytes — whose identity this heartbeat claims
-    double   m_timestamp;         // 8 bytes — when the heartbeat was originally generated
-    bool     m_isReplayed;        // 1 byte  — 0 = legitimate, 1 = forged replay
-};
-```
+The replay state is inferred by comparing the received timestamp against the most recent
+timestamp stored in `bshh_controller_liveness_table`. That means a separate
+`is_replayed` field is not necessary.
 
-**Why it was needed:** Before this was added, BSHH heartbeats existed only as in-memory
-struct writes — the attacker simply wrote directly into `bshh_controller_liveness_table`.
-No real NS-3 packet was created, so:
-- `Rx()` never fired for heartbeats
-- NetAnim showed no heartbeat arrows
-- The radio channel was never actually used for heartbeat traffic
-- Channel delivery statistics for heartbeats were not counted
+This keeps the code simpler:
+- `CustomDataTag1` remains the topology beacon tag
+- `CustomMetaDataUnicastTag0` carries the BSHH heartbeat / metadata timing information
+- `HeartbeatPacket` remains the in-memory controller record for what was last accepted
 
-Adding `CustomHeartbeatTag` makes heartbeats real 802.11p DSRC packets. The `Rx()`
-callback (line ~122266) was extended to read this tag and update the liveness table:
-
-```cpp
-CustomHeartbeatTag hb_tag;
-if (pkt->PeekPacketTag(hb_tag)) {
-    HeartbeatPacket hb = {hb_tag.GetClaimedSenderId(),
-                          (uint32_t)destination_node_id,
-                          hb_tag.GetTimestamp(),
-                          hb_tag.GetIsReplayed()};
-    bshh_controller_liveness_table[hb_tag.GetClaimedSenderId()] = hb;
-}
-```
-
-The helper `AttackSendHeartbeat(node, claimed_id, timestamp, is_replayed)` was also added
-to send these packets from any node over the CCH 178 radio.
+The receiver side in `MacRx()` now peeks `CustomMetaDataUnicastTag0` for BSHH heartbeats
+and decides replay status from timestamp order.
 
 ---
 
@@ -2257,8 +2287,8 @@ handles all channels with a single counter array lookup.
   --attack_scenario=5 --mobility_scenario=1"
 
 # Read results
-cat channel_delivery_analysis.csv
-cat pem_run_summary.csv
+cat CHANNEL_DELIVERY_ANALYSIS/05_BSHH_S1_Malicious_Vehicle.csv
+cat PEM_RUN_SUMMARY/05_BSHH_S1_Malicious_Vehicle.csv
 ```
 
 Compare `avg_fanout` across channels — you should see a clear increasing trend from
@@ -2735,51 +2765,50 @@ new routing decisions and sends `delta` values back down to nodes.
 > (`paper == 1`, separate scheduling path). All attack detection runs use the
 > `controller_Node` path, not `management_Node`.
 
-## 26. Observed Run Note — TTW-S2 Command (2026-05-03)
+## 26. Observed Run Note — Scenario Outputs and Logs (2026-05-07)
 
-**Command used:**
+**Commands observed:**
 
 ```bash
+./waf --run "scratch/routing --simTime=20 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=9"
 ./waf --run "scratch/routing --simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2"
 ```
 
-**What happened during this run:**
+**What happened during these runs:**
 
-- The first attempt did **not** fail inside the simulation logic. It failed in `waf` while trying to write `build/compile_commands.json`:
-
-```text
-OSError: [Errno 30] Read-only file system: '/home/nimesha/ns-allinone-3.35/ns-3.35/build/compile_commands.json'
-```
-
-- After rerunning with normal filesystem access, `waf` completed the build stage successfully.
-- The simulation then started correctly and printed:
-  - `Solution at controller cleared`
-  - NetAnim output path:
-    `/home/nimesha/ns-allinone-3.35/ns-3.35/XML/02_TTW_S2_Malicious_RSU.xml`
-  - TTW-S2 scenario banner:
-    - attacker = `RSU_0`
-    - victims = `V0` and `V1`
-    - replay log file = `ttw_s2_attack_log.txt`
-    - timeline = legitimate exchange at `t=10s`, link break at `t=15s`, replay at `t=20s`
-- Runtime output then continued with many DSRC broadcast / receive messages from the participating nodes. Example observations:
-  - vehicles broadcast on all 7 DSRC channels
-  - `dsrc total size` kept increasing
-  - packet receive logs showed microsecond-scale delays such as `153us`, `289us`, `454us`
+- The `attack_scenario=9` run entered `ME-S1` and printed the scenario banner normally.
+- It wrote the NetAnim file:
+  - `XML/09_ME_S1_Malicious_Vehicles.xml`
+- It opened the scenario log file:
+  - `me_s1_attack_log.txt`
+- Earlier completed runs had already populated the per-scenario CSV folders with files such as:
+  - `PEM_EVENT_LOG/01_TTW_S1_Malicious_Vehicle.csv`
+  - `PEM_EVENT_LOG/02_TTW_S2_Malicious_RSU.csv`
+  - `PEM_EVENT_LOG/05_BSHH_S1_Malicious_Vehicle.csv`
+  - `PEM_RUN_SUMMARY/01_TTW_S1_Malicious_Vehicle.csv`
+  - `PEM_RUN_SUMMARY/02_TTW_S2_Malicious_RSU.csv`
+  - `PEM_RUN_SUMMARY/05_BSHH_S1_Malicious_Vehicle.csv`
+  - `CHANNEL_DELIVERY_ANALYSIS/01_TTW_S1_Malicious_Vehicle.csv`
+  - `CHANNEL_DELIVERY_ANALYSIS/02_TTW_S2_Malicious_RSU.csv`
+  - `CHANNEL_DELIVERY_ANALYSIS/05_BSHH_S1_Malicious_Vehicle.csv`
+- The console output showed normal DSRC broadcast / receive activity after the banner, which is expected for these simulations.
 
 **Interpretation:**
 
-The command appears to **enter the TTW-S2 malicious RSU scenario correctly** and begins normal packet activity. During observation, it did **not** show an immediate crash after the scenario banner. The main issue seen was the initial `waf` filesystem write failure, not a logic failure in `routing.cc`.
+The important change is that each scenario now has its own output set instead of all runs sharing one `pem_event_log.csv`, one `pem_run_summary.csv`, and one `channel_delivery_analysis.csv`. That makes it much easier to compare attack families and keep the logs aligned with the XML files.
 
-**Useful generated files from this run:**
+**Useful generated files from these runs:**
 
-- `XML/02_TTW_S2_Malicious_RSU.xml`
-- `ttw_s2_attack_log.txt`
+- `XML/09_ME_S1_Malicious_Vehicles.xml`
+- `me_s1_attack_log.txt`
+- `PEM_EVENT_LOG/<scenario_name>.csv`
+- `PEM_RUN_SUMMARY/<scenario_name>.csv`
+- `CHANNEL_DELIVERY_ANALYSIS/<scenario_name>.csv`
 
 ---
 
 *Written by Nimesha Yasith | FYP — Department of EIE, University of Ruhuna | 2026-04-30*
 *Updated 2026-04-30: added --detection_enabled flag, per-scenario XML files, ME-S1/S3 PEM improvements, updated CSV column layouts.*
 *Updated 2026-05-01: added Section 18 — RSU and RSU Network explanation; Section 19 — Q&A session documenting custom data tags, DSRC, V2V implementation gap, and fix.*
-*Updated 2026-05-02: added Section 20 — Q&A session (7 DSRC channels, mobility traces, two-layer architecture, CustomHeartbeatTag, RSU→Controller CSMA, LTE V2C status); Section 21 — per-channel TX power 23–44 dBm for mobility_scenario=1, channel_delivery_analysis.csv output; Section 22 — data transmission functions comparison (centralized vs distributed broadcast, send_centralized_packets, send_hybrid_packets), SimpleUdpApplication internals (3 sockets, HandleReadOne tag dispatch, attack usage); Section 23 — node roles (controller_Node vs management_Node), three architecture modes (centralized/distributed/hybrid), which mode runs in attack scenarios.*
-*Updated 2026-05-03: added Section 26 documenting an observed `TTW-S2` run for `--simTime=30 --N_Vehicles=4 --N_RSUs=1 --attack_scenario=2`, including the initial `waf` filesystem error and the successful scenario startup details.*
-
+*Updated 2026-05-02: added Section 20 — Q&A session (7 DSRC channels, mobility traces, two-layer architecture, BSHH heartbeat reuse of CustomMetaDataUnicastTag0, RSU→Controller CSMA, LTE V2C status); Section 21 — per-channel TX power 23–44 dBm for mobility_scenario=1, channel_delivery_analysis.csv output; Section 22 — data transmission functions comparison (centralized vs distributed broadcast, send_centralized_packets, send_hybrid_packets), SimpleUdpApplication internals (3 sockets, HandleReadOne tag dispatch, attack usage); Section 23 — node roles (controller_Node vs management_Node), three architecture modes (centralized/distributed/hybrid), which mode runs in attack scenarios.*
+*Updated 2026-05-07: revised output layout to per-scenario CSV folders (`PEM_EVENT_LOG/`, `PEM_RUN_SUMMARY/`, `CHANNEL_DELIVERY_ANALYSIS/`), and updated Section 26 to record the scenario outputs/logs observed during the `ME-S1` and `TTW-S2` runs.*
