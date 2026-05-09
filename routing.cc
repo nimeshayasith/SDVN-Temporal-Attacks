@@ -145398,8 +145398,10 @@ int main(int argc, char *argv[])
           me_real_cidx.insert(me_real_cidx.end(), me_echo_cidx.begin() + half, me_echo_cidx.end());
           me_echo_cidx.resize(half);
       }
-      // Ensure at least 2 echo attackers by borrowing from real list
-      while (me_echo_cidx.size() < 2 && me_real_cidx.size() > 2) {
+      // Ensure at least 2 echo attackers by borrowing from real list.
+      // Only borrow when at least 1 attacker was declared (attack_percentage > 0).
+      // If me_echo_cidx is empty, this is a baseline run — do not manufacture attackers.
+      while (me_echo_cidx.size() < 2 && me_real_cidx.size() > 2 && !me_echo_cidx.empty()) {
           me_echo_cidx.push_back(me_real_cidx.back());
           me_real_cidx.pop_back();
       }
@@ -145407,7 +145409,6 @@ int main(int argc, char *argv[])
       uint32_t n_echo_pairs = (uint32_t)me_echo_cidx.size() / 2;
       uint32_t n_real_pairs = (uint32_t)me_real_cidx.size() / 2;
       uint32_t n_me_groups  = std::min(n_echo_pairs, n_real_pairs);
-	  if (n_me_groups == 0) n_me_groups = 1;
       // n_me_groups == 0 means no echo attackers (baseline). Do NOT force to 1.
 
       std::cout << "\n========================================" << std::endl;
