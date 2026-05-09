@@ -144662,23 +144662,6 @@ int main(int argc, char *argv[])
     if (attack_scenario == 5)
   {
       if (N_Vehicles < 2) {
-<<<<<<< HEAD
-          std::cout << "[ERROR] BSHH-S1 requires at least --N_Vehicles=2. Aborting.\n";
-          return 1;
-      }
-      BSHH_S1_InitLog();
-      static const double BSHH_S1_EXCHANGE_TIME        = 5.0;
-      static const double BSHH_S1_OLD_HB_TIME          = 0.0;
-      static const double BSHH_S1_REPLAY_TIME          = 10.0;
-
-      // Pairs: (V0=victim, V1=attacker), (V2=victim, V3=attacker), ...
-      std::vector<std::pair<uint32_t,uint32_t>> s5_pairs; // (victim_id, attacker_id)
-      for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
-          uint32_t victim_id   = Vehicle_Nodes.Get(k)->GetId();
-          uint32_t attacker_id = Vehicle_Nodes.Get(k + 1)->GetId();
-          s5_pairs.push_back({victim_id, attacker_id});
-      }
-=======
           std::cout << "[ERROR] BSHH-S1 requires --N_Vehicles >= 2. Aborting.\n";
           return 1;
       }
@@ -144712,7 +144695,6 @@ int main(int argc, char *argv[])
       static const double BSHH_S1_VICTIM_FORWARD_TIME = 10.010;
       static const double BSHH_S1_HIJACK_TIME         = 10.020;
       static const double BSHH_S1_CONSEQUENCE_TIME    = 10.030;
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
 
       // Pairs = min(attackers, victims) — never more pairs than available victims
       const uint32_t bshh_s1_npairs =
@@ -144722,42 +144704,6 @@ int main(int argc, char *argv[])
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED" << std::endl;
-<<<<<<< HEAD
-      std::cout << "Attacker type : Malicious vehicle (odd-indexed)"  << std::endl;
-      std::cout << "Pairs         : " << s5_pairs.size()              << std::endl;
-      for (auto& p : s5_pairs)
-          std::cout << "  Victim=V" << p.first << "  Attacker=V" << p.second << std::endl;
-      std::cout << "========================================\n" << std::endl;
-
-      for (uint32_t pi = 0; pi < s5_pairs.size(); pi++) {
-          uint32_t victim_id   = s5_pairs[pi].first;
-          uint32_t attacker_id = s5_pairs[pi].second;
-          uint32_t cidx_v      = pi * 2;
-          uint32_t cidx_a      = pi * 2 + 1;
-          double   dt          = pi * 0.0005;  // 0.5 ms stagger
-
-          Simulator::Schedule(Seconds(0.0 + dt),
-              &BSHH_S1_StoreOldHeartbeat, victim_id, BSHH_S1_OLD_HB_TIME);
-          Simulator::Schedule(Seconds(BSHH_S1_EXCHANGE_TIME + dt),
-              &BSHH_S1_LegitimateExchange, victim_id, attacker_id, BSHH_S1_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S1_EXCHANGE_TIME + dt + 0.010),
-              &BSHH_S1_ForwardLegitimateHeartbeatsToController,
-              victim_id, attacker_id, BSHH_S1_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME + dt),
-              &BSHH_S1_ReplayOldHeartbeatToVictim, attacker_id, victim_id, BSHH_S1_OLD_HB_TIME);
-          Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME + dt + 0.010),
-              &BSHH_S1_VictimForwardsOldHeartbeatToController, victim_id, BSHH_S1_OLD_HB_TIME);
-          Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME + dt + 0.020),
-              &BSHH_S1_AttackerHijacksOldHeartbeatToController, attacker_id, victim_id, BSHH_S1_OLD_HB_TIME);
-          Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME + dt + 0.030),
-              &BSHH_S1_LogFaultyRoutingConsequences, attacker_id, victim_id);
-
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidx_v), 0, 150, 255);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidx_v), ("V" + std::to_string(cidx_v) + "-Victim").c_str());
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidx_a), 255, 0, 0);
-          anim.UpdateNodeSize(Vehicle_Nodes.Get(cidx_a)->GetId(), 35.0, 35.0);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidx_a), ("V" + std::to_string(cidx_a) + "-Attacker").c_str());
-=======
       std::cout << "Attackers (" << bshh_s1_npairs << "): ";
       for (uint32_t k : bshh_attacker_idx) std::cout << "V" << k << " ";
       std::cout << std::endl;
@@ -144869,7 +144815,6 @@ int main(int argc, char *argv[])
               anim.UpdateNodeDescription(Vehicle_Nodes.Get(att_cidx),
                   ("V" + std::to_string(att_cidx) + "-Attacker").c_str());
           }
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       }
       for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
           anim.UpdateNodeDescription(controller_Node.Get(ci), "Controller");
@@ -144887,58 +144832,14 @@ int main(int argc, char *argv[])
           return 1;
       }
       if (N_Vehicles < 2) {
-<<<<<<< HEAD
-          std::cout << "[ERROR] BSHH-S2 requires at least --N_Vehicles=2. Aborting.\n";
-          return 1;
-      }
-      BSHH_S2_InitLog();
-      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
-=======
           std::cout << "[ERROR] BSHH-S2 requires --N_Vehicles >= 2. Aborting.\n";
           return 1;
       }
       BSHH_S2_InitLog();
 
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       static const double BSHH_S2_EXCHANGE_TIME = 5.0;
       static const double BSHH_S2_REPLAY_TIME   = 10.0;
 
-<<<<<<< HEAD
-      // Pairs: (V0=victim, V1=normal), (V2=victim, V3=normal), ...
-      std::vector<std::pair<uint32_t,uint32_t>> s6_pairs;
-      for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
-          uint32_t victim_id  = Vehicle_Nodes.Get(k)->GetId();
-          uint32_t normal_id  = Vehicle_Nodes.Get(k + 1)->GetId();
-          s6_pairs.push_back({victim_id, normal_id});
-      }
-
-      std::cout << "\n========================================" << std::endl;
-      std::cout << "SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED" << std::endl;
-      std::cout << "Attacker : RSU_" << rsu_id << " (malicious RSU)" << std::endl;
-      std::cout << "Pairs    : " << s6_pairs.size()                   << std::endl;
-      for (auto& p : s6_pairs)
-          std::cout << "  Victim=V" << p.first << "  Normal=V" << p.second << std::endl;
-      std::cout << "========================================\n" << std::endl;
-
-      for (uint32_t pi = 0; pi < s6_pairs.size(); pi++) {
-          uint32_t victim_id = s6_pairs[pi].first;
-          uint32_t normal_id = s6_pairs[pi].second;
-          uint32_t cidx_v    = pi * 2;
-          uint32_t cidx_n    = pi * 2 + 1;
-          double   dt        = pi * 0.0005;
-
-          Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt),
-              &BSHH_S2_LegitimateExchange, victim_id, normal_id, rsu_id, BSHH_S2_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt + 0.1),
-              &BSHH_S2_StoreOldHeartbeat, victim_id, BSHH_S2_OLD_HB_TIME);
-          Simulator::Schedule(Seconds(BSHH_S2_REPLAY_TIME + dt),
-              &BSHH_S2_ReplayAttack, rsu_id, victim_id, BSHH_S2_OLD_HB_TIME);
-
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidx_v), 0, 150, 255);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidx_v), ("V" + std::to_string(cidx_v) + "-Victim").c_str());
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidx_n), 0, 255, 100);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidx_n), ("V" + std::to_string(cidx_n) + "-Normal").c_str());
-=======
       uint32_t n_malicious_rsus2 =
           (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
       if (n_malicious_rsus2 < 1u)                          n_malicious_rsus2 = 1u;
@@ -145029,7 +144930,6 @@ int main(int argc, char *argv[])
               anim.UpdateNodeDescription(RSU_Nodes.Get(ri),
                   ("RSU" + std::to_string(ri) + "-Attacker").c_str());
           }
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       }
       for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
           anim.UpdateNodeDescription(controller_Node.Get(ci), "Controller");
@@ -145043,58 +144943,14 @@ int main(int argc, char *argv[])
     if (attack_scenario == 7)
   {
       if (N_Vehicles < 2) {
-<<<<<<< HEAD
-          std::cout << "[ERROR] BSHH-S3 requires at least --N_Vehicles=2. Aborting.\n";
-          return 1;
-      }
-      BSHH_S3_InitLog();
-      is_malicious_controller = true;
-=======
           std::cout << "[ERROR] BSHH-S3 requires --N_Vehicles >= 2. Aborting.\n";
           return 1;
       }
       BSHH_S3_InitLog();
 
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       static const double BSHH_S3_EXCHANGE_TIME = 5.0;
       static const double BSHH_S3_REPLAY_TIME   = 10.0;
 
-<<<<<<< HEAD
-      // Pairs: (V0,V1), (V2,V3), ... — controller replays stale HBs for both
-      std::vector<std::pair<uint32_t,uint32_t>> s7_pairs;
-      for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
-          uint32_t vA = Vehicle_Nodes.Get(k)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(k + 1)->GetId();
-          s7_pairs.push_back({vA, vB});
-      }
-
-      std::cout << "\n========================================" << std::endl;
-      std::cout << "SCENARIO 07 - BSHH-S3 ATTACK CONFIGURED" << std::endl;
-      std::cout << "Attacker : Controller (malicious)"        << std::endl;
-      std::cout << "Pairs    : " << s7_pairs.size()           << std::endl;
-      for (auto& p : s7_pairs)
-          std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
-      std::cout << "========================================\n" << std::endl;
-
-      for (uint32_t pi = 0; pi < s7_pairs.size(); pi++) {
-          uint32_t vA    = s7_pairs[pi].first;
-          uint32_t vB    = s7_pairs[pi].second;
-          uint32_t cidxA = pi * 2;
-          uint32_t cidxB = pi * 2 + 1;
-          double   dt    = pi * 0.0005;
-
-          Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + dt),
-              &BSHH_S3_LegitimateExchange, vA, vB, BSHH_S3_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + dt + 0.1),
-              &BSHH_S3_StoreOldHeartbeats, vA, vB, BSHH_S3_OLD_HB_TIME);
-          Simulator::Schedule(Seconds(BSHH_S3_REPLAY_TIME + dt),
-              &BSHH_S3_InternalReplay, vA, vB, BSHH_S3_OLD_HB_TIME);
-
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxA), 0, 150, 255);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxA), ("V" + std::to_string(cidxA) + "-Victim").c_str());
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxB), 0, 255, 100);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxB), ("V" + std::to_string(cidxB) + "-Victim").c_str());
-=======
       uint32_t n_malicious_ctrl3b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
       if (n_malicious_ctrl3b < 1u)                      n_malicious_ctrl3b = 1u;
@@ -145183,7 +145039,6 @@ int main(int argc, char *argv[])
           anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
           anim.UpdateNodeDescription(controller_Node.Get(ci),
               ("Ctrl-" + std::to_string(ci) + "-Benign").c_str());
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       }
   }
 
@@ -145199,65 +145054,14 @@ int main(int argc, char *argv[])
           return 1;
       }
       if (N_Vehicles < 2) {
-<<<<<<< HEAD
-          std::cout << "[ERROR] BSHH-S4 requires at least --N_Vehicles=2. Aborting.\n";
-          return 1;
-      }
-      BSHH_S4_InitLog();
-      is_malicious_controller = true;
-      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
-=======
           std::cout << "[ERROR] BSHH-S4 requires --N_Vehicles >= 2. Aborting.\n";
           return 1;
       }
       BSHH_S4_InitLog();
 
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       static const double BSHH_S4_EXCHANGE_TIME = 5.0;
       static const double BSHH_S4_REPLAY_TIME   = 10.0;
 
-<<<<<<< HEAD
-      // Pairs: (V0,V1), (V2,V3), ...
-      std::vector<std::pair<uint32_t,uint32_t>> s8_pairs;
-      for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
-          uint32_t vA = Vehicle_Nodes.Get(k)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(k + 1)->GetId();
-          s8_pairs.push_back({vA, vB});
-      }
-
-      std::cout << "\n========================================" << std::endl;
-      std::cout << "SCENARIO 08 - BSHH-S4 ATTACK CONFIGURED"          << std::endl;
-      std::cout << "Attacker : Controller (malicious, RSU in path)"    << std::endl;
-      std::cout << "Pairs    : " << s8_pairs.size()                    << std::endl;
-      for (auto& p : s8_pairs)
-          std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
-      std::cout << "========================================\n" << std::endl;
-
-      for (uint32_t pi = 0; pi < s8_pairs.size(); pi++) {
-          uint32_t vA    = s8_pairs[pi].first;
-          uint32_t vB    = s8_pairs[pi].second;
-          uint32_t cidxA = pi * 2;
-          uint32_t cidxB = pi * 2 + 1;
-          double   dt    = pi * 0.0005;
-
-          Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + dt),
-              &BSHH_S4_VehiclesToRSU, vA, vB, rsu_id, BSHH_S4_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + dt + 0.1),
-              &BSHH_S4_StoreOldHeartbeats, vA, vB, BSHH_S4_OLD_HB_TIME);
-          Simulator::Schedule(Seconds(BSHH_S4_REPLAY_TIME + dt),
-              &BSHH_S4_InternalReplay, vA, vB, BSHH_S4_OLD_HB_TIME);
-
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxA), 0, 150, 255);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxA), ("V" + std::to_string(cidxA) + "-Victim").c_str());
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxB), 0, 255, 100);
-          anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxB), ("V" + std::to_string(cidxB) + "-Victim").c_str());
-      }
-      anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0);
-      anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
-      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
-=======
       uint32_t n_malicious_ctrl4b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
       if (n_malicious_ctrl4b < 1u)                      n_malicious_ctrl4b = 1u;
@@ -145360,7 +145164,6 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(controller_Node.Get(ci),
               ("Ctrl-" + std::to_string(ci) + "-Benign").c_str());
       }
->>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
   }
 
 
