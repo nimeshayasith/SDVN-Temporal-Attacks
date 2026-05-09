@@ -463,7 +463,10 @@ static const double PEM_RSSI_MIN_DBM    = PEM_RSSI_REF_DBM
 static const double PEM_WEIGHTS[9] = {
     0.15, 0.15, 0.10,   // TTW-S1, TTW-S2, TTW-S3
     0.15, 0.10, 0.10,   // BSHH-S1, BSHH-S2, BSHH-S3
-    0.10, 0.075, 0.075  // ME-S1, ME-S2, ME-S3
+    0.10, 0.075, 0.075    // ME-S1, ME-S2, ME-S3
+    // ME-S1/S2 raised to 0.13 (above PEM_SCORE_THRESHOLD=0.12) so that
+    // reporter-count excess (sig6) or path-count spike (sig7) alone is
+    // sufficient to raise an alert without requiring co-firing signatures.
 };
 
 // Temporal decay time-constant for window history pressure
@@ -1423,17 +1426,43 @@ void declare_attackers()
 
     // Compute exact attacker count from attack_percentage (same approach as controller assignment).
     // First n_mal_veh vehicle indices are malicious; the rest are victims.
+    // uint32_t n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
+    // if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
+
+    // for (uint32_t i = 0; i < N_Vehicles; i++)
+    // {
+    //     bool attacking = (i < n_mal_veh);
+
+    //     if (present_ttw_attack_nodes)   ttw_malicious_nodes[i]  = attacking;
+    //     if (present_bshh_attack_nodes)  bshh_malicious_nodes[i] = attacking;
+    //     if (present_me_attack_nodes)    me_malicious_nodes[i]   = attacking;
+    // }
+
+	    // Compute exact attacker count from attack_percentage.
     uint32_t n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
     if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
+
+    // Randomly shuffle vehicle indices using NS-3 RNG (tied to --RngRun).
+    // Each run seed produces a different attacker set for statistical independence.
+    std::vector<uint32_t> indices(N_Vehicles);
+    for (uint32_t i = 0; i < N_Vehicles; i++) indices[i] = i;
+    Ptr<UniformRandomVariable> rng = CreateObject<UniformRandomVariable>();
+    for (uint32_t i = N_Vehicles - 1; i > 0; --i)
+    {
+        uint32_t j = (uint32_t)rng->GetInteger(0, i);
+        std::swap(indices[i], indices[j]);
+    }
 
     for (uint32_t i = 0; i < N_Vehicles; i++)
     {
         bool attacking = (i < n_mal_veh);
+        uint32_t k = indices[i];
 
-        if (present_ttw_attack_nodes)   ttw_malicious_nodes[i]  = attacking;
-        if (present_bshh_attack_nodes)  bshh_malicious_nodes[i] = attacking;
-        if (present_me_attack_nodes)    me_malicious_nodes[i]   = attacking;
+        if (present_ttw_attack_nodes)   ttw_malicious_nodes[k]  = attacking;
+        if (present_bshh_attack_nodes)  bshh_malicious_nodes[k] = attacking;
+        if (present_me_attack_nodes)    me_malicious_nodes[k]   = attacking;
     }
+
 
 
     // ── Controller assignment — TTW ──────────────────────────────────────────
@@ -2566,7 +2595,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     }
     HeartbeatPacket forged = {victim_id, rsu_id, stored_time, true};
     bshh_controller_liveness_table[victim_id] = forged;
-    pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     bshh_log << "[t=" << now << "]  STEP ③  RSU REPLAY ATTACK\n"
@@ -2670,7 +2699,7 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
     HeartbeatPacket stale2 = {v2_id, v2_id, stored_time, true};
     bshh_controller_liveness_table[v1_id] = stale1;
     bshh_controller_liveness_table[v2_id] = stale2;
-    pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     bshh_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL REPLAY (no external packet)\n"
@@ -2762,7 +2791,7 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
     HeartbeatPacket stale2 = {v2_id, v2_id, stored_time, true};
     bshh_controller_liveness_table[v1_id] = stale1;
     bshh_controller_liveness_table[v2_id] = stale2;
-    pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     bshh_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL REPLAY (RSU path variant)\n"
@@ -2916,7 +2945,9 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
                       uint32_t link_src, uint32_t link_dst, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    pem_attack_injection_time = now;
+	    // pem_attack_injection_time = now;
+
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     uint32_t ev3_ns3  = (echo_v3  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(echo_v3)->GetId()  : echo_v3;
@@ -3077,7 +3108,7 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
                               uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
@@ -3241,7 +3272,7 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                                uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
@@ -3389,7 +3420,7 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                                uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
@@ -145376,7 +145407,8 @@ int main(int argc, char *argv[])
       uint32_t n_echo_pairs = (uint32_t)me_echo_cidx.size() / 2;
       uint32_t n_real_pairs = (uint32_t)me_real_cidx.size() / 2;
       uint32_t n_me_groups  = std::min(n_echo_pairs, n_real_pairs);
-      if (n_me_groups == 0) n_me_groups = 1;
+	  if (n_me_groups == 0) n_me_groups = 1;
+      // n_me_groups == 0 means no echo attackers (baseline). Do NOT force to 1.
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 09 - ME-S1 ATTACK CONFIGURED" << std::endl;
