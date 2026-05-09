@@ -144166,10 +144166,12 @@ int main(int argc, char *argv[])
           // Register attacker->victim pair for the pipeline intercept
           ttw_s1_attacker_victim_map[mal_ns3] = vic_ns3;
 
+          // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+          const uint32_t app_veh_base = N_Controllers + 1;
           Ptr<SimpleUdpApplication> app_attacker =
-              DynamicCast<SimpleUdpApplication>(apps.Get(attacker_cidx + 2));
+              DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + attacker_cidx));
           Ptr<SimpleUdpApplication> app_victim =
-              DynamicCast<SimpleUdpApplication>(apps.Get(victim_cidx   + 2));
+              DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + victim_cidx));
 
           // STEP 1 — V2V HELLO exchange at t=10
           Simulator::Schedule(Seconds(10.000), &TTW_SendHelloBeacon,
@@ -144274,6 +144276,9 @@ int main(int argc, char *argv[])
 
       ttws2_total_pairs     = (uint32_t)s2_pairs.size();
       ttws2_completed_pairs = 0;
+      // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+      const uint32_t s2_app_veh_base = N_Controllers + 1;
+
       for (uint32_t pi = 0; pi < (uint32_t)s2_pairs.size(); pi++)
       {
           uint32_t rsu_id  = RSU_Nodes.Get(pi)->GetId(); // pi-th RSU is malicious
@@ -144283,6 +144288,33 @@ int main(int argc, char *argv[])
           uint32_t vA_cidx = pi * 2;
           uint32_t vB_cidx = pi * 2 + 1;
 
+          // Each pair gets its own y-lane; both vehicles and its RSU move accordingly.
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              // Vehicles: attacker moves right, victim moves left (away)
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              // RSU pi: place midway between vehicles, 80m off-lane — within DSRC range
+              if (pi < RSU_Nodes.GetN()) {
+                  Ptr<ConstantVelocityMobilityModel> m_rsu =
+                      DynamicCast<ConstantVelocityMobilityModel>(
+                          RSU_Nodes.Get(pi)->GetObject<MobilityModel>());
+                  if (m_rsu) {
+                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
+                                               y_lane + 80.0, 0.0));
+                      m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+                  }
+              }
+          }
+
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt),
               &TTWS2_VehiclesToRSU, vA, vB, rsu_id, TTWS2_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + 0.1 + dt),
@@ -144291,6 +144323,20 @@ int main(int argc, char *argv[])
               &TTWS2_StorePacket, vA, vB, TTWS2_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME + dt),
               &TTWS2_ReplayAttack, rsu_id, vA, vB, TTWS2_REPLAY_TIME);
+
+          // V→Controller LTE visual packets (topology update path)
+          if (s2_app_veh_base + vA_cidx < apps.GetN()) {
+              Ptr<SimpleUdpApplication> app_vA =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s2_app_veh_base + vA_cidx));
+              Ptr<SimpleUdpApplication> app_vB =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s2_app_veh_base + vB_cidx));
+              Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt + 0.1),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), controller_Node.Get(0), vA_cidx);
+              Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt + 0.11),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(vB_cidx), controller_Node.Get(0), vB_cidx);
+          }
 
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt),
               &PemEmitVehicleBeacon, vA_cidx, vB_cidx);
@@ -144367,6 +144413,9 @@ int main(int argc, char *argv[])
 
       ttws3_total_pairs     = (uint32_t)s3_pairs.size();
       ttws3_completed_pairs = 0;
+      // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+      const uint32_t s3_app_veh_base = N_Controllers + 1;
+
       for (uint32_t pi = 0; pi < s3_pairs.size(); pi++) {
           uint32_t vA    = s3_pairs[pi].first;
           uint32_t vB    = s3_pairs[pi].second;
@@ -144374,12 +144423,43 @@ int main(int argc, char *argv[])
           uint32_t cidxB = pi * 2 + 1;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
 
+          // Each pair gets its own y-lane — all pairs move with attack velocities
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+          }
+
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt),
               &TTWS3_ReceiveLegitimateUpdates, vA, vB, TTWS3_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.1),
               &TTWS3_StorePacketInternal, vA, vB, TTWS3_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS3_INTERNAL_REPLAY + dt),
               &TTWS3_InternalReplay, vA, vB, TTWS3_INTERNAL_REPLAY);
+
+          // V→Controller LTE visual packets (topology update — S3 internal attack,
+          // vehicles send legitimate updates before controller corrupts internally)
+          if (s3_app_veh_base + cidxB < apps.GetN()) {
+              Ptr<SimpleUdpApplication> app_vA =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s3_app_veh_base + cidxA));
+              Ptr<SimpleUdpApplication> app_vB =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s3_app_veh_base + cidxB));
+              // Show legitimate V→Controller update at HELLO time
+              Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.1),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(cidxA), controller_Node.Get(0), cidxA);
+              Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.11),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(cidxB), controller_Node.Get(0), cidxB);
+          }
 
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt),
               &PemEmitVehicleBeacon, cidxA, cidxB);
@@ -144458,6 +144538,9 @@ int main(int argc, char *argv[])
 
       ttws4_total_pairs     = (uint32_t)s4_pairs.size();
       ttws4_completed_pairs = 0;
+      // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+      const uint32_t s4_app_veh_base = N_Controllers + 1;
+
       for (uint32_t pi = 0; pi < s4_pairs.size(); pi++) {
           uint32_t vA    = s4_pairs[pi].first;
           uint32_t vB    = s4_pairs[pi].second;
@@ -144465,12 +144548,54 @@ int main(int argc, char *argv[])
           uint32_t cidxB = pi * 2 + 1;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
 
+          // Each pair gets its own y-lane — all pairs move with attack velocities.
+          // RSU is positioned midway between attacker/victim, within DSRC range.
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              // Place RSU 0 (the single relay) in lane 0, then others by pi if available
+              uint32_t rsu_lane_idx = (RSU_Nodes.GetN() > 1) ? pi : 0;
+              if (rsu_lane_idx < RSU_Nodes.GetN()) {
+                  Ptr<ConstantVelocityMobilityModel> m_rsu =
+                      DynamicCast<ConstantVelocityMobilityModel>(
+                          RSU_Nodes.Get(rsu_lane_idx)->GetObject<MobilityModel>());
+                  if (m_rsu) {
+                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
+                                               y_lane + 80.0, 0.0));
+                      m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+                  }
+              }
+          }
+
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt),
               &TTWS4_VehiclesToRSU, vA, vB, rsu_id4, TTWS4_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.1),
               &TTWS4_StorePacketInternal, vA, vB, TTWS4_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS4_INTERNAL_REPLAY + dt),
               &TTWS4_InternalReplay, vA, vB, TTWS4_INTERNAL_REPLAY);
+
+          // V→Controller LTE visual packets (vehicles send topology to controller via RSU path)
+          if (s4_app_veh_base + cidxB < apps.GetN()) {
+              Ptr<SimpleUdpApplication> app_vA =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s4_app_veh_base + cidxA));
+              Ptr<SimpleUdpApplication> app_vB =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s4_app_veh_base + cidxB));
+              Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.1),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(cidxA), controller_Node.Get(0), cidxA);
+              Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.11),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(cidxB), controller_Node.Get(0), cidxB);
+          }
 
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt),
               &PemEmitVehicleBeacon, cidxA, cidxB);
