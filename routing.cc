@@ -142,8 +142,9 @@ const int Flow_size  = 55;
 uint32_t  flow_size  = 55;
 const int total_size = 100;
 
-uint32_t N_RSUs     = 0;
-uint32_t N_Vehicles = 80;
+uint32_t N_RSUs        = 0;
+uint32_t N_Vehicles    = 80;
+uint32_t N_Controllers = 1;
 
 const int flows = 2;
 
@@ -289,9 +290,15 @@ std::set<uint32_t>           ttw_s1_pending_attackers;
 
 
 // S2: RSU intercepts RSU_dataunicast_agent — one pair per call
-// S1: pair-completion counter — used to print the banner exactly once
+// Pair-completion counters — each banner prints only once, after the last pair
 uint32_t ttw_s1_total_pairs       = 0;
 uint32_t ttw_s1_completed_pairs   = 0;
+uint32_t ttws2_total_pairs        = 0;
+uint32_t ttws2_completed_pairs    = 0;
+uint32_t ttws3_total_pairs        = 0;
+uint32_t ttws3_completed_pairs    = 0;
+uint32_t ttws4_total_pairs        = 0;
+uint32_t ttws4_completed_pairs    = 0;
 double   ttw_physical_break_time  = 0.0; // computed in main() after cmd.Parse
 
 // S2: RSU intercepts RSU_dataunicast_agent
@@ -353,11 +360,17 @@ private:
 #define TTWS4_HELLO_TIME     TTW_HELLO_TIME
 #define TTWS4_LINK_BREAK     TTW_LINK_BREAK
 #define TTWS4_INTERNAL_REPLAY TTW_REPLAY_TIME
-std::map<std::string, TopologyPacket> ttws2_stored_packets;
+TopologyPacket ttws2_stored_packet;
+bool           ttws2_packet_stored = false;
+double         ttws2_forged_timestamp = 0.0;
 std::ofstream  ttws2_log;
-std::map<std::string, TopologyPacket> ttws3_stored_packets;
+TopologyPacket ttws3_stored_packet;
+bool           ttws3_packet_stored = false;
+double         ttws3_forged_timestamp = 0.0;
 std::ofstream  ttws3_log;
-std::map<std::string, TopologyPacket> ttws4_stored_packets;
+TopologyPacket ttws4_stored_packet;
+bool           ttws4_packet_stored = false;
+double         ttws4_forged_timestamp = 0.0;
 std::ofstream  ttws4_log;
 
 // ── BSHH globals ──────────────────────────────────────────────────────────────
@@ -1330,14 +1343,14 @@ static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
 
 // Returns true with probability (pct/100) using the node index as a
 // deterministic seed so results are reproducible across identical runs.
-static bool GetBooleanWithProbability(uint32_t pct, uint32_t node_index)
-{
-    if (pct == 0)   return false;
-    if (pct >= 100) return true;
-    // Use a simple hash of the node index so each node gets a fixed draw.
-    uint32_t hash = (node_index * 2654435761u) >> 16u;
-    return (hash % 100u) < pct;
-}
+// static bool GetBooleanWithProbability(uint32_t pct, uint32_t node_index)
+// {
+//     if (pct == 0)   return false;
+//     if (pct >= 100) return true;
+//     // Use a simple hash of the node index so each node gets a fixed draw.
+//     uint32_t hash = (node_index * 2654435761u) >> 16u;
+//     return (hash % 100u) < pct;
+// }
 
 // Maps attack_scenario (1–12) to the present_*_attack_* flags.
 // Called once after cmd.Parse(), before declare_attackers().
@@ -1407,14 +1420,20 @@ void declare_attackers()
     bshh_malicious_nodes.assign(N_Vehicles, false);
     me_malicious_nodes.assign(N_Vehicles, false);
 
+    // Compute exact attacker count from attack_percentage (same approach as controller assignment).
+    // First n_mal_veh vehicle indices are malicious; the rest are victims.
+    uint32_t n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
+    if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
+
     for (uint32_t i = 0; i < N_Vehicles; i++)
     {
-        bool attacking = GetBooleanWithProbability(attack_percentage, i);
+        bool attacking = (i < n_mal_veh);
 
         if (present_ttw_attack_nodes)   ttw_malicious_nodes[i]  = attacking;
         if (present_bshh_attack_nodes)  bshh_malicious_nodes[i] = attacking;
         if (present_me_attack_nodes)    me_malicious_nodes[i]   = attacking;
     }
+
 
     // ── Controller assignment — TTW ──────────────────────────────────────────
     for (int k = 0; k < 4; k++) ttw_malicious_controllers[k] = false;
@@ -1488,9 +1507,9 @@ void TTW_InitLog()
     ttw_log << "  t=10    ②  Topology updates to controller\n";
     ttw_log << "  t=10    ③  Attacker stores old packet\n";
     ttw_log << "  t=15        Link breaks physically\n";
-    ttw_log << "  t=20    ④  Attacker forges timestamp\n";
-    ttw_log << "  t=20    ⑤  Forged packet sent to controller\n";
-    ttw_log << "  t=20    ⑥  Controller issues faulty routing\n\n";
+  	ttw_log << "  t=20    ④  Attacker forges timestamp t=10→t=20\n";
+ 	ttw_log << "  t=20    ⑤  Forged packet sent to controller\n";
+  	ttw_log << "  t=20    ⑥  Controller routing poisoned (ghost link)\n\n";
     ttw_log << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S4] Log opened: ttw_attack_scenario4.txt");
 }
@@ -1619,7 +1638,8 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
             << ttw_physical_break_time << "s"
             << " (dist > " << TTW_COMM_RANGE << "m)\n"
             << "  Simulation declares it broken at t=" << TTW_LINK_BREAK
-            << "s — controller receives no link-down notification.\n\n";
+            << "s — controller receives no link-down notification.\n\n"
+            << std::setprecision(3);
 }
 
 // ── STEPS 4+5+6: Replay attack ───────────────────────────────────────────────
@@ -1642,33 +1662,37 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     Vector pa = ma->GetPosition(), pv = mv->GetPosition();
     double dist = std::sqrt(std::pow(pa.x-pv.x,2.0)+std::pow(pa.y-pv.y,2.0));
 
-    // STEP 4: Build forged packet
+    // STEP 4: Forge timestamp — change stored t=10 to appear current (t=20)
+    const double stored_ts = ttw_stored_packets[src_id].timestamp;
     TopologyPacket forged = {src_id, dst_id, forged_time, true};
 
-    ttw_log << "[t=" << now << "]  STEP ④  FORGING TIMESTAMP\n"
-            << "  Original : <V" << src_id << " sees V" << dst_id
-            << ", t=" << ttw_stored_packets[src_id].timestamp << ">\n"
-            << "  Forged   : <V" << src_id << " sees V" << dst_id
-            << ", t=" << forged_time << ">  MALICIOUS\n"
+    ttw_log << "[t=" << now << "]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK\n"
+            << "  Stored packet : <V" << src_id << " sees V" << dst_id
+            << ", t=" << stored_ts << ">  (original observation at t=" << stored_ts << ")\n"
+            << "  Forged packet : <V" << src_id << " sees V" << dst_id
+            << ", t=" << forged_time << ">  timestamp changed " << stored_ts << " -> " << forged_time << "\n"
+            << "  Forge action  : attacker changes timestamp to appear current, sends to controller at t=" << now
+            << " — link has been broken since t≈" << ttw_physical_break_time << "s\n"
             << "  Physical link distance : " << dist << " m  "
             << (dist > TTW_COMM_RANGE ? "BROKEN\n\n" : "WARNING still in range!\n\n");
+
 
     // STEP 5: Send to controller
     std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
     ttw_controller_table[key] = forged;
 
-    NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-5 REPLAY SENT"
+        NS_LOG_INFO("[TTW-S1] t=" << now << "s  STEP-5 FORGED REPLAY SENT"
                 << "  <V" << src_id << " sees V" << dst_id
-                << ", t=" << forged_time << ">  CONTROLLER DECEIVED");
+                << ", t=" << forged_time << ">  (stored=" << stored_ts << ")  CONTROLLER DECEIVED");
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S1][t=" << now << "]  V" << src_id
               << " --FORGED replay--> Controller"
               << "  <V" << src_id << " sees V" << dst_id
-              << ", t=" << forged_time << ">  CONTROLLER DECEIVED"
+              << ", t=" << forged_time << ">  (stored=" << stored_ts << ")  CONTROLLER DECEIVED"
               << "  (link physically BROKEN  dist=" << dist << "m)" << std::endl;
 
-    ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET -> CONTROLLER\n"
-            << "  Controller ACCEPTED (cannot detect forgery)\n\n";
+        ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET → CONTROLLER\n"
+            << "  Controller ACCEPTED forged packet (no timestamp-integrity protection)\n\n";
 
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
@@ -1677,16 +1701,18 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
     // STEP 6: Log faulty routing consequence
     const bool linkPhysicallyBroken = (dist > TTW_COMM_RANGE);
-    ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
+        ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
             << "  Controller believes V" << src_id << "<->V" << dst_id
-            << " ACTIVE at t=" << forged_time << "\n"
+            << " was ACTIVE at t=" << forged_time
+            << " (forged entry — link broken since t≈" << ttw_physical_break_time << "s)\n"
             << "  Physical reality : link "
             << (linkPhysicallyBroken ? "BROKEN" : "ACTIVE")
             << " (dist=" << dist << "m)\n"
             << (linkPhysicallyBroken
                     ? "  Consequence : packets routed via ghost link will be DROPPED\n"
-                    : "  Consequence : controller holds forged timestamp — link will appear valid past its true expiry\n")
-            << "  Topology timeline CORRUPTED — controller has wrong temporal reference\n\n";
+                    : "  Consequence : controller holds forged entry — link will appear valid past its true expiry\n")
+            << "  Topology timeline CORRUPTED — controller has forged temporal reference\n\n";
+
 
     NS_LOG_INFO("[TTW-S4] ATTACK COMPLETE — ghost link V"
                 << src_id << "<->V" << dst_id << " injected");
@@ -1745,7 +1771,8 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
                  src_id,
                  src_id,
                  dst_id,
-                (ttw_stored_packets.count(src_id) ? ttw_stored_packets[src_id].timestamp : 0.0),
+                (ttw_s1_forged_timestamp > 0.0 ? ttw_s1_forged_timestamp
+                 : (ttw_stored_packets.count(src_id) ? ttw_stored_packets[src_id].timestamp : 0.0)),
                  Simulator::Now().GetSeconds(),
                  reporterPosition,
                  sourcePosition,
@@ -1802,8 +1829,8 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    std::string _sk2 = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    double _ts2 = ttws2_stored_packets.count(_sk2) ? ttws2_stored_packets[_sk2].timestamp : 0.0;
+    double _ts2 = (ttws2_forged_timestamp > 0.0) ? ttws2_forged_timestamp
+                 : (ttws2_packet_stored ? ttws2_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  rsu_id, v1_id, rsu_id,
                  v1_id, v2_id,
@@ -1844,11 +1871,11 @@ void TTWS2_InitLog()
               << "========================================================\n\n"
               << "  t=10    ①  V2V HELLO + vehicles -> RSU\n"
               << "  t=10    ②  RSU aggregates + forwards to controller\n"
-              << "  t=10    ③  Malicious RSU stores old packet\n"
+              << "  t=10    ③  Malicious RSU stores old packet <V1 sees V2, t=10>\n"
               << "  t=15        Link breaks physically\n"
-              << "  t=20    ④  RSU forges timestamp\n"
-              << "  t=20    ⑤  Forged packet sent to controller\n"
-              << "  t=20    ⑥  Controller issues faulty routing\n\n"
+              << "  t=20    ④  RSU forges timestamp t=10→t=20, replays to controller\n"
+              << "  t=20    ⑤  Forged packet <V1 sees V2, t=20> accepted by controller\n"
+              << "  t=20    ⑥  Controller routing poisoned (ghost link active)\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S2] Log opened: ttw_s2_attack_log.txt");
 }
@@ -1913,28 +1940,32 @@ void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
 void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time)
 {
     double now = Simulator::Now().GetSeconds();
-    std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    ttws2_stored_packets[key] = {v1_id, v2_id, obs_time, false};
+    ttws2_stored_packet = {v1_id, v2_id, obs_time, false};
+    ttws2_packet_stored = true;
     ttws2_log << "[t=" << now << "]  STEP ③  MALICIOUS RSU STORES PACKET\n"
               << "  old_packet : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
               << "  Awaiting replay at t=" << TTWS2_REPLAY_TIME << "\n"
-              << "  Link will break at t=" << TTWS2_LINK_BREAK << "\n\n";
+              << "  Link physically breaks at t≈" << std::fixed << std::setprecision(1)
+              << ttw_physical_break_time << "s (dist > " << TTW_COMM_RANGE << "m)\n"
+              << "  Simulation declares it broken at t=" << TTWS2_LINK_BREAK
+              << "s — controller receives no link-down notification.\n\n"
+              << std::setprecision(3);
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S2][t=" << now << "]  Malicious RSU stored old packet"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
-              << "  (link breaks t=" << TTWS2_LINK_BREAK << ", replay at t=" << TTWS2_REPLAY_TIME << ")" << std::endl;
+              << "  (link breaks t≈" << ttw_physical_break_time << "s, replay at t=" << TTWS2_REPLAY_TIME << ")" << std::endl;
 }
 
 void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double forged_time)
 {
     double now = Simulator::Now().GetSeconds();
-    std::string storeKey = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    if (ttws2_stored_packets.find(storeKey) == ttws2_stored_packets.end()) {
-
+    if (!ttws2_packet_stored) {
         NS_LOG_WARN("[TTW-S2] No stored packet!");
         return;
     }
+    const double stored_ts2 = ttws2_stored_packet.timestamp;
+    ttws2_forged_timestamp = forged_time;   // RSU forges timestamp: stored t=10 → forged t=20
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
@@ -1942,19 +1973,20 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    ttws2_log << "[t=" << now << "]  STEP ④  FORGING TIMESTAMP\n"
-              << "  Original : <V" << v1_id << " sees V" << v2_id
-              << ", t=" << ttws2_stored_packets[storeKey].timestamp << ">\n"
-              << "  Forged   : <V" << v1_id << " sees V" << v2_id
-              << ", t=" << forged_time << ">  MALICIOUS\n\n"
-              << "[t=" << now << "]  STEP ⑤  FORGED PACKET -> CONTROLLER (via RSU_" << rsu_id << ")\n"
-              << "  Controller ACCEPTED (cannot detect RSU forgery)\n\n"
+    ttws2_log << "[t=" << now << "]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_" << rsu_id << ")\n"
+              << "  Stored packet : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << stored_ts2 << ">  (original RSU-aggregated observation at t=" << stored_ts2 << ")\n"
+              << "  Forged packet : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << forged_time << ">  timestamp changed " << stored_ts2 << " -> " << forged_time << "\n"
+              << "  Forge action  : RSU changes timestamp to appear current, injects to controller at t=" << now << "\n\n"
+              << "[t=" << now << "]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_" << rsu_id << ")\n"
+              << "  Controller ACCEPTED forged packet (no timestamp-integrity protection)\n\n"
               << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
-              << " ACTIVE at t=" << forged_time << "\n"
+              << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  Consequence : packets routed via ghost link will be DROPPED\n\n";
-    ttws2_log << "  Final Controller Topology Table:\n"
+    ttws2_log << "  Topology Table (after replay):\n"
               << "  Src   Dst   Timestamp   Forged?\n"
               << "  ──────────────────────────────────\n";
     for (auto& e : ttw_controller_table) {
@@ -1963,18 +1995,22 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
                   << "    t=" << p.timestamp
                   << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
     }
-    ttws2_log << "\n========================================================\n"
-              << "  TTW ATTACK S2 COMPLETE\n"
-              << "========================================================\n";
+    ++ttws2_completed_pairs;
+    if (ttws2_completed_pairs >= ttws2_total_pairs)
+    {
+        ttws2_log << "\n========================================================\n"
+                  << "  TTW ATTACK S2 COMPLETE\n"
+                  << "========================================================\n";
+    }
     ttws2_log.flush();
     NS_LOG_INFO("[TTW-S2] t=" << now << "s  RSU_" << rsu_id
-                << " injected forged <V" << v1_id << " sees V" << v2_id
-                << ", t=" << forged_time << ">");
+                << " injected FORGED <V" << v1_id << " sees V" << v2_id
+                << ", t=" << forged_time << ">  (stored was t=" << stored_ts2 << ")");
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S2][t=" << now << "]  RSU_" << rsu_id
               << " --FORGED replay--> Controller"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
-              << "  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***" << std::endl;
+              << "  (stored=" << stored_ts2 << ")  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS2_RunDetection, rsu_id, v1_id, v2_id);
 }
 
@@ -1990,8 +2026,8 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    std::string _sk3 = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    double _ts3 = ttws3_stored_packets.count(_sk3) ? ttws3_stored_packets[_sk3].timestamp : 0.0;
+    double _ts3 = (ttws3_forged_timestamp > 0.0) ? ttws3_forged_timestamp
+                 : (ttws3_packet_stored ? ttws3_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
@@ -2016,9 +2052,9 @@ void TTWS3_InitLog()
               << "  TTW Attack S3 — Malicious Controller, No RSU         \n"
               << "========================================================\n\n"
               << "  t=10    ①  V2V HELLO + legitimate updates to controller\n"
-              << "  t=10    ②  Controller stores legitimately + keeps stale copy\n"
+              << "  t=10    ②  Controller stores legitimately + keeps copy <V1 sees V2, t=10>\n"
               << "  t=15        Link breaks physically\n"
-              << "  t=20    ③  Controller internally replays stale entry\n"
+              << "  t=20    ③  Controller forges timestamp t=10→t=20, reinserts into database\n"
               << "  t=20    ④  Controller table poisoned (no external packet)\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S3] Log opened: ttw_s3_attack_log.txt");
@@ -2065,13 +2101,15 @@ void TTWS3_ReceiveLegitimateUpdates(uint32_t v1_id, uint32_t v2_id, double obs_t
 void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
 {
     double now = Simulator::Now().GetSeconds();
-    std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    ttws3_stored_packets[key] = {v1_id, v2_id, obs_time, false};
+    ttws3_stored_packet = {v1_id, v2_id, obs_time, false};
+    ttws3_packet_stored = true;
     ttws3_log << "[t=" << now << "]  STEP ②  CONTROLLER KEEPS STALE COPY\n"
               << "  Stored : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
-              << "  Link will break at t=" << TTWS3_LINK_BREAK
-              << " — controller WILL NOT time out this entry\n\n";
+              << "  Link physically breaks at t≈" << std::fixed << std::setprecision(1)
+              << ttw_physical_break_time << "s (dist > " << TTW_COMM_RANGE << "m)\n"
+              << "  Controller WILL NOT time out this entry\n\n"
+              << std::setprecision(3);
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S3][t=" << now << "]  Controller keeps stale copy"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
@@ -2081,11 +2119,12 @@ void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
 void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 {
     double now = Simulator::Now().GetSeconds();
-    std::string storeKey = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    if (ttws3_stored_packets.find(storeKey) == ttws3_stored_packets.end()) {
+    if (!ttws3_packet_stored) {
         NS_LOG_WARN("[TTW-S3] No stored packet!");
         return;
     }
+    const double stored_ts3 = ttws3_stored_packet.timestamp;
+    ttws3_forged_timestamp = forged_time;   // Controller forges: stored t=10 → forged t=20
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
@@ -2096,17 +2135,19 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    ttws3_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL REPLAY\n"
-              << "  Original : <V" << v1_id << " sees V" << v2_id
-              << ", t=" << ttws3_stored_packets[storeKey].timestamp << ">\n"
-              << "  Forged   : <V" << v1_id << " sees V" << v2_id
-              << ", t=" << forged_time << ">  MALICIOUS (controller self-poisoned)\n\n"
-              << "[t=" << now << "]  STEP ④  TABLE POISONED (no external packet)\n"
+    ttws3_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION\n"
+              << "  Stored entry  : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << stored_ts3 << ">  (captured from legitimate update at t=" << stored_ts3 << ")\n"
+              << "  Forged packet : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << forged_time << ">  timestamp changed " << stored_ts3 << " -> " << forged_time << "\n"
+              << "  Forge action  : controller changes timestamp to appear current, reinserts at t=" << now
+              << " — no external packet required\n\n"
+              << "[t=" << now << "]  STEP ④  TABLE POISONED (internal — no external packet)\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
-              << " ACTIVE at t=" << forged_time << "\n"
+              << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
-    ttws3_log << "  Final Controller Topology Table:\n"
+    ttws3_log << "  Topology Table (after replay):\n"
               << "  Src   Dst   Timestamp   Forged?\n"
               << "  ──────────────────────────────────\n";
     for (auto& e : ttw_controller_table) {
@@ -2115,16 +2156,21 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
                   << "    t=" << p.timestamp
                   << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
     }
-    ttws3_log << "\n========================================================\n"
-              << "  TTW ATTACK S3 COMPLETE\n"
-              << "========================================================\n";
+    ++ttws3_completed_pairs;
+    if (ttws3_completed_pairs >= ttws3_total_pairs)
+    {
+        ttws3_log << "\n========================================================\n"
+                  << "  TTW ATTACK S3 COMPLETE\n"
+                  << "========================================================\n";
+    }
     ttws3_log.flush();
-    NS_LOG_INFO("[TTW-S3] t=" << now << "s  Controller poisoned table <V"
-                << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">");
+    NS_LOG_INFO("[TTW-S3] t=" << now << "s  Controller FORGED + poisoned table <V"
+                << v1_id << " sees V" << v2_id << ", t=" << forged_time
+                << ">  (stored was t=" << stored_ts3 << ")");
     std::cout << std::fixed << std::setprecision(3)
-              << "[TTW-S3][t=" << now << "]  Controller --INTERNAL REPLAY--> own table"
+              << "[TTW-S3][t=" << now << "]  Controller --TIMESTAMP FORGE + REINSERTION--> own table"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
-              << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
+              << "  (stored=" << stored_ts3 << ")  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS3_RunDetection, v1_id, v2_id);
 }
 
@@ -2138,8 +2184,8 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    std::string _sk4 = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    double _ts4 = ttws4_stored_packets.count(_sk4) ? ttws4_stored_packets[_sk4].timestamp : 0.0;
+    double _ts4 = (ttws4_forged_timestamp > 0.0) ? ttws4_forged_timestamp
+                 : (ttws4_packet_stored ? ttws4_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
@@ -2163,10 +2209,11 @@ void TTWS4_InitLog()
     ttws4_log << "========================================================\n"
               << "  TTW Attack S4 — Malicious Controller, With RSU       \n"
               << "========================================================\n\n"
-              << "  t=10    ①  V1/V2 -> RSU -> Controller (legitimate)\n"
-              << "  t=10    ②  Controller stores stale copy from RSU aggregate\n"
+              << "  t=10    ①  V1/V2 -> RSU -> Controller (legitimate aggregate)\n"
+              << "  t=10    ②  Controller stores copy <V1 sees V2, t=10> from RSU aggregate\n"
               << "  t=15        Link breaks physically\n"
-              << "  t=20    ③  Controller internally replays with forged timestamp\n\n"
+              << "  t=20    ③  Controller forges timestamp t=10→t=20, reinserts into database\n"
+              << "  t=20    ④  Controller table poisoned (no external packet)\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S4-new] Log opened: ttw_s4_attack_log.txt");
 }
@@ -2208,12 +2255,15 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
 void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
 {
     double now = Simulator::Now().GetSeconds();
-    std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    ttws4_stored_packets[key] = {v1_id, v2_id, obs_time, false};
+    ttws4_stored_packet = {v1_id, v2_id, obs_time, false};
+    ttws4_packet_stored = true;
     ttws4_log << "[t=" << now << "]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)\n"
               << "  Stored : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
-              << "  Will internally replay at t=" << TTWS4_INTERNAL_REPLAY << "\n\n";
+              << "  Link physically breaks at t≈" << std::fixed << std::setprecision(1)
+              << ttw_physical_break_time << "s (dist > " << TTW_COMM_RANGE << "m)\n"
+              << "  Controller WILL NOT time out this entry — will replay at t=" << TTWS4_INTERNAL_REPLAY << "\n\n"
+              << std::setprecision(3);
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S4][t=" << now << "]  Controller stores stale copy (from RSU aggregate)"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
@@ -2223,13 +2273,15 @@ void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
 void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 {
     double now = Simulator::Now().GetSeconds();
-    std::string storeKey = std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    if (ttws4_stored_packets.find(storeKey) == ttws4_stored_packets.end()) {
+    if (!ttws4_packet_stored) {
         NS_LOG_WARN("[TTW-S4-new] No stored packet!");
         return;
     }
+    const double stored_ts4 = ttws4_stored_packet.timestamp;
+    ttws4_forged_timestamp = forged_time;   // Controller forges: stored t=10 → forged t=20
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
-    ttw_controller_table[storeKey] = forged;
+    std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
+    ttw_controller_table[key] = forged;
 
     TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
@@ -2237,14 +2289,20 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    ttws4_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL REPLAY (RSU path variant)\n"
-              << "  Original : <V" << v1_id << " sees V" << v2_id
-              << ", t=" << ttws4_stored_packets[storeKey].timestamp << ">\n"
-              << "  Forged   : <V" << v1_id << " sees V" << v2_id
-              << ", t=" << forged_time << ">  MALICIOUS\n"
-              << "  RSU was in data path — controller re-injects stale entry\n"
+    ttws4_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)\n"
+              << "  Stored entry  : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << stored_ts4 << ">  (captured from RSU-aggregated update at t=" << stored_ts4 << ")\n"
+              << "  Forged packet : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << forged_time << ">  timestamp changed " << stored_ts4 << " -> " << forged_time << "\n"
+              << "  Forge action  : controller changes timestamp to appear current, reinserts at t=" << now
+              << " — no external packet required\n"
+              << "  RSU was in original data path (V→RSU→Controller)\n\n"
+              << "[t=" << now << "]  STEP ④  TABLE POISONED (internal — no external packet)\n"
+              << "  Controller believes V" << v1_id << "<->V" << v2_id
+              << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
+              << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
-    ttws4_log << "  Final Controller Topology Table:\n"
+    ttws4_log << "  Topology Table (after replay):\n"
               << "  Src   Dst   Timestamp   Forged?\n"
               << "  ──────────────────────────────────\n";
     for (auto& e : ttw_controller_table) {
@@ -2253,16 +2311,21 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
                   << "    t=" << p.timestamp
                   << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
     }
-    ttws4_log << "\n========================================================\n"
-              << "  TTW ATTACK S4 COMPLETE\n"
-              << "========================================================\n";
+    ++ttws4_completed_pairs;
+    if (ttws4_completed_pairs >= ttws4_total_pairs)
+    {
+        ttws4_log << "\n========================================================\n"
+                  << "  TTW ATTACK S4 COMPLETE\n"
+                  << "========================================================\n";
+    }
     ttws4_log.flush();
-    NS_LOG_INFO("[TTW-S4-new] t=" << now << "s  Controller (RSU variant) poisoned table <V"
-                << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">");
+    NS_LOG_INFO("[TTW-S4-new] t=" << now << "s  Controller (RSU variant) FORGED + poisoned table <V"
+                << v1_id << " sees V" << v2_id << ", t=" << forged_time
+                << ">  (stored was t=" << stored_ts4 << ")");
     std::cout << std::fixed << std::setprecision(3)
-              << "[TTW-S4][t=" << now << "]  Controller --INTERNAL REPLAY (RSU path variant)--> own table"
+              << "[TTW-S4][t=" << now << "]  Controller --TIMESTAMP FORGE + REINSERTION (RSU path)--> own table"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
-              << "  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
+              << "  (stored=" << stored_ts4 << ")  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS4_RunDetection, v1_id, v2_id);
 }
 
@@ -2277,12 +2340,14 @@ void BSHH_S1_InitLog()
     bshh_log << "========================================================\n"
              << "  BSHH Attack S1 — Malicious Vehicle, No RSU           \n"
              << "========================================================\n\n"
-             << "  t=5    ①  Legitimate heartbeat exchange V1<->V2\n"
+             << "  t=5    ①  Legitimate V2V heartbeat exchange\n"
              << "  t=5    ②  Both forward honest heartbeats to controller\n"
-             << "  t=10   ③  Attacker replays old heartbeat to victim\n"
-             << "  t=10+  ④  Victim forwards old heartbeat to controller\n"
-             << "  t=10+  ⑤  Attacker hijacks same old heartbeat to controller\n"
-             << "  t=10+  ⑥  Controller holds conflicting stale liveness\n\n"
+             << "  t=5+   ③  Attacker stores captured heartbeat (Sender=Victim, t=5)\n"
+             << "  t=10   ④  Attacker sends stored old heartbeat to victim\n"
+             << "  t=10+  ⑤  Victim forwards old heartbeat to controller\n"
+             << "  t=10+  ⑥  Attacker hijacks same old heartbeat to controller\n"
+             << "  t=10+  ⑦  Controller holds conflicting liveness\n\n"
+
              << "========================================================\n\n";
     NS_LOG_INFO("[BSHH-S1] Log opened: bshh_s1_attack_log.txt");
 }
@@ -2295,7 +2360,7 @@ void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
              << "  stored_packet : Heartbeat(Sender=V" << victim_id
              << ", t=" << stored_time << ")\n\n";
     std::cout << std::fixed << std::setprecision(3)
-              << "[BSHH-S1][t=" << now << "]  Stored old heartbeat for replay"
+              << "[BSHH-S1][t=" << now << "]  Attacker captured heartbeat for replay"
               << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time << ")" << std::endl;
 }
 
@@ -2354,7 +2419,7 @@ void BSHH_S1_ReplayOldHeartbeatToVictim(uint32_t attacker_id, uint32_t victim_id
         NS_LOG_WARN("[BSHH-S1] No stored heartbeat for victim " << victim_id << "!");
         return;
     }
-    bshh_log << "[t=" << now << "]  STEP ③  ATTACKER REPLAYS OLD HEARTBEAT TO VICTIM\n"
+        bshh_log << "[t=" << now << "]  STEP ④  ATTACKER SENDS OLD HEARTBEAT TO VICTIM\n"
              << "  V" << attacker_id << " -> V" << victim_id
              << " : Heartbeat(Sender=V" << victim_id
              << ", t=" << stored_time << ")\n"
@@ -2377,7 +2442,7 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t victim_id, double s
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
-    bshh_log << "[t=" << now << "]  STEP ④  VICTIM FORWARDS OLD HEARTBEAT TO CONTROLLER\n"
+        bshh_log << "[t=" << now << "]  STEP ⑤  VICTIM FORWARDS OLD HEARTBEAT TO CONTROLLER\n"
              << "  V" << victim_id << " -> Controller : Heartbeat(Sender=V"
              << victim_id << ", t=" << stored_time << ")\n"
              << "  Controller refreshes V" << victim_id
@@ -2395,12 +2460,12 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
     double now = Simulator::Now().GetSeconds();
     HeartbeatPacket forged = {victim_id, attacker_id, stored_time, true};
     bshh_controller_liveness_table[victim_id] = forged;
-    bshh_log << "[t=" << now << "]  STEP ⑤  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER\n"
+    bshh_log << "[t=" << now << "]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER\n"
              << "  V" << attacker_id << " -> Controller : Heartbeat(claimed=V"
              << victim_id << ", t=" << stored_time << ")\n"
              << "  physical_sender=V" << attacker_id
              << "  claimed_sender=V" << victim_id << "\n"
-             << "  Stale timestamp " << stored_time << " < fresh 5.0 -> replay evidence\n"
+             << "  Stale timestamp " << stored_time << " < current t=" << now << " -> replay evidence\n"
              << "  Different physical sender -> impersonation evidence\n\n";
     bshh_log.flush();
     NS_LOG_INFO("[BSHH-S1] t=" << now << "s  V" << attacker_id
@@ -2416,7 +2481,7 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
 void BSHH_S1_LogFaultyRoutingConsequences(uint32_t attacker_id, uint32_t victim_id)
 {
     double now = Simulator::Now().GetSeconds();
-    bshh_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING CONSEQUENCES\n"
+    bshh_log << "[t=" << now << "]  STEP ⑦  FAULTY ROUTING CONSEQUENCES\n"
              << "  Controller now holds conflicting stale liveness for V" << victim_id << "\n"
              << "  latest physical_sender=V" << attacker_id
              << "  claimed_sender=V" << victim_id << "\n"
@@ -2437,8 +2502,9 @@ void BSHH_S2_InitLog()
              << "  BSHH Attack S2 — Malicious RSU                       \n"
              << "========================================================\n\n"
              << "  t=5   ①  Legitimate HBs V1/V2 -> RSU -> Controller\n"
-             << "  t=5   ②  Malicious RSU stores old HB from victim (t=0)\n"
-             << "  t=10  ③  RSU replays old HB impersonating victim\n\n"
+             << "  t=5   ②  Malicious RSU stores old HB captured at exchange (t=5)\n"
+             << "  t=10  ③  RSU replays stored HB impersonating victim\n\n"
+
              << "========================================================\n\n";
     NS_LOG_INFO("[BSHH-S2] Log opened: bshh_s2_attack_log.txt");
 }
@@ -2537,8 +2603,8 @@ void BSHH_S3_InitLog()
              << "  BSHH Attack S3 — Malicious Controller, No RSU        \n"
              << "========================================================\n\n"
              << "  t=5   ①  Legitimate HBs V1/V2 -> Controller\n"
-             << "  t=5   ②  Controller stores stale copies (t=0)\n"
-             << "  t=10  ③  Controller internally replays stale HBs\n\n"
+             << "  t=5   ②  Controller stores copies captured at exchange (t=5)\n"
+             << "  t=10  ③  Controller internally replays stale HBs (poisoning liveness)\n\n"
              << "========================================================\n\n";
     NS_LOG_INFO("[BSHH-S3] Log opened: bshh_s3_attack_log.txt");
 }
@@ -2604,10 +2670,8 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double stored_time)
     pem_attack_active = true;
     pem_mitigation_active = false;
     bshh_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL REPLAY (no external packet)\n"
-             << "  Overwrites V" << v1_id << " liveness : t=" << stored_time
-             << " (was t=5)\n"
-             << "  Overwrites V" << v2_id << " liveness : t=" << stored_time
-             << " (was t=5)\n"
+             << "  Overwrites V" << v1_id << " liveness with stale t=" << stored_time << "\n"
+             << "  Overwrites V" << v2_id << " liveness with stale t=" << stored_time << "\n"
              << "  Controller believes V" << v1_id << " and V" << v2_id
              << " at old positions\n"
              << "  <- ATTACK SUCCESS\n\n";
@@ -141797,6 +141861,7 @@ int main(int argc, char *argv[])
     CommandLine cmd;
     cmd.AddValue ("N_RSUs", "N_RSUs", N_RSUs);
     cmd.AddValue ("N_Vehicles", "N_Vehicles", N_Vehicles);
+    cmd.AddValue ("N_Controllers", "Number of SDN controller nodes (default 1)", N_Controllers);
     cmd.AddValue ("data_transmission_frequency", "data_transmission_frequency", data_transmission_frequency);
     cmd.AddValue ("link_lifetime_threshold", "link_lifetime_threshold", link_lifetime_threshold);
     cmd.AddValue ("simTime", "simTime", simTime);
@@ -141910,7 +141975,7 @@ int main(int argc, char *argv[])
     clear_solution();
     initialize_all_routing_tables();
   
-  controller_Node.Create(1);
+  controller_Node.Create(N_Controllers);
   management_Node.Create(1); 
 // /  if (routing_test == false)
 //   {
@@ -142626,16 +142691,19 @@ int main(int argc, char *argv[])
 	  }
   }
   
-  //setting the position of controller node 
+  //setting the position of controller node
   //int con_base_posx = rand()%3000;
   //int con_base_posy = rand()%3000;
 
    if (architecture != 1)
    {
-	   Ptr<ConstantVelocityMobilityModel> mdl_controller = DynamicCast <ConstantVelocityMobilityModel> (controller_Node.Get(0)->GetObject<MobilityModel>());
-	   mdl_controller->SetPosition(Vector(con_base_posx, con_base_posy, 0));
-	   mdl_controller->SetVelocity(Vector(0, 0, 0));//centralized controller placement
-	   
+	   for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
+	   {
+	       Ptr<ConstantVelocityMobilityModel> mdl_controller = DynamicCast <ConstantVelocityMobilityModel> (controller_Node.Get(ci)->GetObject<MobilityModel>());
+	       mdl_controller->SetPosition(Vector(con_base_posx + (int)ci * 200, con_base_posy, 0));
+	       mdl_controller->SetVelocity(Vector(0, 0, 0));//centralized controller placement
+	   }
+
 	  //setting the position of management node
 	  //int man_base_posx = rand()%3000;
 	  //int man_base_posy = rand()%3000;
@@ -143917,31 +143985,56 @@ int main(int argc, char *argv[])
 
   AnimationInterface anim(anim_xml_path);
 
-  // ── Fixed positions: Controller at (850,850), RSU at (850,425) ──────────────
+  // ── Fixed positions for NetAnim: controllers stacked vertically at x=950,
+  // management node at (1150, 425), RSUs at (850, 425) per-index.
   // Applied for all 12 attack variants so diagrams are consistent.
   {
-      Ptr<ConstantVelocityMobilityModel> mdl_ctrl =
+      for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
+      {
+          Ptr<ConstantVelocityMobilityModel> mdl_ctrl =
+              DynamicCast<ConstantVelocityMobilityModel>(
+                  controller_Node.Get(ci)->GetObject<MobilityModel>());
+          if (mdl_ctrl)
+          {
+              // Spread controllers vertically (350 m apart = ttw_lane_sep)
+              mdl_ctrl->SetPosition(Vector(950.0, 425.0 + (double)ci * 350.0, 0));
+              mdl_ctrl->SetVelocity(Vector(0.0, 0.0, 0.0));
+          }
+      }
+  }
+  // Management server: right of controllers, centred on vehicle area
+  {
+      Ptr<ConstantVelocityMobilityModel> mdl_man =
           DynamicCast<ConstantVelocityMobilityModel>(
-              controller_Node.Get(0)->GetObject<MobilityModel>());
-      mdl_ctrl->SetPosition(Vector(850.0, 850.0, 0));
-      mdl_ctrl->SetVelocity(Vector(0.0, 0.0, 0.0));
+              management_Node.Get(0)->GetObject<MobilityModel>());
+      if (mdl_man)
+      {
+          double man_y = (controller_Node.GetN() > 1)
+                         ? 425.0 + (double)(controller_Node.GetN() - 1) * 175.0
+                         : 425.0;
+          mdl_man->SetPosition(Vector(1150.0, man_y, 0));
+          mdl_man->SetVelocity(Vector(0.0, 0.0, 0.0));
+      }
   }
   if (N_RSUs > 0 && RSU_Nodes.GetN() > 0)
   {
-      Ptr<ConstantVelocityMobilityModel> mdl_rsu =
-          DynamicCast<ConstantVelocityMobilityModel>(
-              RSU_Nodes.Get(0)->GetObject<MobilityModel>());
-      if (mdl_rsu)
+      for (uint32_t ri = 0; ri < RSU_Nodes.GetN(); ri++)
       {
-          mdl_rsu->SetPosition(Vector(850.0, 425.0, 0));
-          mdl_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+          Ptr<ConstantVelocityMobilityModel> mdl_rsu =
+              DynamicCast<ConstantVelocityMobilityModel>(
+                  RSU_Nodes.Get(ri)->GetObject<MobilityModel>());
+          if (mdl_rsu)
+          {
+              mdl_rsu->SetPosition(Vector(850.0, 100.0 + (double)ri * 350.0, 0));
+              mdl_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+          }
       }
   }
 
-  // ── Hide management server and LTE infrastructure — not in attack diagrams ──
-  anim.UpdateNodeColor(management_Node.Get(0), 255, 255, 255);
-  anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 0.1, 0.1);
-  anim.UpdateNodeDescription(management_Node.Get(0), "");
+  // ── Management server — visible as orange node ──────────────────────────────
+  anim.UpdateNodeColor(management_Node.Get(0), 255, 140, 0);   // orange
+  anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 30.0, 30.0);
+  anim.UpdateNodeDescription(management_Node.Get(0), "Management");
 
   if (N_Vehicles > 0 && architecture != 1)
   {
@@ -143979,10 +144072,16 @@ int main(int argc, char *argv[])
       }
   }
 
-  // Controller — purple, fixed at (850, 850), always visible
-  anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 255);
-  anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 30.0, 30.0);
-  anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+  // Controllers — purple by default, always visible
+  for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
+  {
+      anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
+      anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 30.0, 30.0);
+      anim.UpdateNodeDescription(controller_Node.Get(ci),
+          (controller_Node.GetN() > 1
+               ? ("Controller-" + std::to_string(ci)).c_str()
+               : "Controller"));
+  }
 
   // ── TTW-S1: color all malicious nodes RED, all others BLUE ───────────────
   if (attack_scenario == 1)
@@ -144093,10 +144192,12 @@ int main(int argc, char *argv[])
           // Register attacker->victim pair for the pipeline intercept
           ttw_s1_attacker_victim_map[mal_ns3] = vic_ns3;
 
+          // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+          const uint32_t app_veh_base = N_Controllers + 1;
           Ptr<SimpleUdpApplication> app_attacker =
-              DynamicCast<SimpleUdpApplication>(apps.Get(attacker_cidx + 2));
+              DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + attacker_cidx));
           Ptr<SimpleUdpApplication> app_victim =
-              DynamicCast<SimpleUdpApplication>(apps.Get(victim_cidx   + 2));
+              DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + victim_cidx));
 
           // STEP 1 — V2V HELLO exchange at t=10
           Simulator::Schedule(Seconds(10.000), &TTW_SendHelloBeacon,
@@ -144158,46 +144259,87 @@ int main(int argc, char *argv[])
   if (attack_scenario == 2)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
-          std::cout << "[ERROR] TTW-S2 requires --N_RSUs=1. Aborting.\n";
+          std::cout << "[ERROR] TTW-S2 requires --N_RSUs >= 1. Aborting.\n";
           return 1;
       }
       if (N_Vehicles < 2) {
-          std::cout << "[ERROR] TTW-S2 requires --N_Vehicles=2 (V0=victim, V1=victim). Aborting.\n";
+          std::cout << "[ERROR] TTW-S2 requires --N_Vehicles >= 2. Aborting.\n";
           return 1;
       }
       TTWS2_InitLog();
-      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
 
-      // Build victim pairs from ALL vehicles: (V0,V1), (V2,V3), (V4,V5)...
+      // attack_percentage controls how many RSUs are malicious (not vehicle pairs)
+      uint32_t n_malicious_rsus =
+          (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
+      if (n_malicious_rsus < 1u)                        n_malicious_rsus = 1u;
+      if (n_malicious_rsus > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus = (uint32_t)RSU_Nodes.GetN();
+      if (n_malicious_rsus > N_Vehicles / 2)            n_malicious_rsus = N_Vehicles / 2;
+
+      // One victim pair per malicious RSU
       std::vector<std::pair<uint32_t,uint32_t>> s2_pairs;
-      for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2)
+      for (uint32_t ri = 0; ri < n_malicious_rsus; ri++)
       {
-          uint32_t vA = Vehicle_Nodes.Get(k)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(k+1)->GetId();
+          uint32_t vA = Vehicle_Nodes.Get(ri * 2)->GetId();
+          uint32_t vB = Vehicle_Nodes.Get(ri * 2 + 1)->GetId();
           s2_pairs.push_back({vA, vB});
           ttw_s2_all_pairs.push_back({vA, vB});
       }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 02 - TTW-S2 ATTACK CONFIGURED"   << std::endl;
-      std::cout << "Attacker   : RSU_0 (malicious RSU)"       << std::endl;
-      std::cout << "Victim pairs (" << s2_pairs.size() << "):" << std::endl;
-      for (auto& p : s2_pairs)
-          std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
+      std::cout << "Malicious RSUs : " << n_malicious_rsus << " / " << N_RSUs << std::endl;
+      std::cout << "Victim pairs   (" << s2_pairs.size() << "):" << std::endl;
+      for (uint32_t ri = 0; ri < (uint32_t)s2_pairs.size(); ri++)
+          std::cout << "  RSU_" << RSU_Nodes.Get(ri)->GetId()
+                    << "  ->  V" << s2_pairs[ri].first
+                    << " <-> V" << s2_pairs[ri].second << std::endl;
       std::cout << "Timeline:" << std::endl;
-      std::cout << "  t=10s  STEP 1+2 : Each pair -> RSU -> Controller (legit)" << std::endl;
-      std::cout << "  t=10s  STEP 3   : RSU stores each pair's old packet"       << std::endl;
-      std::cout << "  t=15s           : Physical links break"                     << std::endl;
-      std::cout << "  t=20s  STEP 4+5 : RSU replays forged packets"              << std::endl;
+      std::cout << "  t=10s  STEP 1+2 : Each pair -> its RSU -> Controller (legit)" << std::endl;
+      std::cout << "  t=10s  STEP 3   : Each malicious RSU stores pair's old packet" << std::endl;
+      std::cout << "  t=15s           : Physical links break"                         << std::endl;
+      std::cout << "  t=20s  STEP 4+5 : Each malicious RSU replays stale packet"     << std::endl;
       std::cout << "========================================\n" << std::endl;
+
+      ttws2_total_pairs     = (uint32_t)s2_pairs.size();
+      ttws2_completed_pairs = 0;
+      // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+      const uint32_t s2_app_veh_base = N_Controllers + 1;
 
       for (uint32_t pi = 0; pi < (uint32_t)s2_pairs.size(); pi++)
       {
+          uint32_t rsu_id  = RSU_Nodes.Get(pi)->GetId(); // pi-th RSU is malicious
           uint32_t vA      = s2_pairs[pi].first;
           uint32_t vB      = s2_pairs[pi].second;
           double   dt      = pi * 0.0005; // 0.5 ms stagger per pair
           uint32_t vA_cidx = pi * 2;
           uint32_t vB_cidx = pi * 2 + 1;
+
+          // Each pair gets its own y-lane; both vehicles and its RSU move accordingly.
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              // Vehicles: attacker moves right, victim moves left (away)
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              // RSU pi: place midway between vehicles, 80m off-lane — within DSRC range
+              if (pi < RSU_Nodes.GetN()) {
+                  Ptr<ConstantVelocityMobilityModel> m_rsu =
+                      DynamicCast<ConstantVelocityMobilityModel>(
+                          RSU_Nodes.Get(pi)->GetObject<MobilityModel>());
+                  if (m_rsu) {
+                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
+                                               y_lane + 80.0, 0.0));
+                      m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+                  }
+              }
+          }
 
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt),
               &TTWS2_VehiclesToRSU, vA, vB, rsu_id, TTWS2_HELLO_TIME);
@@ -144207,6 +144349,20 @@ int main(int argc, char *argv[])
               &TTWS2_StorePacket, vA, vB, TTWS2_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME + dt),
               &TTWS2_ReplayAttack, rsu_id, vA, vB, TTWS2_REPLAY_TIME);
+
+          // V→Controller LTE visual packets (topology update path)
+          if (s2_app_veh_base + vA_cidx < apps.GetN()) {
+              Ptr<SimpleUdpApplication> app_vA =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s2_app_veh_base + vA_cidx));
+              Ptr<SimpleUdpApplication> app_vB =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s2_app_veh_base + vB_cidx));
+              Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt + 0.1),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), controller_Node.Get(0), vA_cidx);
+              Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt + 0.11),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(vB_cidx), controller_Node.Get(0), vB_cidx);
+          }
 
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + dt),
               &PemEmitVehicleBeacon, vA_cidx, vB_cidx);
@@ -144225,15 +144381,18 @@ int main(int argc, char *argv[])
               anim.UpdateNodeDescription(Vehicle_Nodes.Get(vB_cidx),
                   "V" + std::to_string(vB) + "-Victim");
           }
+
+          // Mark this malicious RSU red in NetAnim
+          anim.UpdateNodeColor(RSU_Nodes.Get(pi), 255, 0, 0);
+          anim.UpdateNodeSize(RSU_Nodes.Get(pi)->GetId(), 35.0, 35.0);
+          anim.UpdateNodeDescription(RSU_Nodes.Get(pi),
+              "RSU-" + std::to_string(pi) + "-Attacker");
       }
 
-      // Single arm call — loads ttw_s2_all_pairs into pending queue (v1/v2 args unused)
+      // Arm pipeline intercept using the first malicious RSU's ID
       Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME - 0.0001),
-          &TTWS2_ActivateReplay, rsu_id, 0u, 0u);
+          &TTWS2_ActivateReplay, RSU_Nodes.Get(0)->GetId(), 0u, 0u);
 
-      anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 35.0, 35.0);
-      anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-Attacker");
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
 
@@ -144250,18 +144409,26 @@ int main(int argc, char *argv[])
       TTWS3_InitLog();
       is_malicious_controller = true;
 
-      // Build victim pairs: (V0,V1), (V2,V3), (V4,V5) ...
+      // attack_percentage controls how many controllers are malicious.
+      // Each malicious controller poisons one victim pair.
+      uint32_t n_malicious_ctrl3 = (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
+      if (n_malicious_ctrl3 < 1u)                       n_malicious_ctrl3 = 1u;
+      if (n_malicious_ctrl3 > controller_Node.GetN())   n_malicious_ctrl3 = controller_Node.GetN();
+      if (n_malicious_ctrl3 > N_Vehicles / 2)           n_malicious_ctrl3 = N_Vehicles / 2;
+
+      // One victim pair per malicious controller
       std::vector<std::pair<uint32_t,uint32_t>> s3_pairs;
-      for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
-          uint32_t vA = Vehicle_Nodes.Get(k)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(k + 1)->GetId();
+      for (uint32_t k = 0; k < n_malicious_ctrl3; k++) {
+          uint32_t vA = Vehicle_Nodes.Get(k * 2)->GetId();
+          uint32_t vB = Vehicle_Nodes.Get(k * 2 + 1)->GetId();
           s3_pairs.push_back({vA, vB});
       }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 03 - TTW-S3 ATTACK CONFIGURED"   << std::endl;
-      std::cout << "Attacker      : Controller (malicious)"    << std::endl;
-      std::cout << "Victim pairs  : " << s3_pairs.size()       << std::endl;
+      std::cout << "Attacker      : " << n_malicious_ctrl3 << " malicious controller(s) / "
+                << controller_Node.GetN() << " total"         << std::endl;
+      std::cout << "Poisoned pairs: " << s3_pairs.size() << " / " << N_Vehicles/2 << std::endl;
       for (auto& p : s3_pairs)
           std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
       std::cout << "Timeline:"                                  << std::endl;
@@ -144270,12 +144437,32 @@ int main(int argc, char *argv[])
       std::cout << "  t=20s  : Controller internal replay (no ext packet)" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
+      ttws3_total_pairs     = (uint32_t)s3_pairs.size();
+      ttws3_completed_pairs = 0;
+      // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+      const uint32_t s3_app_veh_base = N_Controllers + 1;
+
       for (uint32_t pi = 0; pi < s3_pairs.size(); pi++) {
-          uint32_t vA   = s3_pairs[pi].first;
-          uint32_t vB   = s3_pairs[pi].second;
+          uint32_t vA    = s3_pairs[pi].first;
+          uint32_t vB    = s3_pairs[pi].second;
           uint32_t cidxA = pi * 2;
           uint32_t cidxB = pi * 2 + 1;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
+
+          // Each pair gets its own y-lane — all pairs move with attack velocities
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+          }
 
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt),
               &TTWS3_ReceiveLegitimateUpdates, vA, vB, TTWS3_HELLO_TIME);
@@ -144283,6 +144470,22 @@ int main(int argc, char *argv[])
               &TTWS3_StorePacketInternal, vA, vB, TTWS3_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS3_INTERNAL_REPLAY + dt),
               &TTWS3_InternalReplay, vA, vB, TTWS3_INTERNAL_REPLAY);
+
+          // V→Controller LTE visual packets (topology update — S3 internal attack,
+          // vehicles send legitimate updates before controller corrupts internally)
+          if (s3_app_veh_base + cidxB < apps.GetN()) {
+              Ptr<SimpleUdpApplication> app_vA =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s3_app_veh_base + cidxA));
+              Ptr<SimpleUdpApplication> app_vB =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s3_app_veh_base + cidxB));
+              // Show legitimate V→Controller update at HELLO time
+              Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.1),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(cidxA), controller_Node.Get(0), cidxA);
+              Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.11),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(cidxB), controller_Node.Get(0), cidxB);
+          }
 
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt),
               &PemEmitVehicleBeacon, cidxA, cidxB);
@@ -144296,9 +144499,21 @@ int main(int argc, char *argv[])
           anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxB), 0, 255, 100);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxB), ("V" + std::to_string(cidxB) + "-Victim").c_str());
       }
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
-      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+      // Colour malicious controllers red, benign controllers purple
+      for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
+      {
+          if (ci < n_malicious_ctrl3) {
+              anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 35.0, 35.0);
+              anim.UpdateNodeDescription(controller_Node.Get(ci),
+                  ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
+          } else {
+              anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 30.0, 30.0);
+              anim.UpdateNodeDescription(controller_Node.Get(ci),
+                  ("Ctrl-" + std::to_string(ci) + "-Benign").c_str());
+          }
+      }
   }
 
   // ===========================================================================
@@ -144319,18 +144534,26 @@ int main(int argc, char *argv[])
       is_malicious_controller = true;
       uint32_t rsu_id4 = RSU_Nodes.Get(0)->GetId();
 
-      // Build victim pairs: (V0,V1), (V2,V3), (V4,V5) ...
+      // attack_percentage controls how many controllers are malicious.
+      // Each malicious controller poisons one victim pair via the RSU path.
+      uint32_t n_malicious_ctrl4 = (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
+      if (n_malicious_ctrl4 < 1u)                       n_malicious_ctrl4 = 1u;
+      if (n_malicious_ctrl4 > controller_Node.GetN())   n_malicious_ctrl4 = controller_Node.GetN();
+      if (n_malicious_ctrl4 > N_Vehicles / 2)           n_malicious_ctrl4 = N_Vehicles / 2;
+
+      // One victim pair per malicious controller
       std::vector<std::pair<uint32_t,uint32_t>> s4_pairs;
-      for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
-          uint32_t vA = Vehicle_Nodes.Get(k)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(k + 1)->GetId();
+      for (uint32_t k = 0; k < n_malicious_ctrl4; k++) {
+          uint32_t vA = Vehicle_Nodes.Get(k * 2)->GetId();
+          uint32_t vB = Vehicle_Nodes.Get(k * 2 + 1)->GetId();
           s4_pairs.push_back({vA, vB});
       }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 04 - TTW-S4 ATTACK CONFIGURED"   << std::endl;
-      std::cout << "Attacker      : Controller (malicious, RSU in path)" << std::endl;
-      std::cout << "Victim pairs  : " << s4_pairs.size()                 << std::endl;
+      std::cout << "Attacker      : " << n_malicious_ctrl4 << " malicious controller(s) / "
+                << controller_Node.GetN() << " total (RSU in path)" << std::endl;
+      std::cout << "Poisoned pairs: " << s4_pairs.size() << " / " << N_Vehicles/2 << std::endl;
       for (auto& p : s4_pairs)
           std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
       std::cout << "Timeline:"                                            << std::endl;
@@ -144339,12 +144562,45 @@ int main(int argc, char *argv[])
       std::cout << "  t=20s  : Controller internal replay (RSU path variant)"    << std::endl;
       std::cout << "========================================\n" << std::endl;
 
+      ttws4_total_pairs     = (uint32_t)s4_pairs.size();
+      ttws4_completed_pairs = 0;
+      // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+      const uint32_t s4_app_veh_base = N_Controllers + 1;
+
       for (uint32_t pi = 0; pi < s4_pairs.size(); pi++) {
-          uint32_t vA   = s4_pairs[pi].first;
-          uint32_t vB   = s4_pairs[pi].second;
+          uint32_t vA    = s4_pairs[pi].first;
+          uint32_t vB    = s4_pairs[pi].second;
           uint32_t cidxA = pi * 2;
           uint32_t cidxB = pi * 2 + 1;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
+
+          // Each pair gets its own y-lane — all pairs move with attack velocities.
+          // RSU is positioned midway between attacker/victim, within DSRC range.
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              // Place RSU 0 (the single relay) in lane 0, then others by pi if available
+              uint32_t rsu_lane_idx = (RSU_Nodes.GetN() > 1) ? pi : 0;
+              if (rsu_lane_idx < RSU_Nodes.GetN()) {
+                  Ptr<ConstantVelocityMobilityModel> m_rsu =
+                      DynamicCast<ConstantVelocityMobilityModel>(
+                          RSU_Nodes.Get(rsu_lane_idx)->GetObject<MobilityModel>());
+                  if (m_rsu) {
+                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
+                                               y_lane + 80.0, 0.0));
+                      m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+                  }
+              }
+          }
 
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt),
               &TTWS4_VehiclesToRSU, vA, vB, rsu_id4, TTWS4_HELLO_TIME);
@@ -144352,6 +144608,20 @@ int main(int argc, char *argv[])
               &TTWS4_StorePacketInternal, vA, vB, TTWS4_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS4_INTERNAL_REPLAY + dt),
               &TTWS4_InternalReplay, vA, vB, TTWS4_INTERNAL_REPLAY);
+
+          // V→Controller LTE visual packets (vehicles send topology to controller via RSU path)
+          if (s4_app_veh_base + cidxB < apps.GetN()) {
+              Ptr<SimpleUdpApplication> app_vA =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s4_app_veh_base + cidxA));
+              Ptr<SimpleUdpApplication> app_vB =
+                  DynamicCast<SimpleUdpApplication>(apps.Get(s4_app_veh_base + cidxB));
+              Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.1),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(cidxA), controller_Node.Get(0), cidxA);
+              Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.11),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(cidxB), controller_Node.Get(0), cidxB);
+          }
 
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt),
               &PemEmitVehicleBeacon, cidxA, cidxB);
@@ -144366,19 +144636,33 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxB), ("V" + std::to_string(cidxB) + "-Victim").c_str());
       }
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0);
+      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 30.0, 30.0);
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
-      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+      // Colour malicious controllers red, benign controllers purple
+      for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
+      {
+          if (ci < n_malicious_ctrl4) {
+              anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 35.0, 35.0);
+              anim.UpdateNodeDescription(controller_Node.Get(ci),
+                  ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
+          } else {
+              anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 30.0, 30.0);
+              anim.UpdateNodeDescription(controller_Node.Get(ci),
+                  ("Ctrl-" + std::to_string(ci) + "-Benign").c_str());
+          }
+      }
   }
 
   // ===========================================================================
   // SCHEDULE BSHH-S1 ATTACK — Scenario 5 (Malicious Vehicle, No RSU)
   // ===========================================================================
 
-  if (attack_scenario == 5)
+    if (attack_scenario == 5)
   {
       if (N_Vehicles < 2) {
+<<<<<<< HEAD
           std::cout << "[ERROR] BSHH-S1 requires at least --N_Vehicles=2. Aborting.\n";
           return 1;
       }
@@ -144394,9 +144678,51 @@ int main(int argc, char *argv[])
           uint32_t attacker_id = Vehicle_Nodes.Get(k + 1)->GetId();
           s5_pairs.push_back({victim_id, attacker_id});
       }
+=======
+          std::cout << "[ERROR] BSHH-S1 requires --N_Vehicles >= 2. Aborting.\n";
+          return 1;
+      }
+      BSHH_S1_InitLog();
+
+      // Build attacker and victim lists from bshh_malicious_nodes[]
+      std::vector<uint32_t> bshh_attacker_idx, bshh_victim_idx;
+      for (uint32_t k = 0; k < N_Vehicles; k++) {
+          if (bshh_malicious_nodes[k]) bshh_attacker_idx.push_back(k);
+          else                         bshh_victim_idx.push_back(k);
+      }
+      if (bshh_attacker_idx.empty()) {
+          std::cout << "[BSHH-S1] WARNING: 0 attackers selected; defaulting to V1\n";
+          bshh_attacker_idx.push_back(1);
+          if (bshh_victim_idx.empty()) bshh_victim_idx.push_back(0);
+      }
+      // If every vehicle ended up malicious (probabilistic over-assignment),
+      // split the list: first half = attackers, second half = victims.
+      if (bshh_victim_idx.empty()) {
+          uint32_t half = (uint32_t)bshh_attacker_idx.size() / 2;
+          if (half == 0) half = 1;
+          bshh_victim_idx.insert(bshh_victim_idx.end(),
+              bshh_attacker_idx.begin() + half, bshh_attacker_idx.end());
+          bshh_attacker_idx.resize(half);
+      }
+
+      static const double BSHH_S1_EXCHANGE_TIME       = 5.0;
+      static const double BSHH_S1_FORWARD_TIME        = 5.010;
+      static const double BSHH_S1_STORE_TIME          = 5.050;
+      static const double BSHH_S1_REPLAY_TIME         = 10.0;
+      static const double BSHH_S1_VICTIM_FORWARD_TIME = 10.010;
+      static const double BSHH_S1_HIJACK_TIME         = 10.020;
+      static const double BSHH_S1_CONSEQUENCE_TIME    = 10.030;
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
+
+      // Pairs = min(attackers, victims) — never more pairs than available victims
+      const uint32_t bshh_s1_npairs =
+          (uint32_t)std::min(bshh_attacker_idx.size(), bshh_victim_idx.size());
+
+
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED" << std::endl;
+<<<<<<< HEAD
       std::cout << "Attacker type : Malicious vehicle (odd-indexed)"  << std::endl;
       std::cout << "Pairs         : " << s5_pairs.size()              << std::endl;
       for (auto& p : s5_pairs)
@@ -144431,30 +144757,153 @@ int main(int argc, char *argv[])
           anim.UpdateNodeColor(Vehicle_Nodes.Get(cidx_a), 255, 0, 0);
           anim.UpdateNodeSize(Vehicle_Nodes.Get(cidx_a)->GetId(), 35.0, 35.0);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidx_a), ("V" + std::to_string(cidx_a) + "-Attacker").c_str());
+=======
+      std::cout << "Attackers (" << bshh_s1_npairs << "): ";
+      for (uint32_t k : bshh_attacker_idx) std::cout << "V" << k << " ";
+      std::cout << std::endl;
+      std::cout << "Victim pool (" << bshh_victim_idx.size() << "): ";
+      for (uint32_t k : bshh_victim_idx)   std::cout << "V" << k << " ";
+      std::cout << std::endl;
+      std::cout << "Timeline:" << std::endl;
+      std::cout << "  t=5.000s  STEP 1 : V2V heartbeat exchange" << std::endl;
+      std::cout << "  t=5.010s  STEP 2 : Both send honest heartbeats to controller" << std::endl;
+      std::cout << "  t=5.050s  STEP 3 : Attacker stores captured heartbeat (t=5)" << std::endl;
+      std::cout << "  t=10.000s STEP 4 : Attacker sends old heartbeat to victim" << std::endl;
+      std::cout << "  t=10.010s STEP 5 : Victim forwards old heartbeat to controller" << std::endl;
+      std::cout << "  t=10.020s STEP 6 : Attacker hijacks same old heartbeat to controller" << std::endl;
+      std::cout << "  t=10.030s STEP 7 : Controller holds conflicting liveness" << std::endl;
+      std::cout << "========================================\n" << std::endl;
+
+      const uint32_t bshh_s1_app_veh_base = N_Controllers + 1;
+
+      for (uint32_t a = 0; a < bshh_s1_npairs; a++) {
+          uint32_t att_cidx = bshh_attacker_idx[a];
+          uint32_t vic_cidx = bshh_victim_idx[a % bshh_victim_idx.size()];
+
+
+          uint32_t att_ns3 = Vehicle_Nodes.Get(att_cidx)->GetId();
+          uint32_t vic_ns3 = Vehicle_Nodes.Get(vic_cidx)->GetId();
+
+          // Per-pair y-lane so pairs don't interfere
+          const double y_lane = static_cast<double>(a) * ttw_lane_sep;
+          {
+              Ptr<ConstantVelocityMobilityModel> m_att = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(att_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(vic_cidx)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+          }
+
+          Ptr<SimpleUdpApplication> app_att =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s1_app_veh_base + att_cidx));
+          Ptr<SimpleUdpApplication> app_vic =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s1_app_veh_base + vic_cidx));
+
+          const double dt = (double)a * 0.001;
+
+          // STEP 1 — V2V heartbeat exchange
+          Simulator::Schedule(Seconds(BSHH_S1_EXCHANGE_TIME + dt),
+              &BSHH_S1_LegitimateExchange, vic_ns3, att_ns3, BSHH_S1_EXCHANGE_TIME);
+          // STEP 2 — Forward to controller
+          Simulator::Schedule(Seconds(BSHH_S1_FORWARD_TIME + dt),
+              &BSHH_S1_ForwardLegitimateHeartbeatsToController,
+              vic_ns3, att_ns3, BSHH_S1_EXCHANGE_TIME);
+          // STEP 3 — Attacker stores heartbeat AFTER exchange (t=5, not t=0)
+          Simulator::Schedule(Seconds(BSHH_S1_STORE_TIME + dt),
+              &BSHH_S1_StoreOldHeartbeat, vic_ns3, BSHH_S1_EXCHANGE_TIME);
+          // STEP 4 — Attacker sends old heartbeat to victim
+          Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME + dt),
+              &BSHH_S1_ReplayOldHeartbeatToVictim, att_ns3, vic_ns3, BSHH_S1_EXCHANGE_TIME);
+          // STEP 5 — Victim forwards old heartbeat to controller
+          Simulator::Schedule(Seconds(BSHH_S1_VICTIM_FORWARD_TIME + dt),
+              &BSHH_S1_VictimForwardsOldHeartbeatToController, vic_ns3, BSHH_S1_EXCHANGE_TIME);
+          // STEP 6 — Attacker hijacks same old heartbeat to controller
+          Simulator::Schedule(Seconds(BSHH_S1_HIJACK_TIME + dt),
+              &BSHH_S1_AttackerHijacksOldHeartbeatToController, att_ns3, vic_ns3, BSHH_S1_EXCHANGE_TIME);
+          // STEP 7 — Log consequences
+          Simulator::Schedule(Seconds(BSHH_S1_CONSEQUENCE_TIME + dt),
+              &BSHH_S1_LogFaultyRoutingConsequences, att_ns3, vic_ns3);
+
+          // NetAnim visual packets
+          if (app_vic && app_att) {
+              // STEP 1: V2V heartbeat arrows
+              Simulator::Schedule(Seconds(BSHH_S1_EXCHANGE_TIME + dt),
+                  &send_LTE_routing_data_alone, app_vic,
+                  Vehicle_Nodes.Get(vic_cidx), Vehicle_Nodes.Get(att_cidx), vic_cidx);
+              Simulator::Schedule(Seconds(BSHH_S1_EXCHANGE_TIME + dt + 0.005),
+                  &send_LTE_routing_data_alone, app_att,
+                  Vehicle_Nodes.Get(att_cidx), Vehicle_Nodes.Get(vic_cidx), att_cidx);
+              // STEP 2: V → Controller arrows
+              Simulator::Schedule(Seconds(BSHH_S1_FORWARD_TIME + dt),
+                  &send_LTE_routing_data_alone, app_vic,
+                  Vehicle_Nodes.Get(vic_cidx), controller_Node.Get(0), vic_cidx);
+              Simulator::Schedule(Seconds(BSHH_S1_FORWARD_TIME + dt + 0.005),
+                  &send_LTE_routing_data_alone, app_att,
+                  Vehicle_Nodes.Get(att_cidx), controller_Node.Get(0), att_cidx);
+              // STEP 4: Attacker → Victim old heartbeat arrow
+              Simulator::Schedule(Seconds(BSHH_S1_REPLAY_TIME + dt),
+                  &send_LTE_routing_data_alone, app_att,
+                  Vehicle_Nodes.Get(att_cidx), Vehicle_Nodes.Get(vic_cidx), att_cidx);
+              // STEP 5: Victim → Controller arrow
+              Simulator::Schedule(Seconds(BSHH_S1_VICTIM_FORWARD_TIME + dt),
+                  &send_LTE_routing_data_alone, app_vic,
+                  Vehicle_Nodes.Get(vic_cidx), controller_Node.Get(0), vic_cidx);
+              // STEP 6: Attacker → Controller hijack arrow
+              Simulator::Schedule(Seconds(BSHH_S1_HIJACK_TIME + dt),
+                  &send_LTE_routing_data_alone, app_att,
+                  Vehicle_Nodes.Get(att_cidx), controller_Node.Get(0), att_cidx);
+          }
+
+          // NetAnim node colours
+          if (vic_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(vic_cidx), 0, 150, 255);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(vic_cidx),
+                  ("V" + std::to_string(vic_cidx) + "-Victim").c_str());
+          }
+          if (att_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(att_cidx), 255, 0, 0);
+              anim.UpdateNodeSize(Vehicle_Nodes.Get(att_cidx)->GetId(), 35.0, 35.0);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(att_cidx),
+                  ("V" + std::to_string(att_cidx) + "-Attacker").c_str());
+          }
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       }
-      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+      for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
+          anim.UpdateNodeDescription(controller_Node.Get(ci), "Controller");
   }
+
 
   // ===========================================================================
   // SCHEDULE BSHH-S2 ATTACK — Scenario 6 (Malicious RSU)
   // ===========================================================================
 
-  if (attack_scenario == 6)
+    if (attack_scenario == 6)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
-          std::cout << "[ERROR] BSHH-S2 requires --N_RSUs=1. Aborting.\n";
+          std::cout << "[ERROR] BSHH-S2 requires --N_RSUs >= 1. Aborting.\n";
           return 1;
       }
       if (N_Vehicles < 2) {
+<<<<<<< HEAD
           std::cout << "[ERROR] BSHH-S2 requires at least --N_Vehicles=2. Aborting.\n";
           return 1;
       }
       BSHH_S2_InitLog();
       uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
+=======
+          std::cout << "[ERROR] BSHH-S2 requires --N_Vehicles >= 2. Aborting.\n";
+          return 1;
+      }
+      BSHH_S2_InitLog();
+
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       static const double BSHH_S2_EXCHANGE_TIME = 5.0;
-      static const double BSHH_S2_OLD_HB_TIME   = 0.0;
       static const double BSHH_S2_REPLAY_TIME   = 10.0;
 
+<<<<<<< HEAD
       // Pairs: (V0=victim, V1=normal), (V2=victim, V3=normal), ...
       std::vector<std::pair<uint32_t,uint32_t>> s6_pairs;
       for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
@@ -144489,29 +144938,128 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidx_v), ("V" + std::to_string(cidx_v) + "-Victim").c_str());
           anim.UpdateNodeColor(Vehicle_Nodes.Get(cidx_n), 0, 255, 100);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidx_n), ("V" + std::to_string(cidx_n) + "-Normal").c_str());
+=======
+      uint32_t n_malicious_rsus2 =
+          (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
+      if (n_malicious_rsus2 < 1u)                          n_malicious_rsus2 = 1u;
+      if (n_malicious_rsus2 > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus2 = (uint32_t)RSU_Nodes.GetN();
+      if (n_malicious_rsus2 > N_Vehicles / 2)              n_malicious_rsus2 = N_Vehicles / 2;
+
+
+      std::cout << "\n========================================" << std::endl;
+      std::cout << "SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED" << std::endl;
+      std::cout << "Malicious RSUs : " << n_malicious_rsus2 << " / " << N_RSUs << std::endl;
+      std::cout << "Victim pairs   : " << n_malicious_rsus2 << std::endl;
+      std::cout << "Stored HB time : t=" << BSHH_S2_EXCHANGE_TIME << " (from legitimate exchange)" << std::endl;
+      std::cout << "========================================\n" << std::endl;
+
+      const uint32_t bshh_s2_app_veh_base = N_Controllers + 1;
+
+      for (uint32_t ri = 0; ri < n_malicious_rsus2; ri++) {
+          uint32_t vA_cidx = ri * 2;
+          uint32_t vB_cidx = ri * 2 + 1;
+          if (vB_cidx >= N_Vehicles) break;
+
+          uint32_t vA_ns3 = Vehicle_Nodes.Get(vA_cidx)->GetId();
+          uint32_t vB_ns3 = Vehicle_Nodes.Get(vB_cidx)->GetId();
+          uint32_t rsu_ns3 = RSU_Nodes.Get(ri)->GetId();
+
+          // Per-pair y-lane
+          const double y_lane = static_cast<double>(ri) * ttw_lane_sep;
+          {
+              Ptr<ConstantVelocityMobilityModel> mA = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> mB = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
+              if (mA) { mA->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                        mA->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
+              if (mB) { mB->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                        mB->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              // RSU at midpoint between pair
+              if (ri < RSU_Nodes.GetN()) {
+                  Ptr<ConstantVelocityMobilityModel> mR = DynamicCast<ConstantVelocityMobilityModel>(
+                      RSU_Nodes.Get(ri)->GetObject<MobilityModel>());
+                  if (mR) { mR->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0, y_lane + 80.0, 0.0));
+                            mR->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+              }
+          }
+
+          Ptr<SimpleUdpApplication> app_vA =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s2_app_veh_base + vA_cidx));
+          Ptr<SimpleUdpApplication> app_vB =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s2_app_veh_base + vB_cidx));
+
+          const double dt = (double)ri * 0.001;
+
+          Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt),
+              &BSHH_S2_LegitimateExchange, vA_ns3, vB_ns3, rsu_ns3, BSHH_S2_EXCHANGE_TIME);
+          // Store AFTER exchange (t=5.1), not at t=0
+          Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + 0.1 + dt),
+              &BSHH_S2_StoreOldHeartbeat, vA_ns3, BSHH_S2_EXCHANGE_TIME);
+          Simulator::Schedule(Seconds(BSHH_S2_REPLAY_TIME + dt),
+              &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, BSHH_S2_EXCHANGE_TIME);
+
+          // NetAnim visual packets
+          if (app_vA && app_vB) {
+              Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), Vehicle_Nodes.Get(vB_cidx), vA_cidx);
+              Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt + 0.005),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(vB_cidx), controller_Node.Get(0), vB_cidx);
+              Simulator::Schedule(Seconds(BSHH_S2_REPLAY_TIME + dt),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), controller_Node.Get(0), vA_cidx);
+          }
+
+          // NetAnim colours
+          if (vA_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(vA_cidx), 0, 150, 255);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(vA_cidx),
+                  ("V" + std::to_string(vA_cidx) + "-Victim").c_str());
+          }
+          if (vB_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(vB_cidx), 0, 255, 100);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(vB_cidx),
+                  ("V" + std::to_string(vB_cidx) + "-Normal").c_str());
+          }
+          if (ri < RSU_Nodes.GetN()) {
+              anim.UpdateNodeColor(RSU_Nodes.Get(ri), 255, 0, 0);
+              anim.UpdateNodeSize(RSU_Nodes.Get(ri)->GetId(), 35.0, 35.0);
+              anim.UpdateNodeDescription(RSU_Nodes.Get(ri),
+                  ("RSU" + std::to_string(ri) + "-Attacker").c_str());
+          }
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       }
-      anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 35.0, 35.0);
-      anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-Attacker");
-      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+      for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
+          anim.UpdateNodeDescription(controller_Node.Get(ci), "Controller");
   }
+
 
   // ===========================================================================
   // SCHEDULE BSHH-S3 ATTACK — Scenario 7 (Malicious Controller, No RSU)
   // ===========================================================================
 
-  if (attack_scenario == 7)
+    if (attack_scenario == 7)
   {
       if (N_Vehicles < 2) {
+<<<<<<< HEAD
           std::cout << "[ERROR] BSHH-S3 requires at least --N_Vehicles=2. Aborting.\n";
           return 1;
       }
       BSHH_S3_InitLog();
       is_malicious_controller = true;
+=======
+          std::cout << "[ERROR] BSHH-S3 requires --N_Vehicles >= 2. Aborting.\n";
+          return 1;
+      }
+      BSHH_S3_InitLog();
+
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       static const double BSHH_S3_EXCHANGE_TIME = 5.0;
-      static const double BSHH_S3_OLD_HB_TIME   = 0.0;
       static const double BSHH_S3_REPLAY_TIME   = 10.0;
 
+<<<<<<< HEAD
       // Pairs: (V0,V1), (V2,V3), ... — controller replays stale HBs for both
       std::vector<std::pair<uint32_t,uint32_t>> s7_pairs;
       for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
@@ -144546,33 +145094,129 @@ int main(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxA), ("V" + std::to_string(cidxA) + "-Victim").c_str());
           anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxB), 0, 255, 100);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxB), ("V" + std::to_string(cidxB) + "-Victim").c_str());
+=======
+      uint32_t n_malicious_ctrl3b =
+          (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
+      if (n_malicious_ctrl3b < 1u)                      n_malicious_ctrl3b = 1u;
+      if (n_malicious_ctrl3b > controller_Node.GetN()) n_malicious_ctrl3b = controller_Node.GetN();
+      if (n_malicious_ctrl3b > N_Vehicles / 2)          n_malicious_ctrl3b = N_Vehicles / 2;
+
+
+      std::cout << "\n========================================" << std::endl;
+      std::cout << "SCENARIO 07 - BSHH-S3 ATTACK CONFIGURED" << std::endl;
+      std::cout << "Malicious controllers : " << n_malicious_ctrl3b << " / " << controller_Node.GetN() << std::endl;
+      std::cout << "Victim pairs          : " << n_malicious_ctrl3b << std::endl;
+      std::cout << "Stored HB time        : t=" << BSHH_S3_EXCHANGE_TIME << std::endl;
+      std::cout << "========================================\n" << std::endl;
+
+      const uint32_t bshh_s3_app_veh_base = N_Controllers + 1;
+
+      for (uint32_t ci = 0; ci < n_malicious_ctrl3b; ci++) {
+          uint32_t vA_cidx = ci * 2;
+          uint32_t vB_cidx = ci * 2 + 1;
+          if (vB_cidx >= N_Vehicles) break;
+
+          uint32_t vA_ns3 = Vehicle_Nodes.Get(vA_cidx)->GetId();
+          uint32_t vB_ns3 = Vehicle_Nodes.Get(vB_cidx)->GetId();
+
+          // Per-pair y-lane
+          const double y_lane = static_cast<double>(ci) * ttw_lane_sep;
+          {
+              Ptr<ConstantVelocityMobilityModel> mA = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> mB = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
+              if (mA) { mA->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                        mA->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
+              if (mB) { mB->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                        mB->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+          }
+
+          Ptr<SimpleUdpApplication> app_vA =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s3_app_veh_base + vA_cidx));
+          Ptr<SimpleUdpApplication> app_vB =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s3_app_veh_base + vB_cidx));
+
+          const double dt = (double)ci * 0.001;
+
+          Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + dt),
+              &BSHH_S3_LegitimateExchange, vA_ns3, vB_ns3, BSHH_S3_EXCHANGE_TIME);
+          // Store AFTER exchange (t=5.1), not t=0
+          Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + 0.1 + dt),
+              &BSHH_S3_StoreOldHeartbeats, vA_ns3, vB_ns3, BSHH_S3_EXCHANGE_TIME);
+          Simulator::Schedule(Seconds(BSHH_S3_REPLAY_TIME + dt),
+              &BSHH_S3_InternalReplay, vA_ns3, vB_ns3, BSHH_S3_EXCHANGE_TIME);
+
+          // NetAnim visual packets
+          if (app_vA && app_vB) {
+              Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + dt),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), Vehicle_Nodes.Get(vB_cidx), vA_cidx);
+              Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + dt + 0.005),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), controller_Node.Get(ci < controller_Node.GetN() ? ci : 0), vA_cidx);
+              Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + dt + 0.010),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(vB_cidx), controller_Node.Get(ci < controller_Node.GetN() ? ci : 0), vB_cidx);
+          }
+
+          // NetAnim colours
+          if (vA_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(vA_cidx), 0, 150, 255);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(vA_cidx),
+                  ("V" + std::to_string(vA_cidx) + "-Victim").c_str());
+          }
+          if (vB_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(vB_cidx), 0, 255, 100);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(vB_cidx),
+                  ("V" + std::to_string(vB_cidx) + "-Victim").c_str());
+          }
+          if (ci < controller_Node.GetN()) {
+              anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 35.0, 35.0);
+              anim.UpdateNodeDescription(controller_Node.Get(ci),
+                  ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
+          }
       }
-      anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
-      anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+      // Remaining controllers are benign
+      for (uint32_t ci = n_malicious_ctrl3b; ci < controller_Node.GetN(); ci++) {
+          anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
+          anim.UpdateNodeDescription(controller_Node.Get(ci),
+              ("Ctrl-" + std::to_string(ci) + "-Benign").c_str());
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
+      }
   }
+
 
   // ===========================================================================
   // SCHEDULE BSHH-S4 ATTACK — Scenario 8 (Malicious Controller, With RSU)
   // ===========================================================================
 
-  if (attack_scenario == 8)
+    if (attack_scenario == 8)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
-          std::cout << "[ERROR] BSHH-S4 requires --N_RSUs=1. Aborting.\n";
+          std::cout << "[ERROR] BSHH-S4 requires --N_RSUs >= 1. Aborting.\n";
           return 1;
       }
       if (N_Vehicles < 2) {
+<<<<<<< HEAD
           std::cout << "[ERROR] BSHH-S4 requires at least --N_Vehicles=2. Aborting.\n";
           return 1;
       }
       BSHH_S4_InitLog();
       is_malicious_controller = true;
       uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
+=======
+          std::cout << "[ERROR] BSHH-S4 requires --N_Vehicles >= 2. Aborting.\n";
+          return 1;
+      }
+      BSHH_S4_InitLog();
+
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
       static const double BSHH_S4_EXCHANGE_TIME = 5.0;
-      static const double BSHH_S4_OLD_HB_TIME   = 0.0;
       static const double BSHH_S4_REPLAY_TIME   = 10.0;
 
+<<<<<<< HEAD
       // Pairs: (V0,V1), (V2,V3), ...
       std::vector<std::pair<uint32_t,uint32_t>> s8_pairs;
       for (uint32_t k = 0; k + 1 < N_Vehicles; k += 2) {
@@ -144613,7 +145257,112 @@ int main(int argc, char *argv[])
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 35.0, 35.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+=======
+      uint32_t n_malicious_ctrl4b =
+          (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
+      if (n_malicious_ctrl4b < 1u)                      n_malicious_ctrl4b = 1u;
+      if (n_malicious_ctrl4b > controller_Node.GetN()) n_malicious_ctrl4b = controller_Node.GetN();
+      if (n_malicious_ctrl4b > N_Vehicles / 2)          n_malicious_ctrl4b = N_Vehicles / 2;
+      if (n_malicious_ctrl4b > RSU_Nodes.GetN())        n_malicious_ctrl4b = RSU_Nodes.GetN();
+
+
+      std::cout << "\n========================================" << std::endl;
+      std::cout << "SCENARIO 08 - BSHH-S4 ATTACK CONFIGURED" << std::endl;
+      std::cout << "Malicious controllers : " << n_malicious_ctrl4b << " / " << controller_Node.GetN() << std::endl;
+      std::cout << "RSUs in path          : " << n_malicious_ctrl4b << std::endl;
+      std::cout << "Stored HB time        : t=" << BSHH_S4_EXCHANGE_TIME << std::endl;
+      std::cout << "========================================\n" << std::endl;
+
+      const uint32_t bshh_s4_app_veh_base = N_Controllers + 1;
+
+      for (uint32_t ci = 0; ci < n_malicious_ctrl4b; ci++) {
+          uint32_t vA_cidx = ci * 2;
+          uint32_t vB_cidx = ci * 2 + 1;
+          if (vB_cidx >= N_Vehicles) break;
+
+          uint32_t vA_ns3  = Vehicle_Nodes.Get(vA_cidx)->GetId();
+          uint32_t vB_ns3  = Vehicle_Nodes.Get(vB_cidx)->GetId();
+          uint32_t rsu_ns3 = RSU_Nodes.Get(ci)->GetId();
+
+          // Per-pair y-lane
+          const double y_lane = static_cast<double>(ci) * ttw_lane_sep;
+          {
+              Ptr<ConstantVelocityMobilityModel> mA = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> mB = DynamicCast<ConstantVelocityMobilityModel>(
+                  Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
+              if (mA) { mA->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                        mA->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
+              if (mB) { mB->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                        mB->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              if (ci < RSU_Nodes.GetN()) {
+                  Ptr<ConstantVelocityMobilityModel> mR = DynamicCast<ConstantVelocityMobilityModel>(
+                      RSU_Nodes.Get(ci)->GetObject<MobilityModel>());
+                  if (mR) { mR->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0, y_lane + 80.0, 0.0));
+                            mR->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+              }
+          }
+
+          Ptr<SimpleUdpApplication> app_vA =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s4_app_veh_base + vA_cidx));
+          Ptr<SimpleUdpApplication> app_vB =
+              DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s4_app_veh_base + vB_cidx));
+
+          const double dt = (double)ci * 0.001;
+
+          Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + dt),
+              &BSHH_S4_VehiclesToRSU, vA_ns3, vB_ns3, rsu_ns3, BSHH_S4_EXCHANGE_TIME);
+          // Store AFTER exchange (t=5.1), not t=0
+          Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + 0.1 + dt),
+              &BSHH_S4_StoreOldHeartbeats, vA_ns3, vB_ns3, BSHH_S4_EXCHANGE_TIME);
+          Simulator::Schedule(Seconds(BSHH_S4_REPLAY_TIME + dt),
+              &BSHH_S4_InternalReplay, vA_ns3, vB_ns3, BSHH_S4_EXCHANGE_TIME);
+
+          // NetAnim visual packets
+          if (app_vA && app_vB) {
+              Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + dt),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), Vehicle_Nodes.Get(vB_cidx), vA_cidx);
+              Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + dt + 0.005),
+                  &send_LTE_routing_data_alone, app_vA,
+                  Vehicle_Nodes.Get(vA_cidx), controller_Node.Get(ci < controller_Node.GetN() ? ci : 0), vA_cidx);
+              Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + dt + 0.010),
+                  &send_LTE_routing_data_alone, app_vB,
+                  Vehicle_Nodes.Get(vB_cidx), controller_Node.Get(ci < controller_Node.GetN() ? ci : 0), vB_cidx);
+          }
+
+          // NetAnim colours
+          if (vA_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(vA_cidx), 0, 150, 255);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(vA_cidx),
+                  ("V" + std::to_string(vA_cidx) + "-Victim").c_str());
+          }
+          if (vB_cidx < Vehicle_Nodes.GetN()) {
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(vB_cidx), 0, 255, 100);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(vB_cidx),
+                  ("V" + std::to_string(vB_cidx) + "-Victim").c_str());
+          }
+          if (ci < RSU_Nodes.GetN()) {
+              anim.UpdateNodeColor(RSU_Nodes.Get(ci), 255, 200, 0);
+              anim.UpdateNodeDescription(RSU_Nodes.Get(ci),
+                  ("RSU" + std::to_string(ci) + "-InPath").c_str());
+          }
+          if (ci < controller_Node.GetN()) {
+              anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 35.0, 35.0);
+              anim.UpdateNodeDescription(controller_Node.Get(ci),
+                  ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
+          }
+      }
+      // Remaining controllers are benign
+      for (uint32_t ci = n_malicious_ctrl4b; ci < controller_Node.GetN(); ci++) {
+          anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
+          anim.UpdateNodeDescription(controller_Node.Get(ci),
+              ("Ctrl-" + std::to_string(ci) + "-Benign").c_str());
+      }
+>>>>>>> c6cc0c1499ad89619fb54c9986cdbc89b72a41ab
   }
+
 
   // ===========================================================================
   // SCHEDULE ME-S1 ATTACK — Scenario 9 (Malicious Vehicles, No RSU)
