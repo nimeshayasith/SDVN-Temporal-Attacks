@@ -362,12 +362,15 @@ private:
 #define TTWS4_INTERNAL_REPLAY TTW_REPLAY_TIME
 TopologyPacket ttws2_stored_packet;
 bool           ttws2_packet_stored = false;
+double         ttws2_forged_timestamp = 0.0;
 std::ofstream  ttws2_log;
 TopologyPacket ttws3_stored_packet;
 bool           ttws3_packet_stored = false;
+double         ttws3_forged_timestamp = 0.0;
 std::ofstream  ttws3_log;
 TopologyPacket ttws4_stored_packet;
 bool           ttws4_packet_stored = false;
+double         ttws4_forged_timestamp = 0.0;
 std::ofstream  ttws4_log;
 
 // ── BSHH globals ──────────────────────────────────────────────────────────────
@@ -1499,9 +1502,9 @@ void TTW_InitLog()
     ttw_log << "  t=10    ②  Topology updates to controller\n";
     ttw_log << "  t=10    ③  Attacker stores old packet\n";
     ttw_log << "  t=15        Link breaks physically\n";
-    ttw_log << "  t=20    ④  Attacker replays stale packet\n";
-    ttw_log << "  t=20    ⑤  Stale packet sent to controller\n";
-    ttw_log << "  t=20    ⑥  Controller issues faulty routing\n\n";
+  	ttw_log << "  t=20    ④  Attacker forges timestamp t=10→t=20\n";
+ 	ttw_log << "  t=20    ⑤  Forged packet sent to controller\n";
+  	ttw_log << "  t=20    ⑥  Controller routing poisoned (ghost link)\n\n";
     ttw_log << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S4] Log opened: ttw_attack_scenario4.txt");
 }
@@ -1654,34 +1657,37 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     Vector pa = ma->GetPosition(), pv = mv->GetPosition();
     double dist = std::sqrt(std::pow(pa.x-pv.x,2.0)+std::pow(pa.y-pv.y,2.0));
 
-    // STEP 4: Build replay packet — original stored timestamp is kept (no forgery)
+    // STEP 4: Forge timestamp — change stored t=10 to appear current (t=20)
     const double stored_ts = ttw_stored_packets[src_id].timestamp;
-    TopologyPacket forged = {src_id, dst_id, stored_ts, true};
+    TopologyPacket forged = {src_id, dst_id, forged_time, true};
 
-    ttw_log << "[t=" << now << "]  STEP ④  REPLAY ATTACK — STALE PACKET SENT\n"
+    ttw_log << "[t=" << now << "]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK\n"
             << "  Stored packet : <V" << src_id << " sees V" << dst_id
             << ", t=" << stored_ts << ">  (original observation at t=" << stored_ts << ")\n"
-            << "  Replay action : sent to controller at simulation time t=" << now
+            << "  Forged packet : <V" << src_id << " sees V" << dst_id
+            << ", t=" << forged_time << ">  timestamp changed " << stored_ts << " -> " << forged_time << "\n"
+            << "  Forge action  : attacker changes timestamp to appear current, sends to controller at t=" << now
             << " — link has been broken since t≈" << ttw_physical_break_time << "s\n"
             << "  Physical link distance : " << dist << " m  "
             << (dist > TTW_COMM_RANGE ? "BROKEN\n\n" : "WARNING still in range!\n\n");
+
 
     // STEP 5: Send to controller
     std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
     ttw_controller_table[key] = forged;
 
-    NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-5 REPLAY SENT"
+        NS_LOG_INFO("[TTW-S1] t=" << now << "s  STEP-5 FORGED REPLAY SENT"
                 << "  <V" << src_id << " sees V" << dst_id
-                << ", t=" << stored_ts << ">  CONTROLLER DECEIVED");
+                << ", t=" << forged_time << ">  (stored=" << stored_ts << ")  CONTROLLER DECEIVED");
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S1][t=" << now << "]  V" << src_id
-              << " --STALE replay--> Controller"
+              << " --FORGED replay--> Controller"
               << "  <V" << src_id << " sees V" << dst_id
-              << ", t=" << stored_ts << ">  CONTROLLER DECEIVED"
+              << ", t=" << forged_time << ">  (stored=" << stored_ts << ")  CONTROLLER DECEIVED"
               << "  (link physically BROKEN  dist=" << dist << "m)" << std::endl;
 
-    ttw_log << "[t=" << now << "]  STEP ⑤  STALE PACKET → CONTROLLER\n"
-            << "  Controller ACCEPTED stale packet (no replay protection)\n\n";
+        ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET → CONTROLLER\n"
+            << "  Controller ACCEPTED forged packet (no timestamp-integrity protection)\n\n";
 
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
@@ -1690,17 +1696,18 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
     // STEP 6: Log faulty routing consequence
     const bool linkPhysicallyBroken = (dist > TTW_COMM_RANGE);
-    ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
+        ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
             << "  Controller believes V" << src_id << "<->V" << dst_id
-            << " was ACTIVE at t=" << stored_ts
-            << " (stale entry — link broken since t≈" << ttw_physical_break_time << "s)\n"
+            << " was ACTIVE at t=" << forged_time
+            << " (forged entry — link broken since t≈" << ttw_physical_break_time << "s)\n"
             << "  Physical reality : link "
             << (linkPhysicallyBroken ? "BROKEN" : "ACTIVE")
             << " (dist=" << dist << "m)\n"
             << (linkPhysicallyBroken
                     ? "  Consequence : packets routed via ghost link will be DROPPED\n"
-                    : "  Consequence : controller holds stale entry — link will appear valid past its true expiry\n")
-            << "  Topology timeline CORRUPTED — controller has stale temporal reference\n\n";
+                    : "  Consequence : controller holds forged entry — link will appear valid past its true expiry\n")
+            << "  Topology timeline CORRUPTED — controller has forged temporal reference\n\n";
+
 
     NS_LOG_INFO("[TTW-S4] ATTACK COMPLETE — ghost link V"
                 << src_id << "<->V" << dst_id << " injected");
@@ -1759,7 +1766,8 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
                  src_id,
                  src_id,
                  dst_id,
-                (ttw_stored_packets.count(src_id) ? ttw_stored_packets[src_id].timestamp : 0.0),
+                (ttw_s1_forged_timestamp > 0.0 ? ttw_s1_forged_timestamp
+                 : (ttw_stored_packets.count(src_id) ? ttw_stored_packets[src_id].timestamp : 0.0)),
                  Simulator::Now().GetSeconds(),
                  reporterPosition,
                  sourcePosition,
@@ -1816,7 +1824,8 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    double _ts2 = ttws2_packet_stored ? ttws2_stored_packet.timestamp : 0.0;
+    double _ts2 = (ttws2_forged_timestamp > 0.0) ? ttws2_forged_timestamp
+                 : (ttws2_packet_stored ? ttws2_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  rsu_id, v1_id, rsu_id,
                  v1_id, v2_id,
@@ -1857,11 +1866,11 @@ void TTWS2_InitLog()
               << "========================================================\n\n"
               << "  t=10    ①  V2V HELLO + vehicles -> RSU\n"
               << "  t=10    ②  RSU aggregates + forwards to controller\n"
-              << "  t=10    ③  Malicious RSU stores old packet\n"
+              << "  t=10    ③  Malicious RSU stores old packet <V1 sees V2, t=10>\n"
               << "  t=15        Link breaks physically\n"
-              << "  t=20    ④  RSU replays stale packet\n"
-              << "  t=20    ⑤  Stale packet sent to controller\n"
-              << "  t=20    ⑥  Controller issues faulty routing\n\n"
+              << "  t=20    ④  RSU forges timestamp t=10→t=20, replays to controller\n"
+              << "  t=20    ⑤  Forged packet <V1 sees V2, t=20> accepted by controller\n"
+              << "  t=20    ⑥  Controller routing poisoned (ghost link active)\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S2] Log opened: ttw_s2_attack_log.txt");
 }
@@ -1951,22 +1960,25 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
         return;
     }
     const double stored_ts2 = ttws2_stored_packet.timestamp;
-    TopologyPacket forged = {v1_id, v2_id, stored_ts2, true};
+    ttws2_forged_timestamp = forged_time;   // RSU forges timestamp: stored t=10 → forged t=20
+    TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    ttws2_log << "[t=" << now << "]  STEP ④  REPLAY ATTACK — STALE PACKET SENT (via RSU_" << rsu_id << ")\n"
+    ttws2_log << "[t=" << now << "]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_" << rsu_id << ")\n"
               << "  Stored packet : <V" << v1_id << " sees V" << v2_id
               << ", t=" << stored_ts2 << ">  (original RSU-aggregated observation at t=" << stored_ts2 << ")\n"
-              << "  Replay action : RSU injects stale packet to controller at simulation time t=" << now << "\n\n"
-              << "[t=" << now << "]  STEP ⑤  STALE PACKET → CONTROLLER (via RSU_" << rsu_id << ")\n"
-              << "  Controller ACCEPTED stale packet (no replay protection)\n\n"
+              << "  Forged packet : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << forged_time << ">  timestamp changed " << stored_ts2 << " -> " << forged_time << "\n"
+              << "  Forge action  : RSU changes timestamp to appear current, injects to controller at t=" << now << "\n\n"
+              << "[t=" << now << "]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_" << rsu_id << ")\n"
+              << "  Controller ACCEPTED forged packet (no timestamp-integrity protection)\n\n"
               << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
-              << " was ACTIVE at t=" << stored_ts2 << " (stale — link has since broken)\n"
+              << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  Consequence : packets routed via ghost link will be DROPPED\n\n";
     ttws2_log << "  Topology Table (after replay):\n"
@@ -1987,13 +1999,13 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
     }
     ttws2_log.flush();
     NS_LOG_INFO("[TTW-S2] t=" << now << "s  RSU_" << rsu_id
-                << " injected stale <V" << v1_id << " sees V" << v2_id
-                << ", t=" << stored_ts2 << ">");
+                << " injected FORGED <V" << v1_id << " sees V" << v2_id
+                << ", t=" << forged_time << ">  (stored was t=" << stored_ts2 << ")");
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S2][t=" << now << "]  RSU_" << rsu_id
-              << " --STALE replay--> Controller"
-              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << stored_ts2 << ">"
-              << "  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***" << std::endl;
+              << " --FORGED replay--> Controller"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
+              << "  (stored=" << stored_ts2 << ")  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS2_RunDetection, rsu_id, v1_id, v2_id);
 }
 
@@ -2009,7 +2021,8 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    double _ts3 = ttws3_packet_stored ? ttws3_stored_packet.timestamp : 0.0;
+    double _ts3 = (ttws3_forged_timestamp > 0.0) ? ttws3_forged_timestamp
+                 : (ttws3_packet_stored ? ttws3_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
@@ -2034,9 +2047,9 @@ void TTWS3_InitLog()
               << "  TTW Attack S3 — Malicious Controller, No RSU         \n"
               << "========================================================\n\n"
               << "  t=10    ①  V2V HELLO + legitimate updates to controller\n"
-              << "  t=10    ②  Controller stores legitimately + keeps stale copy\n"
+              << "  t=10    ②  Controller stores legitimately + keeps copy <V1 sees V2, t=10>\n"
               << "  t=15        Link breaks physically\n"
-              << "  t=20    ③  Controller internally replays stale entry\n"
+              << "  t=20    ③  Controller forges timestamp t=10→t=20, reinserts into database\n"
               << "  t=20    ④  Controller table poisoned (no external packet)\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S3] Log opened: ttw_s3_attack_log.txt");
@@ -2106,24 +2119,27 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
         return;
     }
     const double stored_ts3 = ttws3_stored_packet.timestamp;
-    TopologyPacket forged = {v1_id, v2_id, stored_ts3, true};
+    ttws3_forged_timestamp = forged_time;   // Controller forges: stored t=10 → forged t=20
+    TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
 
-    TTWApplyGhostLinkToController(v1_id, v2_id, stored_ts3);
+    TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    ttws3_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL REPLAY — STALE ENTRY RE-INJECTED\n"
-              << "  Stored entry : <V" << v1_id << " sees V" << v2_id
+    ttws3_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION\n"
+              << "  Stored entry  : <V" << v1_id << " sees V" << v2_id
               << ", t=" << stored_ts3 << ">  (captured from legitimate update at t=" << stored_ts3 << ")\n"
-              << "  Replay action : controller re-processes stale entry at t=" << now
+              << "  Forged packet : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << forged_time << ">  timestamp changed " << stored_ts3 << " -> " << forged_time << "\n"
+              << "  Forge action  : controller changes timestamp to appear current, reinserts at t=" << now
               << " — no external packet required\n\n"
               << "[t=" << now << "]  STEP ④  TABLE POISONED (internal — no external packet)\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
-              << " was ACTIVE at t=" << stored_ts3 << " (stale — link has since broken)\n"
+              << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
     ttws3_log << "  Topology Table (after replay):\n"
@@ -2143,12 +2159,13 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
                   << "========================================================\n";
     }
     ttws3_log.flush();
-    NS_LOG_INFO("[TTW-S3] t=" << now << "s  Controller poisoned table <V"
-                << v1_id << " sees V" << v2_id << ", t=" << stored_ts3 << ">");
+    NS_LOG_INFO("[TTW-S3] t=" << now << "s  Controller FORGED + poisoned table <V"
+                << v1_id << " sees V" << v2_id << ", t=" << forged_time
+                << ">  (stored was t=" << stored_ts3 << ")");
     std::cout << std::fixed << std::setprecision(3)
-              << "[TTW-S3][t=" << now << "]  Controller --INTERNAL REPLAY--> own table"
-              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << stored_ts3 << ">"
-              << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
+              << "[TTW-S3][t=" << now << "]  Controller --TIMESTAMP FORGE + REINSERTION--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
+              << "  (stored=" << stored_ts3 << ")  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS3_RunDetection, v1_id, v2_id);
 }
 
@@ -2162,7 +2179,8 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    double _ts4 = ttws4_packet_stored ? ttws4_stored_packet.timestamp : 0.0;
+    double _ts4 = (ttws4_forged_timestamp > 0.0) ? ttws4_forged_timestamp
+                 : (ttws4_packet_stored ? ttws4_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
@@ -2186,10 +2204,10 @@ void TTWS4_InitLog()
     ttws4_log << "========================================================\n"
               << "  TTW Attack S4 — Malicious Controller, With RSU       \n"
               << "========================================================\n\n"
-              << "  t=10    ①  V1/V2 -> RSU -> Controller (legitimate)\n"
-              << "  t=10    ②  Controller stores stale copy from RSU aggregate\n"
+              << "  t=10    ①  V1/V2 -> RSU -> Controller (legitimate aggregate)\n"
+              << "  t=10    ②  Controller stores copy <V1 sees V2, t=10> from RSU aggregate\n"
               << "  t=15        Link breaks physically\n"
-              << "  t=20    ③  Controller internally replays stale entry\n"
+              << "  t=20    ③  Controller forges timestamp t=10→t=20, reinserts into database\n"
               << "  t=20    ④  Controller table poisoned (no external packet)\n\n"
               << "========================================================\n\n";
     NS_LOG_INFO("[TTW-S4-new] Log opened: ttw_s4_attack_log.txt");
@@ -2255,25 +2273,28 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
         return;
     }
     const double stored_ts4 = ttws4_stored_packet.timestamp;
-    TopologyPacket forged = {v1_id, v2_id, stored_ts4, true};
+    ttws4_forged_timestamp = forged_time;   // Controller forges: stored t=10 → forged t=20
+    TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
 
-    TTWApplyGhostLinkToController(v1_id, v2_id, stored_ts4);
+    TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    ttws4_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL REPLAY — STALE ENTRY RE-INJECTED (RSU path variant)\n"
-              << "  Stored entry : <V" << v1_id << " sees V" << v2_id
+    ttws4_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)\n"
+              << "  Stored entry  : <V" << v1_id << " sees V" << v2_id
               << ", t=" << stored_ts4 << ">  (captured from RSU-aggregated update at t=" << stored_ts4 << ")\n"
-              << "  Replay action : controller re-processes stale RSU entry at t=" << now
+              << "  Forged packet : <V" << v1_id << " sees V" << v2_id
+              << ", t=" << forged_time << ">  timestamp changed " << stored_ts4 << " -> " << forged_time << "\n"
+              << "  Forge action  : controller changes timestamp to appear current, reinserts at t=" << now
               << " — no external packet required\n"
-              << "  RSU was in original data path\n\n"
+              << "  RSU was in original data path (V→RSU→Controller)\n\n"
               << "[t=" << now << "]  STEP ④  TABLE POISONED (internal — no external packet)\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
-              << " was ACTIVE at t=" << stored_ts4 << " (stale — link has since broken)\n"
+              << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
     ttws4_log << "  Topology Table (after replay):\n"
@@ -2293,12 +2314,13 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
                   << "========================================================\n";
     }
     ttws4_log.flush();
-    NS_LOG_INFO("[TTW-S4-new] t=" << now << "s  Controller (RSU variant) poisoned table <V"
-                << v1_id << " sees V" << v2_id << ", t=" << stored_ts4 << ">");
+    NS_LOG_INFO("[TTW-S4-new] t=" << now << "s  Controller (RSU variant) FORGED + poisoned table <V"
+                << v1_id << " sees V" << v2_id << ", t=" << forged_time
+                << ">  (stored was t=" << stored_ts4 << ")");
     std::cout << std::fixed << std::setprecision(3)
-              << "[TTW-S4][t=" << now << "]  Controller --INTERNAL REPLAY (RSU path variant)--> own table"
-              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << stored_ts4 << ">"
-              << "  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
+              << "[TTW-S4][t=" << now << "]  Controller --TIMESTAMP FORGE + REINSERTION (RSU path)--> own table"
+              << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
+              << "  (stored=" << stored_ts4 << ")  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
     Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS4_RunDetection, v1_id, v2_id);
 }
 
