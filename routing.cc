@@ -1344,14 +1344,14 @@ static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
 
 // Returns true with probability (pct/100) using the node index as a
 // deterministic seed so results are reproducible across identical runs.
-static bool GetBooleanWithProbability(uint32_t pct, uint32_t node_index)
-{
-    if (pct == 0)   return false;
-    if (pct >= 100) return true;
-    // Use a simple hash of the node index so each node gets a fixed draw.
-    uint32_t hash = (node_index * 2654435761u) >> 16u;
-    return (hash % 100u) < pct;
-}
+// static bool GetBooleanWithProbability(uint32_t pct, uint32_t node_index)
+// {
+//     if (pct == 0)   return false;
+//     if (pct >= 100) return true;
+//     // Use a simple hash of the node index so each node gets a fixed draw.
+//     uint32_t hash = (node_index * 2654435761u) >> 16u;
+//     return (hash % 100u) < pct;
+// }
 
 // Maps attack_scenario (1–12) to the present_*_attack_* flags.
 // Called once after cmd.Parse(), before declare_attackers().
@@ -1421,14 +1421,20 @@ void declare_attackers()
     bshh_malicious_nodes.assign(N_Vehicles, false);
     me_malicious_nodes.assign(N_Vehicles, false);
 
+    // Compute exact attacker count from attack_percentage (same approach as controller assignment).
+    // First n_mal_veh vehicle indices are malicious; the rest are victims.
+    uint32_t n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
+    if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
+
     for (uint32_t i = 0; i < N_Vehicles; i++)
     {
-        bool attacking = GetBooleanWithProbability(attack_percentage, i);
+        bool attacking = (i < n_mal_veh);
 
         if (present_ttw_attack_nodes)   ttw_malicious_nodes[i]  = attacking;
         if (present_bshh_attack_nodes)  bshh_malicious_nodes[i] = attacking;
         if (present_me_attack_nodes)    me_malicious_nodes[i]   = attacking;
     }
+
 
     // ── Controller assignment — TTW ──────────────────────────────────────────
     for (int k = 0; k < 4; k++) ttw_malicious_controllers[k] = false;
@@ -144676,6 +144682,15 @@ int main(int argc, char *argv[])
           bshh_attacker_idx.push_back(1);
           if (bshh_victim_idx.empty()) bshh_victim_idx.push_back(0);
       }
+      // If every vehicle ended up malicious (probabilistic over-assignment),
+      // split the list: first half = attackers, second half = victims.
+      if (bshh_victim_idx.empty()) {
+          uint32_t half = (uint32_t)bshh_attacker_idx.size() / 2;
+          if (half == 0) half = 1;
+          bshh_victim_idx.insert(bshh_victim_idx.end(),
+              bshh_attacker_idx.begin() + half, bshh_attacker_idx.end());
+          bshh_attacker_idx.resize(half);
+      }
 
       static const double BSHH_S1_EXCHANGE_TIME       = 5.0;
       static const double BSHH_S1_FORWARD_TIME        = 5.010;
@@ -144685,7 +144700,11 @@ int main(int argc, char *argv[])
       static const double BSHH_S1_HIJACK_TIME         = 10.020;
       static const double BSHH_S1_CONSEQUENCE_TIME    = 10.030;
 
-      const uint32_t bshh_s1_npairs = (uint32_t)bshh_attacker_idx.size();
+      // Pairs = min(attackers, victims) — never more pairs than available victims
+      const uint32_t bshh_s1_npairs =
+          (uint32_t)std::min(bshh_attacker_idx.size(), bshh_victim_idx.size());
+
+
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED" << std::endl;
@@ -144709,9 +144728,8 @@ int main(int argc, char *argv[])
 
       for (uint32_t a = 0; a < bshh_s1_npairs; a++) {
           uint32_t att_cidx = bshh_attacker_idx[a];
-          uint32_t vic_cidx = bshh_victim_idx.empty()
-                              ? bshh_attacker_idx[(a + 1) % bshh_s1_npairs]
-                              : bshh_victim_idx[a % bshh_victim_idx.size()];
+          uint32_t vic_cidx = bshh_victim_idx[a % bshh_victim_idx.size()];
+
 
           uint32_t att_ns3 = Vehicle_Nodes.Get(att_cidx)->GetId();
           uint32_t vic_ns3 = Vehicle_Nodes.Get(vic_cidx)->GetId();
@@ -144828,9 +144846,10 @@ int main(int argc, char *argv[])
 
       uint32_t n_malicious_rsus2 =
           (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
-      if (n_malicious_rsus2 < 1u)                             n_malicious_rsus2 = 1u;
-      if (n_malicious_rsus2 > (uint32_t)RSU_Nodes.GetN())    n_malicious_rsus2 = (uint32_t)RSU_Nodes.GetN();
-      if (n_malicious_rsus2 > N_Vehicles / 2)                n_malicious_rsus2 = N_Vehicles / 2;
+      if (n_malicious_rsus2 < 1u)                          n_malicious_rsus2 = 1u;
+      if (n_malicious_rsus2 > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus2 = (uint32_t)RSU_Nodes.GetN();
+      if (n_malicious_rsus2 > N_Vehicles / 2)              n_malicious_rsus2 = N_Vehicles / 2;
+
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED" << std::endl;
@@ -144938,9 +144957,10 @@ int main(int argc, char *argv[])
 
       uint32_t n_malicious_ctrl3b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
-      if (n_malicious_ctrl3b < 1u)                        n_malicious_ctrl3b = 1u;
-      if (n_malicious_ctrl3b > controller_Node.GetN())    n_malicious_ctrl3b = controller_Node.GetN();
-      if (n_malicious_ctrl3b > N_Vehicles / 2)            n_malicious_ctrl3b = N_Vehicles / 2;
+      if (n_malicious_ctrl3b < 1u)                      n_malicious_ctrl3b = 1u;
+      if (n_malicious_ctrl3b > controller_Node.GetN()) n_malicious_ctrl3b = controller_Node.GetN();
+      if (n_malicious_ctrl3b > N_Vehicles / 2)          n_malicious_ctrl3b = N_Vehicles / 2;
+
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 07 - BSHH-S3 ATTACK CONFIGURED" << std::endl;
@@ -145048,10 +145068,11 @@ int main(int argc, char *argv[])
 
       uint32_t n_malicious_ctrl4b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
-      if (n_malicious_ctrl4b < 1u)                        n_malicious_ctrl4b = 1u;
-      if (n_malicious_ctrl4b > controller_Node.GetN())    n_malicious_ctrl4b = controller_Node.GetN();
-      if (n_malicious_ctrl4b > N_Vehicles / 2)            n_malicious_ctrl4b = N_Vehicles / 2;
-      if (n_malicious_ctrl4b > RSU_Nodes.GetN())          n_malicious_ctrl4b = RSU_Nodes.GetN();
+      if (n_malicious_ctrl4b < 1u)                      n_malicious_ctrl4b = 1u;
+      if (n_malicious_ctrl4b > controller_Node.GetN()) n_malicious_ctrl4b = controller_Node.GetN();
+      if (n_malicious_ctrl4b > N_Vehicles / 2)          n_malicious_ctrl4b = N_Vehicles / 2;
+      if (n_malicious_ctrl4b > RSU_Nodes.GetN())        n_malicious_ctrl4b = RSU_Nodes.GetN();
+
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 08 - BSHH-S4 ATTACK CONFIGURED" << std::endl;
