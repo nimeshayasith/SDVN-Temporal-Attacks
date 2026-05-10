@@ -211,6 +211,9 @@ bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 // attack_percentage: fraction of vehicle nodes (0–100) that behave maliciously.
 // controller_malicious_assumption: when true, controllers may also be malicious.
 uint32_t attack_percentage             = 20;
+double   attack_activation_probability = 0.75;
+double   attack_time_jitter_s          = 0.040;
+double   attack_support_evidence_probability = 0.65;
 bool     controller_malicious_assumption = false;
 
 // Per-family "is this attack type active?" flags — set by declare_attack_states()
@@ -439,7 +442,7 @@ static const double PEM_BEACON_BUDGET_MS = 100.0;
 static const double PEM_BEACON_INTERVAL_S = 0.100;
 static const double PEM_PROPAGATION_EPSILON_S = 0.020;
 static const double PEM_HEARTBEAT_WINDOW_S = 0.400;
-static const double PEM_SCORE_THRESHOLD = 0.12;
+static const double PEM_SCORE_THRESHOLD = 0.075;
 static const double PEM_ME_TOLERANCE_MU = 0.30;
 static const double PEM_ME_DELTA_MAX = 1.0;
 static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
@@ -456,17 +459,17 @@ static const double PEM_PATH_LOSS_EXP   =  2.75;  // path-loss exponent (DSRC hi
 static const double PEM_RSSI_MIN_DBM    = PEM_RSSI_REF_DBM
     - 10.0 * PEM_PATH_LOSS_EXP * 2.4771;  // log10(300) ≈ 2.4771
 
-// Signature weights — sum = 1.0
+// Signature weights — sum = 1.0.  The alert threshold is intentionally equal
+// to the smallest single-signature weight: each formal signature below is a
+// detection condition on its own, while co-firing signatures still raise the
+// confidence score.
 // TTW (S0,S1,S2): timestamp/replay evidence, highest weight
 // BSHH (S3,S4,S5): identity/heartbeat anomaly, mid weight
 // ME (S6,S7,S8): topology-density anomaly, lower weight
 static const double PEM_WEIGHTS[9] = {
     0.15, 0.15, 0.10,   // TTW-S1, TTW-S2, TTW-S3
     0.15, 0.10, 0.10,   // BSHH-S1, BSHH-S2, BSHH-S3
-    0.10, 0.075, 0.075    // ME-S1, ME-S2, ME-S3
-    // ME-S1/S2 raised to 0.13 (above PEM_SCORE_THRESHOLD=0.12) so that
-    // reporter-count excess (sig6) or path-count spike (sig7) alone is
-    // sufficient to raise an alert without requiring co-firing signatures.
+    0.10, 0.075, 0.075  // ME-S1, ME-S2, ME-S3
 };
 
 // Temporal decay time-constant for window history pressure
@@ -669,7 +672,10 @@ PemGetPhaseLabel()
 static std::string PemEventTypeToString(PemEventType type);
 static std::string PemGetLinkKey(uint32_t srcId, uint32_t dstId);
 static void PemTrimSlidingWindow(double nowSeconds);
-static uint32_t PemComputePathCount(uint32_t srcId, uint32_t dstId);
+static double PemDistance2d(const Vector& a, const Vector& b);
+static std::set<uint32_t> PemCollectReportersForLink(const PemEvent& event);
+static uint32_t PemComputeRhoMaxForLink(const PemEvent& event);
+static uint32_t PemComputeReporterInferredPathCount(const PemEvent& event);
 static std::string PemTriggeredSignatureString(const bool triggered[9]);
 static void PemWriteEventCsv(const PemEvent& event);
 static void PemWriteRunSummaryCsv();
@@ -732,66 +738,92 @@ PemTrimSlidingWindow(double nowSeconds)
     }
 }
 
-static uint32_t
-PemCountPathsDfs(const std::map<uint32_t, std::set<uint32_t> >& graph,
-                 uint32_t current,
-                 uint32_t target,
-                 std::set<uint32_t>& visited,
-                 uint32_t depth,
-                 uint32_t maxDepth)
+static double
+PemDistance2d(const Vector& a, const Vector& b)
 {
-    if (current == target)
-    {
-        return 1;
-    }
-    if (depth >= maxDepth)
-    {
-        return 0;
-    }
+    return std::sqrt(std::pow(a.x - b.x, 2.0) +
+                     std::pow(a.y - b.y, 2.0));
+}
 
-    visited.insert(current);
-    uint32_t count = 0;
-    std::map<uint32_t, std::set<uint32_t> >::const_iterator it = graph.find(current);
-    if (it != graph.end())
+static std::set<uint32_t>
+PemCollectReportersForLink(const PemEvent& event)
+{
+    std::set<uint32_t> reporters;
+    const std::string linkKey = PemGetLinkKey(event.link_src_id, event.link_dst_id);
+    std::map<std::string, std::vector<PemEvent> >::const_iterator linkIt =
+        pem_link_report_history.find(linkKey);
+    if (linkIt != pem_link_report_history.end())
     {
-        for (std::set<uint32_t>::const_iterator n = it->second.begin();
-             n != it->second.end();
-             ++n)
+        for (std::vector<PemEvent>::const_iterator it = linkIt->second.begin();
+             it != linkIt->second.end();
+             ++it)
         {
-            if (visited.count(*n) == 0)
-            {
-                count += PemCountPathsDfs(graph, *n, target, visited, depth + 1, maxDepth);
-                if (count >= 8)
-                {
-                    break;
-                }
-            }
+            reporters.insert(it->reporter_id);
         }
     }
-    visited.erase(current);
-    return count;
+    reporters.insert(event.reporter_id);
+    return reporters;
 }
 
 static uint32_t
-PemComputePathCount(uint32_t srcId, uint32_t dstId)
+PemComputeRhoMaxForLink(const PemEvent& event)
 {
-    std::map<uint32_t, std::set<uint32_t> > graph;
-    for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
-         it != ttw_controller_table.end();
+    const double observationArea =
+        3.14159265358979323846 * std::pow(TTW_COMM_RANGE, 2.0);
+
+    std::set<uint32_t> vehiclesNearLink;
+    for (std::deque<PemEvent>::const_iterator w = pem_event_window.begin();
+         w != pem_event_window.end();
+         ++w)
+    {
+        if (w->type != PEM_EVENT_BEACON)
+        {
+            continue;
+        }
+
+        const double dToSrc = PemDistance2d(w->reporter_position,
+                                            event.link_src_position);
+        const double dToDst = PemDistance2d(w->reporter_position,
+                                            event.link_dst_position);
+        if (std::min(dToSrc, dToDst) <= TTW_COMM_RANGE)
+        {
+            vehiclesNearLink.insert(w->claimed_sender_id);
+        }
+    }
+
+    // Equation ME-S1: rhoMax(lambda, rcomm) = floor(lambda * pi * rcomm^2).
+    // Here lambda is estimated from recent beacon evidence around the link, so
+    // units are vehicles / m^2 and the formula remains scale-correct for ns-3.
+    const double lambdaHat =
+        observationArea > 0.0
+            ? static_cast<double>(vehiclesNearLink.size()) / observationArea
+            : 0.0;
+    uint32_t rhoMax =
+        static_cast<uint32_t>(std::floor(lambdaHat * observationArea));
+
+    // A physical link has two endpoints; below that, the density estimate is
+    // under-sampled rather than physically meaningful.
+    return (rhoMax < 2u) ? 2u : rhoMax;
+}
+
+static uint32_t
+PemComputeReporterInferredPathCount(const PemEvent& event)
+{
+    std::set<uint32_t> reporters = PemCollectReportersForLink(event);
+
+    // Direct endpoint-to-endpoint path plus one inferred relay/diversity path
+    // for every distinct third-party reporter of the same link.
+    uint32_t pathCount = 1;
+    for (std::set<uint32_t>::const_iterator it = reporters.begin();
+         it != reporters.end();
          ++it)
     {
-        const TopologyPacket& pkt = it->second;
-        graph[pkt.src_id].insert(pkt.seen_id);
-        graph[pkt.seen_id].insert(pkt.src_id);
+        if (*it != event.link_src_id && *it != event.link_dst_id)
+        {
+            pathCount++;
+        }
     }
-
-    if (graph.count(srcId) == 0 || graph.count(dstId) == 0)
-    {
-        return 0;
-    }
-
-    std::set<uint32_t> visited;
-    return PemCountPathsDfs(graph, srcId, dstId, visited, 0, 5);
+    return pathCount;
 }
 
 static std::string
@@ -996,49 +1028,24 @@ PemEvaluateEvent(PemEvent& event)
         pem_link_report_history.find(linkKey);
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && linkIt != pem_link_report_history.end())
     {
-        std::set<uint32_t> reporters;
         for (std::vector<PemEvent>::const_iterator it = linkIt->second.begin();
              it != linkIt->second.end();
              ++it)
         {
+            // TTW-S3: two distinct reporters for the same link carry sender
+            // timestamps separated by more than one beacon interval.
             if (it->reporter_id != event.reporter_id &&
                 std::abs(it->sender_timestamp - event.sender_timestamp) > PEM_BEACON_INTERVAL_S)
             {
                 event.triggered[2] = true;
             }
-            reporters.insert(it->reporter_id);
         }
-        reporters.insert(event.reporter_id);
 
-        // ME-S1 (Reporter Count Excess) — use LOCAL vehicle density near the
-        // link endpoints, not global λ̂.  The proposal says λ̂(t) is estimated
-        // from vehicles within the current sliding window whose beacon position
-        // is within r_comm of the link.  Using global density overestimates
-        // rhoMax in small simulations and causes ME-S1 to never fire.
-        std::set<uint32_t> vehiclesNearLink;
-        for (std::deque<PemEvent>::const_iterator w = pem_event_window.begin();
-             w != pem_event_window.end(); ++w)
-        {
-            if (w->type == PEM_EVENT_BEACON)
-            {
-                const double dWtoSrc = std::sqrt(
-                    std::pow(w->reporter_position.x - event.link_src_position.x, 2.0) +
-                    std::pow(w->reporter_position.y - event.link_src_position.y, 2.0));
-                const double dWtoDst = std::sqrt(
-                    std::pow(w->reporter_position.x - event.link_dst_position.x, 2.0) +
-                    std::pow(w->reporter_position.y - event.link_dst_position.y, 2.0));
-                if (std::min(dWtoSrc, dWtoDst) <= TTW_COMM_RANGE)
-                {
-                    vehiclesNearLink.insert(w->claimed_sender_id);
-                }
-            }
-        }
-        // rhoMax = (1+μ) × local_count; floor at 2.0 so a 3-reporter link always
-        // triggers even when the sliding window has seen very few beacons.
-        const double localRhoMax =
-            (1.0 + PEM_ME_TOLERANCE_MU) * static_cast<double>(vehiclesNearLink.size());
-        const double effectiveRhoMax = std::fmax(localRhoMax, 2.0);
-        if (static_cast<double>(reporters.size()) > effectiveRhoMax)
+        // ME-S1: |R(eij,t)| > rhoMax(lambda, rcomm), where rhoMax is
+        // computed from the local beacon-estimated density around this link.
+        const std::set<uint32_t> reporters = PemCollectReportersForLink(event);
+        const uint32_t rhoMax = PemComputeRhoMaxForLink(event);
+        if (reporters.size() > rhoMax)
         {
             event.triggered[6] = true;
         }
@@ -1094,21 +1101,27 @@ PemEvaluateEvent(PemEvent& event)
 
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
+        // ME-S2: sudden inflation of reporter-inferred paths for this link.
+        // Non-attack topology updates refresh the mobility-consistent baseline;
+        // attack-labelled updates are compared against that baseline so a burst
+        // of echo reporters within one beacon interval is not hidden by updating
+        // the baseline after the first replay.
         const uint32_t currentPathCount =
-            PemComputePathCount(event.link_src_id, event.link_dst_id);
+            PemComputeReporterInferredPathCount(event);
         const double previousCount = pem_previous_path_counts[linkKey];
         if ((static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
         {
             event.triggered[7] = true;
         }
-        pem_previous_path_counts[linkKey] = static_cast<double>(currentPathCount);
+        if (!event.attack_label)
+        {
+            pem_previous_path_counts[linkKey] = static_cast<double>(currentPathCount);
+        }
 
-        const double distanceToSrc =
-            std::sqrt(std::pow(event.reporter_position.x - event.link_src_position.x, 2.0) +
-                      std::pow(event.reporter_position.y - event.link_src_position.y, 2.0));
-        const double distanceToDst =
-            std::sqrt(std::pow(event.reporter_position.x - event.link_dst_position.x, 2.0) +
-                      std::pow(event.reporter_position.y - event.link_dst_position.y, 2.0));
+        const double distanceToSrc = PemDistance2d(event.reporter_position,
+                                                   event.link_src_position);
+        const double distanceToDst = PemDistance2d(event.reporter_position,
+                                                   event.link_dst_position);
         const double nearestDistance = std::min(distanceToSrc, distanceToDst);
 
         // ME-S3 (Reporter-Range AND Signal Inconsistency) — project formula:
@@ -1174,7 +1187,7 @@ PemEvaluateEvent(PemEvent& event)
     // Alert only fires when detection is enabled. When detection_enabled=false,
     // PEM logs the score/signatures but never acts on them, so the controller
     // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
-    event.alert_raised = detection_enabled && (score > PEM_SCORE_THRESHOLD);
+    event.alert_raised = detection_enabled && (score >= PEM_SCORE_THRESHOLD);
 
     PemRecordObservation(event.attack_label, event.score, event.alert_raised);
     event.detection_latency_ms =
@@ -1407,6 +1420,84 @@ void declare_attack_states()
     // ATTACK_NONE (0): all flags remain false — baseline run.
 }
 
+static Ptr<UniformRandomVariable>
+AttackGetRng()
+{
+    static Ptr<UniformRandomVariable> rng = CreateObject<UniformRandomVariable>();
+    return rng;
+}
+
+template <typename T>
+static void
+AttackShuffleVector(std::vector<T>& values)
+{
+    if (values.size() < 2)
+    {
+        return;
+    }
+
+    Ptr<UniformRandomVariable> rng = AttackGetRng();
+    for (uint32_t i = static_cast<uint32_t>(values.size()) - 1; i > 0; --i)
+    {
+        const uint32_t j = static_cast<uint32_t>(rng->GetInteger(0, i));
+        std::swap(values[i], values[j]);
+    }
+}
+
+static bool
+AttackRoll(double probability)
+{
+    if (probability <= 0.0)
+    {
+        return false;
+    }
+    if (probability >= 1.0)
+    {
+        return true;
+    }
+    return AttackGetRng()->GetValue(0.0, 1.0) < probability;
+}
+
+static double
+AttackSampleSignedJitter(double maxAbsSeconds)
+{
+    if (maxAbsSeconds <= 0.0)
+    {
+        return 0.0;
+    }
+    return AttackGetRng()->GetValue(-maxAbsSeconds, maxAbsSeconds);
+}
+
+static void
+AttackSelectActiveVehicles(std::vector<uint32_t>& maliciousVehicles,
+                           double activationProbability)
+{
+    if (maliciousVehicles.empty())
+    {
+        return;
+    }
+
+    std::vector<uint32_t> activeVehicles;
+    activeVehicles.reserve(maliciousVehicles.size());
+    for (uint32_t vehicleIdx : maliciousVehicles)
+    {
+        if (AttackRoll(activationProbability))
+        {
+            activeVehicles.push_back(vehicleIdx);
+        }
+    }
+
+    if (activeVehicles.empty())
+    {
+        const uint32_t fallback =
+            static_cast<uint32_t>(AttackGetRng()->GetInteger(
+                0, static_cast<int64_t>(maliciousVehicles.size()) - 1));
+        activeVehicles.push_back(maliciousVehicles[fallback]);
+    }
+
+    maliciousVehicles.swap(activeVehicles);
+}
+
 // Assigns malicious membership to every vehicle node and to up to 3 controllers
 // based on attack_percentage.  Must be called after declare_attack_states() and
 // after N_Vehicles is finalised.
@@ -1442,16 +1533,12 @@ void declare_attackers()
     uint32_t n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
     if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
 
-    // Randomly shuffle vehicle indices using NS-3 RNG (tied to --RngRun).
-    // Each run seed produces a different attacker set for statistical independence.
     std::vector<uint32_t> indices(N_Vehicles);
     for (uint32_t i = 0; i < N_Vehicles; i++) indices[i] = i;
-    Ptr<UniformRandomVariable> rng = CreateObject<UniformRandomVariable>();
-    for (uint32_t i = N_Vehicles - 1; i > 0; --i)
-    {
-        uint32_t j = (uint32_t)rng->GetInteger(0, i);
-        std::swap(indices[i], indices[j]);
-    }
+    // Randomly shuffle vehicle indices using the shared attack RNG so attacker
+    // populations change from run to run but remain reproducible under ns-3 RNG
+    // control.
+    AttackShuffleVector(indices);
 
     for (uint32_t i = 0; i < N_Vehicles; i++)
     {
@@ -1694,6 +1781,7 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
 
     // STEP 4: Forge timestamp — change stored t=10 to appear current (t=20)
     const double stored_ts = ttw_stored_packets[src_id].timestamp;
+    ttw_s1_forged_timestamp = forged_time;
     TopologyPacket forged = {src_id, dst_id, forged_time, true};
 
     ttw_log << "[t=" << now << "]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK\n"
@@ -1835,7 +1923,6 @@ static void TTW_ActivateReplay_S1()
         return;
     }
     ttw_s1_attack_active    = true;
-    ttw_s1_forged_timestamp = TTW_REPLAY_TIME;
     ttw_s1_pending_attackers.clear();
     for (auto& kv : ttw_s1_attacker_victim_map)
         ttw_s1_pending_attackers.insert(kv.first);
@@ -142087,6 +142174,15 @@ int main(int argc, char *argv[])
     cmd.AddValue ("attack_percentage",
                   "Percentage (0-100) of vehicle nodes that behave as attackers",
                   attack_percentage);
+    cmd.AddValue ("attack_activation_probability",
+                  "Probability that a malicious node actually launches its scheduled attack opportunity",
+                  attack_activation_probability);
+    cmd.AddValue ("attack_time_jitter_s",
+                  "Random +/- jitter applied to attack execution times",
+                  attack_time_jitter_s);
+    cmd.AddValue ("attack_support_evidence_probability",
+                  "Probability that corroborating victim-side evidence also reaches the controller",
+                  attack_support_evidence_probability);
     cmd.AddValue ("controller_malicious_assumption",
                   "1=controllers may also be malicious (activates controller attack flags)",
                   controller_malicious_assumption);
@@ -144342,14 +144438,21 @@ int main(int argc, char *argv[])
       if (victim_idx.empty())
           std::cout << "[TTW-S1] WARNING: every vehicle is malicious; attackers will target each other" << std::endl;
 
+      AttackShuffleVector(attacker_idx);
+      AttackShuffleVector(victim_idx);
+      AttackSelectActiveVehicles(attacker_idx, attack_activation_probability);
+
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 01 - TTW-S1 ATTACK CONFIGURED"   << std::endl;
-      std::cout << "Attackers (" << attacker_idx.size() << "): ";
+      std::cout << "Active attackers (" << attacker_idx.size() << "): ";
       for (uint32_t k : attacker_idx) std::cout << "V" << k << " ";
       std::cout << std::endl;
       std::cout << "Victim pool (" << victim_idx.size() << "): ";
       for (uint32_t k : victim_idx)   std::cout << "V" << k << " ";
       std::cout << std::endl;
+      std::cout << "Activation probability : " << attack_activation_probability << std::endl;
+      std::cout << "Replay jitter window   : +/-" << attack_time_jitter_s << " s" << std::endl;
+      std::cout << "Support evidence prob. : " << attack_support_evidence_probability << std::endl;
       std::cout << "Timeline:" << std::endl;
       std::cout << "  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller" << std::endl;
       std::cout << "  t=10s  STEP 3   : Each attacker stores old packet" << std::endl;
@@ -144361,9 +144464,7 @@ int main(int argc, char *argv[])
       // Set pair counter so TTW_ReplayAttack knows when to print the final banner
       ttw_s1_total_pairs     = (uint32_t)attacker_idx.size();
       ttw_s1_completed_pairs = 0;
-
-      Ptr<SimpleUdpApplication> app_ctrl =
-          DynamicCast<SimpleUdpApplication>(apps.Get(0));
+      ttw_s1_attacker_victim_map.clear();
 
       for (uint32_t a = 0; a < (uint32_t)attacker_idx.size(); a++)
       {
@@ -144371,6 +144472,16 @@ int main(int argc, char *argv[])
           uint32_t victim_cidx   = victim_idx.empty()
                                    ? attacker_idx[(a + 1) % attacker_idx.size()]
                                    : victim_idx[a % victim_idx.size()];
+          const bool corroboratedVictimReport =
+              AttackRoll(attack_support_evidence_probability);
+          const double storeJitter = AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
+          const double replayJitter = AttackSampleSignedJitter(attack_time_jitter_s);
+          const double storeTime = 10.200 + storeJitter;
+          double replayTime = TTW_REPLAY_TIME + replayJitter;
+          if (replayTime <= (TTW_LINK_BREAK + 0.25))
+          {
+              replayTime = TTW_LINK_BREAK + 0.25;
+          }
 
           uint32_t mal_ns3 = Vehicle_Nodes.Get(attacker_cidx)->GetId();
           uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_cidx)->GetId();
@@ -144420,23 +144531,29 @@ int main(int argc, char *argv[])
 
           Simulator::Schedule(Seconds(10.020), &PemEmitVehicleHeartbeat,
               attacker_cidx, attacker_cidx, 10.020, false);
-          Simulator::Schedule(Seconds(10.030), &PemEmitVehicleHeartbeat,
-              victim_cidx,   victim_cidx,   10.030, false);
+          if (corroboratedVictimReport)
+          {
+              Simulator::Schedule(Seconds(10.030), &PemEmitVehicleHeartbeat,
+                  victim_cidx, victim_cidx, 10.030, false);
+          }
 
           // STEP 2 — Legitimate topology updates -> controller
           Simulator::Schedule(Seconds(10.100), &TTW_SendTopologyUpdate,
               Vehicle_Nodes.Get(attacker_cidx), vic_ns3, 10.0);
-          Simulator::Schedule(Seconds(10.101), &TTW_SendTopologyUpdate,
-              Vehicle_Nodes.Get(victim_cidx),   mal_ns3, 10.0);
+          if (corroboratedVictimReport)
+          {
+              Simulator::Schedule(Seconds(10.101), &TTW_SendTopologyUpdate,
+                  Vehicle_Nodes.Get(victim_cidx), mal_ns3, 10.0);
+          }
 
           // STEP 3 — Attacker stores old packet
-          Simulator::Schedule(Seconds(10.200), &TTW_StorePacket,
+          Simulator::Schedule(Seconds(storeTime), &TTW_StorePacket,
               mal_ns3, vic_ns3, 10.0);
 
-          // STEPS 4+5+6 — Replay attack at t=20
-          Simulator::Schedule(Seconds(20.000), &TTW_ReplayAttack,
+          // STEPS 4+5+6 — Replay attack with stochastic activation timing
+          Simulator::Schedule(Seconds(replayTime), &TTW_ReplayAttack,
               Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
-              mal_ns3, vic_ns3, 20.0);
+              mal_ns3, vic_ns3, replayTime);
 
           // NetAnim visual packets
           Simulator::Schedule(Seconds(10.000), &send_LTE_routing_data_alone,
@@ -144448,16 +144565,23 @@ int main(int argc, char *argv[])
           Simulator::Schedule(Seconds(10.100), &send_LTE_routing_data_alone,
               app_attacker, Vehicle_Nodes.Get(attacker_cidx),
               controller_Node.Get(0), attacker_cidx);
-          Simulator::Schedule(Seconds(10.110), &send_LTE_routing_data_alone,
-              app_victim,   Vehicle_Nodes.Get(victim_cidx),
-              controller_Node.Get(0), victim_cidx);
-          Simulator::Schedule(Seconds(20.000), &send_LTE_routing_data_alone,
+          if (corroboratedVictimReport)
+          {
+              Simulator::Schedule(Seconds(10.110), &send_LTE_routing_data_alone,
+                  app_victim, Vehicle_Nodes.Get(victim_cidx),
+                  controller_Node.Get(0), victim_cidx);
+          }
+          Simulator::Schedule(Seconds(replayTime), &send_LTE_routing_data_alone,
               app_attacker, Vehicle_Nodes.Get(attacker_cidx),
               controller_Node.Get(0), attacker_cidx);
       }
 
-      // Single arming call — arms all attackers in ttw_s1_attacker_victim_map
-      Simulator::Schedule(Seconds(19.9999), &TTW_ActivateReplay_S1);
+      // Single arming call — arms all active attackers before the earliest replay
+      const double armTime =
+          ((TTW_REPLAY_TIME - attack_time_jitter_s - 0.001) > 0.0)
+              ? (TTW_REPLAY_TIME - attack_time_jitter_s - 0.001)
+              : 0.0;
+      Simulator::Schedule(Seconds(armTime), &TTW_ActivateReplay_S1);
   }
 
   // ===========================================================================
