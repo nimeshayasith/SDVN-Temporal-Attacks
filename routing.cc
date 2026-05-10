@@ -544,6 +544,9 @@ uint64_t pem_under_attack_snapshots = 0;
 uint64_t pem_post_mitigation_snapshots = 0;
 bool pem_event_csv_header_written = false;
 bool pem_summary_csv_header_written = false;
+std::set<uint32_t> me_s1_actual_attackers;
+std::set<uint32_t> me_s1_detected_attackers;
+std::set<uint32_t> me_s1_false_positive_reporters;
 extern double current_packet_delivery_ratio;
 extern double current_latency_routing;
 extern NodeContainer Vehicle_Nodes;
@@ -563,6 +566,28 @@ PemComputeMcc()
     const double tn = static_cast<double>(pem_true_negative);
     const double fp = static_cast<double>(pem_false_positive);
     const double fn = static_cast<double>(pem_false_negative);
+
+    const double numerator = (tp * tn) - (fp * fn);
+    const double denominator =
+        PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+
+    if (denominator <= 0.0)
+    {
+        return 0.0;
+    }
+    return numerator / denominator;
+}
+
+static double
+PemComputeMccFromCounts(uint64_t tpCount,
+                        uint64_t tnCount,
+                        uint64_t fpCount,
+                        uint64_t fnCount)
+{
+    const double tp = static_cast<double>(tpCount);
+    const double tn = static_cast<double>(tnCount);
+    const double fp = static_cast<double>(fpCount);
+    const double fn = static_cast<double>(fnCount);
 
     const double numerator = (tp * tn) - (fp * fn);
     const double denominator =
@@ -955,16 +980,66 @@ PemWriteRunSummaryCsv()
             ? (1000.0 * pem_post_mitigation_te2e_sum / static_cast<double>(pem_post_mitigation_snapshots))
             : 0.0;
 
+    uint64_t summaryTp = pem_true_positive;
+    uint64_t summaryTn = pem_true_negative;
+    uint64_t summaryFp = pem_false_positive;
+    uint64_t summaryFn = pem_false_negative;
+    double summaryMcc = pem_last_mcc;
+
+    if (attack_scenario == ME_S1_MAL_VEH_NO_RSU && Vehicle_Nodes.GetN() > 0)
+    {
+        uint64_t detectedActual = 0;
+        for (std::set<uint32_t>::const_iterator it = me_s1_detected_attackers.begin();
+             it != me_s1_detected_attackers.end();
+             ++it)
+        {
+            if (me_s1_actual_attackers.find(*it) != me_s1_actual_attackers.end())
+            {
+                detectedActual++;
+            }
+        }
+
+        uint64_t falsePositiveVehicles = 0;
+        for (std::set<uint32_t>::const_iterator it = me_s1_false_positive_reporters.begin();
+             it != me_s1_false_positive_reporters.end();
+             ++it)
+        {
+            if (*it < Vehicle_Nodes.GetN() &&
+                me_s1_actual_attackers.find(*it) == me_s1_actual_attackers.end())
+            {
+                falsePositiveVehicles++;
+            }
+        }
+
+        const uint64_t actualAttackers =
+            static_cast<uint64_t>(me_s1_actual_attackers.size());
+        const uint64_t benignVehicles =
+            (Vehicle_Nodes.GetN() > actualAttackers)
+                ? static_cast<uint64_t>(Vehicle_Nodes.GetN()) - actualAttackers
+                : 0u;
+
+        summaryTp = detectedActual;
+        summaryFn = (actualAttackers > detectedActual)
+                        ? actualAttackers - detectedActual
+                        : 0u;
+        summaryFp = falsePositiveVehicles;
+        summaryTn = (benignVehicles > falsePositiveVehicles)
+                        ? benignVehicles - falsePositiveVehicles
+                        : 0u;
+        summaryMcc = PemComputeMccFromCounts(summaryTp, summaryTn,
+                                             summaryFp, summaryFn);
+    }
+
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
     fout << RngSeedManager::GetRun() << ","
          << attack_scenario << ","
          << attack_percentage << ","
          << (detection_enabled ? 1 : 0) << ","
-         << pem_true_positive << ","
-         << pem_true_negative << ","
-         << pem_false_positive << ","
-         << pem_false_negative << ","
-         << pem_last_mcc << ","
+         << summaryTp << ","
+         << summaryTn << ","
+         << summaryFp << ","
+         << summaryFn << ","
+         << summaryMcc << ","
          << pem_last_auroc << ","
          << PemGetDetectionLatencyMs() << ","
          << pdrAttack << ","
@@ -1192,6 +1267,20 @@ PemEvaluateEvent(PemEvent& event)
     PemRecordObservation(event.attack_label, event.score, event.alert_raised);
     event.detection_latency_ms =
         event.alert_raised ? PemGetDetectionLatencyMs() : -1.0;
+
+    if (attack_scenario == ME_S1_MAL_VEH_NO_RSU &&
+        event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
+        event.alert_raised)
+    {
+        if (me_s1_actual_attackers.find(event.reporter_id) != me_s1_actual_attackers.end())
+        {
+            me_s1_detected_attackers.insert(event.reporter_id);
+        }
+        else
+        {
+            me_s1_false_positive_reporters.insert(event.reporter_id);
+        }
+    }
 
     pem_event_window.push_back(event);
     pem_all_events.push_back(event);
@@ -145646,9 +145735,17 @@ int main(int argc, char *argv[])
       }
       // Build echo attacker and real-link vehicle lists from me_malicious_nodes[]
       std::vector<uint32_t> me_echo_cidx, me_real_cidx;
+      me_s1_actual_attackers.clear();
+      me_s1_detected_attackers.clear();
+      me_s1_false_positive_reporters.clear();
       for (uint32_t k = 0; k < N_Vehicles; k++) {
-          if (me_malicious_nodes[k]) me_echo_cidx.push_back(k);
-          else                        me_real_cidx.push_back(k);
+          if (me_malicious_nodes[k]) {
+              me_echo_cidx.push_back(k);
+              me_s1_actual_attackers.insert(k);
+          }
+          else {
+              me_real_cidx.push_back(k);
+          }
       }
       // If all malicious, split: first half = real link, second half = echo
       if (me_real_cidx.empty()) {
