@@ -216,6 +216,7 @@ double   attack_activation_probability = 0.75;
 double   attack_time_jitter_s          = 0.040;
 double   attack_support_evidence_probability = 0.65;
 bool     controller_malicious_assumption = false;
+uint32_t Random                        = 0;
 
 // Per-family "is this attack type active?" flags — set by declare_attack_states()
 bool present_ttw_attack_nodes          = false;
@@ -1766,10 +1767,14 @@ void declare_attackers()
 
     std::vector<uint32_t> indices(N_Vehicles);
     for (uint32_t i = 0; i < N_Vehicles; i++) indices[i] = i;
-    // Randomly shuffle vehicle indices using the shared attack RNG so attacker
-    // populations change from run to run but remain reproducible under ns-3 RNG
-    // control.
-    AttackShuffleVector(indices);
+    // --Random=0: deterministic first-N vehicle selection.
+    // --Random=1: randomly shuffle vehicles first, then take the first N.
+    // The shuffled mode uses the shared attack RNG, so it is reproducible with
+    // ns-3 RNG run control while changing across different RngRun values.
+    if (Random != 0)
+    {
+        AttackShuffleVector(indices);
+    }
 
     for (uint32_t i = 0; i < N_Vehicles; i++)
     {
@@ -1825,6 +1830,7 @@ void declare_attackers()
 
     std::cout << "[declare_attackers] scenario=" << attack_scenario
               << "  pct=" << attack_percentage
+              << "  Random=" << Random
               << "  N_Vehicles=" << N_Vehicles << "\n"
               << "  TTW  nodes=" << count_true(ttw_malicious_nodes)
               << "  controllers=" << count_ctrl(ttw_malicious_controllers) << "\n"
@@ -142463,6 +142469,9 @@ int main(int argc, char *argv[])
     cmd.AddValue ("attack_percentage",
                   "Percentage (0-100) of vehicle nodes that behave as attackers",
                   attack_percentage);
+    cmd.AddValue ("Random",
+                  "0=deterministic first-N attacker vehicle selection, 1=random attacker vehicle selection",
+                  Random);
     cmd.AddValue ("attack_activation_probability",
                   "Probability that a malicious node actually launches its scheduled attack opportunity",
                   attack_activation_probability);
@@ -145323,7 +145332,6 @@ int main(int argc, char *argv[])
 
       AttackShuffleVector(bshh_attacker_idx);
       AttackShuffleVector(bshh_victim_idx);
-      AttackSelectActiveVehicles(bshh_attacker_idx, attack_activation_probability);
 
       static const double BSHH_S1_EXCHANGE_TIME       = 5.0;
       static const double BSHH_S1_FORWARD_TIME        = 5.010;
@@ -145346,7 +145354,7 @@ int main(int argc, char *argv[])
       std::cout << "Victim pool (" << bshh_victim_idx.size() << "): ";
       for (uint32_t k : bshh_victim_idx)   std::cout << "V" << k << " ";
       std::cout << std::endl;
-      std::cout << "Activation probability : " << attack_activation_probability << std::endl;
+      std::cout << "Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count" << std::endl;
       std::cout << "Replay jitter window   : +/-" << attack_time_jitter_s << " s" << std::endl;
       std::cout << "Support evidence prob. : " << attack_support_evidence_probability << std::endl;
       std::cout << "Timeline:" << std::endl;
