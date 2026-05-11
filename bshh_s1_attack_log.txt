@@ -1,0 +1,46 @@
+========================================================
+  BSHH Attack S1 — Malicious Vehicle, No RSU           
+========================================================
+
+  t=5    ①  Legitimate V2V heartbeat exchange
+  t=5    ②  Both forward honest heartbeats to controller
+  t=5+   ③  Attacker stores captured heartbeat (Sender=Victim, t=5)
+  t=10   ④  Attacker sends stored old heartbeat to victim
+  t=10+  ⑤  Victim forwards old heartbeat to controller
+  t=10+  ⑥  Attacker hijacks same old heartbeat to controller
+  t=10+  ⑦  Controller holds conflicting liveness
+
+========================================================
+
+[t=5.004]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V10 -> V7 : Heartbeat(Sender=V10, t=5.004)
+  V7 -> V10 : Heartbeat(Sender=V7, t=5.004)
+
+[t=5.005]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V10 -> Controller : Heartbeat(Sender=V10, t=5.004)
+  V7 -> Controller : Heartbeat(Sender=V7, t=5.004)
+
+[t=5.037]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  captured_packet : Heartbeat(Sender=V10, t=5.004)  (from legitimate exchange at t=5.004)
+  Attacker will replay this during the attack window
+
+[t=9.976]  STEP ④  ATTACKER SENDS OLD HEARTBEAT TO VICTIM
+  V7 -> V10 : Heartbeat(Sender=V10, t=5.004)
+  Victim receives a stale but previously legitimate heartbeat
+
+[t=10.018]  STEP ⑤  VICTIM FORWARDS OLD HEARTBEAT TO CONTROLLER
+  V10 -> Controller : Heartbeat(Sender=V10, t=5.004)
+  Controller refreshes V10 liveness using stale timestamp t=5.004
+
+[t=10.028]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  V7 -> Controller : Heartbeat(claimed=V10, t=5.004)
+  physical_sender=V7  claimed_sender=V10
+  Stale timestamp 5.004 < current t=10.028 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+[t=10.029]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V10
+  latest physical_sender=V7  claimed_sender=V10
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
