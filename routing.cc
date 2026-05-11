@@ -1014,15 +1014,6 @@ PemWriteRunSummaryCsv()
             }
         }
 
-        // TTW-S1 is summarized as a run-level population detector for
-        // attack-percentage sweeps. A run-level alarm confirms that the
-        // attack exists, while the remaining malicious population is residual
-        // unresolved risk at higher attack percentages.
-        if (detectedActual > 1)
-        {
-            detectedActual = 1;
-        }
-
         uint64_t falsePositiveVehicles = 0;
         for (std::set<uint32_t>::const_iterator it = ttw_s1_false_positive_reporters.begin();
              it != ttw_s1_false_positive_reporters.end();
@@ -1050,7 +1041,7 @@ PemWriteRunSummaryCsv()
                         ? benignVehicles - falsePositiveVehicles
                         : 0u;
 
-        if (actualAttackers == 0 && summaryFp == 0)
+        if (summaryFn == 0 && summaryFp == 0)
         {
             summaryMcc = 1.0;
             summaryAuroc = 1.0;
@@ -144729,7 +144720,6 @@ int main(int argc, char *argv[])
       {
           if (ttw_malicious_nodes[k]) {
               attacker_idx.push_back(k);
-              ttw_s1_actual_attackers.insert(Vehicle_Nodes.Get(k)->GetId());
           }
           else {
               victim_idx.push_back(k);
@@ -144745,6 +144735,10 @@ int main(int argc, char *argv[])
       AttackShuffleVector(attacker_idx);
       AttackShuffleVector(victim_idx);
       AttackSelectActiveVehicles(attacker_idx, attack_activation_probability);
+      for (uint32_t k : attacker_idx)
+      {
+          ttw_s1_actual_attackers.insert(Vehicle_Nodes.Get(k)->GetId());
+      }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 01 - TTW-S1 ATTACK CONFIGURED"   << std::endl;
