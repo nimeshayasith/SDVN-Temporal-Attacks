@@ -1,4 +1,4 @@
-#include "ns3/wave-module.h"
+﻿#include "ns3/wave-module.h"
 #include "ns3/csma-helper.h"
 #include "ns3/lte-helper.h"
 #include "ns3/aodv-module.h"
@@ -389,6 +389,9 @@ HeartbeatPacket bshh_stored_heartbeat;
 bool            bshh_heartbeat_stored = false;
 std::map<uint32_t, HeartbeatPacket> bshh_controller_liveness_table;
 std::ofstream   bshh_log;
+std::map<uint32_t, std::string> bshh_s1_pair_logs;
+uint32_t bshh_s1_completed_pairs = 0;
+uint32_t bshh_s1_total_pairs = 0;
 
 // ── ME globals ────────────────────────────────────────────────────────────────
 struct MEEchoReport {
@@ -2704,6 +2707,8 @@ void BSHH_S1_InitLog()
 
              << "========================================================\n\n";
     NS_LOG_INFO("[BSHH-S1] Log opened: bshh_s1_attack_log.txt");
+    bshh_s1_pair_logs.clear();
+    bshh_s1_completed_pairs = 0;
 }
 
 void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
@@ -145343,6 +145348,7 @@ int main(int argc, char *argv[])
       // Pairs = min(attackers, victims) — never more pairs than available victims
       const uint32_t bshh_s1_npairs =
           (uint32_t)std::min(bshh_attacker_idx.size(), bshh_victim_idx.size());
+      bshh_s1_total_pairs = bshh_s1_npairs;
 
 
 
