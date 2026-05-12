@@ -392,6 +392,15 @@ std::map<uint32_t, HeartbeatPacket> bshh_stored_heartbeats;
 std::map<uint32_t, std::string> bshh_s1_pair_logs;
 uint32_t bshh_s1_completed_pairs = 0;
 uint32_t bshh_s1_total_pairs = 0;
+std::map<uint32_t, std::string> bshh_s2_pair_logs;
+uint32_t bshh_s2_completed_pairs = 0;
+uint32_t bshh_s2_total_pairs = 0;
+std::map<uint32_t, std::string> bshh_s3_pair_logs;
+uint32_t bshh_s3_completed_pairs = 0;
+uint32_t bshh_s3_total_pairs = 0;
+std::map<uint32_t, std::string> bshh_s4_pair_logs;
+uint32_t bshh_s4_completed_pairs = 0;
+uint32_t bshh_s4_total_pairs = 0;
 std::ofstream   bshh_log;
 
 // ── ME globals ────────────────────────────────────────────────────────────────
@@ -2698,6 +2707,23 @@ std::string GetVehicleLogLabel(uint32_t ns3_id) {
         }
     }
     return "V?(ns3=" + std::to_string(ns3_id) + ")";
+}
+
+std::string GetRSULogLabel(uint32_t ns3_id) {
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); ++i) {
+        if (RSU_Nodes.Get(i)->GetId() == ns3_id) {
+            return "RSU" + std::to_string(i) + "(ns3=" + std::to_string(ns3_id) + ")";
+        }
+    }
+    return "RSU?(ns3=" + std::to_string(ns3_id) + ")";
+}
+
+std::string GetControllerLogLabel(uint32_t ctrl_index) {
+    if (ctrl_index < controller_Node.GetN()) {
+        uint32_t ns3_id = controller_Node.Get(ctrl_index)->GetId();
+        return "Ctrl" + std::to_string(ctrl_index) + "(ns3=" + std::to_string(ns3_id) + ")";
+    }
+    return "Ctrl" + std::to_string(ctrl_index) + "(?)";
 }
 
 void BSHH_S1_InitLog()
