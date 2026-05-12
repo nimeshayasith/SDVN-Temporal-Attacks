@@ -2715,8 +2715,7 @@ void BSHH_S1_InitLog()
              << "  t=10.020  ⑥  Attacker replays victim stored heartbeat to controller (impersonation)\n"
              << "  t=10.030  ⑦  Controller holds conflicting liveness\n\n"
              << "  LOG FORMAT v2: vehicles are printed as V<vehicle-index>(ns3=<node-id>)\n"
-             << "  Every selected attacker executes STEP ③, ④, ⑤, ⑥, and ⑦.\n\n"
-             << "========================================================\n\n";
+             << "  Every selected attacker executes STEP ③, ④, ⑤, ⑥, and ⑦.\n\n";
     NS_LOG_INFO("[BSHH-S1] Log opened: bshh_s1_attack_log.txt");
     bshh_s1_pair_logs.clear();
     bshh_s1_completed_pairs = 0;
@@ -145403,6 +145402,12 @@ int main(int argc, char *argv[])
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED" << std::endl;
       std::cout << "Attackers (" << bshh_s1_npairs << "): ";
+      bshh_log << "  Selected Attackers (" << bshh_s1_npairs << "): ";
+      for (uint32_t a = 0; a < bshh_s1_npairs; a++) {
+          uint32_t att_ns3 = Vehicle_Nodes.Get(bshh_attacker_idx[a])->GetId();
+          bshh_log << GetVehicleLogLabel(att_ns3) << "  ";
+      }
+      bshh_log << "\n========================================================\n\n";
       for (uint32_t k : bshh_attacker_idx) std::cout << "V" << k << " ";
       std::cout << std::endl;
       std::cout << "Victim pool (" << bshh_victim_idx.size() << "): ";
