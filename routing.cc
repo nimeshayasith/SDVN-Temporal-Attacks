@@ -392,6 +392,9 @@ std::ofstream   bshh_log;
 std::map<uint32_t, std::string> bshh_s1_pair_logs;
 uint32_t bshh_s1_completed_pairs = 0;
 uint32_t bshh_s1_total_pairs = 0;
+std::map<uint32_t, std::string> bshh_s1_pair_logs;
+uint32_t bshh_s1_completed_pairs = 0;
+uint32_t bshh_s1_total_pairs = 0;
 
 // ── ME globals ────────────────────────────────────────────────────────────────
 struct MEEchoReport {
@@ -2690,85 +2693,105 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 // BSHH-S1: MALICIOUS VEHICLE, NO RSU — attack_scenario == 5
 // =============================================================================
 
+std::string GetVehicleLogLabel(uint32_t ns3_id) {
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i) {
+        if (Vehicle_Nodes.Get(i)->GetId() == ns3_id) {
+            return "V" + std::to_string(i) + "(ns3=" + std::to_string(ns3_id) + ")";
+        }
+    }
+    return "V?(ns3=" + std::to_string(ns3_id) + ")";
+}
+
 void BSHH_S1_InitLog()
 {
     bshh_log.open(BuildLogPath("bshh_s1_attack_log.txt"), std::ios::out | std::ios::trunc);
     bshh_log << std::fixed << std::setprecision(3);
     bshh_log << "========================================================\n"
-             << "  BSHH Attack S1 — Malicious Vehicle, No RSU           \n"
+             << "  BSHH Attack S1 â€” Malicious Vehicle, No RSU           \n"
              << "========================================================\n\n"
-             << "  t=5    ①  Legitimate V2V heartbeat exchange\n"
-             << "  t=5    ②  Both forward honest heartbeats to controller\n"
-             << "  t=5+   ③  Attacker stores captured heartbeat (Sender=Victim, t=5)\n"
-             << "  t=10   ④  Attacker sends stored old heartbeat to victim\n"
-             << "  t=10+  ⑤  Victim forwards old heartbeat to controller\n"
-             << "  t=10+  ⑥  Attacker hijacks same old heartbeat to controller\n"
-             << "  t=10+  ⑦  Controller holds conflicting liveness\n\n"
-
+             << "  t=5.000   ①  Legitimate V2V heartbeat exchange\n"
+             << "  t=5.010   ②  Both forward honest heartbeats to controller\n"
+             << "  t=5.050   ③  Attacker captures & stores victim heartbeat (Sender=Victim, t=5)\n"
+             << "  t=10.000  ④  Attacker resends own old heartbeat (Sender=Attacker, t=5) to victim\n"
+             << "  t=10.010  ⑤  Victim forwards attacker old heartbeat to controller\n"
+             << "  t=10.020  ⑥  Attacker replays victim stored heartbeat to controller (impersonation)\n"
+             << "  t=10.030  ⑦  Controller holds conflicting liveness\n\n"
+             << "  LOG FORMAT v2: vehicles are printed as V<vehicle-index>(ns3=<node-id>)\n"
+             << "  Every selected attacker executes STEP ③, ④, ⑤, ⑥, and ⑦.\n\n"
              << "========================================================\n\n";
     NS_LOG_INFO("[BSHH-S1] Log opened: bshh_s1_attack_log.txt");
     bshh_s1_pair_logs.clear();
     bshh_s1_completed_pairs = 0;
 }
 
-void BSHH_S1_StoreOldHeartbeat(uint32_t victim_id, double stored_time)
+void BSHH_S1_StoreOldHeartbeat(uint32_t attacker_id, uint32_t victim_id, double stored_time)
 {
     double now = Simulator::Now().GetSeconds();
-    bshh_stored_heartbeat = {victim_id, victim_id, stored_time, false};
-    bshh_heartbeat_stored = true;
-    bshh_log << "[t=" << now << "]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE\n"
-             << "  captured_packet : Heartbeat(Sender=V" << victim_id
-             << ", t=" << stored_time << ")  (from legitimate exchange at t=" << stored_time << ")\n"
-             << "  Attacker will replay this during the attack window\n\n";
+    const std::string attackerLabel = GetVehicleLogLabel(attacker_id);
+    const std::string victimLabel = GetVehicleLogLabel(victim_id);
+    
+    bshh_stored_heartbeats[attacker_id] = {victim_id, attacker_id, stored_time, false};
+    
+    std::stringstream ss;
+    ss << "========================================\n"
+       << "  PAIR: ATTACKER=" << attackerLabel << "  VICTIM=" << victimLabel << "\n"
+       << "========================================\n"
+       << "[t=" << now << "]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE\n"
+       << "  Attacker        : " << attackerLabel << "\n"
+       << "  Victim/claimed  : " << victimLabel << "\n"
+       << "  captured_packet : Heartbeat(Sender=" << victimLabel
+       << ", t=" << stored_time << ")  (from legitimate exchange at t=" << stored_time << ")\n"
+       << "  Action          : " << attackerLabel
+       << " stores " << victimLabel << "'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)\n\n";
+    bshh_s1_pair_logs[attacker_id] += ss.str();
+    
     std::cout << std::fixed << std::setprecision(3)
-              << "[BSHH-S1][t=" << now << "]  Attacker captured heartbeat for replay"
+              << "[BSHH-S1][t=" << now << "]  V" << attacker_id
+              << " captured heartbeat for replay"
               << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time << ")" << std::endl;
 }
 
 void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    bshh_log << "[t=" << now << "]  STEP ①  NORMAL HEARTBEAT EXCHANGE\n"
-             << "  V" << v1_id << " -> V" << v2_id
-             << " : Heartbeat(Sender=V" << v1_id << ", t=" << t << ")\n"
-             << "  V" << v2_id << " -> V" << v1_id
-             << " : Heartbeat(Sender=V" << v2_id << ", t=" << t << ")\n\n";
-    std::cout << std::fixed << std::setprecision(3)
-              << "[BSHH-S1][t=" << now << "]  V" << v1_id
-              << " --heartbeat--> V" << v2_id
-              << "  Heartbeat(Sender=V" << v1_id << ", t=" << t << ")  DELIVERED" << std::endl;
-    std::cout << "[BSHH-S1][t=" << now << "]  V" << v2_id
-              << " --heartbeat--> V" << v1_id
-              << "  Heartbeat(Sender=V" << v2_id << ", t=" << t << ")  DELIVERED" << std::endl;
-    PemEmitVehicleBeacon(v1_id, v2_id);
-    PemEmitVehicleBeacon(v2_id, v1_id);
-    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
-        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
-        AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
-        AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
-    }
+    const std::string v1Label = GetVehicleLogLabel(v1_id);
+    const std::string v2Label = GetVehicleLogLabel(v2_id);
+    
+    std::stringstream ss;
+    ss << "========================================\n"
+       << "  PAIR: ATTACKER=" << v2Label << "  VICTIM=" << v1Label << "\n"
+       << "========================================\n"
+       << "[t=" << now << "]  STEP ①  NORMAL HEARTBEAT EXCHANGE\n"
+       << "  " << v1Label << " -> " << v2Label << " : Heartbeat(Sender="
+       << v1Label << ", t=" << t << ")\n"
+       << "  " << v2Label << " -> " << v1Label << " : Heartbeat(Sender="
+       << v2Label << ", t=" << t << ")\n\n";
+    bshh_s1_pair_logs[v2_id] += ss.str();
+    
+    PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
+    PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
 }
 
 void BSHH_S1_ForwardLegitimateHeartbeatsToController(uint32_t v1_id, uint32_t v2_id, double t)
 {
     double now = Simulator::Now().GetSeconds();
-    HeartbeatPacket hb1 = {v1_id, v1_id, t, false};
-    HeartbeatPacket hb2 = {v2_id, v2_id, t, false};
-    bshh_controller_liveness_table[v1_id] = hb1;
-    bshh_controller_liveness_table[v2_id] = hb2;
-    bshh_log << "[t=" << now << "]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER\n"
-             << "  V" << v1_id << " -> Controller : Heartbeat(Sender=V"
-             << v1_id << ", t=" << t << ")\n"
-             << "  V" << v2_id << " -> Controller : Heartbeat(Sender=V"
-             << v2_id << ", t=" << t << ")\n\n";
-    std::cout << std::fixed << std::setprecision(3)
-              << "[BSHH-S1][t=" << now << "]  V" << v1_id
-              << " --heartbeat--> Controller  Heartbeat(Sender=V" << v1_id
-              << ", t=" << t << ")  ACCEPTED" << std::endl;
-    std::cout << "[BSHH-S1][t=" << now << "]  V" << v2_id
-              << " --heartbeat--> Controller  Heartbeat(Sender=V" << v2_id
-              << ", t=" << t << ")  ACCEPTED" << std::endl;
+    const std::string v1Label = GetVehicleLogLabel(v1_id);
+    const std::string v2Label = GetVehicleLogLabel(v2_id);
+    
+    HeartbeatPacket v1_hb = {v1_id, v1_id, t, false};
+    HeartbeatPacket v2_hb = {v2_id, v2_id, t, false};
+    bshh_controller_liveness_table[v1_id] = v1_hb;
+    bshh_controller_liveness_table[v2_id] = v2_hb;
+    
+    std::stringstream ss;
+    ss << "[t=" << now << "]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER\n"
+       << "  [Pair: ATTACKER=" << v2Label << "  VICTIM=" << v1Label << "]\n"
+       << "  " << v1Label << " -> Controller : Heartbeat(Sender="
+       << v1Label << ", t=" << t << ")\n"
+       << "  " << v2Label << " -> Controller : Heartbeat(Sender="
+       << v2Label << ", t=" << t << ")\n\n";
+    bshh_s1_pair_logs[v2_id] += ss.str();
+    
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
 }
@@ -2776,64 +2799,97 @@ void BSHH_S1_ForwardLegitimateHeartbeatsToController(uint32_t v1_id, uint32_t v2
 void BSHH_S1_ReplayOldHeartbeatToVictim(uint32_t attacker_id, uint32_t victim_id, double stored_time)
 {
     double now = Simulator::Now().GetSeconds();
-    if (!bshh_heartbeat_stored) {
-        NS_LOG_WARN("[BSHH-S1] No stored heartbeat!");
+    const std::string attackerLabel = GetVehicleLogLabel(attacker_id);
+    const std::string victimLabel = GetVehicleLogLabel(victim_id);
+    
+    if (bshh_stored_heartbeats.find(attacker_id) == bshh_stored_heartbeats.end()) {
+        std::cout << "[BSHH-S1] Error: Attacker V" << attacker_id << " has no stored heartbeat!" << std::endl;
         return;
     }
-        bshh_log << "[t=" << now << "]  STEP ④  ATTACKER SENDS OLD HEARTBEAT TO VICTIM\n"
-             << "  V" << attacker_id << " -> V" << victim_id
-             << " : Heartbeat(Sender=V" << victim_id
-             << ", t=" << stored_time << ")\n"
-             << "  Victim receives a stale but previously legitimate heartbeat\n\n";
+
+    std::stringstream ss;
+    ss << "========================================\n"
+       << "  PAIR: ATTACKER=" << attackerLabel << "  VICTIM=" << victimLabel << "\n"
+       << "========================================\n"
+       << "[t=" << now << "]  STEP ④  ATTACKER SENDS OWN OLD HEARTBEAT TO VICTIM\n"
+       << "  Attacker        : " << attackerLabel << "\n"
+       << "  Victim          : " << victimLabel << "\n"
+       << "  " << attackerLabel << " -> " << victimLabel
+       << " : Heartbeat(Sender=" << attackerLabel
+       << ", t=" << stored_time << ")\n"
+       << "  Victim receives attacker`s own old heartbeat (stale timestamp t=" << stored_time << ")\n\n";
+    bshh_s1_pair_logs[attacker_id] += ss.str();
+
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S1][t=" << now << "]  V" << attacker_id
               << " --REPLAY old heartbeat--> V" << victim_id
-              << "  Heartbeat(claimed=V" << victim_id << ", t=" << stored_time
-              << ")  [MALICIOUS — attacker impersonates V" << victim_id << "]" << std::endl;
-    if (attacker_id < Vehicle_Nodes.GetN()) {
-        AttackSendHeartbeat(Vehicle_Nodes.Get(attacker_id), victim_id, stored_time, true);
+              << "  Heartbeat(Sender=V" << attacker_id << ", t=" << stored_time
+              << ")  [MALICIOUS â€” replayed attacker old heartbeat]" << std::endl;
+
+    Ptr<Node> attackerNode = GetVehicleByNs3Id(attacker_id);
+    if (attackerNode) {
+        AttackSendHeartbeat(attackerNode, attacker_id, stored_time, true);
     }
 }
 
-void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t victim_id, double stored_time)
+void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time)
 {
     double now = Simulator::Now().GetSeconds();
-    HeartbeatPacket forwarded = {victim_id, victim_id, stored_time, true};
-    bshh_controller_liveness_table[victim_id] = forwarded;
+    const std::string attackerLabel = GetVehicleLogLabel(attacker_id);
+    const std::string victimLabel = GetVehicleLogLabel(victim_id);
+    
+    HeartbeatPacket forwarded = {attacker_id, victim_id, stored_time, true};
+    bshh_controller_liveness_table[attacker_id] = forwarded;
     pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
-        bshh_log << "[t=" << now << "]  STEP ⑤  VICTIM FORWARDS OLD HEARTBEAT TO CONTROLLER\n"
-             << "  V" << victim_id << " -> Controller : Heartbeat(Sender=V"
-             << victim_id << ", t=" << stored_time << ")\n"
-             << "  Controller refreshes V" << victim_id
-             << " liveness using stale timestamp t=" << stored_time << "\n\n";
+    
+    std::stringstream ss;
+    ss << "========================================\n"
+       << "  PAIR: ATTACKER=" << attackerLabel << "  VICTIM=" << victimLabel << "\n"
+       << "========================================\n"
+       << "[t=" << now << "]  STEP ⑤  VICTIM FORWARDS ATTACKER`S OLD HEARTBEAT TO CONTROLLER\n"
+       << "  Original attacker : " << attackerLabel << "\n"
+       << "  Forwarder/physical: " << victimLabel << "\n"
+       << "  " << victimLabel << " -> Controller : Heartbeat(Sender="
+       << attackerLabel << ", t=" << stored_time << ")\n"
+       << "  Controller refreshes " << attackerLabel
+       << " liveness using stale timestamp t=" << stored_time << "\n\n";
+    bshh_s1_pair_logs[attacker_id] += ss.str();
+    
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S1][t=" << now << "]  V" << victim_id
               << " --forwards stale heartbeat--> Controller"
-              << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time
+              << "  Heartbeat(Sender=V" << attacker_id << ", t=" << stored_time
               << ")  Controller liveness POISONED" << std::endl;
-    PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true);
+    PemEmitHeartbeatEvent(victim_id, attacker_id, stored_time, true);
 }
 
 void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time)
 {
     double now = Simulator::Now().GetSeconds();
+    const std::string attackerLabel = GetVehicleLogLabel(attacker_id);
+    const std::string victimLabel = GetVehicleLogLabel(victim_id);
+    
     HeartbeatPacket forged = {victim_id, attacker_id, stored_time, true};
     bshh_controller_liveness_table[victim_id] = forged;
-    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
-    pem_attack_active = true;
-    pem_mitigation_active = false;
-    bshh_log << "[t=" << now << "]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER\n"
-             << "  V" << attacker_id << " -> Controller : Heartbeat(claimed=V"
-             << victim_id << ", t=" << stored_time << ")\n"
-             << "  physical_sender=V" << attacker_id
-             << "  claimed_sender=V" << victim_id << "\n"
-             << "  Stale timestamp " << stored_time << " < current t=" << now << " -> replay evidence\n"
-             << "  Different physical sender -> impersonation evidence\n\n";
-    bshh_log.flush();
-    NS_LOG_INFO("[BSHH-S1] t=" << now << "s  V" << attacker_id
-                << " hijacked old HB claiming V" << victim_id);
+    
+    std::stringstream ss;
+    ss << "========================================\n"
+       << "  PAIR: ATTACKER=" << attackerLabel << "  VICTIM=" << victimLabel << "\n"
+       << "========================================\n"
+       << "[t=" << now << "]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER\n"
+       << "  Attacker/physical_sender : " << attackerLabel << "\n"
+       << "  Victim/claimed_sender    : " << victimLabel << "\n"
+       << "  Packet source            : stored STEP ③ heartbeat captured from " << victimLabel << "\n"
+       << "  " << attackerLabel << " -> Controller : Heartbeat(claimed="
+       << victimLabel << ", t=" << stored_time << ")\n"
+       << "  physical_sender=" << attackerLabel
+       << "  claimed_sender=" << victimLabel << "\n"
+       << "  Stale timestamp " << stored_time << " < current t=" << now << " -> replay evidence\n"
+       << "  Different physical sender -> impersonation evidence\n\n";
+    bshh_s1_pair_logs[attacker_id] += ss.str();
+    
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S1][t=" << now << "]  V" << attacker_id
               << " --HIJACK old heartbeat--> Controller"
@@ -2845,18 +2901,27 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
 void BSHH_S1_LogFaultyRoutingConsequences(uint32_t attacker_id, uint32_t victim_id)
 {
     double now = Simulator::Now().GetSeconds();
-    bshh_log << "[t=" << now << "]  STEP ⑦  FAULTY ROUTING CONSEQUENCES\n"
-             << "  Controller now holds conflicting stale liveness for V" << victim_id << "\n"
-             << "  latest physical_sender=V" << attacker_id
-             << "  claimed_sender=V" << victim_id << "\n"
-             << "  Packets may be routed using stale/non-existent links\n"
-             << "  Expected impact: packet loss, added delay, degraded PDR\n\n";
-    bshh_log.flush();
+    const std::string attackerLabel = GetVehicleLogLabel(attacker_id);
+    const std::string victimLabel = GetVehicleLogLabel(victim_id);
+    
+    std::stringstream ss;
+    ss << "========================================\n"
+       << "  PAIR: ATTACKER=" << attackerLabel << "  VICTIM=" << victimLabel << "\n"
+       << "========================================\n"
+       << "[t=" << now << "]  STEP ⑦  FAULTY ROUTING CONSEQUENCES\n"
+       << "  Controller now holds conflicting stale liveness for " << victimLabel << "\n"
+       << "  latest physical_sender=" << attackerLabel
+       << "  claimed_sender=" << victimLabel << "\n"
+       << "  Packets may be routed using stale/non-existent links\n"
+       << "  Expected impact: packet loss, added delay, degraded PDR\n\n";
+    bshh_s1_pair_logs[attacker_id] += ss.str();
+    
+    bshh_s1_completed_pairs++;
+    if (bshh_s1_completed_pairs >= bshh_s1_total_pairs) {
+        for (auto& p : bshh_s1_pair_logs) bshh_log << p.second;
+        bshh_log.flush();
+    }
 }
-
-// =============================================================================
-// BSHH-S2: MALICIOUS RSU — attack_scenario == 6
-// =============================================================================
 
 void BSHH_S2_InitLog()
 {
@@ -145349,6 +145414,7 @@ int main(int argc, char *argv[])
       const uint32_t bshh_s1_npairs =
           (uint32_t)std::min(bshh_attacker_idx.size(), bshh_victim_idx.size());
       bshh_s1_total_pairs = bshh_s1_npairs;
+      bshh_s1_total_pairs = bshh_s1_npairs;
 
 
 
@@ -145448,7 +145514,7 @@ int main(int argc, char *argv[])
               vic_ns3, att_ns3, exchangeObservedTime);
           // STEP 3 — Attacker stores heartbeat AFTER exchange (t=5, not t=0)
           Simulator::Schedule(Seconds(storeTime),
-              &BSHH_S1_StoreOldHeartbeat, vic_ns3, exchangeObservedTime);
+              &BSHH_S1_StoreOldHeartbeat, att_ns3, vic_ns3, exchangeObservedTime);
           // STEP 4 — Attacker sends old heartbeat to victim
           Simulator::Schedule(Seconds(replayTime),
               &BSHH_S1_ReplayOldHeartbeatToVictim, att_ns3, vic_ns3, exchangeObservedTime);
@@ -145456,7 +145522,7 @@ int main(int argc, char *argv[])
           if (victimForwardScheduled)
           {
               Simulator::Schedule(Seconds(victimForwardTime),
-                  &BSHH_S1_VictimForwardsOldHeartbeatToController, vic_ns3, exchangeObservedTime);
+                  &BSHH_S1_VictimForwardsOldHeartbeatToController, att_ns3, vic_ns3, exchangeObservedTime);
           }
           // STEP 6 — Attacker hijacks same old heartbeat to controller
           if (hijackScheduled)
