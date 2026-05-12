@@ -1,4 +1,4 @@
-﻿#include "ns3/wave-module.h"
+#include "ns3/wave-module.h"
 #include "ns3/csma-helper.h"
 #include "ns3/lte-helper.h"
 #include "ns3/aodv-module.h"
@@ -214,7 +214,7 @@ bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 uint32_t attack_percentage             = 20;
 double   attack_activation_probability = 0.75;
 double   attack_time_jitter_s          = 0.040;
-double   attack_support_evidence_probability = 0.65;
+double   attack_support_evidence_probability = 1.0;
 bool     controller_malicious_assumption = false;
 uint32_t Random                        = 0;
 
