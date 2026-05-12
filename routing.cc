@@ -388,13 +388,11 @@ struct HeartbeatPacket {
 HeartbeatPacket bshh_stored_heartbeat;
 bool            bshh_heartbeat_stored = false;
 std::map<uint32_t, HeartbeatPacket> bshh_controller_liveness_table;
+std::map<uint32_t, HeartbeatPacket> bshh_stored_heartbeats;
+std::map<uint32_t, std::string> bshh_s1_pair_logs;
+uint32_t bshh_s1_completed_pairs = 0;
+uint32_t bshh_s1_total_pairs = 0;
 std::ofstream   bshh_log;
-std::map<uint32_t, std::string> bshh_s1_pair_logs;
-uint32_t bshh_s1_completed_pairs = 0;
-uint32_t bshh_s1_total_pairs = 0;
-std::map<uint32_t, std::string> bshh_s1_pair_logs;
-uint32_t bshh_s1_completed_pairs = 0;
-uint32_t bshh_s1_total_pairs = 0;
 
 // ── ME globals ────────────────────────────────────────────────────────────────
 struct MEEchoReport {
