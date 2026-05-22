@@ -44,6 +44,8 @@ Countering Temporal-Echo Topology Poisoning Attacks in SDVNs
 
 ---
 
+27. [Teaching Note â€” NPFADS Position Falsification Attacks (`npfads_attacks.cc`)](#27-teaching-note--npfads-position-falsification-attacks-npfads_attackscc)
+
 ## 1. What is This Project?
 
 ### The system being simulated
@@ -2812,3 +2814,520 @@ The important change is that each scenario now has its own output set instead of
 *Updated 2026-05-01: added Section 18 — RSU and RSU Network explanation; Section 19 — Q&A session documenting custom data tags, DSRC, V2V implementation gap, and fix.*
 *Updated 2026-05-02: added Section 20 — Q&A session (7 DSRC channels, mobility traces, two-layer architecture, BSHH heartbeat reuse of CustomMetaDataUnicastTag0, RSU→Controller CSMA, LTE V2C status); Section 21 — per-channel TX power 23–44 dBm for mobility_scenario=1, channel_delivery_analysis.csv output; Section 22 — data transmission functions comparison (centralized vs distributed broadcast, send_centralized_packets, send_hybrid_packets), SimpleUdpApplication internals (3 sockets, HandleReadOne tag dispatch, attack usage); Section 23 — node roles (controller_Node vs management_Node), three architecture modes (centralized/distributed/hybrid), which mode runs in attack scenarios.*
 *Updated 2026-05-07: revised output layout to per-scenario CSV folders (`PEM_EVENT_LOG/`, `PEM_RUN_SUMMARY/`, `CHANNEL_DELIVERY_ANALYSIS/`), and updated Section 26 to record the scenario outputs/logs observed during the `ME-S1` and `TTW-S2` runs.*
+
+## 27. Teaching Note â€” NPFADS Position Falsification Attacks (`npfads_attacks.cc`)
+
+This section is for teaching a teammate who has **not seen `npfads_attacks.cc` before**.
+The goal is to explain what was implemented, why it was implemented that way, and what
+changes in the system **before** and **after** the attack starts.
+
+### 27.1 What this file is trying to do
+
+`npfads_attacks.cc` is a **standalone NS-3 simulation** for **IoV position falsification attacks**.
+It does not implement the earlier temporal-echo attacks from `routing.cc`. Instead, it focuses on
+vehicles that broadcast **false position information** inside BSMs (Basic Safety Messages), then
+prepares output data in a form inspired by the NPFADS paper and the VeReMi-style attack labels.
+
+You can think of the file as a pipeline:
+
+```text
+Create vehicles
+  -> move them in NS-3
+  -> generate BSMs periodically
+  -> falsify attacker positions depending on attack type
+  -> log all reported and true values
+  -> build a mobility matrix per sender
+  -> compute eigenvalue features
+  -> score anomalies
+  -> write CSV outputs
+```
+
+That is the whole story of the file.
+
+### 27.2 Important idea before looking at the code
+
+The most important concept is this:
+
+- A vehicle has a **true physical position** inside NS-3.
+- The same vehicle can **report a different fake position** inside its BSM.
+- Detection works by comparing **mobility behaviour patterns** across time, not by trusting one message.
+
+So the file always keeps both:
+
+- **True position**: where the node really is in the simulator
+- **Reported position**: what the BSM claims
+
+This is why `BSMRecord` stores both `xPos, yPos` and `trueXPos, trueYPos`
+in [`npfads_attacks.cc`](npfads_attacks.cc:66).
+
+### 27.3 The main structures a teammate must understand first
+
+#### `BSMRecord` â€” one logged beacon
+
+[`BSMRecord`](npfads_attacks.cc:66) stores one message observation:
+
+- `sendTime`
+- `senderId`
+- reported position: `xPos`, `yPos`
+- speed: `xSpd`, `ySpd`
+- derived acceleration: `xAcc`, `yAcc`
+- `attackType`
+- true position: `trueXPos`, `trueYPos`
+
+Why this design is good:
+
+- It keeps the **ground truth** and the **attacker claim** in the same row.
+- That makes later analysis easy.
+- It also lets us explain attack impact very clearly to a teammate.
+
+Example:
+
+```text
+True position     = (3200, 4100)
+Reported position = (3450, 3950)
+```
+
+If those two differ, the network is being lied to.
+
+#### `AttackerState` â€” memory for Type 16
+
+[`AttackerState`](npfads_attacks.cc:76) exists mainly for the **eventual stop attack**.
+That attack is stateful, so we need memory per attacker:
+
+- current freeze probability
+- frozen coordinates
+- whether the attacker has already initialized its frozen position
+
+Why this is necessary:
+
+- Type 16 is not a one-shot random falsification.
+- It becomes more suspicious over time.
+- So the code must remember previous behaviour for each attacker.
+
+### 27.4 Attack IDs and why these values matter
+
+The file uses VeReMi-style attack labels:
+
+- `0` = benign
+- `1` = constant fixed position
+- `2` = constant offset
+- `4` = fully random position
+- `8` = bounded random offset
+- `16` = eventual stop
+- `31` = mixed mode across attackers
+
+This mapping appears at the top of [`npfads_attacks.cc`](npfads_attacks.cc:43).
+
+Why implement it this way:
+
+- It stays aligned with the dataset/paper convention.
+- It makes output CSV files easier to compare with the literature.
+- `31` is useful for mixed-attacker experiments without writing separate logic for each node.
+
+### 27.5 Step-by-step walkthrough of what happens in the file
+
+#### Step 1 â€” the simulation creates vehicles and mobility
+
+Inside [`main()`](npfads_attacks.cc:457), the code:
+
+1. Reads parameters such as `N_Vehicles`, `N_Attackers`, `attack_type`, `simTime`, and `beacon_interval`
+2. Creates NS-3 nodes
+3. Installs `RandomWaypointMobilityModel`
+4. Assigns which nodes are attackers and which are benign
+
+Why `RandomWaypointMobilityModel` was used:
+
+- We need moving vehicles, not static nodes.
+- Position falsification only makes sense if there is real movement to falsify.
+- It gives changing trajectories, speeds, and accelerations for the logged BSM sequence.
+
+#### Step 2 â€” attackers are assigned
+
+In `main()`, the first `N_Attackers` nodes are marked as malicious, while the rest are benign.
+If `attack_type=31`, attackers are assigned round-robin attack types `1, 2, 4, 8, 16`.
+
+Why this was implemented this way:
+
+- It is deterministic and easy to explain.
+- A teammate can immediately know which nodes are malicious.
+- It avoids needing an extra attacker-selection subsystem.
+
+#### Step 3 â€” every vehicle periodically generates BSMs
+
+[`GenerateBSM()`](npfads_attacks.cc:148) is the core runtime function.
+It runs every `g_beaconInterval` seconds for every node.
+
+For each vehicle, it:
+
+1. Reads the **true** position and velocity from the mobility model
+2. Derives acceleration from the previous BSM of the same sender
+3. Checks whether this node is benign or malicious
+4. If malicious, calls [`FalsifyPosition()`](npfads_attacks.cc:97)
+5. Stores the result as a `BSMRecord`
+6. Reschedules itself for the next beacon interval
+
+Why this design is good:
+
+- The falsification is injected at the exact point where the BSM is formed.
+- True motion remains untouched in NS-3.
+- Only the **reported observation** changes, which matches the attack concept well.
+
+This is a very important teaching point:
+
+- The attacker is **not teleporting the vehicle in the simulator**
+- The attacker is **lying in the message**
+
+That distinction is exactly what position falsification means.
+
+### 27.6 The attack function â€” where the false data is actually created
+
+[`FalsifyPosition()`](npfads_attacks.cc:97) is the best single function to teach first.
+It takes:
+
+- `nodeId`
+- `attackType`
+- `truePos`
+
+and returns the position that will be **broadcast**.
+
+That means:
+
+```text
+input  = real physical coordinates
+output = claimed coordinates in the BSM
+```
+
+This clean separation is one of the best implementation choices in the file, because:
+
+- all attack behaviour stays in one place
+- `GenerateBSM()` stays readable
+- adding a new attack later becomes easy
+
+### 27.7 Attack-by-attack explanation with examples
+
+#### Type 1 â€” Constant fixed position
+
+Implementation:
+
+- Always returns `(5560, 5820)` regardless of the real position
+
+Code anchor:
+- [`FalsifyPosition()`](npfads_attacks.cc:97)
+
+Why it was implemented this way:
+
+- This matches the paper definition exactly.
+- It creates a very obvious mismatch between real motion and reported motion.
+
+Example:
+
+```text
+Before attack:
+  t=1s  true=(1000, 2000), reported=(1000, 2000)
+  t=2s  true=(1012, 2015), reported=(1012, 2015)
+
+After attack:
+  t=3s  true=(1028, 2030), reported=(5560, 5820)
+  t=4s  true=(1040, 2048), reported=(5560, 5820)
+```
+
+What changes after attack:
+
+- The vehicle still moves physically.
+- But the network believes it is frozen at one false location.
+- Position variance in the reported data becomes abnormally low.
+
+#### Type 2 â€” Constant offset attack
+
+Implementation:
+
+- Returns `truePos + (250, -150)`
+
+Why this matters:
+
+- Movement shape is preserved.
+- Only the whole trajectory is shifted.
+- That makes it much harder to detect than Type 1 or Type 4.
+
+Example:
+
+```text
+True path:      (1000,2000) -> (1010,2010) -> (1025,2020)
+Reported path:  (1250,1850) -> (1260,1860) -> (1275,1870)
+```
+
+Why you implemented it like this:
+
+- It directly follows the fixed offset definition from the plan.
+- It creates a subtle attack where temporal behaviour still looks smooth.
+
+Important concept:
+
+- After column centering, a constant offset can disappear from the feature space.
+- That is why the code comments note this attack is the hardest one to detect in the simple scoring method.
+
+This logic is visible in the anomaly-scoring part of [`PostProcess()`](npfads_attacks.cc:281).
+
+#### Type 4 â€” Fully random position attack
+
+Implementation:
+
+- Each beacon reports a completely random `(x, y)` inside the playground
+
+Why:
+
+- It produces highly inconsistent mobility patterns.
+- It destroys any physically realistic path continuity.
+
+Example:
+
+```text
+t=1  reported=(8200,  300)
+t=2  reported=(1400, 9100)
+t=3  reported=(6700, 5100)
+```
+
+After attack:
+
+- The network sees impossible jumps.
+- Position variance becomes very high.
+- This is usually much easier to flag as anomalous.
+
+#### Type 8 â€” Random offset attack
+
+Implementation:
+
+- Adds a random bounded offset within `+/-300 m` to the true position
+
+Why this is interesting:
+
+- It is not as extreme as Type 4.
+- It stays near the real vehicle, but still lies.
+- It can look noisy rather than obviously fake.
+
+Example:
+
+```text
+True:      (4000, 5000)
+Reported:  (4210, 4825)
+```
+
+Next beacon:
+
+```text
+True:      (4012, 5014)
+Reported:  (3775, 5260)
+```
+
+Important concept:
+
+- This attack injects **bounded uncertainty**, not full randomness.
+- So it models a more realistic stealthy falsification case.
+
+#### Type 16 â€” Eventual stop attack
+
+Implementation:
+
+- The attacker initially behaves normally
+- Over time, the probability of broadcasting a frozen position increases by `0.025` per beacon
+
+Why `AttackerState` was needed:
+
+- We must remember the freeze target and the evolving stop probability.
+- Without state, this attack could not gradually transition from normal to abnormal.
+
+Example:
+
+```text
+Early beacons:
+  true=(5000,2000), reported=(5000,2000)
+  true=(5010,2015), reported=(5010,2015)
+
+Later beacons:
+  true=(5100,2150), reported=(5040,2055)
+  true=(5112,2170), reported=(5040,2055)
+```
+
+After attack becomes strong:
+
+- Real vehicle keeps moving
+- Reported location starts staying stuck
+- The node looks like it has "stopped" even when it has not
+
+This is a very good example of why temporal behaviour matters more than one message.
+
+### 27.8 Before attack vs after attack â€” how to explain it to the team
+
+This is probably the clearest way to teach the file.
+
+#### Before attack
+
+- True position and reported position are the same
+- Consecutive BSMs describe a physically meaningful path
+- Speed, acceleration, and position changes are temporally consistent
+- Benign senders create a normal mobility matrix
+
+#### After attack
+
+- True position and reported position diverge
+- The divergence pattern depends on the attack type
+- The sender's mobility matrix becomes statistically different
+- Eigenvalues and variance-based features shift away from benign behaviour
+
+Simple explanation:
+
+```text
+Before attack:
+  "The vehicle says where it really is."
+
+After attack:
+  "The vehicle still moves in the world, but lies in the message."
+```
+
+### 27.9 What happens after BSM generation
+
+After the simulator finishes, [`PostProcess()`](npfads_attacks.cc:281) handles analysis.
+This is the second major concept after `FalsifyPosition()`.
+
+It does three big jobs:
+
+1. Writes raw BSM logs
+2. Builds feature vectors from sender history
+3. Computes anomaly scores and metrics
+
+### 27.10 Why the mobility matrix is important
+
+For each sender, the code builds a matrix where each row is:
+
+```text
+[sendTime, xPos, yPos, xSpd, ySpd, xAcc, yAcc]
+```
+
+This is built inside [`PostProcess()`](npfads_attacks.cc:281).
+
+Why this is important:
+
+- We do not detect attacks from one beacon alone.
+- We detect them from the **shape of behaviour across time**.
+- That matches the core idea from the NPFADS-style approach and the paper notes.
+
+### 27.11 Why column centering was implemented
+
+[`CenterColumns()`](npfads_attacks.cc:195) subtracts the mean of each column.
+
+Why do this:
+
+- It removes absolute bias and focuses on variation patterns.
+- It prevents some features from dominating just because their raw values are large.
+- It makes the later eigenvalue analysis more meaningful.
+
+Very important teaching insight:
+
+- This is exactly why **Type 2** can be difficult.
+- A constant shift may vanish after centering, because the relative movement pattern still looks normal.
+
+### 27.12 Why `M^T * M` and eigenvalues were used
+
+[`TransposeMultiply()`](npfads_attacks.cc:209) computes a `7x7` matrix from the centered mobility data.
+[`JacobiEigenvalues()`](npfads_attacks.cc:223) then computes the eigenvalues.
+
+Why this was implemented in that form:
+
+- The original mobility history can have many rows, but only 7 features.
+- Using `M^T * M` keeps the matrix small and fixed-size.
+- Eigenvalues summarize the structure of the sender's temporal behaviour.
+
+This is a smart implementation choice because it is:
+
+- mathematically aligned with the feature-extraction idea
+- computationally small
+- easy to export to CSV for later ML analysis
+
+### 27.13 How the simple anomaly score works here
+
+This code does not implement the full paper training pipeline with cloud/fog retraining.
+Instead, it creates a lightweight anomaly score based on **position variance deviation from benign nodes**.
+
+The score is:
+
+```text
+abs(log1p(posVar_sender) - mean_log1p(posVar_benign))
+```
+
+Why this choice makes sense for this implementation:
+
+- It gives a simple working detector inside one standalone NS-3 file
+- It is enough to separate strong attacks from benign behaviour
+- It highlights an important research point: not all attacks are equally detectable
+
+Especially:
+
+- Type 1 and Type 16 can push variance too low
+- Type 4 and Type 8 can push variance too high
+- Type 2 can remain close to benign after centering
+
+That explanation is extremely useful when teaching the "why" behind the code.
+
+### 27.14 Output files and what they teach us
+
+The file writes three CSV outputs:
+
+- `npfads_bsm_log.csv`
+- `npfads_eigenvalues.csv`
+- `npfads_metrics.csv`
+
+What each one tells us:
+
+- `npfads_bsm_log.csv`:
+  best for explaining **before vs after attack** because it stores both true and reported positions
+- `npfads_eigenvalues.csv`:
+  best for explaining how raw beacon history becomes ML-style features
+- `npfads_metrics.csv`:
+  best for explaining which attack types are easier or harder to detect
+
+### 27.15 The easiest way to present this to a teammate
+
+If you are teaching someone step by step, this order will work well:
+
+1. Start with the problem:
+   vehicles can lie about position without changing their real movement
+2. Show `BSMRecord`:
+   one row stores both truth and claim
+3. Show `GenerateBSM()`:
+   every vehicle periodically creates a message
+4. Show `FalsifyPosition()`:
+   this is where each attack is injected
+5. Show one example per attack type
+6. Show before-vs-after attack using true and reported coordinates
+7. Show `PostProcess()`:
+   logs -> mobility matrix -> centered features -> eigenvalues -> metrics
+
+That sequence moves from concept to code very naturally.
+
+### 27.16 Short teaching summary you can say aloud
+
+You can explain the whole file like this:
+
+> `npfads_attacks.cc` simulates vehicles that periodically send BSMs. Benign vehicles report
+> their true coordinates, but attacker vehicles replace those coordinates according to one of
+> five falsification strategies. The simulator logs both true and reported positions, then
+> builds temporal mobility features per sender, computes eigenvalue-based summaries, and
+> generates simple anomaly-detection metrics. The key idea is that the attack changes the
+> message, not the actual NS-3 movement.
+
+### 27.17 Final "why implemented this way?" answer
+
+If someone asks why the file was implemented in this structure, the answer is:
+
+- It keeps **attack generation** separate from **normal mobility**
+- It keeps **runtime simulation** separate from **post-simulation analysis**
+- It stores **ground truth** and **forged data** together for validation
+- It follows the high-level concepts from the implementation plan and paper
+- It stays simple enough to extend later into a fuller NPFADS pipeline
+
+So overall, the file is a clean teaching example of:
+
+- how IoV position falsification attacks are injected
+- how different attack types behave
+- how temporal features can be extracted from BSM histories
+- and how the system looks before and after the attack
