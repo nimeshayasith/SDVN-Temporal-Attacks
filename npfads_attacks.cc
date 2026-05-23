@@ -22,6 +22,9 @@
 
 #include "ns3/core-module.h"
 #include "ns3/mobility-module.h"
+#include "ns3/netanim-module.h"
+#include "ns3/wave-module.h"
+#include "ns3/wifi-module.h"
 
 #include <algorithm>
 #include <array>
@@ -86,10 +89,86 @@ static std::map<uint32_t, AttackerState> g_attackerState;
 static std::map<uint32_t, int>           g_nodeAttackType;  // 0 = benign, else TYPE_N
 static Ptr<UniformRandomVariable>        g_rng;
 static NodeContainer                     g_nodes;
+static NetDeviceContainer                g_waveDevices;
+static std::set<std::pair<uint32_t,double>> g_loggedBSMs;  // (senderId, sendTime) dedup
 
 // Simulation parameters (set in main, read by callbacks)
 static double   g_beaconInterval = 0.1;   // seconds
 static double   g_simTime        = 120.0; // seconds
+
+// ── NPFADSBSMTag — NS-3 packet tag carrying one BSM over DSRC ─────────────────
+// Models the same role as CustomDataTag1 in routing.cc, but restricted to the
+// fields that travel over the air.  Only m_xPos / m_yPos carry falsified values;
+// velocity is always true.  Acceleration is NOT in the tag — receivers derive it
+// from successive velocity deltas and store it in BSMRecord.
+// Serialized layout: 4 + 5×8 + 4 = 48 bytes.
+class NPFADSBSMTag : public Tag
+{
+public:
+    static TypeId GetTypeId()
+    {
+        static TypeId tid = TypeId("ns3::NPFADSBSMTag")
+                                .SetParent<Tag>()
+                                .AddConstructor<NPFADSBSMTag>();
+        return tid;
+    }
+    TypeId GetInstanceTypeId() const override { return GetTypeId(); }
+
+    uint32_t GetSerializedSize() const override { return 48; }
+
+    void Serialize(TagBuffer buf) const override
+    {
+        buf.WriteU32(m_nodeId);
+        buf.WriteDouble(m_sendTime);
+        buf.WriteDouble(m_xPos);
+        buf.WriteDouble(m_yPos);
+        buf.WriteDouble(m_xSpd);
+        buf.WriteDouble(m_ySpd);
+        buf.WriteU32(static_cast<uint32_t>(m_attackType));
+    }
+
+    void Deserialize(TagBuffer buf) override
+    {
+        m_nodeId     = buf.ReadU32();
+        m_sendTime   = buf.ReadDouble();
+        m_xPos       = buf.ReadDouble();
+        m_yPos       = buf.ReadDouble();
+        m_xSpd       = buf.ReadDouble();
+        m_ySpd       = buf.ReadDouble();
+        m_attackType = static_cast<int>(buf.ReadU32());
+    }
+
+    void Print(std::ostream& os) const override
+    {
+        os << "NPFADSBSMTag[id=" << m_nodeId
+           << " t=" << m_sendTime
+           << " pos=(" << m_xPos << "," << m_yPos << ")"
+           << " type=" << m_attackType << "]";
+    }
+
+    void SetNodeId(uint32_t v)           { m_nodeId = v; }
+    void SetSendTime(double v)           { m_sendTime = v; }
+    void SetPosition(double x, double y) { m_xPos = x; m_yPos = y; }
+    void SetVelocity(double x, double y) { m_xSpd = x; m_ySpd = y; }
+    void SetAttackType(int v)            { m_attackType = v; }
+
+    uint32_t GetNodeId()     const { return m_nodeId; }
+    double   GetSendTime()   const { return m_sendTime; }
+    double   GetXPos()       const { return m_xPos; }
+    double   GetYPos()       const { return m_yPos; }
+    double   GetXSpd()       const { return m_xSpd; }
+    double   GetYSpd()       const { return m_ySpd; }
+    int      GetAttackType() const { return m_attackType; }
+
+private:
+    uint32_t m_nodeId     = 0;
+    double   m_sendTime   = 0.0;
+    double   m_xPos       = 0.0;   // falsified for attackers; true for benign nodes
+    double   m_yPos       = 0.0;
+    double   m_xSpd       = 0.0;
+    double   m_ySpd       = 0.0;
+    int      m_attackType = 0;
+};
 
 // ── Position falsification ────────────────────────────────────────────────────
 // Returns the position that the attacker broadcasts; benign nodes return truePos.
@@ -145,7 +224,8 @@ static Vector FalsifyPosition(uint32_t nodeId, int attackType, const Vector& tru
 }
 
 // ── BSM generation callback (self-rescheduling) ───────────────────────────────
-// Fired every g_beaconInterval seconds for each vehicle node.
+// Sender responsibility: falsify position and broadcast over DSRC.
+// Logging is done entirely by OnBSMReceived on the receiver side.
 static void GenerateBSM(uint32_t nodeId)
 {
     double now = Simulator::Now().GetSeconds();
@@ -155,38 +235,87 @@ static void GenerateBSM(uint32_t nodeId)
     Vector truePos = mob ? mob->GetPosition() : Vector(0, 0, 0);
     Vector vel     = mob ? mob->GetVelocity()  : Vector(0, 0, 0);
 
-    // Derive acceleration from velocity delta vs previous BSM for this sender
-    double xAcc = 0.0, yAcc = 0.0;
-    auto prevIt = g_lastBSM.find(nodeId);
-    if (prevIt != g_lastBSM.end()) {
-        double dt = now - prevIt->second.sendTime;
-        if (dt > 1e-9) {
-            xAcc = (vel.x - prevIt->second.xSpd) / dt;
-            yAcc = (vel.y - prevIt->second.ySpd) / dt;
-        }
-    }
-
     int    atype       = g_nodeAttackType.count(nodeId) ? g_nodeAttackType.at(nodeId) : BENIGN;
     Vector reportedPos = FalsifyPosition(nodeId, atype, truePos);
 
+    // Build and broadcast the BSM tag — only reported (falsified) position and
+    // true velocity travel over the air.  Acceleration is derived by receivers.
+    Ptr<WifiNetDevice> wdev = DynamicCast<WifiNetDevice>(g_waveDevices.Get(nodeId));
+    if (wdev) {
+        NPFADSBSMTag bsmTag;
+        bsmTag.SetNodeId(nodeId);
+        bsmTag.SetSendTime(now);
+        bsmTag.SetPosition(reportedPos.x, reportedPos.y);
+        bsmTag.SetVelocity(vel.x, vel.y);
+        bsmTag.SetAttackType(atype);
+        Ptr<Packet> pkt = Create<Packet>(0);
+        pkt->AddPacketTag(bsmTag);
+        wdev->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+    }
+
+    Simulator::Schedule(Seconds(g_beaconInterval), &GenerateBSM, nodeId);
+}
+
+// ── BSM receive callback ──────────────────────────────────────────────────────
+// Installed on every vehicle node.  Runs when a DSRC packet arrives.
+// Populates g_bsmLog; derives acceleration from velocity deltas; adds true
+// position (a simulation-only privilege — the real detector cannot know this,
+// but we need it for ground-truth CSV output and eigenvalue analysis).
+static bool OnBSMReceived(Ptr<NetDevice> /*dev*/,
+                           Ptr<const Packet> packet,
+                           uint16_t          /*protocol*/,
+                           const Address&    /*src*/)
+{
+    NPFADSBSMTag tag;
+    if (!packet->PeekPacketTag(tag)) return true;
+
+    uint32_t senderId = tag.GetNodeId();
+    double   sendTime = tag.GetSendTime();
+
+    // First receiver to see this BSM logs it; all others discard the duplicate
+    auto key = std::make_pair(senderId, sendTime);
+    if (g_loggedBSMs.count(key)) return true;
+    g_loggedBSMs.insert(key);
+
+    // Derive acceleration from velocity delta vs the previous logged BSM
+    double xAcc = 0.0, yAcc = 0.0;
+    auto prevIt = g_lastBSM.find(senderId);
+    if (prevIt != g_lastBSM.end()) {
+        double dt = sendTime - prevIt->second.sendTime;
+        if (dt > 1e-9) {
+            xAcc = (tag.GetXSpd() - prevIt->second.xSpd) / dt;
+            yAcc = (tag.GetYSpd() - prevIt->second.ySpd) / dt;
+        }
+    }
+
+    // True position — only available because this is a simulation
+    double trueX = 0.0, trueY = 0.0;
+    if (senderId < g_nodes.GetN()) {
+        Ptr<MobilityModel> mob = g_nodes.Get(senderId)->GetObject<MobilityModel>();
+        if (mob) {
+            Vector tp = mob->GetPosition();
+            trueX = tp.x;
+            trueY = tp.y;
+        }
+    }
+
     BSMRecord r;
-    r.sendTime   = now;
-    r.senderId   = nodeId;
-    r.xPos       = reportedPos.x;
-    r.yPos       = reportedPos.y;
-    r.xSpd       = vel.x;
-    r.ySpd       = vel.y;
-    r.xAcc       = xAcc;
-    r.yAcc       = yAcc;
-    r.attackType = atype;
-    r.trueXPos   = truePos.x;
-    r.trueYPos   = truePos.y;
+    r.sendTime  = sendTime;
+    r.senderId  = senderId;
+    r.xPos      = tag.GetXPos();    // falsified position (what the network sees)
+    r.yPos      = tag.GetYPos();
+    r.xSpd      = tag.GetXSpd();
+    r.ySpd      = tag.GetYSpd();
+    r.xAcc      = xAcc;
+    r.yAcc      = yAcc;
+    r.attackType = tag.GetAttackType();
+    r.trueXPos  = trueX;
+    r.trueYPos  = trueY;
 
     g_bsmLog.push_back(r);
-    g_lastBSM[nodeId] = r;
+    g_lastBSM[senderId] = r;
 
-    // Reschedule self for next beacon interval
-    Simulator::Schedule(Seconds(g_beaconInterval), &GenerateBSM, nodeId);
+    return true;
 }
 
 // ── Matrix algebra ────────────────────────────────────────────────────────────
@@ -523,6 +652,29 @@ int main(int argc, char* argv[])
     mobility.SetPositionAllocator(posAlloc);
     mobility.Install(g_nodes);
 
+    // Install 802.11p DSRC radio on all vehicle nodes (CCH channel 178, 5.89 GHz)
+    // Range capped at 300 m via RangePropagationLossModel — matches routing.cc TTW_COMM_RANGE.
+    YansWifiChannelHelper wifiCh = YansWifiChannelHelper::Default();
+    wifiCh.AddPropagationLoss("ns3::RangePropagationLossModel",
+                              "MaxRange", DoubleValue(300.0));
+    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
+    wifiPhy.SetChannel(wifiCh.Create());
+    wifiPhy.Set("TxPowerStart", DoubleValue(33.5));
+    wifiPhy.Set("TxPowerEnd",   DoubleValue(33.5));
+    WifiMacHelper wifiMac;
+    wifiMac.SetType("ns3::OcbWifiMac");
+    WifiHelper wifi;
+    wifi.SetStandard(WIFI_STANDARD_80211p);
+    wifi.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+                                 "DataMode",    StringValue("OfdmRate6MbpsBW10MHz"),
+                                 "ControlMode", StringValue("OfdmRate6MbpsBW10MHz"));
+    g_waveDevices = wifi.Install(wifiPhy, wifiMac, g_nodes);
+
+    // Register the receive callback on every node so that OnBSMReceived fires
+    // whenever a DSRC packet arrives within 300 m range
+    for (uint32_t i = 0; i < nVehicles; ++i)
+        g_waveDevices.Get(i)->SetReceiveCallback(MakeCallback(&OnBSMReceived));
+
     // Assign attack types: nodes 0..(nAttackers-1) are attackers; rest are benign.
     // attack_type=31 assigns types 1,2,4,8,16 round-robin across attackers.
     static const int kTypeRoundRobin[5] = {TYPE_1, TYPE_2, TYPE_4, TYPE_8, TYPE_16};
@@ -542,6 +694,27 @@ int main(int argc, char* argv[])
                   << "  attack_type="    << attackType
                   << "  beacon="         << g_beaconInterval << "s"
                   << "  seed="           << seed);
+
+    // ── NetAnim visualization ─────────────────────────────────────────────────
+    AnimationInterface anim("npfads-animation.xml");
+    anim.SetMaxPktsPerTraceFile(5000000);
+
+    for (uint32_t i = 0; i < nVehicles; ++i) {
+        int ntype = g_nodeAttackType[i];
+        if (ntype != BENIGN) {
+            // Attackers: red, labelled with their attack type
+            anim.UpdateNodeColor(g_nodes.Get(i), 255, 0, 0);
+            anim.UpdateNodeDescription(g_nodes.Get(i),
+                                       "ATK-T" + std::to_string(ntype));
+        } else {
+            // Benign vehicles: blue
+            anim.UpdateNodeColor(g_nodes.Get(i), 0, 100, 255);
+            anim.UpdateNodeDescription(g_nodes.Get(i),
+                                       "V" + std::to_string(i));
+        }
+        // Node size scaled for a 10 000 m × 10 000 m playground
+        anim.UpdateNodeSize(g_nodes.Get(i)->GetId(), 250.0, 250.0);
+    }
 
     // Schedule first BSM generation for every node
     for (uint32_t i = 0; i < nVehicles; ++i)
