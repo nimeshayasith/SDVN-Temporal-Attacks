@@ -17,13 +17,9 @@
 //   ./waf build
 //
 // Run examples:
-//   ./waf --run "scratch/multibsm_attacks --simTime=60 \
-//       --N_Vehicles=6 --N_RSUs=1 --attack_scenario=13"
-//   ./waf --run "scratch/multibsm_attacks --simTime=60 \
-//       --N_Vehicles=6 --N_RSUs=1 --attack_scenario=14"
-//   ./waf --run "scratch/multibsm_attacks --simTime=60 \
-//       --N_Vehicles=6 --N_RSUs=1 --attack_scenario=15 \
-//       --T3_legit_duration=20.0"
+//   ./waf --run "scratch/multibsm_attacks --simTime=60 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=13"
+//   ./waf --run "scratch/multibsm_attacks --simTime=60 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=14"
+//   ./waf --run "scratch/multibsm_attacks --simTime=60 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=15 --T3_legit_duration=20.0"
 //
 // Output files:
 //   multibsm_attack{13|14|15}.txt  — human-readable attack log
