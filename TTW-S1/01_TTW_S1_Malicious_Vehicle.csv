@@ -1,2 +1,0 @@
-run_id,attack_scenario,attack_percentage,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,total_events
-1,1,0,1,0,10,0,0,1,1,-1,0,0,0,0,0
