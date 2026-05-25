@@ -837,7 +837,7 @@ int main(int argc, char* argv[])
     YansWifiChannelHelper wifiCh = YansWifiChannelHelper::Default();
     wifiCh.AddPropagationLoss("ns3::RangePropagationLossModel",
                               "MaxRange", DoubleValue(300.0));
-    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default();
+    YansWifiPhyHelper wifiPhy;
     wifiPhy.SetChannel(wifiCh.Create());
     wifiPhy.Set("TxPowerStart", DoubleValue(33.5));
     wifiPhy.Set("TxPowerEnd",   DoubleValue(33.5));
