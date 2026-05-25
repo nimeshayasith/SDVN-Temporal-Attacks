@@ -10,7 +10,9 @@
  * Attack Scenarios:
  *   0  = Baseline (no attack, legitimate LLDP discovery only)
  *  16  = Full LLA: Overload Phase + Relay Phase -> TopoGuard+ FAILS, MLLG detects
- *  17  = Relay only (no overload) -> TopoGuard+ SUCCEEDS (shows overload is necessary)
+ *  17  = Relay only (no overload) -> TopoGuard+ detects first 4 relays, then Th adapts
+ *        once 25% of IQR window is polluted (depth=20, 5th relay causes Q3 jump to 64ms);
+ *        TopoGuard+ FAILS from 5th relay onward. MLLG catches every relay via HIGH_TL.
  *  18  = Basic LFA: direct data-plane LLDP injection -> TopoGuard+ DETECTS (Tl > Th)
  *  19  = Gradual LFA: incrementally inflate Tl history to raise Th, then relay ->
  *        TopoGuard+ FAILS (Tl_relay < inflated Th), MLLG detects via Th drift
@@ -39,6 +41,10 @@
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/mobility-module.h"
+#include "ns3/point-to-point-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/netanim-module.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -138,6 +144,102 @@ double g_mllg_first_alert_time = -1.0;
 std::ofstream g_attack_log;
 std::ofstream g_events_csv;
 
+// ── NetAnim / network-layer state ─────────────────────────────────────────
+// IP addresses assigned during SetupNetworkForAnim()
+static Ipv4Address g_ctrl_ip_anim;   // controller on ctrl-s1 link
+static Ipv4Address g_s1_ip_anim;
+static Ipv4Address g_s2_ip_anim;
+static Ipv4Address g_s3_ip_anim;
+static Ipv4Address g_h2_ip_oob;      // h2's IP on the h1-h2 OOB link
+static AnimationInterface* g_anim = nullptr;  // created in main()
+
+// ── LLDP protocol port ─────────────────────────────────────────────────────
+static const uint16_t LLDP_PORT = 6633;
+
+// ── LldpTag: NS-3 Tag for LLDP control-plane packets ─────────────────────
+// Carries timing parameters the controller uses to run the LLI algorithm.
+// Pattern mirrors CustomDataTag1 / CustomHeartbeatTag in routing.cc:
+//   pkt->AddPacketTag(tag)  — attach at sender
+//   pkt->PeekPacketTag(tag) — read at receiver (in socket callback)
+// Serialised size: 4+4+8+8+8+1+1 = 34 bytes.
+//
+// Event-type codes (stored in m_eventType):
+//   0 = LLDP_LEGIT
+//   1 = LLDP_RELAY_FAKE
+//   2 = LLDP_BASIC_LFA
+//   3 = LLDP_GRADUAL_INJECT
+class LldpTag : public Tag
+{
+public:
+    static TypeId GetTypeId ()
+    {
+        static TypeId tid = TypeId ("LldpTag")
+            .SetParent<Tag> ()
+            .AddConstructor<LldpTag> ();
+        return tid;
+    }
+    TypeId GetInstanceTypeId () const override { return GetTypeId (); }
+
+    uint32_t GetSerializedSize () const override { return 34; }
+
+    void Serialize (TagBuffer buf) const override
+    {
+        buf.WriteU32    (m_sw1Idx);
+        buf.WriteU32    (m_sw2Idx);
+        buf.WriteDouble (m_tlldpMs);
+        buf.WriteDouble (m_tp1Ms);
+        buf.WriteDouble (m_tp2Ms);
+        buf.WriteU8     (m_isAttack);
+        buf.WriteU8     (m_eventType);
+    }
+    void Deserialize (TagBuffer buf) override
+    {
+        m_sw1Idx    = buf.ReadU32    ();
+        m_sw2Idx    = buf.ReadU32    ();
+        m_tlldpMs   = buf.ReadDouble ();
+        m_tp1Ms     = buf.ReadDouble ();
+        m_tp2Ms     = buf.ReadDouble ();
+        m_isAttack  = buf.ReadU8     ();
+        m_eventType = buf.ReadU8     ();
+    }
+    void Print (std::ostream& os) const override
+    {
+        os << "LldpTag sw1=" << m_sw1Idx << " sw2=" << m_sw2Idx
+           << " TLLDP=" << m_tlldpMs << "ms tp1=" << m_tp1Ms
+           << " tp2=" << m_tp2Ms
+           << " attack=" << (int)m_isAttack
+           << " evtype=" << (int)m_eventType;
+    }
+
+    void SetSw1Idx    (uint32_t v) { m_sw1Idx    = v; }
+    void SetSw2Idx    (uint32_t v) { m_sw2Idx    = v; }
+    void SetTlldpMs   (double v)   { m_tlldpMs   = v; }
+    void SetTp1Ms     (double v)   { m_tp1Ms     = v; }
+    void SetTp2Ms     (double v)   { m_tp2Ms     = v; }
+    void SetIsAttack  (bool v)     { m_isAttack  = v ? 1 : 0; }
+    void SetEventType (uint8_t v)  { m_eventType = v; }
+
+    uint32_t GetSw1Idx    () const { return m_sw1Idx; }
+    uint32_t GetSw2Idx    () const { return m_sw2Idx; }
+    double   GetTlldpMs   () const { return m_tlldpMs; }
+    double   GetTp1Ms     () const { return m_tp1Ms; }
+    double   GetTp2Ms     () const { return m_tp2Ms; }
+    bool     GetIsAttack  () const { return m_isAttack != 0; }
+    uint8_t  GetEventType () const { return m_eventType; }
+
+private:
+    uint32_t m_sw1Idx    = 0;
+    uint32_t m_sw2Idx    = 0;
+    double   m_tlldpMs   = 0.0;
+    double   m_tp1Ms     = 0.0;
+    double   m_tp2Ms     = 0.0;
+    uint8_t  m_isAttack  = 0;
+    uint8_t  m_eventType = 0;
+};
+
+// Controller UDP socket for incoming LldpTag packets (set up in LLA_SetupNetworkForAnim)
+static Ptr<Socket> g_ctrl_recv_socket = nullptr;
+
 // ── Helper: IQR-based threshold from Tl history (Eq. 2) ───────────────────
 
 static double ComputeThreshold(const std::deque<double>& history)
@@ -186,13 +288,13 @@ struct LLI_Result {
 };
 
 static LLI_Result RunLLI(double tlldp_ms,
-                          uint32_t sw1_idx,
-                          uint32_t sw2_idx,
+                          double tp1_ms,
+                          double tp2_ms,
                           bool is_attack_event)
 {
     LLI_Result r;
-    r.tp1_ms = GetProbeRTT(sw1_idx);
-    r.tp2_ms = GetProbeRTT(sw2_idx);
+    r.tp1_ms = tp1_ms;
+    r.tp2_ms = tp2_ms;
     r.tl_ms  = tlldp_ms - r.tp1_ms - r.tp2_ms;
 
     // Record Tl into history and compute new Th (Eq. 2 on Tl history)
@@ -296,6 +398,106 @@ static double MCC(uint64_t tp, uint64_t tn, uint64_t fp, uint64_t fn)
     return static_cast<double>(tp * tn - fp * fn) / denom;
 }
 
+// Forward declaration — LLA_AnimSend is defined after the attack functions
+static void LLA_AnimSend(Ptr<Node> src, Ipv4Address dst);
+
+// ── Send one LLDP packet (with LldpTag) from src_node to controller ───────
+// Replaces direct RunLLI() calls in attack functions.
+// The packet travels through the real P2P network; LLA_CtrlReceive fires on
+// arrival and invokes RunLLI with the tag-carried parameters.
+static void LLA_SendLldpPacket (Ptr<Node>   src_node,
+                                 Ipv4Address ctrl_ip,
+                                 uint32_t    sw1_idx,
+                                 uint32_t    sw2_idx,
+                                 double      tlldp_ms,
+                                 double      tp1_ms,
+                                 double      tp2_ms,
+                                 bool        is_attack,
+                                 uint8_t     event_type)
+{
+    TypeId udp_tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+    Ptr<Socket> sock = Socket::CreateSocket (src_node, udp_tid);
+    sock->Connect (InetSocketAddress (ctrl_ip, LLDP_PORT));
+
+    Ptr<Packet> pkt = Create<Packet> (0);
+    LldpTag tag;
+    tag.SetSw1Idx    (sw1_idx);
+    tag.SetSw2Idx    (sw2_idx);
+    tag.SetTlldpMs   (tlldp_ms);
+    tag.SetTp1Ms     (tp1_ms);
+    tag.SetTp2Ms     (tp2_ms);
+    tag.SetIsAttack  (is_attack);
+    tag.SetEventType (event_type);
+    pkt->AddPacketTag (tag);
+
+    sock->Send  (pkt);
+    sock->Close ();
+}
+
+// ── Controller LLDP socket receive callback ───────────────────────────────
+// Fires whenever an LldpTag packet arrives at the controller on LLDP_PORT.
+// Reads the tag, runs TopoGuard+ LLI and MLLG, logs all results.
+// This is the authoritative detection point — mirrors the Rx() callback
+// pattern in routing.cc that uses PeekPacketTag() on CustomDataTag1.
+static void LLA_CtrlReceive (Ptr<Socket> sock)
+{
+    static const char* ev_str[] = {
+        "LLDP_LEGIT", "LLDP_RELAY_FAKE", "LLDP_BASIC_LFA", "LLDP_GRADUAL_INJECT"
+    };
+
+    Ptr<Packet> pkt;
+    while ((pkt = sock->Recv ()))
+    {
+        LldpTag tag;
+        if (!pkt->PeekPacketTag (tag)) continue;
+
+        double   now       = Simulator::Now ().GetSeconds ();
+        uint32_t sw1       = tag.GetSw1Idx ();
+        uint32_t sw2       = tag.GetSw2Idx ();
+        bool     is_attack = tag.GetIsAttack ();
+        uint8_t  evtype    = tag.GetEventType ();
+
+        // Run TopoGuard+ LLI + MLLG using tag-encoded Tp values
+        LLI_Result r = RunLLI (tag.GetTlldpMs (),
+                                tag.GetTp1Ms (),
+                                tag.GetTp2Ms (),
+                                is_attack);
+        AccountPEM (r);
+
+        std::string et = (evtype < 4) ? ev_str[evtype] : "LLDP_UNKNOWN";
+        LogEvent (now, et, sw1, sw2, r);
+
+        // Detailed result log
+        g_attack_log << "[t=" << std::fixed << std::setprecision(3) << now
+                     << "s]  CTRL-RX  " << et
+                     << "  s" << (sw1+1) << "<->s" << (sw2+1)
+                     << "  TLLDP=" << std::setprecision(1) << tag.GetTlldpMs()
+                     << " ms  Tp1=" << r.tp1_ms
+                     << " ms  Tp2=" << r.tp2_ms << " ms"
+                     << "  Tl="    << std::setprecision(2) << r.tl_ms
+                     << " ms  Th=" << r.th_ms << " ms"
+                     << "  TG="    << (r.topoguard_alarm ? "ALARM" : "OK")
+                     << "  MLLG="  << (r.mllg_alarm ? MllgReason(r) : "OK");
+
+        if (is_attack && !r.topoguard_alarm) {
+            g_fake_link_accepted    = true;
+            g_fake_link_accept_time = now;
+            g_attack_log << "  => FAKE LINK ACCEPTED (routing corrupted!)";
+        }
+        if (r.mllg_th_drift) {
+            g_attack_log << "  [Th drifted to " << r.th_ms << " ms]";
+        }
+        g_attack_log << "\n";
+        g_attack_log.flush ();
+
+        std::cout << "[LLA-CTRL] t=" << std::fixed << std::setprecision(3) << now
+                  << "s  " << et
+                  << "  Tl=" << r.tl_ms << " ms  Th=" << r.th_ms << " ms"
+                  << "  TG=" << (r.topoguard_alarm ? "ALARM" : "PASS")
+                  << "  MLLG=" << (r.mllg_alarm ? "ALARM" : "PASS") << "\n";
+    }
+}
+
 // ── Overload phase control ────────────────────────────────────────────────
 
 static void LLA_OverloadBegin()
@@ -309,6 +511,11 @@ static void LLA_OverloadBegin()
                  << "  -> Tl will go negative (TLLDP << Tp1+Tp2)\n\n";
     std::cout << "[LLA] t=" << now << "s  Overload STARTED (Tp -> "
               << PROBE_RTT_OVERLOADED_MS << " ms)\n";
+    // NetAnim: h1->s1 and h2->s3 arrows represent ARP flood
+    Simulator::Schedule(Seconds(0.002), &LLA_AnimSend,
+                        g_Host_Nodes.Get(0), g_s1_ip_anim);
+    Simulator::Schedule(Seconds(0.004), &LLA_AnimSend,
+                        g_Host_Nodes.Get(1), g_s3_ip_anim);
 }
 
 static void LLA_OverloadEnd()
@@ -324,18 +531,27 @@ static void LLA_OverloadEnd()
 static void LLA_LegitLLDP(uint32_t sw1_idx, uint32_t sw2_idx, double tlldp_ms)
 {
     double now = Simulator::Now().GetSeconds();
-    LLI_Result r = RunLLI(tlldp_ms, sw1_idx, sw2_idx, false);
-    AccountPEM(r);
-    LogEvent(now, "LLDP_LEGIT", sw1_idx, sw2_idx, r);
+    double tp1 = GetProbeRTT(sw1_idx);
+    double tp2 = GetProbeRTT(sw2_idx);
 
     g_attack_log << "[t=" << std::fixed << std::setprecision(3) << now
                  << "s] LEGIT LLDP s" << (sw1_idx+1) << "<->s" << (sw2_idx+1)
-                 << "  TLLDP=" << tlldp_ms
-                 << "  Tl=" << r.tl_ms
-                 << "  Th=" << r.th_ms
-                 << "  TG=" << (r.topoguard_alarm ? "ALARM" : "OK")
-                 << "  MLLG=" << (r.mllg_alarm ? MllgReason(r) : "OK")
-                 << "\n";
+                 << "  TLLDP=" << tlldp_ms << " ms"
+                 << "  Tp1=" << tp1 << " ms  Tp2=" << tp2 << " ms"
+                 << "  — LldpTag packet: switch->ctrl\n";
+
+    // ── Real NS-3 packet with LldpTag: switch reports topology to controller ──
+    // Detection (RunLLI + AccountPEM + LogEvent) happens inside LLA_CtrlReceive
+    // when the packet arrives at the controller after P2P propagation.
+    LLA_SendLldpPacket (g_Switch_Nodes.Get(sw1_idx), g_ctrl_ip_anim,
+                        sw1_idx, sw2_idx, tlldp_ms, tp1, tp2,
+                        /*is_attack=*/ false, /*event_type=*/ 0);
+
+    // NetAnim visual arrow: ctrl -> switch (LLDP probe direction)
+    Ipv4Address sw_ip = (sw1_idx == 0) ? g_s1_ip_anim
+                      : (sw1_idx == 1) ? g_s2_ip_anim : g_s3_ip_anim;
+    Simulator::Schedule(Seconds(0.001), &LLA_AnimSend,
+                        g_Controller_Nodes.Get(0), sw_ip);
 }
 
 // ── Relay LLDP: fake LLDP claiming non-existent s1-s3 link ───────────────
@@ -344,44 +560,32 @@ static void LLA_LegitLLDP(uint32_t sw1_idx, uint32_t sw2_idx, double tlldp_ms)
 static void LLA_RelayLLDP()
 {
     double now = Simulator::Now().GetSeconds();
+    double tp1 = GetProbeRTT(0);  // s1 side
+    double tp2 = GetProbeRTT(2);  // s3 side
 
     if (g_attack_start_time < 0.0) g_attack_start_time = now;
 
-    LLI_Result r = RunLLI(TLLDP_RELAY_FAKE_MS, 0, 2, true);
-    AccountPEM(r);
-    LogEvent(now, "LLDP_RELAY_FAKE", 0, 2, r);
-
     g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << now
-                 << "s] ** RELAY ATTACK **: h1 sniffs LLDP(s1), relays OOB->h2->s3\n"
-                 << "  Fake link: s1 <-> s3 (no physical link exists)\n"
-                 << "  TLLDP=" << TLLDP_RELAY_FAKE_MS
-                 << "  Tp1=" << r.tp1_ms << "  Tp2=" << r.tp2_ms << "\n"
-                 << "  Tl = " << TLLDP_RELAY_FAKE_MS << " - "
-                 << r.tp1_ms << " - " << r.tp2_ms << " = " << r.tl_ms << " ms\n"
-                 << "  Th = " << r.th_ms << " ms\n";
+                 << "s] ** RELAY ATTACK injection **\n"
+                 << "  Path: h1 --(OOB " << OOB_DELAY_MS << " ms)--> h2 --> s3 --> ctrl\n"
+                 << "  Fake link claimed: s1 <-> s3 (no physical link exists)\n"
+                 << "  TLLDP_relay=" << TLLDP_RELAY_FAKE_MS
+                 << " ms  Tp1=" << tp1 << " ms  Tp2=" << tp2 << " ms\n"
+                 << "  Expected Tl = " << TLLDP_RELAY_FAKE_MS << "-" << tp1 << "-" << tp2
+                 << " = " << (TLLDP_RELAY_FAKE_MS - tp1 - tp2) << " ms\n"
+                 << "  LldpTag packet: h2 -> ctrl (result logged on ctrl-rx)\n";
 
-    if (!r.topoguard_alarm) {
-        g_fake_link_accepted    = true;
-        g_fake_link_accept_time = now;
-        g_attack_log << "  TopoGuard+: NO ALARM (Tl=" << r.tl_ms
-                     << " <= Th=" << r.th_ms << ") -> FAKE LINK ACCEPTED!\n"
-                     << "  Controller now believes s1<->s3 link exists -- routing CORRUPTED\n";
-    } else {
-        g_attack_log << "  TopoGuard+: ALARM (Tl=" << r.tl_ms
-                     << " > Th=" << r.th_ms << ") -> attack BLOCKED\n";
-    }
+    // ── Real NS-3 packet: h2 relays forged LldpTag to controller ─────────
+    // h2 is the relay endpoint injecting the forged LLDP into the control plane.
+    LLA_SendLldpPacket (g_Host_Nodes.Get(1), g_ctrl_ip_anim,
+                        0, 2, TLLDP_RELAY_FAKE_MS, tp1, tp2,
+                        /*is_attack=*/ true, /*event_type=*/ 1);
 
-    if (r.mllg_alarm) {
-        g_attack_log << "  MLLG: ALARM [" << MllgReason(r) << "] -> DETECTED\n";
-    } else {
-        g_attack_log << "  MLLG: NO ALARM\n";
-    }
-    g_attack_log << "\n";
-
-    std::cout << "[LLA] t=" << now << "s  Relay LLDP  Tl=" << r.tl_ms
-              << "  Th=" << r.th_ms
-              << "  TG=" << (r.topoguard_alarm ? "ALARM" : "PASS")
-              << "  MLLG=" << (r.mllg_alarm ? "ALARM" : "PASS") << "\n";
+    // NetAnim: h1->h2 (OOB relay channel), h2->ctrl (real LldpTag pkt above)
+    Simulator::Schedule(Seconds(0.002), &LLA_AnimSend,
+                        g_Host_Nodes.Get(0), g_h2_ip_oob);
+    Simulator::Schedule(Seconds(0.014), &LLA_AnimSend,
+                        g_Host_Nodes.Get(1), g_ctrl_ip_anim);
 }
 
 // ── Basic LFA: direct data-plane LLDP injection (scenario 18) ────────────
@@ -392,43 +596,33 @@ static void LLA_RelayLLDP()
 static void LLA_BasicLFA()
 {
     double now = Simulator::Now().GetSeconds();
+    double tp1 = GetProbeRTT(0);
+    double tp2 = GetProbeRTT(2);
 
     if (g_attack_start_time < 0.0) g_attack_start_time = now;
 
-    LLI_Result r = RunLLI(TLLDP_BASIC_FAKE_MS, 0, 2, true);
-    AccountPEM(r);
-    LogEvent(now, "LLDP_BASIC_LFA", 0, 2, r);
-
     g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << now
-                 << "s] ** BASIC LFA **: attacker injects LLDP at s3 via data plane\n"
+                 << "s] ** BASIC LFA injection **\n"
+                 << "  h1 directly injects LLDP into data plane, claiming s1<->s3\n"
                  << "  Path: CTRL->s1 (" << CTRL_TO_SW_MS
-                 << "ms) + s1->h1 (" << HOST_SW_DELAY_MS
-                 << "ms host-sw) + h1->s3 (" << 2.0*SW_TO_SW_DELAY_MS
-                 << "ms) + s3->CTRL (" << CTRL_TO_SW_MS << "ms)\n"
-                 << "  TLLDP_basic = " << TLLDP_BASIC_FAKE_MS << " ms\n"
-                 << "  Tp1=" << r.tp1_ms << "  Tp2=" << r.tp2_ms
-                 << "  Tl=" << r.tl_ms << " ms  Th=" << r.th_ms << " ms\n";
+                 << " ms) + s1->h1 (" << HOST_SW_DELAY_MS
+                 << " ms) + h1->s3 (" << 2.0*SW_TO_SW_DELAY_MS
+                 << " ms) + s3->CTRL (" << CTRL_TO_SW_MS << " ms)\n"
+                 << "  TLLDP_basic=" << TLLDP_BASIC_FAKE_MS
+                 << " ms  Tp1=" << tp1 << " ms  Tp2=" << tp2 << " ms\n"
+                 << "  Expected Tl = " << (TLLDP_BASIC_FAKE_MS - tp1 - tp2) << " ms\n"
+                 << "  LldpTag packet: h1 -> ctrl (result logged on ctrl-rx)\n";
 
-    if (!r.topoguard_alarm) {
-        g_fake_link_accepted    = true;
-        g_fake_link_accept_time = now;
-        g_attack_log << "  TopoGuard+: NO ALARM -> FAKE LINK ACCEPTED!\n";
-    } else {
-        g_attack_log << "  TopoGuard+: ALARM (Tl=" << r.tl_ms
-                     << " > Th=" << r.th_ms << ") -> attack BLOCKED\n";
-    }
+    // ── Real NS-3 packet: h1 sends forged LldpTag directly to controller ──
+    LLA_SendLldpPacket (g_Host_Nodes.Get(0), g_ctrl_ip_anim,
+                        0, 2, TLLDP_BASIC_FAKE_MS, tp1, tp2,
+                        /*is_attack=*/ true, /*event_type=*/ 2);
 
-    if (r.mllg_alarm) {
-        g_attack_log << "  MLLG: ALARM [" << MllgReason(r) << "] -> DETECTED\n";
-    } else {
-        g_attack_log << "  MLLG: NO ALARM\n";
-    }
-    g_attack_log << "\n";
-
-    std::cout << "[LLA] t=" << now << "s  Basic LFA  Tl=" << r.tl_ms
-              << "  Th=" << r.th_ms
-              << "  TG=" << (r.topoguard_alarm ? "ALARM" : "PASS")
-              << "  MLLG=" << (r.mllg_alarm ? "ALARM" : "PASS") << "\n";
+    // NetAnim: h1->s1 (capture), h1->ctrl (injection — also shown by real pkt)
+    Simulator::Schedule(Seconds(0.002), &LLA_AnimSend,
+                        g_Host_Nodes.Get(0), g_s1_ip_anim);
+    Simulator::Schedule(Seconds(0.008), &LLA_AnimSend,
+                        g_Host_Nodes.Get(0), g_ctrl_ip_anim);
 }
 
 // ── Gradual LFA: single fake injection with specified Tl (scenario 19) ───
@@ -438,29 +632,27 @@ static void LLA_BasicLFA()
 
 static void LLA_GradualLFA_Inject(double fake_tl_ms)
 {
-    double now = Simulator::Now().GetSeconds();
+    double now     = Simulator::Now().GetSeconds();
+    double tp1     = GetProbeRTT(0);
+    double tp2     = GetProbeRTT(2);
+    double tlldp_syn = fake_tl_ms + tp1 + tp2;
 
     if (g_attack_start_time < 0.0) g_attack_start_time = now;
 
-    // Synthetic TLLDP that would be measured for this fake_tl
-    double tlldp_syn = fake_tl_ms + 2.0 * PROBE_RTT_NORMAL_MS;
-
-    LLI_Result r = RunLLI(tlldp_syn, 0, 2, true);
-    AccountPEM(r);
-    LogEvent(now, "LLDP_GRADUAL_INJECT", 0, 2, r);
-
     g_attack_log << "[t=" << std::fixed << std::setprecision(3) << now
-                 << "s] GRADUAL INJECT: fake Tl=" << fake_tl_ms
-                 << " ms  Th=" << r.th_ms
-                 << "  TG=" << (r.topoguard_alarm ? "ALARM" : "OK")
-                 << "  MLLG=" << (r.mllg_alarm ? MllgReason(r) : "OK")
-                 << "\n";
+                 << "s] GRADUAL INJECT: targeting fake Tl=" << fake_tl_ms
+                 << " ms  (TLLDP_syn=" << tlldp_syn << " ms)"
+                 << "  Tp1=" << tp1 << " ms  Tp2=" << tp2 << " ms\n"
+                 << "  LldpTag packet: h1 -> ctrl (result logged on ctrl-rx)\n";
 
-    if (r.mllg_th_drift) {
-        g_attack_log << "  [!] MLLG Th drift detected: Th increased to "
-                     << r.th_ms << " ms (delta > "
-                     << MLLG_TH_DRIFT_MS << " ms)\n";
-    }
+    // ── Real NS-3 packet: h1 injects synthetic LldpTag to inflate Tl history ─
+    LLA_SendLldpPacket (g_Host_Nodes.Get(0), g_ctrl_ip_anim,
+                        0, 2, tlldp_syn, tp1, tp2,
+                        /*is_attack=*/ true, /*event_type=*/ 3);
+
+    // NetAnim: h1->ctrl (inflation injection)
+    Simulator::Schedule(Seconds(0.002), &LLA_AnimSend,
+                        g_Host_Nodes.Get(0), g_ctrl_ip_anim);
 }
 
 // ── Periodic LLDP scheduler ───────────────────────────────────────────────
@@ -648,6 +840,148 @@ static void LLA_InitLogs()
     std::cout << "[LLA] Logs initialised: " << log_name << ", lla_events.csv\n";
 }
 
+// ── NetAnim: send one UDP packet from src to dst (creates arrow in animation)
+// Called via Simulator::Schedule — socket is created, packet sent, socket closed.
+static void LLA_AnimSend(Ptr<Node> src, Ipv4Address dst)
+{
+    if (!g_anim) return;
+    TypeId tid = TypeId::LookupByName("ns3::UdpSocketFactory");
+    Ptr<Socket> sock = Socket::CreateSocket(src, tid);
+    sock->Connect(InetSocketAddress(dst, 9));
+    sock->Send(Create<Packet>(32));
+    sock->Close();
+}
+
+// ── Build P2P network topology so NetAnim can show packet arrows ──────────
+// Mirrors the conceptual LLA topology: ctrl -- s1 -- s2 -- s3
+// with h1 attached to s1, h2 attached to s3, and an OOB h1-h2 link.
+static void LLA_SetupNetworkForAnim()
+{
+    PointToPointHelper p2p;
+    InternetStackHelper inet;
+    Ipv4AddressHelper   addr;
+
+    NodeContainer all;
+    all.Add(g_Switch_Nodes);
+    all.Add(g_Host_Nodes);
+    all.Add(g_Controller_Nodes);
+    inet.Install(all);
+
+    // ctrl -- s1 (0.5 ms)
+    p2p.SetDeviceAttribute ("DataRate", StringValue("1Gbps"));
+    p2p.SetChannelAttribute("Delay",    StringValue("0.5ms"));
+    auto dc_c_s1 = p2p.Install(g_Controller_Nodes.Get(0), g_Switch_Nodes.Get(0));
+    addr.SetBase("10.1.1.0", "255.255.255.252");
+    auto ic_c_s1 = addr.Assign(dc_c_s1);
+    g_ctrl_ip_anim = ic_c_s1.GetAddress(0);
+    g_s1_ip_anim   = ic_c_s1.GetAddress(1);
+
+    // ctrl -- s2 (0.5 ms)
+    auto dc_c_s2 = p2p.Install(g_Controller_Nodes.Get(0), g_Switch_Nodes.Get(1));
+    addr.SetBase("10.1.2.0", "255.255.255.252");
+    auto ic_c_s2 = addr.Assign(dc_c_s2);
+    g_s2_ip_anim = ic_c_s2.GetAddress(1);
+
+    // ctrl -- s3 (0.5 ms)
+    auto dc_c_s3 = p2p.Install(g_Controller_Nodes.Get(0), g_Switch_Nodes.Get(2));
+    addr.SetBase("10.1.3.0", "255.255.255.252");
+    auto ic_c_s3 = addr.Assign(dc_c_s3);
+    g_s3_ip_anim = ic_c_s3.GetAddress(1);
+
+    // s1 -- s2 (5 ms)
+    p2p.SetChannelAttribute("Delay", StringValue("5ms"));
+    auto dc_s1_s2 = p2p.Install(g_Switch_Nodes.Get(0), g_Switch_Nodes.Get(1));
+    addr.SetBase("10.2.1.0", "255.255.255.252");
+    addr.Assign(dc_s1_s2);
+
+    // s2 -- s3 (5 ms)
+    auto dc_s2_s3 = p2p.Install(g_Switch_Nodes.Get(1), g_Switch_Nodes.Get(2));
+    addr.SetBase("10.2.2.0", "255.255.255.252");
+    addr.Assign(dc_s2_s3);
+
+    // s1 -- h1 (5 ms host-switch)
+    auto dc_s1_h1 = p2p.Install(g_Switch_Nodes.Get(0), g_Host_Nodes.Get(0));
+    addr.SetBase("10.3.1.0", "255.255.255.252");
+    addr.Assign(dc_s1_h1);
+
+    // s3 -- h2 (5 ms host-switch)
+    auto dc_s3_h2 = p2p.Install(g_Switch_Nodes.Get(2), g_Host_Nodes.Get(1));
+    addr.SetBase("10.3.3.0", "255.255.255.252");
+    addr.Assign(dc_s3_h2);
+
+    // h1 -- h2  OOB link (10 ms)
+    p2p.SetChannelAttribute("Delay", StringValue("10ms"));
+    auto dc_h1_h2 = p2p.Install(g_Host_Nodes.Get(0), g_Host_Nodes.Get(1));
+    addr.SetBase("10.4.1.0", "255.255.255.252");
+    auto ic_h1_h2 = addr.Assign(dc_h1_h2);
+    g_h2_ip_oob = ic_h1_h2.GetAddress(1);  // h2 end of OOB link
+
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+
+    // ── Controller LLDP receive socket (port 6633) ─────────────────────────
+    // Accepts LldpTag packets; invokes LLA_CtrlReceive on each arrival.
+    // Mirrors the Rx() callback registration pattern in routing.cc.
+    g_ctrl_recv_socket = Socket::CreateSocket (
+        g_Controller_Nodes.Get(0),
+        TypeId::LookupByName ("ns3::UdpSocketFactory"));
+    g_ctrl_recv_socket->Bind (
+        InetSocketAddress (Ipv4Address::GetAny (), LLDP_PORT));
+    g_ctrl_recv_socket->SetRecvCallback (MakeCallback (&LLA_CtrlReceive));
+
+    // PacketSink on port 9 for every node (absorbs visual packets silently)
+    PacketSinkHelper sink("ns3::UdpSocketFactory",
+                          InetSocketAddress(Ipv4Address::GetAny(), 9));
+    ApplicationContainer sinks;
+    sinks.Add(sink.Install(g_Switch_Nodes));
+    sinks.Add(sink.Install(g_Host_Nodes));
+    sinks.Add(sink.Install(g_Controller_Nodes));
+    sinks.Start(Seconds(0.0));
+    sinks.Stop(Seconds(g_simTime));
+}
+
+// ── NetAnim node colours, sizes and labels ────────────────────────────────
+static void LLA_SetupNetAnim()
+{
+    if (!g_anim) return;
+
+    // Controller — purple
+    g_anim->UpdateNodeColor(g_Controller_Nodes.Get(0), 180, 0, 200);
+    g_anim->UpdateNodeSize (g_Controller_Nodes.Get(0)->GetId(), 35.0, 35.0);
+    g_anim->UpdateNodeDescription(g_Controller_Nodes.Get(0), "Controller");
+
+    // Switches — steel blue
+    const char* sw_lbl[] = {"s1", "s2", "s3"};
+    for (uint32_t i = 0; i < g_Switch_Nodes.GetN(); i++) {
+        g_anim->UpdateNodeColor(g_Switch_Nodes.Get(i), 30, 144, 255);
+        g_anim->UpdateNodeSize (g_Switch_Nodes.Get(i)->GetId(), 28.0, 28.0);
+        g_anim->UpdateNodeDescription(g_Switch_Nodes.Get(i), sw_lbl[i]);
+    }
+
+    // h1 — red (attacker/flooder)
+    g_anim->UpdateNodeColor(g_Host_Nodes.Get(0), 220, 0, 0);
+    g_anim->UpdateNodeSize (g_Host_Nodes.Get(0)->GetId(), 26.0, 26.0);
+    std::string h1_lbl = "h1-Attacker";
+    if      (g_attack_scenario == 16) h1_lbl = "h1-Flood+Relay";
+    else if (g_attack_scenario == 18) h1_lbl = "h1-BasicLFA";
+    else if (g_attack_scenario == 19) h1_lbl = "h1-GradualLFA";
+    g_anim->UpdateNodeDescription(g_Host_Nodes.Get(0), h1_lbl);
+
+    // h2 — orange (relay accomplice)
+    g_anim->UpdateNodeColor(g_Host_Nodes.Get(1), 255, 100, 0);
+    g_anim->UpdateNodeSize (g_Host_Nodes.Get(1)->GetId(), 26.0, 26.0);
+    std::string h2_lbl = "h2-Relay";
+    if (g_attack_scenario == 16) h2_lbl = "h2-Flood+Relay";
+    g_anim->UpdateNodeDescription(g_Host_Nodes.Get(1), h2_lbl);
+
+    // h3-h6 — green (benign hosts)
+    const char* hx_lbl[] = {"h3", "h4", "h5", "h6"};
+    for (uint32_t i = 2; i < g_Host_Nodes.GetN(); i++) {
+        g_anim->UpdateNodeColor(g_Host_Nodes.Get(i), 0, 180, 60);
+        g_anim->UpdateNodeSize (g_Host_Nodes.Get(i)->GetId(), 20.0, 20.0);
+        g_anim->UpdateNodeDescription(g_Host_Nodes.Get(i), hx_lbl[i - 2]);
+    }
+}
+
 // ── Mobility setup ────────────────────────────────────────────────────────
 
 static void SetupMobility()
@@ -709,6 +1043,7 @@ int main(int argc, char* argv[])
     g_Controller_Nodes.Create(1);
 
     SetupMobility();
+    LLA_SetupNetworkForAnim();  // P2P links + IP stack (enables NetAnim arrows)
     PrePopulateHistory();
     LLA_InitLogs();
 
@@ -774,12 +1109,22 @@ int main(int argc, char* argv[])
     // ── Write summary at end ───────────────────────────────────────────────
     Simulator::Schedule(Seconds(g_simTime - 0.01), &LLA_WriteSummary);
 
+    // ── NetAnim output ─────────────────────────────────────────────────────
+    std::string anim_xml = "lla_anim_scenario"
+                           + std::to_string(g_attack_scenario) + ".xml";
+    g_anim = new AnimationInterface(anim_xml);
+    g_anim->EnablePacketMetadata(true);
+    LLA_SetupNetAnim();
+    std::cout << "[LLA] NetAnim XML: " << anim_xml << "\n";
+
     Simulator::Stop(Seconds(g_simTime));
     Simulator::Run();
     Simulator::Destroy();
 
     g_attack_log.close();
     g_events_csv.close();
+    delete g_anim;
+    g_anim = nullptr;
 
     std::cout << "[LLA] Simulation complete"
               << "  scenario=" << g_attack_scenario

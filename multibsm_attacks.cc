@@ -30,6 +30,10 @@
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/mobility-module.h"
+#include "ns3/point-to-point-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/netanim-module.h"
 
 #include <algorithm>
 #include <cmath>
@@ -110,6 +114,90 @@ static std::ofstream g_events_csv;
 
 // ── Random engine (fixed seed for reproducibility; pass --RngRun for variation)
 static std::mt19937 g_rng(12345);
+
+// ── BSM protocol port ─────────────────────────────────────────────────────
+static const uint16_t BSM_PORT = 7777;
+
+// ── BsmTag: NS-3 Tag for BSM (Basic Safety Message) packets ──────────────
+// Carries GPS position, kinematics, and ground-truth falsification label.
+// Pattern mirrors CustomDataTag1 / CustomHeartbeatTag in routing.cc:
+//   pkt->AddPacketTag(tag)  — attached by vehicle at transmit time
+//   pkt->PeekPacketTag(tag) — read by RSU in socket receive callback
+// Serialised size: 4+8+8+8+8+8+1 = 45 bytes.
+class BsmTag : public Tag
+{
+public:
+    static TypeId GetTypeId ()
+    {
+        static TypeId tid = TypeId ("BsmTag")
+            .SetParent<Tag> ()
+            .AddConstructor<BsmTag> ();
+        return tid;
+    }
+    TypeId GetInstanceTypeId () const override { return GetTypeId (); }
+
+    uint32_t GetSerializedSize () const override { return 45; }
+
+    void Serialize (TagBuffer buf) const override
+    {
+        buf.WriteU32    (m_vehicleId);
+        buf.WriteDouble (m_posX);
+        buf.WriteDouble (m_posY);
+        buf.WriteDouble (m_speed);
+        buf.WriteDouble (m_direction);
+        buf.WriteDouble (m_timestamp);
+        buf.WriteU8     (m_isFalsified);
+    }
+    void Deserialize (TagBuffer buf) override
+    {
+        m_vehicleId   = buf.ReadU32    ();
+        m_posX        = buf.ReadDouble ();
+        m_posY        = buf.ReadDouble ();
+        m_speed       = buf.ReadDouble ();
+        m_direction   = buf.ReadDouble ();
+        m_timestamp   = buf.ReadDouble ();
+        m_isFalsified = buf.ReadU8     ();
+    }
+    void Print (std::ostream& os) const override
+    {
+        os << "BsmTag vid=" << m_vehicleId
+           << " pos=(" << m_posX << "," << m_posY << ")"
+           << " spd=" << m_speed
+           << " falsified=" << (int)m_isFalsified;
+    }
+
+    void SetVehicleId   (uint32_t v) { m_vehicleId   = v; }
+    void SetPosX        (double v)   { m_posX        = v; }
+    void SetPosY        (double v)   { m_posY        = v; }
+    void SetSpeed       (double v)   { m_speed       = v; }
+    void SetDirection   (double v)   { m_direction   = v; }
+    void SetTimestamp   (double v)   { m_timestamp   = v; }
+    void SetIsFalsified (bool v)     { m_isFalsified = v ? 1 : 0; }
+
+    uint32_t GetVehicleId   () const { return m_vehicleId; }
+    double   GetPosX        () const { return m_posX; }
+    double   GetPosY        () const { return m_posY; }
+    double   GetSpeed       () const { return m_speed; }
+    double   GetDirection   () const { return m_direction; }
+    double   GetTimestamp   () const { return m_timestamp; }
+    bool     GetIsFalsified () const { return m_isFalsified != 0; }
+
+private:
+    uint32_t m_vehicleId   = 0;
+    double   m_posX        = 0.0;
+    double   m_posY        = 0.0;
+    double   m_speed       = 0.0;
+    double   m_direction   = 0.0;
+    double   m_timestamp   = 0.0;
+    uint8_t  m_isFalsified = 0;
+};
+
+// ── NetAnim / network-layer state ─────────────────────────────────────────
+static AnimationInterface* g_anim        = nullptr;
+static Ipv4Address         g_rsu_ip_anim;                  // RSU IP on vehicle-0 link
+static std::vector<Ipv4Address> g_veh_ip_anim;             // vehicle i's own P2P IP
+// RSU UDP socket for receiving BsmTag packets (set up in MBSM_SetupNetworkForAnim)
+static Ptr<Socket> g_rsu_recv_socket = nullptr;
 
 // ─────────────────────────────────────────────────────────────
 // Euclidean distance (2-D)
@@ -196,6 +284,70 @@ static bool MBSM_Detect(const BsmRecord& bsm)
     return false;
 }
 
+// Forward declaration — MBSM_RSUReceive is defined after MBSM_RSUSocketReceive
+static void MBSM_RSUReceive(BsmRecord bsm);
+
+// ─────────────────────────────────────────────────────────────
+// RSU UDP socket receive callback
+// Fires when a BsmTag packet arrives on BSM_PORT.
+// Reads the tag (PeekPacketTag), reconstructs BsmRecord, calls MBSM_RSUReceive.
+// Mirrors the Rx() callback / PeekPacketTag pattern in routing.cc.
+// ─────────────────────────────────────────────────────────────
+static void MBSM_RSUSocketReceive (Ptr<Socket> sock)
+{
+    Ptr<Packet> pkt;
+    while ((pkt = sock->Recv ()))
+    {
+        BsmTag tag;
+        if (!pkt->PeekPacketTag (tag)) continue;
+
+        BsmRecord bsm;
+        bsm.vehicle_id   = tag.GetVehicleId ();
+        bsm.pos_x        = tag.GetPosX ();
+        bsm.pos_y        = tag.GetPosY ();
+        bsm.speed_ms     = tag.GetSpeed ();
+        bsm.direction    = tag.GetDirection ();
+        bsm.timestamp    = tag.GetTimestamp ();
+        bsm.is_falsified = tag.GetIsFalsified ();
+
+        MBSM_RSUReceive (bsm);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Create a BsmTag packet and send it from vehicle veh_idx to RSU.
+// Replaces the direct MBSM_RSUReceive(bsm) call in the send functions.
+// InRSURange check must be done by the caller before calling this.
+// ─────────────────────────────────────────────────────────────
+static void MBSM_SendBsm (uint32_t veh_idx,
+                           double px, double py,
+                           double spd, double dir,
+                           bool is_falsified)
+{
+    if (g_rsu_recv_socket == nullptr)      return;   // network not yet set up
+    if (veh_idx >= Vehicle_Nodes.GetN ())  return;
+
+    Ptr<Node> src = Vehicle_Nodes.Get (veh_idx);
+
+    TypeId udp_tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+    Ptr<Socket> sock = Socket::CreateSocket (src, udp_tid);
+    sock->Connect (InetSocketAddress (g_rsu_ip_anim, BSM_PORT));
+
+    Ptr<Packet> pkt = Create<Packet> (0);
+    BsmTag tag;
+    tag.SetVehicleId   (src->GetId ());
+    tag.SetPosX        (px);
+    tag.SetPosY        (py);
+    tag.SetSpeed       (spd);
+    tag.SetDirection   (dir);
+    tag.SetTimestamp   (Simulator::Now ().GetSeconds ());
+    tag.SetIsFalsified (is_falsified);
+    pkt->AddPacketTag  (tag);
+
+    sock->Send  (pkt);
+    sock->Close ();
+}
+
 // ─────────────────────────────────────────────────────────────
 // RSU receive handler
 // Runs detection, updates PEM counters, writes event log
@@ -264,17 +416,9 @@ static void MBSM_SendLegit(uint32_t veh_idx)
     double px, py, spd, dir;
     GetKinematics(node, px, py, spd, dir);
 
-    BsmRecord bsm;
-    bsm.vehicle_id  = node->GetId();
-    bsm.pos_x       = px;
-    bsm.pos_y       = py;
-    bsm.speed_ms    = spd;
-    bsm.direction   = dir;
-    bsm.timestamp   = Simulator::Now().GetSeconds();
-    bsm.is_falsified = false;
-
     if (InRSURange(px, py)) {
-        MBSM_RSUReceive(bsm);
+        // Send real BsmTag packet to RSU; MBSM_RSUSocketReceive handles detection
+        MBSM_SendBsm(veh_idx, px, py, spd, dir, /*is_falsified=*/ false);
     }
 }
 
@@ -305,18 +449,9 @@ static void MBSM_SendType1(uint32_t veh_idx)
         }
     }
 
-    BsmRecord bsm;
-    bsm.vehicle_id  = node->GetId();
-    bsm.pos_x       = T1_FIXED_X;   // frozen — never changes
-    bsm.pos_y       = T1_FIXED_Y;
-    bsm.speed_ms    = real_spd;      // realistic
-    bsm.direction   = real_dir;      // realistic — may change
-    bsm.timestamp   = now;
-    bsm.is_falsified = true;
-
-    // RSU receives from the attacker's actual position (physical radio range)
+    // Send forged BsmTag packet to RSU (physical radio range check on real position)
     if (InRSURange(real_px, real_py)) {
-        MBSM_RSUReceive(bsm);
+        MBSM_SendBsm(veh_idx, T1_FIXED_X, T1_FIXED_Y, real_spd, real_dir, /*is_falsified=*/ true);
     }
 }
 
@@ -345,18 +480,12 @@ static void MBSM_SendType2(uint32_t veh_idx)
     }
 
     std::uniform_real_distribution<double> rand_coord(0.0, SIM_AREA_MAX);
-
-    BsmRecord bsm;
-    bsm.vehicle_id  = node->GetId();
-    bsm.pos_x       = rand_coord(g_rng);
-    bsm.pos_y       = rand_coord(g_rng);
-    bsm.speed_ms    = real_spd;
-    bsm.direction   = real_dir;
-    bsm.timestamp   = now;
-    bsm.is_falsified = true;
+    double fake_x = rand_coord(g_rng);
+    double fake_y = rand_coord(g_rng);
 
     if (InRSURange(real_px, real_py)) {
-        MBSM_RSUReceive(bsm);
+        // Send forged BsmTag with random position; MBSM_RSUSocketReceive handles detection
+        MBSM_SendBsm(veh_idx, fake_x, fake_y, real_spd, real_dir, /*is_falsified=*/ true);
     }
 }
 
@@ -413,8 +542,127 @@ static void MBSM_SendType3(uint32_t veh_idx)
     }
 
     if (InRSURange(real_px, real_py)) {
-        MBSM_RSUReceive(bsm);
+        // Send BsmTag packet with either real or frozen position
+        MBSM_SendBsm(veh_idx, bsm.pos_x, bsm.pos_y, bsm.speed_ms, bsm.direction, bsm.is_falsified);
     }
+}
+
+// MBSM_AnimSend is no longer needed — real BsmTag packets (BSM_PORT 7777)
+// generate NetAnim arrows automatically when EnablePacketMetadata(true) is set.
+// The function stub is kept so MBSM_BsmTick's existing call compiles without error;
+// it does nothing since g_anim guards are satisfied by the real packets.
+static void MBSM_AnimSend(uint32_t /*veh_idx*/)
+{
+    // Real BsmTag packet flow provides animation arrows; no separate anim packet needed.
+}
+
+// ─────────────────────────────────────────────────────────────
+// Build a lightweight P2P star topology (vehicle_i ↔ RSU) purely
+// for NetAnim packet arrows. Also installs Internet stack and
+// a UDP PacketSink on port 9 on every node.
+// ─────────────────────────────────────────────────────────────
+static void MBSM_SetupNetworkForAnim()
+{
+    if (RSU_Nodes.GetN() == 0) {
+        // No RSU present — skip (no vehicle→RSU arrows possible)
+        return;
+    }
+
+    // Install Internet stack on all nodes
+    InternetStackHelper internet;
+    internet.Install(Vehicle_Nodes);
+    internet.Install(RSU_Nodes);
+
+    // P2P star: vehicle_i ↔ RSU  on subnet 10.1.(i+1).0/30
+    PointToPointHelper p2p;
+    p2p.SetDeviceAttribute("DataRate", StringValue("100Mbps"));
+    p2p.SetChannelAttribute("Delay",   StringValue("1ms"));
+
+    Ipv4AddressHelper addr;
+    g_veh_ip_anim.resize(Vehicle_Nodes.GetN());
+
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
+        NodeContainer pair;
+        pair.Add(Vehicle_Nodes.Get(i));
+        pair.Add(RSU_Nodes.Get(0));
+        NetDeviceContainer devs = p2p.Install(pair);
+
+        std::ostringstream base_ip;
+        base_ip << "10.1." << (i + 1) << ".0";
+        addr.SetBase(base_ip.str().c_str(), "255.255.255.252");
+        Ipv4InterfaceContainer ifaces = addr.Assign(devs);
+
+        g_veh_ip_anim[i] = ifaces.GetAddress(0);   // vehicle i: .1
+        if (i == 0) {
+            // RSU's address on the first link — reachable from all
+            // vehicles via global routing
+            g_rsu_ip_anim = ifaces.GetAddress(1);   // 10.1.1.2
+        }
+    }
+
+    Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+
+    // ── RSU BSM receive socket (port BSM_PORT = 7777) ─────────────────────
+    // Accepts BsmTag packets from vehicles; invokes MBSM_RSUSocketReceive.
+    // Mirrors the Rx() / PeekPacketTag pattern used in routing.cc.
+    g_rsu_recv_socket = Socket::CreateSocket (
+        RSU_Nodes.Get (0),
+        TypeId::LookupByName ("ns3::UdpSocketFactory"));
+    g_rsu_recv_socket->Bind (
+        InetSocketAddress (Ipv4Address::GetAny (), BSM_PORT));
+    g_rsu_recv_socket->SetRecvCallback (MakeCallback (&MBSM_RSUSocketReceive));
+
+    // Install PacketSink on UDP port 9 so animation packets are accepted
+    PacketSinkHelper sinkHelper("ns3::UdpSocketFactory",
+                                InetSocketAddress(Ipv4Address::GetAny(), 9));
+
+    ApplicationContainer rsuSink = sinkHelper.Install(RSU_Nodes.Get(0));
+    rsuSink.Start(Seconds(0.0));
+    rsuSink.Stop(Seconds(simTime));
+
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
+        ApplicationContainer vehSink = sinkHelper.Install(Vehicle_Nodes.Get(i));
+        vehSink.Start(Seconds(0.0));
+        vehSink.Stop(Seconds(simTime));
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Apply NetAnim node colours, sizes, and labels.
+// Must be called AFTER AnimationInterface is constructed.
+// Colour scheme (matches routing.cc TTW/ME/BSHH convention):
+//   attacker vehicle  → red  (255, 0, 0)
+//   legitimate vehicles → green (0, 200, 60)
+//   RSU               → amber (255, 200, 0)
+// ─────────────────────────────────────────────────────────────
+static void MBSM_SetupNetAnim()
+{
+    if (!g_anim) return;
+
+    // RSU — amber/yellow
+    if (RSU_Nodes.GetN() > 0) {
+        uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
+        g_anim->UpdateNodeColor(rsu_id, 255, 200, 0);
+        g_anim->UpdateNodeSize(rsu_id, 35, 35);
+        g_anim->UpdateNodeDescription(rsu_id, "RSU");
+    }
+
+    // Vehicles
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
+        uint32_t nid = Vehicle_Nodes.Get(i)->GetId();
+        bool is_attacker = (i == attacker_idx) && (attack_scenario != 0);
+        if (is_attacker) {
+            g_anim->UpdateNodeColor(nid, 255, 0, 0);      // red
+            g_anim->UpdateNodeSize(nid, 30, 30);
+            g_anim->UpdateNodeDescription(nid, "ATTACKER");
+        } else {
+            g_anim->UpdateNodeColor(nid, 0, 200, 60);     // green
+            g_anim->UpdateNodeSize(nid, 20, 20);
+            g_anim->UpdateNodeDescription(nid, "V" + std::to_string(i));
+        }
+    }
+
+    g_anim->EnablePacketMetadata(true);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -434,6 +682,11 @@ static void MBSM_BsmTick(uint32_t veh_idx, double t_end)
         }
     } else {
         MBSM_SendLegit(veh_idx);
+    }
+
+    // NetAnim: one arrow per vehicle per second (throttled inside MBSM_AnimSend)
+    if (g_anim && RSU_Nodes.GetN() > 0) {
+        Simulator::Schedule(Seconds(0.001), &MBSM_AnimSend, veh_idx);
     }
 
     double next = Simulator::Now().GetSeconds() + BSM_INTERVAL_S;
@@ -641,6 +894,9 @@ int main(int argc, char* argv[])
         }
     }
 
+    // ── Setup lightweight P2P network for NetAnim arrows ────────
+    MBSM_SetupNetworkForAnim();
+
     // ── Schedule BSM events ──────────────────────────────────
     // Each vehicle starts sending BSMs at t=0.1s, staggered by 1 ms
     double t_bsm_end = simTime - 0.5;
@@ -653,9 +909,18 @@ int main(int argc, char* argv[])
     // ── Write summary at end ─────────────────────────────────
     Simulator::Schedule(Seconds(simTime - 0.05), &MBSM_WriteSummary);
 
+    // ── NetAnim: create animation file ───────────────────────
+    std::string anim_xml = "multibsm_anim_scenario"
+                           + std::to_string(attack_scenario) + ".xml";
+    g_anim = new AnimationInterface(anim_xml);
+    MBSM_SetupNetAnim();
+
     Simulator::Stop(Seconds(simTime));
     Simulator::Run();
     Simulator::Destroy();
+
+    delete g_anim;
+    g_anim = nullptr;
 
     if (g_attack_log.is_open())  g_attack_log.close();
     if (g_events_csv.is_open())  g_events_csv.close();
