@@ -90,7 +90,11 @@ static std::map<uint32_t, int>           g_nodeAttackType;  // 0 = benign, else 
 static Ptr<UniformRandomVariable>        g_rng;
 static NodeContainer                     g_nodes;
 static NetDeviceContainer                g_waveDevices;
-static std::set<std::pair<uint32_t,double>> g_loggedBSMs;  // (senderId, sendTime) dedup
+static std::set<std::pair<uint32_t,double>> g_loggedBSMs;  // (senderId, sendTime) dedup (PDR)
+static std::map<uint32_t, uint64_t>  g_bsmSentCount;    // per-sender: total BSMs generated
+static std::map<uint32_t, uint64_t>  g_bsmRecvdByAny;   // per-sender: received by >=1 other node
+static std::map<uint32_t, uint32_t>  g_verboseCount;    // verbose-print limiter per sender
+static const uint32_t                VERBOSE_MAX = 3;   // first N BSMs per node shown in detail
 
 // Simulation parameters (set in main, read by callbacks)
 static double   g_beaconInterval = 0.1;   // seconds
@@ -224,8 +228,14 @@ static Vector FalsifyPosition(uint32_t nodeId, int attackType, const Vector& tru
 }
 
 // ── BSM generation callback (self-rescheduling) ───────────────────────────────
-// Sender responsibility: falsify position and broadcast over DSRC.
-// Logging is done entirely by OnBSMReceived on the receiver side.
+// Sender responsibility: falsify position, LOG the BSM record from the sender
+// side, print verbose output, then broadcast over DSRC.
+//
+// WHY sender-side logging:  with a 300 m radio range across a 10 000 m x 10 000 m
+// playground, fewer than 1 % of pairs are ever in range simultaneously, so
+// OnBSMReceived rarely fires and the CSV would be empty.  Logging here ensures
+// every generated BSM is captured regardless of connectivity, matching the
+// dataset semantics in the NPFADS paper.
 static void GenerateBSM(uint32_t nodeId)
 {
     double now = Simulator::Now().GetSeconds();
@@ -238,8 +248,75 @@ static void GenerateBSM(uint32_t nodeId)
     int    atype       = g_nodeAttackType.count(nodeId) ? g_nodeAttackType.at(nodeId) : BENIGN;
     Vector reportedPos = FalsifyPosition(nodeId, atype, truePos);
 
-    // Build and broadcast the BSM tag — only reported (falsified) position and
-    // true velocity travel over the air.  Acceleration is derived by receivers.
+    // ── Derive acceleration from velocity delta vs previous BSM ──────────────
+    double xAcc = 0.0, yAcc = 0.0;
+    {
+        auto prevIt = g_lastBSM.find(nodeId);
+        if (prevIt != g_lastBSM.end()) {
+            double dt = now - prevIt->second.sendTime;
+            if (dt > 1e-9) {
+                xAcc = (vel.x - prevIt->second.xSpd) / dt;
+                yAcc = (vel.y - prevIt->second.ySpd) / dt;
+            }
+        }
+    }
+
+    // ── Build and store BSM record (sender-side) ──────────────────────────────
+    BSMRecord r;
+    r.sendTime   = now;
+    r.senderId   = nodeId;
+    r.xPos       = reportedPos.x;   // falsified for attackers, true for benign
+    r.yPos       = reportedPos.y;
+    r.xSpd       = vel.x;
+    r.ySpd       = vel.y;
+    r.xAcc       = xAcc;
+    r.yAcc       = yAcc;
+    r.attackType = atype;
+    r.trueXPos   = truePos.x;
+    r.trueYPos   = truePos.y;
+
+    g_bsmLog.push_back(r);
+    g_lastBSM[nodeId] = r;
+    ++g_bsmSentCount[nodeId];
+
+    // ── Verbose terminal output — first VERBOSE_MAX BSMs per node ─────────────
+    {
+        uint32_t& vc = g_verboseCount[nodeId];
+        if (vc < VERBOSE_MAX) {
+            bool falsified = (atype != BENIGN) &&
+                             (std::abs(reportedPos.x - truePos.x) > 1e-6 ||
+                              std::abs(reportedPos.y - truePos.y) > 1e-6);
+            double posErr  = std::sqrt(std::pow(reportedPos.x - truePos.x, 2) +
+                                       std::pow(reportedPos.y - truePos.y, 2));
+            std::string role = (atype != BENIGN)
+                ? ("ATK-Type" + std::to_string(atype)) : "BENIGN";
+            NS_LOG_UNCOND(std::fixed << std::setprecision(3)
+                << "\n[NPFADS-BSM] ---- BEACON SENT [" << vc+1 << "/" << VERBOSE_MAX << "] ----"
+                << "\n  m_nodeId   = " << nodeId << "  (" << role << ")"
+                << "\n  m_sendTime = " << now << " s"
+                << "\n  m_xPos     = " << reportedPos.x << " m"
+                << (falsified ? "  <-- FALSIFIED (true=" + std::to_string((int)truePos.x) + " m)" : "  (true)")
+                << "\n  m_yPos     = " << reportedPos.y << " m"
+                << (falsified ? "  <-- FALSIFIED (true=" + std::to_string((int)truePos.y) + " m)" : "  (true)")
+                << "\n  m_xSpd     = " << vel.x << " m/s"
+                << "\n  m_ySpd     = " << vel.y << " m/s"
+                << "\n  xAcc       = " << xAcc << " m/s2"
+                << "\n  yAcc       = " << yAcc << " m/s2"
+                << "\n  attackType = " << atype
+                << "\n  trueXPos   = " << truePos.x << " m"
+                << "\n  trueYPos   = " << truePos.y << " m"
+                << "\n  posError   = " << posErr << " m"
+                << "\n");
+        } else if (vc == VERBOSE_MAX) {
+            NS_LOG_UNCOND("[NPFADS-BSM] Node=" << nodeId << " (" <<
+                ((atype != BENIGN) ? ("ATK-Type"+std::to_string(atype)) : "BENIGN") <<
+                "): first " << VERBOSE_MAX <<
+                " BSMs shown above; remaining BSMs suppressed in terminal.");
+        }
+        ++vc;
+    }
+
+    // ── Broadcast over 802.11p DSRC ───────────────────────────────────────────
     Ptr<WifiNetDevice> wdev = DynamicCast<WifiNetDevice>(g_waveDevices.Get(nodeId));
     if (wdev) {
         NPFADSBSMTag bsmTag;
@@ -257,11 +334,15 @@ static void GenerateBSM(uint32_t nodeId)
 }
 
 // ── BSM receive callback ──────────────────────────────────────────────────────
-// Installed on every vehicle node.  Runs when a DSRC packet arrives.
-// Populates g_bsmLog; derives acceleration from velocity deltas; adds true
-// position (a simulation-only privilege — the real detector cannot know this,
-// but we need it for ground-truth CSV output and eigenvalue analysis).
-static bool OnBSMReceived(Ptr<NetDevice> /*dev*/,
+// Installed on every vehicle node.  Fires when a DSRC packet arrives.
+// BSM records are now logged by GenerateBSM (sender-side), so this callback
+// only:
+//   1. Tracks PDR: counts how many of each sender's BSMs were received by
+//      at least one other node (g_bsmRecvdByAny).
+//   2. Prints verbose "BEACON RECEIVED" output for the first VERBOSE_MAX
+//      receptions per (sender, receiver) pair, showing the over-the-air
+//      attributes exactly as a real detector would see them.
+static bool OnBSMReceived(Ptr<NetDevice>    dev,
                            Ptr<const Packet> packet,
                            uint16_t          /*protocol*/,
                            const Address&    /*src*/)
@@ -272,48 +353,43 @@ static bool OnBSMReceived(Ptr<NetDevice> /*dev*/,
     uint32_t senderId = tag.GetNodeId();
     double   sendTime = tag.GetSendTime();
 
-    // First receiver to see this BSM logs it; all others discard the duplicate
+    // Dedup: count each (sender, sendTime) pair only once for PDR
     auto key = std::make_pair(senderId, sendTime);
     if (g_loggedBSMs.count(key)) return true;
     g_loggedBSMs.insert(key);
 
-    // Derive acceleration from velocity delta vs the previous logged BSM
-    double xAcc = 0.0, yAcc = 0.0;
-    auto prevIt = g_lastBSM.find(senderId);
-    if (prevIt != g_lastBSM.end()) {
-        double dt = sendTime - prevIt->second.sendTime;
-        if (dt > 1e-9) {
-            xAcc = (tag.GetXSpd() - prevIt->second.xSpd) / dt;
-            yAcc = (tag.GetYSpd() - prevIt->second.ySpd) / dt;
+    // PDR tracking: at least one node received this BSM
+    ++g_bsmRecvdByAny[senderId];
+
+    // ── Verbose receive output — first VERBOSE_MAX per (sender,receiver) pair ─
+    {
+        uint32_t receiverId = dev->GetNode()->GetId();
+        static std::map<std::pair<uint32_t,uint32_t>, uint32_t> recvVc;
+        auto rKey = std::make_pair(senderId, receiverId);
+        uint32_t& rvc = recvVc[rKey];
+        if (rvc < VERBOSE_MAX) {
+            double rxTime = Simulator::Now().GetSeconds();
+            int    atype  = tag.GetAttackType();
+            std::string role = (atype != BENIGN)
+                ? ("ATK-Type" + std::to_string(atype)) : "BENIGN";
+            NS_LOG_UNCOND(std::fixed << std::setprecision(3)
+                << "\n[NPFADS-BSM] ---- BEACON RECEIVED [" << rvc+1 << "/" << VERBOSE_MAX << "] ----"
+                << "\n  m_nodeId   = " << senderId << "  (" << role << ")"
+                << "  --> Receiver=" << receiverId
+                << "\n  m_sendTime = " << sendTime << " s"
+                << "  rxTime=" << rxTime << " s"
+                << "  prop=" << (rxTime - sendTime)*1000.0 << " ms"
+                << "\n  m_xPos     = " << tag.GetXPos() << " m  (reported over air)"
+                << "\n  m_yPos     = " << tag.GetYPos() << " m  (reported over air)"
+                << "\n  m_xSpd     = " << tag.GetXSpd() << " m/s"
+                << "\n  m_ySpd     = " << tag.GetYSpd() << " m/s"
+                << "\n  attackType = " << atype
+                << "\n  [Receiver " << receiverId << " does NOT know truePos"
+                << " -- that is only in the sender-side BSM log]"
+                << "\n");
         }
+        ++rvc;
     }
-
-    // True position — only available because this is a simulation
-    double trueX = 0.0, trueY = 0.0;
-    if (senderId < g_nodes.GetN()) {
-        Ptr<MobilityModel> mob = g_nodes.Get(senderId)->GetObject<MobilityModel>();
-        if (mob) {
-            Vector tp = mob->GetPosition();
-            trueX = tp.x;
-            trueY = tp.y;
-        }
-    }
-
-    BSMRecord r;
-    r.sendTime  = sendTime;
-    r.senderId  = senderId;
-    r.xPos      = tag.GetXPos();    // falsified position (what the network sees)
-    r.yPos      = tag.GetYPos();
-    r.xSpd      = tag.GetXSpd();
-    r.ySpd      = tag.GetYSpd();
-    r.xAcc      = xAcc;
-    r.yAcc      = yAcc;
-    r.attackType = tag.GetAttackType();
-    r.trueXPos  = trueX;
-    r.trueYPos  = trueY;
-
-    g_bsmLog.push_back(r);
-    g_lastBSM[senderId] = r;
 
     return true;
 }
@@ -521,31 +597,75 @@ static void PostProcess(const std::string& outputDir)
     for (const auto& ss : sScores)
         if (ss.attackType != BENIGN) attackTypes.insert(ss.attackType);
 
-    // ── 5. Write metrics CSV ───────────────────────────────────────────────
+    // ── 5. Write metrics CSV + PEM summary (MCC, AUROC, PDR) ──────────────────
+    // npfads_metrics.csv     — extended with mcc and auroc columns
+    // npfads_pem_summary.csv — mirror of routing.cc's pem_run_summary.csv so
+    //                          results from both simulations are directly comparable
     {
-        std::ofstream f(outputDir + "/npfads_metrics.csv");
-        f << std::fixed << std::setprecision(6);
-        f << "attack_type,n_attackers,n_benign,TP,FP,FN,TN,"
-             "precision,recall,f1,opt_threshold\n";
+        std::ofstream fMetrics(outputDir + "/npfads_metrics.csv");
+        fMetrics << std::fixed << std::setprecision(6);
+        fMetrics << "attack_type,n_attackers,n_benign,TP,FP,FN,TN,"
+                    "precision,recall,f1,mcc,auroc,opt_threshold\n";
 
+        std::ofstream fPem(outputDir + "/npfads_pem_summary.csv");
+        fPem << std::fixed << std::setprecision(6);
+        fPem << "attack_type,n_attackers,n_benign,TP,FP,FN,TN,"
+                "precision,recall,f1,mcc,auroc,opt_threshold,"
+                "pdr_attacker_pct,pdr_benign_pct,overall_pdr_pct,"
+                "tdet_est_ms\n";
+
+        // ── PDR: aggregate over all senders ──────────────────────────────────
+        double totalSentAtk = 0, totalRecvAtk = 0;
+        double totalSentBen = 0, totalRecvBen = 0;
+        for (const auto& kv : g_bsmSentCount) {
+            uint32_t nid  = kv.first;
+            uint64_t sent = kv.second;
+            uint64_t recv = g_bsmRecvdByAny.count(nid) ? g_bsmRecvdByAny.at(nid) : 0u;
+            int      nat  = g_nodeAttackType.count(nid) ? g_nodeAttackType.at(nid) : BENIGN;
+            if (nat != BENIGN) { totalSentAtk += sent; totalRecvAtk += recv; }
+            else               { totalSentBen += sent; totalRecvBen += recv; }
+        }
+        double pdrAtk = (totalSentAtk > 0) ? 100.0 * totalRecvAtk / totalSentAtk : 0.0;
+        double pdrBen = (totalSentBen > 0) ? 100.0 * totalRecvBen / totalSentBen : 0.0;
+        double pdrAll = ((totalSentAtk + totalSentBen) > 0)
+            ? 100.0 * (totalRecvAtk + totalRecvBen) / (totalSentAtk + totalSentBen) : 0.0;
+
+        NS_LOG_UNCOND(std::fixed << std::setprecision(2)
+            << "\n[NPFADS-PDR] ====== Packet Delivery Ratio ======"
+            << "\n  Attacker BSMs: sent=" << (uint64_t)totalSentAtk
+            << "  received_by_>=1_node=" << (uint64_t)totalRecvAtk
+            << "  PDR=" << pdrAtk << "%"
+            << "\n  Benign   BSMs: sent=" << (uint64_t)totalSentBen
+            << "  received_by_>=1_node=" << (uint64_t)totalRecvBen
+            << "  PDR=" << pdrBen << "%"
+            << "\n  Overall  PDR=" << pdrAll << "%"
+            << (pdrAll < 5.0
+                ? "\n  NOTE: Low connectivity -- 300m range in 10000x10000m playground."
+                  "\n  BSM log is still complete (sender-side). For higher PDR:"
+                  "\n  reduce --simTime playground or increase --N_Vehicles."
+                : "")
+            << "\n");
+
+        // ── Per-attack-type: threshold sweep + AUROC + MCC ──────────────────
         for (int atype : attackTypes) {
-            // Collect pointers to this attack type's scores
             std::vector<const SenderScore*> atkPtrs;
             for (const auto& ss : sScores)
                 if (ss.attackType == atype) atkPtrs.push_back(&ss);
 
-            // Build sorted threshold candidates from this (benign + attack) subset
+            // Threshold candidates: union of benign and attack scores
             std::vector<double> candidates;
-            for (auto* p : benignPtrs)  candidates.push_back(p->score);
-            for (auto* p : atkPtrs)     candidates.push_back(p->score);
+            for (auto* p : benignPtrs) candidates.push_back(p->score);
+            for (auto* p : atkPtrs)    candidates.push_back(p->score);
             std::sort(candidates.begin(), candidates.end());
-            candidates.erase(
-                std::unique(candidates.begin(), candidates.end()),
-                candidates.end());
+            candidates.erase(std::unique(candidates.begin(), candidates.end()),
+                             candidates.end());
 
-            // Sweep threshold: classify as attack if score > threshold
             int    bestTP = 0, bestFP = 0, bestFN = 0, bestTN = 0;
             double bestF1 = -1.0, bestThresh = 0.0;
+
+            // ROC points for AUROC (start at origin)
+            std::vector<std::pair<double,double>> rocPts;
+            rocPts.push_back({0.0, 0.0});
 
             for (double thresh : candidates) {
                 int tp = 0, fp = 0, fn = 0, tn = 0;
@@ -553,6 +673,10 @@ static void PostProcess(const std::string& outputDir)
                     (p->score > thresh ? fp : tn)++;
                 for (auto* p : atkPtrs)
                     (p->score > thresh ? tp : fn)++;
+
+                double fpr  = (fp + tn > 0) ? (double)fp / (fp + tn) : 0.0;
+                double tpr  = (tp + fn > 0) ? (double)tp / (tp + fn) : 0.0;
+                rocPts.push_back({fpr, tpr});
 
                 double prec = (tp + fp > 0) ? (double)tp / (tp + fp) : 0.0;
                 double rec  = (tp + fn > 0) ? (double)tp / (tp + fn) : 0.0;
@@ -562,24 +686,80 @@ static void PostProcess(const std::string& outputDir)
                     bestTP = tp; bestFP = fp; bestFN = fn; bestTN = tn;
                 }
             }
+            rocPts.push_back({1.0, 1.0});  // close the ROC curve at (1,1)
+
+            // AUROC — trapezoidal rule over sorted (FPR, TPR) points
+            std::sort(rocPts.begin(), rocPts.end());
+            double auroc = 0.0;
+            for (size_t ri = 1; ri < rocPts.size(); ++ri) {
+                double dx = rocPts[ri].first  - rocPts[ri-1].first;
+                double hy = rocPts[ri].second + rocPts[ri-1].second;  // avg height
+                auroc += dx * hy * 0.5;
+            }
+
+            // MCC at best-F1 threshold
+            // MCC = (TP*TN - FP*FN) / sqrt((TP+FP)(TP+FN)(TN+FP)(TN+FN))
+            double mcc = 0.0;
+            {
+                double denom = std::sqrt(
+                    (double)(bestTP + bestFP) * (double)(bestTP + bestFN) *
+                    (double)(bestTN + bestFP) * (double)(bestTN + bestFN));
+                if (denom > 0.0)
+                    mcc = ((double)bestTP * (double)bestTN -
+                           (double)bestFP * (double)bestFN) / denom;
+            }
+
+            // Estimated detection latency:
+            // The NPFADS detector needs MIN_BSMS beacons before it can classify
+            // a sender.  Tdet_est = MIN_BSMS * beacon_interval (in ms).
+            double tdetEstMs = (double)MIN_BSMS * g_beaconInterval * 1000.0;
 
             double prec = (bestTP + bestFP > 0) ? (double)bestTP / (bestTP + bestFP) : 0.0;
             double rec  = (bestTP + bestFN > 0) ? (double)bestTP / (bestTP + bestFN) : 0.0;
 
-            f << atype
-              << "," << atkPtrs.size()
-              << "," << benignPtrs.size()
-              << "," << bestTP << "," << bestFP << "," << bestFN << "," << bestTN
-              << "," << prec << "," << rec << "," << bestF1 << "," << bestThresh << "\n";
+            // PDR for this specific attack type's nodes
+            double atkTypeSent = 0, atkTypeRecv = 0;
+            for (const auto& kv : g_bsmSentCount) {
+                int nat = g_nodeAttackType.count(kv.first) ? g_nodeAttackType.at(kv.first) : BENIGN;
+                if (nat == atype) {
+                    atkTypeSent += kv.second;
+                    atkTypeRecv += g_bsmRecvdByAny.count(kv.first)
+                                   ? g_bsmRecvdByAny.at(kv.first) : 0u;
+                }
+            }
+            double pdrAtkType = (atkTypeSent > 0) ? 100.0 * atkTypeRecv / atkTypeSent : 0.0;
 
-            NS_LOG_UNCOND("[NPFADS] Type " << std::setw(2) << atype
-                          << " | attackers=" << std::setw(3) << atkPtrs.size()
-                          << "  P=" << std::setprecision(3) << prec
-                          << "  R=" << rec
-                          << "  F1=" << bestF1);
+            // npfads_metrics.csv (extended)
+            fMetrics << atype
+                     << "," << atkPtrs.size() << "," << benignPtrs.size()
+                     << "," << bestTP << "," << bestFP << "," << bestFN << "," << bestTN
+                     << "," << prec << "," << rec << "," << bestF1
+                     << "," << mcc << "," << auroc << "," << bestThresh << "\n";
+
+            // npfads_pem_summary.csv — mirrors routing.cc pem_run_summary.csv format
+            fPem << atype
+                 << "," << atkPtrs.size() << "," << benignPtrs.size()
+                 << "," << bestTP << "," << bestFP << "," << bestFN << "," << bestTN
+                 << "," << prec << "," << rec << "," << bestF1
+                 << "," << mcc << "," << auroc << "," << bestThresh
+                 << "," << std::setprecision(2) << pdrAtkType
+                 << "," << pdrBen << "," << pdrAll
+                 << "," << std::setprecision(1) << tdetEstMs << "\n";
+
+            NS_LOG_UNCOND(std::fixed << std::setprecision(3)
+                << "[NPFADS-PEM] Type " << std::setw(2) << atype
+                << " | attackers=" << std::setw(3) << atkPtrs.size()
+                << "  P=" << prec
+                << "  R=" << rec
+                << "  F1=" << bestF1
+                << "  MCC=" << mcc
+                << "  AUROC=" << auroc
+                << std::setprecision(0) << "  Tdet_est=" << tdetEstMs << " ms");
         }
 
-        NS_LOG_UNCOND("[NPFADS] Metrics -> " << outputDir << "/npfads_metrics.csv");
+        NS_LOG_UNCOND("[NPFADS] Metrics     -> " << outputDir << "/npfads_metrics.csv");
+        NS_LOG_UNCOND("[NPFADS] PEM summary -> " << outputDir << "/npfads_pem_summary.csv"
+                      << "  (compare directly with routing.cc pem_run_summary.csv)");
     }
 }
 
