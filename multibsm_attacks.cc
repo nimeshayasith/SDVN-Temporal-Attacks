@@ -88,7 +88,7 @@ struct BsmRecord {
     double   speed_ms;     // m/s
     double   direction;    // radians — atan2(vy, vx)
     double   timestamp;    // simulation seconds
-    bool     is_falsified; // ground-truth label for PEM
+    bool     is_falsified; // ground-truth label (from oracle, not from packet)
 };
 
 // ── RSU per-vehicle BSM history (key = NS-3 node ID) ─────────
@@ -108,6 +108,15 @@ static double   pem_attack_start_time = -1.0;
 static double   pem_first_alert_time  = -1.0;
 static bool     pem_attack_active     = false;
 
+// ── Simulation oracle — RSU cannot access this ───────────────────────────
+// Tracks per-vehicle attack state. Only PEM bookkeeping reads it.
+// In a real network no "is_falsified" field exists in BSM packets.
+static std::map<uint32_t, bool> g_oracle_attack_state;
+
+// ── Multi-attacker support ────────────────────────────────────────────────
+static uint32_t N_Attackers = 1;   // number of malicious vehicles
+static std::vector<uint32_t> g_attacker_indices;  // which vehicles are attackers
+
 // ── Output streams ────────────────────────────────────────────
 static std::ofstream g_attack_log;
 static std::ofstream g_events_csv;
@@ -119,11 +128,11 @@ static std::mt19937 g_rng(12345);
 static const uint16_t BSM_PORT = 7777;
 
 // ── BsmTag: NS-3 Tag for BSM (Basic Safety Message) packets ──────────────
-// Carries GPS position, kinematics, and ground-truth falsification label.
+// Carries GPS position and kinematics only — no ground-truth cheat field.
 // Pattern mirrors CustomDataTag1 / CustomHeartbeatTag in routing.cc:
 //   pkt->AddPacketTag(tag)  — attached by vehicle at transmit time
 //   pkt->PeekPacketTag(tag) — read by RSU in socket receive callback
-// Serialised size: 4+8+8+8+8+8+1 = 45 bytes.
+// Serialised size: 4+8+8+8+8+8 = 44 bytes.
 class BsmTag : public Tag
 {
 public:
@@ -136,7 +145,7 @@ public:
     }
     TypeId GetInstanceTypeId () const override { return GetTypeId (); }
 
-    uint32_t GetSerializedSize () const override { return 45; }
+    uint32_t GetSerializedSize () const override { return 44; }
 
     void Serialize (TagBuffer buf) const override
     {
@@ -146,7 +155,6 @@ public:
         buf.WriteDouble (m_speed);
         buf.WriteDouble (m_direction);
         buf.WriteDouble (m_timestamp);
-        buf.WriteU8     (m_isFalsified);
     }
     void Deserialize (TagBuffer buf) override
     {
@@ -156,14 +164,12 @@ public:
         m_speed       = buf.ReadDouble ();
         m_direction   = buf.ReadDouble ();
         m_timestamp   = buf.ReadDouble ();
-        m_isFalsified = buf.ReadU8     ();
     }
     void Print (std::ostream& os) const override
     {
         os << "BsmTag vid=" << m_vehicleId
            << " pos=(" << m_posX << "," << m_posY << ")"
-           << " spd=" << m_speed
-           << " falsified=" << (int)m_isFalsified;
+           << " spd=" << m_speed;
     }
 
     void SetVehicleId   (uint32_t v) { m_vehicleId   = v; }
@@ -172,7 +178,6 @@ public:
     void SetSpeed       (double v)   { m_speed       = v; }
     void SetDirection   (double v)   { m_direction   = v; }
     void SetTimestamp   (double v)   { m_timestamp   = v; }
-    void SetIsFalsified (bool v)     { m_isFalsified = v ? 1 : 0; }
 
     uint32_t GetVehicleId   () const { return m_vehicleId; }
     double   GetPosX        () const { return m_posX; }
@@ -180,7 +185,6 @@ public:
     double   GetSpeed       () const { return m_speed; }
     double   GetDirection   () const { return m_direction; }
     double   GetTimestamp   () const { return m_timestamp; }
-    bool     GetIsFalsified () const { return m_isFalsified != 0; }
 
 private:
     uint32_t m_vehicleId   = 0;
@@ -189,7 +193,6 @@ private:
     double   m_speed       = 0.0;
     double   m_direction   = 0.0;
     double   m_timestamp   = 0.0;
-    uint8_t  m_isFalsified = 0;
 };
 
 // ── NetAnim / network-layer state ─────────────────────────────────────────
@@ -308,7 +311,9 @@ static void MBSM_RSUSocketReceive (Ptr<Socket> sock)
         bsm.speed_ms     = tag.GetSpeed ();
         bsm.direction    = tag.GetDirection ();
         bsm.timestamp    = tag.GetTimestamp ();
-        bsm.is_falsified = tag.GetIsFalsified ();
+        // Ground truth comes from simulation oracle, not from the packet
+        bsm.is_falsified = g_oracle_attack_state.count(bsm.vehicle_id) &&
+                           g_oracle_attack_state[bsm.vehicle_id];
 
         MBSM_RSUReceive (bsm);
     }
@@ -319,10 +324,11 @@ static void MBSM_RSUSocketReceive (Ptr<Socket> sock)
 // Replaces the direct MBSM_RSUReceive(bsm) call in the send functions.
 // InRSURange check must be done by the caller before calling this.
 // ─────────────────────────────────────────────────────────────
+// No is_falsified parameter — tag carries observable fields only.
+// Oracle (g_oracle_attack_state) is updated by the caller before this runs.
 static void MBSM_SendBsm (uint32_t veh_idx,
                            double px, double py,
-                           double spd, double dir,
-                           bool is_falsified)
+                           double spd, double dir)
 {
     if (g_rsu_recv_socket == nullptr)      return;   // network not yet set up
     if (veh_idx >= Vehicle_Nodes.GetN ())  return;
@@ -335,14 +341,13 @@ static void MBSM_SendBsm (uint32_t veh_idx,
 
     Ptr<Packet> pkt = Create<Packet> (0);
     BsmTag tag;
-    tag.SetVehicleId   (src->GetId ());
-    tag.SetPosX        (px);
-    tag.SetPosY        (py);
-    tag.SetSpeed       (spd);
-    tag.SetDirection   (dir);
-    tag.SetTimestamp   (Simulator::Now ().GetSeconds ());
-    tag.SetIsFalsified (is_falsified);
-    pkt->AddPacketTag  (tag);
+    tag.SetVehicleId (src->GetId ());
+    tag.SetPosX      (px);
+    tag.SetPosY      (py);
+    tag.SetSpeed     (spd);
+    tag.SetDirection (dir);
+    tag.SetTimestamp (Simulator::Now ().GetSeconds ());
+    pkt->AddPacketTag (tag);
 
     sock->Send  (pkt);
     sock->Close ();
@@ -416,9 +421,11 @@ static void MBSM_SendLegit(uint32_t veh_idx)
     double px, py, spd, dir;
     GetKinematics(node, px, py, spd, dir);
 
+    // Oracle: this vehicle is behaving legitimately
+    g_oracle_attack_state[node->GetId()] = false;
+
     if (InRSURange(px, py)) {
-        // Send real BsmTag packet to RSU; MBSM_RSUSocketReceive handles detection
-        MBSM_SendBsm(veh_idx, px, py, spd, dir, /*is_falsified=*/ false);
+        MBSM_SendBsm(veh_idx, px, py, spd, dir);
     }
 }
 
@@ -449,9 +456,12 @@ static void MBSM_SendType1(uint32_t veh_idx)
         }
     }
 
+    // Oracle: this vehicle is attacking this tick
+    g_oracle_attack_state[node->GetId()] = true;
+
     // Send forged BsmTag packet to RSU (physical radio range check on real position)
     if (InRSURange(real_px, real_py)) {
-        MBSM_SendBsm(veh_idx, T1_FIXED_X, T1_FIXED_Y, real_spd, real_dir, /*is_falsified=*/ true);
+        MBSM_SendBsm(veh_idx, T1_FIXED_X, T1_FIXED_Y, real_spd, real_dir);
     }
 }
 
@@ -483,9 +493,11 @@ static void MBSM_SendType2(uint32_t veh_idx)
     double fake_x = rand_coord(g_rng);
     double fake_y = rand_coord(g_rng);
 
+    // Oracle: this vehicle is attacking this tick
+    g_oracle_attack_state[node->GetId()] = true;
+
     if (InRSURange(real_px, real_py)) {
-        // Send forged BsmTag with random position; MBSM_RSUSocketReceive handles detection
-        MBSM_SendBsm(veh_idx, fake_x, fake_y, real_spd, real_dir, /*is_falsified=*/ true);
+        MBSM_SendBsm(veh_idx, fake_x, fake_y, real_spd, real_dir);
     }
 }
 
@@ -505,22 +517,20 @@ static void MBSM_SendType3(uint32_t veh_idx)
     GetKinematics(node, real_px, real_py, real_spd, real_dir);
     double now = Simulator::Now().GetSeconds();
 
-    BsmRecord bsm;
-    bsm.vehicle_id  = node->GetId();
-    bsm.speed_ms    = real_spd;
-    bsm.direction   = real_dir;
-    bsm.timestamp   = now;
-
     if (now < T3_legit_duration) {
         // Phase 1 — legitimate behaviour
-        bsm.pos_x       = real_px;
-        bsm.pos_y       = real_py;
-        bsm.is_falsified = false;
-        // Cache the current position so Phase 2 knows where to freeze
+        // Cache real position so Phase 2 knows where to freeze
         g_t3_freeze_x = real_px;
         g_t3_freeze_y = real_py;
+
+        // Oracle: legitimate this tick
+        g_oracle_attack_state[node->GetId()] = false;
+
+        if (InRSURange(real_px, real_py)) {
+            MBSM_SendBsm(veh_idx, real_px, real_py, real_spd, real_dir);
+        }
     } else {
-        // Phase 2 — freeze
+        // Phase 2 — freeze reported position at last known real coordinate
         if (!g_t3_phase2_active) {
             g_t3_phase2_active    = true;
             pem_attack_active     = true;
@@ -536,14 +546,13 @@ static void MBSM_SendType3(uint32_t veh_idx)
                 g_attack_log.flush();
             }
         }
-        bsm.pos_x       = g_t3_freeze_x;
-        bsm.pos_y       = g_t3_freeze_y;
-        bsm.is_falsified = true;
-    }
 
-    if (InRSURange(real_px, real_py)) {
-        // Send BsmTag packet with either real or frozen position
-        MBSM_SendBsm(veh_idx, bsm.pos_x, bsm.pos_y, bsm.speed_ms, bsm.direction, bsm.is_falsified);
+        // Oracle: attacking this tick
+        g_oracle_attack_state[node->GetId()] = true;
+
+        if (InRSURange(real_px, real_py)) {
+            MBSM_SendBsm(veh_idx, g_t3_freeze_x, g_t3_freeze_y, real_spd, real_dir);
+        }
     }
 }
 
@@ -650,7 +659,9 @@ static void MBSM_SetupNetAnim()
     // Vehicles
     for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
         uint32_t nid = Vehicle_Nodes.Get(i)->GetId();
-        bool is_attacker = (i == attacker_idx) && (attack_scenario != 0);
+        bool is_attacker = (attack_scenario != 0) &&
+            std::find(g_attacker_indices.begin(), g_attacker_indices.end(), i)
+                != g_attacker_indices.end();
         if (is_attacker) {
             g_anim->UpdateNodeColor(nid, 255, 0, 0);      // red
             g_anim->UpdateNodeSize(nid, 30, 30);
@@ -671,7 +682,9 @@ static void MBSM_SetupNetAnim()
 // ─────────────────────────────────────────────────────────────
 static void MBSM_BsmTick(uint32_t veh_idx, double t_end)
 {
-    bool is_attacker = (veh_idx == attacker_idx) && (attack_scenario != 0);
+    bool is_attacker = (attack_scenario != 0) &&
+        std::find(g_attacker_indices.begin(), g_attacker_indices.end(), veh_idx)
+            != g_attacker_indices.end();
 
     if (is_attacker) {
         switch (attack_scenario) {
@@ -733,7 +746,14 @@ static void MBSM_InitLogs()
         << "  Simulation time : " << simTime        << " s\n"
         << "  Vehicles        : " << N_Vehicles      << "\n"
         << "  RSUs            : " << N_RSUs          << "\n"
-        << "  Attacker node   : V" << attacker_idx   << "\n"
+        << "  N_Attackers     : " << N_Attackers     << "\n";
+    g_attack_log << "  Attacker nodes  : [";
+    for (size_t k = 0; k < g_attacker_indices.size(); k++) {
+        if (k) g_attack_log << ", ";
+        g_attack_log << "V" << g_attacker_indices[k];
+    }
+    g_attack_log << "]\n"
+        << "  Ground truth    : simulation oracle (not in BSM packets)\n"
         << "  BSM interval    : " << BSM_INTERVAL_S  << " s\n"
         << "  DSRC range      : " << DSRC_RANGE_M    << " m\n";
     if (attack_scenario == 15) {
@@ -827,26 +847,49 @@ int main(int argc, char* argv[])
     cmd.AddValue("N_Vehicles",       "Number of vehicle nodes",                     N_Vehicles);
     cmd.AddValue("N_RSUs",           "Number of RSU nodes (0 or 1 supported)",      N_RSUs);
     cmd.AddValue("attack_scenario",  "13=Type1, 14=Type2, 15=Type3, 0=baseline",    attack_scenario);
-    cmd.AddValue("attacker_idx",     "0-based index of the malicious vehicle",      attacker_idx);
-    cmd.AddValue("T3_legit_duration","Type 3: legitimate phase length (s)",         T3_legit_duration);
+    cmd.AddValue("attacker_idx",     "0-based index of the malicious vehicle (N_Attackers=1)", attacker_idx);
+    cmd.AddValue("N_Attackers",      "Number of malicious vehicles (default 1)",      N_Attackers);
+    cmd.AddValue("T3_legit_duration","Type 3: legitimate phase length (s)",           T3_legit_duration);
     cmd.Parse(argc, argv);
 
-    if (N_Vehicles < 1)             N_Vehicles  = 1;
-    if (attacker_idx >= N_Vehicles) attacker_idx = 0;
-    if (N_RSUs > 1)                 N_RSUs       = 1;  // one RSU modelled
+    if (N_Vehicles < 1)              N_Vehicles   = 1;
+    if (N_RSUs > 1)                  N_RSUs        = 1;
+    if (N_Attackers > N_Vehicles)    N_Attackers   = N_Vehicles;
+    if (attacker_idx >= N_Vehicles)  attacker_idx  = 0;
+
+    // Build attacker index list
+    // N_Attackers=1: use attacker_idx (command-line selectable specific vehicle)
+    // N_Attackers>1: assign first N_Attackers vehicles as attackers
+    g_attacker_indices.clear();
+    if (attack_scenario != 0) {
+        if (N_Attackers == 1) {
+            g_attacker_indices.push_back(attacker_idx);
+        } else {
+            for (uint32_t k = 0; k < N_Attackers; k++) {
+                g_attacker_indices.push_back(k);
+            }
+        }
+    }
 
     MBSM_InitLogs();
 
     std::cout << "\n======== Multi-BSM Attack Simulation ========\n"
               << "  attack_scenario  : " << attack_scenario  << "\n"
               << "  N_Vehicles       : " << N_Vehicles       << "\n"
+              << "  N_Attackers      : " << N_Attackers      << "\n"
               << "  N_RSUs           : " << N_RSUs           << "\n"
-              << "  simTime          : " << simTime          << " s\n"
-              << "  attacker_idx     : " << attacker_idx     << "\n";
+              << "  simTime          : " << simTime          << " s\n";
+    std::cout << "  Attacker indices : [";
+    for (size_t k = 0; k < g_attacker_indices.size(); k++) {
+        if (k) std::cout << ", ";
+        std::cout << g_attacker_indices[k];
+    }
+    std::cout << "]\n";
     if (attack_scenario == 15) {
         std::cout << "  T3_legit_duration: " << T3_legit_duration << " s\n";
     }
-    std::cout << "=============================================\n\n";
+    std::cout << "  Ground truth     : oracle (not in BSM packets)\n"
+              << "=============================================\n\n";
 
     // ── Create nodes ─────────────────────────────────────────
     Vehicle_Nodes.Create(N_Vehicles);

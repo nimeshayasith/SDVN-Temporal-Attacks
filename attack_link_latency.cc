@@ -157,17 +157,13 @@ static AnimationInterface* g_anim = nullptr;  // created in main()
 static const uint16_t LLDP_PORT = 6633;
 
 // ── LldpTag: NS-3 Tag for LLDP control-plane packets ─────────────────────
-// Carries timing parameters the controller uses to run the LLI algorithm.
+// Carries timing parameters only — no is_attack or event_type cheat fields.
+// In a real network the controller cannot tell from the packet whether it is
+// forged. Ground truth is tracked in g_oracle_lldp_queue (simulation layer).
 // Pattern mirrors CustomDataTag1 / CustomHeartbeatTag in routing.cc:
 //   pkt->AddPacketTag(tag)  — attach at sender
 //   pkt->PeekPacketTag(tag) — read at receiver (in socket callback)
-// Serialised size: 4+4+8+8+8+1+1 = 34 bytes.
-//
-// Event-type codes (stored in m_eventType):
-//   0 = LLDP_LEGIT
-//   1 = LLDP_RELAY_FAKE
-//   2 = LLDP_BASIC_LFA
-//   3 = LLDP_GRADUAL_INJECT
+// Serialised size: 4+4+8+8+8 = 32 bytes.
 class LldpTag : public Tag
 {
 public:
@@ -180,7 +176,7 @@ public:
     }
     TypeId GetInstanceTypeId () const override { return GetTypeId (); }
 
-    uint32_t GetSerializedSize () const override { return 34; }
+    uint32_t GetSerializedSize () const override { return 32; }
 
     void Serialize (TagBuffer buf) const override
     {
@@ -189,53 +185,52 @@ public:
         buf.WriteDouble (m_tlldpMs);
         buf.WriteDouble (m_tp1Ms);
         buf.WriteDouble (m_tp2Ms);
-        buf.WriteU8     (m_isAttack);
-        buf.WriteU8     (m_eventType);
     }
     void Deserialize (TagBuffer buf) override
     {
-        m_sw1Idx    = buf.ReadU32    ();
-        m_sw2Idx    = buf.ReadU32    ();
-        m_tlldpMs   = buf.ReadDouble ();
-        m_tp1Ms     = buf.ReadDouble ();
-        m_tp2Ms     = buf.ReadDouble ();
-        m_isAttack  = buf.ReadU8     ();
-        m_eventType = buf.ReadU8     ();
+        m_sw1Idx  = buf.ReadU32    ();
+        m_sw2Idx  = buf.ReadU32    ();
+        m_tlldpMs = buf.ReadDouble ();
+        m_tp1Ms   = buf.ReadDouble ();
+        m_tp2Ms   = buf.ReadDouble ();
     }
     void Print (std::ostream& os) const override
     {
         os << "LldpTag sw1=" << m_sw1Idx << " sw2=" << m_sw2Idx
            << " TLLDP=" << m_tlldpMs << "ms tp1=" << m_tp1Ms
-           << " tp2=" << m_tp2Ms
-           << " attack=" << (int)m_isAttack
-           << " evtype=" << (int)m_eventType;
+           << " tp2=" << m_tp2Ms;
     }
 
-    void SetSw1Idx    (uint32_t v) { m_sw1Idx    = v; }
-    void SetSw2Idx    (uint32_t v) { m_sw2Idx    = v; }
-    void SetTlldpMs   (double v)   { m_tlldpMs   = v; }
-    void SetTp1Ms     (double v)   { m_tp1Ms     = v; }
-    void SetTp2Ms     (double v)   { m_tp2Ms     = v; }
-    void SetIsAttack  (bool v)     { m_isAttack  = v ? 1 : 0; }
-    void SetEventType (uint8_t v)  { m_eventType = v; }
+    void SetSw1Idx  (uint32_t v) { m_sw1Idx  = v; }
+    void SetSw2Idx  (uint32_t v) { m_sw2Idx  = v; }
+    void SetTlldpMs (double v)   { m_tlldpMs = v; }
+    void SetTp1Ms   (double v)   { m_tp1Ms   = v; }
+    void SetTp2Ms   (double v)   { m_tp2Ms   = v; }
 
-    uint32_t GetSw1Idx    () const { return m_sw1Idx; }
-    uint32_t GetSw2Idx    () const { return m_sw2Idx; }
-    double   GetTlldpMs   () const { return m_tlldpMs; }
-    double   GetTp1Ms     () const { return m_tp1Ms; }
-    double   GetTp2Ms     () const { return m_tp2Ms; }
-    bool     GetIsAttack  () const { return m_isAttack != 0; }
-    uint8_t  GetEventType () const { return m_eventType; }
+    uint32_t GetSw1Idx  () const { return m_sw1Idx; }
+    uint32_t GetSw2Idx  () const { return m_sw2Idx; }
+    double   GetTlldpMs () const { return m_tlldpMs; }
+    double   GetTp1Ms   () const { return m_tp1Ms; }
+    double   GetTp2Ms   () const { return m_tp2Ms; }
 
 private:
-    uint32_t m_sw1Idx    = 0;
-    uint32_t m_sw2Idx    = 0;
-    double   m_tlldpMs   = 0.0;
-    double   m_tp1Ms     = 0.0;
-    double   m_tp2Ms     = 0.0;
-    uint8_t  m_isAttack  = 0;
-    uint8_t  m_eventType = 0;
+    uint32_t m_sw1Idx  = 0;
+    uint32_t m_sw2Idx  = 0;
+    double   m_tlldpMs = 0.0;
+    double   m_tp1Ms   = 0.0;
+    double   m_tp2Ms   = 0.0;
 };
+
+// ── Simulation oracle FIFO queue ──────────────────────────────────────────
+// Each entry records ground truth for one LLDP packet, in send order.
+// Filled at send time, consumed at controller receive time.
+// The controller cannot access this — models real network where no
+// "is_attack" field exists in LLDP packets.
+struct LldpOracleEntry {
+    bool        is_attack;
+    std::string event_type_str;
+};
+static std::deque<LldpOracleEntry> g_oracle_lldp_queue;
 
 // Controller UDP socket for incoming LldpTag packets (set up in LLA_SetupNetworkForAnim)
 static Ptr<Socket> g_ctrl_recv_socket = nullptr;
@@ -405,29 +400,32 @@ static void LLA_AnimSend(Ptr<Node> src, Ipv4Address dst);
 // Replaces direct RunLLI() calls in attack functions.
 // The packet travels through the real P2P network; LLA_CtrlReceive fires on
 // arrival and invokes RunLLI with the tag-carried parameters.
-static void LLA_SendLldpPacket (Ptr<Node>   src_node,
-                                 Ipv4Address ctrl_ip,
-                                 uint32_t    sw1_idx,
-                                 uint32_t    sw2_idx,
-                                 double      tlldp_ms,
-                                 double      tp1_ms,
-                                 double      tp2_ms,
-                                 bool        is_attack,
-                                 uint8_t     event_type)
+// oracle_is_attack and oracle_ev_str are pushed to g_oracle_lldp_queue here.
+// The controller pops them on receipt — it cannot read these from the packet.
+static void LLA_SendLldpPacket (Ptr<Node>          src_node,
+                                 Ipv4Address        ctrl_ip,
+                                 uint32_t           sw1_idx,
+                                 uint32_t           sw2_idx,
+                                 double             tlldp_ms,
+                                 double             tp1_ms,
+                                 double             tp2_ms,
+                                 bool               oracle_is_attack,
+                                 const std::string& oracle_ev_str)
 {
+    // Push ground truth to oracle BEFORE sending (FIFO order preserved)
+    g_oracle_lldp_queue.push_back({oracle_is_attack, oracle_ev_str});
+
     TypeId udp_tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
     Ptr<Socket> sock = Socket::CreateSocket (src_node, udp_tid);
     sock->Connect (InetSocketAddress (ctrl_ip, LLDP_PORT));
 
     Ptr<Packet> pkt = Create<Packet> (0);
     LldpTag tag;
-    tag.SetSw1Idx    (sw1_idx);
-    tag.SetSw2Idx    (sw2_idx);
-    tag.SetTlldpMs   (tlldp_ms);
-    tag.SetTp1Ms     (tp1_ms);
-    tag.SetTp2Ms     (tp2_ms);
-    tag.SetIsAttack  (is_attack);
-    tag.SetEventType (event_type);
+    tag.SetSw1Idx  (sw1_idx);
+    tag.SetSw2Idx  (sw2_idx);
+    tag.SetTlldpMs (tlldp_ms);
+    tag.SetTp1Ms   (tp1_ms);
+    tag.SetTp2Ms   (tp2_ms);
     pkt->AddPacketTag (tag);
 
     sock->Send  (pkt);
@@ -441,30 +439,32 @@ static void LLA_SendLldpPacket (Ptr<Node>   src_node,
 // pattern in routing.cc that uses PeekPacketTag() on CustomDataTag1.
 static void LLA_CtrlReceive (Ptr<Socket> sock)
 {
-    static const char* ev_str[] = {
-        "LLDP_LEGIT", "LLDP_RELAY_FAKE", "LLDP_BASIC_LFA", "LLDP_GRADUAL_INJECT"
-    };
-
     Ptr<Packet> pkt;
     while ((pkt = sock->Recv ()))
     {
         LldpTag tag;
         if (!pkt->PeekPacketTag (tag)) continue;
 
-        double   now       = Simulator::Now ().GetSeconds ();
-        uint32_t sw1       = tag.GetSw1Idx ();
-        uint32_t sw2       = tag.GetSw2Idx ();
-        bool     is_attack = tag.GetIsAttack ();
-        uint8_t  evtype    = tag.GetEventType ();
+        double   now = Simulator::Now ().GetSeconds ();
+        uint32_t sw1 = tag.GetSw1Idx ();
+        uint32_t sw2 = tag.GetSw2Idx ();
 
-        // Run TopoGuard+ LLI + MLLG using tag-encoded Tp values
+        // Ground truth from oracle queue (not from packet — real network behaviour)
+        bool        is_attack = false;
+        std::string et        = "LLDP_UNKNOWN";
+        if (!g_oracle_lldp_queue.empty ()) {
+            is_attack = g_oracle_lldp_queue.front ().is_attack;
+            et        = g_oracle_lldp_queue.front ().event_type_str;
+            g_oracle_lldp_queue.pop_front ();
+        }
+
+        // Run TopoGuard+ LLI + MLLG using tag-encoded timing values only
         LLI_Result r = RunLLI (tag.GetTlldpMs (),
                                 tag.GetTp1Ms (),
                                 tag.GetTp2Ms (),
                                 is_attack);
         AccountPEM (r);
 
-        std::string et = (evtype < 4) ? ev_str[evtype] : "LLDP_UNKNOWN";
         LogEvent (now, et, sw1, sw2, r);
 
         // Detailed result log
@@ -545,7 +545,7 @@ static void LLA_LegitLLDP(uint32_t sw1_idx, uint32_t sw2_idx, double tlldp_ms)
     // when the packet arrives at the controller after P2P propagation.
     LLA_SendLldpPacket (g_Switch_Nodes.Get(sw1_idx), g_ctrl_ip_anim,
                         sw1_idx, sw2_idx, tlldp_ms, tp1, tp2,
-                        /*is_attack=*/ false, /*event_type=*/ 0);
+                        false, "LLDP_LEGIT");
 
     // NetAnim visual arrow: ctrl -> switch (LLDP probe direction)
     Ipv4Address sw_ip = (sw1_idx == 0) ? g_s1_ip_anim
@@ -579,7 +579,7 @@ static void LLA_RelayLLDP()
     // h2 is the relay endpoint injecting the forged LLDP into the control plane.
     LLA_SendLldpPacket (g_Host_Nodes.Get(1), g_ctrl_ip_anim,
                         0, 2, TLLDP_RELAY_FAKE_MS, tp1, tp2,
-                        /*is_attack=*/ true, /*event_type=*/ 1);
+                        true, "LLDP_RELAY_FAKE");
 
     // NetAnim: h1->h2 (OOB relay channel), h2->ctrl (real LldpTag pkt above)
     Simulator::Schedule(Seconds(0.002), &LLA_AnimSend,
@@ -616,7 +616,7 @@ static void LLA_BasicLFA()
     // ── Real NS-3 packet: h1 sends forged LldpTag directly to controller ──
     LLA_SendLldpPacket (g_Host_Nodes.Get(0), g_ctrl_ip_anim,
                         0, 2, TLLDP_BASIC_FAKE_MS, tp1, tp2,
-                        /*is_attack=*/ true, /*event_type=*/ 2);
+                        true, "LLDP_BASIC_LFA");
 
     // NetAnim: h1->s1 (capture), h1->ctrl (injection — also shown by real pkt)
     Simulator::Schedule(Seconds(0.002), &LLA_AnimSend,
@@ -648,7 +648,7 @@ static void LLA_GradualLFA_Inject(double fake_tl_ms)
     // ── Real NS-3 packet: h1 injects synthetic LldpTag to inflate Tl history ─
     LLA_SendLldpPacket (g_Host_Nodes.Get(0), g_ctrl_ip_anim,
                         0, 2, tlldp_syn, tp1, tp2,
-                        /*is_attack=*/ true, /*event_type=*/ 3);
+                        true, "LLDP_GRADUAL_INJECT");
 
     // NetAnim: h1->ctrl (inflation injection)
     Simulator::Schedule(Seconds(0.002), &LLA_AnimSend,
