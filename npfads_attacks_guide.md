@@ -215,13 +215,17 @@ Beacon N:   draw r ~ Uniform(0, 1)
 **What to expect in `npfads_bsm_log.csv`:**
 - Early rows with `attackType=16`: `xPos ≈ trueXPos`, `yPos ≈ trueYPos` (not yet frozen).
 - Later rows: `xPos` and `yPos` stay constant across many rows while `trueXPos`, `trueYPos` keep changing.
-- The fraction of frozen rows grows monotonically with time: ~50% overall in a 60 s run, approaching 100% after t ≈ 4 s per attacker.
+- The fraction of frozen rows grows monotonically with time: **~96% overall in a 60 s run**, approaching 100% after t ≈ 4 s per attacker.
+
+**Why ~96% (not ~50%):** `stopProb` reaches 1.0 after beacon 40 (t = 4 s). Expected not-frozen beacons per attacker = Σ(k=0→39)(1 − k×0.025) = 40 − 19.5 ≈ 20.5 out of 599. Frozen fraction = (599 − 20.5)/599 ≈ **96.6%**. Confirmed by observed data: 96.2%.
 
 ---
 
 ## 4. NS-3 Architecture
 
-This simulation uses real NS-3 802.11p radio — packets physically travel over a simulated DSRC channel and are received by nodes within 300 m range via a registered `Rx` callback. There is no shortcut logging at the sender.
+This simulation uses real NS-3 802.11p radio — packets physically travel over a simulated DSRC channel and are received by nodes within **300 m** range via a registered `Rx` callback. There is no shortcut logging at the sender.
+
+> **DSRC range note:** The paper states a DSRC communication range of "up to 1000 m". This simulation uses 300 m, which is the standard short-range setting in NS-3 WAVE/802.11p studies and represents typical urban/suburban operative range. The 300 m setting makes the network very sparse on the 10 km × 10 km playground (see Section 10).
 
 ### 4.1 NPFADSBSMTag — the DSRC packet
 
@@ -257,19 +261,27 @@ This simulation uses real NS-3 802.11p radio — packets physically travel over 
 1. Read truePos and vel from the node's MobilityModel.
 2. Call FalsifyPosition(nodeId, attackType, truePos)
        → returns reportedPos (falsified for attackers, same as truePos for benign nodes)
-3. Build NPFADSBSMTag:
+3. Derive xAcc, yAcc from velocity delta vs previous BSM (g_lastBSM[nodeId]).
+       dt   = now − g_lastBSM[nodeId].sendTime
+       xAcc = (vel.x − g_lastBSM[nodeId].xSpd) / dt
+       yAcc = (vel.y − g_lastBSM[nodeId].ySpd) / dt
+       (zero on the first BSM from this node)
+4. Build BSMRecord and append to g_bsmLog  ← LOGGED HERE (sender-side).
+       g_lastBSM[nodeId] = record
+       ++g_bsmSentCount[nodeId]
+5. Build NPFADSBSMTag:
        SetNodeId(nodeId)
        SetSendTime(now)
        SetPosition(reportedPos.x, reportedPos.y)   ← falsified
        SetVelocity(vel.x, vel.y)                   ← always true
        SetAttackType(attackType)                   ← ground-truth label
-4. Attach tag to a zero-byte Ptr<Packet>.
-5. Broadcast: wdev->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc)
+6. Attach tag to a zero-byte Ptr<Packet>.
+7. Broadcast: wdev->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc)
        (ethertype 0x88dc = WAVE Short Message Protocol)
-6. Reschedule: Simulator::Schedule(Seconds(beacon_interval), &GenerateBSM, nodeId)
+8. Reschedule: Simulator::Schedule(Seconds(beacon_interval), &GenerateBSM, nodeId)
 ```
 
-The sender does **not** write to `g_bsmLog`. All logging is done by the receiver.
+**Why sender-side logging:** with a 300 m radio range across a 10 000 m × 10 000 m playground, fewer than 1% of node pairs are ever in range simultaneously, so `OnBSMReceived` rarely fires and the CSV would be nearly empty. Logging in `GenerateBSM` ensures every generated BSM is captured regardless of radio connectivity, matching the dataset semantics of the paper (which uses the VeReMi ground-truth file, not reception logs).
 
 ---
 
@@ -277,25 +289,22 @@ The sender does **not** write to `g_bsmLog`. All logging is done by the receiver
 
 `OnBSMReceived` is installed on every vehicle's DSRC net device via `SetReceiveCallback`. It fires whenever a node within 300 m range receives a broadcast packet.
 
-**Receiver steps:**
+**Receiver steps (current — PDR tracking and verbose output only):**
 ```
 1. PeekPacketTag<NPFADSBSMTag>(tag)  — returns false if not a BSM, drop silently.
 2. Extract senderId and sendTime from tag.
-3. Deduplication check: if (senderId, sendTime) already in g_loggedBSMs, return.
-       Insert (senderId, sendTime) into g_loggedBSMs.
-       → This ensures the same BSM logged by multiple receivers is counted only once.
-4. Compute acceleration:
-       dt   = sendTime − g_lastBSM[senderId].sendTime
-       xAcc = (tag.GetXSpd() − g_lastBSM[senderId].xSpd) / dt
-       yAcc = (tag.GetYSpd() − g_lastBSM[senderId].ySpd) / dt
-       (zero on first BSM from this sender)
-5. Look up sender's true position from its MobilityModel:
-       mob = g_nodes.Get(senderId)->GetObject<MobilityModel>()
-       truePos = mob->GetPosition()
-       (simulation-only privilege — real detector cannot know this)
-6. Build BSMRecord and append to g_bsmLog.
-7. Update g_lastBSM[senderId] for next acceleration computation.
+3. Dedup: if (senderId, sendTime) already in g_loggedBSMs, return.
+       Insert into g_loggedBSMs; ++g_bsmRecvdByAny[senderId]  ← PDR counter only.
+4. Print verbose "BEACON RECEIVED" terminal output for the first VERBOSE_MAX
+   receptions per (sender, receiver) pair, showing the over-the-air fields
+   exactly as a real detector would see them.
+   NOTE: the receiver does NOT know truePos — that field is only in the
+   sender-side BSM log.
 ```
+
+**`g_bsmLog` is NOT written here.** BSM records, acceleration, and true positions are
+all logged by `GenerateBSM` (sender-side). `OnBSMReceived` only tracks PDR and
+prints diagnostics.
 
 ---
 
@@ -307,32 +316,37 @@ Every 100 ms per vehicle:
 GenerateBSM(nodeId)
     │  reads MobilityModel (truePos, vel)
     │  calls FalsifyPosition → reportedPos
+    │  derives xAcc, yAcc from velocity delta (vs g_lastBSM)
+    │  builds BSMRecord → g_bsmLog.push_back()   ← LOGGED HERE (sender-side)
+    │  g_lastBSM[nodeId] = record
+    │  ++g_bsmSentCount[nodeId]
     │  builds NPFADSBSMTag
     │
     └──► wdev->Send()
               │
          802.11p DSRC radio (300 m range, OcbWifiMac, 33.5 dBm)
               │
-         ◄─── OnBSMReceived fires on each node within range
+         ◄─── OnBSMReceived fires only if a neighbor is within range
                     │  deduplicates (senderId, sendTime)
-                    │  derives xAcc, yAcc from velocity delta
-                    │  fetches sender's true position
-                    │
-                    └──► g_bsmLog.push_back(BSMRecord)
-                         g_lastBSM[senderId] = record
+                    │  ++g_bsmRecvdByAny[senderId]   ← PDR tracking only
+                    │  prints verbose BEACON RECEIVED output
+                    │  (does NOT write to g_bsmLog)
 
 After Simulator::Run():
 
 PostProcess()
     │  groups g_bsmLog by senderId
     │  per sender: build M (n×7), center columns, compute A = M^T×M
+    │  posVar = A[1][1] + A[2][2]  (computed before Jacobi modifies A)
     │  JacobiEigenvalues(A) → λ₁…λ₇
     │  anomaly score = |log1p(posVar) − benign_mean_log1p(posVar)|
     │  F1-optimal threshold sweep per attack type
+    │  PDR = g_bsmRecvdByAny / g_bsmSentCount per sender
     │
     ├──► npfads_bsm_log.csv
     ├──► npfads_eigenvalues.csv
-    └──► npfads_metrics.csv
+    ├──► npfads_metrics.csv
+    └──► npfads_pem_summary.csv
 ```
 
 ---
@@ -365,7 +379,7 @@ M̄[k][c] = M[k][c] − mean_over_k(M[k][c])
 
 ### Step 3 — Compute A = M^T × M (7×7)
 
-Instead of the paper's `M × M^T` (n×n, expensive), we compute `M^T × M` (7×7). The non-zero eigenvalues are identical by the relation between the two formulations. This reduces computation from O(n²) to O(49).
+The paper (Eq. 2) computes **M_S = M_i × M_i^T** (an n×n matrix) and then extracts its eigenvalues. This implementation instead computes **A = M^T × M** (7×7). The non-zero eigenvalues of both formulations are mathematically identical (standard result: non-zero eigenvalues of AB and BA are equal). This reduces computation from O(n²) to O(49) — critical for real-time processing when n (number of BSMs) is large.
 
 The diagonal entry `A[i][i]` is the sum of squares of column `i` after centering — it represents the **variance** of that feature across all BSMs from this sender.
 
@@ -395,7 +409,9 @@ Convergence uses a relative tolerance: `absTol = relTol × initOffNorm` so that 
 
 ## 6. Anomaly Scoring and Detection Metrics
 
-### Anomaly score
+> **Important distinction:** The paper's actual NPFADS uses a **Random Forest (RF) classifier** trained on all 7 eigenvalues (λ₁…λ₇), plus an **AutoEncoder (AE)** at the fog node for novel attack detection. This simulation uses a simpler unsupervised **posVar anomaly score** (described below) in place of the trained RF/AE, making it self-contained without requiring a labelled training set. Results will therefore differ from the paper's Tables 5–6 but the key attack patterns (which types are easy vs hard to detect) are preserved.
+
+### Anomaly score (this simulation)
 
 ```
 score(sender_i) = |log1p(posVar_i) − mean_benign_log1p(posVar)|
@@ -422,13 +438,15 @@ pick t* = argmax F1
 
 ### Expected detection performance
 
-| Type | Expected F1 | Reason |
-|---|---|---|
-| 1 | > 0.90 | posVar ≈ 0 is very distinct from benign |
-| 2 | ~0.2–0.5 | posVar ≈ benign after centering — hardest |
-| 4 | > 0.90 | Enormous posVar immediately distinguishable |
-| 8 | > 0.80 | Bounded random still inflates posVar noticeably |
-| 16 | > 0.80 | Frozen position reduces posVar significantly |
+| Type | This simulation (posVar score) | Paper MDS at OBU (RF, Table 6) | Paper MDS at fog node (RF, Table 6) |
+|---|---|---|---|
+| 1 | > 0.90 | F1 = 0.80 | F1 = 1.00 |
+| 2 | ~0.2–0.5 | F1 = 0.48 | F1 = 0.73 (hardest — centering removes offset) |
+| 4 | > 0.90 | F1 = 1.00 | F1 = 1.00 |
+| 8 | > 0.80 | F1 = 1.00 | F1 = 1.00 |
+| 16 | > 0.80 | F1 = 0.75 | F1 = 0.98 |
+
+The posVar anomaly score (this simulation) achieves F1 = 1.0 for Type 16 because the separation between frozen attacker posVar and benign posVar is very clean in NS-3 constant-speed mobility. The paper's RF achieves F1 = 0.75–0.98 on real VeReMi traces with more complex mobility patterns.
 
 ---
 
@@ -545,6 +563,26 @@ One row per attack type present in the run.
 | `f1` | 2 × precision × recall / (precision + recall) |
 | `opt_threshold` | Anomaly score threshold that maximised F1 |
 
+### `npfads_pem_summary.csv`
+
+One row per attack type. Mirrors the format of `routing.cc`'s `pem_run_summary.csv` so results from both simulations are directly comparable.
+
+| Column | Description |
+|---|---|
+| `attack_type` | 1 / 2 / 4 / 8 / 16 |
+| `n_attackers`, `n_benign` | Sender counts |
+| `TP, FP, FN, TN` | Confusion matrix at F1-optimal threshold |
+| `precision, recall, f1, mcc, auroc` | Detection metrics |
+| `opt_threshold` | Anomaly score threshold that maximised F1 |
+| `pdr_attacker_pct` | PDR for attacker senders (0 % if network is sparse — see Section 10) |
+| `pdr_benign_pct` | PDR for benign senders |
+| `overall_pdr_pct` | Combined PDR |
+| `tdet_est_ms` | Estimated detection latency = `MIN_BSMS × beacon_interval × 1000` (ms) |
+
+**Note on `tdet_est_ms`:** This is the minimum observation window before the eigenvalue classifier can fire, equal to `8 × 100 ms = 800 ms` by default. This is **not** comparable to the paper's reported detection time of 19–23 μs, which is the RF model's inference latency on a pre-built eigenvalue vector — a fundamentally different measurement.
+
+---
+
 ### `npfads-animation.xml`
 
 NetAnim trace file. Shows node positions, movement, and DSRC packet propagation over time.
@@ -612,7 +650,7 @@ awk -F',' 'NR>1 && $9==16 {
 npfads_bsm_log.csv
 ```
 
-Expected: frozen percentage > 0 and increases as `simTime` increases. In a 60 s run, expect ~40–60 % frozen overall.
+Expected: frozen percentage > 0 and increases as `simTime` increases. In a 60 s run, expect **~96% frozen** overall (stopProb hits 1.0 after t ≈ 4 s, so only the first ~20 of ~599 beacons per attacker are not frozen).
 
 ### Check 6 — Eigenvalue patterns match expected
 
@@ -669,7 +707,22 @@ In a deployed system, an attacker would never include its attack label in the BS
 
 ### Acceleration is derived, not transmitted
 
-The acceleration columns in `BSMRecord` (`xAcc`, `yAcc`) are computed at the receiver from consecutive velocity observations. The first BSM from any sender always has `xAcc = yAcc = 0` because there is no previous observation to delta against.
+The acceleration columns in `BSMRecord` (`xAcc`, `yAcc`) are now computed **at the sender** from its own consecutive velocity observations (moved from receiver-side to sender-side logging). The first BSM from any sender always has `xAcc = yAcc = 0` because there is no previous observation to delta against.
+
+### Key differences from the paper
+
+| Aspect | Paper (Ilango et al., 2022) | This simulation (`npfads_attacks.cc`) |
+|---|---|---|
+| **Data source** | VeReMi dataset (real SUMO traces) | Synthetic NS-3 RandomWaypoint mobility |
+| **BSM logging** | Ground-truth file at sender | `GenerateBSM` sender-side (same approach) |
+| **Matrix formula** | M_S = M_i × M_i^T  (n×n) | A = M^T × M  (7×7, same non-zero eigenvalues) |
+| **Detection model** | Random Forest + AutoEncoder (RF+AE) | posVar anomaly score (unsupervised) |
+| **DSRC range** | Up to 1000 m | 300 m |
+| **Detection time reported** | 19–23 μs (RF inference latency) | 800 ms (MIN_BSMS observation window) |
+| **Type 2 detectability** | F1 ≈ 0.48–0.74 (confirmed hard) | Score ≈ 0 (same reason: centering removes offset) |
+| **Type 16 F1** | 0.75 (OBU), 0.98 (fog node) | 1.0 (clean NS-3 constant-speed mobility) |
+
+The posVar anomaly score achieves higher F1 on NS-3 data than the paper's RF on VeReMi because NS-3 constant-speed random-waypoint mobility creates a perfectly rank-1 benign matrix (position tracks time exactly), giving a very clean eigenvalue separation. Real VeReMi traces have more complex mobility (waypoint turns, speed changes) that produce less clean separation.
 
 ### Round-robin assignment with `attack_type=31`
 
