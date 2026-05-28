@@ -44,6 +44,7 @@
 #include <cmath>
 #include <iomanip>
 #include <limits.h>
+#include <unistd.h>
 #include <bits/stdc++.h>
 #include "npfads_solution.h"
 
@@ -52,7 +53,15 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("vanet");
 
-static const char* OUTPUT_ROOT_DIR = "/home/lasindu/ns-allinone-3.35/ns-3.35";
+static std::string
+GetOutputRootDir()
+{
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+        return std::string(cwd);
+    }
+    return ".";
+}
 
 static std::string
 GetScenarioOutputName(uint32_t scenario)
@@ -81,7 +90,7 @@ static void
 EnsureScenarioOutputDir(const std::string& folder)
 {
     const std::string cmd =
-        "mkdir -p " + std::string(OUTPUT_ROOT_DIR) + "/" + folder;
+        "mkdir -p " + GetOutputRootDir() + "/" + folder;
     std::system(cmd.c_str());
 }
 
@@ -89,7 +98,7 @@ static std::string
 BuildScenarioCsvPath(const std::string& folder, uint32_t scenario)
 {
     EnsureScenarioOutputDir(folder);
-    return std::string(OUTPUT_ROOT_DIR) + "/" + folder + "/"
+    return GetOutputRootDir() + "/" + folder + "/"
            + GetScenarioOutputName(scenario) + ".csv";
 }
 
@@ -97,14 +106,14 @@ static std::string
 BuildLogPath(const std::string& filename)
 {
     EnsureScenarioOutputDir("Logs_attacks");
-    return std::string(OUTPUT_ROOT_DIR) + "/Logs_attacks/" + filename;
+    return GetOutputRootDir() + "/Logs_attacks/" + filename;
 }
 
 static std::string
 BuildPcapPrefix(const std::string& prefix, uint32_t scenario)
 {
     EnsureScenarioOutputDir("PCAP_FILES");
-    return std::string(OUTPUT_ROOT_DIR) + "/PCAP_FILES/"
+    return GetOutputRootDir() + "/PCAP_FILES/"
            + GetScenarioOutputName(scenario) + "_" + prefix;
 }
 
@@ -145014,7 +145023,7 @@ attack_mobility.Install(Vehicle_Nodes);
   // Creates: /home/lasindu/ns-allinone-3.35/ns-3.35/XML/<attack_name>.xml
   // The XML/ directory is created automatically if it does not exist.
   EnsureScenarioOutputDir("XML");
-  std::string anim_xml_path = std::string(OUTPUT_ROOT_DIR) + "/XML/"
+  std::string anim_xml_path = GetOutputRootDir() + "/XML/"
                               + GetScenarioOutputName(attack_scenario) + ".xml";
   std::cout << "[NetAnim] Writing animation to: " << anim_xml_path << std::endl;
 
@@ -146134,8 +146143,6 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       std::cout << "Stored HB time        : t=" << BSHH_S3_EXCHANGE_TIME << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      const uint32_t bshh_s3_app_veh_base = N_Controllers + 1;
-
       for (uint32_t ci = 0; ci < n_malicious_ctrl3b; ci++) {
           uint32_t vA_cidx = ci * 2;
           uint32_t vB_cidx = ci * 2 + 1;
@@ -146246,8 +146253,6 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       std::cout << "RSUs in path          : " << n_malicious_ctrl4b << std::endl;
       std::cout << "Stored HB time        : t=" << BSHH_S4_EXCHANGE_TIME << std::endl;
       std::cout << "========================================\n" << std::endl;
-
-      const uint32_t bshh_s4_app_veh_base = N_Controllers + 1;
 
       for (uint32_t ci = 0; ci < n_malicious_ctrl4b; ci++) {
           uint32_t vA_cidx = ci * 2;
