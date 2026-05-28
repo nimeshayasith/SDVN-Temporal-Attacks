@@ -36,6 +36,11 @@
 #include <string>
 #include <vector>
 
+// ── NPFADS Solution — full detection pipeline (MDS + NADM) ───────────────────
+// Header provides NpfadsSolution class: steps 1-10 of the paper's pipeline.
+// Placed AFTER NS-3 and STL headers; it only depends on STL, not NS-3.
+#include "npfads_solution.h"
+
 using namespace ns3;
 
 // ── Attack type IDs ───────────────────────────────────────────────────────────
@@ -760,6 +765,49 @@ static void PostProcess(const std::string& outputDir)
         NS_LOG_UNCOND("[NPFADS] Metrics     -> " << outputDir << "/npfads_metrics.csv");
         NS_LOG_UNCOND("[NPFADS] PEM summary -> " << outputDir << "/npfads_pem_summary.csv"
                       << "  (compare directly with routing.cc pem_run_summary.csv)");
+    }
+
+    // ── STEP 6-10: Run NPFADS Solution pipeline (MDS + NADM) ─────────────────
+    // This converts the same g_bsmLog used above into detection outputs using
+    // the full NPFADS algorithm: eigenvalue scoring → MDS → NADM novel detection.
+    //
+    // The solution runs AFTER the attack-side PostProcess() output so that both
+    // sides write their CSVs independently and can be directly compared.
+    {
+        NS_LOG_UNCOND("\n[NPFADS-SOL] ====== Running NPFADS Solution Pipeline ======");
+        NS_LOG_UNCOND("[NPFADS-SOL]  Steps 1-5: BSM load + eigenvalue preprocessing");
+        NS_LOG_UNCOND("[NPFADS-SOL]  Step  6  : Mode A — posVar anomaly score (unsupervised)");
+        NS_LOG_UNCOND("[NPFADS-SOL]  Step  7  : Mode B — RF-simulated classifier");
+        NS_LOG_UNCOND("[NPFADS-SOL]  Steps 8-9: Mode C — AutoEncoder + NADM H3 thresholds");
+        NS_LOG_UNCOND("[NPFADS-SOL]  Step  10 : Novel attack detection (UC comparison)");
+        NS_LOG_UNCOND("[NPFADS-SOL]  Step  11 : CSV output (compare with attack metrics)");
+
+        NpfadsSolution sol;
+        sol.SetBeaconInterval(g_beaconInterval);
+        sol.SetMinBsms(MIN_BSMS);
+        sol.SetVerbose(true);
+
+        // Step 1: Load BSM records — use template overload to convert
+        // BSMRecord (ns3 file) → NpfadsBsmRecord (solution header)
+        sol.LoadBsmLogFrom(g_bsmLog);
+
+        // Steps 2-10: full pipeline
+        sol.RunFullPipeline();
+
+        // Step 11: write solution CSVs alongside attack CSVs
+        sol.WriteOutputCsvs(outputDir);
+
+        // Console summary table
+        sol.PrintSummary();
+
+        NS_LOG_UNCOND("[NPFADS-SOL] ====== Solution pipeline complete ======\n"
+            "  Attack  CSVs: npfads_bsm_log.csv, npfads_eigenvalues.csv,\n"
+            "                npfads_metrics.csv, npfads_pem_summary.csv\n"
+            "  Solution CSVs: npfads_sol_eigenvalues.csv,\n"
+            "                 npfads_sol_sender_results.csv,\n"
+            "                 npfads_sol_metrics.csv,\n"
+            "                 npfads_sol_pem_summary.csv\n"
+            "  To compare: diff npfads_pem_summary.csv npfads_sol_pem_summary.csv");
     }
 }
 
