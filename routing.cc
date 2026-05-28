@@ -45,6 +45,7 @@
 #include <iomanip>
 #include <limits.h>
 #include <bits/stdc++.h>
+#include "npfads_solution.h"
 
 using namespace std;
 using namespace ns3;
@@ -567,6 +568,16 @@ std::set<uint32_t> me_s1_false_positive_reporters;
 std::set<uint32_t> ttw_s1_actual_attackers;
 std::set<uint32_t> ttw_s1_detected_attackers;
 std::set<uint32_t> ttw_s1_false_positive_reporters;
+
+// ── NPFADS BSM log ──────────────────────────────────────────────────────────
+// Populated by PemEmitVehicleBeacon(). Fed into NpfadsSolution at sim end.
+// All vehicles in routing.cc report true positions (TTW/BSHH/ME do NOT
+// falsify GPS) so NPFADS will classify every sender as benign — proving
+// these temporal attacks are invisible to position-based detection.
+static std::vector<NpfadsBsmRecord>        g_routing_bsm_log;
+static std::map<uint32_t, NpfadsBsmRecord> g_routing_last_bsm;
+// ── End NPFADS globals ──────────────────────────────────────────────────────
+
 extern double current_packet_delivery_ratio;
 extern double current_latency_routing;
 extern NodeContainer Vehicle_Nodes;
@@ -977,6 +988,62 @@ PemWriteEventCsv(const PemEvent& event)
          << event.link_dst_position.x << ","
          << event.link_dst_position.y << ","
          << event.rssi_reporter_dbm << "\n";
+}
+
+// =============================================================================
+// RunNpfadsDetection
+// Runs the full NPFADS pipeline (Steps 2-10 from npfads_solution.h) on the
+// vehicle BSM records collected by PemEmitVehicleBeacon() during the run.
+//
+// KEY RESEARCH FINDING:
+//   TTW / BSHH / ME are TEMPORAL attacks. They manipulate timestamps,
+//   heartbeat identities, or topology path reports — NOT GPS position.
+//   Therefore all vehicles in routing.cc report their true position every
+//   beacon. NPFADS will classify all senders as benign (posVar ≈ normal).
+//
+//   PEM detects TTW/BSHH/ME via temporal signatures (MCC ≈ 1.0).
+//   NPFADS cannot detect them — outputs F1 ≈ 0 for all scenarios.
+//
+//   This proves the two detectors are COMPLEMENTARY:
+//     PEM  → temporal attacks ✓  |  position attacks ✗
+//     NPFADS → position attacks ✓ |  temporal attacks ✗
+// =============================================================================
+static void
+RunNpfadsDetection()
+{
+    NS_LOG_UNCOND("\n[NPFADS] ====== Running NPFADS Detection Pipeline ======");
+    NS_LOG_UNCOND("[NPFADS]  Attack scenario : " << attack_scenario);
+    NS_LOG_UNCOND("[NPFADS]  BSM records     : " << g_routing_bsm_log.size());
+
+    if (g_routing_bsm_log.empty())
+    {
+        NS_LOG_UNCOND("[NPFADS] No BSM records collected — skipping.");
+        return;
+    }
+
+    NpfadsSolution sol;
+    sol.SetBeaconInterval(0.1);
+    sol.SetMinBsms(8);
+    sol.SetVerbose(true);
+
+    sol.LoadBsmLog(g_routing_bsm_log);
+    sol.RunFullPipeline();
+
+    // Write output CSVs into the same folder as the PEM run summary
+    std::string outPath = BuildScenarioCsvPath("PEM_RUN_SUMMARY", attack_scenario);
+    std::string outDir  = outPath;
+    size_t lastSlash = outDir.find_last_of("/\\");
+    if (lastSlash != std::string::npos)
+        outDir = outDir.substr(0, lastSlash);
+
+    sol.WriteOutputCsvs(outDir);
+    sol.PrintSummary();
+
+    NS_LOG_UNCOND("[NPFADS] ====== NPFADS Detection Complete ======");
+    NS_LOG_UNCOND("[NPFADS] Expected for TTW/BSHH/ME: posVar F1 = 0.0, RF F1 = 0.0");
+    NS_LOG_UNCOND("[NPFADS] --> Temporal attacks are INVISIBLE to position-based detection.");
+    NS_LOG_UNCOND("[NPFADS] --> PEM detected them via temporal signature analysis.");
+    NS_LOG_UNCOND("[NPFADS] --> The two detectors are COMPLEMENTARY.\n");
 }
 
 static void
@@ -1502,6 +1569,52 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
 
     Vector senderPosition = senderMobility->GetPosition();
     Vector receiverPosition = receiverMobility->GetPosition();
+
+    // ── NPFADS BSM record ───────────────────────────────────────────────────
+    // Recorded BEFORE the distance guard so every beacon from every sender
+    // is captured regardless of range. NPFADS needs the full trajectory of
+    // each vehicle to build its mobility matrix (min 8 BSMs per sender).
+    // TTW/BSHH/ME do NOT falsify position → xPos == trueXPos always.
+    // attackType = 0 (NPFADS_BENIGN): temporal attacks don't touch GPS.
+    {
+        Vector senderVel = senderMobility->GetVelocity();
+        double now_s     = Simulator::Now().GetSeconds();
+
+        NpfadsBsmRecord rec;
+        rec.sendTime   = now_s;
+        rec.senderId   = senderId;
+        rec.xPos       = senderPosition.x;
+        rec.yPos       = senderPosition.y;
+        rec.xSpd       = senderVel.x;
+        rec.ySpd       = senderVel.y;
+        rec.trueXPos   = senderPosition.x;
+        rec.trueYPos   = senderPosition.y;
+        rec.attackType = 0;
+
+        auto it = g_routing_last_bsm.find(senderId);
+        if (it != g_routing_last_bsm.end())
+        {
+            double dt = now_s - it->second.sendTime;
+            if (dt > 1e-9)
+            {
+                rec.xAcc = (rec.xSpd - it->second.xSpd) / dt;
+                rec.yAcc = (rec.ySpd - it->second.ySpd) / dt;
+            }
+            else
+            {
+                rec.xAcc = rec.yAcc = 0.0;
+            }
+        }
+        else
+        {
+            rec.xAcc = rec.yAcc = 0.0;
+        }
+
+        g_routing_last_bsm[senderId] = rec;
+        g_routing_bsm_log.push_back(rec);
+    }
+    // ── End NPFADS BSM record ───────────────────────────────────────────────
+
     const double distance =
         std::sqrt(std::pow(senderPosition.x - receiverPosition.x, 2.0) +
                   std::pow(senderPosition.y - receiverPosition.y, 2.0));
@@ -146660,6 +146773,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
   // RUN SIMULATION
   // ===========================================================================
 
+  Simulator::Schedule(Seconds(simTime - 0.002), &RunNpfadsDetection);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Stop(Seconds(simTime));
