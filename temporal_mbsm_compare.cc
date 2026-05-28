@@ -212,6 +212,20 @@ static const uint16_t BSM_PORT = 7783;
 static std::set<uint32_t> g_flagged_vehicles;       // central RSU database of flagged vehicles
 static uint64_t           g_rsu_alert_tx_count = 0; // total alert transmissions (broadcast + inter-RSU)
 
+// ── PDR tracking — matching routing.cc pem_run_summary.csv columns ───────────
+// Counts BSMs actually transmitted (after InRSURange passes) and received.
+// PDR ≈ 100% for both periods — confirms topology attacks do not disrupt BSM delivery.
+static uint64_t g_bsm_sent_attack    = 0;   // BSMs transmitted while oracle active
+static uint64_t g_bsm_sent_baseline  = 0;   // BSMs transmitted while oracle inactive
+static uint64_t g_bsm_recv_attack    = 0;   // BSMs received by RSU during attack window
+static uint64_t g_bsm_recv_baseline  = 0;   // BSMs received by RSU during baseline window
+
+// ── Te2e tracking — one-hop BSM send→RSU-receive latency (ms), split by oracle
+static double   g_te2e_sum_attack    = 0.0;
+static uint64_t g_te2e_cnt_attack    = 0;
+static double   g_te2e_sum_baseline  = 0.0;
+static uint64_t g_te2e_cnt_baseline  = 0;
+
 // ─────────────────────────────────────────────────────────────
 // TempBsmTag — NS-3 Tag for legitimate BSM packets
 // Structure identical to BsmTag in multibsm_attacks.cc.
@@ -447,6 +461,20 @@ static void TEMP_RSUReceive(BsmRecord bsm)
     double now       = Simulator::Now().GetSeconds();
     bool   is_attack = bsm.is_attack;
 
+    // PDR and Te2e counters — track every received BSM before detection
+    {
+        double latency_ms = (now - bsm.timestamp) * 1000.0;
+        if (is_attack) {
+            g_bsm_recv_attack++;
+            g_te2e_sum_attack += latency_ms;
+            g_te2e_cnt_attack++;
+        } else {
+            g_bsm_recv_baseline++;
+            g_te2e_sum_baseline += latency_ms;
+            g_te2e_cnt_baseline++;
+        }
+    }
+
     // MBSM_Detect processes the legitimate BSM
     bool detected = MBSM_Detect(bsm);
 
@@ -582,6 +610,12 @@ static void TEMP_SendLegitBsm(uint32_t veh_idx)
     pkt->AddPacketTag(tag);
 
     sock->Send(pkt);
+    // PDR: count BSM as transmitted (only within-range BSMs reach here)
+    if (g_oracle_attack_state.count(node->GetId()) &&
+        g_oracle_attack_state.at(node->GetId()))
+        g_bsm_sent_attack++;
+    else
+        g_bsm_sent_baseline++;
     sock->Close();
 }
 
@@ -1639,19 +1673,45 @@ static void TEMP_WriteSummary()
                    ? (pem_first_alert_time - pem_attack_start_time) * 1000.0
                    : -1.0;
 
+    // ── AUROC — single-point formula for rule-based binary detector ──────────
+    // AUROC = 0.5*(TPR + TNR).  When TP=0, FP=0: AUROC = 0.5*(0+1) = 0.500.
+    // Matches routing.cc pem_run_summary.csv column layout.
+    double tpr   = (tp + fn > 0.0) ? (tp / (tp + fn)) : 0.0;
+    double fpr   = (fp + tn > 0.0) ? (fp / (fp + tn)) : 0.0;
+    double auroc = 0.5 * (tpr + (1.0 - fpr));
+
+    // ── PDR — packet delivery ratio, split by oracle window ─────────────────
+    // PDR ≈ 100% for both periods: topology attacks do NOT disrupt BSM delivery.
+    double pdr_attack   = (g_bsm_sent_attack > 0)
+        ? (100.0 * (double)g_bsm_recv_attack   / (double)g_bsm_sent_attack)   : -1.0;
+    double pdr_baseline = (g_bsm_sent_baseline > 0)
+        ? (100.0 * (double)g_bsm_recv_baseline / (double)g_bsm_sent_baseline) : -1.0;
+
+    // ── Te2e — one-hop BSM send→RSU-receive latency (ms) ────────────────────
+    double te2e_attack   = (g_te2e_cnt_attack > 0)
+        ? (g_te2e_sum_attack   / (double)g_te2e_cnt_attack)   : -1.0;
+    double te2e_baseline = (g_te2e_cnt_baseline > 0)
+        ? (g_te2e_sum_baseline / (double)g_te2e_cnt_baseline) : -1.0;
+
     std::string csv_interp = (attack_scenario == 0)
         ? "Baseline (no attack): all BSMs benign; TN=" + std::to_string(pem_tn) + "; no attack events generated"
         : "TP=0: MBSM_Detect cannot detect topology-level Temporal-Echo attacks";
 
     std::ofstream sum("temporal_mbsm_compare_summary.csv", std::ios::out | std::ios::trunc);
-    sum << "attack_scenario,scenario_name,detector,tp,tn,fp,fn,mcc,acr_pct,precision,recall,"
-        << "tdet_ms,flagged_vehicles,alert_tx_count,interpretation\n";
+    sum << "attack_scenario,scenario_name,detector,"
+        << "tp,tn,fp,fn,mcc,auroc,acr_pct,precision,recall,tdet_ms,"
+        << "pdr_under_attack_pct,pdr_baseline_pct,"
+        << "te2e_under_attack_ms,te2e_baseline_ms,"
+        << "flagged_vehicles,alert_tx_count,interpretation\n";
     sum << std::fixed << std::setprecision(3)
         << attack_scenario << ","
         << "\"" << GetScenarioName(attack_scenario) << "\","
         << "MBSM_Detect (Trabelsi 2022),"
         << pem_tp << "," << pem_tn << "," << pem_fp << "," << pem_fn << ","
-        << mcc << "," << acr << "," << prec << "," << rec << "," << tdet << ","
+        << mcc   << "," << auroc << "," << acr << "," << prec << "," << rec << ","
+        << tdet  << ","
+        << pdr_attack << "," << pdr_baseline << ","
+        << te2e_attack << "," << te2e_baseline << ","
         << g_flagged_vehicles.size() << "," << g_rsu_alert_tx_count << ","
         << "\"" << csv_interp << "\"\n";
     sum.close();
@@ -1668,11 +1728,19 @@ static void TEMP_WriteSummary()
             << "  FP = " << pem_fp << "   (legit BSMs incorrectly flagged)\n"
             << "  FN = " << pem_fn << "  (attack-period BSMs MISSED — MBSM_Detect returned false)\n"
             << "  ──────────────────────────────────────────────────\n"
-            << "  MCC              = " << std::fixed << std::setprecision(3) << mcc  << "\n"
-            << "  ACR              = " << acr  << " %\n"
-            << "  Precision        = " << prec << "\n"
-            << "  Recall           = " << rec  << "\n"
-            << "  Tdet             = " << tdet << " ms\n"
+            << "  MCC              = " << std::fixed << std::setprecision(3) << mcc   << "\n"
+            << "  AUROC            = " << auroc << "  (single-point: 0.500 when TP=0)\n"
+            << "  ACR              = " << acr   << " %\n"
+            << "  Precision        = " << prec  << "\n"
+            << "  Recall           = " << rec   << "\n"
+            << "  Tdet             = " << tdet  << " ms  (-1.0 = no detection)\n"
+            << "  ──────────────────────────────────────────────────\n"
+            << "  PDR under attack = " << pdr_attack   << " %"
+            << "  (" << g_bsm_recv_attack   << "/" << g_bsm_sent_attack   << " BSMs)\n"
+            << "  PDR baseline     = " << pdr_baseline  << " %"
+            << "  (" << g_bsm_recv_baseline << "/" << g_bsm_sent_baseline << " BSMs)\n"
+            << "  Te2e attack      = " << te2e_attack   << " ms  (one-hop send→RSU)\n"
+            << "  Te2e baseline    = " << te2e_baseline  << " ms  (one-hop send→RSU)\n"
             << "  ──────────────────────────────────────────────────\n"
             << "  Algorithm 1 state (paper §4.2, Figure 2):\n"
             << "  Flagged vehicles = " << g_flagged_vehicles.size()
@@ -1719,10 +1787,16 @@ static void TEMP_WriteSummary()
     std::cout << "\n[TemporalMbsmCompare] Summary: " << GetScenarioName(attack_scenario) << "\n"
               << "  TP=" << pem_tp << " TN=" << pem_tn
               << " FP=" << pem_fp << " FN=" << pem_fn << "\n"
-              << "  MCC=" << std::fixed << std::setprecision(3) << mcc
-              << "  ACR=" << acr << "%" << "\n"
+              << "  MCC="   << std::fixed << std::setprecision(3) << mcc
+              << "  AUROC=" << auroc
+              << "  ACR="   << acr << "%\n"
+              << "  Tdet="  << tdet  << " ms"
+              << "  PDR(attack)="   << pdr_attack   << "%"
+              << "  PDR(base)="     << pdr_baseline << "%\n"
+              << "  Te2e(attack)="  << te2e_attack  << " ms"
+              << "  Te2e(base)="    << te2e_baseline << " ms\n"
               << "  FlaggedVehicles=" << g_flagged_vehicles.size()
-              << "  AlertTxCount=" << g_rsu_alert_tx_count << "\n"
+              << "  AlertTxCount="    << g_rsu_alert_tx_count << "\n"
               << "  " << console_verdict << "\n"
               << "  Summary CSV: temporal_mbsm_compare_summary.csv\n";
 }

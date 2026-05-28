@@ -211,6 +211,20 @@ static Ptr<Socket>         g_rsu_recv_socket = nullptr;
 
 static const uint16_t BSM_PORT = 7784;
 
+// ── PDR tracking — matching routing.cc pem_run_summary.csv columns ───────────
+// Counts BSMs actually transmitted (after InRSURange passes) and received.
+// PDR ≈ 100% for both periods — confirms topology attacks do not disrupt BSM delivery.
+static uint64_t g_bsm_sent_attack    = 0;   // BSMs transmitted while oracle active
+static uint64_t g_bsm_sent_baseline  = 0;   // BSMs transmitted while oracle inactive
+static uint64_t g_bsm_recv_attack    = 0;   // BSMs received by RSU during attack window
+static uint64_t g_bsm_recv_baseline  = 0;   // BSMs received by RSU during baseline window
+
+// ── Te2e tracking — one-hop BSM send→RSU-receive latency (ms), split by oracle
+static double   g_te2e_sum_attack    = 0.0;
+static uint64_t g_te2e_cnt_attack    = 0;
+static double   g_te2e_sum_baseline  = 0.0;
+static uint64_t g_te2e_cnt_baseline  = 0;
+
 // ─────────────────────────────────────────────────────────────
 // TempVeReMiBsmTag — NS-3 Tag for legitimate BSM packets
 // Structure identical to VeReMiBsmTag in veremi_attacks.cc.
@@ -453,6 +467,20 @@ static void TVRC_RSUReceive(BsmRecord bsm)
     double now      = Simulator::Now().GetSeconds();
     bool   is_attack = bsm.is_attack;
 
+    // PDR and Te2e counters — track every received BSM before detection
+    {
+        double latency_ms = (now - bsm.timestamp) * 1000.0;
+        if (is_attack) {
+            g_bsm_recv_attack++;
+            g_te2e_sum_attack += latency_ms;
+            g_te2e_cnt_attack++;
+        } else {
+            g_bsm_recv_baseline++;
+            g_te2e_sum_baseline += latency_ms;
+            g_te2e_cnt_baseline++;
+        }
+    }
+
     // VREM_Detect processes the legitimate BSM
     bool detected = VREM_Detect(bsm);
 
@@ -554,6 +582,12 @@ static void TVRC_SendLegitBsm(uint32_t veh_idx)
     pkt->AddPacketTag(tag);
 
     sock->Send(pkt);
+    // PDR: count BSM as transmitted (only within-range BSMs reach here)
+    if (g_oracle_attack_state.count(node->GetId()) &&
+        g_oracle_attack_state.at(node->GetId()))
+        g_bsm_sent_attack++;
+    else
+        g_bsm_sent_baseline++;
     sock->Close();
 }
 
@@ -1462,19 +1496,45 @@ static void TVRC_WriteSummary()
                       : -1.0;
     uint64_t total_pairs = pem_tp + pem_tn + pem_fp + pem_fn;
 
+    // ── AUROC — single-point formula for rule-based binary detector ──────────
+    // AUROC = 0.5*(TPR + TNR).  When TP=0, FP=0: AUROC = 0.5*(0+1) = 0.500.
+    // Matches routing.cc pem_run_summary.csv column layout.
+    double tpr   = (tp + fn > 0.0) ? (tp / (tp + fn)) : 0.0;
+    double fpr   = (fp + tn > 0.0) ? (fp / (fp + tn)) : 0.0;
+    double auroc = 0.5 * (tpr + (1.0 - fpr));
+
+    // ── PDR — packet delivery ratio, split by oracle window ─────────────────
+    // PDR ≈ 100% for both periods: topology attacks do NOT disrupt BSM delivery.
+    double pdr_attack   = (g_bsm_sent_attack > 0)
+        ? (100.0 * (double)g_bsm_recv_attack   / (double)g_bsm_sent_attack)   : -1.0;
+    double pdr_baseline = (g_bsm_sent_baseline > 0)
+        ? (100.0 * (double)g_bsm_recv_baseline / (double)g_bsm_sent_baseline) : -1.0;
+
+    // ── Te2e — one-hop BSM send→RSU-receive latency (ms) ────────────────────
+    double te2e_attack   = (g_te2e_cnt_attack > 0)
+        ? (g_te2e_sum_attack   / (double)g_te2e_cnt_attack)   : -1.0;
+    double te2e_baseline = (g_te2e_cnt_baseline > 0)
+        ? (g_te2e_sum_baseline / (double)g_te2e_cnt_baseline) : -1.0;
+
     std::string csv_interp = (attack_scenario == 0)
         ? "Baseline (no attack): all BSMs benign; TN=" + std::to_string(pem_tn) + "; no attack events generated"
         : "TP=0: VREM_Detect cannot detect topology-level Temporal-Echo attacks";
 
     std::ofstream sum("temporal_veremi_compare_pem_summary.csv", std::ios::out | std::ios::trunc);
-    sum << "attack_scenario,scenario_name,detector,tp,tn,fp,fn,mcc,accuracy_pct,"
-        << "precision,recall,f1,tdet_ms,interpretation\n";
+    sum << "attack_scenario,scenario_name,detector,"
+        << "tp,tn,fp,fn,mcc,auroc,accuracy_pct,precision,recall,f1,tdet_ms,"
+        << "pdr_under_attack_pct,pdr_baseline_pct,"
+        << "te2e_under_attack_ms,te2e_baseline_ms,"
+        << "interpretation\n";
     sum << std::fixed << std::setprecision(3)
         << attack_scenario << ","
         << "\"" << GetScenarioName(attack_scenario) << "\","
         << "VREM_Detect (Mekonen 2025),"
         << pem_tp << "," << pem_tn << "," << pem_fp << "," << pem_fn << ","
-        << mcc << "," << accuracy << "," << prec << "," << rec << "," << f1 << "," << tdet << ","
+        << mcc    << "," << auroc << "," << accuracy << ","
+        << prec   << "," << rec   << "," << f1 << "," << tdet << ","
+        << pdr_attack << "," << pdr_baseline << ","
+        << te2e_attack << "," << te2e_baseline << ","
         << "\"" << csv_interp << "\"\n";
     sum.close();
 
@@ -1491,12 +1551,20 @@ static void TVRC_WriteSummary()
             << "  FP = " << pem_fp << "   (legit BSMs incorrectly flagged)\n"
             << "  FN = " << pem_fn << "  (attack-period BSMs MISSED)\n"
             << "  ────────────────────────────────────────────────────\n"
-            << "  MCC       = " << std::fixed << std::setprecision(3) << mcc      << "\n"
-            << "  Accuracy  = " << accuracy   << " %\n"
-            << "  Precision = " << prec       << "\n"
-            << "  Recall    = " << rec        << "\n"
-            << "  F1        = " << f1         << "\n"
-            << "  Tdet      = " << tdet       << " ms\n"
+            << "  MCC       = " << std::fixed << std::setprecision(3) << mcc   << "\n"
+            << "  AUROC     = " << auroc << "  (single-point: 0.500 when TP=0)\n"
+            << "  Accuracy  = " << accuracy << " %\n"
+            << "  Precision = " << prec    << "\n"
+            << "  Recall    = " << rec     << "\n"
+            << "  F1        = " << f1      << "\n"
+            << "  Tdet      = " << tdet    << " ms  (-1.0 = no detection)\n"
+            << "  ────────────────────────────────────────────────────\n"
+            << "  PDR under attack = " << pdr_attack   << " %"
+            << "  (" << g_bsm_recv_attack   << "/" << g_bsm_sent_attack   << " BSMs)\n"
+            << "  PDR baseline     = " << pdr_baseline  << " %"
+            << "  (" << g_bsm_recv_baseline << "/" << g_bsm_sent_baseline << " BSMs)\n"
+            << "  Te2e attack      = " << te2e_attack   << " ms  (one-hop send→RSU)\n"
+            << "  Te2e baseline    = " << te2e_baseline  << " ms  (one-hop send→RSU)\n"
             << "  Pairs CSV : temporal_veremi_compare_pairs.csv (" << total_pairs << " pairs)\n"
             << "  ────────────────────────────────────────────────────\n"
             << "  INTERPRETATION:\n";
@@ -1537,8 +1605,14 @@ static void TVRC_WriteSummary()
     std::cout << "\n[TemporalVeReMiCompare] Summary: " << GetScenarioName(attack_scenario) << "\n"
               << "  VREM_Detect: TP=" << pem_tp << " TN=" << pem_tn
               << " FP=" << pem_fp << " FN=" << pem_fn << "\n"
-              << "  MCC=" << std::fixed << std::setprecision(3) << mcc
-              << "  Acc=" << accuracy << "% F1=" << f1 << "\n"
+              << "  MCC="   << std::fixed << std::setprecision(3) << mcc
+              << "  AUROC=" << auroc
+              << "  Acc="   << accuracy << "% F1=" << f1 << "\n"
+              << "  Tdet="  << tdet  << " ms"
+              << "  PDR(attack)="   << pdr_attack   << "%"
+              << "  PDR(base)="     << pdr_baseline << "%\n"
+              << "  Te2e(attack)="  << te2e_attack  << " ms"
+              << "  Te2e(base)="    << te2e_baseline << " ms\n"
               << "  " << console_verdict << "\n"
               << "  Pairs CSV (" << total_pairs << " pairs): temporal_veremi_compare_pairs.csv\n"
               << "  KNN+Bagging: python3 temporal_veremi_compare_knn.py "

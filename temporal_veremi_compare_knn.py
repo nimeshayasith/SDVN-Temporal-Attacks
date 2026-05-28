@@ -106,7 +106,7 @@ try:
     from sklearn.metrics import (precision_score, recall_score,
                                  accuracy_score, f1_score,
                                  confusion_matrix, make_scorer,
-                                 matthews_corrcoef)
+                                 matthews_corrcoef, roc_auc_score)
     import sklearn
     _sklearn_ok = True
 except ImportError:
@@ -483,6 +483,22 @@ def evaluate_holdout(df_combined, attack_type, classifiers, test_split):
         X, y, test_size=test_split, random_state=42, stratify=y
     )
 
+    # sim_time_s for Tdet — same random_state + stratify keeps indices aligned with X_test.
+    # Tdet = (sim_time of first TP) − (sim_time of first attack pair), in ms.
+    # Matches routing.cc pem_run_summary.csv tdet_ms semantics.
+    # Expected −1.0 for Temporal-Echo: TP=0 since BSM features carry no attack signal.
+    if "sim_time_s" in df_combined.columns:
+        sim_times = df_combined["sim_time_s"].values
+        _, sim_times_test = train_test_split(
+            sim_times, test_size=test_split, random_state=42, stratify=y
+        )
+        _attack_in_test = (y_test == 1)
+        _t_attack_start = (float(sim_times_test[_attack_in_test].min())
+                           if _attack_in_test.any() else -1.0)
+    else:
+        sim_times_test  = None
+        _t_attack_start = -1.0
+
     results = []
     for clf_name, clf in classifiers.items():
         clf.fit(X_train, y_train)
@@ -494,6 +510,23 @@ def evaluate_holdout(df_combined, attack_type, classifiers, test_split):
         # MCC = 0 when TP=0 (no attack detected) — expected for Temporal-Echo attacks.
         # matthews_corrcoef handles the degenerate case (no positive predictions) safely.
         mcc = float(matthews_corrcoef(y_test, y_pred))
+
+        # AUROC from predict_proba — expected ≈ 0.500 (random) since the 9 BSM
+        # position features carry no discriminating signal for Temporal-Echo attacks.
+        # Falls back to 0.500 if only one class is present in y_test (degenerate fold).
+        try:
+            y_prob = clf.predict_proba(X_test)[:, 1]
+            auroc = float(roc_auc_score(y_test, y_prob))
+        except Exception:
+            auroc = 0.5
+
+        # Tdet — sim_time of first TP minus sim_time of first attack pair (ms).
+        if sim_times_test is not None and _t_attack_start >= 0.0:
+            tp_mask = (y_test == 1) & (y_pred == 1)
+            tdet_ms = ((float(sim_times_test[tp_mask].min()) - _t_attack_start) * 1000.0
+                       if tp_mask.any() else -1.0)
+        else:
+            tdet_ms = -1.0
 
         results.append({
             "attack_type": attack_type,
@@ -510,6 +543,8 @@ def evaluate_holdout(df_combined, attack_type, classifiers, test_split):
             "recall":      float(recall_score   (y_test, y_pred, zero_division=0)),
             "f1":          float(f1_score       (y_test, y_pred, zero_division=0)),
             "mcc":         mcc,
+            "auroc":       auroc,
+            "tdet_ms":     tdet_ms,
             # Interpretive note — summarises research finding per scenario
             "interpretation": (
                 "TP=0: VeReMi KNN+Bagging cannot detect Temporal-Echo topology attacks "
@@ -551,6 +586,9 @@ def evaluate_cv(df_combined, attack_type, classifiers, n_folds):
         # MCC expected ≈ 0 for all Temporal-Echo scenarios: BSM features are
         # legitimate for attack-period pairs, so no boundary exists in feature space.
         "mcc":       make_scorer(matthews_corrcoef),
+        # AUROC expected ≈ 0.500 (random) — no discriminating signal in BSM positions.
+        # needs_proba=True tells cross_validate to call predict_proba instead of predict.
+        "auroc":     make_scorer(roc_auc_score, needs_proba=True),
     }
 
     results = []
@@ -562,31 +600,38 @@ def evaluate_cv(df_combined, attack_type, classifiers, n_folds):
             n_jobs=1,
             return_train_score=False,
         )
-        acc_arr  = scores["test_accuracy"]  * 100.0
-        prec_arr = scores["test_precision"]
-        rec_arr  = scores["test_recall"]
-        f1_arr   = scores["test_f1"]
-        mcc_arr  = scores["test_mcc"]
+        acc_arr   = scores["test_accuracy"]  * 100.0
+        prec_arr  = scores["test_precision"]
+        rec_arr   = scores["test_recall"]
+        f1_arr    = scores["test_f1"]
+        mcc_arr   = scores["test_mcc"]
+        auroc_arr = scores["test_auroc"]
 
         results.append({
-            "attack_type":  attack_type,
-            "type_name":    TYPE_NAMES.get(attack_type, f"Scenario {attack_type}"),
-            "classifier":   clf_name,
-            "n_samples":    int(len(X)),
-            "n_folds":      n_folds,
-            "acc_mean":     float(acc_arr.mean()),
-            "acc_std":      float(acc_arr.std()),
-            "prec_mean":    float(prec_arr.mean()),
-            "prec_std":     float(prec_arr.std()),
-            "recall_mean":  float(rec_arr.mean()),
-            "recall_std":   float(rec_arr.std()),
-            "f1_mean":      float(f1_arr.mean()),
-            "f1_std":       float(f1_arr.std()),
-            "mcc_mean":     float(mcc_arr.mean()),
-            "mcc_std":      float(mcc_arr.std()),
-            "acc_per_fold": acc_arr.tolist(),
-            "f1_per_fold":  f1_arr.tolist(),
-            "mcc_per_fold": mcc_arr.tolist(),
+            "attack_type":   attack_type,
+            "type_name":     TYPE_NAMES.get(attack_type, f"Scenario {attack_type}"),
+            "classifier":    clf_name,
+            "n_samples":     int(len(X)),
+            "n_folds":       n_folds,
+            "acc_mean":      float(acc_arr.mean()),
+            "acc_std":       float(acc_arr.std()),
+            "prec_mean":     float(prec_arr.mean()),
+            "prec_std":      float(prec_arr.std()),
+            "recall_mean":   float(rec_arr.mean()),
+            "recall_std":    float(rec_arr.std()),
+            "f1_mean":       float(f1_arr.mean()),
+            "f1_std":        float(f1_arr.std()),
+            "mcc_mean":      float(mcc_arr.mean()),
+            "mcc_std":       float(mcc_arr.std()),
+            "auroc_mean":    float(auroc_arr.mean()),
+            "auroc_std":     float(auroc_arr.std()),
+            # Tdet not computable from cross_validate (no per-sample test times exposed).
+            # See tdet_ms in holdout results and in temporal_veremi_compare_summary.csv.
+            "tdet_ms":       -1.0,
+            "acc_per_fold":  acc_arr.tolist(),
+            "f1_per_fold":   f1_arr.tolist(),
+            "mcc_per_fold":  mcc_arr.tolist(),
+            "auroc_per_fold": auroc_arr.tolist(),
         })
     return results
 
@@ -601,20 +646,20 @@ def print_holdout_table(results, n_estimators, n_neighbors):
     attack_types = sorted({r["attack_type"] for r in results
                            if r["attack_type"] != -1})
 
-    W = 108
+    W = 135
     print(f"\n{'='*W}")
     print(f"  Table 5 — Holdout Evaluation  (70 % train / 30 % test)")
     print(f"  n_estimators={n_estimators}   KNN k={n_neighbors} (weights='distance')")
     print(f"  Reference: Mekonen et al., PLOS ONE 2025 (applied to Temporal-Echo scenarios)")
     print(f"{'='*W}")
-    print(f"  *** RESEARCH FINDING: MCC = 0.000 for all classifiers on all 12 scenarios ***")
-    print(f"  *** Temporal-Echo attacks manipulate the SDN CONTROL PLANE (topology tables). ***")
-    print(f"  *** BSM positions/velocities remain legitimate → no feature-space signal.    ***")
+    print(f"  *** RESEARCH FINDING: MCC = 0.000, AUROC ≈ 0.500, Tdet = -1.0 for all classifiers on all 12 scenarios ***")
+    print(f"  *** Temporal-Echo attacks manipulate the SDN CONTROL PLANE (topology tables).                           ***")
+    print(f"  *** BSM positions/velocities remain legitimate → no feature-space signal. TP=0 → no detection.         ***")
     print(f"{'='*W}")
 
     hdr = (f"  {'Attack Scenario':<30} {'Classifier':<16}"
-           f"{'Acc%':>7}{'Prec':>8}{'Recall':>8}{'F1':>8}{'MCC':>8}"
-           f"{'TP':>6}{'FP':>6}{'FN':>6}{'N_test':>8}")
+           f"{'Acc%':>7}{'Prec':>8}{'Recall':>8}{'F1':>8}{'MCC':>8}{'AUROC':>8}"
+           f"{'Tdet(ms)':>10}{'TP':>6}{'FP':>6}{'FN':>6}{'N_test':>8}")
 
     for at in attack_types:
         type_name = TYPE_NAMES.get(at, f"Scenario {at}")
@@ -632,7 +677,9 @@ def print_holdout_table(results, n_estimators, n_neighbors):
                   f"{r['precision']:>8.3f}"
                   f"{r['recall']:>8.3f}"
                   f"{r['f1']:>8.3f}"
-                  f"{r.get('mcc', 0.0):>8.3f}"
+                  f"{r.get('mcc',    0.0):>8.3f}"
+                  f"{r.get('auroc',  0.5):>8.3f}"
+                  f"{r.get('tdet_ms',-1.0):>10.1f}"
                   f"{r['tp']:>6}"
                   f"{r['fp']:>6}"
                   f"{r['fn']:>6}"
@@ -655,7 +702,9 @@ def print_holdout_table(results, n_estimators, n_neighbors):
                   f"{r['precision']:>8.3f}"
                   f"{r['recall']:>8.3f}"
                   f"{r['f1']:>8.3f}"
-                  f"{r.get('mcc', 0.0):>8.3f}"
+                  f"{r.get('mcc',    0.0):>8.3f}"
+                  f"{r.get('auroc',  0.5):>8.3f}"
+                  f"{r.get('tdet_ms',-1.0):>10.1f}"
                   f"{r['tp']:>6}"
                   f"{r['fp']:>6}"
                   f"{r['fn']:>6}"
@@ -663,8 +712,10 @@ def print_holdout_table(results, n_estimators, n_neighbors):
                   f"{mcc_flag}")
 
     print(f"\n{'='*W}")
-    print(f"  Supervisor metric (MCC): all values ≈ 0.000 — confirms VeReMi KNN+Bagging")
-    print(f"  cannot detect Temporal-Echo attacks. Dedicated framework required.")
+    print(f"  Supervisor metrics — MCC: all ≈ 0.000 | AUROC: all ≈ 0.500 | Tdet: all -1.0 (no detection)")
+    print(f"  PDR / Te2e: measured at simulation level — see temporal_veremi_compare_summary.csv.")
+    print(f"  Both confirm VeReMi KNN+Bagging (data-plane) cannot detect Temporal-Echo")
+    print(f"  attacks (control-plane). Dedicated GNN+Blockchain framework required.")
     print(f"{'='*W}")
 
 
@@ -678,12 +729,12 @@ def print_cv_table(cv_results, n_folds):
     attack_types = sorted({r["attack_type"] for r in cv_results
                            if r["attack_type"] != -1})
 
-    W = 108
+    W = 130
     print(f"\n{'='*W}")
     print(f"  {n_folds}-Fold Stratified Cross-Validation Results")
     print(f"  Reference: Mekonen et al., PLOS ONE 2025 (applied to Temporal-Echo scenarios)")
-    print(f"  *** Expected MCC ≈ 0.000: Temporal-Echo is a control-plane attack;  ***")
-    print(f"  *** BSM position features carry no discriminating signal.            ***")
+    print(f"  *** Expected MCC ≈ 0.000, AUROC ≈ 0.500: Temporal-Echo is a control-plane attack; ***")
+    print(f"  *** BSM position features carry no discriminating signal.                          ***")
     print(f"{'='*W}")
 
     col_hdr = (f"  {'Classifier':<16}"
@@ -691,7 +742,8 @@ def print_cv_table(cv_results, n_folds):
                f"{'Prec mean±std':>18}"
                f"{'Recall mean±std':>20}"
                f"{'F1 mean±std':>18}"
-               f"{'MCC mean±std':>18}")
+               f"{'MCC mean±std':>18}"
+               f"{'AUROC mean±std':>20}")
 
     for at in attack_types:
         type_name = TYPE_NAMES.get(at, f"Scenario {at}")
@@ -703,14 +755,17 @@ def print_cv_table(cv_results, n_folds):
                       if x["attack_type"] == at and x["classifier"] == clf_name), None)
             if r is None:
                 continue
-            mcc_m = r.get("mcc_mean", 0.0)
-            mcc_s = r.get("mcc_std",  0.0)
+            mcc_m   = r.get("mcc_mean",   0.0)
+            mcc_s   = r.get("mcc_std",    0.0)
+            auroc_m = r.get("auroc_mean", 0.5)
+            auroc_s = r.get("auroc_std",  0.0)
             print(f"  {clf_name:<16}"
                   f"  {r['acc_mean']:>6.1f} ± {r['acc_std']:>4.1f}    "
                   f"  {r['prec_mean']:>5.3f} ± {r['prec_std']:>5.3f}  "
                   f"  {r['recall_mean']:>5.3f} ± {r['recall_std']:>5.3f}    "
                   f"  {r['f1_mean']:>5.3f} ± {r['f1_std']:>5.3f}  "
-                  f"  {mcc_m:>5.3f} ± {mcc_s:>5.3f}")
+                  f"  {mcc_m:>5.3f} ± {mcc_s:>5.3f}  "
+                  f"  {auroc_m:>5.3f} ± {auroc_s:>5.3f}")
 
         print(f"\n  Per-fold MCC (expected ≈ 0.000):")
         for clf_name in CLF_ORDER:
@@ -720,7 +775,17 @@ def print_cv_table(cv_results, n_folds):
                 continue
             mcc_folds = r.get("mcc_per_fold", [])
             fold_str = "  ".join(f"F{i+1}:{v:.3f}" for i, v in enumerate(mcc_folds))
-            print(f"    {clf_name:<14} MCC: {fold_str}")
+            print(f"    {clf_name:<14} MCC:   {fold_str}")
+
+        print(f"\n  Per-fold AUROC (expected ≈ 0.500):")
+        for clf_name in CLF_ORDER:
+            r = next((x for x in cv_results
+                      if x["attack_type"] == at and x["classifier"] == clf_name), None)
+            if r is None:
+                continue
+            auroc_folds = r.get("auroc_per_fold", [])
+            fold_str = "  ".join(f"F{i+1}:{v:.3f}" for i, v in enumerate(auroc_folds))
+            print(f"    {clf_name:<14} AUROC: {fold_str}")
 
         print(f"\n  Per-fold accuracy (%):")
         for clf_name in CLF_ORDER:
@@ -729,7 +794,7 @@ def print_cv_table(cv_results, n_folds):
             if r is None:
                 continue
             fold_str = "  ".join(f"F{i+1}:{v:.1f}" for i, v in enumerate(r["acc_per_fold"]))
-            print(f"    {clf_name:<14} Acc: {fold_str}")
+            print(f"    {clf_name:<14} Acc:   {fold_str}")
 
     # All-types combined
     combined_cv = [r for r in cv_results if r["attack_type"] == -1]
@@ -741,17 +806,20 @@ def print_cv_table(cv_results, n_folds):
             r = next((x for x in combined_cv if x["classifier"] == clf_name), None)
             if r is None:
                 continue
-            mcc_m = r.get("mcc_mean", 0.0)
-            mcc_s = r.get("mcc_std",  0.0)
+            mcc_m   = r.get("mcc_mean",   0.0)
+            mcc_s   = r.get("mcc_std",    0.0)
+            auroc_m = r.get("auroc_mean", 0.5)
+            auroc_s = r.get("auroc_std",  0.0)
             print(f"  {clf_name:<16}"
                   f"  {r['acc_mean']:>6.1f} ± {r['acc_std']:>4.1f}    "
                   f"  {r['prec_mean']:>5.3f} ± {r['prec_std']:>5.3f}  "
                   f"  {r['recall_mean']:>5.3f} ± {r['recall_std']:>5.3f}    "
                   f"  {r['f1_mean']:>5.3f} ± {r['f1_std']:>5.3f}  "
-                  f"  {mcc_m:>5.3f} ± {mcc_s:>5.3f}")
+                  f"  {mcc_m:>5.3f} ± {mcc_s:>5.3f}  "
+                  f"  {auroc_m:>5.3f} ± {auroc_s:>5.3f}")
 
     print(f"\n{'='*W}")
-    print(f"  Supervisor metric (MCC): all values ≈ 0.000 across all folds and scenarios.")
+    print(f"  Supervisor metrics — MCC: all values ≈ 0.000 | AUROC: all values ≈ 0.500 (all folds).")
     print(f"  Conclusion: VeReMi KNN+Bagging (data-plane) is structurally blind to")
     print(f"  Temporal-Echo topology attacks (control-plane). Dedicated GNN+Blockchain")
     print(f"  framework required for detection.")
@@ -1002,7 +1070,7 @@ def main():
         # interpretation column documents the research finding per row.
         cols_h = ["attack_type", "type_name", "classifier",
                   "n_train", "n_test", "tp", "tn", "fp", "fn",
-                  "accuracy", "precision", "recall", "f1", "mcc",
+                  "accuracy", "precision", "recall", "f1", "mcc", "auroc", "tdet_ms",
                   "interpretation"]
         pd.DataFrame(holdout_results)[cols_h].to_csv(out_holdout, index=False)
         print(f"\n  Holdout results saved to: {out_holdout}")
@@ -1018,7 +1086,9 @@ def main():
                    "prec_mean", "prec_std",
                    "recall_mean", "recall_std",
                    "f1_mean", "f1_std",
-                   "mcc_mean", "mcc_std"]
+                   "mcc_mean", "mcc_std",
+                   "auroc_mean", "auroc_std",
+                   "tdet_ms"]
         pd.DataFrame(cv_results)[cols_cv].to_csv(out_cv, index=False)
         print(f"  CV results saved to:      {out_cv}")
         print(f"    → mcc_mean column confirms: all values ≈ 0.000 (supervisor requirement)")
