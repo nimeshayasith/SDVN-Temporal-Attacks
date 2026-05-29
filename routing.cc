@@ -1000,9 +1000,63 @@ PemWriteEventCsv(const PemEvent& event)
 }
 
 // =============================================================================
+// NpfadsPeriodicLog
+// Fires every NPFADS_LOG_INTERVAL seconds and appends one NpfadsBsmRecord per
+// vehicle to g_routing_bsm_log. This is the primary source of BSM data for
+// NPFADS — PemEmitVehicleBeacon() is only called a handful of times during
+// attack events, which is far fewer than the MIN_BSMS=8 threshold needed to
+// compute eigenvalues. This periodic logger ensures every vehicle accumulates
+// enough records regardless of how many attack events fire.
+// =============================================================================
+static const double NPFADS_LOG_INTERVAL = 1.0;   // log every 1 second
+
+static void
+NpfadsPeriodicLog()
+{
+    if (Vehicle_Nodes.GetN() == 0) return;
+    double now_s = Simulator::Now().GetSeconds();
+
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++)
+    {
+        Ptr<MobilityModel> mob = Vehicle_Nodes.Get(i)->GetObject<MobilityModel>();
+        if (!mob) continue;
+
+        Vector pos = mob->GetPosition();
+        Vector vel = mob->GetVelocity();
+
+        NpfadsBsmRecord rec;
+        rec.sendTime   = now_s;
+        rec.senderId   = i;
+        rec.xPos       = pos.x;
+        rec.yPos       = pos.y;
+        rec.xSpd       = vel.x;
+        rec.ySpd       = vel.y;
+        rec.trueXPos   = pos.x;
+        rec.trueYPos   = pos.y;
+        rec.attackType = 0;   // NPFADS_BENIGN: temporal attacks never touch GPS
+
+        auto it = g_routing_last_bsm.find(i);
+        if (it != g_routing_last_bsm.end())
+        {
+            double dt = now_s - it->second.sendTime;
+            if (dt > 1e-9)
+            {
+                rec.xAcc = (rec.xSpd - it->second.xSpd) / dt;
+                rec.yAcc = (rec.ySpd - it->second.ySpd) / dt;
+            }
+            else { rec.xAcc = rec.yAcc = 0.0; }
+        }
+        else { rec.xAcc = rec.yAcc = 0.0; }
+
+        g_routing_last_bsm[i] = rec;
+        g_routing_bsm_log.push_back(rec);
+    }
+}
+
+// =============================================================================
 // RunNpfadsDetection
 // Runs the full NPFADS pipeline (Steps 2-10 from npfads_solution.h) on the
-// vehicle BSM records collected by PemEmitVehicleBeacon() during the run.
+// vehicle BSM records collected by NpfadsPeriodicLog() during the run.
 //
 // KEY RESEARCH FINDING:
 //   TTW / BSHH / ME are TEMPORAL attacks. They manipulate timestamps,
@@ -146777,6 +146831,17 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
   // ===========================================================================
   // RUN SIMULATION
   // ===========================================================================
+
+  // Schedule periodic NPFADS BSM logger: fires every NPFADS_LOG_INTERVAL
+  // seconds for all vehicle nodes. Ensures every vehicle accumulates enough
+  // BSM records (>= MIN_BSMS=8) for eigenvalue analysis even in scenarios
+  // where PemEmitVehicleBeacon() is called only a few times.
+  for (double t = NPFADS_LOG_INTERVAL;
+       t < simTime - NPFADS_LOG_INTERVAL;
+       t += NPFADS_LOG_INTERVAL)
+  {
+      Simulator::Schedule(Seconds(t), &NpfadsPeriodicLog);
+  }
 
   Simulator::Schedule(Seconds(simTime - 0.002), &RunNpfadsDetection);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
