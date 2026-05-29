@@ -1778,10 +1778,12 @@ int main(int argc, char* argv[])
 
     } else if (attack_scenario == 5) {
         // BSHH-S1: Malicious Vehicle V1
+        // LegitExchange fires FIRST (matching routing.cc: exchange → store → replay)
         Simulator::Schedule(Seconds(BSHH_STORE_TIME),
+            &TVRC_BSHH_LegitExchange, v0_id, v1_id, BSHH_STORE_TIME);
+        // StoreHeartbeat fires AFTER the legit exchange, capturing the t=4.0 observation
+        Simulator::Schedule(Seconds(BSHH_STORE_TIME + 0.05),
             &TVRC_BSHH_StoreHeartbeat, v0_id, v1_id, BSHH_STORE_TIME);
-        Simulator::Schedule(Seconds(BSHH_STORE_TIME + 0.5),
-            &TVRC_BSHH_LegitExchange, v0_id, v1_id, BSHH_STORE_TIME + 0.5);
         Simulator::Schedule(Seconds(BSHH_REPLAY_TIME),
             &TVRC_BSHH_ReplayAttack, v0_id, v1_id, BSHH_REPLAY_TIME);
 
