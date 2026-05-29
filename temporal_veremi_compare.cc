@@ -545,8 +545,11 @@ static void TVRC_RSUReceive(BsmRecord bsm)
 // ─────────────────────────────────────────────────────────────
 static bool InRSURange(double px, double py)
 {
-    if (RSU_Nodes.GetN() == 0) return false;
-    Ptr<MobilityModel> mob = RSU_Nodes.Get(0)->GetObject<MobilityModel>();
+    // RSU present → use RSU position.  No RSU → last vehicle is the passive monitor.
+    Ptr<Node> det = (RSU_Nodes.GetN() > 0)
+                    ? RSU_Nodes.Get(0)
+                    : Vehicle_Nodes.Get(Vehicle_Nodes.GetN() - 1);
+    Ptr<MobilityModel> mob = det->GetObject<MobilityModel>();
     if (!mob) return false;
     Vector rp = mob->GetPosition();
     return Dist2D(px, py, rp.x, rp.y) <= DSRC_RANGE_M;
@@ -560,6 +563,8 @@ static void TVRC_SendLegitBsm(uint32_t veh_idx)
 {
     if (g_rsu_recv_socket == nullptr)    return;
     if (veh_idx >= Vehicle_Nodes.GetN()) return;
+    // In no-RSU mode the last vehicle is the passive monitor — skip self-send.
+    if (RSU_Nodes.GetN() == 0 && veh_idx == Vehicle_Nodes.GetN() - 1) return;
 
     Ptr<Node> node = Vehicle_Nodes.Get(veh_idx);
     double px, py, sx, sy;
@@ -1312,21 +1317,33 @@ static void TVRC_OracleDeactivate()
 // ─────────────────────────────────────────────────────────────
 static void TVRC_SetupNetwork()
 {
-    if (RSU_Nodes.GetN() == 0) return;
-
     InternetStackHelper internet;
     internet.Install(Vehicle_Nodes);
-    internet.Install(RSU_Nodes);
 
     PointToPointHelper p2p;
     p2p.SetDeviceAttribute("DataRate", StringValue("100Mbps"));
     p2p.SetChannelAttribute("Delay",   StringValue("1ms"));
 
     Ipv4AddressHelper addr;
-    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
+
+    // Detector node: RSU when present; last vehicle as passive monitor otherwise.
+    // The last vehicle is never the attacker in any of the 12 scenarios
+    // (attackers are v0–v3; last vehicle index is always >= 3 or beyond).
+    Ptr<Node> detector;
+    uint32_t  n_links;
+    if (RSU_Nodes.GetN() > 0) {
+        internet.Install(RSU_Nodes);
+        detector = RSU_Nodes.Get(0);
+        n_links  = Vehicle_Nodes.GetN();
+    } else {
+        detector = Vehicle_Nodes.Get(Vehicle_Nodes.GetN() - 1);
+        n_links  = Vehicle_Nodes.GetN() - 1;  // monitor vehicle excluded
+    }
+
+    for (uint32_t i = 0; i < n_links; i++) {
         NodeContainer pair;
         pair.Add(Vehicle_Nodes.Get(i));
-        pair.Add(RSU_Nodes.Get(0));
+        pair.Add(detector);
         NetDeviceContainer devs = p2p.Install(pair);
 
         std::ostringstream base;
@@ -1340,15 +1357,14 @@ static void TVRC_SetupNetwork()
     Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
     g_rsu_recv_socket = Socket::CreateSocket(
-        RSU_Nodes.Get(0),
-        TypeId::LookupByName("ns3::UdpSocketFactory"));
+        detector, TypeId::LookupByName("ns3::UdpSocketFactory"));
     g_rsu_recv_socket->Bind(InetSocketAddress(Ipv4Address::GetAny(), BSM_PORT));
     g_rsu_recv_socket->SetRecvCallback(MakeCallback(&TVRC_RSUSocketReceive));
 
     PacketSinkHelper sinkHelper("ns3::UdpSocketFactory",
                                 InetSocketAddress(Ipv4Address::GetAny(), 9));
-    sinkHelper.Install(RSU_Nodes.Get(0)).Start(Seconds(0.0));
-    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
+    sinkHelper.Install(detector).Start(Seconds(0.0));
+    for (uint32_t i = 0; i < n_links; i++) {
         sinkHelper.Install(Vehicle_Nodes.Get(i)).Start(Seconds(0.0));
     }
 }
@@ -1642,17 +1658,18 @@ int main(int argc, char* argv[])
     RngSeedManager::SetRun(runNum);
 
     if (N_Vehicles < 2) N_Vehicles = 2;
-    if (N_RSUs > 1)     N_RSUs     = 1;
-    if (attack_scenario >= 9 && attack_scenario <= 12 && N_Vehicles < 4) {
-        N_Vehicles = 4;
-        std::cout << "[Warning] ME scenarios require N_Vehicles >= 4; set to 4.\n";
-    }
-    // RSU-based scenarios require at least one RSU
+    if (N_RSUs > 1) N_RSUs = 1;
+    // RSU-based attack scenarios (S2/S4/S6/S8/S10/S12) require an RSU in the attack path.
+    // No-RSU scenarios (S1/S3/S5/S7/S9/S11) use the last vehicle as a passive BSM monitor.
     if ((attack_scenario == 2 || attack_scenario == 4 ||
          attack_scenario == 6 || attack_scenario == 8 ||
          attack_scenario == 10 || attack_scenario == 12) && N_RSUs == 0) {
         N_RSUs = 1;
-        std::cout << "[Info] RSU-based scenario requires N_RSUs>=1; set to 1.\n";
+        std::cout << "[Info] RSU-based attack scenario requires N_RSUs=1; set to 1.\n";
+    }
+    if (attack_scenario >= 9 && attack_scenario <= 12 && N_Vehicles < 4) {
+        N_Vehicles = 4;
+        std::cout << "[Warning] ME scenarios require N_Vehicles >= 4; set to 4.\n";
     }
 
     TVRC_InitLogs();

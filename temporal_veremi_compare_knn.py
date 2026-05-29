@@ -150,8 +150,17 @@ TYPE_NAMES = {
 # written by temporal_veremi_compare.cc
 # ─────────────────────────────────────────────────────────────
 FEATURE_COLS = [
-    "pos_x1", "pos_y1", "spd_x1", "spd_y1",
-    "pos_x2", "pos_y2", "spd_x2", "spd_y2",
+    # Absolute positions (pos_x1, pos_y1, pos_x2, pos_y2) are intentionally
+    # excluded here.  In Temporal-Echo attacks the attacker broadcasts correct
+    # GPS coordinates, so absolute positions carry no attack signal.  Including
+    # them causes temporal leakage: absolute coordinates encode simulation time
+    # (baseline BSMs = early simulation, attack BSMs = late simulation), which
+    # lets a classifier achieve MCC≈1 by learning time-as-label rather than
+    # detecting a genuine positional anomaly.  The 4 derived features below are
+    # all computed from position *differences* or velocity vectors and are
+    # therefore time-invariant.
+    "spd_x1", "spd_y1",
+    "spd_x2", "spd_y2",
     "time_interval",
     "vel_computed",
     "dir_change",
@@ -465,7 +474,9 @@ def print_grid_search_results(gs_results):
 def evaluate_holdout(df_combined, attack_type, classifiers, test_split):
     """
     70/30 holdout split evaluation for all 4 classifiers.
-    Operates on 13 features (9 base + 4 derived by engineer_features).
+    Operates on 9 features: 4 velocity components, time_interval, and 4 derived
+    kinematic features (vel_computed, dir_change, path_deviation, anomalous_pattern).
+    Absolute positions are excluded to avoid temporal leakage — see FEATURE_COLS.
     """
     missing = [c for c in FEATURE_COLS if c not in df_combined.columns]
     if missing:
@@ -558,7 +569,9 @@ def evaluate_holdout(df_combined, attack_type, classifiers, test_split):
 def evaluate_cv(df_combined, attack_type, classifiers, n_folds):
     """
     n-fold stratified cross-validation for all 4 classifiers.
-    Operates on 13 features (9 base + 4 derived by engineer_features).
+    Operates on 9 features: 4 velocity components, time_interval, and 4 derived
+    kinematic features (vel_computed, dir_change, path_deviation, anomalous_pattern).
+    Absolute positions are excluded to avoid temporal leakage — see FEATURE_COLS.
     """
     missing = [c for c in FEATURE_COLS if c not in df_combined.columns]
     if missing:
