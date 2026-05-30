@@ -153,11 +153,13 @@ public:
         : m_beaconInterval(0.1)
         , m_minBsms(8)
         , m_verbose(true)
+        , m_attackPercentage(0)
     {}
 
     void SetBeaconInterval(double sec)  { m_beaconInterval = sec; }
     void SetMinBsms(int n)              { m_minBsms = n; }
     void SetVerbose(bool v)             { m_verbose = v; }
+    void SetAttackPercentage(int pct)   { m_attackPercentage = pct; }
 
     // ── Step 1: Load BSM records ──────────────────────────────────────────────
     // Accepts any container whose elements are NpfadsBsmRecord-compatible.
@@ -229,6 +231,7 @@ private:
     double                         m_beaconInterval;
     int                            m_minBsms;
     bool                           m_verbose;
+    int                            m_attackPercentage;
 
     // ── Matrix type ───────────────────────────────────────────────────────────
     using Mat7 = std::array<std::array<double, 7>, 7>;
@@ -850,14 +853,16 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir,
     {
         std::ofstream f(outputDir + "/" + filePrefix + "NPFADS_PEM_Run_Summary.csv");
         f << std::fixed << std::setprecision(6);
-        f << "attack_type,n_attackers,n_benign,"
+        f << "attack_percentage,"
+             "attack_type,n_attackers,n_benign,"
              "TP,FP,FN,TN,"
              "precision,recall,f1,mcc,auroc,"
              "opt_threshold,"
              "rf_prec,rf_recall,rf_f1,"
              "uc_known,uc_fn,novel_detected,nasea,tdet_est_ms\n";
         for (const auto& m : m_metrics) {
-            f << m.attackType
+            f << m_attackPercentage
+              << "," << m.attackType
               << "," << m.nAttackers << "," << m.nBenign
               << "," << m.posVarTP   << "," << m.posVarFP
               << "," << m.posVarFN   << "," << m.posVarTN

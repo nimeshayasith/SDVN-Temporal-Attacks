@@ -1122,6 +1122,7 @@ RunNpfadsDetection()
     sol.SetBeaconInterval(0.1);
     sol.SetMinBsms(8);
     sol.SetVerbose(true);
+    sol.SetAttackPercentage((int)attack_percentage);
 
     sol.LoadBsmLog(g_routing_bsm_log);
     sol.RunFullPipeline();
