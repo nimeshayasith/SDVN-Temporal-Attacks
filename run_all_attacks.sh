@@ -56,7 +56,7 @@ FAILED=0
 declare -a FAILED_SCENARIOS=()
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
-LOGDIR="run_all_attacks_logs"
+LOGDIR="$HOME/ns-allinone-3.35/ns-3.35/run_all_attacks_logs"
 mkdir -p "$LOGDIR"
 MASTER_LOG="$LOGDIR/run_all_attacks_$(date +%Y%m%d_%H%M%S).log"
 

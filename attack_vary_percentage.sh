@@ -62,7 +62,7 @@ FAILED=0
 declare -a FAILED_LIST=()
 
 # ── Logging ───────────────────────────────────────────────────────────────────
-LOGDIR="vary_pct_logs"
+LOGDIR="$HOME/ns-allinone-3.35/ns-3.35/vary_pct_logs"
 mkdir -p "$LOGDIR"
 MASTER_LOG="$LOGDIR/vary_pct_$(date +%Y%m%d_%H%M%S).log"
 
