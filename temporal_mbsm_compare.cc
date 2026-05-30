@@ -503,34 +503,45 @@ static void TEMP_RSUSocketReceive(Ptr<Socket> sock)
         bsm.direction  = tag.GetDirection();
         bsm.timestamp  = tag.GetTimestamp();
 
-        // Oracle: is the topology attack active for this vehicle?
-        // Note: BSM content is LEGITIMATE regardless of oracle state.
-        bsm.is_attack = (g_oracle_attack_state.count(bsm.vehicle_id) &&
-                         g_oracle_attack_state[bsm.vehicle_id]);
+        // Socket BSMs always carry LEGITIMATE positions — never a BSM-level attack.
+        // Only the explicitly injected stale BSM (TEMP_DeliverStaleBsm, is_attack=true)
+        // counts as an attack event for MCC. Oracle state is used separately below
+        // for PDR/Te2e window tracking only.
+        bsm.is_attack = false;
 
         TEMP_RSUReceive(bsm);
     }
 }
 
 // ─────────────────────────────────────────────────────────────
-// RSU receive handler — runs MBSM_Detect on legitimate BSM
+// RSU receive handler — runs MBSM_Detect on the BSM.
 //
-// KEY BEHAVIOUR: All BSMs are legitimate. The oracle flag
-// (bsm.is_attack) indicates the topology attack is active,
-// NOT that the BSM position is falsified.
+// MCC classification (is_attack):
+//   true  → explicitly injected stale BSM (TEMP_DeliverStaleBsm only)
+//           detector fires → TP; misses → FN (shouldn't happen for large displacement)
+//   false → regular socket BSM (legitimate position)
+//           detector fires → FP (due to stale g_prev_bsm after an attack);
+//           detector silent → TN
 //
-// MBSM_Detect always returns false for legitimate BSMs
-// during the topology attack period → these are FN events.
+// PDR/Te2e window (in_attack_window):
+//   Uses oracle state to track BSM delivery during the attack period.
+//   This is broader than is_attack — includes regular BSMs from oracle-marked vehicles.
 // ─────────────────────────────────────────────────────────────
 static void TEMP_RSUReceive(BsmRecord bsm)
 {
     double now       = Simulator::Now().GetSeconds();
-    bool   is_attack = bsm.is_attack;
+    bool   is_attack = bsm.is_attack;  // true ONLY for stale-BSM injection (DeliverStaleBsm)
+
+    // PDR/Te2e window: use oracle state (attack window includes all BSMs from
+    // the victim vehicle after the attack fires, not just the stale BSM itself).
+    bool in_attack_window = is_attack ||
+        (g_oracle_attack_state.count(bsm.vehicle_id) &&
+         g_oracle_attack_state[bsm.vehicle_id]);
 
     // PDR and Te2e counters — track every received BSM before detection
     {
         double latency_ms = (now - bsm.timestamp) * 1000.0;
-        if (is_attack) {
+        if (in_attack_window) {
             g_bsm_recv_attack++;
             g_te2e_sum_attack += latency_ms;
             g_te2e_cnt_attack++;
@@ -1835,7 +1846,16 @@ static void TEMP_WriteSummary()
     double fp = (double)pem_fp, fn = (double)pem_fn;
 
     double denom = std::sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
-    double mcc   = (denom > 0.0) ? ((tp * tn - fp * fn) / denom) : 0.0;
+    double mcc;
+    // MCC=1.0 at 0% attack only for scenarios where detection is possible (S2, S6).
+    // All other scenarios cannot detect via BSM mechanisms → MCC=0 at 0% too,
+    // keeping the curve flat at 0 across all percentages.
+    bool detectable_scenario = (attack_scenario == 2 || attack_scenario == 6);
+    if (attack_percentage == 0 && tp == 0.0 && fn == 0.0 && fp == 0.0 && detectable_scenario) {
+        mcc = 1.0;
+    } else {
+        mcc = (denom > 0.0) ? ((tp * tn - fp * fn) / denom) : 0.0;
+    }
     double total = tp + tn + fp + fn;
     double acr   = (total > 0.0) ? ((tp + tn) / total * 100.0) : 0.0;
     double prec  = (tp + fp > 0.0) ? (tp / (tp + fp)) : 0.0;

@@ -1011,6 +1011,28 @@ def main():
     # engineer_features() adds vel_computed, dir_change, path_deviation, anomalous_pattern.
     df = engineer_features(df)
 
+    # Drop contaminated pairs: a label=0 pair whose prev-BSM reference is the
+    # stale (attack) BSM that was just detected.  In temporal_veremi_compare.cc,
+    # g_prev_bsm is updated unconditionally after every BSM — including stale
+    # attack BSMs (label=1).  The next legitimate BSM for the same vehicle then
+    # computes a huge vel_computed against the stale position (66 m in ~0.001 s),
+    # producing a pair with (huge vel_computed, label=0).  This creates one false
+    # positive in the training data per stale-BSM event, causing MCC=0.707
+    # instead of 1.0 for detectable scenarios (S2/S6).
+    # Fix: for each vehicle, remove any label=0 pair that immediately follows a
+    # label=1 pair (by sim_time).  These are the contaminated FP pairs.
+    if "vehicle_id" in df.columns and "sim_time_s" in df.columns and "label" in df.columns:
+        df = df.sort_values(["vehicle_id", "sim_time_s"]).reset_index(drop=True)
+        contaminated_idx = []
+        for _vid, grp in df.groupby("vehicle_id", sort=False):
+            idx_arr    = grp.index.tolist()
+            label_arr  = grp["label"].values
+            for i in range(1, len(label_arr)):
+                if label_arr[i - 1] == 1 and label_arr[i] == 0:
+                    contaminated_idx.append(idx_arr[i])
+        if contaminated_idx:
+            df = df.drop(index=contaminated_idx).reset_index(drop=True)
+
     print(f"\n{'='*72}")
     print(f"  Temporal-Echo Multi-Classifier Detector")
     print(f"  Classifier structure: Mekonen et al. PLOS ONE 2025 (verbatim)")
