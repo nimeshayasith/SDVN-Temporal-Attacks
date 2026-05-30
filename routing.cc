@@ -1126,14 +1126,13 @@ RunNpfadsDetection()
     sol.LoadBsmLog(g_routing_bsm_log);
     sol.RunFullPipeline();
 
-    // Write output CSVs into the same folder as the PEM run summary
-    std::string outPath = BuildScenarioCsvPath("PEM_RUN_SUMMARY", attack_scenario);
-    std::string outDir  = outPath;
-    size_t lastSlash = outDir.find_last_of("/\\");
-    if (lastSlash != std::string::npos)
-        outDir = outDir.substr(0, lastSlash);
+    // Each scenario gets its own sub-folder under NPFADS_RESULTS/
+    std::string scenarioName = GetScenarioOutputName(attack_scenario);
+    std::string outDir = GetOutputRootDir() + "/NPFADS_RESULTS/" + scenarioName;
+    std::system(("mkdir -p " + outDir).c_str());
 
-    sol.WriteOutputCsvs(outDir);
+    // Files are named: <scenarioName>_NPFADS_PEM_Run_Summary.csv etc.
+    sol.WriteOutputCsvs(outDir, scenarioName + "_");
     sol.PrintSummary();
 
     NS_LOG_UNCOND("[NPFADS] ====== NPFADS Detection Complete ======");

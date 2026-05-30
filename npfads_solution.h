@@ -209,7 +209,8 @@ public:
     }
 
     // ── Output ────────────────────────────────────────────────────────────────
-    void WriteOutputCsvs(const std::string& outputDir) const;
+    void WriteOutputCsvs(const std::string& outputDir,
+                         const std::string& filePrefix = "") const;
     void PrintSummary() const;
 
     // ── Accessors ─────────────────────────────────────────────────────────────
@@ -765,14 +766,15 @@ private:
 // =============================================================================
 // WriteOutputCsvs — Step 11: write all four output CSV files
 // =============================================================================
-inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir) const
+inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir,
+                                            const std::string& filePrefix) const
 {
     // Must compute metrics first (const_cast ok — metrics is a cache)
     const_cast<NpfadsSolution*>(this)->ComputeMetrics();
 
     // ── 1. Eigenvalue dataset ────────────────────────────────────────────────
     {
-        std::ofstream f(outputDir + "/npfads_sol_eigenvalues.csv");
+        std::ofstream f(outputDir + "/" + filePrefix + "NPFADS_Eigenvalues.csv");
         f << std::fixed << std::setprecision(6);
         f << "senderId,lambda1,lambda2,lambda3,lambda4,lambda5,lambda6,lambda7,"
              "posVar,sumLambda,attackType,n_bsms\n";
@@ -788,7 +790,7 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir) const
 
     // ── 2. Sender-level detection results ────────────────────────────────────
     {
-        std::ofstream f(outputDir + "/npfads_sol_sender_results.csv");
+        std::ofstream f(outputDir + "/" + filePrefix + "NPFADS_Sender_Results.csv");
         f << std::fixed << std::setprecision(6);
         f << "senderId,attackType,"
              "posVarScore,posVarAlert,"
@@ -812,7 +814,7 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir) const
 
     // ── 3. Per-attack-type metrics ────────────────────────────────────────────
     {
-        std::ofstream f(outputDir + "/npfads_sol_metrics.csv");
+        std::ofstream f(outputDir + "/" + filePrefix + "NPFADS_Metrics.csv");
         f << std::fixed << std::setprecision(6);
         f << "attack_type,n_attackers,n_benign,"
              // Mode A
@@ -846,7 +848,7 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir) const
 
     // ── 4. PEM-compatible summary (mirrors npfads_pem_summary.csv) ────────────
     {
-        std::ofstream f(outputDir + "/npfads_sol_pem_summary.csv");
+        std::ofstream f(outputDir + "/" + filePrefix + "NPFADS_PEM_Run_Summary.csv");
         f << std::fixed << std::setprecision(6);
         f << "attack_type,n_attackers,n_benign,"
              "TP,FP,FN,TN,"
@@ -877,11 +879,10 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir) const
 
     if (m_verbose)
         std::cout << "[NPFADS-SOL] Output CSVs written to: " << outputDir << "/\n"
-                  << "  npfads_sol_eigenvalues.csv    — eigenvalue features per sender\n"
-                  << "  npfads_sol_sender_results.csv — per-sender detection labels (A+B+C)\n"
-                  << "  npfads_sol_metrics.csv        — per-attack-type detection metrics\n"
-                  << "  npfads_sol_pem_summary.csv    — PEM-format summary (compare with\n"
-                  << "                                  pem_run_summary.csv from routing.cc)\n";
+                  << "  " << filePrefix << "NPFADS_Eigenvalues.csv    — eigenvalue features per sender\n"
+                  << "  " << filePrefix << "NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)\n"
+                  << "  " << filePrefix << "NPFADS_Metrics.csv        — per-attack-type detection metrics\n"
+                  << "  " << filePrefix << "NPFADS_PEM_Run_Summary.csv — PEM-format summary\n";
 }
 
 // =============================================================================
