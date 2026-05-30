@@ -852,7 +852,8 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir) const
              "TP,FP,FN,TN,"
              "precision,recall,f1,mcc,auroc,"
              "opt_threshold,"
-             "rf_f1,novel_detected,nasea,tdet_est_ms\n";
+             "rf_prec,rf_recall,rf_f1,"
+             "uc_known,uc_fn,novel_detected,nasea,tdet_est_ms\n";
         for (const auto& m : m_metrics) {
             f << m.attackType
               << "," << m.nAttackers << "," << m.nBenign
@@ -862,7 +863,11 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir) const
               << "," << m.posVarF1   << "," << m.posVarMcc
               << "," << m.posVarAuroc
               << "," << m.posVarThreshold
+              << "," << m.rfPrec
+              << "," << m.rfRecall
               << "," << m.rfF1
+              << "," << m.ucKnown
+              << "," << m.ucFnBsmd
               << "," << (int)m.novelDetected
               << "," << m.nasea
               << "," << std::setprecision(1) << m.tdetEstMs
