@@ -585,6 +585,40 @@ std::set<uint32_t> ttw_s1_false_positive_reporters;
 // these temporal attacks are invisible to position-based detection.
 static std::vector<NpfadsBsmRecord>        g_routing_bsm_log;
 static std::map<uint32_t, NpfadsBsmRecord> g_routing_last_bsm;
+
+static int
+NpfadsGroundTruthAttackTypeForVehicle(uint32_t vehicleIdx)
+{
+    // Use a temporal label range so TTW/BSHH/ME ground truth does not get
+    // confused with NPFADS position-attack IDs 1, 2, 4, 8, and 16.
+    const int temporalAttackLabel = 100 + static_cast<int>(attack_scenario);
+
+    if (attack_scenario >= TTW_S1_MAL_VEH_NO_RSU &&
+        attack_scenario <= TTW_S4_MAL_CTRL_WITH_RSU &&
+        vehicleIdx < ttw_malicious_nodes.size() &&
+        ttw_malicious_nodes[vehicleIdx])
+    {
+        return temporalAttackLabel;
+    }
+
+    if (attack_scenario >= BSHH_S1_MAL_VEH_NO_RSU &&
+        attack_scenario <= BSHH_S4_MAL_CTRL_WITH_RSU &&
+        vehicleIdx < bshh_malicious_nodes.size() &&
+        bshh_malicious_nodes[vehicleIdx])
+    {
+        return temporalAttackLabel;
+    }
+
+    if (attack_scenario >= ME_S1_MAL_VEH_NO_RSU &&
+        attack_scenario <= ME_S4_MAL_CTRL_WITH_RSU &&
+        vehicleIdx < me_malicious_nodes.size() &&
+        me_malicious_nodes[vehicleIdx])
+    {
+        return temporalAttackLabel;
+    }
+
+    return NPFADS_BENIGN;
+}
 // ── End NPFADS globals ──────────────────────────────────────────────────────
 
 extern double current_packet_delivery_ratio;
@@ -1033,7 +1067,7 @@ NpfadsPeriodicLog()
         rec.ySpd       = vel.y;
         rec.trueXPos   = pos.x;
         rec.trueYPos   = pos.y;
-        rec.attackType = 0;   // NPFADS_BENIGN: temporal attacks never touch GPS
+        rec.attackType = NpfadsGroundTruthAttackTypeForVehicle(i);
 
         auto it = g_routing_last_bsm.find(i);
         if (it != g_routing_last_bsm.end())
@@ -1638,7 +1672,7 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
     // is captured regardless of range. NPFADS needs the full trajectory of
     // each vehicle to build its mobility matrix (min 8 BSMs per sender).
     // TTW/BSHH/ME do NOT falsify position → xPos == trueXPos always.
-    // attackType = 0 (NPFADS_BENIGN): temporal attacks don't touch GPS.
+    // attackType records only ground truth, using temporal labels 100+scenario.
     {
         Vector senderVel = senderMobility->GetVelocity();
         double now_s     = Simulator::Now().GetSeconds();
@@ -1652,7 +1686,7 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
         rec.ySpd       = senderVel.y;
         rec.trueXPos   = senderPosition.x;
         rec.trueYPos   = senderPosition.y;
-        rec.attackType = 0;
+        rec.attackType = NpfadsGroundTruthAttackTypeForVehicle(senderId);
 
         auto it = g_routing_last_bsm.find(senderId);
         if (it != g_routing_last_bsm.end())

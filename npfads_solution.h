@@ -560,6 +560,12 @@ private:
         std::set<int> attackTypes;
         for (const auto& sr : m_senderResults)
             if (sr.attackType != NPFADS_BENIGN) attackTypes.insert(sr.attackType);
+        if (attackTypes.empty() && !m_senderResults.empty())
+        {
+            // Baseline / unsupported temporal-source case: still emit one row
+            // so summary CSVs do not look empty in spreadsheet tools.
+            attackTypes.insert(NPFADS_BENIGN);
+        }
 
         // Known classes (for UC_known baseline) = Types 1 and 2
         std::vector<const NpfadsSenderResult*> knownAttackPtrs;
@@ -578,7 +584,8 @@ private:
         for (int atype : attackTypes) {
             std::vector<const NpfadsSenderResult*> atkPtrs;
             for (const auto& sr : m_senderResults)
-                if (sr.attackType == atype) atkPtrs.push_back(&sr);
+                if (atype != NPFADS_BENIGN && sr.attackType == atype)
+                    atkPtrs.push_back(&sr);
 
             NpfadsMetrics m;
             m.attackType = atype;
