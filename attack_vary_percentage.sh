@@ -36,6 +36,24 @@ done
 # ── Attack percentage sweep ───────────────────────────────────────────────────
 PERCENTAGES=(0 10 20 30 40 50 60 70 80 90 100)
 
+# ── Scenario name map — must match GetScenarioOutputName() in routing.cc ─────
+# Index matches the attack_scenario integer (1–12).
+declare -a SCENARIO_NAMES=(
+    ""                                         # 0 — unused
+    "01_TTW_S1_Malicious_Vehicle"
+    "02_TTW_S2_Malicious_RSU"
+    "03_TTW_S3_Malicious_Controller_No_RSU"
+    "04_TTW_S4_Malicious_Controller_With_RSU"
+    "05_BSHH_S1_Malicious_Vehicle"
+    "06_BSHH_S2_Malicious_RSU"
+    "07_BSHH_S3_Malicious_Controller_No_RSU"
+    "08_BSHH_S4_Malicious_Controller_With_RSU"
+    "09_ME_S1_Malicious_Vehicles"
+    "10_ME_S2_Malicious_RSU"
+    "11_ME_S3_Malicious_Controller_No_RSU"
+    "12_ME_S4_Malicious_Controller_With_RSU"
+)
+
 # ── Scenario table ────────────────────────────────────────────────────────────
 # Format: "SCENARIO  simTime  N_Vehicles  N_RSUs  LABEL"
 declare -a SCENARIOS=(
@@ -145,5 +163,50 @@ log "║    PEM_RUN_SUMMARY/<scenario>.csv"
 log "║    NPFADS_RESULTS/<scenario>/<scenario>_NPFADS_PEM_Run_Summary.csv"
 log "║  Full log: $MASTER_LOG"
 log "╚══════════════════════════════════════════════════════════════════╝"
+
+# ── Merge all per-scenario NPFADS PEM summaries into one file ────────────────
+NPFADS_DIR="$HOME/ns-allinone-3.35/ns-3.35/NPFADS_RESULTS"
+ALL_CSV="$NPFADS_DIR/ALL_NPFADS_PEM_Run_Summary.csv"
+HEADER_WRITTEN=0
+
+log ""
+log "╔══════════════════════════════════════════════════════════════════╗"
+log "║          Merging per-scenario CSVs → ALL_NPFADS_PEM_Run_Summary ║"
+log "╚══════════════════════════════════════════════════════════════════╝"
+
+# Remove any stale combined file from a previous run
+rm -f "$ALL_CSV"
+
+for entry in "${SCENARIOS[@]}"; do
+    read -r SCENARIO simTime N_Vehicles N_RSUs LABEL <<< "$entry"
+    SCEN_NAME="${SCENARIO_NAMES[$SCENARIO]}"
+    CSV_FILE="$NPFADS_DIR/${SCEN_NAME}/${SCEN_NAME}_NPFADS_PEM_Run_Summary.csv"
+
+    if [ -f "$CSV_FILE" ]; then
+        if [ "$HEADER_WRITTEN" -eq 0 ]; then
+            # Write header once, prefixed with two extra columns
+            echo "attack_scenario,scenario_name,$(head -1 "$CSV_FILE")" > "$ALL_CSV"
+            HEADER_WRITTEN=1
+        fi
+        # Append data rows (skip the header line of each per-scenario file)
+        tail -n +2 "$CSV_FILE" | while IFS= read -r line; do
+            [ -n "$line" ] && echo "${SCENARIO},${SCEN_NAME},${line}" >> "$ALL_CSV"
+        done
+        log "  ✔  Merged Scenario $SCENARIO — $SCEN_NAME"
+    else
+        log "  ✘  Not found (scenario $SCENARIO may have failed): $CSV_FILE"
+    fi
+done
+
+if [ -f "$ALL_CSV" ]; then
+    ROW_COUNT=$(( $(wc -l < "$ALL_CSV") - 1 ))
+    log ""
+    log "  Done. $ROW_COUNT data rows written to:"
+    log "  $ALL_CSV"
+else
+    log ""
+    log "  No NPFADS CSVs found — ALL_NPFADS_PEM_Run_Summary.csv was NOT created."
+fi
+log ""
 
 [ $FAILED -eq 0 ] && exit 0 || exit 1
