@@ -851,15 +851,19 @@ inline void NpfadsSolution::WriteOutputCsvs(const std::string& outputDir,
 
     // ── 4. PEM-compatible summary (mirrors npfads_pem_summary.csv) ────────────
     {
-        std::ofstream f(outputDir + "/" + filePrefix + "NPFADS_PEM_Run_Summary.csv");
+        std::string summaryPath = outputDir + "/" + filePrefix + "NPFADS_PEM_Run_Summary.csv";
+        bool isNew = !std::ifstream(summaryPath).good();
+        std::ofstream f(summaryPath, std::ios::app);
         f << std::fixed << std::setprecision(6);
-        f << "attack_percentage,"
-             "attack_type,n_attackers,n_benign,"
-             "TP,FP,FN,TN,"
-             "precision,recall,f1,mcc,auroc,"
-             "opt_threshold,"
-             "rf_prec,rf_recall,rf_f1,"
-             "uc_known,uc_fn,novel_detected,nasea,tdet_est_ms\n";
+        if (isNew) {
+            f << "attack_percentage,"
+                 "attack_type,n_attackers,n_benign,"
+                 "TP,FP,FN,TN,"
+                 "precision,recall,f1,mcc,auroc,"
+                 "opt_threshold,"
+                 "rf_prec,rf_recall,rf_f1,"
+                 "uc_known,uc_fn,novel_detected,nasea,tdet_est_ms\n";
+        }
         for (const auto& m : m_metrics) {
             f << m_attackPercentage
               << "," << m.attackType

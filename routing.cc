@@ -146628,8 +146628,12 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           if (me_malicious_nodes[k]) s2_phantom_cidx.push_back(k);
           else                       s2_real_cidx.push_back(k);
       }
+      while (s2_real_cidx.size() < 2 && !s2_phantom_cidx.empty()) {
+          s2_real_cidx.push_back(s2_phantom_cidx.front());
+          s2_phantom_cidx.erase(s2_phantom_cidx.begin());
+      }
       if (s2_real_cidx.size() < 2) {
-          std::cout << "[ERROR] ME-S2 needs at least 2 non-malicious vehicles for real link pair.\n";
+          std::cout << "[ERROR] ME-S2: insufficient vehicles.\n";
           return 1;
       }
       if (s2_phantom_cidx.size() < 2) {
@@ -146712,8 +146716,12 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           if (me_malicious_nodes[k]) s3_phantom_cidx.push_back(k);
           else                       s3_real_cidx.push_back(k);
       }
+      while (s3_real_cidx.size() < 2 && !s3_phantom_cidx.empty()) {
+          s3_real_cidx.push_back(s3_phantom_cidx.front());
+          s3_phantom_cidx.erase(s3_phantom_cidx.begin());
+      }
       if (s3_real_cidx.size() < 2) {
-          std::cout << "[ERROR] ME-S3 needs at least 2 non-malicious vehicles for real link pair.\n";
+          std::cout << "[ERROR] ME-S3: insufficient vehicles.\n";
           return 1;
       }
       if (s3_phantom_cidx.size() < 2) {
@@ -146796,8 +146804,12 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           if (me_malicious_nodes[k]) s4_phantom_cidx.push_back(k);
           else                       s4_real_cidx.push_back(k);
       }
+      while (s4_real_cidx.size() < 2 && !s4_phantom_cidx.empty()) {
+          s4_real_cidx.push_back(s4_phantom_cidx.front());
+          s4_phantom_cidx.erase(s4_phantom_cidx.begin());
+      }
       if (s4_real_cidx.size() < 2) {
-          std::cout << "[ERROR] ME-S4 needs at least 2 non-malicious vehicles for real link pair.\n";
+          std::cout << "[ERROR] ME-S4: insufficient vehicles.\n";
           return 1;
       }
       if (s4_phantom_cidx.size() < 2) {
