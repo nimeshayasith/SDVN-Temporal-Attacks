@@ -633,11 +633,12 @@ private:
                     double dx=rocPts[ri].first-rocPts[ri-1].first;
                     auroc += dx*(rocPts[ri].second+rocPts[ri-1].second)*0.5;
                 }
-                double mcc=0;
+                double mcc = std::numeric_limits<double>::quiet_NaN();
                 {
                     double d=std::sqrt((double)(bestTP+bestFP)*(double)(bestTP+bestFN)*
                                        (double)(bestTN+bestFP)*(double)(bestTN+bestFN));
                     if (d>0) mcc=((double)bestTP*(double)bestTN-(double)bestFP*(double)bestFN)/d;
+                    // d==0 means one class is entirely absent → MCC undefined → keep NaN
                 }
 
                 m.posVarTP=bestTP; m.posVarFP=bestFP;
