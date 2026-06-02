@@ -1,0 +1,4 @@
+scenario_id,family,placement,packet_type,obu_id,rsu_id,payload,timestamp_ms,nonce_prefix,filter_result,filter_reason,hmac_status
+1,TTW,S1 Malicious Vehicle (No RSU),LEGITIMATE,0,10,topology:V0seesV1:t=10,1780388668241,2149ac91c2ba5533...,ACCEPTED,ALL_CHECKS_PASSED,VALID
+1,TTW,S1 Malicious Vehicle (No RSU),ATTACK_STALE_REPLAY,0,10,topology:V0seesV1:t=10(replayed_stale),1780388660241,2149ac91c2ba5533...,REJECTED,STALE_TIMESTAMP — TTW attack blocked,NOT_CHECKED
+1,TTW,S1 Malicious Vehicle (No RSU),ATTACK_FORGED_TS,0,10,topology:V0seesV1:t=20(ts_forged_no_rekey),1780388668242,3d2b05b7cc660309...,REJECTED,HMAC_FAIL,INVALID
