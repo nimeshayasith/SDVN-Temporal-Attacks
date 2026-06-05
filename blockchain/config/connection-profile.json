@@ -1,0 +1,142 @@
+{
+  "name": "teta-guard-network",
+  "version": "1.0.0",
+  "client": {
+    "organization": "TetagaurdOrg",
+    "connection": {
+      "timeout": {
+        "peer": { "endorser": "300" },
+        "orderer": "300"
+      }
+    }
+  },
+  "channels": {
+    "teta-channel": {
+      "orderers": ["orderer.tetaguard.net"],
+      "peers": {
+        "peer0.rsu1.tetaguard.net": {
+          "endorsingPeer": true,
+          "chaincodeQuery": true,
+          "ledgerQuery": true,
+          "eventSource": true
+        },
+        "peer0.rsu2.tetaguard.net": {
+          "endorsingPeer": true,
+          "chaincodeQuery": false,
+          "ledgerQuery": false,
+          "eventSource": false
+        },
+        "peer0.rsu3.tetaguard.net": {
+          "endorsingPeer": true,
+          "chaincodeQuery": false,
+          "ledgerQuery": false,
+          "eventSource": false
+        },
+        "peer0.rsu4.tetaguard.net": {
+          "endorsingPeer": true,
+          "chaincodeQuery": false,
+          "ledgerQuery": false,
+          "eventSource": false
+        },
+        "peer0.rsu5.tetaguard.net": {
+          "endorsingPeer": true,
+          "chaincodeQuery": false,
+          "ledgerQuery": false,
+          "eventSource": false
+        }
+      }
+    }
+  },
+  "organizations": {
+    "TetagaurdOrg": {
+      "mspid": "TetagaurdMSP",
+      "peers": [
+        "peer0.rsu1.tetaguard.net",
+        "peer0.rsu2.tetaguard.net",
+        "peer0.rsu3.tetaguard.net",
+        "peer0.rsu4.tetaguard.net",
+        "peer0.rsu5.tetaguard.net"
+      ],
+      "certificateAuthorities": ["ca.tetaguard.net"],
+      "adminPrivateKey": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/users/Admin@tetaguard.net/msp/keystore/priv_sk"
+      },
+      "signedCert": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/users/Admin@tetaguard.net/msp/signcerts/cert.pem"
+      }
+    }
+  },
+  "orderers": {
+    "orderer.tetaguard.net": {
+      "url": "grpcs://orderer.tetaguard.net:7050",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/ordererOrganizations/orderer.tetaguard.net/tlsca/tlsca.tetaguard.net-cert.pem"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "orderer.tetaguard.net",
+        "hostnameOverride": "orderer.tetaguard.net"
+      }
+    }
+  },
+  "peers": {
+    "peer0.rsu1.tetaguard.net": {
+      "url": "grpcs://peer0.rsu1.tetaguard.net:7051",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu1.tetaguard.net/tls/ca.crt"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.rsu1.tetaguard.net",
+        "hostnameOverride": "peer0.rsu1.tetaguard.net"
+      }
+    },
+    "peer0.rsu2.tetaguard.net": {
+      "url": "grpcs://peer0.rsu2.tetaguard.net:7052",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu2.tetaguard.net/tls/ca.crt"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.rsu2.tetaguard.net"
+      }
+    },
+    "peer0.rsu3.tetaguard.net": {
+      "url": "grpcs://peer0.rsu3.tetaguard.net:7053",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu3.tetaguard.net/tls/ca.crt"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.rsu3.tetaguard.net"
+      }
+    },
+    "peer0.rsu4.tetaguard.net": {
+      "url": "grpcs://peer0.rsu4.tetaguard.net:7054",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu4.tetaguard.net/tls/ca.crt"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.rsu4.tetaguard.net"
+      }
+    },
+    "peer0.rsu5.tetaguard.net": {
+      "url": "grpcs://peer0.rsu5.tetaguard.net:7055",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu5.tetaguard.net/tls/ca.crt"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.rsu5.tetaguard.net"
+      }
+    }
+  },
+  "certificateAuthorities": {
+    "ca.tetaguard.net": {
+      "url": "https://ca.tetaguard.net:7054",
+      "caName": "ca.tetaguard.net",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/ca/ca.tetaguard.net-cert.pem"
+      },
+      "registrar": {
+        "enrollId": "admin",
+        "enrollSecret": "adminpw"
+      }
+    }
+  }
+}

@@ -142739,8 +142739,12 @@ double inv_factorial(long int n)
 }
 
 
+#ifndef ROUTING_CC_AS_HEADER
 int main(int argc, char *argv[])
-{        
+#else
+static int RoutingMain(int argc, char *argv[])
+#endif
+{
     initialize_empty();
     nodeid_sum();   
     

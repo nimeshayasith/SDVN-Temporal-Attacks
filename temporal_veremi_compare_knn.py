@@ -592,9 +592,12 @@ def evaluate_holdout(df_combined, attack_type, classifiers, test_split):
         cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
         tn, fp, fn, tp = cm.ravel()
 
-        # MCC = 0 when TP=0 (no attack detected) — expected for Temporal-Echo attacks.
-        # matthews_corrcoef handles the degenerate case (no positive predictions) safely.
-        mcc = float(matthews_corrcoef(y_test, y_pred))
+        # MCC with epsilon-stabilised denominator (consistent with C++ files):
+        # numerator=0 when tp=fp=fn=0 → MCC=0 (eliminates artificial MCC=1 at 0% attack).
+        _tp, _tn, _fp, _fn = float(tp), float(tn), float(fp), float(fn)
+        _eps = 1e-9
+        _d = ((_tp+_fp+_eps)*(_tp+_fn+_eps)*(_tn+_fp+_eps)*(_tn+_fn+_eps))**0.5
+        mcc = (_tp*_tn - _fp*_fn) / _d
 
         # AUROC from predict_proba — expected ≈ 0.500 (random) since the 9 BSM
         # position features carry no discriminating signal for Temporal-Echo attacks.

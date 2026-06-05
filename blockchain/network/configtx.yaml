@@ -1,0 +1,145 @@
+# configtx.yaml — Fabric channel and endorsement policy for TETA-Guard
+#
+# PBFT-equivalent endorsement: MAJORITY of TetagaurdOrg RSU peers must endorse.
+# For n=5 peers this requires 3 endorsements, tolerating 1 Byzantine peer
+# (⌊(5-1)/3⌋ = 1) which satisfies the paper's PBFT requirement (§7).
+#
+# Generate genesis block and channel tx:
+#   export FABRIC_CFG_PATH=./
+#   configtxgen -profile TetaGuardGenesis -channelID system-channel \
+#               -outputBlock ./channel-artifacts/genesis.block
+#   configtxgen -profile TetaChannel -channelID teta-channel \
+#               -outputCreateChannelTx ./channel-artifacts/teta-channel.tx
+
+Organizations:
+  - &OrdererOrg
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &TetagaurdOrg
+    Name: TetagaurdMSP
+    ID: TetagaurdMSP
+    MSPDir: ./crypto-config/peerOrganizations/tetaguard.net/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('TetagaurdMSP.admin', 'TetagaurdMSP.peer', 'TetagaurdMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('TetagaurdMSP.admin', 'TetagaurdMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('TetagaurdMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('TetagaurdMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.rsu1.tetaguard.net
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      # PBFT equivalent: ⌊(5-1)/3⌋ = 1 Byzantine fault tolerance
+      # MAJORITY of 5 RSU peers = 3 endorsements required
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  # BFT (SmartBFT) for PBFT tolerance — requires Fabric 3.0+
+  # For Fabric 2.x: change to OrdererType: etcdraft
+  OrdererType: BFT
+  Addresses:
+    - orderer.tetaguard.net:7050
+  BatchTimeout: 50ms   # must fit within 100 ms beacon budget
+  BatchSize:
+    MaxMessageCount: 100
+    AbsoluteMaxBytes: 10 MB
+    PreferredMaxBytes: 2 MB
+  BFTMetadata:
+    ConsensusMetadata: ""
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  TetaGuardGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+    Consortiums:
+      TetaConsortium:
+        Organizations:
+          - *TetagaurdOrg
+
+  TetaChannel:
+    Consortium: TetaConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *TetagaurdOrg
+      Capabilities:
+        <<: *ApplicationCapabilities
