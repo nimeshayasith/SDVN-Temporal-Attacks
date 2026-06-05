@@ -45,6 +45,7 @@
 #include <iomanip>
 #include <limits.h>
 #include <bits/stdc++.h>
+#include <cstring>
 
 using namespace std;
 using namespace ns3;
@@ -117009,7 +117010,8 @@ void read_csv()
         getline(fin, line);
         int n = line.length();
         char line_char[n+1];
-        strcpy(line_char,line.c_str());
+        strncpy(line_char,line.c_str(),n);
+        line_char[n] = '\0';
         //cout<<line<<endl;
         int int_val;
         char * ptr;
@@ -146665,6 +146667,27 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
   // ── Restore cout and flush terminal log ──────────────────────────────────
   std::cout.rdbuf(orig_cout_buf);
   terminal_log_file.close();
+
+  // ── Auto-trigger PQ Crypto Pre-Filter ────────────────────────────────────
+  // Runs automatically for every attack scenario (scenario > 0).
+  // Calls ns3_pq_attack_bridge.py with the same scenario id so the crypto
+  // filter accepts/rejects the beacons from THIS exact NS-3 run.
+  if (attack_scenario > 0) {
+    std::cout << "\n============================================================\n"
+              << "  PQ CRYPTO PRE-FILTER — auto-triggered for scenario "
+              << attack_scenario << "\n"
+              << "============================================================\n"
+              << std::flush;
+    std::string pq_cmd =
+        "python3 -B /home/nimesha/ns-allinone-3.35/ns-3.35/"
+        "ns3_pq_attack_bridge.py attack_scenario=" +
+        std::to_string(attack_scenario);
+    int ret = system(pq_cmd.c_str());
+    if (ret != 0) {
+      std::cerr << "[PQ Filter] WARNING: bridge script exited with code "
+                << ret << "\n";
+    }
+  }
 
   return 0;
 }
