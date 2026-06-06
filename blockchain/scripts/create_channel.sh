@@ -17,7 +17,7 @@ ORDERER="orderer.tetaguard.net:7050"
 ORDERER_CA="$NETWORK_DIR/crypto-config/ordererOrganizations/orderer.tetaguard.net/tlsca/tlsca.tetaguard.net-cert.pem"
 PEER_MSP_DIR="$NETWORK_DIR/crypto-config/peerOrganizations/tetaguard.net"
 ADMIN_MSP="$PEER_MSP_DIR/users/Admin@tetaguard.net/msp"
-MSPID="TetagaurdMSP"
+MSPID="TetaGuardMSP"
 
 RSU_PEERS=(
     "peer0.rsu1.tetaguard.net:7051"
@@ -72,7 +72,7 @@ log "Updating anchor peer"
 env $(peer_env "${RSU_PEERS[0]}") \
 peer channel update \
     -o "$ORDERER" -c "$CHANNEL" \
-    -f "$NETWORK_DIR/channel-artifacts/TetagaurdMSPanchors.tx" \
+    -f "$NETWORK_DIR/channel-artifacts/TetaGuardMSPanchors.tx" \
     --tls --cafile "$ORDERER_CA" 2>/dev/null || true
 
 log "create_channel.sh complete"

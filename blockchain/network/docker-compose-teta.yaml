@@ -166,7 +166,7 @@ services:
       CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
       CORE_PEER_GOSSIP_BOOTSTRAP: peer0.rsu2.tetaguard.net:7052
       CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.rsu1.tetaguard.net:7051
-      CORE_PEER_LOCALMSPID: TetagaurdMSP
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
       CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
       CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
       CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
@@ -197,7 +197,7 @@ services:
       CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7053
       CORE_PEER_GOSSIP_BOOTSTRAP: peer0.rsu1.tetaguard.net:7051
       CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.rsu2.tetaguard.net:7052
-      CORE_PEER_LOCALMSPID: TetagaurdMSP
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
       CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
       CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
       CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
@@ -228,7 +228,7 @@ services:
       CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7054
       CORE_PEER_GOSSIP_BOOTSTRAP: peer0.rsu1.tetaguard.net:7051
       CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.rsu3.tetaguard.net:7053
-      CORE_PEER_LOCALMSPID: TetagaurdMSP
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
       CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
       CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
       CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
@@ -259,7 +259,7 @@ services:
       CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7055
       CORE_PEER_GOSSIP_BOOTSTRAP: peer0.rsu1.tetaguard.net:7051
       CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.rsu4.tetaguard.net:7054
-      CORE_PEER_LOCALMSPID: TetagaurdMSP
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
       CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
       CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
       CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
@@ -290,7 +290,7 @@ services:
       CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7056
       CORE_PEER_GOSSIP_BOOTSTRAP: peer0.rsu1.tetaguard.net:7051
       CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.rsu5.tetaguard.net:7055
-      CORE_PEER_LOCALMSPID: TetagaurdMSP
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
       CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
       CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
       CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt

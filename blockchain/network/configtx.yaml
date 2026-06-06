@@ -1,6 +1,6 @@
 # configtx.yaml — Fabric channel and endorsement policy for TETA-Guard
 #
-# PBFT-equivalent endorsement: MAJORITY of TetagaurdOrg RSU peers must endorse.
+# PBFT-equivalent endorsement: MAJORITY of TetaGuardOrg RSU peers must endorse.
 # For n=5 peers this requires 3 endorsements, tolerating 1 Byzantine peer
 # (⌊(5-1)/3⌋ = 1) which satisfies the paper's PBFT requirement (§7).
 #
@@ -27,23 +27,23 @@ Organizations:
         Type: Signature
         Rule: "OR('OrdererMSP.admin')"
 
-  - &TetagaurdOrg
-    Name: TetagaurdMSP
-    ID: TetagaurdMSP
+  - &TetaGuardOrg
+    Name: TetaGuardMSP
+    ID: TetaGuardMSP
     MSPDir: ./crypto-config/peerOrganizations/tetaguard.net/msp
     Policies:
       Readers:
         Type: Signature
-        Rule: "OR('TetagaurdMSP.admin', 'TetagaurdMSP.peer', 'TetagaurdMSP.client')"
+        Rule: "OR('TetaGuardMSP.admin', 'TetaGuardMSP.peer', 'TetaGuardMSP.client')"
       Writers:
         Type: Signature
-        Rule: "OR('TetagaurdMSP.admin', 'TetagaurdMSP.client')"
+        Rule: "OR('TetaGuardMSP.admin', 'TetaGuardMSP.client')"
       Admins:
         Type: Signature
-        Rule: "OR('TetagaurdMSP.admin')"
+        Rule: "OR('TetaGuardMSP.admin')"
       Endorsement:
         Type: Signature
-        Rule: "OR('TetagaurdMSP.peer')"
+        Rule: "OR('TetaGuardMSP.peer')"
     AnchorPeers:
       - Host: peer0.rsu1.tetaguard.net
         Port: 7051
@@ -132,7 +132,7 @@ Profiles:
     Consortiums:
       TetaConsortium:
         Organizations:
-          - *TetagaurdOrg
+          - *TetaGuardOrg
 
   TetaChannel:
     Consortium: TetaConsortium
@@ -140,6 +140,6 @@ Profiles:
     Application:
       <<: *ApplicationDefaults
       Organizations:
-        - *TetagaurdOrg
+        - *TetaGuardOrg
       Capabilities:
         <<: *ApplicationCapabilities

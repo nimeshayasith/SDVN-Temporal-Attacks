@@ -58,8 +58,44 @@ async function submitToFabric(
 ) {
     const gateway = new Gateway();
     try {
+        // ── Pre-flight: verify required files exist before Fabric SDK init ───
+        // The SDK throws an unhandled exception on missing certs, so check first.
+        if (!fs.existsSync(CONN_PROFILE)) {
+            throw new Error(
+                `Connection profile not found: ${CONN_PROFILE}\n` +
+                '  Run scripts/bootstrap.sh to generate crypto material and profiles.'
+            );
+        }
+
+        // Check that the admin cert and private key referenced in the profile exist
+        const connProfileRaw = JSON.parse(fs.readFileSync(CONN_PROFILE, 'utf8'));
+        const org = connProfileRaw.organizations && connProfileRaw.organizations['TetaGuardMSP'];
+        if (org && org.adminPrivateKey && org.adminPrivateKey.path) {
+            if (!fs.existsSync(org.adminPrivateKey.path)) {
+                throw new Error(
+                    `Admin private key not found: ${org.adminPrivateKey.path}\n` +
+                    '  Run scripts/bootstrap.sh first to generate crypto-config.'
+                );
+            }
+        }
+        if (org && org.signedCert && org.signedCert.path) {
+            if (!fs.existsSync(org.signedCert.path)) {
+                throw new Error(
+                    `Admin signed cert not found: ${org.signedCert.path}\n` +
+                    '  Run scripts/bootstrap.sh first to generate crypto-config.'
+                );
+            }
+        }
+
+        if (!fs.existsSync(WALLET_PATH)) {
+            throw new Error(
+                `Wallet directory not found: ${WALLET_PATH}\n` +
+                '  Run scripts/bootstrap.sh to enrol peer identities into the wallet.'
+            );
+        }
+
         // ── Connect to Fabric network ────────────────────────────────────────
-        const connProfile = JSON.parse(fs.readFileSync(CONN_PROFILE, 'utf8'));
+        const connProfile = connProfileRaw;
         const wallet      = await Wallets.newFileSystemWallet(WALLET_PATH);
         const identity    = await wallet.get(trustedNodeID);
 
@@ -118,20 +154,6 @@ async function submitToFabric(
 
         // ── Flow 2 + SubmitAlert: submit each detection event ─────────────────
         for (const alert of alertSet) {
-            // Build DetectionEvent for Flow 2 store
-            const detEvent = {
-                peer_id:        trustedNodeID,
-                vehicle_id:     alert.v_id,
-                attack_variant: alert.alpha,
-                anomaly_score:  alert.y_hat,
-                triggered_sigs: sTrigsToMask(alert.S_trig),
-                alert_ts_ms:    alert.t_alert,
-                from_lw_path:   alert.from_lw_path || false,
-                from_fs_path:   true,
-                peer_sig:       signWithDilithium2(trustedNodeID, JSON.stringify(alert)),
-                doc_type:       'DETECTION_EVENT'
-            };
-
             // SubmitAlert wraps Flow 2 + Algorithm 4 in a single transaction
             const ctrlTopoStr = ctrlTopo ? JSON.stringify(ctrlTopo) : '{}';
             await contract.submitTransaction(

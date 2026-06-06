@@ -247,6 +247,40 @@ double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays   (overridable via --
 static const double TTW_DETECTION_DELAY_MS = 50.0; // PEM fires 50ms after replay
 
 // ─────────────────────────────────────────────────────────────────────────────
+// §3.4.1 — TEMPORAL-ECHO ATTACK FORMALIZATION
+//
+// Formal attack triple (paper §3.4.1):
+//   A = (G_t, T, E)
+//   G_t — graph snapshot at time t (see TGN Eq. 3.18)
+//   T   — timestamp manipulation matrix: T[i][j] = forged timestamp for link eij
+//   E   — echo operation matrix: E[i][j] = 1 if link eij is echoed by a false reporter
+//
+// Topology divergence metric (Eq. 3.1):
+//   delta(G_t^C, G_t^R) = |E_t^C  △  E_t^R|  > 0
+//   G_t^C — controller's belief about topology at time t
+//   G_t^R — RSU-observed ground truth at time t
+//   delta > 0 => controller has been successfully deceived
+//
+// The three attack families map to this triple as:
+//   TTW  — manipulates T: replays valid eij with forged t' > t_break
+//   BSHH — manipulates G_t^C liveness table: replays old heartbeat for Vx
+//   ME   — manipulates E: injects false reporters for a real link eij
+// ─────────────────────────────────────────────────────────────────────────────
+
+// T matrix: forged timestamps injected per link. Key = "srcId_seenId".
+// Set by TTW replay functions; read by PemEvaluateEvent for TTW-S1/S2/S3.
+std::map<std::string, double> attack_T_matrix;
+
+// E matrix: echo injection flags per link. Key = "srcId_seenId_reporterId".
+// Set by ME echo functions; read by PemEvaluateEvent for ME-S1/S2/S3.
+std::set<std::string> attack_E_matrix;
+
+// Topology divergence counter delta = |E_t^C △ E_t^R| (Eq. 3.1).
+// Incremented each time a forged entry is accepted into ttw_controller_table
+// or bshh_controller_liveness_table; decremented on mitigation removal.
+uint32_t topology_divergence_delta = 0;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TTW TOPOLOGY PACKET STRUCT
 // ERROR 5 FIX: you had TWO different structs (StoredPacket + TopologyPacket
 // from the implementation file). Merge into ONE struct used everywhere.
@@ -481,10 +515,29 @@ static const double PEM_RSSI_MIN_DBM    = PEM_RSSI_REF_DBM
 // TTW (S0,S1,S2): timestamp/topology persistence evidence, highest weight
 // BSHH (S3,S4,S5): identity/heartbeat anomaly, mid weight
 // ME (S6,S7,S8): topology-density anomaly, lower weight
+//
+// ⚠ RECALIBRATION REQUIRED AFTER Eq. 3.33 FIX:
+//   PemComputeRhoMaxForLink() was previously using a 2D disk area model
+//   (λ·π·rcomm²) instead of the paper's 1D road-segment model (2·rcomm·λ).
+//   The old model gave ρ_max ≈ 471× larger than the corrected formula,
+//   making ME-S1 (triggered[6]) almost never fire.
+//   Now that the formula is correct, ME-S1 fires far more easily.
+//
+//   The ME signature weights below (0.10, 0.075, 0.075) and the score
+//   threshold (PEM_SCORE_THRESHOLD = 0.12) were calibrated against the
+//   OLD broken formula. With the corrected formula, ME false-positive rates
+//   may be elevated until these weights are re-tuned on new simulation data.
+//
+//   Re-tuning procedure:
+//     1. Run: bash generate_training_data.sh --skip_training
+//     2. Inspect ME-S1 trigger rate in training_data/all_events.csv
+//        grep -c "ME-S1" training_data/all_events.csv
+//     3. If ME-S1 FP rate > 5%, reduce w_6 from 0.10 toward 0.05
+//     4. Retrain: python3 tgn_train.py training_data/all_events.csv
 static const double PEM_WEIGHTS[9] = {
     0.15, 0.15, 0.10,   // TTW-S1 persistence, TTW-S2 age, TTW-S3 reporter skew
     0.15, 0.10, 0.10,   // BSHH-S1, BSHH-S2, BSHH-S3
-    0.10, 0.075, 0.075  // ME-S1, ME-S2, ME-S3
+    0.10, 0.075, 0.075  // ME-S1, ME-S2, ME-S3  ← needs recalibration (see above)
 };
 
 // Temporal decay time-constant for window history pressure
@@ -821,8 +874,12 @@ PemCollectReportersForLink(const PemEvent& event)
 static uint32_t
 PemComputeRhoMaxForLink(const PemEvent& event)
 {
-    const double observationArea =
-        3.14159265358979323846 * std::pow(TTW_COMM_RANGE, 2.0);
+    // Eq. 3.33: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
+    // lambda(t) is vehicles per metre along the road segment — estimated as
+    // the count of vehicles within r_comm of either link endpoint divided by
+    // the 1-D corridor length (2 * r_comm).  This is the correct road-segment
+    // linear density model, not the 2-D disk area model.
+    const double corridorLength = 2.0 * TTW_COMM_RANGE;   // metres
 
     std::set<uint32_t> vehiclesNearLink;
     for (std::deque<PemEvent>::const_iterator w = pem_event_window.begin();
@@ -844,15 +901,14 @@ PemComputeRhoMaxForLink(const PemEvent& event)
         }
     }
 
-    // Equation ME-S1: rhoMax(lambda, rcomm) = floor(lambda * pi * rcomm^2).
-    // Here lambda is estimated from recent beacon evidence around the link, so
-    // units are vehicles / m^2 and the formula remains scale-correct for ns-3.
+    // lambda_hat = observed vehicles / corridor length  (vehicles / m)
+    // rhoMax = E[|R*(e_ij, t)|] = 2 * r_comm * lambda_hat  (Eq. 3.33)
     const double lambdaHat =
-        observationArea > 0.0
-            ? static_cast<double>(vehiclesNearLink.size()) / observationArea
+        corridorLength > 0.0
+            ? static_cast<double>(vehiclesNearLink.size()) / corridorLength
             : 0.0;
     uint32_t rhoMax =
-        static_cast<uint32_t>(std::floor(lambdaHat * observationArea));
+        static_cast<uint32_t>(std::floor(2.0 * TTW_COMM_RANGE * lambdaHat));
 
     // A physical link has two endpoints; below that, the density estimate is
     // under-sampled rather than physically meaningful.
@@ -919,26 +975,29 @@ PemWriteCsvHeaderIfNeeded(const std::string& filename,
         return;
     }
 
-    // std::ifstream fin(filename.c_str());
-    // const bool needsHeader =
-    //     (!fin.good() || fin.peek() == std::ifstream::traits_type::eof());
-    // fin.close();
-
-    // if (needsHeader)
-    // {
-    //     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
-    //     fout << header << "\n";
-    // }
-
-    // alreadyWritten = true;
-
-	// NEW — always start fresh at the beginning of each run.
-// alreadyWritten starts as false each simulation run, so this fires exactly
-// once per run and truncates any stale header from previous builds.
-std::ofstream fout(filename.c_str(), std::ios::out | std::ios::trunc);
-fout << header << "\n";
-alreadyWritten = true;
-
+    // DESIGN DECISION — always truncate, never append across runs.
+    //
+    // The original implementation (now removed) checked whether the file was
+    // empty before writing the header, allowing multiple simulation runs to
+    // append rows to the same CSV without duplicate headers. That design was
+    // intentional for multi-seed batch runs piped into one file.
+    //
+    // It was replaced with always-truncate behaviour because:
+    //   1. Each ./waf --run invocation is a fresh experiment — stale rows
+    //      from a previous run with different parameters silently corrupt
+    //      statistics if the file is not cleared.
+    //   2. The 5-run batch script (run_5_experiments.sh) copies each run's
+    //      CSV to a per-seed directory before the next run overwrites it,
+    //      so cross-run accumulation is handled externally.
+    //   3. The alreadyWritten flag ensures the header fires exactly once
+    //      per in-process simulation, preventing duplicate headers within
+    //      a single run when multiple PEM events trigger writes.
+    //
+    // If you need multi-run append (e.g. streaming to a live dashboard),
+    // restore the ifstream check below and remove the ios::trunc flag.
+    std::ofstream fout(filename.c_str(), std::ios::out | std::ios::trunc);
+    fout << header << "\n";
+    alreadyWritten = true;
 }
 
 static void
@@ -1183,8 +1242,9 @@ PemEvaluateEvent(PemEvent& event)
         if (firstSeenIt != pem_link_first_recorded_time.end() &&
             (event.reception_timestamp - firstSeenIt->second) > ttw_link_lifetime_bound)
         {
-            // TTW-S1: the controller is still receiving support for a link whose
-            // active topology state has outlived the mobility-derived lifetime bound.
+            // Eq. 3.2 — TTW-S1: the controller is still receiving support for a
+            // link whose active topology state has outlived the mobility-derived
+            // lifetime bound L_link (Eq. 3.29).
             event.triggered[0] = true;
         }
     }
@@ -1196,8 +1256,9 @@ PemEvaluateEvent(PemEvent& event)
         if (lastBeaconIt != pem_last_authentic_beacon_reception.end() &&
             event.sender_timestamp > lastBeaconIt->second)
         {
-            // TTW-S2: a topology timestamp attributed to reporter Vi cannot be
-            // newer than the controller's latest authentic beacon reception from Vi.
+            // Eq. 3.3 — TTW-S2: a topology timestamp attributed to reporter Vi
+            // cannot be newer than the controller's latest authentic beacon
+            // reception from Vi — direct sequence inversion.
             event.triggered[1] = true;
         }
     }
@@ -1210,8 +1271,8 @@ PemEvaluateEvent(PemEvent& event)
              it != linkIt->second.end();
              ++it)
         {
-            // TTW-S3: two distinct reporters for the same link carry sender
-            // timestamps separated by more than one beacon interval.
+            // Eq. 3.4 — TTW-S3: two distinct reporters for the same link carry
+            // sender timestamps separated by more than one beacon interval T_b.
             if (it->reporter_id != event.reporter_id &&
                 std::abs(it->sender_timestamp - event.sender_timestamp) > PEM_BEACON_INTERVAL_S)
             {
@@ -1219,8 +1280,8 @@ PemEvaluateEvent(PemEvent& event)
             }
         }
 
-        // ME-S1: |R(eij,t)| > rhoMax(lambda, rcomm), where rhoMax is
-        // computed from the local beacon-estimated density around this link.
+        // Eq. 3.8 — ME-S1: |R(e_ij,t)| > E[|R*(e_ij,t)|] = 2*r_comm*lambda_hat
+        // Reporter count exceeds the expected linear-density bound (Eq. 3.33).
         const std::set<uint32_t> reporters = PemCollectReportersForLink(event);
         const uint32_t rhoMax = PemComputeRhoMaxForLink(event);
         if (reporters.size() > rhoMax)
@@ -1235,6 +1296,8 @@ PemEvaluateEvent(PemEvent& event)
              it != pem_event_window.end();
              ++it)
         {
+            // Eq. 3.5 — BSHH-S1: two heartbeats claim the same identity but
+            // originate from different physical senders within the window.
             if (it->type == PEM_EVENT_HEARTBEAT &&
                 it->physical_sender_id != event.physical_sender_id &&
                 it->claimed_sender_id == event.claimed_sender_id)
@@ -1249,6 +1312,8 @@ PemEvaluateEvent(PemEvent& event)
         if (hbIt != pem_heartbeat_history.end() && !hbIt->second.empty())
         {
             const PemEvent& previousHeartbeat = hbIt->second.back();
+            // Eq. 3.6 — BSHH-S2: heartbeat sender_timestamp is less than the
+            // most recent known timestamp for this identity — out-of-order replay.
             if (event.sender_timestamp < previousHeartbeat.sender_timestamp)
             {
                 event.triggered[4] = true;
@@ -1268,9 +1333,9 @@ PemEvaluateEvent(PemEvent& event)
                 break;
             }
         }
-        // BSHH-S3 only fires when the physical sender is impersonating another
-        // node (physical != claimed). A node sending its own heartbeat is
-        // genuinely present, so an absent beacon is not suspicious.
+        // Eq. 3.7 — BSHH-S3: heartbeat arrived but no matching beacon observed
+        // for the claimed identity within the liveness window — and the physical
+        // sender is impersonating another node (physical != claimed).
         if (!beaconSeen && event.physical_sender_id != event.claimed_sender_id)
         {
             event.triggered[5] = true;
@@ -1279,11 +1344,11 @@ PemEvaluateEvent(PemEvent& event)
 
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
-        // ME-S2: sudden inflation of reporter-inferred paths for this link.
+        // Eq. 3.9 — ME-S2: sudden inflation of reporter-inferred paths for
+        // this link exceeds Δ_max within one beacon interval T_b.
         // Non-attack topology updates refresh the mobility-consistent baseline;
-        // attack-labelled updates are compared against that baseline so a burst
-        // of echo reporters within one beacon interval is not hidden by updating
-        // the baseline after the first replay.
+        // attack-labelled updates are compared against it so a burst of echo
+        // reporters is not hidden by updating the baseline after the first replay.
         const uint32_t currentPathCount =
             PemComputeReporterInferredPathCount(event);
         const double previousCount = pem_previous_path_counts[linkKey];
@@ -1302,7 +1367,8 @@ PemEvaluateEvent(PemEvent& event)
                                                    event.link_dst_position);
         const double nearestDistance = std::min(distanceToSrc, distanceToDst);
 
-        // ME-S3 (Reporter-Range AND Signal Inconsistency) — project formula:
+        // Eq. 3.10 — ME-S3: reporter position is outside communication range of
+        // the reported link endpoints OR synthetic RSSI is below signal floor.
         //   V_k ∈ R(e_ij) ∧ (d(pos_Vk, e_ij) > r_comm  ∨  RSSI_Vk < RSSI_min)
         // Condition 1: GPS-attested position is outside communication range.
         const bool positionOutOfRange = (nearestDistance > TTW_COMM_RANGE);
@@ -1324,10 +1390,10 @@ PemEvaluateEvent(PemEvent& event)
     }
 
     // ── STEP 1+2: Weighted signature scoring ─────────────────────────────────
-    // Each signature has an individual weight reflecting its evidential strength.
-    // TTW signatures (S0,S1) carry the most weight because they are direct
-    // timestamp / topology-age contradictions. ME geometric hints (S7,S8)
-    // carry the least because they are circumstantial.
+    // Eq. 3.11 — weighted detection score: s(e) = Σ w_i · 1[sig_i(e) = 1]
+    // Each signature i has weight w_i (PEM_WEIGHTS[i]).  Alert iff s(e) > θ_LW.
+    // Time complexity: O(9) per event — Eq. 3.12.
+    // Window scan for temporal pressure below: O(|W|) — Eq. 3.13.
     double score = 0.0;
     for (uint32_t i = 0; i < 9; ++i)
     {
@@ -2045,9 +2111,11 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
             << (dist > TTW_COMM_RANGE ? "BROKEN\n\n" : "WARNING still in range!\n\n");
 
 
-    // STEP 5: Send to controller
+    // STEP 5: Send to controller — record in §3.4.1 T matrix and increment δ
     std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
+    attack_T_matrix[key] = forged_time;   // T[i][j] = forged timestamp (Eq. 3.1)
     ttw_controller_table[key] = forged;
+    topology_divergence_delta++;          // δ = |E_t^C △ E_t^R| grows by 1
 
         NS_LOG_INFO("[TTW-S1] t=" << now << "s  STEP-5 FORGED REPLAY SENT"
                 << "  <V" << src_id << " sees V" << dst_id
@@ -2151,6 +2219,8 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
     {
         const std::string key = std::to_string(src_id) + "_" + std::to_string(dst_id);
         ttw_controller_table.erase(key);
+        attack_T_matrix.erase(key);                          // remove from T matrix
+        if (topology_divergence_delta > 0) topology_divergence_delta--;  // δ restored
 
         ttw_log << "[t=" << Simulator::Now().GetSeconds()
                 << "]  DETECTION + MITIGATION\n"
@@ -2158,6 +2228,7 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
                 << "  Link distance: " << linkDistance << " m\n"
                 << "  Detector score: " << pem_last_detection_score << "\n"
                 << "  Detection latency: " << PemGetDetectionLatencyMs() << " ms\n"
+                << "  delta (divergence) after mitigation: " << topology_divergence_delta << "\n"
                 << "  Action: forged topology entry removed from controller table\n\n";
         ttw_log.flush();
     }
@@ -2215,7 +2286,12 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
 }
 
 // Arms the S2 pipeline intercept for the RSU.
-static void TTWS2_ActivateReplay(uint32_t rsu_ns3_id, uint32_t /*v1_ns3_id*/, uint32_t /*v2_ns3_id*/)
+// TTWS2_ActivateReplay — arms the S2 pipeline at TTW_REPLAY_TIME.
+// Vehicle pairs come from ttw_s2_all_pairs (registered in main() at setup time),
+// not from arguments — the function only needs the RSU node ID.
+// The old signature had two unused v1/v2 parameters (commented out with /**/);
+// they are removed here to avoid misleading callers.
+static void TTWS2_ActivateReplay(uint32_t rsu_ns3_id)
 {
     ttw_s2_attack_active  = true;
     ttw_s2_rsu_ns3_id     = rsu_ns3_id;
@@ -2336,6 +2412,8 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
+    attack_T_matrix[key] = forged_time;
+    topology_divergence_delta++;
     if (!pem_attack_active) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -2403,6 +2481,8 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
+        attack_T_matrix.erase(k);
+        if (topology_divergence_delta > 0) topology_divergence_delta--;
         ttws3_log << "[t=" << now2 << "]  DETECTION + MITIGATION\n"
                   << "  Internal replay detected and removed\n"
                   << "  Score: " << pem_last_detection_score << "\n"
@@ -2495,6 +2575,8 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
+    attack_T_matrix[key] = forged_time;
+    topology_divergence_delta++;
 
     TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
@@ -2561,6 +2643,8 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
+        attack_T_matrix.erase(k);
+        if (topology_divergence_delta > 0) topology_divergence_delta--;
         ttws4_log << "[t=" << now2 << "]  DETECTION + MITIGATION\n"
                   << "  Internal replay (RSU variant) detected and removed\n"
                   << "  Score: " << pem_last_detection_score << "\n"
@@ -2649,6 +2733,8 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
+    attack_T_matrix[key] = forged_time;
+    topology_divergence_delta++;
 
     TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
@@ -3587,6 +3673,8 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
         me_echo_reports.push_back(r3);
         std::string k3 = std::to_string(echo_v3)+"_echo_"+std::to_string(link_src)+"_"+std::to_string(link_dst);
         ttw_controller_table[k3] = {echo_v3, link_dst, t, true};
+        attack_E_matrix.insert(k3);       // E[i][j]=1: link echoed by false reporter V3
+        topology_divergence_delta++;      // δ += 1 (Eq. 3.1)
     }
     if (emit_v4)
     {
@@ -3594,6 +3682,8 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
         me_echo_reports.push_back(r4);
         std::string k4 = std::to_string(echo_v4)+"_echo_"+std::to_string(link_src)+"_"+std::to_string(link_dst);
         ttw_controller_table[k4] = {echo_v4, link_dst, t, true};
+        attack_E_matrix.insert(k4);       // E[i][j]=1: link echoed by false reporter V4
+        topology_divergence_delta++;      // δ += 1 (Eq. 3.1)
     }
 
     // STEP ④: Echo reports sent to controller
@@ -3797,6 +3887,8 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
                    + std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[k3] = {false_v3, v2_id, t, true};
     ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+    attack_E_matrix.insert(k3); attack_E_matrix.insert(k4);
+    topology_divergence_delta += 2;
         uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
@@ -3961,6 +4053,8 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                    + std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[k3] = {false_v3, v2_id, t, true};
     ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+    attack_E_matrix.insert(k3); attack_E_matrix.insert(k4);
+    topology_divergence_delta += 2;
         uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
@@ -4109,6 +4203,8 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                    + std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[k3] = {false_v3, v2_id, t, true};
     ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+    attack_E_matrix.insert(k3); attack_E_matrix.insert(k4);
+    topology_divergence_delta += 2;
     uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
@@ -142802,6 +142898,19 @@ static int RoutingMain(int argc, char *argv[])
                   TTW_REPLAY_TIME);
     cmd.Parse (argc, argv);
 
+    // ── §3.4.7 Eq. 3.32 — RSU handover window (beacon slots) ─────────────────
+    // W_ho = r_comm / (v_max · T_b)
+    // v_max in m/s = maxspeed(km/h) / 3.6
+    // For default maxspeed=80 km/h: W_ho = 300 / (22.22 * 0.1) ≈ 135 slots
+    const double v_max_ms     = static_cast<double>(maxspeed) / 3.6;
+    const double w_ho_handover_window =
+        (v_max_ms > 0.0 && PEM_BEACON_INTERVAL_S > 0.0)
+            ? TTW_COMM_RANGE / (v_max_ms * PEM_BEACON_INTERVAL_S)
+            : 135.0;
+    NS_LOG_INFO("[Mobility] W_ho = " << w_ho_handover_window
+                << " beacon slots  (r_comm=" << TTW_COMM_RANGE
+                << "m, v_max=" << v_max_ms << "m/s, T_b=" << PEM_BEACON_INTERVAL_S << "s)");
+
     // ── TTW mobility derived from cmd params — computed once after Parse ─────
     // Constraint: at TTW_HELLO_TIME the pair must be IN range (<TTW_COMM_RANGE)
     //             at TTW_LINK_BREAK the pair must be OUT of range (>TTW_COMM_RANGE)
@@ -145387,7 +145496,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
 
       // Arm pipeline intercept using the first malicious RSU's ID
       Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME - 0.0001),
-          &TTWS2_ActivateReplay, RSU_Nodes.Get(0)->GetId(), 0u, 0u);
+          &TTWS2_ActivateReplay, RSU_Nodes.Get(0)->GetId());
 
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }

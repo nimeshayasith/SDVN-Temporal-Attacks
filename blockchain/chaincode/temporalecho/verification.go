@@ -6,19 +6,13 @@ import (
 
 // Cryptographic and spatial verification helpers for Algorithm 4.
 //
-// Dilithium2 note: production deployment requires liboqs-go
-// (github.com/open-quantum-safe/liboqs-go). The stub below accepts all
-// non-empty signatures so the chaincode compiles and runs without CGo.
-// Replace verifyDilithium2Sig with a real call once liboqs-go is linked.
-
-// verifyDilithium2Sig verifies a Dilithium2 signature (σ_nk) over message
-// using pubKey.  Returns true if the signature is structurally present.
-// In production: call OQS_SIG_verify(sig, msg, pk) from liboqs-go.
-func verifyDilithium2Sig(sig []byte, message string, pubKey []byte) bool {
-	// Simulation mode: accept any non-nil signature.
-	// Real implementation: use liboqs-go dilithium2 verify.
-	return len(sig) > 0 || len(pubKey) == 0
-}
+// verifyDilithium2Sig is defined in one of two build-tag files:
+//   verification_stub.go   — default build (no liboqs; accepts all sigs)
+//   verification_liboqs.go — build with: go build -tags liboqs
+//
+// To enable real post-quantum Dilithium2 verification:
+//   1. Install liboqs-go: go get github.com/open-quantum-safe/liboqs-go
+//   2. Build chaincode:   go build -tags liboqs ./...
 
 // verifyThresholdSig implements Eq. 3.24:
 //   |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t

@@ -228,52 +228,60 @@ def train_static_gcn(
 
 class DMSTGADApprox(nn.Module):
     """
-    DMSTG-AD approximation for SDVN: LSTM over a fixed window of raw events
-    (no phi, no edge freshness, no per-node beacon_count window).
-    Represents a temporal GNN designed for wired SDN applied naively to SDVN.
+    DMSTG-AD approximation for SDVN: LSTM over a fixed window of raw events.
+
+    FAIR ABLATION DESIGN:
+      Uses all 7 features — identical feature set to the proposed TGN.
+      The architectural difference is what this baseline tests:
+        - No GRU temporal memory (plain LSTM, no learned time-gap encoding phi)
+        - No freshness-weighted neighbourhood aggregation (no A_uv decay)
+        - Fixed snapshot window instead of online per-event processing
+      This isolates the contribution of the TGN's temporal components
+      without disadvantaging DMSTG-AD by also removing informative features.
+
+    Features: [id_v, tau_s, beacon_count, seq_gap, reporter_count,
+               identity_mismatch, phi]  — same 7 as TGN (Eq. 3.19)
     """
     WINDOW = 8   # fixed event window — mimics DMSTG-AD's snapshot size
 
-    def __init__(self, in_dim: int = 4, hidden: int = 32):
+    def __init__(self, in_dim: int = 7, hidden: int = 32):
         super().__init__()
-        # Uses only 4 features (no phi, no beacon_count — wired-SDN approximation)
-        # in_dim = [tau_s, seq_gap, reporter_count, identity_mismatch]
         self.lstm    = nn.LSTM(in_dim, hidden, batch_first=True)
         self.linear1 = nn.Linear(hidden, hidden)
         self.readout = nn.Linear(hidden, 1)
 
     def forward(self, x_win: torch.Tensor) -> torch.Tensor:
-        """x_win: (B, W, 4) → logits (B,)"""
+        """x_win: (B, W, 7) → logits (B,)"""
         _, (h, _) = self.lstm(x_win)
         h = h.squeeze(0)                      # (B, hidden)
         h = torch.relu(self.linear1(h))
         return self.readout(h).squeeze(-1)    # (B,) logits
 
 
-def make_windows(feats_4: np.ndarray, labels: np.ndarray,
+def make_windows(feats_7: np.ndarray, labels: np.ndarray,
                  W: int = DMSTGADApprox.WINDOW):
     """
     Build sliding-window tensors for DMSTG-AD training.
-    feats_4: (N, 4) — tau_s, seq_gap, reporter_count, identity_mismatch (no phi, no c_vW)
-    Returns X (M, W, 4) and y (M,) for the last event in each window.
+    feats_7: (N, 7) — all 7 features (same as TGN, fair ablation)
+    Returns X (M, W, 7) and y (M,) for the last event in each window.
     """
-    if len(feats_4) <= W:
+    if len(feats_7) <= W:
         return None, None
-    X = np.stack([feats_4[i:i + W] for i in range(len(feats_4) - W)],
+    X = np.stack([feats_7[i:i + W] for i in range(len(feats_7) - W)],
                  axis=0).astype(np.float32)
     y = labels[W:].astype(np.float32)
     return X, y
 
 
 def train_dmstgad(
-    tr_f4: np.ndarray, tr_l: np.ndarray,
-    va_f4: np.ndarray, va_l_full: np.ndarray,
+    tr_f7: np.ndarray, tr_l: np.ndarray,
+    va_f7: np.ndarray, va_l_full: np.ndarray,
     args:  argparse.Namespace,
     device: torch.device,
 ) -> DMSTGADApprox:
     W = DMSTGADApprox.WINDOW
-    Xtr, ytr = make_windows(tr_f4, tr_l, W)
-    Xva, yva = make_windows(va_f4, va_l_full, W)
+    Xtr, ytr = make_windows(tr_f7, tr_l, W)
+    Xva, yva = make_windows(va_f7, va_l_full, W)
 
     if Xtr is None or Xva is None:
         return DMSTGADApprox(hidden=args.dim).to(device)   # too few events
@@ -282,7 +290,7 @@ def train_dmstgad(
     ytr_t = torch.tensor(ytr, device=device)
     Xva_t = torch.tensor(Xva, device=device)
 
-    model = DMSTGADApprox(in_dim=4, hidden=args.dim).to(device)
+    model = DMSTGADApprox(in_dim=7, hidden=args.dim).to(device)
     n_pos = float(ytr.sum()); n_neg = float(len(ytr)) - n_pos
     crit  = nn.BCEWithLogitsLoss(
         pos_weight=torch.tensor([n_neg / max(n_pos, 1.0)], device=device))
@@ -606,9 +614,11 @@ def run_comparison(df: pd.DataFrame, args: argparse.Namespace) -> list[dict]:
     wmax   = int(math.ceil(l_link / BEACON_INTERVAL))
 
     feats_7 = extract_features(df, gamma=gamma, wmax=wmax)      # (N, 7) all features
-    # DMSTG-AD uses 4 features: [tau_s, seq_gap, reporter_count, identity_mismatch]
-    # Indices after adding id_v at [0]: tau_s=[1], seq_gap=[3], reporter=[4], id_mis=[5]
-    feats_4 = feats_7[:, [1, 3, 4, 5]].copy()                  # (N, 4) DMSTG-AD subset
+    # DMSTG-AD fair ablation: uses ALL 7 features (same as TGN).
+    # The architectural difference under test is the absence of GRU temporal
+    # memory and freshness-weighted aggregation — not a feature disadvantage.
+    # feats_4 alias kept for variable compatibility; now points to full 7-feature array.
+    feats_4 = feats_7.copy()                                    # (N, 7) — fair feature set
     labels  = df["is_attack"].values.astype(np.float32)
     nids    = df["claimed_sender_id"].values.astype(np.int64)
     lsrcs   = df["link_src_id"].values.astype(np.int64)
@@ -690,9 +700,9 @@ def run_comparison(df: pd.DataFrame, args: argparse.Namespace) -> list[dict]:
     with torch.no_grad():
         gcn_scores = torch.sigmoid(gcn(te_f6)).cpu().numpy()
 
-    # DMSTG-AD test set: need aligned windows
+    # DMSTG-AD test set: all 7 features (fair ablation)
     W = DMSTGADApprox.WINDOW
-    te_f4 = feats_7[n_tr+n_va:, [1, 3, 4, 5]]   # same 4-feature DMSTG-AD subset
+    te_f4 = feats_7[n_tr+n_va:]                  # (N_te, 7) — full feature set
     dmstg_labels = te_l
     dmstg_scores = np.full(len(te_l), 0.0, dtype=np.float32)
     if len(te_f4) > W:

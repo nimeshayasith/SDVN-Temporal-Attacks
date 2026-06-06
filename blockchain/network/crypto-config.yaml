@@ -17,7 +17,7 @@ OrdererOrgs:
         CommonName: orderer.tetaguard.net
 
 PeerOrgs:
-  - Name: TetagaurdOrg
+  - Name: TetaGuardOrg
     Domain: tetaguard.net
     EnableNodeOUs: true
     CA:

@@ -32,7 +32,7 @@ ORDERER="orderer.tetaguard.net:7050"
 ORDERER_CA="$NETWORK_DIR/crypto-config/ordererOrganizations/orderer.tetaguard.net/tlsca/tlsca.tetaguard.net-cert.pem"
 PEER_MSP_DIR="$NETWORK_DIR/crypto-config/peerOrganizations/tetaguard.net"
 ADMIN_MSP="$PEER_MSP_DIR/users/Admin@tetaguard.net/msp"
-MSPID="TetagaurdMSP"
+MSPID="TetaGuardMSP"
 
 RSU_PEERS=(
     "peer0.rsu1.tetaguard.net:7051"
@@ -131,7 +131,7 @@ async function enroll() {
             certificate: fs.readFileSync(certPath).toString(),
             privateKey:  fs.readFileSync(path.join(keyDir, keyFile)).toString(),
         },
-        mspId:   'TetagaurdMSP',
+        mspId:   'TetaGuardMSP',
         type:    'X.509',
     };
     for (const peer of ['peer0.rsu1.tetaguard.net','peer0.rsu2.tetaguard.net',

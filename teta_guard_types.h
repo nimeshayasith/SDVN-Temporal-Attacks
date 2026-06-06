@@ -46,24 +46,33 @@ extern "C" {
 #define MAX_OBSERVATIONS_PER_RSU 200u       /* Max obs in BeaconEvidenceRecord */
 
 /* Kyber-512 wire sizes (liboqs OQS_KEM_alg_kyber_512 / ML-KEM-512 FIPS 203) */
-#define KYBER512_PK_LEN   800u   /* OQS_KEM_kyber_512_length_public_key  */
-#define KYBER512_SK_LEN  1632u   /* OQS_KEM_kyber_512_length_secret_key  */
-#define KYBER512_CT_LEN   768u   /* OQS_KEM_kyber_512_length_ciphertext  */
+#define KYBER512_PK_LEN   800u   /* OQS_KEM_kyber_512_length_public_key    */
+#define KYBER512_SK_LEN  1632u   /* OQS_KEM_kyber_512_length_secret_key    */
+#define KYBER512_CT_LEN   768u   /* OQS_KEM_kyber_512_length_ciphertext    */
 #define KYBER512_SS_LEN    32u   /* OQS_KEM_kyber_512_length_shared_secret */
+
+/* Saber wire sizes (liboqs OQS_KEM_alg_saber — the actual paper KEM partner) */
+#define SABER_PK_LEN      992u   /* OQS_KEM_saber_length_public_key        */
+#define SABER_SK_LEN     2304u   /* OQS_KEM_saber_length_secret_key        */
+#define SABER_CT_LEN     1088u   /* OQS_KEM_saber_length_ciphertext        */
+#define SABER_SS_LEN       32u   /* OQS_KEM_saber_length_shared_secret     */
 
 /*
  * KemExchangeState — held by vehicle during Section 3.3 handshake.
  * Step 1: kem_vehicle_keygen()  fills pk_sk_* fields.
  * Step 3: kem_rsu_encapsulate() fills ct_* fields (RSU side).
  * Step 4: kem_vehicle_decapsulate() consumes ct_* + sk_* → session key.
+ *
+ * Buffer sizes: Kyber-512 component uses KYBER512_* sizes.
+ *               Saber component uses SABER_* sizes (larger — 992 vs 800 byte pk).
  */
 typedef struct {
     uint8_t pk_kyber[KYBER512_PK_LEN]; /* Vehicle Kyber-512 public key (sent to RSU) */
     uint8_t sk_kyber[KYBER512_SK_LEN]; /* Vehicle Kyber-512 secret key (stays local) */
-    uint8_t pk_saber[KYBER512_PK_LEN]; /* Saber public key (Kyber fallback in liboqs) */
-    uint8_t sk_saber[KYBER512_SK_LEN]; /* Saber secret key                            */
-    uint8_t ct_kyber[KYBER512_CT_LEN]; /* Ciphertext sent by RSU (Kyber component)    */
-    uint8_t ct_saber[KYBER512_CT_LEN]; /* Ciphertext sent by RSU (Saber component)    */
+    uint8_t pk_saber[SABER_PK_LEN];   /* Vehicle Saber public key (sent to RSU)      */
+    uint8_t sk_saber[SABER_SK_LEN];   /* Vehicle Saber secret key (stays local)      */
+    uint8_t ct_kyber[KYBER512_CT_LEN]; /* Ciphertext from RSU (Kyber component)      */
+    uint8_t ct_saber[SABER_CT_LEN];   /* Ciphertext from RSU (Saber component)       */
     bool    has_ciphertext;            /* Set true after RSU calls kem_rsu_encapsulate */
 } KemExchangeState;
 

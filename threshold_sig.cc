@@ -239,6 +239,25 @@ int main(int argc, char *argv[]) {
     const char *output = (argc > 2) ? argv[2] : "threshold_sig_result.csv";
 
     printf("=== threshold_sig.cc — Dilithium2 Threshold Aggregate Sig (Eq. 3.24) ===\n");
+#ifndef HAVE_LIBOQS
+    fprintf(stderr,
+        "\n"
+        "╔══════════════════════════════════════════════════════════════╗\n"
+        "║  WARNING — PQC STUB MODE  (threshold_sig.cc)                ║\n"
+        "║                                                              ║\n"
+        "║  liboqs is NOT linked. Dilithium2 operations are STUBS:     ║\n"
+        "║    • dilithium2_keypair  →  fills buffers with random bytes  ║\n"
+        "║    • dilithium2_sign     →  random 32-byte signature         ║\n"
+        "║    • dilithium2_verify   →  always returns 0 (accepts all)  ║\n"
+        "║                                                              ║\n"
+        "║  The NTRU lattice-based aggregate scheme (Eq. 3.24) in the  ║\n"
+        "║  paper is NOT executing. No lattice operations run.         ║\n"
+        "║                                                              ║\n"
+        "║  To enable real Dilithium2:                                 ║\n"
+        "║    sudo apt-get install liboqs-dev                          ║\n"
+        "║    g++ -DHAVE_LIBOQS threshold_sig.cc -loqs -lssl -lcrypto  ║\n"
+        "╚══════════════════════════════════════════════════════════════╝\n\n");
+#endif
     printf("[ThreshSig] SIG_LEN=%u  PK_LEN=%u  SK_LEN=%u\n",
            DILITHIUM2_SIG_LEN, DILITHIUM2_PK_LEN, DILITHIUM2_SK_LEN);
 

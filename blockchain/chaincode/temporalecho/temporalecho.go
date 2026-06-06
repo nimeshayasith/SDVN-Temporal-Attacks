@@ -122,6 +122,7 @@ func (t *TemporalEchoMitigator) SubmitAlert(
 	ctrlTopoJSON string,
 	intervalTSStr string,
 ) error {
+	g_ctx = ctx // wire ledger context so writePendingFlowMod can store records
 	var alert AlertObject
 	if err := json.Unmarshal([]byte(alertJSON), &alert); err != nil {
 		return fmt.Errorf("SubmitAlert: parse error: %v", err)
@@ -186,6 +187,7 @@ func (t *TemporalEchoMitigator) Mitigate(
 	thetaFSStr string,
 	thresholdTStr string,
 ) error {
+	g_ctx = ctx // wire ledger context for writePendingFlowMod
 	var alerts []DetectionEvent
 	json.Unmarshal([]byte(alertsJSON), &alerts)
 

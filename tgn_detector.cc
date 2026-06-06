@@ -557,6 +557,144 @@ static std::ofstream g_tgn_detail_log;   /* tgn_detection_log.txt — per-event 
 static std::vector<std::pair<PemEvent, double>> g_tgn_scored_events;
 
 // =============================================================================
+//  CRYPTO PRE-FILTER  (Algorithm 3 — LW-MITIGATE, Section 4.4)
+//
+//  Wires the Pre-Detection Cryptographic Filter into the TGN data path.
+//  Called after RoutingMain() fills pem_all_events, before TGN_ProcessAllEvents().
+//
+//  Conditions applied (matching lw_mitigate() in hmac_filter.cc):
+//    ① Freshness   (Eq. 3.15): |τr − τs| ≤ T_b + ε = 110 ms
+//       Drops BSHH replays (old stored heartbeat; τs << τr).
+//       TTW passes because it forges τs to be current — HMAC then fails in
+//       the real system, but here the nonce proxy catches intra-session dupes.
+//    ② Nonce novelty (Eq. 3.16): (reporter_id, claimed_sender_id, τs) not seen before
+//       Proxy for nonce uniqueness: same (reporter, sender, timestamp) triplet
+//       cannot appear twice at the same receiving node.
+//    ③ Key revocation: after first alert fires, attacker's events are dropped
+//       (mirrors LKH revocation by TemporalEchoMitigator — Eq. 3.17).
+//
+//  Bypass: controller-origin events (physical_sender == 9999 sentinel) pass
+//  through unconditionally — insider holds valid credentials; TGN is the
+//  primary defence for those scenarios (per Cryptographic Placement Analysis).
+//
+//  Output: crypto_filter_log.txt  (one line per dropped event with reason)
+// =============================================================================
+static std::vector<PemEvent> TGN_ApplyCryptoFilter(const std::vector<PemEvent>& events)
+{
+    // Eq. 3.15 freshness window: T_b + ε = 100 ms + 10 ms = 110 ms
+    static const double CRYPTO_FRESHNESS_S = 0.110;
+
+    // Nonce proxy: (reporter_id, claimed_sender_id, sender_timestamp)
+    // Represents the per-RSU nonce cache from Eq. 3.16.
+    std::set<std::tuple<uint32_t, uint32_t, double>> seen_nonces;
+
+    // Revoked nodes — populated once pem_first_alert_time is known.
+    std::set<uint32_t> revoked_nodes;
+
+    std::ofstream log("crypto_filter_log.txt", std::ios::out | std::ios::trunc);
+    log << std::fixed << std::setprecision(4)
+        << "================================================================\n"
+           "  TGN Pre-Detection Crypto Filter  (Algorithm 3 — LW-MITIGATE)\n"
+           "  Eq. 3.15 freshness window : " << CRYPTO_FRESHNESS_S * 1000.0 << " ms\n"
+           "  Eq. 3.16 nonce proxy      : (reporter, sender, τs) triplet\n"
+           "  Eq. 3.17 revocation       : attacker dropped after first alert\n"
+           "  Controller bypass         : physical_sender==9999 → pass through\n"
+           "================================================================\n\n";
+
+    std::vector<PemEvent> filtered;
+    int n_fresh = 0, n_nonce = 0, n_revoked = 0, n_ctrl = 0, n_pass = 0;
+
+    for (const PemEvent& e : events)
+    {
+        // Beacon events carry no topology claim — pass through directly.
+        if (e.type == PEM_EVENT_BEACON)
+        {
+            filtered.push_back(e);
+            n_pass++;
+            continue;
+        }
+
+        // Controller-origin bypass (insider cannot be pre-filtered by crypto).
+        if (e.physical_sender_id == 9999u)
+        {
+            filtered.push_back(e);
+            n_ctrl++;
+            continue;
+        }
+
+        // ① Eq. 3.15 — Timestamp freshness
+        const double age = std::abs(e.reception_timestamp - e.sender_timestamp);
+        if (age > CRYPTO_FRESHNESS_S)
+        {
+            log << "[DROP-STALE]   t=" << e.reception_timestamp
+                << "s  sender=" << e.claimed_sender_id
+                << "  |τr-τs|=" << age * 1000.0 << "ms > "
+                << CRYPTO_FRESHNESS_S * 1000.0 << "ms  (Eq.3.15)\n";
+            n_fresh++;
+            continue;
+        }
+
+        // ② Eq. 3.16 — Nonce novelty (replay detection via timestamp proxy)
+        const auto nonce = std::make_tuple(
+            e.reporter_id, e.claimed_sender_id, e.sender_timestamp);
+        if (seen_nonces.count(nonce))
+        {
+            log << "[DROP-REPLAY]  t=" << e.reception_timestamp
+                << "s  reporter=" << e.reporter_id
+                << "  sender=" << e.claimed_sender_id
+                << "  τs=" << e.sender_timestamp << "s  (Eq.3.16)\n";
+            n_nonce++;
+            continue;
+        }
+        seen_nonces.insert(nonce);
+
+        // ③ Eq. 3.17 — Key revocation: revoke attacker after first alert
+        if (pem_first_alert_time > 0.0 &&
+            e.reception_timestamp > pem_first_alert_time &&
+            e.attack_label)
+        {
+            revoked_nodes.insert(e.physical_sender_id);
+        }
+        if (!revoked_nodes.empty() &&
+            revoked_nodes.count(e.physical_sender_id) &&
+            pem_first_alert_time > 0.0 &&
+            e.reception_timestamp > pem_first_alert_time)
+        {
+            log << "[DROP-REVOKED] t=" << e.reception_timestamp
+                << "s  sender=" << e.physical_sender_id
+                << "  revoked after t=" << pem_first_alert_time << "s  (Eq.3.17)\n";
+            n_revoked++;
+            continue;
+        }
+
+        filtered.push_back(e);
+        n_pass++;
+    }
+
+    log << "\n================================================================\n"
+        << "  In     : " << events.size()  << " events\n"
+        << "  Pass   : " << n_pass         << "\n"
+        << "  Ctrl   : " << n_ctrl         << "  (bypassed — insider)\n"
+        << "  Stale  : " << n_fresh        << "  (Eq.3.15 freshness)\n"
+        << "  Replay : " << n_nonce        << "  (Eq.3.16 nonce)\n"
+        << "  Revoked: " << n_revoked      << "  (Eq.3.17 LKH)\n"
+        << "  Out    : " << filtered.size()<< " events → TGN_ProcessAllEvents()\n"
+        << "================================================================\n";
+    log.close();
+
+    std::cout << "[CryptoFilter] "
+              << events.size() << " in → "
+              << filtered.size() << " out  ("
+              << (n_fresh + n_nonce + n_revoked) << " dropped: "
+              << n_fresh << " stale, "
+              << n_nonce << " replay, "
+              << n_revoked << " revoked)\n"
+              << "              log: crypto_filter_log.txt\n";
+
+    return filtered;
+}
+
+// =============================================================================
 //  SECTION 6  Feature extraction helpers
 // =============================================================================
 
@@ -701,6 +839,14 @@ static void TGN_ProcessAllEvents()
     {
         // Skip pure beacon events — TGN focuses on topology/heartbeat anomalies
         if (e.type == PEM_EVENT_BEACON) continue;
+
+        // Online per-event mode (not end-of-interval batch): processes each
+        // PEM event the instant it arrives, ordered by reception_timestamp.
+        // This is necessary because attackers inject mid-interval — a batch
+        // model would not see the attack until the beacon interval closes,
+        // adding up to T_b = 100 ms of blind time.  Online mode ensures the
+        // GRU memory update (Eq. 3.21) and anomaly score (Eq. 3.23) are
+        // computed immediately on receipt, meeting the Tdet < T_b budget.
 
         // Build feature vector (online, incremental)
         tgn::NodeFeatures feat = TGN_ExtractFeatures(e);
@@ -1218,8 +1364,29 @@ int main(int argc, char *argv[])
 
     g_tgn = new tgn::TGNDetector(g_tgn_params);
 
-    if (!tgn_weights_path.empty())
+    if (!tgn_weights_path.empty()) {
         g_tgn->LoadWeights(tgn_weights_path);
+    } else {
+        std::cerr
+            << "\n"
+            << "╔══════════════════════════════════════════════════════════════════╗\n"
+            << "║  WARNING — TGN HEURISTIC MODE  (tgn_detector.cc)               ║\n"
+            << "║                                                                  ║\n"
+            << "║  No tgn_weights.bin provided. The GNN described in the paper   ║\n"
+            << "║  (Eqs. 3.21–3.23, GRU + message passing) is NOT running.       ║\n"
+            << "║  Falling back to HeuristicScore() — a manually tuned weighted  ║\n"
+            << "║  sum of staleness, seq_gap, identity mismatch, reporter excess, ║\n"
+            << "║  and edge freshness. This is NOT the trained TGN.              ║\n"
+            << "║                                                                  ║\n"
+            << "║  To enable the full GNN:                                        ║\n"
+            << "║    1. Generate training data:                                   ║\n"
+            << "║         bash generate_training_data.sh                          ║\n"
+            << "║    2. Train TGN weights:                                        ║\n"
+            << "║         python3 tgn_train.py all_events.csv --output tgn_weights.bin\n"
+            << "║    3. Re-run with weights:                                      ║\n"
+            << "║         --tgn_weights=tgn_weights.bin                           ║\n"
+            << "╚══════════════════════════════════════════════════════════════════╝\n\n";
+    }
 
     // ── Run routing.cc simulation ────────────────────────────────────────────
     // RoutingMain() parses the remaining argv, sets up NS-3 nodes, installs
@@ -1232,9 +1399,17 @@ int main(int argc, char *argv[])
     // ── Post-simulation: open output files now that attack_scenario is known ─
     TGN_InitOutputFiles();
 
-    // ── Feed pem_all_events through TGN ─────────────────────────────────────
+    // ── Crypto pre-filter (Algorithm 3 — LW-MITIGATE, Eqs. 3.14–3.17) ──────
+    // Wires the Pre-Detection Cryptographic Filter into the TGN data path.
+    // Filters pem_all_events in-place before TGN sees any event.
+    // Controller-origin events bypass (insider with valid credentials).
+    std::cout << "[CryptoFilter] Applying pre-detection filter to "
+              << pem_all_events.size() << " events...\n";
+    pem_all_events = TGN_ApplyCryptoFilter(pem_all_events);
+
+    // ── Feed filtered pem_all_events through TGN ─────────────────────────────
     std::cout << "[TGN] Processing " << pem_all_events.size()
-              << " PEM events through TGN pipeline...\n";
+              << " crypto-filtered events through TGN pipeline...\n";
     TGN_ProcessAllEvents();
 
     // ── Write Eq. 3.36 alert objects for TemporalEchoMitigator ──────────────

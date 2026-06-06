@@ -2,7 +2,7 @@
   "name": "teta-guard-network",
   "version": "1.0.0",
   "client": {
-    "organization": "TetagaurdOrg",
+    "organization": "TetaGuardOrg",
     "connection": {
       "timeout": {
         "peer": { "endorser": "300" },
@@ -48,8 +48,8 @@
     }
   },
   "organizations": {
-    "TetagaurdOrg": {
-      "mspid": "TetagaurdMSP",
+    "TetaGuardOrg": {
+      "mspid": "TetaGuardMSP",
       "peers": [
         "peer0.rsu1.tetaguard.net",
         "peer0.rsu2.tetaguard.net",

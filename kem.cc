@@ -6,8 +6,9 @@
  * (SK_{Vi}, PK_{Vi}) stored in VehicleKeyRecord (Section 3.5).
  *
  * liboqs constants used:
- *   KEM:  OQS_KEM_alg_kyber_512   (pre-standard)
- *         OQS_KEM_alg_ml_kem_512  (FIPS 203 — preferred on liboqs ≥0.10)
+ *   KEM:  OQS_KEM_alg_kyber_512 (Kyber component, pre-standard)
+ *         OQS_KEM_alg_ml_kem_512 (FIPS 203 preferred on liboqs ≥0.10)
+ *         OQS_KEM_alg_saber      (Saber component — paper's hybrid partner)
  *   SIG:  OQS_SIG_alg_dilithium_2 (NIST ML-DSA, FIPS 204)
  *
  * Build:
@@ -110,8 +111,8 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
     OQS_KEM_encaps(kem_k, ct_k, ss_k, trusted_pk);
     OQS_KEM_free(kem_k);
 
-    /* Saber component (use second half of trusted_pk if available) */
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_kyber_512); /* Saber fallback */
+    /* Saber component — OQS_KEM_alg_saber (Section 3.3, paper's actual KEM partner) */
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);
     uint8_t ct_s[kem_s->length_ciphertext];
     uint8_t ss_s[kem_s->length_shared_secret];
     OQS_KEM_encaps(kem_s, ct_s, ss_s, trusted_pk);
@@ -172,7 +173,7 @@ void kem_vehicle_keygen(KemExchangeState *state) {
     OQS_KEM_keypair(kem_k, state->pk_kyber, state->sk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_kyber_512);   /* Saber fallback */
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);  /* Saber — paper's actual KEM partner */
     OQS_KEM_keypair(kem_s, state->pk_saber, state->sk_saber);
     OQS_KEM_free(kem_s);
 #else
@@ -201,7 +202,7 @@ void kem_rsu_encapsulate(KemExchangeState *state,
     OQS_KEM_encaps(kem_k, state->ct_kyber, ss_k, state->pk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_kyber_512);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);
     OQS_KEM_encaps(kem_s, state->ct_saber, ss_s, state->pk_saber);
     OQS_KEM_free(kem_s);
 
@@ -244,7 +245,7 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
     OQS_KEM_free(kem_k);
     if (rc_k != OQS_SUCCESS) return false;
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_kyber_512);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);
     OQS_STATUS rc_s = OQS_KEM_decaps(kem_s, ss_s, state->ct_saber, state->sk_saber);
     OQS_KEM_free(kem_s);
     if (rc_s != OQS_SUCCESS) return false;
@@ -363,9 +364,29 @@ static void make_vehicle_id(uint8_t vid[16], int idx) {
 int main(void) {
     printf("=== kem.cc — Kyber+Saber Hybrid KEM + Dilithium2 (Module 1) ===\n");
 #ifdef HAVE_LIBOQS
-    printf("[KEM] Backend: liboqs (OQS_KEM_alg_kyber_512 + OQS_SIG_alg_dilithium_2)\n");
+    printf("[KEM] Backend: liboqs  — REAL post-quantum crypto active\n");
+    printf("[KEM]   Kyber-512: OQS_KEM_alg_kyber_512  (IND-CCA2)\n");
+    printf("[KEM]   Saber:     OQS_KEM_alg_saber      (IND-CCA2)\n");
+    printf("[KEM]   Signing:   OQS_SIG_alg_dilithium_2 (FIPS 204 ML-DSA)\n");
 #else
-    printf("[KEM] Backend: Simulated (HKDF-SHA256 fallback)\n");
+    fprintf(stderr,
+        "\n"
+        "╔══════════════════════════════════════════════════════════════╗\n"
+        "║  WARNING — PQC STUB MODE  (kem.cc)                          ║\n"
+        "║                                                              ║\n"
+        "║  liboqs is NOT linked.  The following are SIMULATED:        ║\n"
+        "║    • Kyber-512 KEM  →  HKDF-SHA256(pk_kyber||pk_saber)      ║\n"
+        "║    • Saber KEM      →  XOR fallback (not IND-CCA2 secure)   ║\n"
+        "║    • Dilithium2 sig →  random 32-byte buffer (no math)      ║\n"
+        "║                                                              ║\n"
+        "║  Paper claims Kyber-512 and Saber IND-CCA2 security.        ║\n"
+        "║  Neither is operative in this build.                        ║\n"
+        "║                                                              ║\n"
+        "║  To enable real PQC:                                        ║\n"
+        "║    sudo apt-get install liboqs-dev                          ║\n"
+        "║    g++ -DHAVE_LIBOQS kem.cc -loqs -lssl -lcrypto -o kem     ║\n"
+        "╚══════════════════════════════════════════════════════════════╝\n\n");
+    printf("[KEM] Backend: STUB (HKDF-SHA256 fallback — NOT post-quantum secure)\n");
 #endif
     printf("[KEM] Section 3.3 Steps 1-4 full handshake:\n\n");
 

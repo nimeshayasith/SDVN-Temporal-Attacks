@@ -1,35 +1,47 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"time"
+
+	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
 // FlowMod enforcement interface — Blockchain → SDN Controller (§9).
 //
-// The smart contract issues FlowMod commands TO the controller; the controller
-// is a recipient, never a source of ground truth.  Higher-priority FlowMods
-// override anything the (potentially malicious) controller has installed:
+// ARCHITECTURAL DESIGN:
+//   Hyperledger Fabric chaincode runs in a deterministic sandboxed container
+//   with no external network access.  It CANNOT make HTTP calls directly to
+//   the Ryu SDN controller — any attempt to open a TCP connection will be
+//   blocked by the peer.
 //
-//   Priority 65535 — CTRL_ORIGIN override (overrides all rules)
-//   Priority 65000 — TTW/BSHH DROP (node isolation)
-//   Priority 50000 — ME REROUTE (false-path correction)
-//   Priority ≤32768 — normal controller rules
+//   Correct Fabric pattern (§9, off-chain listener):
+//     1. Chaincode writes a PendingFlowMod record to the ledger.
+//     2. Chaincode emits an AttackDetected event (already done in runMitigation).
+//     3. Off-chain listener (eventListener.js) picks up the event.
+//     4. eventListener.js reads PendingFlowMod records from the ledger.
+//     5. eventListener.js makes the actual HTTP POST to Ryu controller.
 //
-// The Ryu REST endpoint is configurable via RYU_REST_BASE.  In a Docker
-// deployment the controller runs at http://ryu-controller:8080 (§6.5).
+//   FlowMod priority levels:
+//     Priority 65535 — CTRL_ORIGIN override (overrides all rules)
+//     Priority 65000 — TTW/BSHH DROP (node isolation)
+//     Priority 50000 — ME REROUTE (false-path correction)
+//     Priority ≤32768 — normal controller rules
 
-const (
-	ryuRESTBase   = "http://ryu-controller:8080"
-	flowModURL    = ryuRESTBase + "/stats/flowentry/add"
-	flowDeleteURL = ryuRESTBase + "/stats/flowentry/delete"
-	ryuTimeoutMs  = 50 // must fit in 100 ms budget
-)
+// PendingFlowMod is written to the Fabric ledger by the chaincode.
+// eventListener.js reads these records and executes the actual HTTP POST.
+type PendingFlowMod struct {
+	EntryID     string                   `json:"entry_id"`
+	VehicleID   string                   `json:"vehicle_id"`
+	Action      string                   `json:"action"`    // "DROP" | "REROUTE" | "OVERRIDE"
+	Priority    int                      `json:"priority"`
+	Match       map[string]interface{}   `json:"match"`
+	FlowActions []map[string]interface{} `json:"flow_actions"`
+	DocType     string                   `json:"doc_type"`
+}
 
 // RyuFlowMod is the JSON body for a Ryu REST API flowentry request.
+// Populated by eventListener.js when it reads a PendingFlowMod record.
 type RyuFlowMod struct {
 	DPID        int                      `json:"dpid"`
 	TableID     int                      `json:"table_id"`
@@ -40,126 +52,127 @@ type RyuFlowMod struct {
 	Actions     []map[string]interface{} `json:"actions"`
 }
 
-// pushFlowModDrop isolates offending vehicle v by dropping all its traffic at
-// the switch level (Step 16 of Algorithm 4, §6.5).
-// Priority 65000 overrides all normal controller rules.
+// pushFlowModDrop writes a DROP PendingFlowMod to the ledger.
+// eventListener.js will POST this to Ryu as Priority-65000 DROP rule
+// (Step 16 of Algorithm 4, §6.5).
 func pushFlowModDrop(vehicleID string) error {
-	fm := RyuFlowMod{
-		DPID:        1,
-		TableID:     0,
-		IdleTimeout: 0,
-		HardTimeout: 0,
-		Priority:    65000,
-		Match: map[string]interface{}{
-			"eth_src": vehicleMAC(vehicleID),
-		},
-		Actions: []map[string]interface{}{}, // empty = DROP
+	// vehicleMAC lookup — requires populated VehicleMACTable on ledger.
+	// Falls back to vehicleIDtoMAC placeholder if not populated.
+	mac := lookupVehicleMAC(vehicleID)
+
+	fm := PendingFlowMod{
+		EntryID:   fmt.Sprintf("FLOWMOD_DROP_%s", vehicleID),
+		VehicleID: vehicleID,
+		Action:    "DROP",
+		Priority:  65000,
+		Match:     map[string]interface{}{"eth_src": mac},
+		FlowActions: []map[string]interface{}{}, // empty = DROP
+		DocType:   "PENDING_FLOWMOD",
 	}
-	return sendFlowMod(fm)
+	return writePendingFlowMod(fm)
 }
 
-// pushRerouteFlowMod removes false-path routing rules installed by ME attack
-// (Step 22 of Algorithm 4, §6.5).
+// pushRerouteFlowMod writes a REROUTE PendingFlowMod to the ledger.
+// eventListener.js deletes the false-path rule from Ryu (Step 22 of Algorithm 4).
 func pushRerouteFlowMod(vehicleID string) error {
-	deleteRule := RyuFlowMod{
-		DPID:     1,
-		TableID:  0,
-		Priority: 50000,
-		Match: map[string]interface{}{
-			"metadata": fmt.Sprintf("FALSE_PATH_%s", vehicleID),
-		},
-		Actions: []map[string]interface{}{},
+	fm := PendingFlowMod{
+		EntryID:   fmt.Sprintf("FLOWMOD_REROUTE_%s", vehicleID),
+		VehicleID: vehicleID,
+		Action:    "REROUTE",
+		Priority:  50000,
+		Match:     map[string]interface{}{"metadata": fmt.Sprintf("FALSE_PATH_%s", vehicleID)},
+		FlowActions: []map[string]interface{}{},
+		DocType:   "PENDING_FLOWMOD",
 	}
-	if err := sendFlowModDelete(deleteRule); err != nil {
-		return err
-	}
-	// Reroute: controller recomputes from corrected topology after paths are
-	// invalidated in the chaincode's ledger state.
-	return nil
+	return writePendingFlowMod(fm)
 }
 
-// pushFlowModOverride issues a priority-65535 FlowMod directly to all known
-// switches using RSU beacon evidence as the authoritative topology (§9.3).
-// This bypasses the malicious controller entirely for CTRL_ORIGIN attacks.
+// pushFlowModOverride writes priority-65535 OVERRIDE FlowMods derived from
+// RSU beacon evidence — used for CTRL_ORIGIN attacks (§9.3).
 func pushFlowModOverride(controllerID string, evidence []BeaconEvidenceRecord) error {
-	routes := computeCorrectRoutes(evidence)
-	for _, route := range routes {
-		if err := sendFlowMod(route); err != nil {
-			return fmt.Errorf("override FlowMod failed: %v", err)
-		}
-	}
-	return nil
-}
-
-// sendFlowMod posts a FlowMod to the Ryu REST API with a 50 ms timeout.
-func sendFlowMod(fm RyuFlowMod) error {
-	payload, _ := json.Marshal(fm)
-	client := &http.Client{Timeout: time.Duration(ryuTimeoutMs) * time.Millisecond}
-	resp, err := client.Post(flowModURL, "application/json",
-		bytes.NewBuffer(payload))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("FlowMod rejected by controller: HTTP %d", resp.StatusCode)
-	}
-	return nil
-}
-
-// sendFlowModDelete posts a flow-entry delete request.
-func sendFlowModDelete(fm RyuFlowMod) error {
-	payload, _ := json.Marshal(fm)
-	client := &http.Client{Timeout: time.Duration(ryuTimeoutMs) * time.Millisecond}
-	resp, err := client.Post(flowDeleteURL, "application/json",
-		bytes.NewBuffer(payload))
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-// vehicleMAC converts a vehicle ID string to a MAC-address-style string for
-// the OpenFlow match field.  Format: "vv:vv:vv:vv:vv:vv" derived from the
-// first 6 bytes of the vehicle ID.
-func vehicleMAC(vehicleID string) string {
-	b := []byte(vehicleID)
-	for len(b) < 6 {
-		b = append(b, 0)
-	}
-	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x",
-		b[0], b[1], b[2], b[3], b[4], b[5])
-}
-
-// computeCorrectRoutes derives a minimal set of FlowMod entries from RSU
-// beacon evidence — used only during CTRL_ORIGIN override (§9.3).
-// Each pair of vehicles that appeared in the same beacon observation interval
-// gets a forwarding rule installed at priority 65535.
-func computeCorrectRoutes(evidence []BeaconEvidenceRecord) []RyuFlowMod {
-	var routes []RyuFlowMod
 	seen := make(map[string]bool)
 	for _, rec := range evidence {
 		for _, obs := range rec.Observations {
-			key := obs.VehicleID
-			if seen[key] {
+			if seen[obs.VehicleID] {
 				continue
 			}
-			seen[key] = true
-			routes = append(routes, RyuFlowMod{
-				DPID:        1,
-				TableID:     0,
-				IdleTimeout: 30,
-				HardTimeout: 0,
-				Priority:    65535,
-				Match: map[string]interface{}{
-					"eth_src": vehicleMAC(obs.VehicleID),
-				},
-				Actions: []map[string]interface{}{
+			seen[obs.VehicleID] = true
+			mac := lookupVehicleMAC(obs.VehicleID)
+			fm := PendingFlowMod{
+				EntryID:   fmt.Sprintf("FLOWMOD_OVERRIDE_%s", obs.VehicleID),
+				VehicleID: obs.VehicleID,
+				Action:    "OVERRIDE",
+				Priority:  65535,
+				Match:     map[string]interface{}{"eth_src": mac},
+				FlowActions: []map[string]interface{}{
 					{"type": "OUTPUT", "port": "NORMAL"},
 				},
-			})
+				DocType: "PENDING_FLOWMOD",
+			}
+			if err := writePendingFlowMod(fm); err != nil {
+				return fmt.Errorf("override FlowMod failed for %s: %v", obs.VehicleID, err)
+			}
 		}
 	}
-	return routes
+	return nil
+}
+
+// writePendingFlowMod stores the FlowMod record on the Fabric ledger.
+// eventListener.js polls for PENDING_FLOWMOD entries and executes them.
+//
+// NOTE: ctx is not available here because flowmod functions are called from
+// runMitigation which receives ctx.  The ctx is threaded through via a
+// package-level variable set at the start of each transaction.
+var g_ctx contractapi.TransactionContextInterface
+
+func writePendingFlowMod(fm PendingFlowMod) error {
+	if g_ctx == nil {
+		// No ledger context (unit test mode) — log and return
+		data, _ := json.Marshal(fm)
+		fmt.Printf("[FlowMod] (no ledger) PendingFlowMod: %s\n", string(data))
+		return nil
+	}
+	data, err := json.Marshal(fm)
+	if err != nil {
+		return err
+	}
+	return g_ctx.GetStub().PutState(fm.EntryID, data)
+}
+
+// VehicleMACTable maps vehicle IDs to their actual NS-3 / Ethernet MAC
+// addresses.  Populated at network setup time via SubmitVehicleMAC().
+// Key = vehicle_id (e.g. "V2"), Value = MAC string (e.g. "02:00:00:00:00:02")
+//
+// Falls back to ns3VehicleIDtoMAC() if the ledger table is empty.
+func lookupVehicleMAC(vehicleID string) string {
+	if g_ctx != nil {
+		key := "VMAC_" + vehicleID
+		data, err := g_ctx.GetStub().GetState(key)
+		if err == nil && len(data) > 0 {
+			return string(data)
+		}
+	}
+	// Fallback: derive a locally-administered MAC from the vehicle index.
+	// Format: 02:00:00:00:00:XX  where XX = vehicle number parsed from ID.
+	return ns3VehicleIDtoMAC(vehicleID)
+}
+
+// ns3VehicleIDtoMAC derives a locally-administered unicast MAC from a vehicle
+// ID string such as "V2", "V10", "V100".
+// Format: 02:00:00:00:HH:LL  (02 = locally administered unicast bit set)
+// e.g. "V2"  → "02:00:00:00:00:02"
+//      "V255"→ "02:00:00:00:00:ff"
+//      "V256"→ "02:00:00:00:01:00"
+func ns3VehicleIDtoMAC(vehicleID string) string {
+	// Extract numeric suffix from vehicle ID (strip leading non-digits)
+	n := 0
+	for _, c := range vehicleID {
+		if c >= '0' && c <= '9' {
+			n = n*10 + int(c-'0')
+		}
+	}
+	// Encode as two-byte little-endian in the last two octets
+	hi := (n >> 8) & 0xff
+	lo := n & 0xff
+	return fmt.Sprintf("02:00:00:00:%02x:%02x", hi, lo)
 }
