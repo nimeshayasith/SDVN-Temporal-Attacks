@@ -223,17 +223,27 @@ if [ "$SKIP_BLOCKCHAIN" -eq 1 ]; then
 else
     cd "$SCRIPT_DIR"
 
-    SUBMIT_FLAGS="--alerts $NS3_HOME/tgn_alerts.json"
+    # Pass N_RSU so submit_alerts.py selects the correct peer set:
+    #   N_RSU=0 → OBU mode (peer0.obu1..3, OutOf(2,3))
+    #   N_RSU>0 → RSU mode (peer0.rsu1..5, OutOf(3,5))
+    SUBMIT_FLAGS="--alerts $NS3_HOME/tgn_alerts.json --n_rsus ${N_RSU}"
     if [ "$DRY_RUN" -eq 1 ]; then
-        SUBMIT_FLAGS="$SUBMIT_FLAGS --dry-run"
+        SUBMIT_FLAGS="$SUBMIT_FLAGS --dry_run"
         echo "   Running in dry-run mode (no live Fabric needed)"
     fi
+
+    MODE_DESC="RSU mode (peer0.rsu1..5)"; [ "$N_RSU" -eq 0 ] && MODE_DESC="OBU mode (peer0.obu1..3)"
+    echo "   Peer mode: $MODE_DESC"
 
     if python3 submit_alerts.py $SUBMIT_FLAGS 2>&1 | tail -10; then
         check "submit_alerts.py completed" 1
     else
         check "submit_alerts.py completed" 0
-        echo "     [HINT] Start Fabric: cd blockchain/network && docker-compose -f docker-compose-teta.yaml up -d"
+        if [ "$N_RSU" -eq 0 ]; then
+            echo "     [HINT] Start OBU Fabric: cd blockchain/network && docker-compose up -d orderer.tetaguard.net peer0.obu1.tetaguard.net peer0.obu2.tetaguard.net peer0.obu3.tetaguard.net"
+        else
+            echo "     [HINT] Start RSU Fabric: cd blockchain/network && docker-compose -f docker-compose-teta.yaml up -d"
+        fi
         echo "            Or re-run with --dry_run to skip live Fabric."
     fi
 

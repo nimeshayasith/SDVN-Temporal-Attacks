@@ -1,9 +1,18 @@
 # crypto-config.yaml — MSP certificate configuration for TETA-Guard
 #
-# One orderer org + one peer org containing all 5 RSU peers.
-# Matches the peer hostnames in submit_alerts.py:
-#   peer0.rsu1.tetaguard.net .. peer0.rsu5.tetaguard.net
-#   orderer.tetaguard.net
+# Two deployment modes — both share the same TetaGuardOrg:
+#
+#   RSU mode  (N_RSUs > 0): 5 fixed RSU Fabric peers
+#     peer0.rsu1..5.tetaguard.net  (ports 7051..7055)
+#     Endorsement: OutOf(3, RSU1..RSU5)  — tolerates 1 Byzantine RSU
+#
+#   OBU mode  (N_RSUs = 0): 3 designated OBU Fabric peers
+#     peer0.obu1..3.tetaguard.net  (ports 7061..7063)
+#     Endorsement: OutOf(2, OBU1..OBU3)  — tolerates 1 crash fault
+#     Note: 3 OBUs cannot tolerate Byzantine faults (requires n≥4 for f=1).
+#     In a real deployment, use 4+ OBUs for Byzantine fault tolerance.
+#
+# submit_alerts.py selects the peer set automatically via --n_rsus flag.
 #
 # Generate crypto material:
 #   cryptogen generate --config=./crypto-config.yaml --output=./crypto-config
@@ -25,6 +34,7 @@ PeerOrgs:
     Template:
       Count: 0  # peers listed explicitly below
     Specs:
+      # ── RSU peers (fixed roadside infrastructure) ─────────────────────────
       - Hostname: peer0.rsu1
         CommonName: peer0.rsu1.tetaguard.net
       - Hostname: peer0.rsu2
@@ -35,5 +45,12 @@ PeerOrgs:
         CommonName: peer0.rsu4.tetaguard.net
       - Hostname: peer0.rsu5
         CommonName: peer0.rsu5.tetaguard.net
+      # ── OBU peers (designated vehicles, used when N_RSUs = 0) ────────────
+      - Hostname: peer0.obu1
+        CommonName: peer0.obu1.tetaguard.net
+      - Hostname: peer0.obu2
+        CommonName: peer0.obu2.tetaguard.net
+      - Hostname: peer0.obu3
+        CommonName: peer0.obu3.tetaguard.net
     Users:
       Count: 1  # Admin user

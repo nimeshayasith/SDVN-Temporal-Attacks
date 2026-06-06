@@ -338,23 +338,37 @@ docker ps
 peer chaincode list --installed -C teta-channel
 ```
 
+### Start Network — RSU Mode (N_RSUs > 0)
+```bash
+cd blockchain/network
+docker-compose -f docker-compose-teta.yaml up -d \
+    orderer.tetaguard.net ca.tetaguard.net \
+    peer0.rsu1.tetaguard.net peer0.rsu2.tetaguard.net peer0.rsu3.tetaguard.net \
+    peer0.rsu4.tetaguard.net peer0.rsu5.tetaguard.net
+```
+
+### Start Network — OBU Mode (N_RSUs = 0)
+```bash
+cd blockchain/network
+docker-compose -f docker-compose-teta.yaml up -d \
+    orderer.tetaguard.net ca.tetaguard.net \
+    peer0.obu1.tetaguard.net peer0.obu2.tetaguard.net peer0.obu3.tetaguard.net
+```
+
 ### Submit TGN Alerts to Blockchain
 ```bash
-# After Step 4 generates tgn_alerts.json:
+# RSU mode (N_RSUs > 0) — uses peer0.rsu1..5, OutOf(3,5)
+python3 submit_alerts.py --alerts tgn_alerts.json --n_rsus 1
 
-# Simple submission (peer CLI)
-python3 submit_alerts.py
+# OBU mode (N_RSUs = 0) — uses peer0.obu1..3, OutOf(2,3)
+python3 submit_alerts.py --alerts tgn_alerts.json --n_rsus 0
 
-# Custom alert file
-python3 submit_alerts.py --alerts tgn_alerts.json
-
-# With beacon evidence (enables Eq. 3.1 divergence check)
-python3 submit_alerts.py \
-    --alerts tgn_alerts.json \
+# With beacon evidence (enables Eq. 3.1 controller-origin divergence check)
+python3 submit_alerts.py --alerts tgn_alerts.json --n_rsus 1 \
     --evidence beacon_evidence.json
 
-# Dry run
-python3 submit_alerts.py --alerts tgn_alerts.json --dry-run
+# Dry run (no live Fabric needed — prints commands only)
+python3 submit_alerts.py --alerts tgn_alerts.json --n_rsus 1 --dry_run
 
 # Full SDK path (Node.js) with controller topology divergence check
 cd blockchain/client
@@ -364,10 +378,14 @@ node submitToFabric.js \
     --ctrl_topo ctrl_topo.json
 ```
 
-### Monitor Events
+### Monitor Events + FlowMod Execution
 ```bash
-node blockchain/client/eventListener.js
-# Listens for AttackDetected events on teta-channel in real time
+# RSU mode
+node blockchain/client/eventListener.js --node_id peer0.rsu1.tetaguard.net
+
+# OBU mode
+node blockchain/client/eventListener.js --node_id peer0.obu1.tetaguard.net \
+    --ryu_url http://ryu-controller:8080
 ```
 
 ### Stop Fabric Network

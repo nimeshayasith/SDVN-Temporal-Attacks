@@ -145,9 +145,10 @@ DEFAULT_NETWORK = os.path.join(
 ORDERER_ADDRESS = "orderer.tetaguard.net:7050"
 CHANNEL         = "teta-channel"
 CHAINCODE       = "temporalecho"
-MSPID           = "TetagaurdMSP"
+MSPID           = "TetaGuardMSP"
 
-# All 5 RSU peers (endorsement policy: OutOf(3, RSU1..RSU5))
+# ── RSU mode (N_RSUs > 0): 5 fixed RSU Fabric peers ─────────────────────────
+# Endorsement policy: OutOf(3, RSU1..RSU5) — tolerates 1 Byzantine RSU
 RSU_PEERS = [
     ("peer0.rsu1.tetaguard.net", 7051),
     ("peer0.rsu2.tetaguard.net", 7052),
@@ -155,9 +156,32 @@ RSU_PEERS = [
     ("peer0.rsu4.tetaguard.net", 7054),
     ("peer0.rsu5.tetaguard.net", 7055),
 ]
+RSU_MIN_ENDORSERS = 3   # OutOf(3,5): tolerates 1 Byzantine
 
-# Minimum endorsers required (PBFT-equivalent: OutOf(3,5) tolerates 1 Byzantine)
-MIN_ENDORSERS = 3
+# ── OBU mode (N_RSUs = 0): 3 designated OBU Fabric peers ─────────────────────
+# Used when there is no fixed RSU infrastructure.
+# Endorsement policy: OutOf(2, OBU1..OBU3) — tolerates 1 crash fault.
+# Note: 3 peers cannot guarantee Byzantine fault tolerance (needs n ≥ 4 for f=1).
+OBU_PEERS = [
+    ("peer0.obu1.tetaguard.net", 7061),
+    ("peer0.obu2.tetaguard.net", 7062),
+    ("peer0.obu3.tetaguard.net", 7063),
+]
+OBU_MIN_ENDORSERS = 2   # OutOf(2,3): tolerates 1 crash fault
+
+def get_active_peers(n_rsus: int):
+    """Return (peers, min_endorsers) based on whether RSU infrastructure exists."""
+    if n_rsus > 0:
+        return RSU_PEERS, RSU_MIN_ENDORSERS
+    else:
+        return OBU_PEERS, OBU_MIN_ENDORSERS
+
+# Active peer set — set at startup based on --n_rsus argument
+_ACTIVE_PEERS   = RSU_PEERS
+_MIN_ENDORSERS  = RSU_MIN_ENDORSERS
+
+# Legacy alias kept for compatibility with build_invoke_cmd
+MIN_ENDORSERS = _MIN_ENDORSERS
 
 
 # ---------------------------------------------------------------------------
@@ -204,8 +228,8 @@ def build_invoke_cmd(alert: dict, network_dir: str, controller_topo_json: str = 
         "-n",         CHAINCODE,
     ]
 
-    # Add endorsing peers (need at least MIN_ENDORSERS)
-    for host, port in RSU_PEERS[:MIN_ENDORSERS]:
+    # Add endorsing peers — use active peer set (RSU or OBU based on --n_rsus)
+    for host, port in _ACTIVE_PEERS[:_MIN_ENDORSERS]:
         peer_tls = os.path.join(crypto,
                                 "peerOrganizations", "tetaguard.net",
                                 "peers", f"{host}", "tls", "ca.crt")
@@ -318,7 +342,28 @@ def main():
                     help="Print commands without executing peer invoke")
     ap.add_argument("--delay",    type=float, default=0.5,
                     help="Seconds to wait between consecutive invocations (default: 0.5)")
+    ap.add_argument("--n_rsus",   type=int, default=-1,
+                    help="Number of RSU nodes in the simulation (from --N_RSUs). "
+                         "0 = OBU mode (peer0.obu1..3, OutOf(2,3)); "
+                         ">0 = RSU mode (peer0.rsu1..5, OutOf(3,5)); "
+                         "-1 = auto-detect from tgn_alerts.json (default).")
     args = ap.parse_args()
+
+    # ── Select peer set based on --n_rsus ────────────────────────────────────
+    global _ACTIVE_PEERS, _MIN_ENDORSERS, MIN_ENDORSERS
+    n_rsus = args.n_rsus
+    if n_rsus == -1:
+        # Auto-detect: check if any alert has alpha=TTW/BSHH/ME from an RSU scenario
+        # Conservative default: use RSU peers unless explicitly told N_RSUs=0
+        n_rsus = 1   # default to RSU mode
+    _ACTIVE_PEERS, _MIN_ENDORSERS = get_active_peers(n_rsus)
+    MIN_ENDORSERS = _MIN_ENDORSERS
+    mode = "RSU" if n_rsus > 0 else "OBU"
+    print(f"[Bridge] Peer mode: {mode}  "
+          f"({len(_ACTIVE_PEERS)} peers, OutOf({_MIN_ENDORSERS},{len(_ACTIVE_PEERS)}))")
+    if n_rsus == 0:
+        print(f"[Bridge] OBU peers: {', '.join(h for h,_ in _ACTIVE_PEERS)}")
+        print(f"[Bridge] Note: 3 OBU peers tolerate 1 crash fault but NOT Byzantine faults.")
 
     # ── Load tgn_alerts.json ─────────────────────────────────────────────────
     if not os.path.exists(args.alerts):

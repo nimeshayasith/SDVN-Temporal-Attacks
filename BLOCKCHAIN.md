@@ -7,23 +7,46 @@
 
 ## Overview
 
-The blockchain layer provides tamper-evident evidence logging and automated enforcement independent of a potentially malicious SDN controller. It is grounded in RSU-level evidence — **never** controller-reported data.
+The blockchain layer provides tamper-evident evidence logging and automated enforcement independent of a potentially malicious SDN controller. It is grounded in **RSU or designated OBU evidence** — never controller-reported data.
+
+## Two Deployment Modes
+
+The system supports both RSU-infrastructure and infrastructure-less (OBU-only) deployments:
+
+| Parameter | RSU mode (`N_RSUs > 0`) | OBU mode (`N_RSUs = 0`) |
+|-----------|------------------------|------------------------|
+| Fabric peers | 5 RSU peers (`peer0.rsu1..5`) | 3 OBU peers (`peer0.obu1..3`) |
+| Ports | 7051–7055 | 7061–7063 |
+| Endorsement | `OutOf(3, RSU1..RSU5)` | `OutOf(2, OBU1..OBU3)` |
+| PBFT tolerance | 1 Byzantine fault | 1 crash fault only |
+| submit_alerts.py | `--n_rsus 1` (or omit) | `--n_rsus 0` |
+
+**OBU fault tolerance note:** 3 OBU peers cannot guarantee Byzantine fault tolerance (requires n ≥ 3f+1 = 4 for f=1). With `OutOf(2,3)`, a single malicious OBU can halt consensus but cannot forge ledger entries (since the other 2 honest OBUs would reject it). For Byzantine-tolerant OBU mode, deploy 4+ OBU peers.
 
 ```
 tgn_detector.cc
     │  tgn_alerts.json  (Eq. 3.36 AlertObject)
     ▼
-submit_alerts.py  ←  beacon_evidence.json (optional)
+submit_alerts.py --n_rsus N  ←  beacon_evidence.json (optional)
     │  peer chaincode invoke SubmitAlert
     ▼
-┌─────────────────────────────────────────────────────────┐
-│  Hyperledger Fabric 3.0 — 5-RSU Consortium             │
-│  Channel: teta-channel                                  │
-│  Chaincode: temporalecho (TemporalEchoMitigator)        │
-│                                                         │
-│  Endorsement policy: OutOf(3, RSU1..RSU5)              │
-│  PBFT tolerance: ⌊(5−1)/3⌋ = 1 Byzantine peer         │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Hyperledger Fabric 3.0                                          │
+│  Channel: teta-channel                                           │
+│  Chaincode: temporalecho (TemporalEchoMitigator)                 │
+│                                                                  │
+│  RSU mode (N_RSUs > 0):                                         │
+│    peer0.rsu1..5.tetaguard.net  (ports 7051..7055)              │
+│    Endorsement: OutOf(3, RSU1..RSU5)  — 1 Byzantine tolerated   │
+│                                                                  │
+│  OBU mode (N_RSUs = 0):                                         │
+│    peer0.obu1..3.tetaguard.net  (ports 7061..7063)              │
+│    Endorsement: OutOf(2, OBU1..OBU3)  — 1 crash tolerated       │
+└──────────────────────────────────────────────────────────────────┘
+        │
+eventListener.js (off-chain)
+        └─ reads PendingFlowMod from ledger
+        └─ POSTs FlowMod to Ryu SDN controller
 ```
 
 ---

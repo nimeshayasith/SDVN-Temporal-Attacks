@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+	"strings"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -31,7 +33,7 @@ func (t *TemporalEchoMitigator) checkControllerDivergence(
 	evidenceLinkSet := aggregateEvidenceLinkSet(ctx, claim.IntervalTS)
 
 	delta := symmetricDifference(ctrlLinkSet, evidenceLinkSet)
-	deltaThresh := computeDeltaThreshold(ctx, claim.IntervalTS)
+	deltaThresh := computeDeltaThreshold(evidenceLinkSet)
 
 	if delta > deltaThresh {
 		alert := DetectionEvent{
@@ -68,7 +70,7 @@ func computeDivergence(
 	ctrlLinkSet := buildLinkSet(claim.Links)
 	evidenceLinkSet := aggregateEvidenceLinkSet(ctx, claim.IntervalTS)
 	return symmetricDifference(ctrlLinkSet, evidenceLinkSet),
-		computeDeltaThreshold(ctx, claim.IntervalTS)
+		computeDeltaThreshold(evidenceLinkSet)
 }
 
 // buildLinkSet converts a slice of TopologyLinks into a canonical link-ID set.
@@ -144,14 +146,50 @@ func symmetricDifference(a, b map[string]bool) int {
 	return count
 }
 
-// computeDeltaThreshold returns the maximum tolerable divergence for the given
-// beacon interval.  Conservative default: 2 links per interval per RSU zone.
-// In production: read vehicle density λ from recent beacon evidence to calibrate
-// dynamically per §12.1.
-func computeDeltaThreshold(
-	ctx contractapi.TransactionContextInterface,
-	intervalTS int64,
-) int {
-	_ = intervalTS // reserved for dynamic calibration
-	return 2
+// computeDeltaThreshold returns the maximum tolerable divergence δ_thresh for
+// the current beacon interval, calibrated from the evidence link set (§12.1).
+//
+// Formula (derived from vehicular link-churn theory):
+//
+//	δ_thresh = max(δ_min, ⌈α · L + β · N⌉)
+//
+//	L = |E_t^nodes|  — number of attested links in beacon evidence
+//	N                — unique vehicle count extracted from those link endpoints
+//	α = 0.10         — fraction of observed links tolerated as legitimate churn
+//	                   (mean link lifetime ≈ 40 s, beacon interval ≈ 100 ms →
+//	                    per-interval churn rate ≈ 0.25 %; α adds safety margin)
+//	β = 0.05         — per-vehicle allowance for RSU zone-boundary partial
+//	                   observations (vehicles straddling two RSU coverage zones
+//	                   may appear in one zone's evidence but not another's)
+//	δ_min = 2        — minimum threshold even in empty or low-evidence networks
+//
+// No additional ledger query: the evidenceLinkSet is already fetched by the
+// caller (aggregateEvidenceLinkSet), so this function is purely arithmetic.
+func computeDeltaThreshold(evidenceLinkSet map[string]bool) int {
+	const (
+		minThresh      = 2
+		alpha          = 0.10 // link-churn fraction
+		betaPerVehicle = 0.05 // per-vehicle zone-edge allowance
+	)
+
+	L := len(evidenceLinkSet)
+	if L == 0 {
+		return minThresh
+	}
+
+	// Recover unique vehicle IDs from the canonical "minNode:maxNode" keys.
+	uniqueNodes := make(map[string]bool, 2*L)
+	for key := range evidenceLinkSet {
+		if i := strings.IndexByte(key, ':'); i >= 0 {
+			uniqueNodes[key[:i]] = true
+			uniqueNodes[key[i+1:]] = true
+		}
+	}
+	N := len(uniqueNodes)
+
+	thresh := int(math.Ceil(alpha*float64(L) + betaPerVehicle*float64(N)))
+	if thresh < minThresh {
+		return minThresh
+	}
+	return thresh
 }

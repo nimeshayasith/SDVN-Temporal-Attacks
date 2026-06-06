@@ -2,11 +2,23 @@
 #
 # Components:
 #   orderer.tetaguard.net          — SmartBFT orderer (PBFT, §7)
-#   peer0.rsu1..5.tetaguard.net    — 5 RSU Fabric peers
-#   couchdb.rsu1..5                — CouchDB for rich queries (§15 dependency)
+#   peer0.rsu1..5.tetaguard.net    — 5 RSU Fabric peers (RSU mode, N_RSUs > 0)
+#   peer0.obu1..3.tetaguard.net    — 3 OBU Fabric peers (OBU mode, N_RSUs = 0)
+#   couchdb.rsu1..5 / obu1..3     — CouchDB for rich queries (§15 dependency)
 #   ca.tetaguard.net               — Fabric CA for MSP
 #
-# Start network:
+# Start RSU mode (N_RSUs > 0):
+#   docker-compose -f docker-compose-teta.yaml up -d \
+#     orderer.tetaguard.net ca.tetaguard.net \
+#     peer0.rsu1.tetaguard.net peer0.rsu2.tetaguard.net peer0.rsu3.tetaguard.net \
+#     peer0.rsu4.tetaguard.net peer0.rsu5.tetaguard.net
+#
+# Start OBU mode (N_RSUs = 0):
+#   docker-compose -f docker-compose-teta.yaml up -d \
+#     orderer.tetaguard.net ca.tetaguard.net \
+#     peer0.obu1.tetaguard.net peer0.obu2.tetaguard.net peer0.obu3.tetaguard.net
+#
+# Start all peers (both modes):
 #   docker-compose -f docker-compose-teta.yaml up -d
 #
 # Stop:
@@ -25,9 +37,15 @@ volumes:
   peer0.rsu3.tetaguard.net:
   peer0.rsu4.tetaguard.net:
   peer0.rsu5.tetaguard.net:
+  peer0.obu1.tetaguard.net:
+  peer0.obu2.tetaguard.net:
+  peer0.obu3.tetaguard.net:
   couchdb.rsu1:
   couchdb.rsu2:
   couchdb.rsu3:
+  couchdb.obu1:
+  couchdb.obu2:
+  couchdb.obu3:
   couchdb.rsu4:
   couchdb.rsu5:
 
@@ -306,5 +324,134 @@ services:
       - peer0.rsu5.tetaguard.net:/var/hyperledger/production
     ports:
       - "7055:7055"
+    networks:
+      - teta-net
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # OBU PEERS — used when N_RSUs = 0 (no fixed RSU infrastructure)
+  # Designated vehicles act as trusted Fabric peers.
+  # Endorsement policy: OutOf(2, OBU1..OBU3)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  couchdb.obu1:
+    image: couchdb:3.3
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: adminpw
+    volumes:
+      - couchdb.obu1:/opt/couchdb/data
+    networks:
+      - teta-net
+
+  couchdb.obu2:
+    image: couchdb:3.3
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: adminpw
+    volumes:
+      - couchdb.obu2:/opt/couchdb/data
+    networks:
+      - teta-net
+
+  couchdb.obu3:
+    image: couchdb:3.3
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: adminpw
+    volumes:
+      - couchdb.obu3:/opt/couchdb/data
+    networks:
+      - teta-net
+
+  # ─── Peer: peer0.obu1 ────────────────────────────────────────────────────
+  peer0.obu1.tetaguard.net:
+    image: hyperledger/fabric-peer:3.0
+    environment:
+      <<: *peer-env
+      CORE_PEER_ID: peer0.obu1.tetaguard.net
+      CORE_PEER_ADDRESS: peer0.obu1.tetaguard.net:7061
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7061
+      CORE_PEER_CHAINCODEADDRESS: peer0.obu1.tetaguard.net:7062
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7062
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.obu2.tetaguard.net:7062
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.obu1.tetaguard.net:7061
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: couchdb.obu1:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+    depends_on:
+      - couchdb.obu1
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./crypto-config/peerOrganizations/tetaguard.net/peers/peer0.obu1.tetaguard.net/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/tetaguard.net/peers/peer0.obu1.tetaguard.net/tls:/etc/hyperledger/fabric/tls
+      - peer0.obu1.tetaguard.net:/var/hyperledger/production
+    ports:
+      - "7061:7061"
+    networks:
+      - teta-net
+
+  # ─── Peer: peer0.obu2 ────────────────────────────────────────────────────
+  peer0.obu2.tetaguard.net:
+    image: hyperledger/fabric-peer:3.0
+    environment:
+      <<: *peer-env
+      CORE_PEER_ID: peer0.obu2.tetaguard.net
+      CORE_PEER_ADDRESS: peer0.obu2.tetaguard.net:7062
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7062
+      CORE_PEER_CHAINCODEADDRESS: peer0.obu2.tetaguard.net:7063
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7063
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.obu1.tetaguard.net:7061
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.obu2.tetaguard.net:7062
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: couchdb.obu2:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+    depends_on:
+      - couchdb.obu2
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./crypto-config/peerOrganizations/tetaguard.net/peers/peer0.obu2.tetaguard.net/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/tetaguard.net/peers/peer0.obu2.tetaguard.net/tls:/etc/hyperledger/fabric/tls
+      - peer0.obu2.tetaguard.net:/var/hyperledger/production
+    ports:
+      - "7062:7062"
+    networks:
+      - teta-net
+
+  # ─── Peer: peer0.obu3 ────────────────────────────────────────────────────
+  peer0.obu3.tetaguard.net:
+    image: hyperledger/fabric-peer:3.0
+    environment:
+      <<: *peer-env
+      CORE_PEER_ID: peer0.obu3.tetaguard.net
+      CORE_PEER_ADDRESS: peer0.obu3.tetaguard.net:7063
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7063
+      CORE_PEER_CHAINCODEADDRESS: peer0.obu3.tetaguard.net:7064
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7064
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.obu1.tetaguard.net:7061
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.obu3.tetaguard.net:7063
+      CORE_PEER_LOCALMSPID: TetaGuardMSP
+      CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /etc/hyperledger/fabric/tls/ca.crt
+      CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS: couchdb.obu3:5984
+      CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME: admin
+      CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD: adminpw
+    depends_on:
+      - couchdb.obu3
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./crypto-config/peerOrganizations/tetaguard.net/peers/peer0.obu3.tetaguard.net/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/tetaguard.net/peers/peer0.obu3.tetaguard.net/tls:/etc/hyperledger/fabric/tls
+      - peer0.obu3.tetaguard.net:/var/hyperledger/production
+    ports:
+      - "7063:7063"
     networks:
       - teta-net
