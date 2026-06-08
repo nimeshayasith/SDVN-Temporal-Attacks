@@ -122283,6 +122283,23 @@ void run_proposed_RL()
 void  run_optimization_link_lifetime()
 {
 	cout<<"link lifetime optimization beginning at "<<Now().GetSeconds()<<endl;
+	// Sync vehicle positions from local node data to controller table.
+	// routing_data_at_nodes_inst is populated directly from the mobility model
+	// by add_routing_data_at_nodes. routing_data_at_controller_inst is normally
+	// populated via LTE uplink packets, but if those haven't arrived yet (e.g.
+	// early in the simulation or when LTE path is not reachable), copy the
+	// locally-known positions so the optimizer has real data to work with.
+	for (uint32_t _i = 0; _i < (uint32_t)total_size; _i++) {
+		if ((routing_data_at_controller_inst+_i)->position.x == 0.0 &&
+		    (routing_data_at_controller_inst+_i)->position.y == 0.0 &&
+		    ((routing_data_at_nodes_inst+_i)->position.x != 0.0 ||
+		     (routing_data_at_nodes_inst+_i)->position.y != 0.0)) {
+			(routing_data_at_controller_inst+_i)->nodeid       = (routing_data_at_nodes_inst+_i)->nodeid;
+			(routing_data_at_controller_inst+_i)->position     = (routing_data_at_nodes_inst+_i)->position;
+			(routing_data_at_controller_inst+_i)->velocity     = (routing_data_at_nodes_inst+_i)->velocity;
+			(routing_data_at_controller_inst+_i)->acceleration = (routing_data_at_nodes_inst+_i)->acceleration;
+		}
+	}
 	write_csv_status_lifetime();//write status data to csv
 	Simulator::Schedule(Seconds(0.000050), optimize_link_lifetime);
 	Simulator::Schedule(Seconds(0.000100), read_lifetime_from_csv);
@@ -125939,13 +125956,16 @@ Vector previous_velocity_LTE[total_size];
 
 void send_LTE_routing_data_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_source, Ptr <Node> destination_node, uint32_t node_index)
 {
-  	Ptr <Ipv4> ipv4;  	
+  	Ptr <Ipv4> ipv4;
   	ipv4 = destination_node->GetObject<Ipv4>();
-	Ipv4InterfaceAddress iaddr = ipv4->GetAddress(2,0);//2nd IPv4 interface,0th address index
+	// Use interface 2 (P2P to PGW) when N_Vehicles>0 so that vehicle LTE packets
+	// (7.0.0.x) reach the controller via PGW → 40.1.1.x P2P link.
+	// Interface 1 (CSMA 10.1.1.x) is unreachable from the LTE network.
+	Ipv4InterfaceAddress iaddr = ipv4->GetAddress((N_Vehicles > 0 ? 2 : 0), 0);//P2P interface of controller_Node
 	Ipv4Address dest_ip = iaddr.GetLocal();
 	Ptr <Node> nu = DynamicCast <Node> (node_source);
 	Ptr <Packet> packet1 = Create <Packet> (0);
-	
+
 	uint32_t nid;
         Vector posi[2];
 	Vector veli[2];
@@ -144385,9 +144405,9 @@ attack_mobility.Install(Vehicle_Nodes);
     					{
     					
 						srand(t*i);
-				  		destination = rand()%total_size;
+				  		destination = rand()%(N_Vehicles + N_RSUs);
 				  		srand(1.15*t*i);
-				  		source = rand()%total_size;
+				  		source = rand()%(N_Vehicles + N_RSUs);
 				  		bool found_both = false;
 				  		bool found_source = false;
 				  		bool found_destination = false;
@@ -144427,8 +144447,8 @@ attack_mobility.Install(Vehicle_Nodes);
 				  				uint32_t list_size = 0;
 				  				uint32_t list_source_size = 0;
 				  				uint32_t list_dest_size = 0;
-					  			destination = (2*attempt+destination)%total_size;
-					  			source = (3*attempt+source)%total_size;
+					  			destination = (2*attempt+destination)%(N_Vehicles + N_RSUs);
+					  			source = (3*attempt+source)%(N_Vehicles + N_RSUs);
 					  			//cout<<"updated destination is "<<destination<<"source is "<<source<<endl;
 					  			for (uint32_t j=0; j<(2*flows); j++)
 								{
@@ -144546,6 +144566,7 @@ attack_mobility.Install(Vehicle_Nodes);
 					  {
 					  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (apps.Get(u+2));
 						Simulator::Schedule(Seconds(t+0.000025*u),send_LTE_data_agent,udp_app,Vehicle_Nodes.Get(u),controller_Node.Get(0), u);
+						Simulator::Schedule(Seconds(t+0.000030*u),send_LTE_routing_data_alone,udp_app,Vehicle_Nodes.Get(u),controller_Node.Get(0), u);
 					  }
 					  //calculate the routing solution
 					  //unicast the solution back to nodes
@@ -144607,6 +144628,7 @@ attack_mobility.Install(Vehicle_Nodes);
 					  	Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(u));	
 					  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(u));
 						Simulator::Schedule(Seconds(t+0.000050*u),RSU_dataunicast_agent, udp_app, nu, controller_Node.Get(0));
+						Simulator::Schedule(Seconds(t+0.000060*u),RSU_routing_statusdataunicast_alone, udp_app, nu, controller_Node.Get(0));
 						if (u == (RSU_Nodes.GetN() - 1))
 						{
 							Simulator::Schedule(Seconds(t+0.000060*u),RSU_flowdata_unicast_alone, udp_app, nu, management_Node.Get(0));
