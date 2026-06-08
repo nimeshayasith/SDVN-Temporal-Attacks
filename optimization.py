@@ -2,6 +2,11 @@ import gurobipy as gp
 from gurobipy import GRB
 import csv
 import time
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+INPUT_CSV = BASE_DIR / "optimization_data.csv"
+OUTPUT_CSV = BASE_DIR / "optimization_results.csv"
 
 try:
 	time1 = time.time()*1000
@@ -15,7 +20,7 @@ try:
 	#Bim = list()
 	Si_inner = list()
 
-	with open("/home/nimesha/ns-allinone-3.35/ns-3.35/scratch/optimization_data.csv",'r',encoding='UTF8') as csvfile:
+	with open(INPUT_CSV,'r',encoding='UTF8') as csvfile:
 		csvreader = csv.reader(csvfile,delimiter=',',quotechar='"',quoting=csv.QUOTE_MINIMAL)
 		for row in csvreader:
 			p = str(row)
@@ -192,7 +197,7 @@ try:
 	for j in range(n):
 		print("Solution values: %s=%g, %s=%g" %(x[j].Varname, x[j].X, z[j].Varname, z[j].X))
 	
-	with open("/home/nimesha/ns-allinone-3.35/ns-3.35/scratch/optimization_results.csv",'w',encoding='UTF8') as csvfile:
+	with open(OUTPUT_CSV,'w',encoding='UTF8') as csvfile:
 		writer = csv.writer(csvfile,delimiter=',',quotechar='"',quoting=csv.QUOTE_MINIMAL)
 		for i in range(n):
 			s1 = str(int(x[i].X))

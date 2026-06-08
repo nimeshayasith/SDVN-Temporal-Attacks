@@ -1,0 +1,261 @@
+========================================================
+  TTW Attack Scenario 1 — Malicious Vehicle, No RSUs   
+========================================================
+
+  t=10    ①  V2V HELLO exchange
+  t=10    ②  Topology updates to controller
+  t=10    ③  Attacker stores old packet
+  t=15        Link breaks physically
+  t=20    ④  Attacker forges timestamp t=10→t=20
+  t=20    ⑤  Forged packet sent to controller
+  t=20    ⑥  Controller routing poisoned (ghost link)
+
+========================================================
+
+[t=10.000]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V19 pos=(372.320,0.000)
+  V2 pos=(618.150,-54.020)
+  dist=251.695m  DELIVERED — neighbor discovered
+
+[t=10.000]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V16 pos=(372.320,350.000)
+  V5 pos=(588.575,327.156)
+  dist=217.458m  DELIVERED — neighbor discovered
+
+[t=10.000]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V8 pos=(397.577,695.758)
+  V4 pos=(589.678,654.635)
+  dist=196.454m  DELIVERED — neighbor discovered
+
+[t=10.000]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V6 pos=(440.198,1024.766)
+  V3 pos=(625.833,996.502)
+  dist=187.774m  DELIVERED — neighbor discovered
+
+[t=10.001]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V2 pos=(618.150,-54.027)
+  V19 pos=(372.307,0.000)
+  dist=251.709m  DELIVERED — neighbor discovered
+
+[t=10.001]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V5 pos=(588.568,327.150)
+  V16 pos=(372.307,350.000)
+  dist=217.465m  DELIVERED — neighbor discovered
+
+[t=10.001]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V4 pos=(589.673,654.622)
+  V8 pos=(397.576,695.754)
+  dist=196.451m  DELIVERED — neighbor discovered
+
+[t=10.001]  STEP ①  HELLO  (real DSRC 802.11p packet)
+  V3 pos=(625.836,996.492)
+  V6 pos=(440.201,1024.756)
+  dist=187.774m  DELIVERED — neighbor discovered
+
+[t=10.100]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V2 -> Controller
+  Packet : <V2 sees V19, t=10.000>
+  Result : ACCEPTED — link V2<->V19 marked ACTIVE
+
+[t=10.100]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V5 -> Controller
+  Packet : <V5 sees V16, t=10.000>
+  Result : ACCEPTED — link V5<->V16 marked ACTIVE
+
+[t=10.100]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V4 -> Controller
+  Packet : <V4 sees V8, t=10.000>
+  Result : ACCEPTED — link V4<->V8 marked ACTIVE
+
+[t=10.100]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V3 -> Controller
+  Packet : <V3 sees V6, t=10.000>
+  Result : ACCEPTED — link V3<->V6 marked ACTIVE
+
+[t=10.101]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V19 -> Controller
+  Packet : <V19 sees V2, t=10.000>
+  Result : ACCEPTED — link V19<->V2 marked ACTIVE
+
+[t=10.101]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V16 -> Controller
+  Packet : <V16 sees V5, t=10.000>
+  Result : ACCEPTED — link V16<->V5 marked ACTIVE
+
+[t=10.101]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V8 -> Controller
+  Packet : <V8 sees V4, t=10.000>
+  Result : ACCEPTED — link V8<->V4 marked ACTIVE
+
+[t=10.101]  STEP ②  TOPOLOGY UPDATE (legitimate)
+  V6 -> Controller
+  Packet : <V6 sees V3, t=10.000>
+  Result : ACCEPTED — link V6<->V3 marked ACTIVE
+
+[t=10.184]  STEP ③  ATTACKER STORES PACKET
+  old_packet : <V2 sees V19, t=10.000>
+  Status     : Stored — awaiting replay at t=20.000
+
+  NOTE: Link V2<->V19 physically breaks at t≈12.5s (dist > 300.0m)
+  Simulation declares it broken at t=15.0s — controller receives no link-down notification.
+
+[t=10.187]  STEP ③  ATTACKER STORES PACKET
+  old_packet : <V5 sees V16, t=10.000>
+  Status     : Stored — awaiting replay at t=20.000
+
+  NOTE: Link V5<->V16 physically breaks at t≈12.5s (dist > 300.0m)
+  Simulation declares it broken at t=15.0s — controller receives no link-down notification.
+
+[t=10.189]  STEP ③  ATTACKER STORES PACKET
+  old_packet : <V3 sees V6, t=10.000>
+  Status     : Stored — awaiting replay at t=20.000
+
+  NOTE: Link V3<->V6 physically breaks at t≈12.5s (dist > 300.0m)
+  Simulation declares it broken at t=15.0s — controller receives no link-down notification.
+
+[t=10.205]  STEP ③  ATTACKER STORES PACKET
+  old_packet : <V4 sees V8, t=10.000>
+  Status     : Stored — awaiting replay at t=20.000
+
+  NOTE: Link V4<->V8 physically breaks at t≈12.5s (dist > 300.0m)
+  Simulation declares it broken at t=15.0s — controller receives no link-down notification.
+
+[t=19.966]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK
+  Stored packet : <V3 sees V6, t=10.000>  (original observation at t=10.000)
+  Forged packet : <V3 sees V6, t=19.966>  timestamp changed 10.000 -> 19.966
+  Forge action  : attacker changes timestamp to appear current, sends to controller at t=19.966 — link has been broken since t≈12.500s
+  Physical link distance : 131.375 m  WARNING still in range!
+
+[t=19.966]  STEP ⑤  FORGED PACKET → CONTROLLER
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=19.966]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V3<->V6 was ACTIVE at t=19.966 (forged entry — link broken since t≈12.500s)
+  Physical reality : link ACTIVE (dist=131.375m)
+  Consequence : controller holds forged entry — link will appear valid past its true expiry
+  Topology timeline CORRUPTED — controller has forged temporal reference
+
+  Topology Table (after this pair's replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V16  ->  V5    t=10.000    No
+  V19  ->  V2    t=10.000    No
+  V2  ->  V19    t=10.000    No
+  V3  ->  V6    t=19.966    YES <- FORGED
+  V4  ->  V8    t=10.000    No
+  V5  ->  V16    t=10.000    No
+  V6  ->  V3    t=10.000    No
+  V8  ->  V4    t=10.000    No
+
+[t=19.997]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK
+  Stored packet : <V4 sees V8, t=10.000>  (original observation at t=10.000)
+  Forged packet : <V4 sees V8, t=19.997>  timestamp changed 10.000 -> 19.997
+  Forge action  : attacker changes timestamp to appear current, sends to controller at t=19.997 — link has been broken since t≈12.500s
+  Physical link distance : 232.060 m  WARNING still in range!
+
+[t=19.997]  STEP ⑤  FORGED PACKET → CONTROLLER
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=19.997]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V4<->V8 was ACTIVE at t=19.997 (forged entry — link broken since t≈12.500s)
+  Physical reality : link ACTIVE (dist=232.060m)
+  Consequence : controller holds forged entry — link will appear valid past its true expiry
+  Topology timeline CORRUPTED — controller has forged temporal reference
+
+  Topology Table (after this pair's replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V16  ->  V5    t=10.000    No
+  V19  ->  V2    t=10.000    No
+  V2  ->  V19    t=10.000    No
+  V3  ->  V6    t=19.966    YES <- FORGED
+  V4  ->  V8    t=19.997    YES <- FORGED
+  V5  ->  V16    t=10.000    No
+  V6  ->  V3    t=10.000    No
+  V8  ->  V4    t=10.000    No
+
+[t=19.998]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK
+  Stored packet : <V2 sees V19, t=10.000>  (original observation at t=10.000)
+  Forged packet : <V2 sees V19, t=19.998>  timestamp changed 10.000 -> 19.998
+  Forge action  : attacker changes timestamp to appear current, sends to controller at t=19.998 — link has been broken since t≈12.500s
+  Physical link distance : 438.457 m  BROKEN
+
+[t=19.998]  STEP ⑤  FORGED PACKET → CONTROLLER
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=19.998]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V2<->V19 was ACTIVE at t=19.998 (forged entry — link broken since t≈12.500s)
+  Physical reality : link BROKEN (dist=438.457m)
+  Consequence : packets routed via ghost link will be DROPPED
+  Topology timeline CORRUPTED — controller has forged temporal reference
+
+  Topology Table (after this pair's replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V16  ->  V5    t=10.000    No
+  V19  ->  V2    t=10.000    No
+  V2  ->  V19    t=19.998    YES <- FORGED
+  V3  ->  V6    t=19.966    YES <- FORGED
+  V4  ->  V8    t=19.997    YES <- FORGED
+  V5  ->  V16    t=10.000    No
+  V6  ->  V3    t=10.000    No
+  V8  ->  V4    t=10.000    No
+
+[t=20.006]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK
+  Stored packet : <V5 sees V16, t=10.000>  (original observation at t=10.000)
+  Forged packet : <V5 sees V16, t=20.006>  timestamp changed 10.000 -> 20.006
+  Forge action  : attacker changes timestamp to appear current, sends to controller at t=20.006 — link has been broken since t≈12.500s
+  Physical link distance : 223.371 m  WARNING still in range!
+
+[t=20.006]  STEP ⑤  FORGED PACKET → CONTROLLER
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=20.006]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V5<->V16 was ACTIVE at t=20.006 (forged entry — link broken since t≈12.500s)
+  Physical reality : link ACTIVE (dist=223.371m)
+  Consequence : controller holds forged entry — link will appear valid past its true expiry
+  Topology timeline CORRUPTED — controller has forged temporal reference
+
+  Topology Table (after this pair's replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V16  ->  V5    t=10.000    No
+  V19  ->  V2    t=10.000    No
+  V2  ->  V19    t=19.998    YES <- FORGED
+  V3  ->  V6    t=19.966    YES <- FORGED
+  V4  ->  V8    t=19.997    YES <- FORGED
+  V5  ->  V16    t=20.006    YES <- FORGED
+  V6  ->  V3    t=10.000    No
+  V8  ->  V4    t=10.000    No
+
+========================================================
+  TTW ATTACK SCENARIO 1 COMPLETE
+========================================================
+[t=20.016]  DETECTION + MITIGATION
+  Alert raised for ghost link V3<->V6
+  Link distance: 131.375 m
+  Detector score: 0.400
+  Detection latency: 50.000 ms
+  Action: forged topology entry removed from controller table
+
+[t=20.047]  DETECTION + MITIGATION
+  Alert raised for ghost link V4<->V8
+  Link distance: 232.060 m
+  Detector score: 0.417
+  Detection latency: 50.000 ms
+  Action: forged topology entry removed from controller table
+
+[t=20.048]  DETECTION + MITIGATION
+  Alert raised for ghost link V2<->V19
+  Link distance: 438.457 m
+  Detector score: 0.438
+  Detection latency: 50.000 ms
+  Action: forged topology entry removed from controller table
+
+[t=20.056]  DETECTION + MITIGATION
+  Alert raised for ghost link V5<->V16
+  Link distance: 223.371 m
+  Detector score: 0.307
+  Detection latency: 50.000 ms
+  Action: forged topology entry removed from controller table
+
