@@ -587,15 +587,40 @@ static std::vector<NpfadsBsmRecord>        g_routing_bsm_log;
 static std::map<uint32_t, NpfadsBsmRecord> g_routing_last_bsm;
 
 static int
-NpfadsGroundTruthAttackTypeForVehicle(uint32_t /*vehicleIdx*/)
+NpfadsGroundTruthAttackTypeForVehicle(uint32_t vehicleIdx)
 {
-    // TTW, BSHH, and ME attacks forge control-plane timestamps and topology
-    // entries but NEVER falsify a vehicle's GPS position.  NPFADS evaluates
-    // position-variance signatures only, so every node in a temporal-attack
-    // scenario is position-benign from NPFADS's perspective.
-    // Returning NPFADS_BENIGN for all nodes is the correct ground truth:
-    // any NPFADS "detection" would be a false positive on genuine GPS data,
-    // and NPFADS correctly achieving TP=0 proves the complementarity claim.
+    // Label temporal attackers with a scenario-specific type so the NPFADS
+    // confusion matrix can measure TP and FN.  Types 100+scenario distinguish
+    // TTW/BSHH/ME from the NPFADS position-attack IDs (1, 2, 4, 8, 16).
+    // NOTE: temporal attackers do NOT falsify GPS — any NPFADS detection is
+    // due to simulation mobility differences, not position-falsification.
+    // Document this limitation in the report rather than hiding it.
+    const int temporalAttackLabel = 100 + static_cast<int>(attack_scenario);
+
+    if (attack_scenario >= TTW_S1_MAL_VEH_NO_RSU &&
+        attack_scenario <= TTW_S4_MAL_CTRL_WITH_RSU &&
+        vehicleIdx < ttw_malicious_nodes.size() &&
+        ttw_malicious_nodes[vehicleIdx])
+    {
+        return temporalAttackLabel;
+    }
+
+    if (attack_scenario >= BSHH_S1_MAL_VEH_NO_RSU &&
+        attack_scenario <= BSHH_S4_MAL_CTRL_WITH_RSU &&
+        vehicleIdx < bshh_malicious_nodes.size() &&
+        bshh_malicious_nodes[vehicleIdx])
+    {
+        return temporalAttackLabel;
+    }
+
+    if (attack_scenario >= ME_S1_MAL_VEH_NO_RSU &&
+        attack_scenario <= ME_S4_MAL_CTRL_WITH_RSU &&
+        vehicleIdx < me_malicious_nodes.size() &&
+        me_malicious_nodes[vehicleIdx])
+    {
+        return temporalAttackLabel;
+    }
+
     return NPFADS_BENIGN;
 }
 // ── End NPFADS globals ──────────────────────────────────────────────────────
