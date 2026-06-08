@@ -143846,61 +143846,69 @@ attack_mobility.Install(Vehicle_Nodes);
   Phy_184.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
   if (mobility_scenario == 0)
   {
-  	Phy.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_172.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_172.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_174.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_174.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_176.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_176.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_180.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_180.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_182.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_182.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_184.Set ("TxPowerStart", DoubleValue (41));//TxPowerStart is the minimum power
-  	Phy_184.Set ("TxPowerEnd", DoubleValue (41));//TxPowerEnd is the maximum power. 41 dBm = urban
+    // Standard DSRC channel cap values (supervisor-specified, applied uniformly across all scenarios)
+    // Ch 172/174/176 (lower SCH) : 33 dBm
+    // Ch 178         (CCH)       : 44 dBm — control channel, maximum reach
+    // Ch 180/182     (safety SCH): 23 dBm — safety-critical short-range
+    // Ch 184         (upper SCH) : 40 dBm
+    Phy_172.Set("TxPowerStart", DoubleValue(33.0));  // Ch 172  33 dBm
+    Phy_172.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy_174.Set("TxPowerStart", DoubleValue(33.0));  // Ch 174  33 dBm
+    Phy_174.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy_176.Set("TxPowerStart", DoubleValue(33.0));  // Ch 176  33 dBm
+    Phy_176.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy.Set    ("TxPowerStart", DoubleValue(44.0));  // Ch 178  44 dBm — CCH
+    Phy.Set    ("TxPowerEnd",   DoubleValue(44.0));
+    Phy_180.Set("TxPowerStart", DoubleValue(23.0));  // Ch 180  23 dBm
+    Phy_180.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_182.Set("TxPowerStart", DoubleValue(23.0));  // Ch 182  23 dBm
+    Phy_182.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_184.Set("TxPowerStart", DoubleValue(40.0));  // Ch 184  40 dBm
+    Phy_184.Set("TxPowerEnd",   DoubleValue(40.0));
   }
   if (mobility_scenario == 1)
   {
-    // Per-channel TX power — linear spread 23.0 to 44.0 dBm, step 3.5 dBm.
-    // Lower channel numbers get less power (shorter range, higher packet loss).
-    // Higher channel numbers get more power (longer range, better delivery).
-    // This deliberate gradient produces distinct per-channel PDR profiles that serve
-    // as feature dimensions for temporal-echo attack detection: a replayed packet
-    // arriving on a channel whose power signature does not match the sender's known
-    // profile is flagged as anomalous.
-    Phy_172.Set("TxPowerStart", DoubleValue(23.0));  // Ch 172  23.0 dBm — shortest reach
-    Phy_172.Set("TxPowerEnd",   DoubleValue(23.0));
-    Phy_174.Set("TxPowerStart", DoubleValue(26.5));  // Ch 174  26.5 dBm
-    Phy_174.Set("TxPowerEnd",   DoubleValue(26.5));
-    Phy_176.Set("TxPowerStart", DoubleValue(30.0));  // Ch 176  30.0 dBm
-    Phy_176.Set("TxPowerEnd",   DoubleValue(30.0));
-    Phy.Set    ("TxPowerStart", DoubleValue(33.5));  // Ch 178  33.5 dBm — CCH mid-range
-    Phy.Set    ("TxPowerEnd",   DoubleValue(33.5));
-    Phy_180.Set("TxPowerStart", DoubleValue(37.0));  // Ch 180  37.0 dBm
-    Phy_180.Set("TxPowerEnd",   DoubleValue(37.0));
-    Phy_182.Set("TxPowerStart", DoubleValue(40.5));  // Ch 182  40.5 dBm
-    Phy_182.Set("TxPowerEnd",   DoubleValue(40.5));
-    Phy_184.Set("TxPowerStart", DoubleValue(44.0));  // Ch 184  44.0 dBm — longest reach
-    Phy_184.Set("TxPowerEnd",   DoubleValue(44.0));
+    // Standard DSRC channel cap values (supervisor-specified, applied uniformly across all scenarios)
+    // Ch 172/174/176 (lower SCH) : 33 dBm
+    // Ch 178         (CCH)       : 44 dBm — control channel, maximum reach
+    // Ch 180/182     (safety SCH): 23 dBm — safety-critical short-range
+    // Ch 184         (upper SCH) : 40 dBm
+    Phy_172.Set("TxPowerStart", DoubleValue(33.0));  // Ch 172  33 dBm
+    Phy_172.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy_174.Set("TxPowerStart", DoubleValue(33.0));  // Ch 174  33 dBm
+    Phy_174.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy_176.Set("TxPowerStart", DoubleValue(33.0));  // Ch 176  33 dBm
+    Phy_176.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy.Set    ("TxPowerStart", DoubleValue(44.0));  // Ch 178  44 dBm — CCH
+    Phy.Set    ("TxPowerEnd",   DoubleValue(44.0));
+    Phy_180.Set("TxPowerStart", DoubleValue(23.0));  // Ch 180  23 dBm
+    Phy_180.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_182.Set("TxPowerStart", DoubleValue(23.0));  // Ch 182  23 dBm
+    Phy_182.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_184.Set("TxPowerStart", DoubleValue(40.0));  // Ch 184  40 dBm
+    Phy_184.Set("TxPowerEnd",   DoubleValue(40.0));
   }
   if (mobility_scenario == 2)
   {
-  	Phy.Set ("TxPowerStart", DoubleValue (44));//TxPowerStart is the minimum power
-  	Phy.Set ("TxPowerEnd", DoubleValue (44));//TxPowerEnd is the maximum power. 44 dBm = highway
-  	Phy_172.Set ("TxPowerStart", DoubleValue (44));//TxPowerStart is the minimum power
-  	Phy_172.Set ("TxPowerEnd", DoubleValue (44));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_174.Set ("TxPowerStart", DoubleValue (44));//TxPowerStart is the minimum power
-  	Phy_174.Set ("TxPowerEnd", DoubleValue (44));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_176.Set ("TxPowerStart", DoubleValue (44));//TxPowerStart is the minimum power
-  	Phy_176.Set ("TxPowerEnd", DoubleValue (44));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_180.Set ("TxPowerStart", DoubleValue (44));//TxPowerStart is the minimum power
-  	Phy_180.Set ("TxPowerEnd", DoubleValue (44));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_182.Set ("TxPowerStart", DoubleValue (44));//TxPowerStart is the minimum power
-  	Phy_182.Set ("TxPowerEnd", DoubleValue (44));//TxPowerEnd is the maximum power. 41 dBm = urban
-  	Phy_184.Set ("TxPowerStart", DoubleValue (44));//TxPowerStart is the minimum power
-  	Phy_184.Set ("TxPowerEnd", DoubleValue (44));//TxPowerEnd is the maximum power. 41 dBm = urban
+    // Standard DSRC channel cap values (supervisor-specified, applied uniformly across all scenarios)
+    // Ch 172/174/176 (lower SCH) : 33 dBm
+    // Ch 178         (CCH)       : 44 dBm — control channel, maximum reach
+    // Ch 180/182     (safety SCH): 23 dBm — safety-critical short-range
+    // Ch 184         (upper SCH) : 40 dBm
+    Phy_172.Set("TxPowerStart", DoubleValue(33.0));  // Ch 172  33 dBm
+    Phy_172.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy_174.Set("TxPowerStart", DoubleValue(33.0));  // Ch 174  33 dBm
+    Phy_174.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy_176.Set("TxPowerStart", DoubleValue(33.0));  // Ch 176  33 dBm
+    Phy_176.Set("TxPowerEnd",   DoubleValue(33.0));
+    Phy.Set    ("TxPowerStart", DoubleValue(44.0));  // Ch 178  44 dBm — CCH
+    Phy.Set    ("TxPowerEnd",   DoubleValue(44.0));
+    Phy_180.Set("TxPowerStart", DoubleValue(23.0));  // Ch 180  23 dBm
+    Phy_180.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_182.Set("TxPowerStart", DoubleValue(23.0));  // Ch 182  23 dBm
+    Phy_182.Set("TxPowerEnd",   DoubleValue(23.0));
+    Phy_184.Set("TxPowerStart", DoubleValue(40.0));  // Ch 184  40 dBm
+    Phy_184.Set("TxPowerEnd",   DoubleValue(40.0));
   }
   Phy.Set ("Frequency", UintegerValue(5890));//center frequency
   Phy.Set ("ChannelNumber", UintegerValue(178));//channel number
