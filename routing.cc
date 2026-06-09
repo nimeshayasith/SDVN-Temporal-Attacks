@@ -1231,16 +1231,24 @@ PemEvaluateEvent(PemEvent& event)
 
     if (event.type == PEM_EVENT_HEARTBEAT)
     {
-        for (std::deque<PemEvent>::const_iterator it = pem_event_window.begin();
-             it != pem_event_window.end();
-             ++it)
+        // BSHH-S1: a heartbeat claims identity X but comes from a different
+        // physical sender than any previous heartbeat for X.  Use the full
+        // heartbeat history (not just the 400 ms sliding window) because
+        // replay attacks typically arrive seconds after the stored packet.
         {
-            if (it->type == PEM_EVENT_HEARTBEAT &&
-                it->physical_sender_id != event.physical_sender_id &&
-                it->claimed_sender_id == event.claimed_sender_id)
+            std::map<uint32_t, std::vector<PemEvent> >::const_iterator hbHistIt =
+                pem_heartbeat_history.find(event.claimed_sender_id);
+            if (hbHistIt != pem_heartbeat_history.end())
             {
-                event.triggered[3] = true;
-                break;
+                for (std::vector<PemEvent>::const_iterator it = hbHistIt->second.begin();
+                     it != hbHistIt->second.end(); ++it)
+                {
+                    if (it->physical_sender_id != event.physical_sender_id)
+                    {
+                        event.triggered[3] = true;
+                        break;
+                    }
+                }
             }
         }
 
@@ -1286,10 +1294,13 @@ PemEvaluateEvent(PemEvent& event)
         // the baseline after the first replay.
         const uint32_t currentPathCount =
             PemComputeReporterInferredPathCount(event);
-        const double previousCount = pem_previous_path_counts[linkKey];
-        if ((static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
+        if (pem_previous_path_counts.count(linkKey) > 0)
         {
-            event.triggered[7] = true;
+            const double previousCount = pem_previous_path_counts[linkKey];
+            if ((static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
+            {
+                event.triggered[7] = true;
+            }
         }
         if (!event.attack_label)
         {
@@ -2062,7 +2073,7 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
         ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET → CONTROLLER\n"
             << "  Controller ACCEPTED forged packet (no timestamp-integrity protection)\n\n";
 
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -2336,7 +2347,7 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
     TopologyPacket forged = {v1_id, v2_id, forged_time, true};
     std::string key = std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[key] = forged;
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -2498,7 +2509,7 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 
     TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -2652,7 +2663,7 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 
     TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -2856,7 +2867,7 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32
     
     HeartbeatPacket forwarded = {attacker_id, victim_id, stored_time, true};
     bshh_controller_liveness_table[attacker_id] = forwarded;
-    pem_attack_injection_time = now;
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     
