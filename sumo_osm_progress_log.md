@@ -240,3 +240,93 @@ head -3 scratch/delay_training_data.csv
 ---
 
 *Log maintained alongside `realworld_map_mobility_guide.md` — update as each step completes.*
+
+---
+
+## PEM Event Log Enhancement — `channel_id` Column ✅ COMPLETE
+
+**Date:** 2026-06-09
+**Commit:** `bb8f18c` on branch `sumo_implementation`
+**File changed:** `routing.cc`
+
+---
+
+### What was added
+
+A new column `channel_id` was appended as the final field in `pem_event_log.csv`.
+
+| channel_id value | Meaning |
+|---|---|
+| `178` | DSRC 802.11p Channel 178 (CCH — Control Channel). Used for all direct V2V transmissions. |
+| `0` | CSMA Ethernet (wired). Used when an RSU forwards a packet to the controller over the LAN. |
+| `9999` | No radio channel — controller-internal operation. Used when the malicious controller poisons its own routing table in memory without transmitting any packet. |
+
+---
+
+### Why this change was needed
+
+The TGNN (Transfer-learned Graph Neural Network) model needs to distinguish between three fundamentally different attack transmission paths:
+
+1. **V2V over the air (DSRC)** — A malicious vehicle forges a packet and broadcasts it on the 5.9 GHz radio. This leaves a physical radio trace (RSSI, fanout anomalies).
+2. **RSU→Controller over wire (CSMA)** — A malicious RSU injects a forged entry into the aggregated update it sends over Ethernet to the controller. There is no V2V radio anomaly — the attack is hidden inside a legitimate-looking wired packet.
+3. **Controller-internal (no channel)** — A malicious controller rewrites its own topology or liveness table directly in software. No packet is sent anywhere. The attack is invisible to all radio monitors.
+
+Without `channel_id`, the TGNN would see identical event records for an RSU attack and a vehicle attack — the only difference is the `physical_sender_id`. With `channel_id`, the model has a direct structural feature that encodes *how* the attack was delivered, which is critical for cross-scenario generalisation (transfer learning between attack families).
+
+---
+
+### Where in the code
+
+**Struct field** (`PemEvent`, line ~520):
+```cpp
+int channel_id;  // 172/174/176/178/180/182/184=DSRC channel, 0=CSMA, 9999=controller-internal
+```
+
+**Function signatures** (forward declarations ~line 748 and definitions ~line 1446, 1484):
+```cpp
+static void PemEmitEvent(..., bool attackLabel, int channelId = 178);
+static void PemEmitHeartbeatEvent(..., bool attackLabel, int channelId = 178);
+```
+Default is `178` (DSRC CCH) — vehicle-to-vehicle attacks require no change at their call sites.
+
+**CSV output** — header now ends with `rssi_reporter_dbm,channel_id`, row writer appends `event.channel_id`.
+
+**Explicit overrides at attack call sites:**
+
+| Scenario family | Attacker type | Call site change |
+|---|---|---|
+| TTW-S2, BSHH-S2, ME-S2 | Malicious RSU | Pass `channelId = 0` (CSMA wired) |
+| TTW-S4 legit phase, ME-S2/S4 legit phase | RSU relay | Pass `channelId = 0` (RSU-relayed observation) |
+| TTW-S3, TTW-S4, BSHH-S3, BSHH-S4, ME-S3, ME-S4 | Malicious controller | Pass `channelId = 9999` (no transmission) |
+
+---
+
+### Verification
+
+After the change, three representative scenarios were checked:
+
+```
+TTW-S1 attack row:  ...,attack_label=1,...,channel_id=178   ← DSRC V2V ✓
+TTW-S2 attack row:  ...,attack_label=1,...,channel_id=0     ← CSMA RSU ✓
+TTW-S3 attack row:  ...,attack_label=1,...,channel_id=9999  ← controller-internal ✓
+```
+
+All 12 scenarios regenerated. PEM detection metrics unchanged: **mcc=1.0, auroc=1.0, fp=0, fn=0** for all 12 attack scenarios.
+
+---
+
+### Why `channel_id=9999` for BSHH-S3 / BSHH-S4 heartbeat attack rows
+
+A reader may notice that BSHH-S3 (Malicious Controller, No RSU) heartbeat attack events show both `physical_sender_id=9999` and `channel_id=9999`. This is correct and intentional.
+
+In BSHH-S3/S4, the controller does **not** broadcast a heartbeat — it directly overwrites `bshh_controller_liveness_table[victim_id]` with a stale `HeartbeatPacket` struct in memory. The `9999` sentinel in `physical_sender_id` is already used throughout the code to mean "the controller itself, not a real node." The matching `channel_id=9999` makes the same statement at the transport layer: *this event has no channel because no packet was ever sent*.
+
+This is the correct threat model for a compromised controller: it is both the source of the forged data and the consumer of that data, with no external communication required.
+
+---
+
+### Note on `rssi_reporter_dbm = -9999`
+
+Heartbeat events (all BSHH scenarios, both legitimate and attack) show `rssi_reporter_dbm = -9999`. This is the `PEM_SIGNAL_PLACEHOLDER` constant — heartbeats are plain in-memory struct operations in the simulation, not 802.11p frames, so no RSSI measurement exists. This is separate from `channel_id` and is the same placeholder used before this change.
+
+---
