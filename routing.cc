@@ -518,6 +518,7 @@ struct PemEvent
     bool alert_raised;
     double detection_latency_ms;
     double rssi_reporter_dbm;  // computed from path-loss model; used in ME-S3 RSSI check
+    int    channel_id;         // 172/174/176/178/180/182/184=DSRC channel, 0=CSMA wired, 9999=controller-internal
 };
 
 uint64_t pem_true_positive = 0;
@@ -744,11 +745,13 @@ static void PemEmitEvent(PemEventType type,
                          const Vector& reporterPosition,
                          const Vector& linkSrcPosition,
                          const Vector& linkDstPosition,
-                         bool attackLabel);
+                         bool attackLabel,
+                         int channelId = 178);
 static void PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                                   uint32_t claimedSenderId,
                                   double senderTimestamp,
-                                  bool attackLabel);
+                                  bool attackLabel,
+                                  int channelId = 178);
 static void PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId);
 static void PemEmitVehicleHeartbeat(uint32_t senderId,
                                     uint32_t claimedSenderId,
@@ -951,7 +954,7 @@ PemWriteEventCsv(const PemEvent& event)
         "sim_time_s,event_type,physical_sender_id,claimed_sender_id,reporter_id,link_src_id,link_dst_id,"
         "sender_timestamp_s,reception_timestamp_s,attack_label,triggered_signatures,score,alert_raised,"
         "phase,detection_latency_ms,reporter_x,reporter_y,link_src_x,link_src_y,link_dst_x,link_dst_y,"
-        "rssi_reporter_dbm",
+        "rssi_reporter_dbm,channel_id",
         pem_event_csv_header_written);
 
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
@@ -976,7 +979,8 @@ PemWriteEventCsv(const PemEvent& event)
          << event.link_src_position.y << ","
          << event.link_dst_position.x << ","
          << event.link_dst_position.y << ","
-         << event.rssi_reporter_dbm << "\n";
+         << event.rssi_reporter_dbm << ","
+         << event.channel_id << "\n";
 }
 
 static void
@@ -1450,7 +1454,8 @@ PemEmitEvent(PemEventType type,
              const Vector& reporterPosition,
              const Vector& linkSrcPosition,
              const Vector& linkDstPosition,
-             bool attackLabel)
+             bool attackLabel,
+             int channelId)
 {
     PemEvent event;
     event.sim_time = Simulator::Now().GetSeconds();
@@ -1466,6 +1471,7 @@ PemEmitEvent(PemEventType type,
     event.link_src_position = linkSrcPosition;
     event.link_dst_position = linkDstPosition;
     event.attack_label = attackLabel;
+    event.channel_id = channelId;
     event.score = 0.0;
     event.alert_raised = false;
     event.detection_latency_ms = -1.0;
@@ -1478,7 +1484,8 @@ static void
 PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                       uint32_t claimedSenderId,
                       double senderTimestamp,
-                      bool attackLabel)
+                      bool attackLabel,
+                      int channelId)
 {
     Vector reporterPosition(0.0, 0.0, 0.0);
     Vector endpointPosition(0.0, 0.0, 0.0);
@@ -1493,7 +1500,8 @@ PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                  reporterPosition,
                  endpointPosition,
                  endpointPosition,
-                 attackLabel);
+                 attackLabel,
+                 channelId);
 }
 
 static void
@@ -2213,7 +2221,7 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
                  rsu_id, v1_id, rsu_id,
                  v1_id, v2_id,
                  _ts2,
-                 now2, v1Pos, v1Pos, v2Pos, true);
+                 now2, v1Pos, v1Pos, v2Pos, true, 0);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -2410,7 +2418,7 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
                  _ts3,
-                 now2, v1Pos, v1Pos, v2Pos, true);
+                 now2, v1Pos, v1Pos, v2Pos, true, 9999);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -2568,7 +2576,7 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
                  _ts4,
-                 now2, v1Pos, v1Pos, v2Pos, true);
+                 now2, v1Pos, v1Pos, v2Pos, true, 9999);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -2619,9 +2627,9 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, rsu_id,
-                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
+                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false, 0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
-                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
+                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false, 0);
     {
         Ptr<Node> n1 = GetVehicleByNs3Id(v1_id);
         Ptr<Node> n2 = GetVehicleByNs3Id(v2_id);
@@ -3097,7 +3105,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
               << " --REPLAY old heartbeat--> Controller"
               << "  Heartbeat(physical=" << rsuLabel << ", claimed=" << victimLabel
               << ", t=" << stored_time << ")  *** ATTACK COMPLETE ***" << std::endl;
-    PemEmitHeartbeatEvent(rsu_id, victim_id, stored_time, true);
+    PemEmitHeartbeatEvent(rsu_id, victim_id, stored_time, true, 0);
     AttackSendRSUToController(rsu_id);
     {
         Ptr<Node> rsuNode = nullptr;
@@ -3273,8 +3281,8 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
               << "  HB(" << v1Label << ", t=" << stored_time << ")"
               << "  HB(" << v2Label << ", t=" << stored_time << ")"
               << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
-    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
+    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true, 9999);
+    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true, 9999);
 }
 
 
@@ -3442,8 +3450,8 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
               << "  HB(" << v1Label << ", t=" << stored_time << ")"
               << "  HB(" << v2Label << ", t=" << stored_time << ")"
               << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
-    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
+    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true, 9999);
+    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true, 9999);
 }
 
 
@@ -3777,10 +3785,10 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
     if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
     if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
     if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false, 0);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false, 0);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false, 0);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false, 0);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -3867,9 +3875,9 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         if (m) v2Pos = m->GetPosition();
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v3, rsu_id,
-                 v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true, 0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v4, rsu_id,
-                 v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true, 0);
     AttackSendRSUToController(rsu_id);
 }
 
@@ -4019,9 +4027,9 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (m) v2Pos = m->GetPosition();
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, 9999u,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, 9999);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, 9999);
 }
 
 // =============================================================================
@@ -4090,10 +4098,10 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
     if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
     if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
     if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false, 0);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false, 0);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false, 0);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false, 0);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -4168,9 +4176,9 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (m) v2Pos = m->GetPosition();
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, 9999u,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, 9999);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, 9999);
 }
 
 // =============================================================================
@@ -98715,16 +98723,16 @@ void compute_1hop_delay()
 		if (packets_received_wl[i] > 0)
 		{
 			one_hop_delay_training_wl[i] = one_hop_delay_training_wl[i]/packets_received_wl[i];
-			if ((training_delay == true) && (data_gathering_cycle_number > 2))
+			if (training_delay == true)
 			{
 				write_csv_delay_training(i, 1);
-			}	
+			}
 		}
 		cout<<"delay wireless at node "<<i<<" is "<< one_hop_delay_training_wl[i]<<endl;
 		if (packets_received_wi[i] > 0)
 		{
 			one_hop_delay_training_wi[i] = one_hop_delay_training_wi[i]/packets_received_wi[i];
-			if ((training_delay == true) && (data_gathering_cycle_number > 2))
+			if (training_delay == true)
 			{
 				write_csv_delay_training(i, 0);
 			}
@@ -142788,6 +142796,7 @@ int main(int argc, char *argv[])
     cmd.AddValue ("lambda", "lambda", lambda);
     cmd.AddValue ("experiment_number", "experiment_number", experiment_number);
     cmd.AddValue ("routing_test", "routing_test", routing_test);
+    cmd.AddValue ("training_delay", "enable delay training CSV output", training_delay);
     cmd.AddValue ("routing_algorithm", "routing_algorithm", routing_algorithm);
     cmd.AddValue ("qf", "qf", qf);
     cmd.AddValue ("ttw_link_lifetime_bound",
@@ -146705,6 +146714,8 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
 
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
+  if (training_delay)
+      Simulator::Schedule(Seconds(simTime - 0.5), compute_1hop_delay);
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
   Simulator::Destroy();
