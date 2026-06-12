@@ -98209,7 +98209,7 @@ void add_routing_data_at_nodes(struct routing_data_at_nodes * nd1, Ptr <NetDevic
 
 
 void add_demanding_flow_struct_nodes(struct demanding_flow_struct_nodes * nd1, uint32_t source, uint32_t destination, uint32_t x, uint32_t z, uint32_t q)
-{	
+{
 
 	nd1->source = source;
 	nd1->destination = destination;
@@ -98217,7 +98217,16 @@ void add_demanding_flow_struct_nodes(struct demanding_flow_struct_nodes * nd1, u
 	nd1->p_size = z;
 	nd1->qos = q;
 	//cout<<"updating flow with source as: "<<nd1->source<<"destination: "<<nd1->destination<<endl;
-}	
+}
+
+void add_demanding_flow_struct_controller(uint32_t flow_index, uint32_t source, uint32_t destination, uint32_t x, uint32_t z, uint32_t q)
+{
+	(demanding_flow_struct_controller_inst + flow_index)->source      = source;
+	(demanding_flow_struct_controller_inst + flow_index)->destination = destination;
+	(demanding_flow_struct_controller_inst + flow_index)->f_size      = x;
+	(demanding_flow_struct_controller_inst + flow_index)->p_size      = z;
+	(demanding_flow_struct_controller_inst + flow_index)->qos         = q;
+}
 
 
 void refresh_data_at_nodes(struct data_at_nodes * nd1)//If data is old, remove them
@@ -116456,10 +116465,12 @@ void send_LTE_metadata_downlink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <N
 
 void send_LTE_deltavalues_downlink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_source, Ptr <Node> destination_node, uint32_t node_index)
 {
-  	Ptr <Ipv4> ipv4;  	
+  	Ptr <Ipv4> ipv4;
   	ipv4 = destination_node->GetObject<Ipv4>();
+  	if (!ipv4 || ipv4->GetNInterfaces() < 2) return;
 	Ipv4InterfaceAddress iaddr = ipv4->GetAddress(1,0);//1st IPv4 interface,0th address index
 	Ipv4Address dest_ip = iaddr.GetLocal();
+	if (dest_ip == Ipv4Address("127.0.0.1") || dest_ip == Ipv4Address("0.0.0.0")) return;
 	//cout<<dest_ip<<endl;
 	Ptr <Node> nu = DynamicCast <Node> (node_source);
 	CustomDeltavaluesDownlinkUnicastTag tag;
@@ -123308,11 +123319,12 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 									
 					
 
+					if (current_hop >= wifidevices.GetN()) return;
 				  	Ptr <NetDevice> current_nd = wifidevices.Get(current_hop);
 					Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (current_nd);
-					//Ptr <Node> ni = DynamicCast <Node> (source_node);				
+					//Ptr <Node> ni = DynamicCast <Node> (source_node);
 
-					
+
 					//double tg = compute_link_delay(current_hop, 1.0, 1, p_size, destination);
 					//cout<<"Time gap is "<<tg<<endl;
 					//double subflow_start_time = 0.0;
@@ -125085,6 +125097,7 @@ void routing_dsrc_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node
 	uint32_t nid = source_node->GetId();
 	uint32_t source = nid -2;
 	//cout<<"next hop is "<< next_hop_id <<endl;
+	if (next_hop_id >= wifidevices.GetN()) return;
 	Ptr <NetDevice> destination_nd = wifidevices.Get(next_hop_id);
 	switch(arguments.channel)
 	{
@@ -125478,6 +125491,7 @@ void initialize_flow_counters()
 
 void check_and_transmit(uint32_t fid, uint32_t source, uint32_t total_packets, uint32_t total_packet_counter, uint32_t nid, struct custom_struct arguments)
 {
+	if (nid >= (uint32_t)total_size || source >= (uint32_t)total_size) return;
 	uint32_t packet_id = total_packet_counter + 1;
 	arguments.CW = pd_all_inst[fid].pd_inst[nid].attempts[arguments.channel][packet_id] + 2;
 	double diff = Now().GetSeconds() - flow_initiation_time;
@@ -144670,6 +144684,7 @@ attack_mobility.Install(Vehicle_Nodes);
 			  		uint32_t z = flow_packet_size;
 			  		uint32_t q = qf;
 			  		Simulator::Schedule (Seconds (t+0.000002*i), add_demanding_flow_struct_nodes, demanding_flow_struct_nodes_inst+i, source, destination, x, z, q);
+			  		Simulator::Schedule (Seconds (t+0.000003*i), add_demanding_flow_struct_controller, i, source, destination, x, z, q);
 			  		if(routing_test == false)
 			  		{
 			  			Simulator::Schedule(Seconds(t-0.002), update_mobility);
