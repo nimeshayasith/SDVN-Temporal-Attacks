@@ -94,10 +94,10 @@ def link_lifetime(i, j):
     px_i, py_i, vx_i, vy_i = di
     px_j, py_j, vx_j, vy_j = dj
 
-    # If all positions are zero the controller table hasn't been populated yet;
-    # default to alive so the routing algorithm can bootstrap.
-    all_zero = (px_i == 0 and py_i == 0 and px_j == 0 and py_j == 0)
-    if all_zero:
+    # If either node has (0,0) position the SUMO data hasn't arrived yet
+    # (e.g. attacker placeholder or uninitialized entry). Default to alive
+    # so the routing algorithm can bootstrap without phantom dead links.
+    if (px_i == 0 and py_i == 0) or (px_j == 0 and py_j == 0):
         return DEFAULT_LIFETIME
 
     dx = px_i - px_j
