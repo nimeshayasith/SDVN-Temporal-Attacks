@@ -14,6 +14,27 @@
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-x64"
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/crypto",
+                "${workspaceFolder}/tgn",
+                "${workspaceFolder}/blockchain"
+            ],
+            "defines": ["_WIN32"],
+            "compilerPath": "",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-x64",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/crypto",
+                    "${workspaceFolder}/tgn",
+                    "${workspaceFolder}/blockchain"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
         }
     ],
     "version": 4

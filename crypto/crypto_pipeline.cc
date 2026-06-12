@@ -55,7 +55,8 @@
  * This is the ONLY data structure crossing the Crypto → TGN boundary.
  * ══════════════════════════════════════════════════════════════════════════ */
 
-static FILE *g_evt_csv    = NULL;
+static FILE *g_evt_csv    = NULL;   /* crypto_verified_events.csv — tgn_train.py input */
+static FILE *g_pem_csv    = NULL;   /* pem_event_log_filtered.csv — tgn_detector.cc input */
 static FILE *g_crypto_log = NULL;   /* crypto_layer_log.txt — step-by-step */
 static int   g_tgn_call_count = 0;
 
@@ -74,26 +75,97 @@ static void clog_hex8(const char *label, const uint8_t *d) {
     fprintf(g_crypto_log, "...\n");
 }
 
+/* tgn_ingest_event() — Crypto → TGN boundary (Section 8, Eq. 3.19)
+ *
+ * Writes two output files so crypto-filtered events reach the TGN:
+ *
+ *   crypto_verified_events.csv  — exact tgn_events.csv column layout read by
+ *                                  tgn_train.py (feature extraction uses these
+ *                                  columns directly: recv_time_s, claimed_ts_s,
+ *                                  edge_freshness, seq_gap, reporter_count, etc.)
+ *
+ *   pem_event_log_filtered.csv  — same column layout as pem_event_log.csv
+ *                                  produced by routing.cc; tgn_detector.cc can
+ *                                  load this file as a pre-filtered event stream
+ *                                  instead of running the full NS-3 simulation.
+ *
+ * Previously this was a bare stub that only printed a non-standard CSV row.
+ * The old format did not match tgn_train.py's expected columns, so filtered
+ * events never reached the TGN model (full-stack pipeline was broken).
+ */
 void tgn_ingest_event(const CryptoVerifiedEvent *event) {
-    if (!g_evt_csv) return;
-    /* Write CSV row matching tgn_events.csv format expected by tgn_train.py */
-    fprintf(g_evt_csv,
-            "%.*s,%.*s,%.*s,%llu,%llu,%u,%u,%.6f,%.6f,%.2f,%u,%d,%d,%u\n",
-            16, event->vehicle_id,
-            8,  event->link_id,
-            16, event->reporter_id,
-            (unsigned long long)event->sender_timestamp_ms,
-            (unsigned long long)event->recv_timestamp_ms,
-            event->sequence_number,
-            event->beacon_count_in_window,
-            event->reporter_lat,
-            event->reporter_lon,
-            event->rssi_from_vi_dbm,
-            event->reporter_count,
-            event->location_binding_verified ? 1 : 0,
-            event->threshold_sig_verified    ? 1 : 0,
-            event->crypto_filter_result);
     g_tgn_call_count++;
+
+    double recv_s   = (double)event->recv_timestamp_ms   / 1000.0;
+    double send_s   = (double)event->sender_timestamp_ms / 1000.0;
+    double delay_s  = recv_s - send_s;
+
+    /* Edge freshness weight A_uv(t) = exp(-excess_age / (γ·Tb))
+     * γ = 310 (urban default), Tb = 0.1 s — matches tgn_detector.cc constants */
+    double stale_excess = delay_s > 0.1 ? delay_s - 0.1 : 0.0;
+    double edge_fresh   = exp(-stale_excess / (310.0 * 0.1));
+
+    /* ── crypto_verified_events.csv (tgn_train.py input) ───────────────────
+     * Column order must exactly match tgn_events.csv header written by
+     * tgn_detector.cc TGN_InitOutputFiles() and read by tgn_train.py:
+     *   sim_time_s, attack_scenario, event_type,
+     *   physical_sender_id, claimed_sender_id,
+     *   link_src_id, link_dst_id,
+     *   claimed_ts_s, recv_time_s, rx_delay_s,
+     *   edge_freshness, seq_gap, reporter_count, identity_mismatch,
+     *   pem_signatures, pem_score, pem_alert,
+     *   tgn_score, tgn_alert, is_attack
+     */
+    if (g_evt_csv) {
+        /* Parse link endpoints from link_id "SRC_DST" format */
+        int link_src = 0, link_dst = 0;
+        sscanf(event->link_id, "%d_%d", &link_src, &link_dst);
+
+        /* identity_mismatch: physical != claimed sender (BSHH signal) */
+        int id_mismatch = (strncmp(event->vehicle_id, event->reporter_id,
+                                    sizeof(event->vehicle_id)) != 0) ? 1 : 0;
+
+        /* seq_gap: timestamp regression proxy via sequence number wrap */
+        double seq_gap = (event->sequence_number == 0) ? 0.0
+                         : (double)event->sequence_number / 1000.0;
+
+        fprintf(g_evt_csv,
+                "%.4f,0,TOPO_UPDATE,"
+                "%s,%s,"
+                "%d,%d,"
+                "%.4f,%.4f,%.4f,"
+                "%.6f,%.4f,%u,%d,"
+                "none,0.000,0,"
+                "0.000,0,%d\n",
+                recv_s,
+                event->vehicle_id, event->vehicle_id,   /* physical=claimed (post-filter) */
+                link_src, link_dst,
+                send_s, recv_s, delay_s,
+                edge_fresh, seq_gap,
+                event->reporter_count, id_mismatch,
+                event->is_attack ? 1 : 0);
+        fflush(g_evt_csv);
+    }
+
+    /* ── pem_event_log_filtered.csv (tgn_detector.cc alternative input) ───
+     * Same layout as pem_event_log.csv so tgn_detector can load pre-filtered
+     * events without re-running the NS-3 simulation:
+     *   sim_time_s, event_type, physical_sender_id, claimed_sender_id,
+     *   reporter_id, link_src_id, link_dst_id,
+     *   sender_ts_s, recv_ts_s, triggered_sigs, score, alert_raised, attack_label
+     */
+    if (g_pem_csv) {
+        int link_src = 0, link_dst = 0;
+        sscanf(event->link_id, "%d_%d", &link_src, &link_dst);
+        fprintf(g_pem_csv,
+                "%.4f,TOPO_UPDATE,%s,%s,%s,%d,%d,%.4f,%.4f,0,0.000,0,%d\n",
+                recv_s,
+                event->vehicle_id, event->vehicle_id, event->reporter_id,
+                link_src, link_dst,
+                send_s, recv_s,
+                event->is_attack ? 1 : 0);
+        fflush(g_pem_csv);
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -538,11 +610,27 @@ int main(int argc, char *argv[]) {
             "================================================================\n\n",
             pem_file);
     }
+    /* crypto_verified_events.csv — column layout matches tgn_events.csv so
+     * tgn_train.py can read it directly without modification */
     g_evt_csv = fopen("crypto_verified_events.csv", "w");
-    fprintf(g_evt_csv,
-            "vehicle_id,link_id,reporter_id,sender_ts_ms,recv_ts_ms,"
-            "seq_num,beacon_count_W,reporter_lat,reporter_lon,"
-            "rssi_dbm,reporter_count,lbs_verified,thresh_verified,crypto_result\n");
+    if (g_evt_csv)
+        fprintf(g_evt_csv,
+                "sim_time_s,attack_scenario,event_type,"
+                "physical_sender_id,claimed_sender_id,"
+                "link_src_id,link_dst_id,"
+                "claimed_ts_s,recv_time_s,rx_delay_s,"
+                "edge_freshness,seq_gap,reporter_count,identity_mismatch,"
+                "pem_signatures,pem_score,pem_alert,"
+                "tgn_score,tgn_alert,is_attack\n");
+
+    /* pem_event_log_filtered.csv — same layout as pem_event_log.csv produced
+     * by routing.cc; lets tgn_detector.cc run on crypto-filtered events */
+    g_pem_csv = fopen("pem_event_log_filtered.csv", "w");
+    if (g_pem_csv)
+        fprintf(g_pem_csv,
+                "sim_time_s,event_type,physical_sender_id,claimed_sender_id,"
+                "reporter_id,link_src_id,link_dst_id,"
+                "sender_ts_s,recv_ts_s,triggered_sigs,score,alert_raised,attack_label\n");
 
     FILE *drop_log = fopen("crypto_drop_log.csv", "w");
     fprintf(drop_log, "sim_time_s,vehicle_id,drop_reason,tau_s,attack_label\n");
@@ -700,8 +788,9 @@ int main(int argc, char *argv[]) {
     }
 
     /* ── Finalise output files ───────────────────────────────────────────── */
-    fclose(g_evt_csv);
-    fclose(drop_log);
+    if (g_evt_csv) fclose(g_evt_csv);
+    if (g_pem_csv) fclose(g_pem_csv);
+    if (drop_log)  fclose(drop_log);
     fprintf(g_alert_json, "\n]\n");
     fclose(g_alert_json);
 

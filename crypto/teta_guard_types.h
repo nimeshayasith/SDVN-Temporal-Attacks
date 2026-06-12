@@ -282,7 +282,33 @@ typedef struct {
 } BeaconEvidenceRecord;
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 11. FORWARD DECLARATIONS — cross-module function interfaces
+ * 11. DILITHIUM2 API — shared across all modules  (Section 3.3)
+ *
+ * Single canonical implementation in dilithium.cc.
+ * Consumed by: kem.cc, threshold_sig.cc, location_binding.cc
+ *
+ * With liboqs: OQS_SIG_alg_dilithium_2 (FIPS 204 ML-DSA-44)
+ * Without:     HMAC-SHA256 stub (simulation only, NOT quantum-resistant)
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* Generate long-term identity keypair SKVk / PKVk (called once at registration) */
+void dilithium2_keygen(uint8_t pk[DILITHIUM2_PK_LEN],
+                        uint8_t sk[DILITHIUM2_SK_LEN]);
+
+/* σVk = Sign(SKVk, m')  — sign a topology report or heartbeat */
+void dilithium2_sign(const uint8_t *msg,    size_t msg_len,
+                      const uint8_t  sk[DILITHIUM2_SK_LEN],
+                      uint8_t        sig_out[DILITHIUM2_SIG_LEN],
+                      size_t        *sig_len_out);
+
+/* Verify(σVk, PKVk) = 1  — returns true iff signature is valid */
+bool dilithium2_verify(const uint8_t *msg,      size_t msg_len,
+                        const uint8_t  sig[DILITHIUM2_SIG_LEN],
+                        size_t         sig_len,
+                        const uint8_t  pk[DILITHIUM2_PK_LEN]);
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * 12. FORWARD DECLARATIONS — cross-module function interfaces
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /* Called from crypto_pipeline.cc after CRYPTO_ACCEPT — TGN already implements this */

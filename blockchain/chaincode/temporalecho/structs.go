@@ -4,13 +4,17 @@ package main
 // These mirror the C structs in teta_guard_types.h (TGN→Blockchain boundary).
 //
 // Ledger key scheme (§13):
-//   BEACON:<peer_id>:<interval_ts>          BeaconEvidenceRecord
-//   DETECTION:<peer_id>:<vehicle_id>:<ts>   DetectionEvent
-//   CTRL_TOPO:<controller_id>:<ts>          ControllerTopologyClaim
-//   MITIG:<vehicle_id>:<ts>                 MitigationLogEntry
-//   REAUTH:<vehicle_id>                     ReauthFlag
-//   KEYSTORE:<peer_id>:<vehicle_id>         VehicleKeyRecord
-//   WITNESS:<vehicle_id>:<ts>               WitnessRecord (ME quorum)
+//   BEACON:<peer_id>:<interval_ts>              BeaconEvidenceRecord
+//   DETECTION:<peer_id>:<vehicle_id>:<ts>       DetectionEvent
+//   CTRL_TOPO:<controller_id>:<ts>              ControllerTopologyClaim
+//   MITIG:<vehicle_id>:<ts>                     MitigationLogEntry
+//   REAUTH:<vehicle_id>                         ReauthFlag
+//   KEYSTORE:<peer_id>:<vehicle_id>             VehicleKeyRecord
+//   SIG_EVIDENCE:<vehicle_id>:<ts>:<signer_id>  IndividualSigEvidence (threshold sig)
+//   WITNESS:<vehicle_id>:<ts>:<reporter_id>     WitnessRecord (ME quorum)
+//   VMAC_<vehicle_id>                           raw MAC address string
+//   ANCHOR:<created_at_ms>                      AnchorCheckpoint
+//   ANCHOR_CTR                                  monotonic block counter (uint64 string)
 
 // ─── Flow 1 structs ─────────────────────────────────────────────────────────
 
@@ -121,15 +125,28 @@ type AlertObject struct {
 // ─── Verification helper structs ─────────────────────────────────────────────
 
 // IndividualSigEvidence carries one Dilithium2 signature for threshold checks (§6.3).
+//
+// Ledger key: SIG_EVIDENCE:<vehicle_id>:<ts_ms>:<signer_id>
+// doc_type: "SIG_EVIDENCE"
+// vehicle_id: the accused/attacker vehicle (matches getSignatureEvidence query)
+// SignerID:   the reporting vehicle that produced this individual signature
 type IndividualSigEvidence struct {
-	VehicleID string `json:"vehicle_id"`
-	Signature []byte `json:"signature"`
-	Message   string `json:"message"`
-	PubKey    []byte `json:"pub_key"`
+	VehicleID string `json:"vehicle_id"` // accused vehicle (query key)
+	SignerID   string `json:"signer_id"`  // vehicle submitting this sig
+	Signature  []byte `json:"signature"`
+	Message    string `json:"message"`
+	PubKey     []byte `json:"pub_key"`
+	TS         int64  `json:"ts_ms"`
+	DocType    string `json:"doc_type"`
 }
 
 // WitnessRecord carries one ME witness report for quorum verification (§6.3).
+//
+// Ledger key: WITNESS:<vehicle_id>:<ts_ms>:<reporter_id>
+// doc_type: "WITNESS"
+// VehicleID: the accused/attacker vehicle (matches getWitnesses query)
 type WitnessRecord struct {
+	VehicleID   string  `json:"vehicle_id"`    // accused vehicle (query key)
 	ReporterID  string  `json:"reporter_id"`
 	ReporterLat float64 `json:"reporter_lat"`
 	ReporterLon float64 `json:"reporter_lon"`
@@ -137,4 +154,82 @@ type WitnessRecord struct {
 	Signature   []byte  `json:"signature"`
 	Message     string  `json:"message"`
 	PubKey      []byte  `json:"pub_key"`
+	TS          int64   `json:"ts_ms"`
+	DocType     string  `json:"doc_type"`
+}
+
+// ─── Trust Management structs (Section 5.2) ──────────────────────────────────
+
+// TrustRecord holds the trust score τk for a Fabric peer (RSU or OBU).
+//
+// Ledger key: TRUST:<peer_id>
+//
+// Update rules (Δ+ = 0.05, Δ- = 0.10):
+//   correct participation  → min(1, τk + Δ+)
+//   failure/inconsistency  → max(0, τk - Δ-)
+//   attack detection flag  → 0   (permanent until manual re-admission)
+type TrustRecord struct {
+	PeerID    string  `json:"peer_id"`
+	Score     float64 `json:"trust_score"`     // τk ∈ [0.0, 1.0]
+	IsRSUPeer bool    `json:"is_rsu_peer"`     // true = Tier 1 (RSU, starts at 1.0)
+	Flagged   bool    `json:"flagged"`         // true = zeroed by attack detection
+	FlaggedAt int64   `json:"flagged_at_ms"`
+	UpdatedAt int64   `json:"updated_at_ms"`
+	DocType   string  `json:"doc_type"`
+}
+
+// ControllerTrustRecord holds the trust score τCj for an SDN controller.
+//
+// Ledger key: CTRL_TRUST:<controller_id>
+//
+// Update rule (ΔC- = 0.20, penalty-only — no reward):
+//   confirmed divergence → max(0, τCj - ΔC-)
+// When τCj < τCmin: controller removal mechanism triggers (Section 5.7).
+type ControllerTrustRecord struct {
+	ControllerID    string  `json:"controller_id"`
+	Score           float64 `json:"trust_score"`        // τCj ∈ [0.0, 1.0]
+	DivergenceCount int     `json:"divergence_count"`   // total confirmed divergences
+	UpdatedAt       int64   `json:"updated_at_ms"`
+	DocType         string  `json:"doc_type"`
+}
+
+// ControllerReassignment is written to the ledger when τCj < τCmin (Section 5.7).
+// eventListener.js reads this record and actions the reassignment via the
+// RSU emergency channel, bypassing the malicious controller entirely.
+//
+// Ledger key: CTRL_REASSIGN:<removed_ctrl_id>:<timestamp_ms>
+type ControllerReassignment struct {
+	RemovedCtrlID   string  `json:"removed_ctrl_id"`
+	BackupCtrlID    string  `json:"backup_ctrl_id"`   // Ck* = argmax trust
+	RemovedScore    float64 `json:"removed_score"`    // τCj at time of removal
+	BackupScore     float64 `json:"backup_score"`     // τCk* at time of selection
+	ZoneID          string  `json:"zone_id"`
+	AssignedAt      int64   `json:"assigned_at_ms"`
+	EmergencyBypass bool    `json:"emergency_bypass"` // always true — bypasses Cj
+	DocType         string  `json:"doc_type"`
+}
+
+// ─── Anchor Checkpoint Protocol (Section 5.1) ────────────────────────────────
+
+// AnchorCheckpoint is a PBFT-signed ledger digest produced by Tier 1 RSU peers
+// at fixed block intervals so Tier 2 OBU peers can synchronise from a committed
+// base state before joining consensus rounds.
+//
+// Interval  = ⌊Tmin/Tb⌋ blocks
+//   Tmin    = max(3·TPBFT, Llink/2) ≈ 21.5 s (urban)  →  215 blocks at Tb=100ms
+//   Highway: Tmin = max(3·TPBFT, 4.5s) ≈ 4.5s          →   45 blocks
+//
+// Ledger key: ANCHOR:<created_at_ms>
+// doc_type:   "ANCHOR_CHECKPOINT"
+type AnchorCheckpoint struct {
+	CheckpointID   string   `json:"checkpoint_id"`    // TxID of creation transaction
+	BlockHeight    uint64   `json:"block_height"`     // monotonic block counter (ANCHOR_CTR)
+	StateRootHash  string   `json:"state_root_hash"`  // SHA-256(TxID||ts) — simulation approx
+	CreatedByPeer  string   `json:"created_by_peer"`  // Tier 1 RSU peer ID
+	PeerSig        []byte   `json:"peer_sig"`          // σ_nk Dilithium2 over checkpoint data
+	PeerPubKey     []byte   `json:"peer_pub_key"`
+	CreatedAtMs    int64    `json:"created_at_ms"`
+	IntervalBlocks int      `json:"interval_blocks"`  // ⌊Tmin/Tb⌋
+	SyncedPeers    []string `json:"synced_peers"`     // OBU peers that confirmed sync
+	DocType        string   `json:"doc_type"`
 }

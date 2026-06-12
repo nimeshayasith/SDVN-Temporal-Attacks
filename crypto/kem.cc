@@ -119,10 +119,12 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
     OQS_KEM_free(kem_s);
 
     /* K_{Vi,nk} = KDF(ss_kyber || ss_saber)  — Eq. 3.3 Step 3 */
-    uint8_t combined[64];
-    memcpy(combined,      ss_k, 32);
-    memcpy(combined + 32, ss_s, 32);
-    hkdf_sha256(combined, 64, out_session_key);
+    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
+     * XOR is the correct IND-CCA2 dual-PRF combiner; concatenation is NOT secure. */
+    uint8_t combined[32];
+    for (size_t i = 0; i < 32; i++)
+        combined[i] = ss_k[i] ^ ss_s[i];
+    hkdf_sha256(combined, 32, out_session_key);
 #else
     /* Simulated KEM: HKDF(pk) */
     uint8_t ephemeral[32];
@@ -135,28 +137,10 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
 }
 
 /*
- * Generate a Dilithium2 signing keypair for vehicle Vi.
- * SK_{Vi} stays at vehicle; PK_{Vi} is stored in VehicleKeyRecord.
+ * Dilithium2 keypair generation delegates to dilithium.cc (Section 3.3).
+ * dilithium2_keygen() is declared in teta_guard_types.h and defined in
+ * dilithium.cc — the single canonical Dilithium module for TETA-Guard.
  */
-static void dilithium2_keygen(uint8_t pk[DILITHIUM2_PK_LEN],
-                               uint8_t sk[DILITHIUM2_SK_LEN]) {
-#ifdef HAVE_LIBOQS
-    OQS_SIG *sig = OQS_SIG_new(OQS_SIG_alg_dilithium_2);
-    OQS_SIG_keypair(sig, pk, sk);
-    OQS_SIG_free(sig);
-#else
-    fill_random(sk, DILITHIUM2_SK_LEN);
-#  ifdef HAVE_OPENSSL
-    SHA256(sk, 32, pk);
-    /* Pad remainder deterministically */
-    for (size_t i = 32; i < DILITHIUM2_PK_LEN; i++)
-        pk[i] = sk[(i * 7) % DILITHIUM2_SK_LEN] ^ 0xA5;
-#  else
-    for (size_t i = 0; i < DILITHIUM2_PK_LEN; i++)
-        pk[i] = sk[(i + 5) % DILITHIUM2_SK_LEN] ^ 0x3C;
-#  endif
-#endif
-}
 
 /* ══════════════════════════════════════════════════════════════════════════
  * VEHICLE-SIDE KEM  (Section 3.3 Steps 1 & 4)
@@ -206,10 +190,12 @@ void kem_rsu_encapsulate(KemExchangeState *state,
     OQS_KEM_encaps(kem_s, state->ct_saber, ss_s, state->pk_saber);
     OQS_KEM_free(kem_s);
 
-    uint8_t combined[64];
-    memcpy(combined,      ss_k, 32);
-    memcpy(combined + 32, ss_s, 32);
-    hkdf_sha256(combined, 64, out_session_key);
+    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
+     * XOR is the correct IND-CCA2 dual-PRF combiner; concatenation is NOT secure. */
+    uint8_t combined[32];
+    for (size_t i = 0; i < 32; i++)
+        combined[i] = ss_k[i] ^ ss_s[i];
+    hkdf_sha256(combined, 32, out_session_key);
 #else
     /* Simulated: HKDF(pk_kyber || pk_saber) as deterministic shared secret */
     uint8_t ikm[KYBER512_PK_LEN * 2];
@@ -250,10 +236,12 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
     OQS_KEM_free(kem_s);
     if (rc_s != OQS_SUCCESS) return false;
 
-    uint8_t combined[64];
-    memcpy(combined,      ss_k, 32);
-    memcpy(combined + 32, ss_s, 32);
-    hkdf_sha256(combined, 64, out_session_key);
+    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
+     * XOR is the correct IND-CCA2 dual-PRF combiner; concatenation is NOT secure. */
+    uint8_t combined[32];
+    for (size_t i = 0; i < 32; i++)
+        combined[i] = ss_k[i] ^ ss_s[i];
+    hkdf_sha256(combined, 32, out_session_key);
 #else
     /* Simulated: same HKDF(pk_kyber || pk_saber) — matches kem_rsu_encapsulate */
     uint8_t ikm[KYBER512_PK_LEN * 2];

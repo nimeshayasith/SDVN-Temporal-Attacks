@@ -61,7 +61,10 @@ except ImportError:
 # Constants — must match tgn_detector.cc Section 1
 # ---------------------------------------------------------------------------
 BEACON_INTERVAL = 0.1   # T_b (seconds) — IEEE 802.11p = 100 ms
-WMAX            = 50    # default W_max; recomputed from --l_link as ceil(L_link/T_b) for beacon_count
+WMAX            = 430   # urban default: ceil(L_link/T_b) = ceil(43/0.1) = 430
+# Highway: WMAX = ceil(9/0.1) = 90.  Overridden at runtime via --l_link argument.
+# This constant is also used as the fallback when tgn_train.py is imported as a
+# module (not run as __main__), so it must be correct for the primary scenario.
 
 # ---------------------------------------------------------------------------
 # 1.  Feature extraction  (mirrors C++ TGN_ExtractFeatures + TGN_EdgeFreshness)
@@ -173,6 +176,12 @@ class TGNModel(nn.Module):
         # Score readout  (Eq 3.23)
         self.w_score = nn.Parameter(0.01 * torch.randn(dim))
 
+        # Variant classification head (Section 4.7)
+        # α̂_v = softmax(Wcls · h_v^(L) + b_cls),  α ∈ {TTW=0, BSHH=1, ME=2}
+        # Trained jointly with binary scorer via multi-class cross-entropy loss.
+        self.Wcls  = nn.Parameter(torch.empty(3, dim)); nn.init.xavier_uniform_(self.Wcls)
+        self.b_cls = nn.Parameter(torch.zeros(3))
+
     # ── GRU step (Eq 3.21) ───────────────────────────────────────────────────
     def gru_step(self, h: torch.Tensor, feat: torch.Tensor) -> torch.Tensor:
         """
@@ -226,7 +235,8 @@ class TGNModel(nn.Module):
         device = feats.device
         mem: dict[int, torch.Tensor] = {}   # node_id -> (dim,) detached tensor
 
-        logits = []
+        logits     = []
+        cls_logits = []
         for i in range(feats.shape[0]):
             nid  = int(nids[i].item())
             lsrc = int(lsrcs[i].item())
@@ -244,13 +254,16 @@ class TGNModel(nn.Module):
             # Message passing over 3-node subgraph
             h_final = self.mp_step(h_new, mem[ldst], mem[lsrc], Auv)
 
-            # Score logit (sigmoid applied by loss/caller)
+            # Binary score logit (sigmoid applied by loss/caller)  — Eq 3.23
             logits.append(torch.dot(self.w_score, h_final))
+
+            # Variant classification logit  — Section 4.7
+            cls_logits.append(self.Wcls @ h_final + self.b_cls)
 
             # Detach and store (prevents gradient accumulation across events)
             mem[nid] = h_new.detach()
 
-        return torch.stack(logits)   # (N,)
+        return torch.stack(logits), torch.stack(cls_logits)   # (N,), (N, 3)
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +291,8 @@ def export_weights(model: TGNModel, path: str) -> None:
         for l in range(layers):
             fp.write(f64(model.W_layers[l])); fp.write(f64(model.b_layers[l]))
         fp.write(f64(model.w_score))
+        fp.write(f64(model.Wcls))
+        fp.write(f64(model.b_cls))
 
     size = os.path.getsize(path)
     print(f"[TGN] Weights saved to '{path}'  ({size} bytes, dim={dim} layers={layers})")
@@ -319,6 +334,14 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     ldsts  = df["link_dst_id"].values.astype(np.int64)
     fresh  = df["edge_freshness"].values.astype(np.float32)    # from CSV
 
+    # Variant class labels for Section 4.7 classification head.
+    # -1 = benign (excluded from CE loss), 0 = TTW, 1 = BSHH, 2 = ME
+    sc = df["attack_scenario"].values.astype(np.int64) if "attack_scenario" in df.columns \
+         else np.zeros(len(df), dtype=np.int64)
+    variant_label = np.where((sc >= 1)  & (sc <= 4),  0,
+                    np.where((sc >= 5)  & (sc <= 8),  1,
+                    np.where((sc >= 9)  & (sc <= 12), 2, -1))).astype(np.int64)
+
     N    = len(df)
     n_tr = int(0.70 * N)
     n_va = int(0.15 * N)
@@ -351,10 +374,11 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
 
     a, b = slices["train"]
     tr_f, tr_l = tt(feats[a:b]), tt(labels[a:b])
-    tr_n  = tt(nids[a:b],  torch.int64)
-    tr_ls = tt(lsrcs[a:b], torch.int64)
-    tr_ld = tt(ldsts[a:b], torch.int64)
-    tr_fr = tt(fresh[a:b])
+    tr_n   = tt(nids[a:b],          torch.int64)
+    tr_ls  = tt(lsrcs[a:b],         torch.int64)
+    tr_ld  = tt(ldsts[a:b],         torch.int64)
+    tr_fr  = tt(fresh[a:b])
+    tr_var = tt(variant_label[a:b], torch.int64)
 
     a, b = slices["val"]
     va_f  = tt(feats[a:b])
@@ -374,8 +398,16 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
         model.train()
         optim_.zero_grad()
 
-        logits = model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr)
-        loss   = crit(logits, tr_l)
+        logits, cls_logits = model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr)
+        bce_loss = crit(logits, tr_l)
+
+        # Joint multi-class CE loss for attack events only (Section 4.7)
+        cls_mask = tr_var >= 0
+        if cls_mask.any():
+            ce_loss = nn.CrossEntropyLoss()(cls_logits[cls_mask], tr_var[cls_mask])
+            loss = bce_loss + 0.3 * ce_loss
+        else:
+            loss = bce_loss
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optim_.step()
@@ -384,7 +416,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
         if epoch % log_every == 0 or epoch == args.epochs:
             model.eval()
             with torch.no_grad():
-                va_logits = model.forward_sequence(va_f, va_n, va_ls, va_ld, va_fr)
+                va_logits, _ = model.forward_sequence(va_f, va_n, va_ls, va_ld, va_fr)
                 va_scores = torch.sigmoid(va_logits).cpu().numpy()
 
             tp, tn, fp, fn, mcc, auc = compute_metrics(va_l, va_scores, args.theta)
@@ -406,7 +438,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     model.eval()
     with torch.no_grad():
         opt_va_scores = torch.sigmoid(
-            model.forward_sequence(va_f, va_n, va_ls, va_ld, va_fr)).cpu().numpy()
+            model.forward_sequence(va_f, va_n, va_ls, va_ld, va_fr)[0]).cpu().numpy()
 
     if args.theta < 0:   # auto-select
         best_theta, best_theta_mcc = 0.40, -1.0
@@ -438,7 +470,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     model.eval()
     with torch.no_grad():
         te_scores = torch.sigmoid(
-            model.forward_sequence(te_f, te_n, te_ls, te_ld, te_fr)).cpu().numpy()
+            model.forward_sequence(te_f, te_n, te_ls, te_ld, te_fr)[0]).cpu().numpy()
 
     tp, tn, fp, fn, mcc, auc = compute_metrics(te_l, te_scores, args.theta)
     print(f"\n[TGN] Test  MCC={mcc:.3f}  AUROC={auc:.3f}  "

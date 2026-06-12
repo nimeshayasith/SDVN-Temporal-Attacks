@@ -122,7 +122,6 @@ func (t *TemporalEchoMitigator) SubmitAlert(
 	ctrlTopoJSON string,
 	intervalTSStr string,
 ) error {
-	g_ctx = ctx // wire ledger context so writePendingFlowMod can store records
 	var alert AlertObject
 	if err := json.Unmarshal([]byte(alertJSON), &alert); err != nil {
 		return fmt.Errorf("SubmitAlert: parse error: %v", err)
@@ -187,12 +186,8 @@ func (t *TemporalEchoMitigator) Mitigate(
 	thetaFSStr string,
 	thresholdTStr string,
 ) error {
-	g_ctx = ctx // wire ledger context for writePendingFlowMod
 	var alerts []DetectionEvent
 	json.Unmarshal([]byte(alertsJSON), &alerts)
-
-	var ctrlClaim ControllerTopologyClaim
-	json.Unmarshal([]byte(ctrlTopoJSON), &ctrlClaim)
 
 	thetaFS := float32(0.40)
 	if v, err := strconv.ParseFloat(thetaFSStr, 32); err == nil {
@@ -204,15 +199,24 @@ func (t *TemporalEchoMitigator) Mitigate(
 	}
 
 	// Step 3 — Compute divergence δ = |E_t^C △ E_t^nodes|
-	delta, deltaThresh := computeDivergence(ctx, ctrlClaim)
-	if delta > deltaThresh {
-		alerts = append(alerts, DetectionEvent{
-			PeerID:        "SYSTEM",
-			VehicleID:     ctrlClaim.ControllerID,
-			AttackVariant: "CTRL_ORIGIN",
-			AnomalyScore:  float32(delta),
-			AlertTS:       time.Now().UnixMilli(),
-		})
+	// Guard matches SubmitAlert: empty, "null", and "{}" all mean no topology claim.
+	if ctrlTopoJSON != "" && ctrlTopoJSON != "null" && ctrlTopoJSON != "{}" {
+		var ctrlClaim ControllerTopologyClaim
+		if err := json.Unmarshal([]byte(ctrlTopoJSON), &ctrlClaim); err != nil {
+			return fmt.Errorf("Mitigate: invalid ctrlTopoJSON: %v", err)
+		}
+		if ctrlClaim.ControllerID != "" {
+			delta, deltaThresh := computeDivergence(ctx, ctrlClaim)
+			if delta > deltaThresh {
+				alerts = append(alerts, DetectionEvent{
+					PeerID:        "SYSTEM",
+					VehicleID:     ctrlClaim.ControllerID,
+					AttackVariant: "CTRL_ORIGIN",
+					AnomalyScore:  float32(delta),
+					AlertTS:       time.Now().UnixMilli(),
+				})
+			}
+		}
 	}
 
 	return t.runMitigation(ctx, alerts, thetaFS, thresholdT)
@@ -258,7 +262,7 @@ func (t *TemporalEchoMitigator) runMitigation(
 				continue
 			}
 			// Step 16 — FlowMod DROP
-			if err := pushFlowModDrop(alert.VehicleID); err != nil {
+			if err := pushFlowModDrop(ctx, alert.VehicleID); err != nil {
 				logEntry.Actions = append(logEntry.Actions, "FLOWMOD_FAIL:"+err.Error())
 			} else {
 				logEntry.Actions = append(logEntry.Actions, "FLOWMOD_DROP")
@@ -288,7 +292,7 @@ func (t *TemporalEchoMitigator) runMitigation(
 				logEntry.Actions = append(logEntry.Actions, "PATHS_INVALIDATED")
 			}
 			// Step 22 — reroute FlowMod
-			if err := pushRerouteFlowMod(alert.VehicleID); err != nil {
+			if err := pushRerouteFlowMod(ctx, alert.VehicleID); err != nil {
 				logEntry.Actions = append(logEntry.Actions, "REROUTE_FAIL")
 			} else {
 				logEntry.Actions = append(logEntry.Actions, "REROUTE_FLOWMOD")
@@ -297,7 +301,7 @@ func (t *TemporalEchoMitigator) runMitigation(
 		// CTRL_ORIGIN — override controller routing with RSU evidence
 		} else if variant == "CTRL_ORIGIN" {
 			beaconEvidence := getAllBeaconEvidence(ctx, alert.AlertTS)
-			if err := pushFlowModOverride(alert.VehicleID, beaconEvidence); err != nil {
+			if err := pushFlowModOverride(ctx, alert.VehicleID, beaconEvidence); err != nil {
 				logEntry.Actions = append(logEntry.Actions, "CTRL_OVERRIDE_FAIL")
 			} else {
 				logEntry.Actions = append(logEntry.Actions, "CTRL_OVERRIDE_FLOWMOD")
@@ -307,6 +311,29 @@ func (t *TemporalEchoMitigator) runMitigation(
 		// Step 24 — mandatory re-authentication flag
 		flagReauth(ctx, alert.VehicleID, variant)
 		logEntry.Actions = append(logEntry.Actions, "REAUTH_FLAGGED")
+
+		// Step 5 — zero trust for confirmed attacker (Section 5.2)
+		// updateTrust(v, 0): immediately excludes from Pactive voting weight
+		if variant != "CTRL_ORIGIN" {
+			if _, err := updateTrust(ctx, alert.VehicleID, false, true); err == nil {
+				logEntry.Actions = append(logEntry.Actions, "TRUST_ZEROED")
+			}
+		}
+
+		// Step 5 (controller-origin) — apply controller trust penalty (Section 5.7)
+		if variant == "CTRL_ORIGIN" {
+			newScore, err := updateCtrlTrust(ctx, alert.VehicleID)
+			if err == nil {
+				logEntry.Actions = append(logEntry.Actions,
+					fmt.Sprintf("CTRL_TRUST_PENALISED:%.3f", newScore))
+				// If score drops below τCmin, trigger removal mechanism
+				if newScore < TrustCtrlMin {
+					logEntry.Actions = append(logEntry.Actions, "CTRL_REMOVAL_TRIGGERED")
+					// Note: full reassignment requires allCtrls list — caller should
+					// invoke CheckControllerTrustAndReassign with controller list.
+				}
+			}
+		}
 
 		// Step 12 — commit immutable log entry
 		commitLog(ctx, logEntry)
@@ -388,6 +415,102 @@ func (t *TemporalEchoMitigator) GetReauthFlag(
 	var flag ReauthFlag
 	json.Unmarshal(data, &flag)
 	return &flag, nil
+}
+
+// GetPendingFlowMod reads a PendingFlowMod record from the ledger by its key.
+// Called by eventListener.js via contract.evaluateTransaction('GetPendingFlowMod', key)
+// before it executes the HTTP POST to the Ryu SDN controller.
+//
+// Returns the JSON-encoded PendingFlowMod string, or "" if not found.
+// This replaces the incorrect pattern of calling the Fabric stub API method
+// GetState directly as a chaincode function name (which does not exist).
+func (t *TemporalEchoMitigator) GetPendingFlowMod(
+	ctx contractapi.TransactionContextInterface,
+	key string,
+) (string, error) {
+	data, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return "", fmt.Errorf("GetPendingFlowMod: ledger read failed: %v", err)
+	}
+	if data == nil {
+		return "", nil
+	}
+	return string(data), nil
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  EVIDENCE SUBMISSION — IndividualSigEvidence, WitnessRecord, VehicleMAC
+// ═══════════════════════════════════════════════════════════════════════════
+
+// SubmitIndividualSigEvidence stores one Dilithium2 signature record that will
+// be retrieved by getSignatureEvidence() during Algorithm 4 Step 15
+// (threshold aggregate signature check, Eq. 3.24).
+//
+// Called by reporting vehicles before or alongside SubmitDetectionEvent.
+// vehicleID must be the ACCUSED vehicle (attacker), not the signer.
+func (t *TemporalEchoMitigator) SubmitIndividualSigEvidence(
+	ctx contractapi.TransactionContextInterface,
+	evidenceJSON string,
+) error {
+	var e IndividualSigEvidence
+	if err := json.Unmarshal([]byte(evidenceJSON), &e); err != nil {
+		return fmt.Errorf("SubmitIndividualSigEvidence: parse error: %v", err)
+	}
+	if e.VehicleID == "" || e.SignerID == "" {
+		return fmt.Errorf("SubmitIndividualSigEvidence: vehicle_id and signer_id are required")
+	}
+	e.DocType = "SIG_EVIDENCE"
+	if e.TS == 0 {
+		e.TS = time.Now().UnixMilli()
+	}
+	// Verify the individual Dilithium2 signature before storing
+	if !verifyDilithium2Sig(e.Signature, e.Message, e.PubKey) {
+		return fmt.Errorf("SubmitIndividualSigEvidence: invalid Dilithium2 signature from signer %s", e.SignerID)
+	}
+	key := fmt.Sprintf("SIG_EVIDENCE:%s:%d:%s", e.VehicleID, e.TS, e.SignerID)
+	data, _ := json.Marshal(e)
+	return ctx.GetStub().PutState(key, data)
+}
+
+// SubmitWitnessRecord stores one ME witness observation for the quorum check
+// (Eqs. 3.27–3.28, Algorithm 4 Step 20).
+//
+// Called by each witness vehicle Vk that observed link e_ij.
+// vehicleID must be the ACCUSED vehicle (attacker), not the witness reporter.
+func (t *TemporalEchoMitigator) SubmitWitnessRecord(
+	ctx contractapi.TransactionContextInterface,
+	witnessJSON string,
+) error {
+	var w WitnessRecord
+	if err := json.Unmarshal([]byte(witnessJSON), &w); err != nil {
+		return fmt.Errorf("SubmitWitnessRecord: parse error: %v", err)
+	}
+	if w.VehicleID == "" || w.ReporterID == "" {
+		return fmt.Errorf("SubmitWitnessRecord: vehicle_id and reporter_id are required")
+	}
+	w.DocType = "WITNESS"
+	if w.TS == 0 {
+		w.TS = time.Now().UnixMilli()
+	}
+	key := fmt.Sprintf("WITNESS:%s:%d:%s", w.VehicleID, w.TS, w.ReporterID)
+	data, _ := json.Marshal(w)
+	return ctx.GetStub().PutState(key, data)
+}
+
+// SubmitVehicleMAC registers a vehicle's Ethernet MAC address in the
+// VehicleMACTable used by pushFlowModDrop and pushRerouteFlowMod when
+// constructing OpenFlow match fields.  Called once per vehicle at
+// network bootstrap.
+func (t *TemporalEchoMitigator) SubmitVehicleMAC(
+	ctx contractapi.TransactionContextInterface,
+	vehicleID string,
+	macAddress string,
+) error {
+	if vehicleID == "" || macAddress == "" {
+		return fmt.Errorf("SubmitVehicleMAC: vehicleID and macAddress are required")
+	}
+	// Key matches lookupVehicleMAC() in flowmod.go: "VMAC_" + vehicleID
+	return ctx.GetStub().PutState("VMAC_"+vehicleID, []byte(macAddress))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

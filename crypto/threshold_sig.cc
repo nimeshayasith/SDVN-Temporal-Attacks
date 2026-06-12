@@ -38,112 +38,37 @@
 #  include <oqs/oqs.h>
 #endif
 
-/* ─── Random bytes ───────────────────────────────────────────────────────── */
-
-static void fill_random(uint8_t *buf, size_t len) {
-#ifdef HAVE_OPENSSL
-    RAND_bytes(buf, (int)len);
-#else
-    static uint64_t s = 0xABCD1234EF567890ULL;
-    for (size_t i = 0; i < len; i++) {
-        s = s * 6364136223846793005ULL + 1442695040888963407ULL;
-        buf[i] = (uint8_t)(s >> 56);
-    }
-#endif
-}
-
 /* ══════════════════════════════════════════════════════════════════════════
- * DILITHIUM2 SIGN / VERIFY
+ * Dilithium2 operations — delegated to dilithium.cc (Section 3.3)
+ *
+ * dilithium2_keygen(), dilithium2_sign(), dilithium2_verify() are the
+ * single canonical implementations defined in dilithium.cc and declared
+ * in teta_guard_types.h.  No duplicates here.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * Generate a Dilithium2 keypair.
- * pk: DILITHIUM2_PK_LEN bytes output
- * sk: DILITHIUM2_SK_LEN bytes output
+ * dilithium2_keypair() — thin alias kept for call-site compatibility.
+ * Delegates to the shared dilithium2_keygen() from dilithium.cc.
+ *
+ * static: keeps this symbol translation-unit-local, preventing a duplicate-
+ * symbol linker error when threshold_sig.o and dilithium.o are linked together
+ * (both define dilithium2_keypair otherwise, causing -Werror=multiple-definition).
  */
-void dilithium2_keypair(uint8_t pk[DILITHIUM2_PK_LEN],
-                         uint8_t sk[DILITHIUM2_SK_LEN]) {
-#ifdef HAVE_LIBOQS
-    OQS_SIG *sig = OQS_SIG_new(OQS_SIG_alg_dilithium_2);
-    OQS_SIG_keypair(sig, pk, sk);
-    OQS_SIG_free(sig);
-#else
-    fill_random(sk, DILITHIUM2_SK_LEN);
-#  ifdef HAVE_OPENSSL
-    SHA256(sk, 32, pk);
-    for (size_t i = 32; i < DILITHIUM2_PK_LEN; i++)
-        pk[i] = sk[(i * 7) % DILITHIUM2_SK_LEN] ^ 0xA5;
-#  else
-    for (size_t i = 0; i < DILITHIUM2_PK_LEN; i++)
-        pk[i] = sk[(i + 5) % DILITHIUM2_SK_LEN] ^ 0x3C;
-#  endif
-#endif
+static void dilithium2_keypair(uint8_t pk[DILITHIUM2_PK_LEN],
+                                uint8_t sk[DILITHIUM2_SK_LEN]) {
+    dilithium2_keygen(pk, sk);  /* Section 3.3 shared module */
 }
 
 /*
- * vehicle_sign_report() — Section 5.4
- * Vehicle Vi signs its topology observation before sending to RSU.
- * Called once per beacon interval per vehicle.
- *
- * sig_out : DILITHIUM2_SIG_LEN bytes
+ * vehicle_sign_report() — Section 3.4
+ * Vehicle Vi signs its topology observation report before sending to RSU.
+ * Delegates to dilithium2_sign() from dilithium.cc.
  */
 void vehicle_sign_report(const uint8_t *msg_payload, size_t payload_len,
-                          const uint8_t sk_vi[DILITHIUM2_SK_LEN],
-                          uint8_t sig_out[DILITHIUM2_SIG_LEN],
-                          size_t *sig_len_out) {
-#ifdef HAVE_LIBOQS
-    OQS_SIG *sig = OQS_SIG_new(OQS_SIG_alg_dilithium_2);
-    OQS_SIG_sign(sig, sig_out, sig_len_out, msg_payload, payload_len, sk_vi);
-    OQS_SIG_free(sig);
-#else
-    /* Simulated: HMAC-SHA256 of payload keyed by first 32 bytes of sk */
-    *sig_len_out = DILITHIUM2_SIG_LEN;
-    memset(sig_out, 0, DILITHIUM2_SIG_LEN);
-#  ifdef HAVE_OPENSSL
-    uint8_t mac[32]; unsigned ml = 32;
-    HMAC(EVP_sha256(), sk_vi, 32, msg_payload, payload_len, mac, &ml);
-    memcpy(sig_out, mac, 32);
-    /* Fill remaining bytes deterministically from MAC */
-    for (size_t i = 32; i < DILITHIUM2_SIG_LEN; i++)
-        sig_out[i] = mac[i % 32] ^ (uint8_t)(i * 0x5A);
-#  else
-    for (size_t i = 0; i < DILITHIUM2_SIG_LEN; i++)
-        sig_out[i] = sk_vi[i % DILITHIUM2_SK_LEN] ^ msg_payload[i % payload_len] ^ (uint8_t)i;
-#  endif
-#endif
-}
-
-/*
- * Verify a Dilithium2 signature.
- * Returns true if valid.
- */
-bool dilithium2_verify(const uint8_t  *msg_payload,  size_t payload_len,
-                        const uint8_t   sig[DILITHIUM2_SIG_LEN], size_t sig_len,
-                        const uint8_t   pk[DILITHIUM2_PK_LEN]) {
-#ifdef HAVE_LIBOQS
-    OQS_SIG *sig_obj = OQS_SIG_new(OQS_SIG_alg_dilithium_2);
-    OQS_STATUS rc = OQS_SIG_verify(sig_obj,
-                                    msg_payload, payload_len,
-                                    sig, sig_len,
-                                    pk);
-    OQS_SIG_free(sig_obj);
-    return rc == OQS_SUCCESS;
-#else
-    /* Simulate: derive sk from pk (reverse of keygen simulation), recompute */
-    uint8_t sk_derived[DILITHIUM2_SK_LEN];
-    for (size_t i = 0; i < DILITHIUM2_SK_LEN; i++)
-        sk_derived[i] = pk[(i + DILITHIUM2_PK_LEN - 5) % DILITHIUM2_PK_LEN] ^ 0x3C;
-
-    uint8_t expected[DILITHIUM2_SIG_LEN];
-    size_t  expected_len;
-    vehicle_sign_report(msg_payload, payload_len, sk_derived, expected, &expected_len);
-
-    /* Constant-time compare of first 32 bytes */
-    uint8_t diff = 0;
-    for (int i = 0; i < 32; i++) diff |= sig[i] ^ expected[i];
-    return diff == 0;
-    (void)sig_len;
-#endif
+                          const uint8_t  sk_vi[DILITHIUM2_SK_LEN],
+                          uint8_t        sig_out[DILITHIUM2_SIG_LEN],
+                          size_t        *sig_len_out) {
+    dilithium2_sign(msg_payload, payload_len, sk_vi, sig_out, sig_len_out);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

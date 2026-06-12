@@ -24,8 +24,14 @@
 //     - Results written to tgn_events.csv and tgn_summary.csv
 //
 // Build (inside ns-3.35/scratch/):
-//   cp tgn_detector.cc ~/ns-3.35/scratch/
+//   From repo root: cp tgn/tgn_detector.cc ~/ns-3.35/scratch/tgn_detector.cc
+//   Also copy routing.cc: cp routing.cc ~/ns-3.35/scratch/routing.cc
+//   In scratch/, the #include "../routing.cc" becomes "routing.cc" — adjust:
+//     sed -i 's|#include "../routing.cc"|#include "routing.cc"|' ~/ns-3.35/scratch/tgn_detector.cc
 //   cd ~/ns-3.35 && ./waf build
+//
+// NOTE: VS Code IntelliSense errors for ns3/ headers are expected on Windows.
+//       This file compiles only on Linux inside NS-3.35.
 //
 // Run:
 //   ./waf --run "scratch/tgn_detector --simTime=60 --N_Vehicles=6 --attack_scenario=1"
@@ -40,8 +46,9 @@
 // ============================================================
 
 // ── Suppress routing.cc's main() so this file can define its own ─────────────
+// tgn/ subfolder — routing.cc lives one level up
 #define ROUTING_CC_AS_HEADER
-#include "routing.cc"
+#include "../routing.cc"
 
 // ── Standard headers not already pulled in by routing.cc ─────────────────────
 #include <algorithm>
@@ -208,8 +215,9 @@ using AlertSet = std::vector<TGNAlert>;
 
 // --- Learnable weights -------------------------------------------------------
 struct TGNWeights {
-    // GRU input size = dim (prior h) + 6 raw features (tau_s, c_vW, seq_gap,
-    //                                                    rho_v, id_match, phi)
+    // GRU input size = dim (prior h) + 7 raw features (id_v, tau_s, c_vW, seq_gap,
+    //                                                    rho_v, id_mis, phi)
+    //                = gs = dim + 7  — matches tgn_train.py gs = dim + 7
     int gru_input_size  = 0;
     int gru_hidden_size = 0;
 
@@ -224,6 +232,12 @@ struct TGNWeights {
 
     // Scoring readout  — Eq 3.23
     Vec w_score;   // dim-dimensional
+
+    // Variant classification head  — Section 4.7
+    // α̂_v = softmax(Wcls · h_v^(L) + b_cls),  α = argmax ∈ {TTW=0, BSHH=1, ME=2}
+    // Trained jointly with binary scorer via multi-class cross-entropy loss.
+    Mat Wcls;      // (3 × dim)
+    Vec b_cls;     // (3)
 
     bool loaded = false;   // true after LoadWeights() succeeds
 };
@@ -246,6 +260,7 @@ public:
     //   GRU weight matrices in row-major double order (Wz,Uz,bz, Wr,Ur,br, Wn,Un,bn)
     //   Layer matrices W_layers[0..L-1], b_layers[0..L-1]
     //   Scoring vector w_score
+    //   Variant classification head: Wcls (3×dim row-major), b_cls (3)
     bool LoadWeights(const std::string& path)
     {
         std::ifstream f(path, std::ios::binary);
@@ -284,6 +299,8 @@ public:
             read_vec(weights_.b_layers[l], dim);
         }
         read_vec(weights_.w_score, dim);
+        read_mat(weights_.Wcls,    3,   dim);
+        read_vec(weights_.b_cls,   3);
 
         weights_.loaded = true;
         std::cout << "[TGN] Weights loaded from '" << path
@@ -294,6 +311,30 @@ public:
     void SetThreshold(double t) { params_.theta_fs = t; }
     double GetThreshold() const { return params_.theta_fs; }
     const TGNParams& GetParams() const { return params_; }
+
+    // ── Variant classification head (Section 4.7) ───────────────────────────
+    // α̂_v = softmax(Wcls · h_v^(L) + b_cls),  α = argmax ∈ {TTW=0, BSHH=1, ME=2}
+    // Uses the embedding stored by the most recent ProcessEvent() call for node_id.
+    // Returns "" when weights are not loaded — caller falls back to heuristic.
+    std::string PredictVariant(uint32_t node_id) const
+    {
+        if (!weights_.loaded) return "";
+        auto it = states_.find(node_id);
+        if (it == states_.end()) return "";
+
+        const Vec& h = it->second.embedding;
+        Vec logits(3);
+        for (int c = 0; c < 3; ++c)
+            logits[c] = dot(weights_.Wcls[c], h) + weights_.b_cls[c];
+
+        int best = 0;
+        for (int c = 1; c < 3; ++c)
+            if (logits[c] > logits[best]) best = c;
+
+        if (best == 0) return "TTW";
+        if (best == 1) return "BSHH";
+        return "ME";
+    }
 
     // ── Main entry: process one topology / heartbeat event ──────────────────
     // Returns anomaly score in (0, 1).
@@ -381,13 +422,16 @@ private:
             weights_.b_layers[l] = zeros(d);
         }
         weights_.w_score = small_vec(d, 0.1);
+        weights_.Wcls    = xavier_mat(3, d);
+        weights_.b_cls   = zeros(3);
         weights_.loaded  = false;
     }
 
     // ── 4.2  GRU temporal memory update  (Eq 3.21) ──────────────────────────
     //
     //   phi(delta_t) = log(1 + delta_t / T_b)
-    //   gru_input    = concat( h_v(t-), raw_features(5), phi )
+    //   gru_input    = concat( h_v(t-), [id_v, tau_s, c_vW, seq_gap, rho_v, id_mis, phi] )
+    //                = dim + 7 elements  →  gs = dim + 7  (matches tgn_train.py gs=dim+7)
     //   z = sigmoid( Wz * gru_input + Uz * h + bz )    (update gate)
     //   r = sigmoid( Wr * gru_input + Ur * h + br )    (reset gate)
     //   n = tanh(    Wn * gru_input + Un * (r⊙h) + bn ) (candidate)
@@ -410,9 +454,9 @@ private:
                     feat.identity_mismatch,
                     phi };
 
-        // GRU input: [h || raw]
+        // GRU input: [h || raw]  — dim + 7 elements total (gs = dim + 7)
         Vec gru_in;
-        gru_in.reserve(params_.dim + 6);
+        gru_in.reserve(params_.dim + 7);
         gru_in.insert(gru_in.end(), h.begin(), h.end());
         gru_in.insert(gru_in.end(), raw.begin(), raw.end());
 
@@ -1182,11 +1226,14 @@ static void TGN_WriteAlertsJson()
         std::vector<int> sigs = TGN_SigIndicesFromEvent(e);
 
         // Derive alpha from triggered signatures (more precise than scenario number)
-        std::string alpha = TGN_AlphaFromScenario(attack_scenario);
-        for (int s : sigs) {
-            if      (s <= 2) { alpha = "TTW";  break; }
-            else if (s <= 5) { alpha = "BSHH"; break; }
-            else             { alpha = "ME";   break; }
+        std::string alpha = g_tgn ? g_tgn->PredictVariant(e.claimed_sender_id) : "";
+        if (alpha.empty()) {
+            alpha = TGN_AlphaFromScenario(attack_scenario);
+            for (int s : sigs) {
+                if      (s <= 2) { alpha = "TTW";  break; }
+                else if (s <= 5) { alpha = "BSHH"; break; }
+                else             { alpha = "ME";   break; }
+            }
         }
 
         // t_alert in ms (int64) — matches temporalecho.go AlertObject.AlertTime

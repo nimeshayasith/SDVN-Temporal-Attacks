@@ -43,7 +43,7 @@
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Nonce generation (reused from hmac_filter)
+ * Nonce generation (for fresh nonce per location-bound report)
  * ══════════════════════════════════════════════════════════════════════════ */
 
 static void fill_random(uint8_t *buf, size_t len) {
@@ -59,53 +59,13 @@ static void fill_random(uint8_t *buf, size_t len) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Dilithium2 sign / verify  (same as threshold_sig.cc)
+ * Dilithium2 sign / verify — delegated to dilithium.cc (Section 3.3)
+ *
+ * The private dilithium2_sign_lb / dilithium2_verify_lb duplicates have
+ * been removed. All signing and verification now uses the shared
+ * dilithium2_sign() / dilithium2_verify() declared in teta_guard_types.h
+ * and defined in dilithium.cc.
  * ══════════════════════════════════════════════════════════════════════════ */
-
-static void dilithium2_sign_lb(const uint8_t *msg, size_t msg_len,
-                                const uint8_t sk[DILITHIUM2_SK_LEN],
-                                uint8_t sig[DILITHIUM2_SIG_LEN],
-                                size_t *sig_len) {
-#ifdef HAVE_LIBOQS
-    OQS_SIG *s = OQS_SIG_new(OQS_SIG_alg_dilithium_2);
-    OQS_SIG_sign(s, sig, sig_len, msg, msg_len, sk);
-    OQS_SIG_free(s);
-#else
-    *sig_len = DILITHIUM2_SIG_LEN;
-    memset(sig, 0, DILITHIUM2_SIG_LEN);
-#  ifdef HAVE_OPENSSL
-    uint8_t mac[32]; unsigned ml = 32;
-    HMAC(EVP_sha256(), sk, 32, msg, msg_len, mac, &ml);
-    memcpy(sig, mac, 32);
-    for (size_t i = 32; i < DILITHIUM2_SIG_LEN; i++)
-        sig[i] = mac[i % 32] ^ (uint8_t)(i * 0x5A);
-#  else
-    for (size_t i = 0; i < DILITHIUM2_SIG_LEN; i++)
-        sig[i] = sk[i % DILITHIUM2_SK_LEN] ^ msg[i % msg_len] ^ (uint8_t)i;
-#  endif
-#endif
-}
-
-static bool dilithium2_verify_lb(const uint8_t *msg, size_t msg_len,
-                                   const uint8_t sig[DILITHIUM2_SIG_LEN],
-                                   const uint8_t pk[DILITHIUM2_PK_LEN]) {
-#ifdef HAVE_LIBOQS
-    OQS_SIG *s = OQS_SIG_new(OQS_SIG_alg_dilithium_2);
-    OQS_STATUS rc = OQS_SIG_verify(s, msg, msg_len, sig, DILITHIUM2_SIG_LEN, pk);
-    OQS_SIG_free(s);
-    return rc == OQS_SUCCESS;
-#else
-    /* Derive sk from pk (simulation inverse) */
-    uint8_t sk_d[DILITHIUM2_SK_LEN];
-    for (size_t i = 0; i < DILITHIUM2_SK_LEN; i++)
-        sk_d[i] = pk[(i + DILITHIUM2_PK_LEN - 5) % DILITHIUM2_PK_LEN] ^ 0x3C;
-    uint8_t expected[DILITHIUM2_SIG_LEN]; size_t el;
-    dilithium2_sign_lb(msg, msg_len, sk_d, expected, &el);
-    uint8_t diff = 0;
-    for (int i = 0; i < 32; i++) diff |= sig[i] ^ expected[i];
-    return diff == 0;
-#endif
-}
 
 /* ══════════════════════════════════════════════════════════════════════════
  * haversine_distance_m  (Section 6.4 helper)
@@ -153,8 +113,8 @@ void create_location_bound_report(const uint8_t   link_id[8],
 
     /* σ_{Vk} = Sign(SK_{Vk}, m'_{Vk})  (Eq. 3.26) */
     size_t sig_len;
-    dilithium2_sign_lb((const uint8_t *)p, sizeof(LocationBindingPayload),
-                        sk_vk, out_report->signature, &sig_len);
+    dilithium2_sign((const uint8_t *)p, sizeof(LocationBindingPayload),
+                    sk_vk, out_report->signature, &sig_len);
 
     memcpy(out_report->pub_key, pk_vk, DILITHIUM2_PK_LEN);
 }
@@ -173,11 +133,11 @@ void create_location_bound_report(const uint8_t   link_id[8],
 bool verify_single_witness(const LocationBoundReport *report,
                             float link_endpoint_lat,
                             float link_endpoint_lon) {
-    /* (i) Cryptographic authenticity */
-    bool crypto_ok = dilithium2_verify_lb(
+    /* (i) Cryptographic authenticity — Section 3.3 shared module */
+    bool crypto_ok = dilithium2_verify(
         (const uint8_t *)&report->payload,
         sizeof(LocationBindingPayload),
-        report->signature,
+        report->signature, DILITHIUM2_SIG_LEN,
         report->pub_key);
     if (!crypto_ok) return false;
 
@@ -363,10 +323,10 @@ int main(int argc, char *argv[]) {
                                       (uint64_t)(rows[i].t * 1000),
                                       rid, sks[vid], pks[vid], &rep);
 
-        /* Per-condition results */
-        bool crypto_ok = dilithium2_verify_lb(
+        /* Per-condition results — Section 3.3 shared dilithium2_verify */
+        bool crypto_ok = dilithium2_verify(
             (const uint8_t *)&rep.payload, sizeof(LocationBindingPayload),
-            rep.signature, rep.pub_key);
+            rep.signature, DILITHIUM2_SIG_LEN, rep.pub_key);
 
         float dist = haversine_distance_m(lat, lon, lat_ep, lon_ep);
         bool spatial_ok = (dist <= R_COMM_METERS);

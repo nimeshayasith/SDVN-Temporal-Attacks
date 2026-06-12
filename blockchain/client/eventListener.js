@@ -15,7 +15,7 @@
  *   ControllerOriginAttack→ operator escalation + OVERRIDE FlowMods
  *
  * Configuration:
- *   RYU_REST_BASE env var (default: http://ryu-controller:8080)
+ *   RSU_OPENFLOW_BASE env var (default: http://ryu-controller:8080)
  *   --node_id peer0.rsu1.tetaguard.net
  *
  * Usage:
@@ -36,8 +36,15 @@ const CONN_PROFILE = path.join(__dirname, '..', 'config', 'connection-profile.js
 const REVOKED_KEYS_FILE = path.join(__dirname, '..', '..', 'revoked_keys.json');
 const LOG_FILE     = path.join(__dirname, '..', '..', 'blockchain_submission_log.txt');
 
-// Ryu SDN controller REST base — override with --ryu_url or RYU_REST_BASE env var
-let RYU_REST_BASE  = process.env.RYU_REST_BASE || 'http://ryu-controller:8080';
+// RSU OpenFlow agent REST base — the FlowMod MUST go to the RSU's local OpenFlow
+// agent, NOT to the SDN controller's Ryu process.  The paper's emergency channel
+// design (§9.5) explicitly bypasses the controller so a compromised controller
+// cannot intercept or suppress DROP rules.  Sending to 'ryu-controller:8080'
+// would route through the (potentially malicious) controller host.
+//
+// Each RSU peer runs a local OpenFlow agent on port 8080.  Override via:
+//   RSU_OPENFLOW_BASE env var  or  --rsu_url CLI argument.
+let RSU_OPENFLOW_BASE = process.env.RSU_OPENFLOW_BASE || 'http://peer0.rsu1.tetaguard.net:8080';
 const FLOWMOD_TIMEOUT_MS = 50;  // must fit within 100 ms FlowMod budget
 
 // ─── HTTP FlowMod execution (off-chain) ───────────────────────────────────────
@@ -56,7 +63,7 @@ async function executeFlowMod(network, vehicleID, action) {
 
     try {
         const contract = network.getContract(CHAINCODE);
-        const result   = await contract.evaluateTransaction('GetState', pendingKey);
+        const result   = await contract.evaluateTransaction('GetPendingFlowMod', pendingKey);
         if (result && result.length > 0) {
             pendingFM = JSON.parse(result.toString());
         }
@@ -88,8 +95,8 @@ async function executeFlowMod(network, vehicleID, action) {
     };
 
     const url     = action === 'REROUTE'
-        ? `${RYU_REST_BASE}/stats/flowentry/delete`
-        : `${RYU_REST_BASE}/stats/flowentry/add`;
+        ? `${RSU_OPENFLOW_BASE}/stats/flowentry/delete`
+        : `${RSU_OPENFLOW_BASE}/stats/flowentry/add`;
     const payload = JSON.stringify(ryuFM);
 
     console.log(`[FlowMod] POST ${url}  action=${action}  vehicle=${vehicleID}`);
@@ -121,7 +128,7 @@ async function executeFlowMod(network, vehicleID, action) {
         if (err.name === 'AbortError') {
             console.warn(`[FlowMod] ✗  Ryu timeout (${FLOWMOD_TIMEOUT_MS}ms)  vehicle=${vehicleID}`);
         } else {
-            console.warn(`[FlowMod] ✗  Could not reach Ryu at ${RYU_REST_BASE}: ${err.message}`);
+            console.warn(`[FlowMod] ✗  Could not reach Ryu at ${RSU_OPENFLOW_BASE}: ${err.message}`);
             console.warn(`           Is the SDN controller running?`);
         }
     }
@@ -150,7 +157,7 @@ async function startEventListener(nodeID = PEER_ID) {
 
         const network = await gateway.getNetwork(CHANNEL);
         console.log(`[EventListener] Connected to '${CHANNEL}' as '${nodeID}'`);
-        console.log(`[EventListener] Ryu controller: ${RYU_REST_BASE}`);
+        console.log(`[EventListener] RSU OpenFlow agent (emergency channel): ${RSU_OPENFLOW_BASE}`);
 
         // ── Block-level listener ──────────────────────────────────────────────
         await network.addBlockListener(async (block) => {
@@ -264,7 +271,7 @@ const args = process.argv.slice(2);
 let nodeID = PEER_ID;
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--node_id' && args[i+1]) nodeID = args[++i];
-    if (args[i] === '--ryu_url' && args[i+1])  RYU_REST_BASE = args[++i];
+    if (args[i] === '--rsu_url' && args[i+1])  RSU_OPENFLOW_BASE = args[++i];
 }
 
 startEventListener(nodeID);

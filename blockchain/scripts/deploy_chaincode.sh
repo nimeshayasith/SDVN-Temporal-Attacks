@@ -56,8 +56,28 @@ peer_env() {
 log "Step 1 — Building Go chaincode"
 cd "$CHAINCODE_DIR"
 go mod tidy || err "go mod tidy failed — is Go installed?"
-go build ./... || err "go build failed"
-log "  Build OK"
+
+# Ensure liboqs is available so Dilithium2 signatures are verified in production.
+# Without -tags liboqs, verification_stub.go is compiled instead of
+# verification_liboqs.go, and ALL signatures are accepted without cryptographic
+# checking — a critical security bypass in any deployed build.
+if ! pkg-config --exists liboqs 2>/dev/null; then
+    log "  liboqs not found via pkg-config — attempting apt install..."
+    sudo apt-get install -y liboqs-dev 2>/dev/null || {
+        log "  apt install failed; building liboqs from source..."
+        git clone --depth 1 https://github.com/open-quantum-safe/liboqs /tmp/liboqs
+        cmake -S /tmp/liboqs -B /tmp/liboqs/build \
+              -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local
+        make -C /tmp/liboqs/build -j"$(nproc)" install
+    }
+fi
+
+log "  Building with -tags liboqs (real Dilithium2 verification enabled)"
+CGO_ENABLED=1 \
+CGO_CFLAGS="-I/usr/local/include" \
+CGO_LDFLAGS="-L/usr/local/lib -loqs" \
+go build -tags liboqs ./... || err "go build -tags liboqs failed — check liboqs installation"
+log "  Build OK (liboqs PQC enabled)"
 
 # ─── Step 2: Package ─────────────────────────────────────────────────────────
 

@@ -12,9 +12,9 @@ Four detectors evaluated on the same tgn_events.csv data:
 
   1. Rule-based (LW path)  — 9 PEM signatures already scored in the CSV
                               (pem_score / pem_alert columns from routing.cc)
-  2. Static-GCN            — 2-layer GCN without GRU temporal memory.
-                              Each event classified independently from its
-                              feature vector; no node state across events.
+  2. Static-GCN            — 2-layer GCN without GRU temporal memory (Ablation A3).
+                              All 7 features kept including phi; no node state
+                              across events. Isolates GRU memory contribution.
   3. DMSTG-AD (approx)     — LSTM + GCN over a sliding window of raw events
                               (no mobility-aware phi, no edge freshness decay,
                               no sliding-window beacon_count). Approximates
@@ -85,7 +85,8 @@ except ImportError:
 # Constants — must match tgn_train.py and tgn_detector.cc
 # ---------------------------------------------------------------------------
 BEACON_INTERVAL = 0.1   # T_b (seconds) — IEEE 802.11p = 100 ms
-WMAX            = 50    # default; auto-set to ceil(L_link/T_b) in run_comparison
+WMAX            = 430   # urban default: ceil(L_link/T_b) = ceil(43/0.1) = 430
+# Highway: 90.  run_comparison() overrides via l_link argument (Eq 9.2).
 
 SCENARIO_NAMES = {
     0:  "Baseline",
@@ -164,10 +165,26 @@ def evaluate_rulebased(df: pd.DataFrame, theta: float = 0.12) -> np.ndarray:
 class StaticGCN(nn.Module):
     """
     2-layer GCN applied independently to each event's feature vector.
-    No node memory, no GRU — pure static per-event classification.
-    Equivalent to ignoring the temporal dimension of the TGN.
+
+    Ablation A3: removes GRU temporal memory and cross-event node state only.
+    All 7 features are kept — including phi (time-elapsed encoding) and
+    identity_mismatch — so this baseline isolates the contribution of
+    the GRU memory update (Eq. 3.22) without simultaneously removing
+    mobility-aware features.
+
+    What is ablated vs. the full TGN:
+      - No GRU temporal memory: h_v(t-) is always zero (no state across events)
+      - No freshness-weighted neighbourhood aggregation (A_uv = 1 uniformly)
+
+    What is KEPT (unlike DMSTG-AD):
+      + phi = log(1 + Δt/Tb) feature IS present (index 6 in the 7-element vector)
+      + beacon_count sliding-window feature IS present
+      + All 7 features from extract_features() are passed unchanged
+
+    This means StaticGCN correctly ablates memory only (Ablation A3 in Table 4.3).
+    DMSTG-AD additionally removes phi and beacon_count, making it Ablation A3+A6.
     """
-    def __init__(self, in_dim: int = 6, hidden: int = 32, layers: int = 2):
+    def __init__(self, in_dim: int = 7, hidden: int = 32, layers: int = 2):
         super().__init__()
         dims = [in_dim] + [hidden] * layers
         self.layers_ = nn.ModuleList()
@@ -345,6 +362,10 @@ class ProposedTGN(nn.Module):
         for W in self.W_layers: nn.init.xavier_uniform_(W)
         self.w_score = nn.Parameter(0.01 * torch.randn(dim))
 
+        # Variant classification head (Section 4.7)
+        self.Wcls  = nn.Parameter(torch.empty(3, dim)); nn.init.xavier_uniform_(self.Wcls)
+        self.b_cls = nn.Parameter(torch.zeros(3))
+
     def gru_step(self, h, feat):
         gru_in = torch.cat([h, feat])
         z = torch.sigmoid(self.Wz @ gru_in + self.Uz @ h + self.bz)
@@ -361,7 +382,8 @@ class ProposedTGN(nn.Module):
     def forward_sequence(self, feats, nids, lsrcs, ldsts, fresh):
         device = feats.device
         mem = {}
-        logits = []
+        logits     = []
+        cls_logits = []
         for i in range(feats.shape[0]):
             nid  = int(nids[i]); lsrc = int(lsrcs[i]); ldst = int(ldsts[i])
             Auv  = float(fresh[i])
@@ -370,8 +392,9 @@ class ProposedTGN(nn.Module):
             h_new   = self.gru_step(mem[nid], feats[i])
             h_final = self.mp_step(h_new, mem[ldst], mem[lsrc], Auv)
             logits.append(torch.dot(self.w_score, h_final))
+            cls_logits.append(self.Wcls @ h_final + self.b_cls)
             mem[nid] = h_new.detach()
-        return torch.stack(logits)
+        return torch.stack(logits), torch.stack(cls_logits)   # (N,), (N, 3)
 
 
 def load_tgn_weights(model: ProposedTGN, path: str) -> bool:
@@ -409,6 +432,8 @@ def load_tgn_weights(model: ProposedTGN, path: str) -> bool:
                 model.W_layers[ll].data.copy_(rm(dim, dim))
                 model.b_layers[ll].data.copy_(rv(dim))
             model.w_score.data.copy_(rv(dim))
+            model.Wcls.data.copy_(rm(3, dim))
+            model.b_cls.data.copy_(rv(3))
 
         print(f"[TGN] Weights loaded from '{path}'")
         return True
@@ -418,7 +443,7 @@ def load_tgn_weights(model: ProposedTGN, path: str) -> bool:
 
 
 def train_tgn(
-    tr_f, tr_n, tr_ls, tr_ld, tr_fr, tr_l,
+    tr_f, tr_n, tr_ls, tr_ld, tr_fr, tr_l, tr_var,
     va_f, va_n, va_ls, va_ld, va_fr, va_l,
     args, device,
 ) -> ProposedTGN:
@@ -432,8 +457,14 @@ def train_tgn(
     best_mcc, best_state = -1.0, None
     for epoch in range(1, args.epochs + 1):
         model.train(); opt.zero_grad()
-        logits = model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr)
-        loss   = crit(logits, tr_l)
+        logits, cls_logits = model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr)
+        bce_loss = crit(logits, tr_l)
+        cls_mask = tr_var >= 0
+        if cls_mask.any():
+            ce_loss = nn.CrossEntropyLoss()(cls_logits[cls_mask], tr_var[cls_mask])
+            loss = bce_loss + 0.3 * ce_loss
+        else:
+            loss = bce_loss
         loss.backward(); nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step(); sch.step()
 
@@ -441,7 +472,7 @@ def train_tgn(
             model.eval()
             with torch.no_grad():
                 va_scores = torch.sigmoid(
-                    model.forward_sequence(va_f, va_n, va_ls, va_ld, va_fr)).cpu().numpy()
+                    model.forward_sequence(va_f, va_n, va_ls, va_ld, va_fr)[0]).cpu().numpy()
             preds = (va_scores >= args.theta).astype(int)
             mcc   = matthews_corrcoef(va_l, preds) if va_l.sum() > 0 else 0.0
             if mcc > best_mcc:
@@ -627,6 +658,12 @@ def run_comparison(df: pd.DataFrame, args: argparse.Namespace) -> list[dict]:
     pem_sc  = df["pem_score"].values.astype(np.float32)
     scens   = df["attack_scenario"].values.astype(int)
 
+    # Variant labels for Section 4.7 CE loss  (-1=benign, 0=TTW, 1=BSHH, 2=ME)
+    sc = scens
+    variant_label = np.where((sc >= 1)  & (sc <= 4),  0,
+                    np.where((sc >= 5)  & (sc <= 8),  1,
+                    np.where((sc >= 9)  & (sc <= 12), 2, -1))).astype(np.int64)
+
     N     = len(df)
     n_tr  = int(0.70 * N)
     n_va  = int(0.15 * N)
@@ -650,6 +687,7 @@ def run_comparison(df: pd.DataFrame, args: argparse.Namespace) -> list[dict]:
     va_ls = tt(lsrcs[n_tr:n_tr+n_va], torch.int64)
     va_ld = tt(ldsts[n_tr:n_tr+n_va], torch.int64)
     va_fr = tt(fresh[n_tr:n_tr+n_va])
+    tr_var = tt(variant_label[:n_tr], torch.int64)
     te_n  = tt(nids[n_tr+n_va:],  torch.int64)
     te_ls = tt(lsrcs[n_tr+n_va:], torch.int64)
     te_ld = tt(ldsts[n_tr+n_va:], torch.int64)
@@ -679,7 +717,7 @@ def run_comparison(df: pd.DataFrame, args: argparse.Namespace) -> list[dict]:
     if not weights_loaded:
         print("[Compare] Training TGN from scratch (no weight file provided)...")
         tgn = train_tgn(
-            tr_f6, tr_n, tr_ls, tr_ld, tr_fr, tr_l,
+            tr_f6, tr_n, tr_ls, tr_ld, tr_fr, tr_l, tr_var,
             va_f6, va_n, va_ls, va_ld, va_fr, va_l,
             args, device)
 
@@ -691,7 +729,7 @@ def run_comparison(df: pd.DataFrame, args: argparse.Namespace) -> list[dict]:
     tr_fnm = tt(feats_nm[:n_tr]); va_fnm = tt(feats_nm[n_tr:n_tr+n_va])
     te_fnm = tt(feats_nm[n_tr+n_va:])
     tgn_nm = train_tgn(
-        tr_fnm, tr_n, tr_ls, tr_ld, tr_fr, tr_l,
+        tr_fnm, tr_n, tr_ls, tr_ld, tr_fr, tr_l, tr_var,
         va_fnm, va_n, va_ls, va_ld, va_fr, va_l,
         args, device)
 
@@ -719,12 +757,12 @@ def run_comparison(df: pd.DataFrame, args: argparse.Namespace) -> list[dict]:
     tgn.eval()
     with torch.no_grad():
         tgn_scores = torch.sigmoid(
-            tgn.forward_sequence(te_f6, te_n, te_ls, te_ld, te_fr)).cpu().numpy()
+            tgn.forward_sequence(te_f6, te_n, te_ls, te_ld, te_fr)[0]).cpu().numpy()
 
     tgn_nm.eval()
     with torch.no_grad():
         tgn_nm_scores = torch.sigmoid(
-            tgn_nm.forward_sequence(te_fnm, te_n, te_ls, te_ld, te_fr)).cpu().numpy()
+            tgn_nm.forward_sequence(te_fnm, te_n, te_ls, te_ld, te_fr)[0]).cpu().numpy()
 
     # ── Per-scenario evaluation ───────────────────────────────────────────────
     results = []

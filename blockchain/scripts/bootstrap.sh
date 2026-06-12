@@ -107,6 +107,27 @@ bash "$SCRIPT_DIR/create_channel.sh"
 log "Step 5/6 — Deploying TemporalEchoMitigator chaincode"
 bash "$SCRIPT_DIR/deploy_chaincode.sh"
 
+# ─── Step 5b: Create initial anchor checkpoint ───────────────────────────────
+# The anchor interval ⌊Tmin/Tb⌋ must match the vehicular scenario so that
+# Tier 2 OBU peers synchronise before joining consensus.
+#   Urban (L_link≈43 s):  Tmin = max(600ms, 21500ms) → ⌊21500/100⌋ = 215 blocks
+#   Highway (L_link≈9 s): Tmin = max(600ms, 4500ms)  → ⌊4500/100⌋  =  45 blocks
+# Set ANCHOR_INTERVAL_BLOCKS=45 before running bootstrap for highway deployments.
+ANCHOR_INTERVAL="${ANCHOR_INTERVAL_BLOCKS:-215}"
+log "Step 5b — Creating initial anchor checkpoint (interval=${ANCHOR_INTERVAL} blocks)"
+
+FIRST_PEER="${RSU_PEERS[0]}"
+peer_cmd "$FIRST_PEER" chaincode invoke \
+    -o "$ORDERER" \
+    --ordererTLSHostnameOverride orderer.tetaguard.net \
+    --tls --cafile "$ORDERER_CA" \
+    -C "$CHANNEL" -n "$CHAINCODE" \
+    --peerAddresses "$FIRST_PEER" \
+    --tlsRootCertFiles "$PEER_MSP_DIR/peers/${FIRST_PEER%%:*}/tls/ca.crt" \
+    -c "{\"function\":\"CreateAnchorCheckpoint\",\"Args\":[\"${FIRST_PEER%%:*}\",\"${ANCHOR_INTERVAL}\"]}" \
+    || log "  WARNING: anchor checkpoint creation failed — OBU peers must sync manually"
+log "  Anchor checkpoint created with interval=${ANCHOR_INTERVAL}"
+
 # ─── Step 6: Enrol admin wallet identity for Node.js SDK ────────────────────
 
 log "Step 6/6 — Enrolling admin identity into Node.js wallet"
