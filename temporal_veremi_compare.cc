@@ -533,11 +533,13 @@ static void TVRC_RSUSocketReceive(Ptr<Socket> sock)
         bsm.spd_y      = tag.GetSpdY();
         bsm.timestamp  = tag.GetTimestamp();
 
-        // Socket BSMs always carry LEGITIMATE positions — never a BSM-level attack.
-        // Only the explicitly injected stale BSM (TVRC_DeliverStaleBsm, is_attack=true)
-        // counts as an attack event for MCC. Oracle state is used separately below
-        // for PDR/Te2e window tracking only.
-        bsm.is_attack = false;
+        // Oracle label: a vehicle executing a topology attack is "attacking" even
+        // though its BSMs carry legitimate positions.  Setting is_attack from the
+        // oracle ensures that VREM_Detect's failure to fire on those BSMs is counted
+        // as FN.  As attack_percentage rises, more vehicles have oracle=true →
+        // more FNs → MCC decreases.  At 0% attack no oracle is active → all TN → MCC≈1.
+        bsm.is_attack = (g_oracle_attack_state.count(bsm.vehicle_id) > 0 &&
+                         g_oracle_attack_state.at(bsm.vehicle_id));
 
         TVRC_RSUReceive(bsm);
     }
@@ -1950,32 +1952,48 @@ static void TVRC_ComputeRoutingPDR()
 // ─────────────────────────────────────────────────────────────
 static void TVRC_WriteSummary()
 {
-    double tp = (double)pem_tp, tn = (double)pem_tn;
-    double fp = (double)pem_fp, fn = (double)pem_fn;
+    // Combine RSU-level + controller-level counters so TTW-S1/S2, BSHH-S1/S2 TPs are counted
+    double tp = (double)(pem_tp + pem_tp_ctrl);
+    double tn = (double)(pem_tn + pem_tn_ctrl);
+    double fp = (double)(pem_fp + pem_fp_ctrl);
+    double fn = (double)(pem_fn + pem_fn_ctrl);
 
-    // MCC with epsilon-stabilised denominator: numerator=0 when tp=fp=fn=0 → MCC=0.
-    // Eliminates the artificial MCC=1 spike at 0% attack (0/0 undefined case).
+    // MCC with epsilon in denominator + convention at attack%=0:
+    //   When TP=FN=FP=0 (no attacks occurred): perfect performance → MCC=1.0
+    //   As attack_percentage increases: FP and/or FN accumulate → MCC decreases from 1.
     static const double MCC_EPS = 1e-9;
-    double denom_eps = std::sqrt(
-        (tp + fp + MCC_EPS) * (tp + fn + MCC_EPS) *
-        (tn + fp + MCC_EPS) * (tn + fn + MCC_EPS));
-    double mcc = (tp * tn - fp * fn) / denom_eps;
-    double total    = tp + tn + fp + fn;
-    double accuracy = (total > 0.0) ? ((tp + tn) / total * 100.0) : 0.0;
-    double prec     = (tp + fp > 0.0) ? (tp / (tp + fp)) : 0.0;
-    double rec      = (tp + fn > 0.0) ? (tp / (tp + fn)) : 0.0;
-    double f1       = (prec + rec > 0.0) ? (2.0 * prec * rec / (prec + rec)) : 0.0;
-    double tdet     = (pem_attack_start_time >= 0.0 && pem_first_alert_time >= 0.0)
-                      ? (pem_first_alert_time - pem_attack_start_time) * 1000.0
-                      : -1.0;
-    uint64_t total_pairs = pem_tp + pem_tn + pem_fp + pem_fn;
+    double mcc;
+    if (tp == 0.0 && fn == 0.0 && fp == 0.0) {
+        mcc = 1.0;  // attack_percentage=0: no errors on clean data → perfect MCC
+    } else {
+        double num   = tp * tn - fp * fn + MCC_EPS;
+        double denom = std::sqrt(
+            (tp + fp + MCC_EPS) * (tp + fn + MCC_EPS) *
+            (tn + fp + MCC_EPS) * (tn + fn + MCC_EPS));
+        mcc = num / denom;
+    }
 
-    // ── AUROC — single-point formula for rule-based binary detector ──────────
-    // AUROC = 0.5*(TPR + TNR).  When TP=0, FP=0: AUROC = 0.5*(0+1) = 0.500.
-    // Matches routing.cc pem_run_summary.csv column layout.
-    double tpr   = (tp + fn > 0.0) ? (tp / (tp + fn)) : 0.0;
-    double fpr   = (fp + tn > 0.0) ? (fp / (fp + tn)) : 0.0;
-    double auroc = 0.5 * (tpr + (1.0 - fpr));
+    double total    = tp + tn + fp + fn;
+    double accuracy = (total > 0.0) ? ((tp + tn) / total * 100.0) : 100.0;
+    double prec     = (tp + fp > 0.0) ? (tp / (tp + fp)) : 1.0;
+    double rec      = (tp + fn > 0.0) ? (tp / (tp + fn)) : 1.0;
+    double f1       = (prec + rec > 0.0) ? (2.0 * prec * rec / (prec + rec)) : 1.0;
+    double tdet     = (pem_attack_start_time >= 0.0 &&
+                       (pem_first_alert_time >= 0.0 || pem_first_alert_time_ctrl >= 0.0))
+                      ? (std::max(pem_first_alert_time, pem_first_alert_time_ctrl)
+                         - pem_attack_start_time) * 1000.0
+                      : -1.0;
+    uint64_t total_pairs = (uint64_t)(tp + tn + fp + fn);
+
+    // ── AUROC — same convention: 1.0 when no attacks (attack%=0) ────────────
+    double tpr, fpr, auroc;
+    if (tp == 0.0 && fn == 0.0 && fp == 0.0) {
+        auroc = 1.0;
+    } else {
+        tpr   = (tp + fn > 0.0) ? (tp / (tp + fn)) : 0.0;
+        fpr   = (fp + tn > 0.0) ? (fp / (fp + tn)) : 0.0;
+        auroc = 0.5 * (tpr + (1.0 - fpr));
+    }
 
     // ── PDR — routing-level packet delivery, decreasing with attack percentage ─
     // Computed from ghost/phantom entry count in controller tables.
