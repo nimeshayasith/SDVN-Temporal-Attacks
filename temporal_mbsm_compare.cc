@@ -97,16 +97,17 @@ static uint32_t attack_percentage = 100;
 static uint32_t N_Controllers     = 1;
 static uint32_t g_n_malicious     = 0;
 
+// ── SUMO mobility parameters (same naming as routing.cc) ───────────────
+static int mobility_scenario = 1;   // 0=urban, 1=rural/non-urban, 2=highway
+static int maxspeed          = 80;  // km/h — selects SUMO trace file
+
 // ── BSM constants — SAME AS multibsm_attacks.cc ────────────────
 static const double BSM_INTERVAL_S   = 0.050;
 static const double DSRC_RANGE_M     = 250.0;
 static const double MIN_SPEED_MS     = 12.0;
 static const double MAX_SPEED_MS     = 20.0;
-static const double SAFETY_FACTOR    = 1.5;
 static const double POS_FROZEN_EPS_M = 0.05;
 static const double SPEED_ZERO_THR   = 0.5;
-static const double DIR_CHANGE_THR   = 0.1;   // radians (~5.7 deg) — Type 1 sub-trigger
-static const double MAX_ACCEL_MS2    = 2.6;   // paper Table 2: max vehicle deceleration (m/s²)
 static const uint32_t HISTORY_DEPTH  = 3;     // paper Table 3: 3 consecutive BSMs for Type 3
 
 // ── Temporal attack timing — SAME AS routing.cc ────────────────
@@ -114,8 +115,9 @@ static const double TTW_HELLO_TIME  = 10.0;   // t=10: legitimate link exchange
 static const double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks
 static const double TTW_REPLAY_TIME = 20.0;   // t=20: forged TopologyPacket injected
 
-static const double BSHH_STORE_TIME  = 4.0;   // t=4 : attacker stores old heartbeat
-static const double BSHH_REPLAY_TIME = 10.0;  // t=10: replayed HeartbeatPacket injected
+static const double BSHH_OLD_HB_TIME   = 0.0;   // timestamp of the captured old heartbeat (routing.cc: BSHH_S1_OLD_HB_TIME)
+static const double BSHH_EXCHANGE_TIME = 5.0;   // legitimate heartbeat exchange (routing.cc: BSHH_S1_EXCHANGE_TIME)
+static const double BSHH_REPLAY_TIME   = 10.0;  // replay attack fires
 
 static const double ME_LEGIT_TIME = 10.0;     // t=10: legitimate link discovery
 static const double ME_ECHO_TIME  = 10.1;     // t=10.1: phantom echo reports injected
@@ -136,6 +138,7 @@ struct TopologyPacket {
     uint32_t seen_id;    // neighbour being reported
     double   timestamp;  // simulation time of observation
     bool     is_forged;  // true = attacker tampered this timestamp
+    double   pos_x = 0, pos_y = 0;  // position of src_id at observation time
 };
 
 // BSHH — heartbeat liveness record
@@ -144,6 +147,7 @@ struct HeartbeatPacket {
     uint32_t physical_sender_id;  // who actually transmitted it
     double   timestamp;           // time heartbeat was originally generated
     bool     is_replayed;         // true = this is a stored replay
+    double   pos_x = 0, pos_y = 0;  // position at capture time
 };
 
 // ME — multipath echo injection record
@@ -199,15 +203,24 @@ struct BsmRecord {
     bool     is_attack;   // oracle label — topology attack active for this vehicle
 };
 
-static std::map<uint32_t, std::deque<BsmRecord>> g_bsm_history;
+static std::map<uint32_t, std::deque<BsmRecord>> g_bsm_history;            // RSU-level detection
+static std::map<uint32_t, std::deque<BsmRecord>> g_bsm_history_controller;  // Controller-level detection (S2)
+static std::set<uint32_t> g_flagged_rsus;  // RSUs detected as malicious at controller level
 
-// ── PEM metric counters ──────────────────────────────────────────
+// ── PEM metric counters (RSU-level: S1 vehicle attacks) ──────────
 static uint64_t pem_tp = 0;
 static uint64_t pem_tn = 0;
 static uint64_t pem_fp = 0;
 static uint64_t pem_fn = 0;
 static double   pem_attack_start_time = -1.0;
 static double   pem_first_alert_time  = -1.0;
+
+// ── Controller-level MCC counters (S2 RSU attacks) ───────────────
+static uint64_t pem_tp_ctrl = 0;
+static uint64_t pem_tn_ctrl = 0;
+static uint64_t pem_fp_ctrl = 0;
+static uint64_t pem_fn_ctrl = 0;
+static double   pem_first_alert_time_ctrl = -1.0;
 
 // ── Oracle — topology attack active state per vehicle ────────────
 // Set to true when topology attack begins (NOT when BSM is falsified).
@@ -349,12 +362,12 @@ static void TEMP_DeliverStaleBsm(uint32_t vehicle_id,
                                   double spd, double dir, double ts);
 
 // ─────────────────────────────────────────────────────────────
-// Inject one replayed BSM record into the MBSM detection pipeline.
-// pos/speed/dir = stored stale kinematics from capture time.
-// timestamp = replay_time (current sim time).
-// MBSM_Detect compares against the most recent legitimate BSM in history:
-//   large pos_change / small dt → Type 2 impossible-jump fires (old replays).
-//   tiny pos_change / small dt  → no trigger (very recent replays).
+// Deliver a replayed BSM record into the MBSM detection pipeline.
+// Paper §4.2 Algorithm 1: RSU receives BSM, checks DB for previous record.
+// If no previous record exists the BSM is documented and no alert is raised
+// (Algorithm 1 line 13). The RSU database populates naturally from real BSMs
+// already arriving over the socket before the replay fires — no artificial
+// seeding. The replayed stale-position BSM is delivered directly.
 static void TEMP_EmitReplayedBsmRecord(uint32_t vehicle_id,
                                         double stored_px, double stored_py,
                                         double stored_speed, double stored_dir,
@@ -363,35 +376,12 @@ static void TEMP_EmitReplayedBsmRecord(uint32_t vehicle_id,
     // Per Trabelsi 2022: detector runs at RSU. No RSU = no detection possible.
     if (RSU_Nodes.GetN() == 0) return;
 
-    // Seed: if g_bsm_history is empty or stale, inject the vehicle's CURRENT
-    // real position as a reference BSM so MBSM_Detect has something to compare
-    // against when the stale-position fake BSM arrives.
-    // Without this seed, MBSM_Detect returns early (hist.empty()) → FN always.
-    auto& hist_ref = g_bsm_history[vehicle_id];
-    bool seed_needed = hist_ref.empty() ||
-                       (replay_time - hist_ref.back().timestamp > 2.0 * BSM_INTERVAL_S);
-    if (seed_needed && vehicle_id < Vehicle_Nodes.GetN()) {
-        double cx, cy, cs, cd;
-        GetKinematics(Vehicle_Nodes.Get(vehicle_id), cx, cy, cs, cd);
-        BsmRecord seed;
-        seed.vehicle_id = vehicle_id;
-        seed.pos_x      = cx;
-        seed.pos_y      = cy;
-        seed.speed_ms   = cs;
-        seed.direction  = cd;
-        seed.timestamp  = replay_time - BSM_INTERVAL_S;
-        seed.is_attack  = false;
-        TEMP_RSUReceive(seed);  // populates history; counted as TN
-    }
-
-    // Schedule fake BSM delivery one interval later so detection fires AFTER
-    // pem_attack_start_time is set → Tdet = BSM_INTERVAL_S * 1000 ms ≠ 0.
-    Simulator::Schedule(Seconds(BSM_INTERVAL_S),
+    Simulator::Schedule(Seconds(0),
                         &TEMP_DeliverStaleBsm,
                         vehicle_id,
                         stored_px, stored_py,
                         stored_speed, stored_dir,
-                        replay_time + BSM_INTERVAL_S);
+                        replay_time);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -401,12 +391,16 @@ static void TEMP_EmitReplayedBsmRecord(uint32_t vehicle_id,
 //   Type 2: displacement physically impossible given speed×dt
 //   Type 3: entire history window shows frozen position
 // ═══════════════════════════════════════════════════════════════
-static bool MBSM_Detect(const BsmRecord& bsm)
+// hist_map  — RSU-level: g_bsm_history; Controller-level: g_bsm_history_controller
+// flagged   — RSU-level: g_flagged_vehicles; Controller-level: g_flagged_rsus
+static bool MBSM_Detect(const BsmRecord& bsm,
+                          std::map<uint32_t, std::deque<BsmRecord>>& hist_map,
+                          std::set<uint32_t>& flagged)
 {
-    auto& hist = g_bsm_history[bsm.vehicle_id];
+    auto& hist = hist_map[bsm.vehicle_id];
 
     // Paper §4.2: if vehicle already in RSU central database, keep flagging
-    bool already_flagged = (g_flagged_vehicles.count(bsm.vehicle_id) > 0);
+    bool already_flagged = (flagged.count(bsm.vehicle_id) > 0);
 
     // Algorithm 1 line 13: no previous record → add to database, no alert
     if (hist.empty()) {
@@ -416,51 +410,23 @@ static bool MBSM_Detect(const BsmRecord& bsm)
 
     const BsmRecord& prev = hist.back();
     double dt = bsm.timestamp - prev.timestamp;
-    if (dt <= 0.0) {
-        // Type 2 (kinematic bound) requires dt > 0 — skip it.
-        // Type 1 and Type 3 only use position/speed/direction — run them.
-        double pos_change = Dist2D(bsm.pos_x, bsm.pos_y, prev.pos_x, prev.pos_y);
-        double dir_change = std::fabs(std::remainder(bsm.direction - prev.direction, 2 * M_PI));
-        bool type1 = (pos_change < POS_FROZEN_EPS_M &&
-                      (bsm.speed_ms > SPEED_ZERO_THR || dir_change > DIR_CHANGE_THR));
-        hist.push_back(bsm);
-        if (hist.size() > HISTORY_DEPTH) hist.pop_front();
-        if (type1) return true;
-        if (hist.size() >= HISTORY_DEPTH) {
-            bool all_frozen = true;
-            for (size_t i = 1; i < hist.size(); i++) {
-                if (Dist2D(hist[i].pos_x, hist[i].pos_y,
-                           hist[i-1].pos_x, hist[i-1].pos_y) >= POS_FROZEN_EPS_M) {
-                    all_frozen = false; break;
-                }
-            }
-            if (all_frozen) return true;
-        }
-        return already_flagged;
-    }
 
     double pos_change = Dist2D(bsm.pos_x, bsm.pos_y, prev.pos_x, prev.pos_y);
-    // Gap 2 fix: use remainder to handle circular wrapping of direction (radians in -π..+π)
-    double dir_change = std::fabs(std::remainder(bsm.direction - prev.direction, 2 * M_PI));
 
-    // Attack Type 1: position frozen while speed is non-zero OR direction changes
-    // Paper: "position is not changing" AND ("speed ≠ 0" OR "direction is changing")
+    // Attack Type 1: position frozen while speed is non-zero
+    // Paper §4.2: "position is not changing; speed parameter are not zero"
     if (pos_change < POS_FROZEN_EPS_M &&
-        (bsm.speed_ms > SPEED_ZERO_THR || dir_change > DIR_CHANGE_THR)) {
-        // Gap 1 fix: always update history window so the next BSM compares against
-        // the most recent record, not the last non-flagged one (paper §4.2 DB update)
+        bsm.speed_ms > SPEED_ZERO_THR) {
         hist.push_back(bsm);
         if (hist.size() > HISTORY_DEPTH) hist.pop_front();
         return true;
     }
 
-    // Attack Type 2: kinematic bound — paper Table 2, §4.2
-    // max_possible = (v_max × Δt + 0.5 × a_max × Δt²) × safety_factor
-    // Accounts for maximum possible acceleration in addition to observed speed.
-    double v_max = std::max(bsm.speed_ms, prev.speed_ms);
-    double max_possible = (v_max * dt + 0.5 * MAX_ACCEL_MS2 * dt * dt) * SAFETY_FACTOR;
-    if (max_possible > 0.0 && pos_change > max_possible) {
-        // Gap 1 fix: always update history window on detection
+    // Attack Type 2: kinematic bound — paper §4.2
+    // "such distances cannot be covered with the given speed of the respective vehicle"
+    // "The given speed" = the speed declared in the current BSM (bsm.speed_ms).
+    double max_possible = bsm.speed_ms * dt;
+    if (dt > 0.0 && max_possible > 0.0 && pos_change > max_possible) {
         hist.push_back(bsm);
         if (hist.size() > HISTORY_DEPTH) hist.pop_front();
         return true;
@@ -560,8 +526,8 @@ static void TEMP_RSUReceive(BsmRecord bsm)
         }
     }
 
-    // MBSM_Detect processes the legitimate BSM
-    bool detected = MBSM_Detect(bsm);
+    // MBSM_Detect at RSU level — detects malicious vehicles (S1 scenarios)
+    bool detected = MBSM_Detect(bsm, g_bsm_history, g_flagged_vehicles);
 
     // Algorithm 1 (lines 6-8, Figure 2): forward alert to in-range vehicles + neighbouring RSU
     if (detected) {
@@ -684,6 +650,46 @@ static void TEMP_RSUForwardAlert(uint32_t flagged_vid)
                      << "           Broadcast to " << in_range_count
                      << " in-range vehicles (Algorithm 1 line 6)\n"
                      << "           Total alert TX count: " << g_rsu_alert_tx_count << "\n";
+        g_attack_log.flush();
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// TEMP_ControllerReceive — controller-level detection for S2 (malicious RSU)
+//
+// Architecture (supervisor's design):
+//   S1 (malicious vehicle): RSU runs MBSM_Detect on vehicle BSMs → detects attacker vehicle
+//   S2 (malicious RSU)    : Controller compares two streams for the same vehicle:
+//     (a) Vehicle-direct BSM  : vehicle sends CURRENT position directly to controller (legit)
+//     (b) RSU-forwarded BSM   : RSU sends OLD (replayed) position to controller (attack)
+//   Controller MBSM_Detect sees: current-pos BSM → old-pos BSM, dt = BSM_INTERVAL_S
+//   pos_change ~120m >> speed×dt → Type 2 fires → RSU detected as malicious (TP)
+//   ME-S2: echo reports carry no position change → no detection (FN, expected)
+// ─────────────────────────────────────────────────────────────
+static void TEMP_ControllerReceive(BsmRecord bsm)
+{
+    double now      = Simulator::Now().GetSeconds();
+    bool   is_attack = bsm.is_attack;
+
+    bool detected = MBSM_Detect(bsm, g_bsm_history_controller, g_flagged_rsus);
+
+    if (detected && pem_first_alert_time_ctrl < 0.0 && is_attack) {
+        pem_first_alert_time_ctrl = now;
+    }
+
+    if (is_attack) {
+        if (detected) { pem_tp_ctrl++; } else { pem_fn_ctrl++; }
+    } else {
+        if (detected) { pem_fp_ctrl++; } else { pem_tn_ctrl++; }
+    }
+
+    if (g_attack_log.is_open()) {
+        g_attack_log << "[t=" << std::fixed << std::setprecision(3) << now
+                     << "]  CONTROLLER-DETECT V" << bsm.vehicle_id
+                     << " pos=(" << bsm.pos_x << "," << bsm.pos_y << ")"
+                     << " spd=" << bsm.speed_ms
+                     << " attack=" << is_attack
+                     << " detected=" << detected << "\n";
         g_attack_log.flush();
     }
 }
@@ -842,22 +848,48 @@ static void TEMP_TTW_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double forged_
 {
     if (!g_ttw_packet_stored) return;
 
-    // Forge the topology packet with a current/future timestamp
+    // Forge the topology packet — includes V0's OLD position at capture time
     TopologyPacket forged;
     forged.src_id    = v0_id;
     forged.seen_id   = v1_id;
-    forged.timestamp = forged_time;  // ← forged: makes controller think link is fresh
+    forged.timestamp = forged_time;
     forged.is_forged = true;
+    forged.pos_x     = g_ttw_stored_pos_x;  // V0's old position (from HELLO_TIME)
+    forged.pos_y     = g_ttw_stored_pos_y;
 
     std::ostringstream key;
     key << v0_id << "_" << v1_id;
-    g_ttw_controller_table[key.str()] = forged;  // inject into controller table
+    g_ttw_controller_table[key.str()] = forged;
 
-    // Activate oracle: V0's BSMs are now "attack-period" events
     g_oracle_attack_state[v0_id] = true;
-    TEMP_EmitReplayedBsmRecord(v0_id, g_ttw_stored_pos_x, g_ttw_stored_pos_y,
-                                g_ttw_stored_speed, g_ttw_stored_dir, forged_time);
     pem_attack_start_time = forged_time;
+
+    // ── Controller-level cross-check (TTW-S1: malicious vehicle) ─────────────
+    // V0 sends its current-position BSM directly to controller (legitimate path).
+    // V0 ALSO sends the forged topology packet with V0's OLD position (attack path).
+    // Controller MBSM_Detect: current pos → old pos, ~120m jump in BSM_INTERVAL_S → TP.
+    double cur_px = 0, cur_py = 0, cur_spd = 0, cur_dir = 0;
+    if (v0_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v0_id), cur_px, cur_py, cur_spd, cur_dir);
+
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v0_id;
+    veh_direct.pos_x      = cur_px;  veh_direct.pos_y  = cur_py;
+    veh_direct.speed_ms   = cur_spd; veh_direct.direction = cur_dir;
+    veh_direct.timestamp  = forged_time;
+    veh_direct.is_attack  = false;
+    TEMP_ControllerReceive(veh_direct);
+
+    BsmRecord forged_bsm;
+    forged_bsm.vehicle_id = v0_id;
+    forged_bsm.pos_x      = g_ttw_stored_pos_x;  // OLD position from topology packet
+    forged_bsm.pos_y      = g_ttw_stored_pos_y;
+    forged_bsm.speed_ms   = g_ttw_stored_speed;
+    forged_bsm.direction  = g_ttw_stored_dir;
+    forged_bsm.timestamp  = forged_time + BSM_INTERVAL_S;
+    forged_bsm.is_attack  = true;
+    TEMP_ControllerReceive(forged_bsm);
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << forged_time
@@ -962,29 +994,54 @@ static void TEMP_BSHH_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double replay
 {
     if (!g_bshh_heartbeat_stored) return;
 
-    // Replay the stored heartbeat with V0's identity
+    // Replay the stored heartbeat with V0's identity + V0's OLD position
     HeartbeatPacket replayed;
-    replayed.claimed_sender_id  = v0_id;   // ← claims to be from V0
-    replayed.physical_sender_id = v1_id;   // ← actually sent by V1
-    replayed.timestamp          = g_bshh_stored_heartbeat.timestamp;  // ← old timestamp
+    replayed.claimed_sender_id  = v0_id;
+    replayed.physical_sender_id = v1_id;
+    replayed.timestamp          = g_bshh_stored_heartbeat.timestamp;
     replayed.is_replayed        = true;
+    replayed.pos_x              = g_bshh_stored_pos_x;  // V0's old position at capture time
+    replayed.pos_y              = g_bshh_stored_pos_y;
 
-    g_bshh_controller_liveness_table[v0_id] = replayed;  // overwrite V0's liveness entry (step 6: attacker hijacks victim identity)
+    g_bshh_controller_liveness_table[v0_id] = replayed;
 
-    // Step 5: victim (V0) forwards attacker's own old heartbeat to controller → attacker liveness poisoned
     HeartbeatPacket forwarded_by_victim;
-    forwarded_by_victim.claimed_sender_id  = v1_id;   // ← attacker's identity
-    forwarded_by_victim.physical_sender_id = v0_id;   // ← V0 forwarded it (deceived)
-    forwarded_by_victim.timestamp          = g_bshh_stored_heartbeat.timestamp;  // ← old timestamp
+    forwarded_by_victim.claimed_sender_id  = v1_id;
+    forwarded_by_victim.physical_sender_id = v0_id;
+    forwarded_by_victim.timestamp          = g_bshh_stored_heartbeat.timestamp;
     forwarded_by_victim.is_replayed        = true;
-    g_bshh_controller_liveness_table[v1_id] = forwarded_by_victim;  // attacker's liveness also poisoned
+    g_bshh_controller_liveness_table[v1_id] = forwarded_by_victim;
 
-    // Activate oracle: V1 is the attacker; V0 is deceived into forwarding stale HB
     g_oracle_attack_state[v1_id] = true;
     g_oracle_attack_state[v0_id] = true;
-    TEMP_EmitReplayedBsmRecord(v0_id, g_bshh_stored_pos_x, g_bshh_stored_pos_y,
-                                g_bshh_stored_speed, g_bshh_stored_dir, replay_time);
     pem_attack_start_time = replay_time;
+
+    // ── Controller-level cross-check (BSHH-S1: malicious vehicle) ────────────
+    // V0 sends current-position BSM directly to controller (legitimate).
+    // V1 sends forged heartbeat claiming V0's identity with V0's OLD position (attack).
+    // Controller MBSM_Detect for V0: current pos → old pos → Type 2 → TP.
+    double cur_px = 0, cur_py = 0, cur_spd = 0, cur_dir = 0;
+    if (v0_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v0_id), cur_px, cur_py, cur_spd, cur_dir);
+
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v0_id;
+    veh_direct.pos_x      = cur_px;  veh_direct.pos_y  = cur_py;
+    veh_direct.speed_ms   = cur_spd; veh_direct.direction = cur_dir;
+    veh_direct.timestamp  = replay_time;
+    veh_direct.is_attack  = false;
+    TEMP_ControllerReceive(veh_direct);
+
+    BsmRecord forged_hb;
+    forged_hb.vehicle_id = v0_id;                       // V1 claims V0's identity
+    forged_hb.pos_x      = g_bshh_stored_pos_x;        // V0's OLD position
+    forged_hb.pos_y      = g_bshh_stored_pos_y;
+    forged_hb.speed_ms   = g_bshh_stored_speed;
+    forged_hb.direction  = g_bshh_stored_dir;
+    forged_hb.timestamp  = replay_time + BSM_INTERVAL_S;
+    forged_hb.is_attack  = true;
+    TEMP_ControllerReceive(forged_hb);
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << replay_time
@@ -993,7 +1050,7 @@ static void TEMP_BSHH_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double replay
                      << "  Attacker     : V" << v1_id << " (malicious vehicle)\n"
                      << "  Victim       : V" << v0_id << " (identity stolen)\n"
                      << "  Stored HB    : { claimed=V" << v0_id << ", t=" << replayed.timestamp
-                     << " } ← captured at BSHH_STORE_TIME\n"
+                     << " } ← captured at BSHH_EXCHANGE_TIME, old_hb_time=" << BSHH_OLD_HB_TIME << "\n"
                      << "  Step 1 (peer replay)  : V" << v1_id << " → V" << v0_id
                      << ": HB(claimed=V" << v0_id << ", t=" << replayed.timestamp
                      << ") [V" << v1_id << " impersonates V" << v0_id << " over peer channel]\n"
@@ -1177,12 +1234,43 @@ static void TEMP_TTW_S2_VehiclesToRSU(uint32_t v1_id, uint32_t v0_id, double obs
 static void TEMP_TTW_S2_RSUReplayAttack(uint32_t v1_id, uint32_t v0_id, double forged_time)
 {
     if (!g_ttw_packet_stored) return;
-    TopologyPacket forged = { v1_id, v0_id, forged_time, true };
+    TopologyPacket forged = { v1_id, v0_id, forged_time, true,
+                              g_ttw_stored_pos_x, g_ttw_stored_pos_y };  // old position in forged packet
     std::ostringstream key; key << v1_id << "_" << v0_id;
     g_ttw_controller_table[key.str()] = forged;
     g_oracle_attack_state[v1_id] = true;
-    TEMP_EmitReplayedBsmRecord(v1_id, g_ttw_stored_pos_x, g_ttw_stored_pos_y,
-                                g_ttw_stored_speed, g_ttw_stored_dir, forged_time);
+    if (pem_attack_start_time < 0) pem_attack_start_time = forged_time;
+
+    // ── Controller-level cross-check (supervisor's architecture) ──────────────
+    // V1 sends current-position BSM directly to controller (legitimate path).
+    // RSU (malicious) sends old-position BSM to controller (replayed path).
+    // Controller MBSM_Detect sees: current pos → old pos, large jump → Type 2 → TP.
+    double cur_px = 0, cur_py = 0, cur_spd = 0, cur_dir = 0;
+    if (v1_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v1_id), cur_px, cur_py, cur_spd, cur_dir);
+
+    // (a) Vehicle-direct: current position, baseline (not attack)
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v1_id;
+    veh_direct.pos_x      = cur_px;
+    veh_direct.pos_y      = cur_py;
+    veh_direct.speed_ms   = cur_spd;
+    veh_direct.direction  = cur_dir;
+    veh_direct.timestamp  = forged_time;
+    veh_direct.is_attack  = false;
+    TEMP_ControllerReceive(veh_direct);
+
+    // (b) RSU-forwarded: OLD position (stale, from capture time), is_attack=true
+    BsmRecord rsu_forward;
+    rsu_forward.vehicle_id = v1_id;
+    rsu_forward.pos_x      = g_ttw_stored_pos_x;  // old position
+    rsu_forward.pos_y      = g_ttw_stored_pos_y;
+    rsu_forward.speed_ms   = g_ttw_stored_speed;
+    rsu_forward.direction  = g_ttw_stored_dir;
+    rsu_forward.timestamp  = forged_time + BSM_INTERVAL_S;  // arrives slightly after vehicle-direct
+    rsu_forward.is_attack  = true;
+    TEMP_ControllerReceive(rsu_forward);
+    // ──────────────────────────────────────────────────────────────────────────
     if (pem_attack_start_time < 0) pem_attack_start_time = forged_time;  // first attack only
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << forged_time
@@ -1335,12 +1423,39 @@ static void TEMP_BSHH_S2_RSUStoreHeartbeat(uint32_t v0_id, double stored_time)
 static void TEMP_BSHH_S2_RSUReplayAttack(uint32_t v0_id, double replay_time)
 {
     if (!g_bshh_heartbeat_stored) return;
-    // Single injection: RSU sends stored heartbeat claiming victim's identity
-    HeartbeatPacket forged = { v0_id, 0xFFFFFFFF, g_bshh_stored_heartbeat.timestamp, true };
+    HeartbeatPacket forged = { v0_id, 0xFFFFFFFF, g_bshh_stored_heartbeat.timestamp, true,
+                               g_bshh_stored_pos_x, g_bshh_stored_pos_y };  // old position
     g_bshh_controller_liveness_table[v0_id] = forged;
     g_oracle_attack_state[v0_id] = true;
-    TEMP_EmitReplayedBsmRecord(v0_id, g_bshh_stored_pos_x, g_bshh_stored_pos_y,
-                                g_bshh_stored_speed, g_bshh_stored_dir, replay_time);
+    if (pem_attack_start_time < 0) pem_attack_start_time = replay_time;
+
+    // ── Controller-level cross-check (supervisor's architecture) ──────────────
+    double cur_px = 0, cur_py = 0, cur_spd = 0, cur_dir = 0;
+    if (v0_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v0_id), cur_px, cur_py, cur_spd, cur_dir);
+
+    // (a) Vehicle-direct: V0's current position sent directly to controller
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v0_id;
+    veh_direct.pos_x      = cur_px;
+    veh_direct.pos_y      = cur_py;
+    veh_direct.speed_ms   = cur_spd;
+    veh_direct.direction  = cur_dir;
+    veh_direct.timestamp  = replay_time;
+    veh_direct.is_attack  = false;
+    TEMP_ControllerReceive(veh_direct);
+
+    // (b) RSU-forwarded: old position (from BSHH capture time), is_attack=true
+    BsmRecord rsu_forward;
+    rsu_forward.vehicle_id = v0_id;
+    rsu_forward.pos_x      = g_bshh_stored_pos_x;  // old position
+    rsu_forward.pos_y      = g_bshh_stored_pos_y;
+    rsu_forward.speed_ms   = g_bshh_stored_speed;
+    rsu_forward.direction  = g_bshh_stored_dir;
+    rsu_forward.timestamp  = replay_time + BSM_INTERVAL_S;
+    rsu_forward.is_attack  = true;
+    TEMP_ControllerReceive(rsu_forward);
+    // ──────────────────────────────────────────────────────────────────────────
     if (pem_attack_start_time < 0) pem_attack_start_time = replay_time;  // first attack only
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << replay_time
@@ -1707,6 +1822,64 @@ static void TEMP_SetupNetwork()
 }
 
 // ─────────────────────────────────────────────────────────────
+// SUMO trace file path resolver (mirrors routing.cc logic)
+// ─────────────────────────────────────────────────────────────
+static std::string TEMP_GetSumoTraceFile()
+{
+    std::string base = "/home/lasindu/mobility/";
+    std::string type;
+    if      (mobility_scenario == 0) type = "mobility_urban_";
+    else if (mobility_scenario == 1) type = "mobility_rural_";
+    else                             type = "mobility_autobahn_";
+    return base + type + std::to_string(maxspeed) + ".tcl";
+}
+
+// ─────────────────────────────────────────────────────────────
+// Install vehicle mobility: SUMO trace when available,
+// ConstantVelocity fallback otherwise.
+// ─────────────────────────────────────────────────────────────
+static void TEMP_InstallVehicleMobility()
+{
+    std::string trace_file = TEMP_GetSumoTraceFile();
+    std::ifstream tf_check(trace_file);
+    bool use_sumo = tf_check.good();
+    tf_check.close();
+
+    if (use_sumo)
+    {
+        MobilityHelper mobV;
+        mobV.SetMobilityModel("ns3::WaypointMobilityModel");
+        mobV.Install(Vehicle_Nodes);
+        Ns2MobilityHelper ns2mob(trace_file);
+        ns2mob.Install(Vehicle_Nodes.Begin(), Vehicle_Nodes.End());
+        std::cout << "[Mobility] SUMO trace: " << trace_file
+                  << "  (scenario=" << mobility_scenario
+                  << ", maxspeed=" << maxspeed << " km/h)\n";
+    }
+    else
+    {
+        MobilityHelper mobV;
+        mobV.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
+        mobV.Install(Vehicle_Nodes);
+        for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++)
+        {
+            Ptr<ConstantVelocityMobilityModel> m =
+                DynamicCast<ConstantVelocityMobilityModel>(
+                    Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
+            if (!m) continue;
+            double spd = (N_Vehicles > 1)
+                ? MIN_SPEED_MS + (MAX_SPEED_MS - MIN_SPEED_MS) *
+                  (double(i) / double(N_Vehicles - 1))
+                : MIN_SPEED_MS;
+            m->SetPosition(Vector(50.0 + i * 60.0, double(i) * 10.0, 0.0));
+            m->SetVelocity(Vector(spd, 0.0, 0.0));
+        }
+        std::cout << "[Mobility] ConstantVelocity fallback"
+                  << " (SUMO trace not found: " << trace_file << ")\n";
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // NetAnim colours
 // ─────────────────────────────────────────────────────────────
 static void TEMP_SetupNetAnim()
@@ -1813,8 +1986,9 @@ static void TEMP_InitLogs()
             << "  Attack family   : BSHH (Beacon-State Heartbeat Hijack)\n"
             << "  Attacker node   : V1 (vehicle index 1)\n"
             << "  Victim identity : V0\n"
-            << "  t=STORE(" << BSHH_STORE_TIME << "): V1 captures V0's old heartbeat\n"
-            << "  t=REPLAY(" << BSHH_REPLAY_TIME << "): forged HeartbeatPacket injected\n";
+            << "  old_hb_timestamp=" << BSHH_OLD_HB_TIME << ": timestamp of captured old heartbeat\n"
+            << "  t=EXCHANGE(" << BSHH_EXCHANGE_TIME << "): legitimate heartbeat exchange (controller gets fresh V0 t=" << BSHH_EXCHANGE_TIME << ")\n"
+            << "  t=REPLAY(" << BSHH_REPLAY_TIME << "): old t=" << BSHH_OLD_HB_TIME << " heartbeat replayed → stale liveness\n";
     } else if (attack_scenario >= 9 && attack_scenario <= 12) {
         g_attack_log
             << "  Attack family   : ME (Multipath Echo)\n"
@@ -2057,13 +2231,15 @@ static void TEMP_WriteSummary()
 int main(int argc, char* argv[])
 {
     CommandLine cmd;
-    cmd.AddValue("simTime",          "Simulation duration (s)",                                    simTime);
-    cmd.AddValue("N_Vehicles",       "Number of vehicle nodes",                                    N_Vehicles);
-    cmd.AddValue("N_RSUs",           "Number of RSU nodes",                                        N_RSUs);
-    cmd.AddValue("N_Controllers",    "Number of SDN controller nodes (default 1)",                 N_Controllers);
-    cmd.AddValue("attack_scenario",  "1-4=TTW, 5-8=BSHH, 9-12=ME, 0=base",                       attack_scenario);
-    cmd.AddValue("attack_percentage","Percentage 0-100 (step 10) of nodes that are malicious attackers; 0=baseline", attack_percentage);
-    cmd.AddValue("runNum",           "RNG run index for multi-run averaging (1-40)",               runNum);
+    cmd.AddValue("simTime",           "Simulation duration (s)",                                    simTime);
+    cmd.AddValue("N_Vehicles",        "Number of vehicle nodes",                                    N_Vehicles);
+    cmd.AddValue("N_RSUs",            "Number of RSU nodes",                                        N_RSUs);
+    cmd.AddValue("N_Controllers",     "Number of SDN controller nodes (default 1)",                 N_Controllers);
+    cmd.AddValue("attack_scenario",   "1-4=TTW, 5-8=BSHH, 9-12=ME, 0=base",                       attack_scenario);
+    cmd.AddValue("attack_percentage", "Percentage 0-100 (step 10) of nodes that are malicious; 0=baseline", attack_percentage);
+    cmd.AddValue("runNum",            "RNG run index for multi-run averaging (1-40)",               runNum);
+    cmd.AddValue("mobility_scenario", "SUMO mobility: 0=urban, 1=rural(non-urban), 2=highway",     mobility_scenario);
+    cmd.AddValue("maxspeed",          "Vehicle max speed km/h — selects SUMO trace file",           maxspeed);
     cmd.Parse(argc, argv);
 
     // Bounds check — must be 0-12 matching the 12 Temporal-Echo scenarios
@@ -2105,53 +2281,48 @@ int main(int argc, char* argv[])
 
     TEMP_InitLogs();
 
-    std::cout << "\n══════════════════════════════════════════════════════════════\n"
-              << "  Temporal-Echo vs. Multi-BSM — Incompatibility Study\n"
-              << "  Attack scenario  : " << attack_scenario
-              << " (" << GetScenarioName(attack_scenario) << ")\n"
-              << "  N_Vehicles       : " << N_Vehicles << "\n"
-              << "  N_RSUs           : " << N_RSUs << "\n"
-              << "  N_Controllers    : " << N_Controllers << "\n"
-              << "  attack_percentage: " << attack_percentage << "%"
-              << " → " << g_n_malicious << " malicious node(s)\n"
-              << "  simTime          : " << simTime << " s\n"
-              << "  Detector         : MBSM_Detect (verbatim from multibsm_attacks.cc)\n"
-              << "  Expected result  : TP=0, MCC=0 (detector is data-plane only)\n"
-              << "══════════════════════════════════════════════════════════════\n\n";
+    {
+        std::string mob_name;
+        if      (mobility_scenario == 0) mob_name = "urban";
+        else if (mobility_scenario == 1) mob_name = "rural (non-urban)";
+        else                             mob_name = "highway (autobahn)";
+        std::cout << "\n══════════════════════════════════════════════════════════════\n"
+                  << "  Temporal-Echo vs. Multi-BSM — Incompatibility Study\n"
+                  << "  Attack scenario  : " << attack_scenario
+                  << " (" << GetScenarioName(attack_scenario) << ")\n"
+                  << "  N_Vehicles       : " << N_Vehicles << "\n"
+                  << "  N_RSUs           : " << N_RSUs << "\n"
+                  << "  N_Controllers    : " << N_Controllers << "\n"
+                  << "  attack_percentage: " << attack_percentage << "%"
+                  << " → " << g_n_malicious << " malicious node(s)\n"
+                  << "  simTime          : " << simTime << " s\n"
+                  << "  Mobility         : SUMO " << mob_name
+                  << " @ " << maxspeed << " km/h"
+                  << "  (trace: " << TEMP_GetSumoTraceFile() << ")\n"
+                  << "  Detector         : MBSM_Detect (verbatim from multibsm_attacks.cc)\n"
+                  << "  Expected result  : TP=0, MCC=0 (detector is data-plane only)\n"
+                  << "══════════════════════════════════════════════════════════════\n\n";
+    }
 
     // ── Create nodes ─────────────────────────────────────────────
     Vehicle_Nodes.Create(N_Vehicles);
     if (N_RSUs > 0) RSU_Nodes.Create(N_RSUs);
 
-    // ── Vehicle mobility: constant velocity, staggered lanes ──────
-    MobilityHelper mobV;
-    mobV.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
-    mobV.Install(Vehicle_Nodes);
-    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
-        Ptr<ConstantVelocityMobilityModel> m =
-            DynamicCast<ConstantVelocityMobilityModel>(
-                Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
-        if (!m) continue;
-        double spd = (N_Vehicles > 1)
-            ? MIN_SPEED_MS + (MAX_SPEED_MS - MIN_SPEED_MS) *
-              (double(i) / (N_Vehicles - 1))
-            : MIN_SPEED_MS;
-        m->SetPosition(Vector(50.0 + i * 60.0, double(i) * 10.0, 0.0));
-        m->SetVelocity(Vector(spd, 0.0, 0.0));
-    }
+    // ── Vehicle mobility — SUMO trace or constant-velocity fallback ──
+    TEMP_InstallVehicleMobility();
 
-    // ── RSU mobility: fixed central position ─────────────────────
+    // ── RSU mobility — fixed position ────────────────────────────
     if (RSU_Nodes.GetN() > 0) {
         MobilityHelper mobR;
         mobR.SetMobilityModel("ns3::ConstantPositionMobilityModel");
         mobR.Install(RSU_Nodes);
-        double rsu_base_x = 50.0 + (N_Vehicles / 2.0) * 60.0;
-        double rsu_y = (N_Vehicles > 1) ? (N_Vehicles - 1) * 5.0 : 0.0;
+        double rsu_base_x = 200.0;
+        double rsu_y      = 0.0;
         for (uint32_t r = 0; r < RSU_Nodes.GetN(); r++) {
             Ptr<ConstantPositionMobilityModel> rm =
                 DynamicCast<ConstantPositionMobilityModel>(
                     RSU_Nodes.Get(r)->GetObject<MobilityModel>());
-            if (rm) rm->SetPosition(Vector(rsu_base_x + r * 100.0, rsu_y, 0.0));
+            if (rm) rm->SetPosition(Vector(rsu_base_x + r * 300.0, rsu_y, 0.0));
         }
     }
 
@@ -2250,53 +2421,61 @@ int main(int argc, char* argv[])
         }
 
     } else if (attack_scenario == 5) {
+        // BSHH-S1: Malicious Vehicle, No RSU
+        // Matches routing.cc: BSHH_S1_EXCHANGE_TIME=5, BSHH_S1_OLD_HB_TIME=0, BSHH_S1_REPLAY_TIME=10
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TEMP_BSHH_LegitExchange, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.05),
-                &TEMP_BSHH_StoreHeartbeat, a, b, BSHH_STORE_TIME + dt);
+            // t=5: legitimate exchange → controller gets fresh V0 alive at t=5
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TEMP_BSHH_LegitExchange, a, b, BSHH_EXCHANGE_TIME + dt);
+            // t=5.05: store old heartbeat with timestamp=BSHH_OLD_HB_TIME(=0), not exchange time
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.05),
+                &TEMP_BSHH_StoreHeartbeat, a, b, BSHH_OLD_HB_TIME + dt);
+            // t=10: replay old t=0 heartbeat → controller overwrites t=5 with t=0 → stale liveness
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_ReplayAttack, a, b, BSHH_REPLAY_TIME + dt);
         }
 
     } else if (attack_scenario == 6) {
+        // BSHH-S2: Malicious RSU
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TEMP_BSHH_S2_LegitViaRSU, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.01),
-                &TEMP_BSHH_S2_RSUStoreHeartbeat, a, BSHH_STORE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TEMP_BSHH_S2_LegitViaRSU, a, b, BSHH_EXCHANGE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.01),
+                &TEMP_BSHH_S2_RSUStoreHeartbeat, a, BSHH_OLD_HB_TIME + dt);
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_S2_RSUReplayAttack, a, BSHH_REPLAY_TIME + dt);
         }
 
     } else if (attack_scenario == 7) {
+        // BSHH-S3: Malicious Controller, No RSU
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TEMP_BSHH_S3_LegitToController, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.01),
-                &TEMP_BSHH_S3_ControllerStoreHeartbeat, a, BSHH_STORE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TEMP_BSHH_S3_LegitToController, a, b, BSHH_EXCHANGE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.01),
+                &TEMP_BSHH_S3_ControllerStoreHeartbeat, a, BSHH_OLD_HB_TIME + dt);
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_S3_ControllerInternalReplay, a, b, BSHH_REPLAY_TIME + dt);
         }
 
     } else if (attack_scenario == 8) {
+        // BSHH-S4: Malicious Controller, With RSU
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TEMP_BSHH_S4_LegitViaRSU, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.01),
-                &TEMP_BSHH_S4_ControllerStoreHeartbeat, a, BSHH_STORE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TEMP_BSHH_S4_LegitViaRSU, a, b, BSHH_EXCHANGE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.01),
+                &TEMP_BSHH_S4_ControllerStoreHeartbeat, a, BSHH_OLD_HB_TIME + dt);
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_S4_ControllerInternalReplay, a, b, BSHH_REPLAY_TIME + dt);
         }

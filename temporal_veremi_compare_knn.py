@@ -139,61 +139,31 @@ TYPE_NAMES = {
 }
 
 # ─────────────────────────────────────────────────────────────
-# Features — Algorithm 1 step 3: Mekonen et al., PLOS ONE 2025
+# Features — Mekonen et al., PLOS ONE 2025
 #
-# Base features (9) from consecutive BSM pairs — Table 3 of paper:
+# Paper §4.3.1 and Table 3 explicitly list exactly 9 classification features
+# from consecutive BSM pairs:
 #   pos_x1, pos_y1, spd_x1, spd_y1 — BSM at time t
 #   pos_x2, pos_y2, spd_x2, spd_y2 — BSM at time t+1
 #   time_interval                   — sendtime_2 - sendtime_1
 #
-# Derived features (4) — Algorithm 1 step 3 feature engineering:
-#   vel_computed    — ΔPosition/ΔTime (velocity from positions)
-#   dir_change      — Directional Change (Heading change)
-#   path_deviation  — Distance from Predicted Path |actual - predicted|
-#   anomalous_pattern — |Predicted Position - Actual Position| (per paper)
+# Algorithm 1 Step 3 describes 4 derived quantities (vel_computed, dir_change,
+# path_deviation, anomalous_pattern) as intermediate feature-engineering steps.
+# These do NOT appear in Table 3 and are NOT model input features.
+# engineer_features() computes them for logging/analysis but they are excluded
+# from FEATURE_COLS so classifiers use exactly the 9 features the paper reports.
 #
 # Column names must match temporal_veremi_compare_pairs.csv header
 # written by temporal_veremi_compare.cc
 # ─────────────────────────────────────────────────────────────
 FEATURE_COLS = [
-    # Absolute positions (pos_x1, pos_y1, pos_x2, pos_y2) are excluded:
-    # Temporal-Echo attackers broadcast correct GPS → no position signal.
-    # Including them causes temporal leakage (absolute coords encode sim time).
-    #
-    # Raw velocity components (spd_x1, spd_y1, spd_x2, spd_y2) are also
-    # excluded.  In Temporal-Echo attacks the attacker broadcasts correct
-    # velocities, so there is no intended signal in velocity direction.
-    # However, the NS-3 oracle labels ALL BSMs from specific victim vehicles
-    # (e.g. V1, V2) as attack=1.  Each vehicle in NS-3 follows a fixed
-    # trajectory direction, so spd_x and spd_y encode vehicle IDENTITY rather
-    # than attack behaviour.  A classifier achieves high MCC simply by learning
-    # "V1 always moves in direction (dx, dy) → attack", which is a simulation
-    # artifact unrelated to detection capability.
-    #
-    # Remaining features are direction-agnostic motion-pattern descriptors:
-    # they describe HOW FAST a vehicle moves, not WHICH direction, so they do
-    # not encode vehicle identity.
-    #
-    # dir_change (arctan2-based) and path_deviation / anomalous_pattern
-    # (uses spd_x * ti for linear position prediction) were removed because
-    # arctan2(spd_y, spd_x) and spd_x * ti both encode the vehicle's trajectory
-    # DIRECTION.  In NS-3 each vehicle follows a fixed direction, so these
-    # features systematically differ between V1/V2 (labeled attack=1) and other
-    # vehicles — the classifier learns vehicle identity, not attack behavior.
-    # Replaced with speed_change = |speed_t2 - speed_t1|, which is the change
-    # in speed MAGNITUDE and is independent of direction.
+    # 9 base features — Section 4.3.1, Table 3, Mekonen et al. PLOS ONE 2025
+    "pos_x1", "pos_y1", "spd_x1", "spd_y1",
+    "pos_x2", "pos_y2", "spd_x2", "spd_y2",
     "time_interval",
-    "vel_computed",
-    "speed_change",
 ]
 
-# 9 base features — Section 4.3.1, Table 3 (permutation importance only).
-# Paper §4.3.1 explicitly lists only pos-x1, pos-y1, spd-x1, spd-y1,
-# pos-x2, pos-y2, spd-x2, spd-y2, time_interval in Table 3.
-# The 4 derived features (vel_computed, dir_change, path_deviation,
-# anomalous_pattern) do NOT appear in Table 3 — so permutation importance
-# is evaluated on a fresh KNN+Bagging pipeline trained on these 9 features,
-# matching the exact setup the paper used to produce Table 3.
+# Permutation importance uses the same 9 features (Table 3 setup).
 PERM_FEATURE_COLS = [
     "pos_x1", "pos_y1", "spd_x1", "spd_y1",
     "pos_x2", "pos_y2", "spd_x2", "spd_y2",
@@ -207,48 +177,54 @@ CLF_ORDER = ["DT+Bagging", "RF+Bagging", "KNN+Bagging", "MLP+Bagging"]
 # ─────────────────────────────────────────────────────────────
 def engineer_features(df):
     """
-    Algorithm 1 step 3 feature engineering (Mekonen et al., PLOS ONE 2025).
+    Algorithm 1 Step 3 — Feature Engineering (Mekonen et al., PLOS ONE 2025).
 
     Computes 4 derived features from the 9 base consecutive-BSM-pair columns:
 
-      vel_computed    — ΔPosition/ΔTime: actual positional speed (m/s)
-                        Paper: "Velocity = ΔTime/ΔPosition"
-      dir_change      — angular change between BSM velocity vectors (radians)
-                        Paper: "Directional Change (Heading)"
-      path_deviation  — |actual_pos2 - predicted_pos2|, where
-                        predicted_pos2 = pos1 + vel1 * time_interval
-                        Paper: "Distance from Predicted Path = |Pospredicted - Posactual|"
-      speed_change    — |speed_t2 - speed_t1|, where speed = sqrt(spd_x² + spd_y²)
-                        Direction-agnostic: measures change in speed MAGNITUDE only.
-                        arctan2-based dir_change and spd_x*ti path_deviation were
-                        removed because they encode vehicle trajectory direction,
-                        causing the classifier to learn vehicle identity (V1 always
-                        moves in direction θ → attack=1) rather than attack behavior.
+    vel_computed    — ΔPosition / ΔTime (positional speed in m/s)
+                      Paper: "Velocity = ΔTime / ΔPosition"
 
-    For Temporal-Echo attacks all BSMs are legitimate (correct GPS, correct speed),
-    so vel_computed ≈ actual speed and speed_change ≈ 0 for both attack-period and
-    non-attack-period pairs — confirming MCC ≈ 0.
+    dir_change      — |arctan2(spd_y2, spd_x2) − arctan2(spd_y1, spd_x1)|
+                      Absolute angular heading change between consecutive BSMs (radians)
+                      Paper: "Directional Change (Heading)"
+
+    path_deviation  — ||(pos_x2, pos_y2) − (pos_x1 + spd_x1·dt, pos_y1 + spd_y1·dt)||
+                      Euclidean distance between actual pos2 and linearly-predicted pos2
+                      Paper: "Distance from Predicted Path = |Pospredicted − Posactual|"
+
+    anomalous_pattern — same as path_deviation
+                        Paper: "Anomalous Pattern = |Predicted Position − Actual Position|"
+
+    For Temporal-Echo attacks all BSMs carry LEGITIMATE positions and velocities
+    (attackers do not falsify BSMs — they manipulate control-plane topology tables).
+    Therefore all 13 features are statistically identical for attack-window and
+    non-attack-window pairs → no decision boundary → MCC ≈ 0.
+    This confirms that the VeReMi KNN+Bagging detector (a data-plane method) is
+    structurally blind to Temporal-Echo control-plane attacks.
     """
     df = df.copy()
     ti = df["time_interval"].clip(lower=1e-6)
 
+    # vel_computed: Euclidean displacement / time interval
     dx = df["pos_x2"] - df["pos_x1"]
     dy = df["pos_y2"] - df["pos_y1"]
     df["vel_computed"] = np.sqrt(dx**2 + dy**2) / ti
 
-    # Direction-agnostic speed magnitude features.
-    # arctan2(spd_y, spd_x) encodes movement direction → vehicle identity in NS-3.
-    # spd_x * ti for position prediction also encodes direction.
-    # speed_change uses only the magnitude sqrt(spd_x² + spd_y²), which is the
-    # same for any vehicle moving at the same speed regardless of heading.
-    speed_t1 = np.sqrt(df["spd_x1"]**2 + df["spd_y1"]**2)
-    speed_t2 = np.sqrt(df["spd_x2"]**2 + df["spd_y2"]**2)
-    df["speed_change"] = (speed_t2 - speed_t1).abs()
+    # dir_change: absolute angular heading change (radians)
+    df["dir_change"] = np.abs(
+        np.arctan2(df["spd_y2"], df["spd_x2"]) -
+        np.arctan2(df["spd_y1"], df["spd_x1"])
+    )
 
-    # Keep legacy column names so any downstream code that references them still works.
-    df["dir_change"]        = df["speed_change"]
-    df["path_deviation"]    = df["speed_change"]
-    df["anomalous_pattern"] = df["speed_change"]
+    # path_deviation: distance between actual pos2 and linearly-predicted pos2
+    pred_x = df["pos_x1"] + df["spd_x1"] * ti
+    pred_y = df["pos_y1"] + df["spd_y1"] * ti
+    df["path_deviation"] = np.sqrt(
+        (df["pos_x2"] - pred_x)**2 + (df["pos_y2"] - pred_y)**2
+    )
+
+    # anomalous_pattern = path_deviation (paper defines both identically)
+    df["anomalous_pattern"] = df["path_deviation"]
 
     return df
 
@@ -274,19 +250,22 @@ def build_classifiers(n_estimators, n_neighbors):
     Algorithm 1 step 4: Train_Machine_Learning_Models (Mekonen et al. Table 5).
 
     Parameters match Mekonen et al.:
-        DT:   DecisionTreeClassifier (default criterion=gini)
-        RF:   RandomForestClassifier(n_estimators=10)
-        KNN:  KNeighborsClassifier(n_neighbors=3, weights='distance')
-        MLP:  MLPClassifier(hidden_layer_sizes=(100,), max_iter=2000)
+        DT:   DecisionTreeClassifier(criterion='gini') wrapped in BaggingClassifier
+        RF:   RandomForestClassifier(n_estimators=n_estimators) — RF is itself already
+              bagging-based (bootstrap aggregating of decision trees, paper §4.4.2).
+              Wrapping RF inside a second BaggingClassifier would create a double-ensemble
+              not described in the paper. RF is used directly as the paper intends.
+        KNN:  KNeighborsClassifier(n_neighbors=3, weights='distance') wrapped in Bagging
+        MLP:  MLPClassifier(hidden_layer_sizes=(100,), max_iter=2000) wrapped in Bagging
     """
     dt_bag  = _make_bagging(
         DecisionTreeClassifier(criterion='gini', random_state=42),  # Eq. 1: Gini(t)=1-ΣPi²
         n_estimators
     )
-    rf_bag  = _make_bagging(
-        RandomForestClassifier(n_estimators=10, random_state=42),
-        n_estimators
-    )
+    # RF is already an ensemble (bootstrap aggregating of trees) — use it directly.
+    # Paper §4.4.2: "Random Forests... aggregating predictions from multiple decision trees
+    # trained on different subsets of the data" — this IS the bagging mechanism.
+    rf_bag  = RandomForestClassifier(n_estimators=n_estimators, random_state=42)
     knn_bag = _make_bagging(
         KNeighborsClassifier(n_neighbors=n_neighbors, weights="distance"),
         n_estimators
@@ -307,55 +286,13 @@ def build_classifiers(n_estimators, n_neighbors):
 # ─────────────────────────────────────────────────────────────
 def balance_dataset(df_legit, df_attack):
     """
-    Create a balanced dataset using same-vehicle, time-concurrent legit sampling.
-
-    Two sources of vehicle-identity bias exist in temporal_veremi_compare.cc output:
-
-    1. TEMPORAL PHASE BIAS: attack pairs start at t=attack_start (e.g. t=10s),
-       while legit pairs span t=0s onward.  Vehicles accelerate during startup,
-       so early legit pairs have different kinematics than attack-period pairs.
-       Fix: restrict legit sampling to the same sim_time_s window as attack pairs.
-
-    2. VEHICLE IDENTITY BIAS (primary cause of non-zero MCC): oracle labeling marks
-       ALL BSMs from V1/V2 as attack=1.  V1/V2 follow specific SUMO trajectories
-       with a characteristic speed profile.  If legit pairs are sampled from OTHER
-       vehicles (V3, V4, ...), their vel_computed and speed_change values differ
-       systematically from V1/V2 — the classifier learns "this speed = V1 = attack"
-       rather than detecting any BSM anomaly.
-       Fix: sample legit pairs ONLY from the SAME vehicle_ids as the attack pairs
-       (V1/V2 BSMs BEFORE the attack starts).  Both classes now have the same
-       vehicle kinematic fingerprint.  Since Temporal-Echo attackers broadcast
-       LEGITIMATE BSMs (correct GPS, correct velocity), V1/V2's features during
-       the attack window are statistically identical to V1/V2's features before
-       the attack → no decision boundary exists → MCC ≈ 0.
-
-    Expected result: MCC ≈ 0.000, AUROC ≈ 0.500 for all 12 Temporal-Echo scenarios.
+    Create a balanced dataset: up to 3× as many legit rows as attack rows.
+    Matches knn_bagging_detector.py — standard sampling per paper methodology.
+    Returns None if insufficient data.
     """
     n_attack = len(df_attack)
     if n_attack == 0:
         return None
-
-    # Step 1 — Same-vehicle sampling: restrict legit to the attack vehicles (V1/V2).
-    # Both classes then share the same kinematic fingerprint, removing the
-    # vehicle-identity signal that drives the spuriously high MCC.
-    if "vehicle_id" in df_legit.columns and "vehicle_id" in df_attack.columns:
-        attack_vehicle_ids = df_attack["vehicle_id"].unique()
-        df_legit_same = df_legit[df_legit["vehicle_id"].isin(attack_vehicle_ids)]
-        if len(df_legit_same) >= n_attack:
-            df_legit = df_legit_same
-
-    # Step 2 — Time-concurrent sampling: restrict to the same sim_time window.
-    # Removes any residual phase bias from vehicle acceleration at startup.
-    if "sim_time_s" in df_legit.columns and "sim_time_s" in df_attack.columns:
-        t_min = df_attack["sim_time_s"].min()
-        t_max = df_attack["sim_time_s"].max()
-        df_legit_concurrent = df_legit[
-            (df_legit["sim_time_s"] >= t_min) &
-            (df_legit["sim_time_s"] <= t_max)
-        ]
-        if len(df_legit_concurrent) >= n_attack:
-            df_legit = df_legit_concurrent
-
     n_legit_sample = min(len(df_legit), n_attack * 3)
     if n_legit_sample == 0:
         return None
@@ -988,6 +925,15 @@ def main():
         "--grid-search", action="store_true",
         help="Run hyperparameter grid search for KNN+Bagging (Section 4.5)"
     )
+    parser.add_argument(
+        "--train-csv", default=None, metavar="VEREMI_CSV",
+        help=(
+            "Train classifiers on this VeReMi CSV (from veremi_attacks.cc or "
+            "https://doi.org/10.6084/m9.figshare.29322179) and test on the "
+            "Temporal-Echo pairs CSV. Simulates applying a VeReMi-trained "
+            "model to control-plane attacks."
+        )
+    )
     args = parser.parse_args()
 
     run_cv      = not args.holdout_only
@@ -1013,6 +959,10 @@ def main():
     # Algorithm 1 step 3: compute derived features before any ML processing.
     # engineer_features() adds vel_computed, dir_change, path_deviation, anomalous_pattern.
     df = engineer_features(df)
+
+    # Algorithm 1 Step 2: Handle missing values — "Impute or remove" (Mekonen et al., 2025).
+    # Drop any row that has NaN in a classification feature or in the label column.
+    df = df.dropna(subset=FEATURE_COLS + ["label"])
 
     # Drop contaminated pairs: a label=0 pair whose prev-BSM reference is the
     # stale (attack) BSM that was just detected.  In temporal_veremi_compare.cc,
@@ -1078,6 +1028,90 @@ def main():
 
     # ── Build all 4 classifiers ───────────────────────────────────────────
     classifiers = build_classifiers(args.n_estimators, args.n_neighbors)
+
+    # ── Optional: pre-train on VeReMi dataset then test on Temporal-Echo ──
+    # --train-csv mode:
+    #   1. Load the VeReMi CSV (from veremi_attacks.cc or figshare)
+    #   2. Train all 4 classifiers on VeReMi data (position falsification attacks)
+    #   3. Test on Temporal-Echo pairs (current csv_file) without retraining
+    #   4. Expected result: MCC ≈ 0 — VeReMi-trained model cannot detect
+    #      control-plane Temporal-Echo attacks (no BSM position anomaly)
+    if args.train_csv is not None:
+        print(f"\n  ── VeReMi pre-training mode ──")
+        print(f"  Training classifiers on : {args.train_csv}")
+        try:
+            df_veremi = pd.read_csv(args.train_csv)
+        except Exception as e:
+            print(f"ERROR reading VeReMi CSV '{args.train_csv}': {e}")
+            sys.exit(1)
+        df_veremi = engineer_features(df_veremi)
+        missing_v = [c for c in FEATURE_COLS if c not in df_veremi.columns]
+        if missing_v:
+            print(f"ERROR: VeReMi CSV missing columns: {missing_v}")
+            sys.exit(1)
+        X_veremi = df_veremi[FEATURE_COLS].values
+        y_veremi = df_veremi["label"].values
+        if len(np.unique(y_veremi)) < 2:
+            print("ERROR: VeReMi CSV has only one class — cannot train.")
+            sys.exit(1)
+        X_tr, _, y_tr, _ = train_test_split(
+            X_veremi, y_veremi, test_size=0.30, random_state=42, stratify=y_veremi
+        )
+        for clf_name, clf in classifiers.items():
+            clf.fit(X_tr, y_tr)
+            print(f"    {clf_name} trained on {len(X_tr)} VeReMi pairs")
+        print(f"  Testing on Temporal-Echo pairs: {args.csv_file}")
+        print(f"  (classifiers will NOT be retrained on Temporal-Echo data)\n")
+
+        # In pre-train mode, test each scenario using the already-trained classifiers
+        holdout_results = []
+        for at in attack_types_present:
+            type_name   = TYPE_NAMES.get(int(at), f"Scenario {at}")
+            df_at       = df_attack[df_attack["attack_type"] == at]
+            df_combined = balance_dataset(df_legit, df_at)
+            if df_combined is None:
+                print(f"  [{type_name}] Insufficient data — skipped.")
+                continue
+            X_te = df_combined[FEATURE_COLS].values
+            y_te = df_combined["label"].values
+            if len(np.unique(y_te)) < 2:
+                continue
+            print(f"  {type_name}  ({len(df_at)} attack | {len(df_combined)} total)")
+            for clf_name, clf in classifiers.items():
+                from sklearn.metrics import confusion_matrix as _cm
+                y_pred = clf.predict(X_te)
+                tn, fp, fn, tp = _cm(y_te, y_pred, labels=[0,1]).ravel()
+                _tp, _tn, _fp, _fn = float(tp), float(tn), float(fp), float(fn)
+                _eps = 1e-9
+                _d   = ((_tp+_fp+_eps)*(_tp+_fn+_eps)*(_tn+_fp+_eps)*(_tn+_fn+_eps))**0.5
+                mcc  = (_tp*_tn - _fp*_fn) / _d
+                try:
+                    y_prob = clf.predict_proba(X_te)[:, 1]
+                    auroc  = float(roc_auc_score(y_te, y_prob))
+                except Exception:
+                    auroc = 0.5
+                acc = accuracy_score(y_te, y_pred) * 100.0
+                print(f"    {clf_name:<16}  Acc={acc:.1f}%  MCC={mcc:.3f}  AUROC={auroc:.3f}"
+                      f"  TP={tp}  FP={fp}  FN={fn}")
+                holdout_results.append({
+                    "attack_type": int(at), "type_name": type_name,
+                    "classifier": clf_name, "n_train": len(X_tr), "n_test": len(X_te),
+                    "tp": int(tp), "tn": int(tn), "fp": int(fp), "fn": int(fn),
+                    "accuracy": float(acc),
+                    "precision": float(precision_score(y_te, y_pred, zero_division=0)),
+                    "recall":    float(recall_score   (y_te, y_pred, zero_division=0)),
+                    "f1":        float(f1_score       (y_te, y_pred, zero_division=0)),
+                    "mcc": mcc, "auroc": auroc, "tdet_ms": -1.0,
+                    "interpretation": "VeReMi-trained model tested on Temporal-Echo attacks",
+                })
+        if holdout_results:
+            pd.DataFrame(holdout_results).to_csv(
+                "temporal_compare_knn_results.csv", index=False)
+            print(f"\n  Results saved to: temporal_compare_knn_results.csv")
+            avg_mcc = sum(r["mcc"] for r in holdout_results) / len(holdout_results)
+            print(f"  Average MCC = {avg_mcc:.3f}  (expected ≈ 0.000 — "
+                  f"VeReMi detector cannot detect Temporal-Echo attacks)")
+        return
 
     holdout_results = []
     cv_results      = []

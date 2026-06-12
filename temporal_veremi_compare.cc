@@ -102,9 +102,16 @@ static uint32_t attack_percentage = 100;
 static uint32_t N_Controllers     = 1;
 static uint32_t g_n_malicious     = 0;
 
+// ── SUMO mobility parameters (same naming as routing.cc) ───────────────
+// mobility_scenario: 0=urban, 1=rural/non-urban, 2=highway
+// maxspeed: km/h — selects which SUMO trace file to load
+// Trace files: /home/lasindu/mobility/mobility_{urban|rural|autobahn}_{speed}.tcl
+static int mobility_scenario = 1;   // default: rural (non-urban)
+static int maxspeed          = 80;  // default: 80 km/h
+
 // ── BSM constants — Algorithm 1: Mekonen et al., PLOS ONE 2025 ─
 static const double BSM_INTERVAL_S   = 0.100;
-static const double DSRC_RANGE_M     = 250.0;
+static const double DSRC_RANGE_M     = 300.0;   // VeReMi dataset default (VEINS/SUMO/OMNET++)
 static const double MIN_SPEED_MS     = 8.0;
 static const double MAX_SPEED_MS     = 20.0;
 static const double POS_FROZEN_EPS_M = 0.05;
@@ -118,8 +125,9 @@ static const double TTW_HELLO_TIME  = 10.0;
 static const double TTW_LINK_BREAK  = 15.0;
 static const double TTW_REPLAY_TIME = 20.0;
 
-static const double BSHH_STORE_TIME  = 4.0;
-static const double BSHH_REPLAY_TIME = 10.0;
+static const double BSHH_OLD_HB_TIME   = 0.0;   // timestamp of the captured old heartbeat (routing.cc: BSHH_S1_OLD_HB_TIME)
+static const double BSHH_EXCHANGE_TIME = 5.0;   // legitimate heartbeat exchange (routing.cc: BSHH_S1_EXCHANGE_TIME)
+static const double BSHH_REPLAY_TIME   = 10.0;  // replay attack fires
 
 static const double ME_LEGIT_TIME = 10.0;
 static const double ME_ECHO_TIME  = 10.1;
@@ -139,6 +147,7 @@ struct TopologyPacket {
     uint32_t seen_id;
     double   timestamp;
     bool     is_forged;
+    double   pos_x = 0, pos_y = 0;  // position of src_id at observation time
 };
 
 struct HeartbeatPacket {
@@ -146,6 +155,7 @@ struct HeartbeatPacket {
     uint32_t physical_sender_id;
     double   timestamp;
     bool     is_replayed;
+    double   pos_x = 0, pos_y = 0;  // position at capture time
 };
 
 struct MEEchoReport {
@@ -199,19 +209,30 @@ struct BsmRecord {
     bool     is_attack;  // oracle label — topology attack active for this vehicle
 };
 
-// Previous BSM per vehicle (for consecutive pair generation and VREM_Detect)
+// Previous BSM per vehicle — RSU-level detection
 static std::map<uint32_t, BsmRecord> g_prev_bsm;
-
-// Sliding BSM history per vehicle — Algorithm 1 step 3: Type-16 eventual-stop detection
+// Sliding history — RSU-level (Type-16 eventual-stop)
 static std::map<uint32_t, std::deque<BsmRecord>> g_bsm_history;
 
-// ── PEM metric counters ──────────────────────────────────────────
+// Controller-level state — S2 (malicious RSU) cross-check
+static std::map<uint32_t, BsmRecord>              g_prev_bsm_ctrl;
+static std::map<uint32_t, std::deque<BsmRecord>>  g_bsm_history_ctrl;
+static std::set<uint32_t>                          g_flagged_rsus;
+
+// ── PEM metric counters (RSU-level: S1 vehicle attacks) ──────────
 static uint64_t pem_tp = 0;
 static uint64_t pem_tn = 0;
 static uint64_t pem_fp = 0;
 static uint64_t pem_fn = 0;
 static double   pem_attack_start_time = -1.0;
 static double   pem_first_alert_time  = -1.0;
+
+// ── Controller-level MCC counters (S2 RSU attacks) ───────────────
+static uint64_t pem_tp_ctrl = 0;
+static uint64_t pem_tn_ctrl = 0;
+static uint64_t pem_fp_ctrl = 0;
+static uint64_t pem_fn_ctrl = 0;
+static double   pem_first_alert_time_ctrl = -1.0;
 
 // ── Oracle — topology attack active state per vehicle ────────────
 static std::map<uint32_t, bool> g_oracle_attack_state;
@@ -411,12 +432,16 @@ static void TVRC_EmitReplayedBsmPair(uint32_t vehicle_id,
 //   Type 8  (Random Offset Position)  : random path deviation from prediction
 //   Type 16 (Eventual Stop)           : history window all frozen (after movement)
 // ═══════════════════════════════════════════════════════════════
-static bool VREM_Detect(const BsmRecord& bsm)
+// prev_map  — RSU-level: g_prev_bsm;       Controller-level: g_prev_bsm_ctrl
+// hist_map  — RSU-level: g_bsm_history;    Controller-level: g_bsm_history_ctrl
+static bool VREM_Detect(const BsmRecord& bsm,
+                          std::map<uint32_t, BsmRecord>& prev_map,
+                          std::map<uint32_t, std::deque<BsmRecord>>& hist_map)
 {
-    auto& hist = g_bsm_history[bsm.vehicle_id];
+    auto& hist = hist_map[bsm.vehicle_id];
 
-    auto it = g_prev_bsm.find(bsm.vehicle_id);
-    if (it == g_prev_bsm.end()) {
+    auto it = prev_map.find(bsm.vehicle_id);
+    if (it == prev_map.end()) {
         // Algorithm 1 line: no previous BSM — add to database, no alert
         hist.push_back(bsm);
         return false;
@@ -453,14 +478,15 @@ static bool VREM_Detect(const BsmRecord& bsm)
     double path_deviation = Dist2D(bsm.pos_x, bsm.pos_y, pred_x, pred_y);
 
     // Attack Type 2 (Constant Offset): Pnew = Pactual + Oconst
-    //   — constant offset from true position shifts reported position away from predicted
+    //   — constant offset shifts reported position away from predicted
     // Attack Type 4 (Random Position): Pnew = Prandom
     //   — random position produces large unpredictable path deviation
     // Attack Type 8 (Random Offset): Pnew = Pactual + Orandom
-    //   — random offset also produces path deviation > speed * dt * SAFETY_FACTOR
-    // All three: |actual_pos - predicted_pos| > SAFETY_FACTOR * speed * dt
-    // Use max of current and previous speed to handle hard-acceleration edge case.
-    double max_path_dev = std::max(speed, prev_speed) * dt * SAFETY_FACTOR;
+    //   — random offset produces path deviation beyond speed × dt
+    // All three: |actual_pos - predicted_pos| > max_speed × dt
+    // Mekonen et al. (2025) Algorithm 1 Step 3: "Distance from Predicted Path"
+    // Use max of current and previous speed to handle acceleration between beacons.
+    double max_path_dev = std::max(speed, prev_speed) * dt;
     if (max_path_dev > 0.0 && path_deviation > max_path_dev) {
         return true;
     }
@@ -531,8 +557,9 @@ static void TVRC_RSUSocketReceive(Ptr<Socket> sock)
 //   Broader than is_attack — includes regular BSMs from oracle-marked vehicles.
 //
 // Consecutive BSM pairs (pairs CSV): written with correct positions.
-// Label = is_attack (only the stale BSM pair gets label=1, not all attack-window pairs).
-// KNN+Bagging will find very few label=1 rows per scenario → MCC≈0 for KNN too.
+// Label = oracle state (all BSMs from a misbehaving vehicle get label=1).
+// Paper §4.3: "categorizing each entry as either a legitimate or misbehaving vehicle."
+// Labelling is per-vehicle, not per-BSM — every BSM from an oracle-active attacker is label=1.
 // ─────────────────────────────────────────────────────────────
 static void TVRC_RSUReceive(BsmRecord bsm)
 {
@@ -559,8 +586,8 @@ static void TVRC_RSUReceive(BsmRecord bsm)
         }
     }
 
-    // VREM_Detect processes the legitimate BSM
-    bool detected = VREM_Detect(bsm);
+    // VREM_Detect at RSU level — detects malicious vehicles (S1 scenarios)
+    bool detected = VREM_Detect(bsm, g_prev_bsm, g_bsm_history);
 
     // ── Write consecutive BSM pair to CSV ─────────────────────────
     // Same 13-column format as veremi_pairs.csv (veremi_attacks.cc).
@@ -587,7 +614,7 @@ static void TVRC_RSUReceive(BsmRecord bsm)
                     << bsm.spd_x       << ","
                     << bsm.spd_y       << ","
                     << dt              << ","
-                    << (is_attack ? 1 : 0) << "\n";  // label = oracle (not BSM anomaly)
+                    << (in_attack_window ? 1 : 0) << "\n";  // paper §4.3: label=1 for any BSM from a misbehaving vehicle
     }
     g_prev_bsm[bsm.vehicle_id] = bsm;
 
@@ -651,6 +678,69 @@ static bool InRSURange(double px, double py)
     if (!mob) return false;
     Vector rp = mob->GetPosition();
     return Dist2D(px, py, rp.x, rp.y) <= DSRC_RANGE_M;
+}
+
+// ─────────────────────────────────────────────────────────────
+// TVRC_ControllerReceive — controller-level detection for S2 (malicious RSU)
+//
+// Architecture (supervisor's design):
+//   S1 (malicious vehicle): RSU runs VREM_Detect on vehicle BSMs
+//   S2 (malicious RSU)    : Controller compares two streams for the same vehicle:
+//     (a) Vehicle-direct BSM  : CURRENT position sent directly to controller
+//     (b) RSU-forwarded BSM   : OLD (replayed) position forwarded by malicious RSU
+//   VREM_Detect at controller: prev=current pos → curr=old pos
+//   path_deviation = |old_pos − predicted_pos| >> max_speed×dt → detected (TP)
+//   ME-S2: echo reports carry no position change → FN (expected, undetectable)
+//
+// Controller-level pairs are also written to the pairs CSV so KNN+Bagging
+// sees the position discrepancy and can detect TTW-S2 and BSHH-S2.
+// ─────────────────────────────────────────────────────────────
+static void TVRC_ControllerReceive(BsmRecord bsm)
+{
+    double now      = Simulator::Now().GetSeconds();
+    bool   is_attack = bsm.is_attack;
+
+    bool detected = VREM_Detect(bsm, g_prev_bsm_ctrl, g_bsm_history_ctrl);
+
+    // Write controller-level pair to CSV so KNN+Bagging also sees position discrepancy
+    auto it = g_prev_bsm_ctrl.find(bsm.vehicle_id);
+    if (it != g_prev_bsm_ctrl.end() && g_pairs_csv.is_open()) {
+        const BsmRecord& prev = it->second;
+        double dt = bsm.timestamp - prev.timestamp;
+        g_pairs_csv << std::fixed << std::setprecision(4)
+                    << bsm.vehicle_id  << ","
+                    << attack_scenario << ","
+                    << now             << ","
+                    << prev.pos_x      << ","
+                    << prev.pos_y      << ","
+                    << prev.spd_x      << ","
+                    << prev.spd_y      << ","
+                    << bsm.pos_x       << ","   // old/stale position for RSU-forwarded
+                    << bsm.pos_y       << ","
+                    << bsm.spd_x       << ","
+                    << bsm.spd_y       << ","
+                    << dt              << ","
+                    << (is_attack ? 1 : 0) << "\n";
+    }
+    g_prev_bsm_ctrl[bsm.vehicle_id] = bsm;
+
+    if (detected && pem_first_alert_time_ctrl < 0.0 && is_attack) {
+        pem_first_alert_time_ctrl = now;
+    }
+
+    if (is_attack) {
+        if (detected) { pem_tp_ctrl++; } else { pem_fn_ctrl++; }
+    } else {
+        if (detected) { pem_fp_ctrl++; } else { pem_tn_ctrl++; }
+    }
+
+    if (g_attack_log.is_open()) {
+        g_attack_log << "[t=" << std::fixed << std::setprecision(3) << now
+                     << "]  CTRL-DETECT V" << bsm.vehicle_id
+                     << " pos=(" << bsm.pos_x << "," << bsm.pos_y << ")"
+                     << " attack=" << is_attack << " detected=" << detected << "\n";
+        g_attack_log.flush();
+    }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -779,14 +869,37 @@ static void TVRC_TTW_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double forged_
 {
     if (!g_ttw_packet_stored) return;
 
-    TopologyPacket forged = { v0_id, v1_id, forged_time, true };
+    TopologyPacket forged = { v0_id, v1_id, forged_time, true,
+                              g_ttw_stored_pos_x, g_ttw_stored_pos_y };  // V0's old position
     std::ostringstream key; key << v0_id << "_" << v1_id;
     g_ttw_controller_table[key.str()] = forged;
 
     g_oracle_attack_state[v0_id] = true;
-    TVRC_EmitReplayedBsmPair(v0_id, g_ttw_stored_pos_x, g_ttw_stored_pos_y,
-                              g_ttw_stored_spd_x, g_ttw_stored_spd_y, forged_time);
     pem_attack_start_time = forged_time;
+
+    // ── Controller-level cross-check (TTW-S1: malicious vehicle) ─────────────
+    double cur_px = 0, cur_py = 0, cur_sx = 0, cur_sy = 0;
+    if (v0_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v0_id), cur_px, cur_py, cur_sx, cur_sy);
+
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v0_id;
+    veh_direct.pos_x = cur_px;  veh_direct.pos_y = cur_py;
+    veh_direct.spd_x = cur_sx;  veh_direct.spd_y = cur_sy;
+    veh_direct.timestamp = forged_time;
+    veh_direct.is_attack = false;
+    TVRC_ControllerReceive(veh_direct);
+
+    BsmRecord forged_bsm;
+    forged_bsm.vehicle_id = v0_id;
+    forged_bsm.pos_x = g_ttw_stored_pos_x;  // V0's OLD position from topology packet
+    forged_bsm.pos_y = g_ttw_stored_pos_y;
+    forged_bsm.spd_x = g_ttw_stored_spd_x;
+    forged_bsm.spd_y = g_ttw_stored_spd_y;
+    forged_bsm.timestamp = forged_time + BSM_INTERVAL_S;
+    forged_bsm.is_attack = true;
+    TVRC_ControllerReceive(forged_bsm);
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << forged_time
@@ -864,10 +977,10 @@ static void TVRC_BSHH_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double replay
 {
     if (!g_bshh_heartbeat_stored) return;
 
-    HeartbeatPacket replayed = { v0_id, v1_id, g_bshh_stored_heartbeat.timestamp, true };
+    HeartbeatPacket replayed = { v0_id, v1_id, g_bshh_stored_heartbeat.timestamp, true,
+                                 g_bshh_stored_pos_x, g_bshh_stored_pos_y };  // V0's old position
     g_bshh_controller_liveness_table[v0_id] = replayed;
 
-    // Step 5: victim (V0) forwards attacker's own old heartbeat to controller → attacker liveness poisoned
     HeartbeatPacket forwarded_by_victim;
     forwarded_by_victim.claimed_sender_id  = v1_id;
     forwarded_by_victim.physical_sender_id = v0_id;
@@ -875,12 +988,36 @@ static void TVRC_BSHH_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double replay
     forwarded_by_victim.is_replayed        = true;
     g_bshh_controller_liveness_table[v1_id] = forwarded_by_victim;
 
-    // Activate oracle: V1 is the attacker; V0 is deceived into forwarding stale HB
     g_oracle_attack_state[v1_id] = true;
     g_oracle_attack_state[v0_id] = true;
-    TVRC_EmitReplayedBsmPair(v0_id, g_bshh_stored_pos_x, g_bshh_stored_pos_y,
-                              g_bshh_stored_spd_x, g_bshh_stored_spd_y, replay_time);
     pem_attack_start_time = replay_time;
+
+    // ── Controller-level cross-check (BSHH-S1: malicious vehicle) ────────────
+    // V0 sends current-position BSM directly to controller (legitimate).
+    // V1 sends forged heartbeat claiming V0's identity with V0's OLD position (attack).
+    // Controller VREM_Detect for V0: current pos → old pos → path_deviation >> threshold → TP.
+    double cur_px = 0, cur_py = 0, cur_sx = 0, cur_sy = 0;
+    if (v0_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v0_id), cur_px, cur_py, cur_sx, cur_sy);
+
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v0_id;
+    veh_direct.pos_x = cur_px;  veh_direct.pos_y = cur_py;
+    veh_direct.spd_x = cur_sx;  veh_direct.spd_y = cur_sy;
+    veh_direct.timestamp = replay_time;
+    veh_direct.is_attack = false;
+    TVRC_ControllerReceive(veh_direct);
+
+    BsmRecord forged_hb;
+    forged_hb.vehicle_id = v0_id;                        // V1 claims V0's identity
+    forged_hb.pos_x = g_bshh_stored_pos_x;              // V0's OLD position
+    forged_hb.pos_y = g_bshh_stored_pos_y;
+    forged_hb.spd_x = g_bshh_stored_spd_x;
+    forged_hb.spd_y = g_bshh_stored_spd_y;
+    forged_hb.timestamp = replay_time + BSM_INTERVAL_S;
+    forged_hb.is_attack = true;
+    TVRC_ControllerReceive(forged_hb);
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << replay_time
@@ -889,7 +1026,7 @@ static void TVRC_BSHH_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double replay
                      << "  Attacker     : V" << v1_id << " (malicious vehicle)\n"
                      << "  Victim       : V" << v0_id << " (identity stolen)\n"
                      << "  Stored HB    : { claimed=V" << v0_id << ", t=" << replayed.timestamp
-                     << " } ← captured at BSHH_STORE_TIME\n"
+                     << " } ← captured at BSHH_EXCHANGE_TIME, old_hb_time=" << BSHH_OLD_HB_TIME << "\n"
                      << "  Step 1 (peer replay)  : V" << v1_id << " → V" << v0_id
                      << ": HB(claimed=V" << v0_id << ", t=" << replayed.timestamp
                      << ") [V" << v1_id << " impersonates V" << v0_id << " over peer channel]\n"
@@ -1029,12 +1166,36 @@ static void TVRC_TTW_S2_VehiclesToRSU(uint32_t v1_id, uint32_t v0_id, double obs
 static void TVRC_TTW_S2_RSUReplayAttack(uint32_t v1_id, uint32_t v0_id, double forged_time)
 {
     if (!g_ttw_packet_stored) return;
-    TopologyPacket forged = { v1_id, v0_id, forged_time, true };
+    TopologyPacket forged = { v1_id, v0_id, forged_time, true,
+                              g_ttw_stored_pos_x, g_ttw_stored_pos_y };  // old position stored in packet
     std::ostringstream key; key << v1_id << "_" << v0_id;
     g_ttw_controller_table[key.str()] = forged;
     g_oracle_attack_state[v1_id] = true;
-    TVRC_EmitReplayedBsmPair(v1_id, g_ttw_stored_pos_x, g_ttw_stored_pos_y,
-                              g_ttw_stored_spd_x, g_ttw_stored_spd_y, forged_time);
+    if (pem_attack_start_time < 0) pem_attack_start_time = forged_time;
+
+    // ── Controller-level cross-check (supervisor's architecture) ──────────────
+    double cur_px = 0, cur_py = 0, cur_sx = 0, cur_sy = 0;
+    if (v1_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v1_id), cur_px, cur_py, cur_sx, cur_sy);
+
+    // (a) Vehicle-direct: current position → controller (legitimate)
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v1_id;
+    veh_direct.pos_x = cur_px;  veh_direct.pos_y = cur_py;
+    veh_direct.spd_x = cur_sx;  veh_direct.spd_y = cur_sy;
+    veh_direct.timestamp = forged_time;
+    veh_direct.is_attack = false;
+    TVRC_ControllerReceive(veh_direct);
+
+    // (b) RSU-forwarded: OLD position (stale from capture time) → controller (attack)
+    BsmRecord rsu_fwd;
+    rsu_fwd.vehicle_id = v1_id;
+    rsu_fwd.pos_x = g_ttw_stored_pos_x;  rsu_fwd.pos_y = g_ttw_stored_pos_y;
+    rsu_fwd.spd_x = g_ttw_stored_spd_x;  rsu_fwd.spd_y = g_ttw_stored_spd_y;
+    rsu_fwd.timestamp = forged_time + BSM_INTERVAL_S;  // arrives one interval after vehicle-direct
+    rsu_fwd.is_attack = true;
+    TVRC_ControllerReceive(rsu_fwd);
+    // ──────────────────────────────────────────────────────────────────────────
     if (pem_attack_start_time < 0) pem_attack_start_time = forged_time;  // first attack only
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << forged_time
@@ -1171,11 +1332,35 @@ static void TVRC_BSHH_S2_RSUStoreHeartbeat(uint32_t v0_id, double stored_time)
 static void TVRC_BSHH_S2_RSUReplayAttack(uint32_t v0_id, double replay_time)
 {
     if (!g_bshh_heartbeat_stored) return;
-    HeartbeatPacket replayed = { v0_id, 0xFFFFFFFF, g_bshh_stored_heartbeat.timestamp, true };
+    HeartbeatPacket replayed = { v0_id, 0xFFFFFFFF, g_bshh_stored_heartbeat.timestamp, true,
+                                 g_bshh_stored_pos_x, g_bshh_stored_pos_y };  // old position
     g_bshh_controller_liveness_table[v0_id] = replayed;
     g_oracle_attack_state[v0_id] = true;
-    TVRC_EmitReplayedBsmPair(v0_id, g_bshh_stored_pos_x, g_bshh_stored_pos_y,
-                              g_bshh_stored_spd_x, g_bshh_stored_spd_y, replay_time);
+    if (pem_attack_start_time < 0) pem_attack_start_time = replay_time;
+
+    // ── Controller-level cross-check (supervisor's architecture) ──────────────
+    double cur_px = 0, cur_py = 0, cur_sx = 0, cur_sy = 0;
+    if (v0_id < Vehicle_Nodes.GetN())
+        GetKinematics(Vehicle_Nodes.Get(v0_id), cur_px, cur_py, cur_sx, cur_sy);
+
+    // (a) Vehicle-direct: V0's current position sent directly to controller
+    BsmRecord veh_direct;
+    veh_direct.vehicle_id = v0_id;
+    veh_direct.pos_x = cur_px;  veh_direct.pos_y = cur_py;
+    veh_direct.spd_x = cur_sx;  veh_direct.spd_y = cur_sy;
+    veh_direct.timestamp = replay_time;
+    veh_direct.is_attack = false;
+    TVRC_ControllerReceive(veh_direct);
+
+    // (b) RSU-forwarded: old position from BSHH capture time (attack)
+    BsmRecord rsu_fwd;
+    rsu_fwd.vehicle_id = v0_id;
+    rsu_fwd.pos_x = g_bshh_stored_pos_x;  rsu_fwd.pos_y = g_bshh_stored_pos_y;
+    rsu_fwd.spd_x = g_bshh_stored_spd_x;  rsu_fwd.spd_y = g_bshh_stored_spd_y;
+    rsu_fwd.timestamp = replay_time + BSM_INTERVAL_S;
+    rsu_fwd.is_attack = true;
+    TVRC_ControllerReceive(rsu_fwd);
+    // ──────────────────────────────────────────────────────────────────────────
     if (pem_attack_start_time < 0) pem_attack_start_time = replay_time;  // first attack only
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << replay_time
@@ -1466,6 +1651,69 @@ static void TVRC_OracleDeactivate()
 }
 
 // ─────────────────────────────────────────────────────────────
+// SUMO trace file path resolver (same logic as routing.cc)
+// mobility_scenario: 0=urban, 1=rural, 2=highway
+// maxspeed: km/h — must match an existing trace file
+// Returns empty string if no matching trace file name can be built.
+// ─────────────────────────────────────────────────────────────
+static std::string TVRC_GetSumoTraceFile()
+{
+    std::string base = "/home/lasindu/mobility/";
+    std::string type;
+    if      (mobility_scenario == 0) type = "mobility_urban_";
+    else if (mobility_scenario == 1) type = "mobility_rural_";
+    else                             type = "mobility_autobahn_";
+    return base + type + std::to_string(maxspeed) + ".tcl";
+}
+
+// ─────────────────────────────────────────────────────────────
+// Install vehicle mobility: SUMO trace when available,
+// ConstantVelocity fallback otherwise.
+// ─────────────────────────────────────────────────────────────
+static void TVRC_InstallVehicleMobility()
+{
+    std::string trace_file = TVRC_GetSumoTraceFile();
+    std::ifstream tf_check(trace_file);
+    bool use_sumo = tf_check.good();
+    tf_check.close();
+
+    if (use_sumo)
+    {
+        // WaypointMobilityModel is required by Ns2MobilityHelper
+        MobilityHelper mobV;
+        mobV.SetMobilityModel("ns3::WaypointMobilityModel");
+        mobV.Install(Vehicle_Nodes);
+        Ns2MobilityHelper ns2mob(trace_file);
+        ns2mob.Install(Vehicle_Nodes.Begin(), Vehicle_Nodes.End());
+        std::cout << "[Mobility] SUMO trace: " << trace_file
+                  << "  (scenario=" << mobility_scenario
+                  << ", maxspeed=" << maxspeed << " km/h)\n";
+    }
+    else
+    {
+        // Fallback: constant-velocity straight-line motion
+        MobilityHelper mobV;
+        mobV.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
+        mobV.Install(Vehicle_Nodes);
+        for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++)
+        {
+            Ptr<ConstantVelocityMobilityModel> m =
+                DynamicCast<ConstantVelocityMobilityModel>(
+                    Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
+            if (!m) continue;
+            double spd = (N_Vehicles > 1)
+                ? MIN_SPEED_MS + (MAX_SPEED_MS - MIN_SPEED_MS) *
+                  (double(i) / double(N_Vehicles - 1))
+                : MIN_SPEED_MS;
+            m->SetPosition(Vector(50.0 + i * 60.0, double(i) * 10.0, 0.0));
+            m->SetVelocity(Vector(spd, 0.0, 0.0));
+        }
+        std::cout << "[Mobility] ConstantVelocity fallback"
+                  << " (SUMO trace not found: " << trace_file << ")\n";
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Network setup — P2P star topology
 // Subnet 10.6.(i+1).0/30 — distinct from all other files
 // ─────────────────────────────────────────────────────────────
@@ -1620,8 +1868,9 @@ static void TVRC_InitLogs()
         g_attack_log
             << "  Attack family   : BSHH (Beacon-State Heartbeat Hijack)\n"
             << "  Attacker node   : V1   Victim identity: V0\n"
-            << "  t=STORE(" << BSHH_STORE_TIME << "): V1 captures V0's old heartbeat\n"
-            << "  t=REPLAY(" << BSHH_REPLAY_TIME << "): forged HeartbeatPacket injected\n";
+            << "  old_hb_timestamp=" << BSHH_OLD_HB_TIME << ": timestamp of captured old heartbeat\n"
+            << "  t=EXCHANGE(" << BSHH_EXCHANGE_TIME << "): legitimate heartbeat exchange (controller gets fresh V0 t=" << BSHH_EXCHANGE_TIME << ")\n"
+            << "  t=REPLAY(" << BSHH_REPLAY_TIME << "): old t=" << BSHH_OLD_HB_TIME << " heartbeat replayed → stale liveness\n";
     } else if (attack_scenario >= 9 && attack_scenario <= 12) {
         g_attack_log
             << "  Attack family   : ME (Multipath Echo)\n"
@@ -1866,13 +2115,15 @@ static void TVRC_WriteSummary()
 int main(int argc, char* argv[])
 {
     CommandLine cmd;
-    cmd.AddValue("simTime",          "Simulation duration (s)",                                    simTime);
-    cmd.AddValue("N_Vehicles",       "Number of vehicle nodes",                                    N_Vehicles);
-    cmd.AddValue("N_RSUs",           "Number of RSU nodes",                                        N_RSUs);
-    cmd.AddValue("N_Controllers",    "Number of SDN controller nodes (default 1)",                 N_Controllers);
-    cmd.AddValue("attack_scenario",  "1-4=TTW, 5-8=BSHH, 9-12=ME, 0=base",                       attack_scenario);
-    cmd.AddValue("attack_percentage","Percentage 0-100 (step 10) of nodes that are malicious attackers; 0=baseline", attack_percentage);
-    cmd.AddValue("runNum",           "RNG run index for multi-run averaging (1-40)",               runNum);
+    cmd.AddValue("simTime",           "Simulation duration (s)",                                    simTime);
+    cmd.AddValue("N_Vehicles",        "Number of vehicle nodes",                                    N_Vehicles);
+    cmd.AddValue("N_RSUs",            "Number of RSU nodes",                                        N_RSUs);
+    cmd.AddValue("N_Controllers",     "Number of SDN controller nodes (default 1)",                 N_Controllers);
+    cmd.AddValue("attack_scenario",   "1-4=TTW, 5-8=BSHH, 9-12=ME, 0=base",                       attack_scenario);
+    cmd.AddValue("attack_percentage", "Percentage 0-100 (step 10) of nodes that are malicious; 0=baseline", attack_percentage);
+    cmd.AddValue("runNum",            "RNG run index for multi-run averaging (1-40)",               runNum);
+    cmd.AddValue("mobility_scenario", "SUMO mobility: 0=urban, 1=rural(non-urban), 2=highway",     mobility_scenario);
+    cmd.AddValue("maxspeed",          "Vehicle max speed km/h — selects SUMO trace file",           maxspeed);
     cmd.Parse(argc, argv);
 
     // Bounds check — must be 0-12 matching the 12 Temporal-Echo scenarios
@@ -1914,53 +2165,50 @@ int main(int argc, char* argv[])
 
     TVRC_InitLogs();
 
-    std::cout << "\n══════════════════════════════════════════════════════════════\n"
-              << "  Temporal-Echo vs. VeReMi KNN+Bagging — Incompatibility Study\n"
-              << "  Attack scenario  : " << attack_scenario
-              << " (" << GetScenarioName(attack_scenario) << ")\n"
-              << "  N_Vehicles       : " << N_Vehicles << "\n"
-              << "  N_RSUs           : " << N_RSUs << "\n"
-              << "  N_Controllers    : " << N_Controllers << "\n"
-              << "  attack_percentage: " << attack_percentage << "%"
-              << " → " << g_n_malicious << " malicious node(s)\n"
-              << "  simTime          : " << simTime << " s\n"
-              << "  Detectors        : VREM_Detect (verbatim) + KNN+Bagging (Python)\n"
-              << "  Expected result  : VREM_Detect MCC=0, KNN+Bagging MCC≈0\n"
-              << "══════════════════════════════════════════════════════════════\n\n";
+    {
+        std::string mob_name;
+        if      (mobility_scenario == 0) mob_name = "urban";
+        else if (mobility_scenario == 1) mob_name = "rural (non-urban)";
+        else                             mob_name = "highway (autobahn)";
+        std::cout << "\n══════════════════════════════════════════════════════════════\n"
+                  << "  Temporal-Echo vs. VeReMi KNN+Bagging — Incompatibility Study\n"
+                  << "  Attack scenario  : " << attack_scenario
+                  << " (" << GetScenarioName(attack_scenario) << ")\n"
+                  << "  N_Vehicles       : " << N_Vehicles << "\n"
+                  << "  N_RSUs           : " << N_RSUs << "\n"
+                  << "  N_Controllers    : " << N_Controllers << "\n"
+                  << "  attack_percentage: " << attack_percentage << "%"
+                  << " → " << g_n_malicious << " malicious node(s)\n"
+                  << "  simTime          : " << simTime << " s\n"
+                  << "  Mobility         : SUMO " << mob_name
+                  << " @ " << maxspeed << " km/h"
+                  << "  (trace: " << TVRC_GetSumoTraceFile() << ")\n"
+                  << "  Detectors        : VREM_Detect (verbatim) + KNN+Bagging (Python)\n"
+                  << "  Expected result  : VREM_Detect MCC=0, KNN+Bagging MCC≈0\n"
+                  << "══════════════════════════════════════════════════════════════\n\n";
+    }
 
     // ── Create nodes ─────────────────────────────────────────────
     Vehicle_Nodes.Create(N_Vehicles);
     if (N_RSUs > 0) RSU_Nodes.Create(N_RSUs);
 
-    // ── Vehicle mobility ─────────────────────────────────────────
-    MobilityHelper mobV;
-    mobV.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
-    mobV.Install(Vehicle_Nodes);
-    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
-        Ptr<ConstantVelocityMobilityModel> m =
-            DynamicCast<ConstantVelocityMobilityModel>(
-                Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
-        if (!m) continue;
-        double spd = (N_Vehicles > 1)
-            ? MIN_SPEED_MS + (MAX_SPEED_MS - MIN_SPEED_MS) *
-              (double(i) / (N_Vehicles - 1))
-            : MIN_SPEED_MS;
-        m->SetPosition(Vector(50.0 + i * 60.0, double(i) * 10.0, 0.0));
-        m->SetVelocity(Vector(spd, 0.0, 0.0));
-    }
+    // ── Vehicle mobility — SUMO trace or constant-velocity fallback ──
+    TVRC_InstallVehicleMobility();
 
-    // ── RSU mobility ─────────────────────────────────────────────
+    // ── RSU mobility — fixed position ────────────────────────────
     if (RSU_Nodes.GetN() > 0) {
         MobilityHelper mobR;
         mobR.SetMobilityModel("ns3::ConstantPositionMobilityModel");
         mobR.Install(RSU_Nodes);
-        double rsu_base_x = 50.0 + (N_Vehicles / 2.0) * 60.0;
-        double rsu_y = (N_Vehicles > 1) ? (N_Vehicles - 1) * 5.0 : 0.0;
+        // Place RSU at the centre of the vehicle spread so it is in DSRC range
+        // for the first few vehicles regardless of mobility model used.
+        double rsu_base_x = 200.0;
+        double rsu_y      = 0.0;
         for (uint32_t r = 0; r < RSU_Nodes.GetN(); r++) {
             Ptr<ConstantPositionMobilityModel> rm =
                 DynamicCast<ConstantPositionMobilityModel>(
                     RSU_Nodes.Get(r)->GetObject<MobilityModel>());
-            if (rm) rm->SetPosition(Vector(rsu_base_x + r * 100.0, rsu_y, 0.0));
+            if (rm) rm->SetPosition(Vector(rsu_base_x + r * 300.0, rsu_y, 0.0));
         }
     }
 
@@ -2056,53 +2304,62 @@ int main(int argc, char* argv[])
         }
 
     } else if (attack_scenario == 5) {
+        // BSHH-S1: Malicious Vehicle, No RSU
+        // Matches routing.cc: BSHH_S1_EXCHANGE_TIME=5, BSHH_S1_OLD_HB_TIME=0, BSHH_S1_REPLAY_TIME=10
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TVRC_BSHH_LegitExchange, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.05),
-                &TVRC_BSHH_StoreHeartbeat, a, b, BSHH_STORE_TIME + dt);
+            // t=5: legitimate heartbeat exchange → controller gets fresh V0 alive at t=5
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TVRC_BSHH_LegitExchange, a, b, BSHH_EXCHANGE_TIME + dt);
+            // t=5.05: attacker stores old heartbeat with timestamp=BSHH_OLD_HB_TIME(=0)
+            // NOT the exchange time — the "old" packet has an earlier timestamp
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.05),
+                &TVRC_BSHH_StoreHeartbeat, a, b, BSHH_OLD_HB_TIME + dt);
+            // t=10: replay old t=0 heartbeat → controller overwrites t=5 with t=0 → stale liveness
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TVRC_BSHH_ReplayAttack, a, b, BSHH_REPLAY_TIME + dt);
         }
 
     } else if (attack_scenario == 6) {
+        // BSHH-S2: Malicious RSU
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TVRC_BSHH_S2_LegitViaRSU, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.01),
-                &TVRC_BSHH_S2_RSUStoreHeartbeat, a, BSHH_STORE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TVRC_BSHH_S2_LegitViaRSU, a, b, BSHH_EXCHANGE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.01),
+                &TVRC_BSHH_S2_RSUStoreHeartbeat, a, BSHH_OLD_HB_TIME + dt);
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TVRC_BSHH_S2_RSUReplayAttack, a, BSHH_REPLAY_TIME + dt);
         }
 
     } else if (attack_scenario == 7) {
+        // BSHH-S3: Malicious Controller, No RSU
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TVRC_BSHH_S3_LegitToController, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.01),
-                &TVRC_BSHH_S3_ControllerStoreHeartbeat, a, BSHH_STORE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TVRC_BSHH_S3_LegitToController, a, b, BSHH_EXCHANGE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.01),
+                &TVRC_BSHH_S3_ControllerStoreHeartbeat, a, BSHH_OLD_HB_TIME + dt);
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TVRC_BSHH_S3_ControllerInternalReplay, a, b, BSHH_REPLAY_TIME + dt);
         }
 
     } else if (attack_scenario == 8) {
+        // BSHH-S4: Malicious Controller, With RSU
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
             double dt = i * ATTACK_STAGGER_S;
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt),
-                &TVRC_BSHH_S4_LegitViaRSU, a, b, BSHH_STORE_TIME + dt);
-            Simulator::Schedule(Seconds(BSHH_STORE_TIME + dt + 0.01),
-                &TVRC_BSHH_S4_ControllerStoreHeartbeat, a, BSHH_STORE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt),
+                &TVRC_BSHH_S4_LegitViaRSU, a, b, BSHH_EXCHANGE_TIME + dt);
+            Simulator::Schedule(Seconds(BSHH_EXCHANGE_TIME + dt + 0.01),
+                &TVRC_BSHH_S4_ControllerStoreHeartbeat, a, BSHH_OLD_HB_TIME + dt);
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TVRC_BSHH_S4_ControllerInternalReplay, a, b, BSHH_REPLAY_TIME + dt);
         }
