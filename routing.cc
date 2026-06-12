@@ -645,14 +645,18 @@ PemComputeMcc()
     const double fp = static_cast<double>(pem_false_positive);
     const double fn = static_cast<double>(pem_false_negative);
 
+    // Epsilon regularization for class absence:
+    // When an entire predicted or actual class is absent the standard
+    // denominator collapses to zero and the result is undefined.
+    // Adding a small epsilon (1e-9) to each factor keeps the denominator
+    // strictly positive while having negligible numerical effect whenever
+    // all four cells carry real counts.
+    static const double MCC_EPS = 1e-9;
     const double numerator = (tp * tn) - (fp * fn);
     const double denominator =
-        PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+        PemSafeSqrt((tp + fp + MCC_EPS) * (tp + fn + MCC_EPS)
+                  * (tn + fp + MCC_EPS) * (tn + fn + MCC_EPS));
 
-    if (denominator <= 0.0)
-    {
-        return 0.0;
-    }
     return numerator / denominator;
 }
 
@@ -667,14 +671,13 @@ PemComputeMccFromCounts(uint64_t tpCount,
     const double fp = static_cast<double>(fpCount);
     const double fn = static_cast<double>(fnCount);
 
+    // Epsilon regularization — same rationale as PemComputeMcc() above.
+    static const double MCC_EPS = 1e-9;
     const double numerator = (tp * tn) - (fp * fn);
     const double denominator =
-        PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+        PemSafeSqrt((tp + fp + MCC_EPS) * (tp + fn + MCC_EPS)
+                  * (tn + fp + MCC_EPS) * (tn + fn + MCC_EPS));
 
-    if (denominator <= 0.0)
-    {
-        return 0.0;
-    }
     return numerator / denominator;
 }
 
