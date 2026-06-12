@@ -1829,6 +1829,14 @@ void declare_attackers()
     uint32_t n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
     if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
 
+    // With small N_Vehicles and low percentages the rounding yields 0 attackers.
+    // Guarantee at least 1 when a node-based attack is configured.
+    if (n_mal_veh == 0 && attack_scenario != ATTACK_NONE && N_Vehicles > 0 &&
+        (present_ttw_attack_nodes || present_bshh_attack_nodes || present_me_attack_nodes))
+    {
+        n_mal_veh = 1;
+    }
+
     std::vector<uint32_t> indices(N_Vehicles);
     for (uint32_t i = 0; i < N_Vehicles; i++) indices[i] = i;
     // --Random=0: deterministic first-N vehicle selection.
@@ -125430,52 +125438,49 @@ void initialize_flow_counters()
 		{
 			uint32_t main_flow_packets = ceil(f_size*((load_at_nodes+fid)->load_f[i]));
 			vector<tuple<double,uint32_t,uint32_t>> innermost_sorted_delta_next_hop_flow_size;
+
+			// Sum of non-zero delta values for proportional normalization.
+			// Direct multiplication (delta * main_flow_packets) rounds to 0 when
+			// delta values are small (e.g. 0.005 * 32 = 0.16 → 0), which concentrates
+			// all packets on a single next-hop via the deficiency correction. Instead,
+			// normalize within active next-hops so every non-zero entry gets a fair share.
+			double total_delta = 0.0;
 			for(uint32_t j=0;j<total_size;j++)
 			{
-				uint32_t sub_flow_packets = ((delta_at_nodes_inst+fid)->delta_fi_inst[i].delta_values[j])*main_flow_packets;
-				innermost_sorted_delta_next_hop_flow_size.emplace_back((delta_at_nodes_inst+fid)->delta_fi_inst[i].delta_values[j], j, sub_flow_packets);
-				
+				double dv = (delta_at_nodes_inst+fid)->delta_fi_inst[i].delta_values[j];
+				if (dv > 0.0) total_delta += dv;
 			}
-			
-			sort(innermost_sorted_delta_next_hop_flow_size.begin(), innermost_sorted_delta_next_hop_flow_size.end());
-			uint32_t total_count =0;
-			for(uint32_t j =0;j<total_size;j++)
+
+			// Floor-allocate proportional packets per next-hop, track remainder.
+			uint32_t allocated = 0;
+			for(uint32_t j=0;j<total_size;j++)
 			{
-				auto index_innermost = innermost_sorted_delta_next_hop_flow_size.begin();
-				//cout<<subflow_start_time<<total_packet_counter<<total_packets<<endl;
-				advance(index_innermost,j);
-				double sub_flow_load; 
-				uint32_t nid;
-				uint32_t sub_flow_packets;
-				tie(sub_flow_load, nid, sub_flow_packets) = *index_innermost;
-				if(j < (total_size-1))
+				double dv = (delta_at_nodes_inst+fid)->delta_fi_inst[i].delta_values[j];
+				uint32_t sub_flow_packets = 0;
+				if (dv > 0.0 && total_delta > 0.0 && main_flow_packets > 0)
+					sub_flow_packets = (uint32_t)floor(dv / total_delta * (double)main_flow_packets);
+				innermost_sorted_delta_next_hop_flow_size.emplace_back(dv, j, sub_flow_packets);
+				allocated += sub_flow_packets;
+			}
+
+			// Sort ascending by delta so remainder assignment goes to highest-delta entries.
+			sort(innermost_sorted_delta_next_hop_flow_size.begin(), innermost_sorted_delta_next_hop_flow_size.end());
+
+			// Distribute rounding remainder (main_flow_packets - allocated) to the
+			// highest-delta non-zero entries (tail of the sorted list), one packet each.
+			uint32_t remainder = (main_flow_packets > allocated) ? (main_flow_packets - allocated) : 0;
+			for(int32_t j = (int32_t)total_size - 1; j >= 0 && remainder > 0; j--)
+			{
+				auto it = innermost_sorted_delta_next_hop_flow_size.begin();
+				advance(it, (size_t)j);
+				if (get<0>(*it) > 0.0)
 				{
-					uint32_t checker = j%2;
-					//cout<<"checker is "<<checker<<endl;
-					if(checker == 0)
-					{
-						get<2>(*index_innermost) = floor(get<2>(*index_innermost));
-						total_count = total_count + floor(get<2>(*index_innermost));
-					}
-					else if (checker == 1)
-					{
-						get<2>(*index_innermost) = ceil(get<2>(*index_innermost));
-						total_count = total_count + ceil(get<2>(*index_innermost));
-					}
-					
-				
-				}
-				else if (j == (total_size-1))
-				{
-					uint32_t original_value = ceil(get<2>(*index_innermost));
-					total_count = total_count + original_value;
-					uint32_t deficiency = main_flow_packets - total_count;
-					get<2>(*index_innermost) = original_value + deficiency;	
+					get<2>(*it) += 1;
+					remainder--;
 				}
 			}
-			
-			//cout<<"Inner most list size "<<innermost_sorted_delta_next_hop_flow_size.size()<<endl;
-			middle_sorted_delta_next_hop_flow_size_local.emplace_back(innermost_sorted_delta_next_hop_flow_size);	
+
+			middle_sorted_delta_next_hop_flow_size_local.emplace_back(innermost_sorted_delta_next_hop_flow_size);
 		}
 		//cout<<"Middle list size "<<middle_sorted_delta_next_hop_flow_size_local.size()<<endl;
 		all_sorted_delta_next_hop_flow_size_local.emplace_back(middle_sorted_delta_next_hop_flow_size_local);
