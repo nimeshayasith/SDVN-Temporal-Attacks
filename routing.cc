@@ -140,11 +140,11 @@ int lambda = 30;
 
 const int Flow_size  = 55;
 uint32_t  flow_size  = 55;
-const int total_size = 100;
+const int total_size = 500;  // 200 veh + 80 RSUs + 2 ctrl + mgmt + LTE nodes = ~290
 
 uint32_t N_RSUs        = 0;
 uint32_t N_Vehicles    = 80;
-uint32_t N_Controllers = 1;
+uint32_t N_Controllers = 2;  // 2x1 grid (left/right halves) for 2889x2350m network
 
 const int flows = 2;
 
@@ -1572,13 +1572,45 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
 // CSMA PACKET HELPER — RSU → Controller real UDP send over CSMA Ethernet
 // =============================================================================
 
-static Ipv4Address AttackGetControllerIP()
+// ── 2x2 controller zone boundaries (urban SUMO network) ─────────────────────
+// 2x1 layout: col=0 → x < MID_X (left half)   col=1 → x >= MID_X (right half)
+// Controller index: 0=left  1=right
+// Network bounds: x=[0,2889.23]  y=[0,2349.84]
+static const double CTRL_ZONE_MID_X = 1444.6;   // 2889.23 / 2
+
+static uint32_t GetNearestControllerIdx(double x, double y)
 {
-    Ptr<Ipv4> ipv4 = controller_Node.Get(0)->GetObject<Ipv4>();
+    if (N_Controllers <= 1) return 0;
+    uint32_t idx = (x >= CTRL_ZONE_MID_X) ? 1 : 0;
+    return (idx < N_Controllers) ? idx : 0;
+}
+
+static Ipv4Address AttackGetControllerIPByIdx(uint32_t ctrl_idx)
+{
+    if (ctrl_idx >= controller_Node.GetN()) ctrl_idx = 0;
+    Ptr<Ipv4> ipv4 = controller_Node.Get(ctrl_idx)->GetObject<Ipv4>();
     if (!ipv4) return Ipv4Address("127.0.0.1");
     uint32_t iface_idx = (N_Vehicles > 0) ? 1 : 0;
     if (iface_idx >= ipv4->GetNInterfaces()) iface_idx = ipv4->GetNInterfaces() - 1;
     return ipv4->GetAddress(iface_idx, 0).GetLocal();
+}
+
+static Ipv4Address AttackGetControllerIP()
+{
+    // Attack scenarios S3/S4 (malicious controller) always target controller 0.
+    // Vehicle/RSU attacks use the nearest controller to the attacker position.
+    uint32_t idx = 0;
+    if (N_Controllers > 1 && malicious_vehicle_id < N_Vehicles
+        && Vehicle_Nodes.GetN() > malicious_vehicle_id)
+    {
+        Ptr<MobilityModel> mob =
+            Vehicle_Nodes.Get(malicious_vehicle_id)->GetObject<MobilityModel>();
+        if (mob) {
+            Vector pos = mob->GetPosition();
+            idx = GetNearestControllerIdx(pos.x, pos.y);
+        }
+    }
+    return AttackGetControllerIPByIdx(idx);
 }
 
 static void AttackSendRSUToController(uint32_t rsu_index);
@@ -98605,6 +98637,48 @@ NetDeviceContainer wifidevices_180;
 NetDeviceContainer wifidevices_182;
 NetDeviceContainer wifidevices_184;
 
+static inline NetDeviceContainer *
+GetDsrcDeviceContainer(uint16_t channel)
+{
+	switch (channel)
+	{
+		case 172:
+
+        return &wifidevices_172;
+		case 174:
+			return &wifidevices_174;
+		case 176:
+			return &wifidevices_176;
+		case 178:
+			return &wifidevices;
+		case 180:
+			return &wifidevices_180;
+		case 182:
+			return &wifidevices_182;
+		case 184:
+			return &wifidevices_184;
+		default:
+			return nullptr;
+	}
+}
+
+static inline Ptr<NetDevice>
+GetDsrcDevice(uint16_t channel, uint32_t index)
+{
+	NetDeviceContainer *container = GetDsrcDeviceContainer(channel);
+	if (container == nullptr || index >= container->GetN())
+	{
+		return nullptr;
+	}
+	return container->Get(index);
+}
+
+static inline Ptr<WifiNetDevice>
+GetWifiDsrcDevice(uint16_t channel, uint32_t index)
+{
+	return DynamicCast<WifiNetDevice>(GetDsrcDevice(channel, index));
+}
+
 
 NodeContainer dsrc_Nodes;
 
@@ -99086,7 +99160,7 @@ bool X_nodes[total_size+2];
 					tag_routing.SetTimestamp(&ti);
 					packet_i->AddPacketTag(tag_routing);
 					
-					if (((nid-2) > N_Vehicles) && (next_hop > N_Vehicles))
+					if (((nid-2) >= N_Vehicles) && (next_hop >= N_Vehicles))
 					{
 						Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(nid-2-N_Vehicles));	
 				  		Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(nid-2-N_Vehicles));
@@ -99110,12 +99184,22 @@ bool X_nodes[total_size+2];
 					
 					else
 					{
-						Ptr <NetDevice> destination_nd = wifidevices.Get(next_hop);
+						Ptr <NetDevice> destination_nd = GetDsrcDevice(178, next_hop);
+						if (!destination_nd)
+						{
+							cout << "Skipping DSRC unicast: invalid next hop " << next_hop << endl;
+							return;
+						}
 						Address addr = destination_nd->GetAddress();
 						Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
 						//cout <<endl<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<endl;
 					  	uint16_t protocolwave = 0x88dc;//
-						Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (wifidevices.Get(nid -2));
+						Ptr <WifiNetDevice> wdi = GetWifiDsrcDevice(178, nid - 2);
+						if (!wdi)
+						{
+							cout << "Skipping DSRC unicast: invalid sender index " << (nid - 2) << endl;
+							return;
+						}
 						cout<<"DSRC data Unicasting from node "<<nid - 2<<endl;
 						dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 						Simulator::Schedule (Seconds(0.000000) , &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
@@ -122996,7 +123080,14 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 						double tg = compute_individual_link_delay(0, pd_all_inst[flow_id].pd_inst[hop].attempts[arguments.channel][packet_id] + 2, 1, flow_packet_size, 1, zeta);
 						//cout<<"retransmitting"<<endl;
 						uint16_t protocolwave = 0x88dc;
-						Ptr <NetDevice> current_nd = wifidevices.Get(current_hop);
+						Ptr <NetDevice> current_nd = GetDsrcDevice(arguments.channel, current_hop);
+						Ptr <NetDevice> destination_nd = GetDsrcDevice(arguments.channel, hop);
+						if (!current_nd || !destination_nd)
+						{
+							cout << "Skipping retransmission: invalid hop index current=" << current_hop
+							     << " next=" << hop << " channel=" << arguments.channel << endl;
+							return;
+						}
 					
 						Ptr <Packet> packet_i = Create<Packet> (arguments.p_size-28);
 						CustomDataUnicastTag_ModifiedRouting tag;
@@ -123008,42 +123099,46 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 						tag.Setoriginal_timestamp(originail_timestamp);
 						packet_i->AddPacketTag(tag);
 						
-						Ptr <NetDevice> destination_nd = wifidevices.Get(hop);
-
-						Simulator::Schedule (Seconds (0.0), updateTxop, flow_id, current_hop, hop, packet_id, true, arguments);
-						switch(arguments.channel)
-						{
-							case(172):
-								current_nd = wifidevices_172.Get(current_hop);
-								destination_nd = wifidevices_172.Get(hop);
-								break;
-							case(174):
-								current_nd = wifidevices_174.Get(current_hop);
-								destination_nd = wifidevices_174.Get(hop);
-								break;
-							case(176):
-								current_nd = wifidevices_176.Get(current_hop);
-								destination_nd = wifidevices_176.Get(hop);
-								break;
-							case(178):
-								current_nd = wifidevices.Get(current_hop);
-								destination_nd = wifidevices.Get(hop);
-								break;
-							case(180):
-								current_nd = wifidevices_180.Get(current_hop);
-								destination_nd = wifidevices_180.Get(hop);
-								break;
-							case(182):
-								current_nd = wifidevices_182.Get(current_hop);
-								destination_nd = wifidevices_182.Get(hop);
-								break;
-							case(184):
-								current_nd = wifidevices_184.Get(current_hop);
-								destination_nd = wifidevices_184.Get(hop);
-								break;
-							default:
-								break;
-						}
+							Simulator::Schedule (Seconds (0.0), updateTxop, flow_id, current_hop, hop, packet_id, true, arguments);
+							switch(arguments.channel)
+							{
+								case(172):
+									current_nd = GetDsrcDevice(172, current_hop);
+									destination_nd = GetDsrcDevice(172, hop);
+									break;
+								case(174):
+									current_nd = GetDsrcDevice(174, current_hop);
+									destination_nd = GetDsrcDevice(174, hop);
+									break;
+								case(176):
+									current_nd = GetDsrcDevice(176, current_hop);
+									destination_nd = GetDsrcDevice(176, hop);
+									break;
+								case(178):
+									current_nd = GetDsrcDevice(178, current_hop);
+									destination_nd = GetDsrcDevice(178, hop);
+									break;
+								case(180):
+									current_nd = GetDsrcDevice(180, current_hop);
+									destination_nd = GetDsrcDevice(180, hop);
+									break;
+								case(182):
+									current_nd = GetDsrcDevice(182, current_hop);
+									destination_nd = GetDsrcDevice(182, hop);
+									break;
+								case(184):
+									current_nd = GetDsrcDevice(184, current_hop);
+									destination_nd = GetDsrcDevice(184, hop);
+									break;
+								default:
+									break;
+							}
+							if (!current_nd || !destination_nd)
+							{
+								cout << "Skipping retransmission: invalid hop index current=" << current_hop
+								     << " next=" << hop << " channel=" << arguments.channel << endl;
+								return;
+							}
 						Address addr = destination_nd->GetAddress();
 						Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
 						Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (current_nd);
@@ -123439,7 +123534,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 					tag_routing.SetTimestamp(&ti);
 					packet_i->AddPacketTag(tag_routing);
 					
-					if (((destination_node_id-2) > N_Vehicles) && (next_hop > N_Vehicles))
+						if (((destination_node_id-2) >= N_Vehicles) && (next_hop >= N_Vehicles))
 					{
 						Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(destination_node_id-2-N_Vehicles));	
 				  		Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(destination_node_id-2-N_Vehicles));
@@ -123449,12 +123544,22 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 					
 					else
 					{
-						Ptr <NetDevice> destination_nd = wifidevices.Get(next_hop);
+							Ptr <NetDevice> destination_nd = GetDsrcDevice(178, next_hop);
+							if (!destination_nd)
+							{
+								cout << "Skipping DSRC unicast: invalid next hop " << next_hop << endl;
+								return;
+							}
 						Address addr = destination_nd->GetAddress();
 						Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
 						//cout <<endl<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<endl;
 					  	uint16_t protocolwave = 0x88dc;//
-						Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (wifidevices.Get(destination_node_id -2));
+							Ptr <WifiNetDevice> wdi = GetWifiDsrcDevice(178, destination_node_id - 2);
+							if (!wdi)
+							{
+								cout << "Skipping DSRC unicast: invalid sender index " << (destination_node_id - 2) << endl;
+								return;
+							}
 						cout<<"DSRC data Unicasting from node "<<destination_node_id - 2<<endl;
 						dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 						Simulator::Schedule (Seconds(0.000000) , &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
@@ -123623,7 +123728,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tag.GetPosition(), tag.GetVelocity(), tag.GetAcceleration(), tag.GetNodeId(), empty_neighborset, 0);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tag.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tag.GetSerializedSize()<<" at position "<< tag.GetPosition()<<"with velocity "<<tag.GetVelocity()<<"with acceleration "<<tag.GetAcceleration()<<"packet timestamp "<< tag.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+//		std::cout << "Received data broadcasted packet from "<< tag.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tag.GetSerializedSize()<<" at position "<< tag.GetPosition()<<"with velocity "<<tag.GetVelocity()<<"with acceleration "<<tag.GetAcceleration()<<"packet timestamp "<< tag.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag1 tagd1;
@@ -123633,7 +123738,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd1.GetPosition(), tagd1.GetVelocity(), tagd1.GetAcceleration(), tagd1.GetNodeId(), tagd1.GetNeighborids(), 1);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd1.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd1.GetSerializedSize()<<" at position "<< tagd1.GetPosition()<<"with velocity "<<tagd1.GetVelocity()<<"with acceleration "<<tagd1.GetAcceleration()<<"packet timestamp "<< tagd1.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd1.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+//		std::cout << "Received data broadcasted packet from "<< tagd1.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd1.GetSerializedSize()<<" at position "<< tagd1.GetPosition()<<"with velocity "<<tagd1.GetVelocity()<<"with acceleration "<<tagd1.GetAcceleration()<<"packet timestamp "<< tagd1.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd1.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag2 tagd2;
@@ -123643,7 +123748,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd2.GetPosition(), tagd2.GetVelocity(), tagd2.GetAcceleration(), tagd2.GetNodeId(), tagd2.GetNeighborids(), 2);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd2.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd2.GetSerializedSize()<<" at position "<< tagd2.GetPosition()<<"with velocity "<<tagd2.GetVelocity()<<"with acceleration "<<tagd2.GetAcceleration()<<"packet timestamp "<< tagd2.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd2.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd2.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd2.GetSerializedSize()<<" at position "<< tagd2.GetPosition()<<"with velocity "<<tagd2.GetVelocity()<<"with acceleration "<<tagd2.GetAcceleration()<<"packet timestamp "<< tagd2.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd2.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag3 tagd3;
@@ -123653,7 +123758,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd3.GetPosition(), tagd3.GetVelocity(), tagd3.GetAcceleration(), tagd3.GetNodeId(), tagd3.GetNeighborids(), 3);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd3.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd3.GetSerializedSize()<<" at position "<< tagd3.GetPosition()<<"with velocity "<<tagd3.GetVelocity()<<"with acceleration "<<tagd3.GetAcceleration()<<"packet timestamp "<< tagd3.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd3.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd3.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd3.GetSerializedSize()<<" at position "<< tagd3.GetPosition()<<"with velocity "<<tagd3.GetVelocity()<<"with acceleration "<<tagd3.GetAcceleration()<<"packet timestamp "<< tagd3.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd3.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag4 tagd4;
@@ -123663,7 +123768,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd4.GetPosition(), tagd4.GetVelocity(), tagd4.GetAcceleration(), tagd4.GetNodeId(), tagd4.GetNeighborids(), 4);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd4.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd4.GetSerializedSize()<<" at position "<< tagd4.GetPosition()<<"with velocity "<<tagd4.GetVelocity()<<"with acceleration "<<tagd4.GetAcceleration()<<"packet timestamp "<< tagd4.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd4.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd4.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd4.GetSerializedSize()<<" at position "<< tagd4.GetPosition()<<"with velocity "<<tagd4.GetVelocity()<<"with acceleration "<<tagd4.GetAcceleration()<<"packet timestamp "<< tagd4.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd4.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag5 tagd5;
@@ -123673,7 +123778,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd5.GetPosition(), tagd5.GetVelocity(), tagd5.GetAcceleration(), tagd5.GetNodeId(), tagd5.GetNeighborids(), 5);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd5.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd5.GetSerializedSize()<<" at position "<< tagd5.GetPosition()<<"with velocity "<<tagd5.GetVelocity()<<"with acceleration "<<tagd5.GetAcceleration()<<"packet timestamp "<< tagd5.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd5.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd5.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd5.GetSerializedSize()<<" at position "<< tagd5.GetPosition()<<"with velocity "<<tagd5.GetVelocity()<<"with acceleration "<<tagd5.GetAcceleration()<<"packet timestamp "<< tagd5.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd5.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag6 tagd6;
@@ -123683,7 +123788,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd6.GetPosition(), tagd6.GetVelocity(), tagd6.GetAcceleration(), tagd6.GetNodeId(), tagd6.GetNeighborids(), 6);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd6.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd6.GetSerializedSize()<<" at position "<< tagd6.GetPosition()<<"with velocity "<<tagd6.GetVelocity()<<"with acceleration "<<tagd6.GetAcceleration()<<"packet timestamp "<< tagd6.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd6.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd6.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd6.GetSerializedSize()<<" at position "<< tagd6.GetPosition()<<"with velocity "<<tagd6.GetVelocity()<<"with acceleration "<<tagd6.GetAcceleration()<<"packet timestamp "<< tagd6.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd6.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag7 tagd7;
@@ -123693,7 +123798,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd7.GetPosition(), tagd7.GetVelocity(), tagd7.GetAcceleration(), tagd7.GetNodeId(), tagd7.GetNeighborids(), 7);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd7.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd7.GetSerializedSize()<<" at position "<< tagd7.GetPosition()<<"with velocity "<<tagd7.GetVelocity()<<"with acceleration "<<tagd7.GetAcceleration()<<"packet timestamp "<< tagd7.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd7.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd7.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd7.GetSerializedSize()<<" at position "<< tagd7.GetPosition()<<"with velocity "<<tagd7.GetVelocity()<<"with acceleration "<<tagd7.GetAcceleration()<<"packet timestamp "<< tagd7.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd7.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	
@@ -123704,7 +123809,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd8.GetPosition(), tagd8.GetVelocity(), tagd8.GetAcceleration(), tagd8.GetNodeId(), tagd8.GetNeighborids(), 8);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd8.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd8.GetSerializedSize()<<" at position "<< tagd8.GetPosition()<<"with velocity "<<tagd8.GetVelocity()<<"with acceleration "<<tagd8.GetAcceleration()<<"packet timestamp "<< tagd8.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd8.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd8.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd8.GetSerializedSize()<<" at position "<< tagd8.GetPosition()<<"with velocity "<<tagd8.GetVelocity()<<"with acceleration "<<tagd8.GetAcceleration()<<"packet timestamp "<< tagd8.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd8.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag9 tagd9;
@@ -123714,7 +123819,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd9.GetPosition(), tagd9.GetVelocity(), tagd9.GetAcceleration(), tagd9.GetNodeId(), tagd9.GetNeighborids(), 9);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd9.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd9.GetSerializedSize()<<" at position "<< tagd9.GetPosition()<<"with velocity "<<tagd9.GetVelocity()<<"with acceleration "<<tagd9.GetAcceleration()<<"packet timestamp "<< tagd9.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd9.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd9.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd9.GetSerializedSize()<<" at position "<< tagd9.GetPosition()<<"with velocity "<<tagd9.GetVelocity()<<"with acceleration "<<tagd9.GetAcceleration()<<"packet timestamp "<< tagd9.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd9.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag10 tagd10;
@@ -123724,7 +123829,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd10.GetPosition(), tagd10.GetVelocity(), tagd10.GetAcceleration(), tagd10.GetNodeId(), tagd10.GetNeighborids(), 10);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd10.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd10.GetSerializedSize()<<" at position "<< tagd10.GetPosition()<<"with velocity "<<tagd10.GetVelocity()<<"with acceleration "<<tagd10.GetAcceleration()<<"packet timestamp "<< tagd10.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd10.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd10.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd10.GetSerializedSize()<<" at position "<< tagd10.GetPosition()<<"with velocity "<<tagd10.GetVelocity()<<"with acceleration "<<tagd10.GetAcceleration()<<"packet timestamp "<< tagd10.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd10.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag11 tagd11;
@@ -123734,7 +123839,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd11.GetPosition(), tagd11.GetVelocity(), tagd11.GetAcceleration(), tagd11.GetNodeId(), tagd11.GetNeighborids(), 11);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd11.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd11.GetSerializedSize()<<" at position "<< tagd11.GetPosition()<<"with velocity "<<tagd11.GetVelocity()<<"with acceleration "<<tagd11.GetAcceleration()<<"packet timestamp "<< tagd11.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd11.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd11.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd11.GetSerializedSize()<<" at position "<< tagd11.GetPosition()<<"with velocity "<<tagd11.GetVelocity()<<"with acceleration "<<tagd11.GetAcceleration()<<"packet timestamp "<< tagd11.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd11.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag12 tagd12;
@@ -123744,7 +123849,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd12.GetPosition(), tagd12.GetVelocity(), tagd12.GetAcceleration(), tagd12.GetNodeId(), tagd12.GetNeighborids(), 12);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd12.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd12.GetSerializedSize()<<" at position "<< tagd12.GetPosition()<<"with velocity "<<tagd12.GetVelocity()<<"with acceleration "<<tagd12.GetAcceleration()<<"packet timestamp "<< tagd12.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd12.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd12.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd12.GetSerializedSize()<<" at position "<< tagd12.GetPosition()<<"with velocity "<<tagd12.GetVelocity()<<"with acceleration "<<tagd12.GetAcceleration()<<"packet timestamp "<< tagd12.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd12.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag13 tagd13;
@@ -123754,7 +123859,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd13.GetPosition(), tagd13.GetVelocity(), tagd13.GetAcceleration(), tagd13.GetNodeId(), tagd13.GetNeighborids(), 13);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd13.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd13.GetSerializedSize()<<" at position "<< tagd13.GetPosition()<<"with velocity "<<tagd13.GetVelocity()<<"with acceleration "<<tagd13.GetAcceleration()<<"packet timestamp "<< tagd13.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd13.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd13.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd13.GetSerializedSize()<<" at position "<< tagd13.GetPosition()<<"with velocity "<<tagd13.GetVelocity()<<"with acceleration "<<tagd13.GetAcceleration()<<"packet timestamp "<< tagd13.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd13.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag14 tagd14;
@@ -123764,7 +123869,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd14.GetPosition(), tagd14.GetVelocity(), tagd14.GetAcceleration(), tagd14.GetNodeId(), tagd14.GetNeighborids(), 14);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd14.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd14.GetSerializedSize()<<" at position "<< tagd14.GetPosition()<<"with velocity "<<tagd14.GetVelocity()<<"with acceleration "<<tagd14.GetAcceleration()<<"packet timestamp "<< tagd14.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd14.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd14.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd14.GetSerializedSize()<<" at position "<< tagd14.GetPosition()<<"with velocity "<<tagd14.GetVelocity()<<"with acceleration "<<tagd14.GetAcceleration()<<"packet timestamp "<< tagd14.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd14.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag15 tagd15;
@@ -123774,7 +123879,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd15.GetPosition(), tagd15.GetVelocity(), tagd15.GetAcceleration(), tagd15.GetNodeId(), tagd15.GetNeighborids(), 15);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd15.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd15.GetSerializedSize()<<" at position "<< tagd15.GetPosition()<<"with velocity "<<tagd15.GetVelocity()<<"with acceleration "<<tagd15.GetAcceleration()<<"packet timestamp "<< tagd15.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd15.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd15.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd15.GetSerializedSize()<<" at position "<< tagd15.GetPosition()<<"with velocity "<<tagd15.GetVelocity()<<"with acceleration "<<tagd15.GetAcceleration()<<"packet timestamp "<< tagd15.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd15.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag16 tagd16;
@@ -123784,7 +123889,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd16.GetPosition(), tagd16.GetVelocity(), tagd16.GetAcceleration(), tagd16.GetNodeId(), tagd16.GetNeighborids(), 16);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd16.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd16.GetSerializedSize()<<" at position "<< tagd16.GetPosition()<<"with velocity "<<tagd16.GetVelocity()<<"with acceleration "<<tagd16.GetAcceleration()<<"packet timestamp "<< tagd16.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd16.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd16.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd16.GetSerializedSize()<<" at position "<< tagd16.GetPosition()<<"with velocity "<<tagd16.GetVelocity()<<"with acceleration "<<tagd16.GetAcceleration()<<"packet timestamp "<< tagd16.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd16.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	
@@ -123795,7 +123900,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd17.GetPosition(), tagd17.GetVelocity(), tagd17.GetAcceleration(), tagd17.GetNodeId(), tagd17.GetNeighborids(), 17);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd17.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd17.GetSerializedSize()<<" at position "<< tagd17.GetPosition()<<"with velocity "<<tagd17.GetVelocity()<<"with acceleration "<<tagd17.GetAcceleration()<<"packet timestamp "<< tagd17.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd17.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd17.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd17.GetSerializedSize()<<" at position "<< tagd17.GetPosition()<<"with velocity "<<tagd17.GetVelocity()<<"with acceleration "<<tagd17.GetAcceleration()<<"packet timestamp "<< tagd17.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd17.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag18 tagd18;
@@ -123805,7 +123910,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd18.GetPosition(), tagd18.GetVelocity(), tagd18.GetAcceleration(), tagd18.GetNodeId(), tagd18.GetNeighborids(), 18);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd18.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd18.GetSerializedSize()<<" at position "<< tagd18.GetPosition()<<"with velocity "<<tagd18.GetVelocity()<<"with acceleration "<<tagd18.GetAcceleration()<<"packet timestamp "<< tagd18.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd18.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd18.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd18.GetSerializedSize()<<" at position "<< tagd18.GetPosition()<<"with velocity "<<tagd18.GetVelocity()<<"with acceleration "<<tagd18.GetAcceleration()<<"packet timestamp "<< tagd18.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd18.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag19 tagd19;
@@ -123815,7 +123920,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd19.GetPosition(), tagd19.GetVelocity(), tagd19.GetAcceleration(), tagd19.GetNodeId(), tagd19.GetNeighborids(), 19);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd19.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd19.GetSerializedSize()<<" at position "<< tagd19.GetPosition()<<"with velocity "<<tagd19.GetVelocity()<<"with acceleration "<<tagd19.GetAcceleration()<<"packet timestamp "<< tagd19.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd19.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd19.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd19.GetSerializedSize()<<" at position "<< tagd19.GetPosition()<<"with velocity "<<tagd19.GetVelocity()<<"with acceleration "<<tagd19.GetAcceleration()<<"packet timestamp "<< tagd19.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd19.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag20 tagd20;
@@ -123825,7 +123930,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd20.GetPosition(), tagd20.GetVelocity(), tagd20.GetAcceleration(), tagd20.GetNodeId(), tagd20.GetNeighborids(), 20);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd20.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd20.GetSerializedSize()<<" at position "<< tagd20.GetPosition()<<"with velocity "<<tagd20.GetVelocity()<<"with acceleration "<<tagd20.GetAcceleration()<<"packet timestamp "<< tagd20.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd20.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd20.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd20.GetSerializedSize()<<" at position "<< tagd20.GetPosition()<<"with velocity "<<tagd20.GetVelocity()<<"with acceleration "<<tagd20.GetAcceleration()<<"packet timestamp "<< tagd20.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd20.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag21 tagd21;
@@ -123835,7 +123940,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd21.GetPosition(), tagd21.GetVelocity(), tagd21.GetAcceleration(), tagd21.GetNodeId(), tagd21.GetNeighborids(), 21);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd21.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd21.GetSerializedSize()<<" at position "<< tagd21.GetPosition()<<"with velocity "<<tagd21.GetVelocity()<<"with acceleration "<<tagd21.GetAcceleration()<<"packet timestamp "<< tagd21.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd21.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd21.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd21.GetSerializedSize()<<" at position "<< tagd21.GetPosition()<<"with velocity "<<tagd21.GetVelocity()<<"with acceleration "<<tagd21.GetAcceleration()<<"packet timestamp "<< tagd21.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd21.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag22 tagd22;
@@ -123845,7 +123950,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd22.GetPosition(), tagd22.GetVelocity(), tagd22.GetAcceleration(), tagd22.GetNodeId(), tagd22.GetNeighborids(), 22);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd22.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd22.GetSerializedSize()<<" at position "<< tagd22.GetPosition()<<"with velocity "<<tagd22.GetVelocity()<<"with acceleration "<<tagd22.GetAcceleration()<<"packet timestamp "<< tagd22.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd22.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd22.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd22.GetSerializedSize()<<" at position "<< tagd22.GetPosition()<<"with velocity "<<tagd22.GetVelocity()<<"with acceleration "<<tagd22.GetAcceleration()<<"packet timestamp "<< tagd22.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd22.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag23 tagd23;
@@ -123855,7 +123960,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd23.GetPosition(), tagd23.GetVelocity(), tagd23.GetAcceleration(), tagd23.GetNodeId(), tagd23.GetNeighborids(), 23);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd23.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd23.GetSerializedSize()<<" at position "<< tagd23.GetPosition()<<"with velocity "<<tagd23.GetVelocity()<<"with acceleration "<<tagd23.GetAcceleration()<<"packet timestamp "<< tagd23.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd23.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd23.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd23.GetSerializedSize()<<" at position "<< tagd23.GetPosition()<<"with velocity "<<tagd23.GetVelocity()<<"with acceleration "<<tagd23.GetAcceleration()<<"packet timestamp "<< tagd23.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd23.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag24 tagd24;
@@ -123865,7 +123970,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd24.GetPosition(), tagd24.GetVelocity(), tagd24.GetAcceleration(), tagd24.GetNodeId(), tagd24.GetNeighborids(), 24);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd24.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd24.GetSerializedSize()<<" at position "<< tagd24.GetPosition()<<"with velocity "<<tagd24.GetVelocity()<<"with acceleration "<<tagd24.GetAcceleration()<<"packet timestamp "<< tagd24.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd24.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd24.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd24.GetSerializedSize()<<" at position "<< tagd24.GetPosition()<<"with velocity "<<tagd24.GetVelocity()<<"with acceleration "<<tagd24.GetAcceleration()<<"packet timestamp "<< tagd24.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd24.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag25 tagd25;
@@ -123875,7 +123980,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd25.GetPosition(), tagd25.GetVelocity(), tagd25.GetAcceleration(), tagd25.GetNodeId(), tagd25.GetNeighborids(), 25);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagd25.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd25.GetSerializedSize()<<" at position "<< tagd25.GetPosition()<<"with velocity "<<tagd25.GetVelocity()<<"with acceleration "<<tagd25.GetAcceleration()<<"packet timestamp "<< tagd25.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd25.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagd25.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd25.GetSerializedSize()<<" at position "<< tagd25.GetPosition()<<"with velocity "<<tagd25.GetVelocity()<<"with acceleration "<<tagd25.GetAcceleration()<<"packet timestamp "<< tagd25.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd25.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	
@@ -123886,7 +123991,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagdmax.GetPosition(), tagdmax.GetVelocity(), tagdmax.GetAcceleration(), tagdmax.GetNodeId(), tagdmax.GetNeighborids(), max);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		std::cout << "Received data broadcasted packet from "<< tagdmax.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagdmax.GetSerializedSize()<<" at position "<< tagdmax.GetPosition()<<"with velocity "<<tagdmax.GetVelocity()<<"with acceleration "<<tagdmax.GetAcceleration()<<"packet timestamp "<< tagdmax.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagdmax.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+// std::cout << "Received data broadcasted packet from "<< tagdmax.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagdmax.GetSerializedSize()<<" at position "<< tagdmax.GetPosition()<<"with velocity "<<tagdmax.GetVelocity()<<"with acceleration "<<tagdmax.GetAcceleration()<<"packet timestamp "<< tagdmax.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagdmax.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomMetaDataBroadcastTag tag2;
@@ -124936,7 +125041,7 @@ void hybrid_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint
 		packet_i->AddPacketTag(tag);
 		
 		
-		if (((nid-2) > N_Vehicles) && (next_hop > N_Vehicles))
+			if (((nid-2) >= N_Vehicles) && (next_hop >= N_Vehicles))
 		{
 			Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(nid-2-N_Vehicles));	
 	  		Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(nid-2-N_Vehicles));
@@ -124947,7 +125052,12 @@ void hybrid_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint
 		else
 		{
 			cout<<"This is source node. DSRC data Unicasting from node "<<nid - 2<<endl;
-			Ptr <NetDevice> destination_nd = wifidevices.Get(next_hop);
+				Ptr <NetDevice> destination_nd = GetDsrcDevice(178, next_hop);
+				if (!destination_nd)
+				{
+					cout << "Skipping DSRC unicast: invalid next hop " << next_hop << endl;
+					return;
+				}
 			Address addr = destination_nd->GetAddress();
 			Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
 			//cout <<endl<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<endl;
@@ -143152,7 +143262,7 @@ attack_mobility.Install(Vehicle_Nodes);
 	  csma_nodes.Add(management_Node);  
 	  csmaDevices = csma.Install (csma_nodes);
 	  csma.EnablePcapAll (BuildPcapPrefix("csma_trace", attack_scenario));
-  	  address.SetBase ("10.1.1.0", "255.255.255.0");
+  	  address.SetBase ("10.1.0.0", "255.255.0.0");  // /16: 65534 hosts — fits 272 RSUs + 4 ctrl + mgmt
   	  stack.Install (csma_nodes);
   	  csmaInterfaces = address.Assign (csmaDevices);
   } 
@@ -143204,10 +143314,8 @@ attack_mobility.Install(Vehicle_Nodes);
 		  	p2p_horizontal[z].SetDeviceAttribute ("DataRate", StringValue ("1000Mbps"));
 		  	p2p_horizontal[z].SetChannelAttribute ("Delay", TimeValue (MicroSeconds (10)));
 		  	p2pdevices_horizontal[z] = p2p_horizontal[z].Install (RSU_Nodes.Get(i), RSU_Nodes.Get(i+1));
-		 	string part1 = "20.1.";
-		  	string st = to_string(z);
-		  	string part3 = ".0";
-		  	string baseaddress = part1 + st + part3;
+		 	// z can exceed 255 with large RSU grids — use two octets
+		  	string baseaddress = "20." + to_string(1 + z/256) + "." + to_string(z%256) + ".0";
 		  	char const * baseaddress_converted = baseaddress.c_str();
 		  	Ipv4AddressHelper address;
 		 	address.SetBase (Ipv4Address(baseaddress_converted), "255.255.255.0");
@@ -143529,20 +143637,17 @@ attack_mobility.Install(Vehicle_Nodes);
   	lte_base_posy = 1500;
   	
   	//delta_y = 800/x;
-  	delta_y = 280;
-  	//delta_x = 1600/5;
-  	delta_x = 280;
-	  	if (N_RSUs < 13)
-	  	{		
-	  		RSU_mobility.SetPositionAllocator ("ns3::GridPositionAllocator","MinX", DoubleValue (750.0),"MinY", DoubleValue (1200.0),"DeltaX", DoubleValue (delta_x),"DeltaY", DoubleValue (delta_y),"GridWidth", UintegerValue (7),"LayoutType", StringValue ("RowFirst"));
-	  		vehicle_mobility.SetPositionAllocator ("ns3::GridPositionAllocator","MinX", DoubleValue (650.0),"MinY", DoubleValue (1000.0), "DeltaX", DoubleValue (delta_x/2),"DeltaY", DoubleValue (delta_y),"GridWidth", UintegerValue (14),"LayoutType", StringValue ("RowFirst"));
-	  		
-	  	}
-	  	else
-	  	{
-	  		RSU_mobility.SetPositionAllocator ("ns3::GridPositionAllocator","MinX", DoubleValue (750.0),"MinY", DoubleValue (900.0),"DeltaX", DoubleValue (delta_x),"DeltaY", DoubleValue (delta_y),"GridWidth", UintegerValue (7),"LayoutType", StringValue ("RowFirst"));
-	  		vehicle_mobility.SetPositionAllocator ("ns3::GridPositionAllocator","MinX", DoubleValue (650.0),"MinY", DoubleValue (1000.0), "DeltaX", DoubleValue (delta_x/2),"DeltaY", DoubleValue (delta_y),"GridWidth", UintegerValue (14),"LayoutType", StringValue ("RowFirst"));
-	  	}
+  	// Urban SUMO network: 0 to 2889.23 x 0 to 2349.84
+  	// RSU grid: 300m spacing → 10 cols x 8 rows = 80 RSUs (matches urban_rsu_grid.xml)
+  	delta_x = 300.0;
+  	delta_y = 300.0;
+  	RSU_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+  	    "MinX",      DoubleValue (0.0),
+  	    "MinY",      DoubleValue (0.0),
+  	    "DeltaX",    DoubleValue (delta_x),
+  	    "DeltaY",    DoubleValue (delta_y),
+  	    "GridWidth", UintegerValue (10),
+  	    "LayoutType", StringValue ("RowFirst"));
   }
 //   if(routing_test == false)
 //   {
@@ -143659,11 +143764,17 @@ attack_mobility.Install(Vehicle_Nodes);
 
    if (architecture != 1)
    {
+	   // 2x1 grid centres for 2889x2350m network
+	   // Index: 0=Left(722,1175)  1=Right(2167,1175)
+	   static const double ctrl_pos_x[2] = {722.3, 2166.9};
+	   static const double ctrl_pos_y[2] = {1175.0, 1175.0};
 	   for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
 	   {
 	       Ptr<ConstantVelocityMobilityModel> mdl_controller = DynamicCast <ConstantVelocityMobilityModel> (controller_Node.Get(ci)->GetObject<MobilityModel>());
-	       mdl_controller->SetPosition(Vector(con_base_posx + (int)ci * 200, con_base_posy, 0));
-	       mdl_controller->SetVelocity(Vector(0, 0, 0));//centralized controller placement
+	       double cx = (ci < 2) ? ctrl_pos_x[ci] : con_base_posx + (int)ci * 200;
+	       double cy = (ci < 2) ? ctrl_pos_y[ci] : con_base_posy;
+	       mdl_controller->SetPosition(Vector(cx, cy, 0));
+	       mdl_controller->SetVelocity(Vector(0, 0, 0));
 	   }
 
 	  //setting the position of management node
@@ -144647,8 +144758,15 @@ attack_mobility.Install(Vehicle_Nodes);
 					  {
 					  	Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(u));	
 					  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(u));
-						Simulator::Schedule(Seconds(t+0.000050*u),RSU_dataunicast_agent, udp_app, nu, controller_Node.Get(0));
-						Simulator::Schedule(Seconds(t+0.000060*u),RSU_routing_statusdataunicast_alone, udp_app, nu, controller_Node.Get(0));
+						{
+							uint32_t rsu_ctrl_idx = 0;
+							if (N_Controllers > 1) {
+							    Ptr<MobilityModel> rsu_mob = nu->GetObject<MobilityModel>();
+							    if (rsu_mob) { Vector rp = rsu_mob->GetPosition(); rsu_ctrl_idx = GetNearestControllerIdx(rp.x, rp.y); }
+							}
+							Simulator::Schedule(Seconds(t+0.000050*u),RSU_dataunicast_agent, udp_app, nu, controller_Node.Get(rsu_ctrl_idx));
+							Simulator::Schedule(Seconds(t+0.000060*u),RSU_routing_statusdataunicast_alone, udp_app, nu, controller_Node.Get(rsu_ctrl_idx));
+						}
 						if (u == (RSU_Nodes.GetN() - 1))
 						{
 							Simulator::Schedule(Seconds(t+0.000060*u),RSU_flowdata_unicast_alone, udp_app, nu, management_Node.Get(0));
@@ -145074,15 +145192,22 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       }
   }
 
-  // Controllers — purple by default, always visible
+  // Controllers — distinct colors per zone, always visible
+  // 0=Left purple  1=Right magenta
+  static const uint8_t ctrl_r[2] = {160, 255};
+  static const uint8_t ctrl_g[2] = {  0,   0};
+  static const uint8_t ctrl_b[2] = {255, 200};
+  static const char* ctrl_zone[2] = {"Ctrl-Left","Ctrl-Right"};
   for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
   {
-      anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
-      anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 30.0, 30.0);
-      anim.UpdateNodeDescription(controller_Node.Get(ci),
-          (controller_Node.GetN() > 1
-               ? ("Controller-" + std::to_string(ci)).c_str()
-               : "Controller"));
+      uint8_t r = (ci < 2) ? ctrl_r[ci] : 255;
+      uint8_t g = (ci < 2) ? ctrl_g[ci] :   0;
+      uint8_t b = (ci < 2) ? ctrl_b[ci] : 255;
+      anim.UpdateNodeColor(controller_Node.Get(ci), r, g, b);
+      anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 40.0, 40.0);
+      std::string label = (ci < 2) ? ctrl_zone[ci]
+                                    : ("Controller-" + std::to_string(ci));
+      anim.UpdateNodeDescription(controller_Node.Get(ci), label);
   }
 
   // ── TTW-S1: color all malicious nodes RED, all others BLUE ───────────────
