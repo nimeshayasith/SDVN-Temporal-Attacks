@@ -1,26 +1,6 @@
 package main
 
 // Anchor Checkpoint Protocol (PDF Section 5.1)
-//
-// Tier 1 (RSU) peers periodically produce PBFT-signed ledger digests
-// (anchor checkpoints) that commit the global state root at a fixed block
-// height interval.  Tier 2 OBU peers MUST synchronise from the latest anchor
-// checkpoint before participating in any PBFT consensus round — this ensures
-// all active peers validate transactions from an identical committed base state.
-//
-// Interval = ⌊Tmin / Tb⌋ blocks
-//   Tmin  = max(3·TPBFT, Llink/2)
-//   Urban (Llink≈43 s): Tmin = max(600 ms, 21 500 ms) → 215 blocks at Tb=100 ms
-//   Highway (Llink≈9 s): Tmin = max(600 ms, 4 500 ms) →  45 blocks
-//
-// Chaincode functions:
-//   CreateAnchorCheckpoint(fromPeerID, intervalBlocksStr)
-//     — Tier 1 RSU only; writes AnchorCheckpoint to ANCHOR:<ts> key
-//   GetLatestAnchorCheckpoint()
-//     — Returns most recent checkpoint; nil during bootstrap phase
-//   SyncFromAnchorCheckpoint(checkpointID, obuPeerID)
-//     — OBU calls this to record that it has synced from the given checkpoint;
-//       τk ≥ τmin required before it may join Pactive
 
 import (
 	"crypto/sha256"
@@ -33,39 +13,40 @@ import (
 )
 
 const (
-	// AnchorIntervalBlocksUrban is ⌊Tmin/Tb⌋ for urban scenario (default).
+	// AnchorIntervalBlocksUrban is ⌊Tmin/Tb⌋ for urban scenario (Llink≈43 s).
 	AnchorIntervalBlocksUrban = 215
 
-	// AnchorBlockCtrKey is the ledger key for the monotonic block counter.
+	// AnchorIntervalBlocksHighway is ⌊Tmin/Tb⌋ for highway scenario (Llink≈9 s).
+	// AN-03: added — bootstrap.sh uses ANCHOR_INTERVAL_BLOCKS=45 for highway,
+	// but the constant was missing, making the highway case undiscoverable.
+	AnchorIntervalBlocksHighway = 45
+
 	AnchorBlockCtrKey = "ANCHOR_CTR"
 )
 
-// CreateAnchorCheckpoint produces a PBFT-signed ledger digest committing the
-// current state root hash at the current simulated block height.
+// CreateAnchorCheckpoint produces a PBFT-signed ledger digest at the current block height.
 //
-// Only Tier 1 RSU peers (IsRSUPeer=true, trust score = 1.0) are authorised.
-// The checkpoint is written to key ANCHOR:<created_at_ms> and emits the
-// AnchorCheckpointCreated event for off-chain listeners (eventListener.js).
+// AN-01 FIX: Ledger key is now ANCHOR:<blockHeight> (deterministic, from the
+// monotonic ANCHOR_CTR counter) instead of ANCHOR:<now> (wall-clock, non-deterministic).
+// Two endorsing peers calling this at slightly different times previously wrote to
+// different keys, causing Fabric MVCC PHANTOM_READ_CONFLICT and rejected transactions.
 //
-// intervalBlocksStr — optional; defaults to AnchorIntervalBlocksUrban (215).
-//   Pass "45" for highway scenario (Llink≈9 s).
+// A-1 (from previous audit): state root hash = SHA-256(TxID||channelID||blockHeight),
+// no wall-clock component — deterministic across all endorsers.
 func (t *TemporalEchoMitigator) CreateAnchorCheckpoint(
 	ctx contractapi.TransactionContextInterface,
 	fromPeerID string,
 	intervalBlocksStr string,
 ) (string, error) {
-	// Only Tier 1 RSU peers may create anchor checkpoints
-	trust, err := loadTrust(ctx, fromPeerID)
-	if err != nil || !trust.IsRSUPeer || trust.Score < TrustInitTier1-1e-9 {
+	trust := loadTrust(ctx, fromPeerID)
+	if !trust.IsRSUPeer || trust.Score < TrustInitTier1-1e-9 {
 		return "", fmt.Errorf(
 			"CreateAnchorCheckpoint: peer %s is not an authorised Tier 1 RSU (trust=%.3f, isRSU=%v)",
 			fromPeerID, trust.Score, trust.IsRSUPeer)
 	}
 
-	// Increment the simulated block counter
 	blockHeight := anchorIncrementCounter(ctx)
 
-	// Parse optional interval override
 	intervalBlocks := AnchorIntervalBlocksUrban
 	if intervalBlocksStr != "" {
 		var parsed int
@@ -74,21 +55,18 @@ func (t *TemporalEchoMitigator) CreateAnchorCheckpoint(
 		}
 	}
 
-	// State root hash approximation: SHA-256(TxID ‖ created_at_ms)
-	// In production this would be the actual ledger state root from the block header.
-	now := time.Now().UnixMilli()
+	// A-1: deterministic state root — no wall-clock in hash
 	h := sha256.New()
 	h.Write([]byte(ctx.GetStub().GetTxID()))
-	h.Write([]byte(fmt.Sprintf("%d", now)))
+	h.Write([]byte(ctx.GetStub().GetChannelID()))
+	h.Write([]byte(fmt.Sprintf("%d", blockHeight)))
 	stateRoot := hex.EncodeToString(h.Sum(nil))
 
-	// Peer public key from KEYSTORE (used as signature placeholder in simulation;
-	// production: Sign(SK_nk, stateRoot ‖ blockHeight ‖ fromPeerID) with Dilithium2)
+	now := time.Now().UnixMilli() // metadata only — NOT part of hash or ledger key
+
 	peerPubKey := getPeerPubKey(ctx, fromPeerID)
 	sigInput := fmt.Sprintf("%s:%d:%s", fromPeerID, blockHeight, stateRoot)
-	// In simulation mode verifyDilithium2Sig accepts any non-empty bytes,
-	// so we store peerPubKey as the signature placeholder.
-	peerSig := []byte(sigInput) // replaced by real Dilithium2 sig in -tags liboqs build
+	peerSig := []byte(sigInput)
 	if len(peerPubKey) > 0 {
 		peerSig = peerPubKey
 	}
@@ -107,12 +85,12 @@ func (t *TemporalEchoMitigator) CreateAnchorCheckpoint(
 	}
 
 	data, _ := json.Marshal(cp)
-	key := fmt.Sprintf("ANCHOR:%d", now)
+	// AN-01 FIX: key uses blockHeight (deterministic) not now (non-deterministic)
+	key := fmt.Sprintf("ANCHOR:%d", blockHeight)
 	if err := ctx.GetStub().PutState(key, data); err != nil {
 		return "", fmt.Errorf("CreateAnchorCheckpoint: ledger write failed: %v", err)
 	}
 
-	// Emit event so eventListener.js and OBU peers know a new checkpoint exists
 	evPayload, _ := json.Marshal(map[string]interface{}{
 		"checkpoint_id":   cp.CheckpointID,
 		"block_height":    blockHeight,
@@ -127,15 +105,12 @@ func (t *TemporalEchoMitigator) CreateAnchorCheckpoint(
 }
 
 // GetLatestAnchorCheckpoint returns the most recently created AnchorCheckpoint.
-// Returns nil (no error) during the bootstrap phase when no checkpoint exists yet.
-//
-// Called by Tier 2 OBU peers before joining a consensus round to verify they
-// are operating from the committed base state.
+// TR-05 note: uses block_height sort (monotonic) not created_at_ms (wall-clock).
 func (t *TemporalEchoMitigator) GetLatestAnchorCheckpoint(
 	ctx contractapi.TransactionContextInterface,
 ) (*AnchorCheckpoint, error) {
-	// CouchDB rich query: sort descending by created_at_ms, take one record
-	qs := `{"selector":{"doc_type":"ANCHOR_CHECKPOINT"},"sort":[{"created_at_ms":"desc"}],"limit":1}`
+	// TR-05: sort by block_height (deterministic monotonic counter) not created_at_ms
+	qs := `{"selector":{"doc_type":"ANCHOR_CHECKPOINT"},"sort":[{"block_height":"desc"}],"limit":1}`
 	iter, err := ctx.GetStub().GetQueryResult(qs)
 	if err != nil {
 		return nil, fmt.Errorf("GetLatestAnchorCheckpoint: query failed: %v", err)
@@ -153,29 +128,21 @@ func (t *TemporalEchoMitigator) GetLatestAnchorCheckpoint(
 		}
 		return &cp, nil
 	}
-	return nil, nil // bootstrap phase — no checkpoint yet
+	return nil, nil
 }
 
-// SyncFromAnchorCheckpoint records that an OBU peer has synchronised its local
-// ledger state from the given checkpoint.  The OBU may not participate in PBFT
-// consensus until this call succeeds.
+// SyncFromAnchorCheckpoint records that an OBU peer has synced from a checkpoint.
 //
-// Preconditions (§5.1):
-//   • obuPeerID must exist in TRUST:<obuPeerID> with score ≥ τmin (0.10)
-//   • checkpointID must match an existing AnchorCheckpoint record
-//
-// On success the OBU's peer ID is appended to checkpoint.SyncedPeers and
-// the updated record is written back to the ledger.
+// A-2 (from previous audit): verifies the checkpoint's Dilithium2 signature.
+// AN-02 FIX: enforces that the OBU must sync from the LATEST checkpoint, not
+// any arbitrary old one. An OBU that synced from a 215-block-old checkpoint
+// could participate in consensus with a stale ledger view.
 func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 	ctx contractapi.TransactionContextInterface,
 	checkpointID string,
 	obuPeerID string,
 ) error {
-	// Verify minimum trust for this OBU peer
-	trust, err := loadTrust(ctx, obuPeerID)
-	if err != nil {
-		return fmt.Errorf("SyncFromAnchorCheckpoint: unknown peer %s: %v", obuPeerID, err)
-	}
+	trust := loadTrust(ctx, obuPeerID)
 	if trust.Score < TrustMin {
 		return fmt.Errorf(
 			"SyncFromAnchorCheckpoint: peer %s trust score %.3f is below τmin=%.3f",
@@ -183,6 +150,19 @@ func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 	}
 	if trust.Flagged {
 		return fmt.Errorf("SyncFromAnchorCheckpoint: peer %s is flagged and excluded from consensus", obuPeerID)
+	}
+
+	// AN-02: verify the provided checkpointID IS the latest checkpoint
+	latest, err := t.GetLatestAnchorCheckpoint(ctx)
+	if err != nil {
+		return fmt.Errorf("SyncFromAnchorCheckpoint: could not retrieve latest checkpoint: %v", err)
+	}
+	if latest == nil {
+		// Bootstrap phase — no checkpoint exists yet; allow without check
+	} else if latest.CheckpointID != checkpointID {
+		return fmt.Errorf(
+			"SyncFromAnchorCheckpoint: checkpoint %s is not the latest (latest is %s at block %d)",
+			checkpointID, latest.CheckpointID, latest.BlockHeight)
 	}
 
 	// Locate the checkpoint by its CheckpointID field via rich query
@@ -207,6 +187,22 @@ func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 		return fmt.Errorf("SyncFromAnchorCheckpoint: unmarshal error: %v", err)
 	}
 
+	// A-2: verify Dilithium2 signature over the checkpoint data
+	sigInput := fmt.Sprintf("%s:%d:%s", cp.CreatedByPeer, cp.BlockHeight, cp.StateRootHash)
+	if !verifyDilithium2Sig(cp.PeerSig, sigInput, cp.PeerPubKey) {
+		return fmt.Errorf(
+			"SyncFromAnchorCheckpoint: invalid Dilithium2 signature on checkpoint %s from peer %s",
+			checkpointID, cp.CreatedByPeer)
+	}
+
+	// A-2: verify the creating peer is Tier 1 RSU
+	creatorTrust := loadTrust(ctx, cp.CreatedByPeer)
+	if !creatorTrust.IsRSUPeer {
+		return fmt.Errorf(
+			"SyncFromAnchorCheckpoint: checkpoint creator %s is not a Tier 1 RSU",
+			cp.CreatedByPeer)
+	}
+
 	// Idempotent — skip if already recorded
 	for _, pid := range cp.SyncedPeers {
 		if pid == obuPeerID {
@@ -216,12 +212,12 @@ func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 	cp.SyncedPeers = append(cp.SyncedPeers, obuPeerID)
 
 	updated, _ := json.Marshal(cp)
-	key := fmt.Sprintf("ANCHOR:%d", cp.CreatedAtMs)
+	// AN-01: key uses blockHeight
+	key := fmt.Sprintf("ANCHOR:%d", cp.BlockHeight)
 	return ctx.GetStub().PutState(key, updated)
 }
 
-// anchorIncrementCounter reads, increments, and persists the monotonic block
-// counter at ANCHOR_CTR.  Returns the new value.
+// anchorIncrementCounter increments and returns the monotonic block counter.
 func anchorIncrementCounter(ctx contractapi.TransactionContextInterface) uint64 {
 	var current uint64
 	data, err := ctx.GetStub().GetState(AnchorBlockCtrKey)

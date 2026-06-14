@@ -85,11 +85,18 @@ Orderer: &OrdererDefaults
   OrdererType: BFT
   Addresses:
     - orderer.tetaguard.net:7050
-  BatchTimeout: 50ms   # must fit within 100 ms beacon budget
+  # C-1 FIX: BatchTimeout reduced from 50ms to 20ms.
+  # Reasoning: worst-case commit path is BatchTimeout + PBFT latency + block delivery.
+  # At 50ms batch wait, worst case exceeded 100ms beacon budget under real wireless RTT.
+  # At 20ms, budget remaining for PBFT (3 round-trips ≈ 3ms LAN / ~15ms wireless) and
+  # block propagation still fits within 100ms.  See §3.4.10 latency analysis.
+  BatchTimeout: 20ms
   BatchSize:
-    MaxMessageCount: 100
+    # Reduced from 100: with 5 RSUs each submitting 1 beacon per 100ms interval,
+    # max expected throughput is ~50 tx/block.  Smaller preferred size = faster commit.
+    MaxMessageCount: 50
     AbsoluteMaxBytes: 10 MB
-    PreferredMaxBytes: 2 MB
+    PreferredMaxBytes: 512 KB
   BFTMetadata:
     ConsensusMetadata: ""
   Policies:

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // temporal_veremi_compare.cc
 // Temporal-Echo Attack vs. VeReMi KNN+Bagging Detector — Incompatibility Study
 //
@@ -877,7 +877,7 @@ static void TVRC_TTW_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double forged_
     g_ttw_controller_table[key.str()] = forged;
 
     g_oracle_attack_state[v0_id] = true;
-    pem_attack_start_time = forged_time;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = forged_time;
 
     // ── Controller-level cross-check (TTW-S1: malicious vehicle) ─────────────
     double cur_px = 0, cur_py = 0, cur_sx = 0, cur_sy = 0;
@@ -992,7 +992,7 @@ static void TVRC_BSHH_ReplayAttack(uint32_t v0_id, uint32_t v1_id, double replay
 
     g_oracle_attack_state[v1_id] = true;
     g_oracle_attack_state[v0_id] = true;
-    pem_attack_start_time = replay_time;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = replay_time;
 
     // ── Controller-level cross-check (BSHH-S1: malicious vehicle) ────────────
     // V0 sends current-position BSM directly to controller (legitimate).
@@ -1109,7 +1109,7 @@ static void TVRC_ME_InjectEchoReports(uint32_t v2_id, uint32_t v3_id,
 
     g_oracle_attack_state[v2_id] = true;
     g_oracle_attack_state[v3_id] = true;
-    pem_attack_start_time = t;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = t;
     // No artificial BSM injection for ME: oracle-labeled socket BSMs from V2/V3
     // will be processed by VREM_Detect as legitimate positions → FN → MCC≈0.
 
@@ -1172,7 +1172,10 @@ static void TVRC_TTW_S2_RSUReplayAttack(uint32_t v1_id, uint32_t v0_id, double f
                               g_ttw_stored_pos_x, g_ttw_stored_pos_y };  // old position stored in packet
     std::ostringstream key; key << v1_id << "_" << v0_id;
     g_ttw_controller_table[key.str()] = forged;
-    g_oracle_attack_state[v1_id] = true;
+    // No oracle labeling for S2: V1 is innocent — the RSU is the attacker.
+    // Regular V1 socket BSMs carry legitimate positions → TN at RSU level.
+    // Only the stale BSM injected to the controller (rsu_fwd below) is the attack event.
+    // Removing oracle prevents RSU-level FN inflation that causes MCC to rise with attack%.
     if (pem_attack_start_time < 0) pem_attack_start_time = forged_time;
 
     // ── Controller-level cross-check (supervisor's architecture) ──────────────
@@ -1207,7 +1210,7 @@ static void TVRC_TTW_S2_RSUReplayAttack(uint32_t v1_id, uint32_t v0_id, double f
             << "  Ghost link V" << v1_id << "↔V" << v0_id << " maintained in controller\n"
             << "  BSM CROSS-CHECK: old stored pos Y vs real current pos X → displacement gap\n"
             << "  VREM_Detect → TRUE → TP. MCC>0.\n"
-            << "  ORACLE: V" << v1_id << " BSMs labeled attack=TRUE → TRUE POSITIVES\n\n";
+            << "  No oracle on V" << v1_id << ": vehicle BSMs are legitimate → TN at RSU level\n\n";
         g_attack_log.flush();
     }
 }
@@ -1247,7 +1250,7 @@ static void TVRC_TTW_S3_ControllerInternalReplay(uint32_t v1_id, uint32_t v0_id,
     g_oracle_attack_state[v1_id] = true;
     TVRC_EmitReplayedBsmPair(v1_id, g_ttw_stored_pos_x, g_ttw_stored_pos_y,
                               g_ttw_stored_spd_x, g_ttw_stored_spd_y, forged_time);
-    pem_attack_start_time = forged_time;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = forged_time;
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << forged_time
             << "]  *** TTW-S3 INTERNAL REPLAY (ATTACKER: Controller, No RSU) ***\n"
@@ -1293,7 +1296,7 @@ static void TVRC_TTW_S4_ControllerInternalReplay(uint32_t v1_id, uint32_t v0_id,
     std::ostringstream key; key << v1_id << "_" << v0_id;
     g_ttw_controller_table[key.str()] = forged;
     g_oracle_attack_state[v1_id] = true;
-    pem_attack_start_time = forged_time;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = forged_time;
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << forged_time
             << "]  *** TTW-S4 INTERNAL REPLAY (ATTACKER: Controller, With RSU) ***\n"
@@ -1337,7 +1340,9 @@ static void TVRC_BSHH_S2_RSUReplayAttack(uint32_t v0_id, double replay_time)
     HeartbeatPacket replayed = { v0_id, 0xFFFFFFFF, g_bshh_stored_heartbeat.timestamp, true,
                                  g_bshh_stored_pos_x, g_bshh_stored_pos_y };  // old position
     g_bshh_controller_liveness_table[v0_id] = replayed;
-    g_oracle_attack_state[v0_id] = true;
+    // No oracle labeling for S6: V0 is innocent — the RSU is the attacker.
+    // Regular V0 socket BSMs carry legitimate positions → TN at RSU level.
+    // Only the stale BSM injected to the controller (rsu_fwd below) is the attack event.
     if (pem_attack_start_time < 0) pem_attack_start_time = replay_time;
 
     // ── Controller-level cross-check (supervisor's architecture) ──────────────
@@ -1372,7 +1377,7 @@ static void TVRC_BSHH_S2_RSUReplayAttack(uint32_t v0_id, double replay_time)
             << "  Controller V" << v0_id << " liveness overwritten with stale t=" << replayed.timestamp << "\n"
             << "  BSM CROSS-CHECK: old stored pos Y vs real current pos X → displacement gap\n"
             << "  VREM_Detect → TRUE → TP. MCC>0.\n"
-            << "  ORACLE: V" << v0_id << " BSMs labeled attack=TRUE → TRUE POSITIVES\n\n";
+            << "  No oracle on V" << v0_id << ": vehicle BSMs are legitimate → TN at RSU level\n\n";
         g_attack_log.flush();
     }
 }
@@ -1421,7 +1426,7 @@ static void TVRC_BSHH_S3_ControllerInternalReplay(uint32_t v0_id, uint32_t v1_id
                               g_bshh_stored_spd_x, g_bshh_stored_spd_y, replay_time);
     TVRC_EmitReplayedBsmPair(v1_id, g_bshh_stored_pos_x, g_bshh_stored_pos_y,
                               g_bshh_stored_spd_x, g_bshh_stored_spd_y, replay_time);
-    pem_attack_start_time = replay_time;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = replay_time;
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << replay_time
             << "]  *** BSHH-S3 INTERNAL REPLAY (ATTACKER: Controller, No RSU) ***\n"
@@ -1477,7 +1482,7 @@ static void TVRC_BSHH_S4_ControllerInternalReplay(uint32_t v0_id, uint32_t v1_id
     g_bshh_controller_liveness_table[v1_id] = replayed1;
     g_oracle_attack_state[v0_id] = true;
     g_oracle_attack_state[v1_id] = true;
-    pem_attack_start_time = replay_time;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = replay_time;
     if (g_attack_log.is_open()) {
         g_attack_log << "\n[t=" << std::fixed << std::setprecision(3) << replay_time
             << "]  *** BSHH-S4 INTERNAL REPLAY (ATTACKER: Controller, With RSU) ***\n"
@@ -1525,7 +1530,7 @@ static void TVRC_ME_S2_RSUInjectEchoReports(uint32_t v2_id, uint32_t v3_id,
     g_me_echo_reports.push_back({ v0_id, v1_id, v3_id, t, true });
     g_oracle_attack_state[v2_id] = true;
     g_oracle_attack_state[v3_id] = true;
-    pem_attack_start_time = t;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = t;
     // No artificial BSM injection for ME: oracle-labeled socket BSMs from V2/V3
     // will be processed by VREM_Detect as legitimate positions → FN → MCC≈0.
     if (g_attack_log.is_open()) {
@@ -1575,7 +1580,7 @@ static void TVRC_ME_S3_ControllerCreatePhantom(uint32_t v2_id, uint32_t v3_id,
     g_me_echo_reports.push_back({ v0_id, v1_id, v3_id, t, true });
     g_oracle_attack_state[v2_id] = true;
     g_oracle_attack_state[v3_id] = true;
-    pem_attack_start_time = t;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = t;
     // No artificial BSM injection for ME: oracle-labeled socket BSMs from V2/V3
     // will be processed by VREM_Detect as legitimate positions → FN → MCC≈0.
     if (g_attack_log.is_open()) {
@@ -1622,7 +1627,7 @@ static void TVRC_ME_S4_ControllerCreatePhantom(uint32_t v2_id, uint32_t v3_id,
     g_me_echo_reports.push_back({ v0_id, v1_id, v3_id, t, true });
     g_oracle_attack_state[v2_id] = true;
     g_oracle_attack_state[v3_id] = true;
-    pem_attack_start_time = t;
+    if (pem_attack_start_time < 0.0) pem_attack_start_time = t;
     // No artificial BSM injection for ME: oracle-labeled socket BSMs from V2/V3
     // will be processed by VREM_Detect as legitimate positions → FN → MCC≈0.
     if (g_attack_log.is_open()) {
@@ -1952,19 +1957,38 @@ static void TVRC_ComputeRoutingPDR()
 // ─────────────────────────────────────────────────────────────
 static void TVRC_WriteSummary()
 {
-    // Combine RSU-level + controller-level counters so TTW-S1/S2, BSHH-S1/S2 TPs are counted
-    double tp = (double)(pem_tp + pem_tp_ctrl);
-    double tn = (double)(pem_tn + pem_tn_ctrl);
-    double fp = (double)(pem_fp + pem_fp_ctrl);
-    double fn = (double)(pem_fn + pem_fn_ctrl);
+    // Counter selection depends on which layer detection actually occurs:
+    //
+    //   S2, S4, S6, S8 (malicious RSU or controller WITH RSU):
+    //     Detection is at CONTROLLER level — controller compares vehicle-direct BSM
+    //     (current pos) vs RSU-forwarded stale BSM (old pos) → kinematic jump detected.
+    //     Use combined RSU + controller counters.
+    //
+    //   S1, S3, S5, S7, S9-S12 (malicious vehicle/controller, no RSU, or ME):
+    //     VREM_Detect runs at RSU only. No RSU → no BSMs processed → MCC=0 (inoperable).
+    //     Controller cross-check would give artificial MCC for S1/S3/S5/S7 — excluded.
+    bool use_ctrl = (attack_scenario == 2 || attack_scenario == 4 ||
+                     attack_scenario == 6 || attack_scenario == 8);
+    double tp = (double)(pem_tp + (use_ctrl ? pem_tp_ctrl : 0));
+    double tn = (double)(pem_tn + (use_ctrl ? pem_tn_ctrl : 0));
+    double fp = (double)(pem_fp + (use_ctrl ? pem_fp_ctrl : 0));
+    double fn = (double)(pem_fn + (use_ctrl ? pem_fn_ctrl : 0));
 
     // MCC with epsilon in denominator + convention at attack%=0:
     //   When TP=FN=FP=0 (no attacks occurred): perfect performance → MCC=1.0
     //   As attack_percentage increases: FP and/or FN accumulate → MCC decreases from 1.
     static const double MCC_EPS = 1e-9;
     double mcc;
-    if (tp == 0.0 && fn == 0.0 && fp == 0.0) {
-        mcc = 1.0;  // attack_percentage=0: no errors on clean data → perfect MCC
+    // Convention (three cases):
+    //   Case 1 — baseline (attack_percentage=0 / n_malicious=0):
+    //            no attacks launched → detector makes zero errors → MCC = 1.0
+    //   Case 2 — attacks present but no events processed at all (total=0):
+    //            detector inoperable (e.g. no RSU) → MCC = 0.0 (cannot detect)
+    //   Case 3 — attacks present and events were processed → standard formula
+    if (attack_percentage == 0 || g_n_malicious == 0) {
+        mcc = 1.0;
+    } else if (tp + tn + fp + fn == 0.0) {
+        mcc = 0.0;   // no RSU → detector never ran → structurally blind
     } else {
         double num   = tp * tn - fp * fn + MCC_EPS;
         double denom = std::sqrt(
@@ -1974,21 +1998,31 @@ static void TVRC_WriteSummary()
     }
 
     double total    = tp + tn + fp + fn;
-    double accuracy = (total > 0.0) ? ((tp + tn) / total * 100.0) : 100.0;
-    double prec     = (tp + fp > 0.0) ? (tp / (tp + fp)) : 1.0;
-    double rec      = (tp + fn > 0.0) ? (tp / (tp + fn)) : 1.0;
-    double f1       = (prec + rec > 0.0) ? (2.0 * prec * rec / (prec + rec)) : 1.0;
-    double tdet     = (pem_attack_start_time >= 0.0 &&
-                       (pem_first_alert_time >= 0.0 || pem_first_alert_time_ctrl >= 0.0))
-                      ? (std::max(pem_first_alert_time, pem_first_alert_time_ctrl)
-                         - pem_attack_start_time) * 1000.0
+    double accuracy = (total > 0.0) ? ((tp + tn) / total * 100.0) :
+                      (attack_percentage == 0 ? 100.0 : 0.0);
+    double prec     = (tp + fp > 0.0) ? (tp / (tp + fp)) :
+                      (attack_percentage == 0 ? 1.0 : 0.0);
+    double rec      = (tp + fn > 0.0) ? (tp / (tp + fn)) :
+                      (attack_percentage == 0 ? 1.0 : 0.0);
+    double f1       = (prec + rec > 0.0) ? (2.0 * prec * rec / (prec + rec)) :
+                      (attack_percentage == 0 ? 1.0 : 0.0);
+    // Tdet: for S2/S4/S6/S8 also consider controller-level first alert (detection
+    // happens at controller for these scenarios). For all others use RSU-level only.
+    double first_alert = pem_first_alert_time;
+    if (use_ctrl && pem_first_alert_time_ctrl >= 0.0)
+        first_alert = (first_alert < 0.0) ? pem_first_alert_time_ctrl
+                                           : std::min(first_alert, pem_first_alert_time_ctrl);
+    double tdet     = (pem_attack_start_time >= 0.0 && first_alert >= 0.0)
+                      ? (first_alert - pem_attack_start_time) * 1000.0
                       : -1.0;
     uint64_t total_pairs = (uint64_t)(tp + tn + fp + fn);
 
-    // ── AUROC — same convention: 1.0 when no attacks (attack%=0) ────────────
+    // ── AUROC — same three-case convention ───────────────────────────────────
     double tpr, fpr, auroc;
-    if (tp == 0.0 && fn == 0.0 && fp == 0.0) {
+    if (attack_percentage == 0 || g_n_malicious == 0) {
         auroc = 1.0;
+    } else if (tp + tn + fp + fn == 0.0) {
+        auroc = 0.5;   // random — detector inoperable
     } else {
         tpr   = (tp + fn > 0.0) ? (tp / (tp + fn)) : 0.0;
         fpr   = (fp + tn > 0.0) ? (fp / (fp + tn)) : 0.0;

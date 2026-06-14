@@ -1,23 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"math"
+
+	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
 
 // Cryptographic and spatial verification helpers for Algorithm 4.
 //
 // verifyDilithium2Sig is defined in one of two build-tag files:
-//   verification_stub.go   — default build (no liboqs; accepts all sigs)
+//   verification_stub.go   — default build (no liboqs; requires TETA_SIMULATION_MODE=1)
 //   verification_liboqs.go — build with: go build -tags liboqs
-//
-// To enable real post-quantum Dilithium2 verification:
-//   1. Install liboqs-go: go get github.com/open-quantum-safe/liboqs-go
-//   2. Build chaincode:   go build -tags liboqs ./...
 
-// verifyThresholdSig implements Eq. 3.24:
-//   |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t
+// verifyThresholdSig implements Eq. 3.26:
 //
-// Returns true if at least thresholdT individual Dilithium2 signatures verify.
+//	Verify(σagg,PKagg)=1 ⟺ |{i : Verify(σi,msgi,PKVi)=1}| ≥ t, t ≥ ⌊n/2⌋+1
 func verifyThresholdSig(evidence []IndividualSigEvidence, thresholdT int) bool {
 	valid := 0
 	for _, e := range evidence {
@@ -28,20 +26,36 @@ func verifyThresholdSig(evidence []IndividualSigEvidence, thresholdT int) bool {
 	return valid >= thresholdT
 }
 
+// loadSimParams reads simulation-configurable spatial thresholds from the ledger.
+// VF-02 FIX: verifyQuorum previously used compile-time constants rCommMeters=300.0
+// and rssiMinDBm=-85.0. Tests with different rcomm values (e.g. 150 m) required
+// recompiling the chaincode. These are now ledger-readable via SetSimParams()
+// and bootstrap.sh. Falls back to NS-3 defaults if not set.
+func loadSimParams(ctx contractapi.TransactionContextInterface) (rCommMeters float64, rssiMinDBm float64) {
+	rCommMeters = 300.0
+	rssiMinDBm = -85.0
+
+	if d, err := ctx.GetStub().GetState("SIM_RCOMM"); err == nil && len(d) > 0 {
+		fmt.Sscanf(string(d), "%f", &rCommMeters)
+	}
+	if d, err := ctx.GetStub().GetState("SIM_RSSI_MIN"); err == nil && len(d) > 0 {
+		fmt.Sscanf(string(d), "%f", &rssiMinDBm)
+	}
+	return
+}
+
 // verifyQuorum implements Eqs. 3.27–3.28:
-//   Accept(e_ij) ⟺ |{Vk : Accept_Vk(e_ij)=1}| ≥ t
 //
-// A witness Vk is accepted if:
-//   (i)  Verify(σ_Vk, PK_Vk) = 1                  — cryptographic authenticity
-//   (ii) d(pos_Vk, e_ij) ≤ r_comm (300 m)          — spatial plausibility (Eq.3.27)
-//   (iii) RSSI_Vk ≥ RSSImin (-85 dBm)              — signal plausibility (Eq.3.27)
+//	Accept(e_ij) ⟺ |{Vk : Accept_Vk(e_ij)=1}| ≥ t
+//
+// VF-02: accepts ctx to read configurable rComm and rssiMin from ledger.
 func verifyQuorum(
+	ctx contractapi.TransactionContextInterface,
 	witnesses []WitnessRecord,
 	thresholdT int,
 	linkEndpointLat, linkEndpointLon float64,
 ) bool {
-	const rCommMeters = 300.0
-	const rssiMinDBm = -85.0
+	rCommMeters, rssiMinDBm := loadSimParams(ctx)
 
 	accepted := 0
 	for _, w := range witnesses {
@@ -53,7 +67,7 @@ func verifyQuorum(
 		if dist > rCommMeters {
 			continue
 		}
-		if w.RSSIFromVI < rssiMinDBm {
+		if float64(w.RSSIFromVI) < rssiMinDBm {
 			continue
 		}
 		accepted++
@@ -61,8 +75,7 @@ func verifyQuorum(
 	return accepted >= thresholdT
 }
 
-// haversineDistanceM returns the great-circle distance in metres between two
-// GPS coordinates.  Used by verifyQuorum and the divergence check.
+// haversineDistanceM returns the great-circle distance in metres between two GPS coordinates.
 func haversineDistanceM(lat1, lon1, lat2, lon2 float64) float64 {
 	const earthR = 6371000.0
 	dLat := (lat2 - lat1) * math.Pi / 180.0
@@ -84,9 +97,8 @@ func sTrigsToMask(indices []int) uint32 {
 	return mask
 }
 
-// resolveDualPath handles conflicts when both LW and FS paths flag the same
-// vehicle simultaneously (§11.2).  Takes the union of variants and applies
-// the most restrictive action: FLOWMOD_DROP > REROUTE > PATH_INVALIDATE.
+// resolveDualPath handles LW/FS dual-path conflicts (§11.2).
+// V-2: tracks hasME separately; TTW/BSHH DROP wins over ME REROUTE.
 func resolveDualPath(alerts []DetectionEvent) []DetectionEvent {
 	perVehicle := make(map[string][]DetectionEvent)
 	for _, a := range alerts {
@@ -102,13 +114,18 @@ func resolveDualPath(alerts []DetectionEvent) []DetectionEvent {
 		merged := vehicleAlerts[0]
 		merged.TriggeredSigs = 0
 		hasTTWBSHH := false
+		hasME := false
 		for _, a := range vehicleAlerts {
 			merged.TriggeredSigs |= a.TriggeredSigs
 			if a.AnomalyScore > merged.AnomalyScore {
 				merged.AnomalyScore = a.AnomalyScore
 			}
-			if a.AttackVariant == "TTW" || a.AttackVariant == "BSHH" {
+			if a.AttackVariant == "TTW" || a.AttackVariant == "BSHH" ||
+				a.AttackVariant == "TTW_BSHH_COMBINED" {
 				hasTTWBSHH = true
+			}
+			if a.AttackVariant == "ME" {
+				hasME = true
 			}
 			if !merged.FromLWPath {
 				merged.FromLWPath = a.FromLWPath
@@ -119,6 +136,8 @@ func resolveDualPath(alerts []DetectionEvent) []DetectionEvent {
 		}
 		if hasTTWBSHH {
 			merged.AttackVariant = "TTW_BSHH_COMBINED"
+		} else if hasME {
+			merged.AttackVariant = "ME"
 		}
 		resolved = append(resolved, merged)
 	}

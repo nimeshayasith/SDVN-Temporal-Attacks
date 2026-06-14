@@ -1,30 +1,11 @@
 package main
 
 // trust.go — Trust Score Management, Peer Tier Selection, Controller Removal
-//
-// Implements PDF Sections 5.1–5.7:
-//
-//   Section 5.2  Trust Score Management
-//     τk(t+1) = min(1, τk(t) + Δ+)   if correct participation
-//     τk(t+1) = max(0, τk(t) - Δ-)   if failure-to-participate / inconsistent
-//     τk(t+1) = 0                     if flagged by LW or FS detector
-//     Δ+ = 0.05,  Δ- = 0.10  (trust harder to gain than lose)
-//
-//   Section 5.1  Peer Tier Management
-//     Eligible(Vk) iff: cert ∈ CA, CVk ≥ Cmin, Tdwell ≥ Tmin, τk ≥ τmin,
-//                        Vk ∉ Fflagged
-//     Pactive = {P : |P|=np, all Eligible, argmax Σ τk}
-//
-//   Section 5.6  Trust-Weighted PBFT
-//     Accept ⟺ Σ(τk : k ∈ Papprove) / Σ(τk : k ∈ Pactive) > 2/3
-//
-//   Section 5.7  Controller Removal
-//     τCj < τCmin → REASSIGN(Zj → Ck*)
-//     Ck* = argmax{τCk : k≠j, τCk > τCmin}
 
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -32,34 +13,30 @@ import (
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  CONSTANTS (Section 5.2 / 5.7)
+//  CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
 const (
-	TrustDeltaPlus  = 0.05 // Δ+ gain per correct participation round
-	TrustDeltaMinus = 0.10 // Δ- loss per failure/inconsistency
-	TrustDeltaCtrl  = 0.20 // ΔC- controller trust penalty per confirmed divergence
+	TrustDeltaPlus  = 0.05
+	TrustDeltaMinus = 0.10
+	TrustDeltaCtrl  = 0.20
 
-	TrustMin      = 0.10 // τmin — admission threshold for Tier 2 OBU peers
-	TrustMinGT    = 0.50 // τmingt — stricter threshold for evidence contribution
-	TrustCtrlMin  = 0.30 // τCmin — controller removal threshold
+	TrustMin     = 0.10
+	TrustMinGT   = 0.50
+	TrustCtrlMin = 0.30
 
-	TrustInitTier1 = 1.00 // RSU peers start at full trust
-	TrustInitTier2 = 0.10 // OBU peers start at τ0 = 0.1
+	TrustInitTier1 = 1.00
+	TrustInitTier2 = 0.10
 
-	TrustMinDwellMs = 3000 // Tmin = 3 s minimum dwell for OBU peer promotion
-	FaultToleranceF = 1    // f for np = 3f+1 (tolerates 1 Byzantine peer)
+	TrustMinDwellMs = 3000
+	HWCapacityMinMB = 2048
+	FaultToleranceF = 1
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  TRUST RECORD LEDGER FUNCTIONS  (Section 5.2)
-//
-//  Ledger keys:
-//    TRUST:<peer_id>         → TrustRecord
-//    CTRL_TRUST:<ctrl_id>    → ControllerTrustRecord
+//  TRUST RECORD LEDGER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-// loadTrust reads a TrustRecord from the ledger; returns default if absent.
 func loadTrust(ctx contractapi.TransactionContextInterface, peerID string) TrustRecord {
 	data, err := ctx.GetStub().GetState("TRUST:" + peerID)
 	if err != nil || data == nil {
@@ -103,24 +80,36 @@ func saveCtrlTrust(ctx contractapi.TransactionContextInterface, r ControllerTrus
 	return ctx.GetStub().PutState("CTRL_TRUST:"+r.ControllerID, data)
 }
 
+// loadAllPeerIDs scans TRUST:* keys and returns all registered peer IDs.
+// TR-02: required by TE-01 (PBFT gate) and TE-07 (peer reward loop).
+// Uses GetStateByRange for efficient prefix scan without CouchDB rich query.
+func loadAllPeerIDs(ctx contractapi.TransactionContextInterface) []string {
+	iter, err := ctx.GetStub().GetStateByRange("TRUST:", "TRUST:~")
+	if err != nil {
+		return nil
+	}
+	defer iter.Close()
+	var ids []string
+	for iter.HasNext() {
+		qr, err := iter.Next()
+		if err != nil {
+			continue
+		}
+		// Strip "TRUST:" prefix (6 chars) to get the peer ID
+		key := qr.Key
+		if len(key) > 6 {
+			ids = append(ids, key[6:])
+		}
+	}
+	return ids
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-//  updateTrust  — Section 5.2, node trust update rule
-//
-//  Called by the smart contract each round for every participating peer.
-//    correct = true  → τk(t+1) = min(1, τk(t) + Δ+)
-//    correct = false → τk(t+1) = max(0, τk(t) - Δ-)
-//
-//  Calling with zero = true forces τk = 0 immediately (attack detection flag).
+//  Trust update functions
 // ═══════════════════════════════════════════════════════════════════════════
 
-func updateTrust(
-	ctx contractapi.TransactionContextInterface,
-	peerID string,
-	correct bool,
-	zero bool,
-) (float64, error) {
+func updateTrust(ctx contractapi.TransactionContextInterface, peerID string, correct bool, zero bool) (float64, error) {
 	r := loadTrust(ctx, peerID)
-
 	if zero {
 		r.Score = 0.0
 		r.FlaggedAt = time.Now().UnixMilli()
@@ -136,18 +125,10 @@ func updateTrust(
 			r.Score = 0.0
 		}
 	}
-
 	return r.Score, saveTrust(ctx, r)
 }
 
-// updateCtrlTrust applies the controller trust penalty rule (Section 5.2).
-// Controllers have NO reward path — trust only decreases on confirmed divergence.
-//
-//	τCj(t+1) = max(0, τCj(t) - ΔC-)
-func updateCtrlTrust(
-	ctx contractapi.TransactionContextInterface,
-	controllerID string,
-) (float64, error) {
+func updateCtrlTrust(ctx contractapi.TransactionContextInterface, controllerID string) (float64, error) {
 	r := loadCtrlTrust(ctx, controllerID)
 	r.Score = r.Score - TrustDeltaCtrl
 	if r.Score < 0.0 {
@@ -157,8 +138,10 @@ func updateCtrlTrust(
 	return r.Score, saveCtrlTrust(ctx, r)
 }
 
-// RegisterRSUPeer registers an RSU as a Tier 1 peer with τk = 1.0 (Section 5.1).
-// Must be called at network bootstrap via the bootstrap.sh script.
+// ═══════════════════════════════════════════════════════════════════════════
+//  PUBLIC CHAINCODE FUNCTIONS — Peer Registration
+// ═══════════════════════════════════════════════════════════════════════════
+
 func (t *TemporalEchoMitigator) RegisterRSUPeer(
 	ctx contractapi.TransactionContextInterface,
 	peerID string,
@@ -172,28 +155,72 @@ func (t *TemporalEchoMitigator) RegisterRSUPeer(
 	return saveTrust(ctx, r)
 }
 
-// UpdateTrustRound is called once per beacon interval by each RSU peer.
-// It applies the trust update rule to all peers that participated (or failed).
-//
-//  participatingPeersJSON: JSON array of peer IDs that submitted beacon evidence
-//  allPeersJSON:           JSON array of all expected peer IDs this round
+// RegisterOBUPeer registers an OBU as Tier 2 candidate with dwell time tracking (TR-3).
+func (t *TemporalEchoMitigator) RegisterOBUPeer(
+	ctx contractapi.TransactionContextInterface,
+	peerID string,
+	hwCapacityMBStr string,
+) error {
+	hwCap := 0
+	fmt.Sscanf(hwCapacityMBStr, "%d", &hwCap)
+	r := TrustRecord{
+		PeerID:     peerID,
+		Score:      TrustInitTier2,
+		IsRSUPeer:  false,
+		JoinedAtMs: time.Now().UnixMilli(),
+		HWCapacity: hwCap,
+		DocType:    "TRUST_RECORD",
+	}
+	return saveTrust(ctx, r)
+}
+
+// UpdateTrustRound applies trust delta for one beacon interval round.
+// TR-01: during bootstrap (no RSU peers), the highest-trust OBU may drive trust
+// rounds. This allows trust to accumulate in OBU-only / no-RSU deployments.
+// TR-04 (from previous fix): when RSU peers ARE present, restricts callers to Tier 1 RSU.
 func (t *TemporalEchoMitigator) UpdateTrustRound(
 	ctx contractapi.TransactionContextInterface,
+	callerPeerID string,
 	participatingPeersJSON string,
 	allPeersJSON string,
 ) error {
+	callerTrust := loadTrust(ctx, callerPeerID)
+
+	// TR-01: detect whether any RSU peers are registered
+	allPeerIDs := loadAllPeerIDs(ctx)
+	hasRSU := false
+	for _, pid := range allPeerIDs {
+		if loadTrust(ctx, pid).IsRSUPeer {
+			hasRSU = true
+			break
+		}
+	}
+
+	if hasRSU {
+		// Normal mode: only Tier 1 RSU peers may drive trust rounds (TR-04)
+		if !callerTrust.IsRSUPeer || callerTrust.Score < TrustInitTier1-1e-9 {
+			return fmt.Errorf(
+				"UpdateTrustRound: caller %s is not an authorised Tier 1 RSU peer",
+				callerPeerID)
+		}
+	} else {
+		// TR-01: Tier 2 / OBU-only bootstrap mode — highest-trust OBU may call
+		if callerTrust.Score < TrustMin || callerTrust.Flagged {
+			return fmt.Errorf(
+				"UpdateTrustRound: caller %s has insufficient trust for bootstrap mode (score=%.3f)",
+				callerPeerID, callerTrust.Score)
+		}
+	}
+
 	var participating []string
 	var all []string
 	json.Unmarshal([]byte(participatingPeersJSON), &participating)
 	json.Unmarshal([]byte(allPeersJSON), &all)
 
-	// Build set of participators
 	pset := make(map[string]bool, len(participating))
 	for _, p := range participating {
 		pset[p] = true
 	}
-
-	// Apply Δ+ for correct participation, Δ- for failure-to-participate
 	for _, peerID := range all {
 		_, err := updateTrust(ctx, peerID, pset[peerID], false)
 		if err != nil {
@@ -203,13 +230,25 @@ func (t *TemporalEchoMitigator) UpdateTrustRound(
 	return nil
 }
 
-// ZeroTrust immediately zeros a peer's trust score on confirmed attack detection.
-// Called from runMitigation (Algorithm 4, Step 5: updateTrust(v, 0)).
+// ZeroTrust zeros a peer's trust on confirmed attack detection.
+// TR-04: restricted to Tier 1 RSU callers with a backing detection event.
 func (t *TemporalEchoMitigator) ZeroTrust(
 	ctx contractapi.TransactionContextInterface,
-	peerID string,
+	callerID string,
+	targetPeerID string,
+	detectionEventKey string,
 ) error {
-	_, err := updateTrust(ctx, peerID, false, true)
+	// TR-04: only Tier 1 RSU may zero trust
+	caller := loadTrust(ctx, callerID)
+	if !caller.IsRSUPeer || caller.Score < TrustInitTier1-1e-9 {
+		return fmt.Errorf("ZeroTrust: unauthorised caller %s", callerID)
+	}
+	// TR-04: require a backing detection event
+	data, err := ctx.GetStub().GetState(detectionEventKey)
+	if err != nil || data == nil {
+		return fmt.Errorf("ZeroTrust: no backing detection event %s", detectionEventKey)
+	}
+	_, err = updateTrust(ctx, targetPeerID, false, true)
 	return err
 }
 
@@ -223,14 +262,9 @@ func (t *TemporalEchoMitigator) GetTrustScore(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  selectPeers  — Section 5.1
-//
-//  Returns Pactive = highest-trust subset of size np = 3f+1 from eligible peers.
-//  Eligible(Vk) requires: τk ≥ τmin, not flagged, is registered peer.
+//  selectPeers — Pactive = highest-trust eligible peers (Eq. 3.40)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// SelectPeers returns the np = 3f+1 highest-trust eligible peer IDs.
-// allPeersJSON: JSON array of all known peer IDs in the consortium.
 func (t *TemporalEchoMitigator) SelectPeers(
 	ctx contractapi.TransactionContextInterface,
 	allPeersJSON string,
@@ -242,11 +276,10 @@ func (t *TemporalEchoMitigator) SelectPeers(
 	return selectPeers(ctx, allPeers), nil
 }
 
-func selectPeers(
-	ctx contractapi.TransactionContextInterface,
-	allPeers []string,
-) []string {
+func selectPeers(ctx contractapi.TransactionContextInterface, allPeers []string) []string {
 	np := 3*FaultToleranceF + 1
+	nowMs := time.Now().UnixMilli()
+	const tMinMs = int64(TrustMinDwellMs)
 
 	type peerScore struct {
 		id    string
@@ -261,10 +294,20 @@ func selectPeers(
 		if r.Score < TrustMin {
 			continue
 		}
+		if !r.IsRSUPeer {
+			if r.JoinedAtMs > 0 && (nowMs-r.JoinedAtMs) < tMinMs {
+				continue
+			}
+			if r.HWCapacity > 0 && r.HWCapacity < HWCapacityMinMB {
+				continue
+			}
+			if !obuHasSyncedFromRecentCheckpoint(ctx, pid) {
+				continue
+			}
+		}
 		eligible = append(eligible, peerScore{pid, r.Score})
 	}
 
-	// Sort descending by trust score (argmax Σ τk — Section 5.1)
 	sort.Slice(eligible, func(i, j int) bool {
 		return eligible[i].score > eligible[j].score
 	})
@@ -276,17 +319,40 @@ func selectPeers(
 	return result
 }
 
+// obuHasSyncedFromRecentCheckpoint verifies an OBU synced from the latest checkpoint.
+// TR-05: sorts by block_height DESC (monotonic, spoof-proof) not created_at_ms
+// (wall-clock, susceptible to clock manipulation and test collisions).
+func obuHasSyncedFromRecentCheckpoint(ctx contractapi.TransactionContextInterface, obuPeerID string) bool {
+	// TR-05: sort by block_height (deterministic) not created_at_ms (wall-clock)
+	qs := `{"selector":{"doc_type":"ANCHOR_CHECKPOINT"},"sort":[{"block_height":"desc"}],"limit":1}`
+	iter, err := ctx.GetStub().GetQueryResult(qs)
+	if err != nil || iter == nil {
+		return true // no checkpoint yet — bootstrap phase
+	}
+	defer iter.Close()
+	if !iter.HasNext() {
+		return true // bootstrap phase
+	}
+	qr, err := iter.Next()
+	if err != nil {
+		return false
+	}
+	var cp AnchorCheckpoint
+	if json.Unmarshal(qr.Value, &cp) != nil {
+		return false
+	}
+	for _, pid := range cp.SyncedPeers {
+		if pid == obuPeerID {
+			return true
+		}
+	}
+	return false
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-//  getTrustedEvidence  — Section 5.4
-//
-//  Et_trusted = ∪ Bnk(t) for nk ∈ Pactive with τk ≥ τmingt
-//
-//  Tier 1 (all τk = 1): uses all RSU evidence.
-//  Tier 2 (OBU peers):  uses subset with τk ≥ τmingt > τmin.
+//  Trusted Evidence
 // ═══════════════════════════════════════════════════════════════════════════
 
-// GetTrustedEvidence returns beacon evidence records from peers with τk ≥ τmingt.
-// allPeersJSON: JSON array of active peer IDs (from SelectPeers or bootstrap).
 func (t *TemporalEchoMitigator) GetTrustedEvidence(
 	ctx contractapi.TransactionContextInterface,
 	allPeersJSON string,
@@ -294,11 +360,9 @@ func (t *TemporalEchoMitigator) GetTrustedEvidence(
 ) ([]BeaconEvidenceRecord, error) {
 	var allPeers []string
 	json.Unmarshal([]byte(allPeersJSON), &allPeers)
-
 	var intervalTS int64
 	fmt.Sscanf(intervalTSStr, "%d", &intervalTS)
 
-	// Collect peer IDs with τk ≥ τmingt
 	qualified := make(map[string]bool)
 	for _, pid := range allPeers {
 		r := loadTrust(ctx, pid)
@@ -307,7 +371,6 @@ func (t *TemporalEchoMitigator) GetTrustedEvidence(
 		}
 	}
 
-	// Fetch all beacon evidence and filter by peer
 	queryStr := fmt.Sprintf(
 		`{"selector":{"doc_type":"BEACON_EVIDENCE","interval_ts":%d}}`, intervalTS)
 	iter, err := ctx.GetStub().GetQueryResult(queryStr)
@@ -324,7 +387,6 @@ func (t *TemporalEchoMitigator) GetTrustedEvidence(
 		}
 		var rec BeaconEvidenceRecord
 		if json.Unmarshal(qr.Value, &rec) == nil {
-			// Include RSU peers unconditionally (τk = 1) or OBUs with τk ≥ τmingt
 			if rec.IsRSUPeer || qualified[rec.PeerID] {
 				records = append(records, rec)
 			}
@@ -334,16 +396,9 @@ func (t *TemporalEchoMitigator) GetTrustedEvidence(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  Trust-Weighted PBFT Consensus Check  (Section 5.6)
-//
-//  Accept ⟺ Σ(τk : k ∈ Papprove) / Σ(τk : k ∈ Pactive) > 2/3
+//  Trust-Weighted PBFT Consensus Check (Section 5.6)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// CheckPBFTConsensus returns true if the approving peers have > 2/3 of the
-// total trust weight in Pactive.
-//
-//  approvingPeersJSON: JSON array of peer IDs that endorsed the transaction
-//  activePeersJSON:    JSON array of all active peer IDs (Pactive)
 func (t *TemporalEchoMitigator) CheckPBFTConsensus(
 	ctx contractapi.TransactionContextInterface,
 	approvingPeersJSON string,
@@ -353,112 +408,84 @@ func (t *TemporalEchoMitigator) CheckPBFTConsensus(
 	var active []string
 	json.Unmarshal([]byte(approvingPeersJSON), &approving)
 	json.Unmarshal([]byte(activePeersJSON), &active)
-
 	return checkPBFTTrustWeight(ctx, approving, active), nil
 }
 
-// checkPBFTTrustWeight is the internal consensus weight check (Section 5.6).
-func checkPBFTTrustWeight(
-	ctx contractapi.TransactionContextInterface,
-	approving []string,
-	active []string,
-) bool {
+func checkPBFTTrustWeight(ctx contractapi.TransactionContextInterface, approving []string, active []string) bool {
 	var sumApprove, sumActive float64
-
 	approvingSet := make(map[string]bool, len(approving))
 	for _, p := range approving {
 		approvingSet[p] = true
 	}
-
 	for _, pid := range active {
 		r := loadTrust(ctx, pid)
 		if r.Flagged {
-			continue // zeroed trust — excluded from active set immediately
+			continue
 		}
 		sumActive += r.Score
 		if approvingSet[pid] {
 			sumApprove += r.Score
 		}
 	}
-
 	if sumActive == 0 {
 		return false
 	}
-	// Standard PBFT threshold: > 2/3 of trust weight (Section 5.6)
 	return sumApprove/sumActive > 2.0/3.0
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  Controller Removal Mechanism  (Section 5.7)
-//
-//  τCj < τCmin → REASSIGN(Zj → Ck*)
-//  Ck* = argmax{τCk : k≠j, τCk > τCmin}
-//
-//  Execution path (via emergency channel, NOT through malicious controller):
-//    1. RSU OpenFlow agents switch southbound connection from Cj to Ck*
-//    2. Cj's credentials revoked via consortium CA
-//    3. Ck* receives topology snapshot from RSU beacon evidence ledger
-//    4. Ck* begins managing the zone immediately
-//  In simulation: writes ControllerReassignment record; eventListener.js acts.
+//  Controller Removal Mechanism (Section 5.7)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// CheckControllerTrustAndReassign is called after each confirmed divergence.
-// If τCj drops below τCmin it selects Ck* and writes reassignment records.
-//
-//  controllerID:   the suspect controller Cj
-//  allCtrlsJSON:   JSON array of all controller IDs in the consortium
+// CheckControllerTrustAndReassign is the single authority for applying ΔC- penalties.
+// TE-04/DV-03: called ONLY from here — not also from runMitigation or checkControllerDivergence.
 func (t *TemporalEchoMitigator) CheckControllerTrustAndReassign(
 	ctx contractapi.TransactionContextInterface,
 	controllerID string,
 	allCtrlsJSON string,
 ) error {
-	// Apply trust penalty for this divergence
 	newScore, err := updateCtrlTrust(ctx, controllerID)
 	if err != nil {
 		return err
 	}
-
 	if newScore >= TrustCtrlMin {
-		return nil // still above removal threshold — monitor only
+		return nil
 	}
 
-	// τCj < τCmin — select backup controller Ck*
 	var allCtrls []string
 	json.Unmarshal([]byte(allCtrlsJSON), &allCtrls)
 
 	backupID, backupScore := selectBackupController(ctx, controllerID, allCtrls)
 	if backupID == "" {
-		// No eligible backup — log but do not crash; human intervention needed
 		payload, _ := json.Marshal(map[string]interface{}{
-			"type":          "NO_BACKUP_CONTROLLER",
-			"failed_ctrl":   controllerID,
-			"trust_score":   newScore,
-			"timestamp_ms":  time.Now().UnixMilli(),
+			"type":         "NO_BACKUP_CONTROLLER",
+			"failed_ctrl":  controllerID,
+			"trust_score":  newScore,
+			"timestamp_ms": time.Now().UnixMilli(),
 		})
 		ctx.GetStub().SetEvent("ControllerRemovalFailed", payload)
 		return nil
 	}
 
-	// Write ControllerReassignment record — consumed by eventListener.js
+	// TR-1: read ZoneID from ledger record
+	ctrlRecord := loadCtrlTrust(ctx, controllerID)
+
 	reassignment := ControllerReassignment{
-		RemovedCtrlID:  controllerID,
-		BackupCtrlID:   backupID,
-		BackupScore:    backupScore,
-		RemovedScore:   newScore,
-		AssignedAt:     time.Now().UnixMilli(),
-		ZoneID:         "zone-" + controllerID,
-		DocType:        "CTRL_REASSIGNMENT",
-		EmergencyBypass: true, // commands issued via RSU emergency channel
+		RemovedCtrlID:   controllerID,
+		BackupCtrlID:    backupID,
+		BackupScore:     backupScore,
+		RemovedScore:    newScore,
+		AssignedAt:      time.Now().UnixMilli(),
+		ZoneID:          ctrlRecord.ZoneID,
+		DocType:         "CTRL_REASSIGNMENT",
+		EmergencyBypass: true,
 	}
 	rData, _ := json.Marshal(reassignment)
-	key := fmt.Sprintf("CTRL_REASSIGN:%s:%d",
-		controllerID, reassignment.AssignedAt)
+	key := fmt.Sprintf("CTRL_REASSIGN:%s:%d", controllerID, reassignment.AssignedAt)
 	if err := ctx.GetStub().PutState(key, rData); err != nil {
 		return err
 	}
 
-	// Revoke credentials — flags the controller so it is excluded from future
-	// topology submissions; actual CA revocation handled by eventListener.js
 	credRevoke := map[string]interface{}{
 		"controller_id": controllerID,
 		"action":        "REVOKE_CTRL_CREDENTIALS",
@@ -468,28 +495,21 @@ func (t *TemporalEchoMitigator) CheckControllerTrustAndReassign(
 	cData, _ := json.Marshal(credRevoke)
 	ctx.GetStub().PutState("CTRL_REVOKED:"+controllerID, cData)
 
-	// Emit event for eventListener.js to action via emergency channel
 	evPayload, _ := json.Marshal(map[string]interface{}{
-		"type":          "CONTROLLER_REASSIGNMENT",
-		"removed_ctrl":  controllerID,
-		"backup_ctrl":   backupID,
-		"trust_score":   newScore,
-		"timestamp_ms":  time.Now().UnixMilli(),
+		"type":         "CONTROLLER_REASSIGNMENT",
+		"removed_ctrl": controllerID,
+		"backup_ctrl":  backupID,
+		"trust_score":  newScore,
+		"zone_id":      ctrlRecord.ZoneID,
+		"timestamp_ms": time.Now().UnixMilli(),
 	})
 	ctx.GetStub().SetEvent("ControllerRemoved", evPayload)
-
 	return nil
 }
 
-// selectBackupController returns Ck* = argmax{τCk : k≠j, τCk > τCmin}.
-func selectBackupController(
-	ctx contractapi.TransactionContextInterface,
-	failedCtrlID string,
-	allCtrls []string,
-) (string, float64) {
+func selectBackupController(ctx contractapi.TransactionContextInterface, failedCtrlID string, allCtrls []string) (string, float64) {
 	bestID := ""
 	bestScore := -1.0
-
 	for _, cid := range allCtrls {
 		if cid == failedCtrlID {
 			continue
@@ -513,15 +533,9 @@ func (t *TemporalEchoMitigator) GetControllerTrustScore(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  Bootstrap Phase  (Section 5.2)
-//
-//  Pure no-RSU deployment: all peers start at τ0 = 0.1.
-//  Bootstrap ends when ≥ np = 3f+1 peers reach τk ≥ τmingt.
-//  Minimum duration: Rmin = ⌈(τmingt - τ0) / Δ+⌉ = 8 rounds.
+//  Bootstrap Phase
 // ═══════════════════════════════════════════════════════════════════════════
 
-// GetBootstrapStatus returns whether the bootstrap phase is complete.
-// allPeersJSON: JSON array of all registered peer IDs.
 func (t *TemporalEchoMitigator) GetBootstrapStatus(
 	ctx contractapi.TransactionContextInterface,
 	allPeersJSON string,
@@ -538,20 +552,20 @@ func (t *TemporalEchoMitigator) GetBootstrapStatus(
 		}
 	}
 
-	// Rmin = ⌈(τmingt - τ0) / Δ+⌉ = ⌈(0.5 - 0.1) / 0.05⌉ = 8 rounds
-	rmin := int((TrustMinGT - TrustInitTier2) / TrustDeltaPlus)
+	// TR-02: use math.Ceil (not int truncation) for Rmin
+	rmin := int(math.Ceil((TrustMinGT - TrustInitTier2) / TrustDeltaPlus))
 	if rmin < 0 {
 		rmin = 0
 	}
 
 	bootstrapComplete := qualified >= np
 	return map[string]interface{}{
-		"bootstrap_complete":     bootstrapComplete,
-		"qualified_peers":        qualified,
-		"required_peers_np":      np,
-		"tau_mingt":              TrustMinGT,
-		"rmin_rounds":            rmin,
-		"trust_delta_plus":       TrustDeltaPlus,
-		"trust_delta_minus":      TrustDeltaMinus,
+		"bootstrap_complete": bootstrapComplete,
+		"qualified_peers":    qualified,
+		"required_peers_np":  np,
+		"tau_mingt":          TrustMinGT,
+		"rmin_rounds":        rmin,
+		"trust_delta_plus":   TrustDeltaPlus,
+		"trust_delta_minus":  TrustDeltaMinus,
 	}, nil
 }

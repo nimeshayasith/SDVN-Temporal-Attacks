@@ -15,16 +15,22 @@ package main
 //   VMAC_<vehicle_id>                           raw MAC address string
 //   ANCHOR:<created_at_ms>                      AnchorCheckpoint
 //   ANCHOR_CTR                                  monotonic block counter (uint64 string)
+//   CTRL_REGISTRY                               JSON array of controller IDs ([]string)
+//   CTRL_TRUST:<controller_id>                  ControllerTrustRecord
+//   CTRL_REASSIGN:<removed_ctrl_id>:<ts_ms>     ControllerReassignment
+//   CTRL_REVOKED:<controller_id>                revocation marker (map[string]interface{})
+//   PEERKEY:<peer_id>                           raw Dilithium2 public key bytes
 
 // ─── Flow 1 structs ─────────────────────────────────────────────────────────
 
 // VehicleObservation is one vehicle entry within B_nk(t).
 type VehicleObservation struct {
-	VehicleID  string  `json:"vehicle_id"`
-	SenderTSMs int64   `json:"sender_ts_ms"`
-	GPSLat     float64 `json:"gps_lat"`
-	GPSLon     float64 `json:"gps_lon"`
-	RSSIdBm    float32 `json:"rssi_dbm"`
+	VehicleID         string   `json:"vehicle_id"`
+	SenderTSMs        int64    `json:"sender_ts_ms"`
+	GPSLat            float64  `json:"gps_lat"`
+	GPSLon            float64  `json:"gps_lon"`
+	RSSIdBm           float32  `json:"rssi_dbm"`
+	NeighbourVehicles []string `json:"neighbour_vehicles"` // V2V HELLO-confirmed neighbours (D-1)
 }
 
 // BeaconEvidenceRecord is B_nk(t) — tamper-evident ground truth submitted by
@@ -113,13 +119,14 @@ type VehicleKeyRecord struct {
 // tgn_alerts.json and consumed by submit_alerts.py → SubmitAlert chaincode
 // function.  Fields match the C DetectionAlert struct in teta_guard_types.h.
 type AlertObject struct {
-	VehicleID  string  `json:"v_id"`
-	Alpha      string  `json:"alpha"`       // "TTW" | "BSHH" | "ME"
-	YHat       float32 `json:"y_hat"`       // ŷ_v from Eq.3.23
-	STrig      []int   `json:"S_trig"`      // triggered signature indices (0–8)
-	TAlertMs   int64   `json:"t_alert"`
-	FromLWPath bool    `json:"from_lw_path"`
-	FromFSPath bool    `json:"from_fs_path"`
+	VehicleID    string  `json:"v_id"`
+	Alpha        string  `json:"alpha"`         // "TTW" | "BSHH" | "ME"
+	YHat         float32 `json:"y_hat"`         // ŷ_v from Eq.3.23
+	STrig        []int   `json:"S_trig"`        // triggered signature indices (0–8)
+	TAlertMs     int64   `json:"t_alert"`
+	IntervalTSMs int64   `json:"interval_ts_ms"` // beacon interval ts (S-3: not same as alert time)
+	FromLWPath   bool    `json:"from_lw_path"`
+	FromFSPath   bool    `json:"from_fs_path"`
 }
 
 // ─── Verification helper structs ─────────────────────────────────────────────
@@ -165,17 +172,20 @@ type WitnessRecord struct {
 // Ledger key: TRUST:<peer_id>
 //
 // Update rules (Δ+ = 0.05, Δ- = 0.10):
-//   correct participation  → min(1, τk + Δ+)
-//   failure/inconsistency  → max(0, τk - Δ-)
-//   attack detection flag  → 0   (permanent until manual re-admission)
+//
+//	correct participation  → min(1, τk + Δ+)
+//	failure/inconsistency  → max(0, τk - Δ-)
+//	attack detection flag  → 0   (permanent until manual re-admission)
 type TrustRecord struct {
-	PeerID    string  `json:"peer_id"`
-	Score     float64 `json:"trust_score"`     // τk ∈ [0.0, 1.0]
-	IsRSUPeer bool    `json:"is_rsu_peer"`     // true = Tier 1 (RSU, starts at 1.0)
-	Flagged   bool    `json:"flagged"`         // true = zeroed by attack detection
-	FlaggedAt int64   `json:"flagged_at_ms"`
-	UpdatedAt int64   `json:"updated_at_ms"`
-	DocType   string  `json:"doc_type"`
+	PeerID     string  `json:"peer_id"`
+	Score      float64 `json:"trust_score"`     // τk ∈ [0.0, 1.0]
+	IsRSUPeer  bool    `json:"is_rsu_peer"`     // true = Tier 1 (RSU, starts at 1.0)
+	Flagged    bool    `json:"flagged"`         // true = zeroed by attack detection
+	FlaggedAt  int64   `json:"flagged_at_ms"`
+	UpdatedAt  int64   `json:"updated_at_ms"`
+	JoinedAtMs int64   `json:"joined_at_ms"`    // when OBU entered RSU coverage (TR-3)
+	HWCapacity int     `json:"hw_capacity_mb"`  // RAM in MB (0 = unknown/RSU) (TR-3)
+	DocType    string  `json:"doc_type"`
 }
 
 // ControllerTrustRecord holds the trust score τCj for an SDN controller.
@@ -183,11 +193,14 @@ type TrustRecord struct {
 // Ledger key: CTRL_TRUST:<controller_id>
 //
 // Update rule (ΔC- = 0.20, penalty-only — no reward):
-//   confirmed divergence → max(0, τCj - ΔC-)
+//
+//	confirmed divergence → max(0, τCj - ΔC-)
+//
 // When τCj < τCmin: controller removal mechanism triggers (Section 5.7).
 type ControllerTrustRecord struct {
 	ControllerID    string  `json:"controller_id"`
 	Score           float64 `json:"trust_score"`        // τCj ∈ [0.0, 1.0]
+	ZoneID          string  `json:"zone_id"`            // Eq. 3.37: C = {(Cj, τCj, Zj)} (TR-1/S-1)
 	DivergenceCount int     `json:"divergence_count"`   // total confirmed divergences
 	UpdatedAt       int64   `json:"updated_at_ms"`
 	DocType         string  `json:"doc_type"`
@@ -216,15 +229,16 @@ type ControllerReassignment struct {
 // base state before joining consensus rounds.
 //
 // Interval  = ⌊Tmin/Tb⌋ blocks
-//   Tmin    = max(3·TPBFT, Llink/2) ≈ 21.5 s (urban)  →  215 blocks at Tb=100ms
-//   Highway: Tmin = max(3·TPBFT, 4.5s) ≈ 4.5s          →   45 blocks
+//
+//	Tmin    = max(3·TPBFT, Llink/2) ≈ 21.5 s (urban)  →  215 blocks at Tb=100ms
+//	Highway: Tmin = max(3·TPBFT, 4.5s) ≈ 4.5s          →   45 blocks
 //
 // Ledger key: ANCHOR:<created_at_ms>
 // doc_type:   "ANCHOR_CHECKPOINT"
 type AnchorCheckpoint struct {
 	CheckpointID   string   `json:"checkpoint_id"`    // TxID of creation transaction
 	BlockHeight    uint64   `json:"block_height"`     // monotonic block counter (ANCHOR_CTR)
-	StateRootHash  string   `json:"state_root_hash"`  // SHA-256(TxID||ts) — simulation approx
+	StateRootHash  string   `json:"state_root_hash"`  // SHA-256(TxID||channelID||blockHeight)
 	CreatedByPeer  string   `json:"created_by_peer"`  // Tier 1 RSU peer ID
 	PeerSig        []byte   `json:"peer_sig"`          // σ_nk Dilithium2 over checkpoint data
 	PeerPubKey     []byte   `json:"peer_pub_key"`

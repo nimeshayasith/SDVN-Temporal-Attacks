@@ -115,6 +115,10 @@ async function submitToFabric(
         const network  = await gateway.getNetwork(CHANNEL);
         const contract = network.getContract(CHAINCODE);
 
+        // SF-2: Ensure this RSU peer is registered (trust = 1.0) before submitting.
+        // Handles the case where submitToFabric.js is called directly without bootstrap.sh.
+        await ensureRSUPeerRegistered(contract, trustedNodeID);
+
         // ── Flow 1: Submit beacon evidence B_nk(t) ───────────────────────────
         if (beaconEvidence && beaconEvidence.observations &&
                 beaconEvidence.observations.length > 0) {
@@ -154,13 +158,17 @@ async function submitToFabric(
 
         // ── Flow 2 + SubmitAlert: submit each detection event ─────────────────
         for (const alert of alertSet) {
-            // SubmitAlert wraps Flow 2 + Algorithm 4 in a single transaction
-            const ctrlTopoStr = ctrlTopo ? JSON.stringify(ctrlTopo) : '{}';
+            // SubmitAlert wraps Flow 2 + Algorithm 4 in a single transaction.
+            // T-1: trustedNodeID is now the first argument (replaces hardcoded peer ID).
+            // S-3: pass interval_ts_ms from the alert if available, else use t_alert.
+            const ctrlTopoStr  = ctrlTopo ? JSON.stringify(ctrlTopo) : '{}';
+            const intervalTSMs = alert.interval_ts_ms || alert.t_alert;
             await contract.submitTransaction(
                 'SubmitAlert',
+                trustedNodeID,            // T-1: real calling peer ID
                 JSON.stringify(alert),
                 ctrlTopoStr,
-                String(alert.t_alert)
+                String(intervalTSMs)
             );
             console.log(`[Fabric] Flow 2 + Algorithm 4 ✓  SubmitAlert` +
                 `  v_id=${alert.v_id}  α=${alert.alpha}  ŷ=${alert.y_hat.toFixed(4)}`);
@@ -185,7 +193,18 @@ async function submitToFabric(
                 links:         []
             };
 
-            const thresholdT = String(Math.floor(alertSet.length / 2) + 1);
+            // SF-02 FIX: thresholdT = n/2+1 where n = number of active Fabric peers,
+            // NOT the number of alerts. Previously used alertSet.length as n, which gave
+            // thresholdT=1 for a single alert — allowing a lone malicious RSU to satisfy
+            // verifyThresholdSig. The correct quorum is based on the peer count (n=5 RSU
+            // peers → t=3), read from the connection profile.
+            const channelPeers = connProfileRaw.channels
+                && connProfileRaw.channels[CHANNEL]
+                && connProfileRaw.channels[CHANNEL].peers
+                ? Object.keys(connProfileRaw.channels[CHANNEL].peers)
+                : [];
+            const nPeers     = channelPeers.length || 5; // fallback to 5 (fixed TETA-Guard network)
+            const thresholdT = String(Math.floor(nPeers / 2) + 1);
 
             await contract.submitTransaction(
                 'Mitigate',
@@ -195,13 +214,35 @@ async function submitToFabric(
                 THETA_FS,
                 thresholdT
             );
-            console.log(`[Fabric] Algorithm 4 ✓  Mitigate  n_alerts=${alertSet.length}`);
+            console.log(`[Fabric] Algorithm 4 ✓  Mitigate  n_alerts=${alertSet.length}  t=${thresholdT}/${nPeers}`);
         }
 
         console.log('[Fabric] SUBMIT_TO_FABRIC complete.');
 
     } finally {
         gateway.disconnect();
+    }
+}
+
+// ─── RSU peer registration check (SF-2) ──────────────────────────────────────
+
+/**
+ * ensureRSUPeerRegistered checks whether the calling RSU peer has a trust score
+ * of 1.0 on the ledger and registers it if not.  Handles the case where
+ * submitToFabric.js is called directly without bootstrap.sh having run first.
+ * SF-2: Without this, RSU trust records are absent and all beacon evidence
+ * submissions are rejected (default trust = 0.1, below Tier 1 threshold).
+ */
+async function ensureRSUPeerRegistered(contract, trustedNodeID) {
+    try {
+        const result = await contract.evaluateTransaction('GetTrustScore', trustedNodeID);
+        const scoreVal = parseFloat(result.toString());
+        if (scoreVal < 0.99) {
+            await contract.submitTransaction('RegisterRSUPeer', trustedNodeID);
+            console.log(`[Fabric] RSU peer ${trustedNodeID} registered (trust=1.0)`);
+        }
+    } catch (err) {
+        console.warn(`[Fabric] Could not verify/register RSU peer ${trustedNodeID}: ${err.message}`);
     }
 }
 
