@@ -23,18 +23,25 @@ BASE   = Path('/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch')
 IN     = BASE / 'optimization_link_lifetime_data.csv'
 OUT    = BASE / 'link_lifetime_solution.csv'
 
-DSRC_RANGE = 300.0   # metres — matches TTW_COMM_RANGE in routing.cc
-DEFAULT_LIFETIME = 1.0
+DSRC_RANGE = 300.0        # metres — matches TTW_COMM_RANGE in routing.cc
+DEFAULT_LIFETIME = 0.0    # 0 = no link (out of range, uninitialized, or missing data)
+PERSISTENT_LIFETIME = 1000.0  # within range + no relative motion = permanent link
 
 # ── Parse node positions from input CSV ──────────────────────────────────────
 # Format: total_size, nodeid, pos_x, pos_y, vel_x, vel_y, accel_x, accel_y,
 #         mobility_scenario, N_Vehicles, N_RSUs
+#
+# IMPORTANT: positions are keyed by CSV row index (0-based), which equals the
+# routing-slot index used by linklifetimeMatrix_dsrc in C++. The nodeid field
+# is the NS-3 global node ID and is NOT the same as the routing-slot index
+# (vehicles start at NS-3 ID ≥ 1 because controller/management are created first).
 total_size = 100
 n_vehicles = 0
 n_rsus = 0
-nodes = {}   # {nodeid: (pos_x, pos_y, vel_x, vel_y)}
+nodes = {}   # {routing_slot_index: (pos_x, pos_y, vel_x, vel_y)}
 
 if IN.exists():
+    row_idx = 0
     with IN.open('r', encoding='utf-8', errors='ignore') as f:
         for line in f:
             line = line.strip()
@@ -45,7 +52,6 @@ if IN.exists():
                 continue
             try:
                 ts   = int(parts[0])
-                nid  = int(parts[1])
                 px   = float(parts[2])
                 py   = float(parts[3])
                 vx   = float(parts[4]) if len(parts) > 4 else 0.0
@@ -57,7 +63,8 @@ if IN.exists():
                     n_vehicles = nv
                 if nr > 0:
                     n_rsus = nr
-                nodes[nid] = (px, py, vx, vy)
+                nodes[row_idx] = (px, py, vx, vy)
+                row_idx += 1
             except (ValueError, IndexError):
                 continue
 
@@ -73,6 +80,7 @@ n_pairs = total_size * total_size
 def link_lifetime(i, j):
     """Return link lifetime in seconds for the i→j DSRC link.
 
+    i and j are 0-based routing-slot indices matching linklifetimeMatrix_dsrc in C++.
     Nodes with index >= n_active have no physical DSRC device — always 0.
     If positions are all zero (data not yet populated) default to DEFAULT_LIFETIME.
     Any pair whose Euclidean distance exceeds DSRC_RANGE is treated as 0.
@@ -114,8 +122,9 @@ def link_lifetime(i, j):
     rel_speed_sq = dvx*dvx + dvy*dvy
 
     if rel_speed_sq < 1e-9:
-        # Nodes are effectively stationary relative to each other → link persists.
-        return DEFAULT_LIFETIME
+        # Nodes are effectively stationary relative to each other → link persists indefinitely.
+        # (RSU-RSU pairs always hit this branch; vehicle pairs moving in formation too.)
+        return PERSISTENT_LIFETIME
 
     # Quadratic: rel_speed_sq * t² + 2*(dx*dvx + dy*dvy)*t + (dist²−R²) = 0
     a = rel_speed_sq
@@ -124,7 +133,7 @@ def link_lifetime(i, j):
     discriminant = b*b - 4*a*c
 
     if discriminant < 0:
-        return DEFAULT_LIFETIME   # nodes stay within range indefinitely
+        return PERSISTENT_LIFETIME   # nodes stay within range indefinitely
 
     sqrt_disc = math.sqrt(discriminant)
     t1 = (-b - sqrt_disc) / (2*a)
@@ -133,7 +142,7 @@ def link_lifetime(i, j):
     # We want the smallest positive root (first exit time).
     positive_roots = [t for t in (t1, t2) if t > 1e-6]
     if not positive_roots:
-        return DEFAULT_LIFETIME
+        return PERSISTENT_LIFETIME
 
     return max(0.0, min(positive_roots))
 
