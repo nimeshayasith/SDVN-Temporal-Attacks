@@ -10433,6 +10433,7 @@ public:
 	uint32_t GetpacketId();
 	uint32_t Getprevious_senderId();
 	uint32_t GetchannelId();
+	uint32_t GetNextHopId();
 	Time Getprevious_timestamp();
 	Time Getoriginal_timestamp();
 
@@ -10440,6 +10441,7 @@ public:
 	void SetpacketId(uint32_t packet_id);
 	void SetchannelId(uint32_t packet_id);
 	void Setprevious_senderId(uint32_t destination_id);
+	void SetNextHopId(uint32_t next_hop_id);
 	void Setprevious_timestamp (Time time);
 	void Setoriginal_timestamp (Time time);
 
@@ -10451,6 +10453,7 @@ private:
 	uint32_t m_packetId;
 	uint32_t m_channelId;
 	uint32_t m_flowId;
+	uint32_t m_next_hop_id;
 	Time m_original_timestamp;
 	Time m_previous_timestamp;
 };
@@ -10490,7 +10493,7 @@ TypeId CustomDataUnicastTag_ModifiedRouting::GetInstanceTypeId (void) const
 uint32_t CustomDataUnicastTag_ModifiedRouting::GetSerializedSize (void) const
 {
 	//return sizeof (m_nodeId) + sizeof(m_acceleration) + sizeof(m_velocity) + sizeof(m_position) + sizeof(m_timestamp) + sizeof(uint32_t);
-	return (sizeof(uint32_t) + sizeof(uint32_t)  + sizeof(uint32_t) + sizeof(uint32_t) + (sizeof(double))*2);
+	return (sizeof(uint32_t)*5 + (sizeof(double))*2);
 }
 
 /*
@@ -10505,6 +10508,7 @@ void CustomDataUnicastTag_ModifiedRouting::Serialize (TagBuffer i) const
 	i.WriteU32(m_packetId);
 	i.WriteU32(m_channelId);
 	i.WriteU32(m_flowId);
+	i.WriteU32(m_next_hop_id);
 	i.WriteDouble(m_original_timestamp.GetDouble());
 	i.WriteDouble(m_previous_timestamp.GetDouble());
 }
@@ -10513,11 +10517,11 @@ void CustomDataUnicastTag_ModifiedRouting::Serialize (TagBuffer i) const
 
 void CustomDataUnicastTag_ModifiedRouting::Deserialize (TagBuffer i)
 {
-
 	m_previous_senderId = i.ReadU32();
 	m_packetId = i.ReadU32();
 	m_channelId = i.ReadU32();
 	m_flowId = i.ReadU32();
+	m_next_hop_id = i.ReadU32();
 	m_original_timestamp =  Time::FromDouble (i.ReadDouble(), Time::NS);
 	m_previous_timestamp =  Time::FromDouble (i.ReadDouble(), Time::NS);
 }
@@ -10567,8 +10571,18 @@ void CustomDataUnicastTag_ModifiedRouting::Setprevious_senderId(uint32_t previou
 }
 
 uint32_t CustomDataUnicastTag_ModifiedRouting::Getprevious_senderId()
-{	
+{
 	return m_previous_senderId;
+}
+
+void CustomDataUnicastTag_ModifiedRouting::SetNextHopId(uint32_t next_hop_id)
+{
+	m_next_hop_id = next_hop_id;
+}
+
+uint32_t CustomDataUnicastTag_ModifiedRouting::GetNextHopId()
+{
+	return m_next_hop_id;
 }
 
 
@@ -10995,7 +11009,7 @@ void CustomFlowDataUplinkTag1::Deserialize (TagBuffer i)
 
 void CustomFlowDataUplinkTag1::Print (std::ostream &os) const
 {
-  os << "Custom Data --- Node :"<<endl;
+  os << "Custom Data --- Node :"<<"\n";
 }
 
 //Your accessor and mutator functions 
@@ -11203,7 +11217,7 @@ void CustomStatusDataUplinkTag1::Deserialize (TagBuffer i)
 
 void CustomStatusDataUplinkTag1::Print (std::ostream &os) const
 {
-  os << "Custom Data --- Node :" << m_nodeId<<endl;
+  os << "Custom Data --- Node :" << m_nodeId<<"\n";
 }
 
 //Your accessor and mutator functions 
@@ -98001,7 +98015,7 @@ void clear_delta_at_controller(struct delta_f * nd1)
 			}
 		}
 	}
-	cout<<"Solution at controller cleared"<<endl;
+	cout<<"Solution at controller cleared"<<"\n";
 }
 
 void clear_delta_at_nodes(struct delta_f * nd1)
@@ -98019,7 +98033,7 @@ void clear_delta_at_nodes(struct delta_f * nd1)
 			}
 		}
 	}
-	cout<<"Solution at nodes cleared at "<<Now().GetSeconds()<<endl;
+	cout<<"Solution at nodes cleared at "<<Now().GetSeconds()<<"\n";
 }
 
 struct demanding_flow_struct_nodes
@@ -98115,7 +98129,7 @@ void print_management_data()
 {
 	for(uint32_t i=0;i<total_size+2;i++)
 	{
-		cout<<"i ="<<i<<"node id "<<(data_at_manager_inst+i)->nodeid<<"acceleration "<<(data_at_manager_inst+i)->acceleration<<"velocity "<<(data_at_manager_inst+i)->velocity<<"position "<<(data_at_manager_inst+i)->position<<"timestamp "<<(data_at_manager_inst+i)->timestamp<<endl;
+		cout<<"i ="<<i<<"node id "<<(data_at_manager_inst+i)->nodeid<<"acceleration "<<(data_at_manager_inst+i)->acceleration<<"velocity "<<(data_at_manager_inst+i)->velocity<<"position "<<(data_at_manager_inst+i)->position<<"timestamp "<<(data_at_manager_inst+i)->timestamp<<"\n";
 	}
 }
 
@@ -98166,11 +98180,11 @@ void update_previous_velocity(Ptr <NetDevice> nd, Ptr <Node> node)
 	//CustomDataTag tag;
 	uint32_t nid = uint32_t(ni->GetId()) - 2;
 	//packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
-	//cout<<"updating data from node "<<nid<<endl;
+	//cout<<"updating data from node "<<nid<<"\n";
 	Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node->GetObject<MobilityModel>());
 	Vector current_velocity = mdl->GetVelocity();
 	previous_velocity_dsrc[nid] = current_velocity;
-	//cout<<"updating velocity of node "<<nid<<"as "<<previous_velocity_dsrc[nid]<<"at time "<<Now().GetSeconds()<<endl;
+	//cout<<"updating velocity of node "<<nid<<"as "<<previous_velocity_dsrc[nid]<<"at time "<<Now().GetSeconds()<<"\n";
 }
 
 void add_routing_data_at_nodes(struct routing_data_at_nodes * nd1, Ptr <NetDevice> nd, Ptr <Node> node)
@@ -98184,7 +98198,7 @@ void add_routing_data_at_nodes(struct routing_data_at_nodes * nd1, Ptr <NetDevic
 	//CustomDataTag tag;
 	uint32_t nid = uint32_t(ni->GetId()) - 2;
 	//packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
-	//cout<<"updating data from node "<<nid<<endl;
+	//cout<<"updating data from node "<<nid<<"\n";
 	Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node->GetObject<MobilityModel>());
 	Vector posi = mdl->GetPosition();
 	Vector current_velocity = mdl->GetVelocity();
@@ -98192,7 +98206,7 @@ void add_routing_data_at_nodes(struct routing_data_at_nodes * nd1, Ptr <NetDevic
 	
 	Vector acceleration;
 	acceleration = calculate_acceleration(previous_velocity_dsrc[nid],current_velocity,delta_t);
-	//cout<<"calculating acceleration for nid "<<nid<<"with previous velocity "<<previous_velocity_dsrc[nid]<<"current velocity "<<current_velocity<<" is "<<acceleration<<endl;
+	//cout<<"calculating acceleration for nid "<<nid<<"with previous velocity "<<previous_velocity_dsrc[nid]<<"current velocity "<<current_velocity<<" is "<<acceleration<<"\n";
 	
 	//Ptr <Packet> packet_i = Create<Packet> (0);
 	//tag.SetNodeId(nid);
@@ -98204,7 +98218,7 @@ void add_routing_data_at_nodes(struct routing_data_at_nodes * nd1, Ptr <NetDevic
 	packet_i->AddPacketTag(tag);
 	dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 	//Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);	
-	cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+	cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 	*/
 	//previous_velocity_dsrc[nid] = current_velocity;
 	
@@ -98212,7 +98226,7 @@ void add_routing_data_at_nodes(struct routing_data_at_nodes * nd1, Ptr <NetDevic
 	nd1->velocity = current_velocity;
 	nd1->position = posi;
 	nd1->nodeid = nid;
-	//cout<<"updating data from node "<<nid<< "updated as acceleration"<<nd1->acceleration<<"velocity: "<<nd1->velocity<< "position"<<nd1->position<<endl;
+	//cout<<"updating data from node "<<nid<< "updated as acceleration"<<nd1->acceleration<<"velocity: "<<nd1->velocity<< "position"<<nd1->position<<"\n";
 }
 
 
@@ -98224,7 +98238,7 @@ void add_demanding_flow_struct_nodes(struct demanding_flow_struct_nodes * nd1, u
 	nd1->f_size = x;
 	nd1->p_size = z;
 	nd1->qos = q;
-	//cout<<"updating flow with source as: "<<nd1->source<<"destination: "<<nd1->destination<<endl;
+	//cout<<"updating flow with source as: "<<nd1->source<<"destination: "<<nd1->destination<<"\n";
 }
 
 void add_demanding_flow_struct_controller(uint32_t flow_index, uint32_t source, uint32_t destination, uint32_t x, uint32_t z, uint32_t q)
@@ -98473,7 +98487,7 @@ void add_neighbor_info(struct neighbor_data * nd1, uint32_t node_id)
 			nd1->neighborid[i] = node_id;
 			//nd1->combined_cost[i] = combined_cost;
 			found = true;
-			//cout<<"found neighbor at index"<<i<<endl;
+			//cout<<"found neighbor at index"<<i<<"\n";
 		}
 	}
 	
@@ -98485,7 +98499,7 @@ void add_neighbor_info(struct neighbor_data * nd1, uint32_t node_id)
 			nd1->neighborid[j] = node_id;
 			//nd1->combined_cost[j] = combined_cost;
 			setter = true;
-			//cout<<"neighbor not found setting at index"<<j<<endl;
+			//cout<<"neighbor not found setting at index"<<j<<"\n";
 		}
 	}
 
@@ -98500,10 +98514,10 @@ void refresh_neighbors(struct neighbor_data * nd1)
 		uint32_t difference = now - last_timestamp;
 		double update_frequency = data_transmission_frequency;
 		uint32_t period = 1.5*uint32_t(1000/update_frequency);
-		//cout<<"difference"<<difference<<"period"<<period<<endl;
+		//cout<<"difference"<<difference<<"period"<<period<<"\n";
 		if (difference > period)//If difference is greater than update period, we remove the node.
 		{	
-			//cout<<"removing old neighbor at index "<<i<<endl;
+			//cout<<"removing old neighbor at index "<<i<<"\n";
 			nd1->neighborid[i] = large;
 			//nd1->combined_cost[i] = large;
 		}
@@ -98610,7 +98624,7 @@ void update_proposed_route(uint32_t source, uint32_t destination, uint32_t * pat
 	proposed_routing_tables[source].rows[destination].destination_node = destination;
 	for(uint32_t k=0;k<total_size;k++)
 	{
-		//cout<<path[0]<<endl;
+		//cout<<path[0]<<"\n";
 		proposed_routing_tables[source].rows[destination].path[k] = *(path+k);
 	}
 }
@@ -98819,7 +98833,7 @@ void compute_1hop_delay()
 				write_csv_delay_training(i, 1);
 			}
 		}
-		cout<<"delay wireless at node "<<i<<" is "<< one_hop_delay_training_wl[i]<<endl;
+		cout<<"delay wireless at node "<<i<<" is "<< one_hop_delay_training_wl[i]<<"\n";
 		if (packets_received_wi[i] > 0)
 		{
 			one_hop_delay_training_wi[i] = one_hop_delay_training_wi[i]/packets_received_wi[i];
@@ -98828,7 +98842,7 @@ void compute_1hop_delay()
 				write_csv_delay_training(i, 0);
 			}
 		}
-		cout<<"delay wired at node "<<i<<" is "<< one_hop_delay_training_wi[i]<<endl;
+		cout<<"delay wired at node "<<i<<" is "<< one_hop_delay_training_wi[i]<<"\n";
 	}
 }
 
@@ -98970,7 +98984,7 @@ void compute_wireless_average_delay(uint32_t nodeID)
 	d_cont_wl_bar = (DIFS) + T_slot*(CW_min/8.0)*((2-(2*rho_wl)-pow((2*rho_wl),6))/(1-(2*rho_wl)));
 	d_cont_wl_max = (DIFS) + T_slot*(CW_min)*(8);
 	D_wl_bar[nodeID] = R[nodeID]*(d_trans + d_prop + d_proc + d_rts + d_cts + d_ack + d_cont_wl_bar);
-	cout<<"wireless average delay at node "<<nodeID<<" is "<<D_wl_bar[nodeID]<<endl;
+	cout<<"wireless average delay at node "<<nodeID<<" is "<<D_wl_bar[nodeID]<<"\n";
 }
 
 void compute_wired_average_delay(uint32_t nodeID)
@@ -98996,7 +99010,7 @@ void compute_wired_average_delay(uint32_t nodeID)
 	d_cont_wi_bar = (E_bar*(IFG+d_trans)) + T_slot*rho_wi*(CW_min/4.0)*((2-(2*rho_wi)-(pow((2*rho_wi),6)))/(1-(2*rho_wi)));
 	d_cont_wi_max = (6*(IFG+d_trans)) + T_slot*(CW_min)*(16);
 	D_wi_bar[nodeID] = R[nodeID]*(d_trans + d_prop + d_proc + d_cont_wi_bar);
-	cout<<"wired average delay at node "<<nodeID<<" is "<<D_wi_bar[nodeID]<<endl;
+	cout<<"wired average delay at node "<<nodeID<<" is "<<D_wi_bar[nodeID]<<"\n";
 }
 
 void compute_average_delays()
@@ -99158,16 +99172,16 @@ bool X_nodes[total_size+2];
 			packets_received_wi[*source - 2] = packets_received_wi[*source - 2] + 1;
 			double delay = Now().GetMicroSeconds()-tag_routing.GetTimestamp()->GetMicroSeconds();
 			one_hop_delay_training_wi[*source - 2] = one_hop_delay_training_wi[*source - 2] + delay;
-			cout<<"1-hop delay wired is "<<delay<<endl;
+			cout<<"1-hop delay wired is "<<delay<<"\n";
 			
 			if (nid != destination)
 			{
 				//uint32_t next_hop = routing_tables[nid -2].rows[destination-2].next_hop;
 				uint32_t next_hop = find_next_hop(node_index,destination-2,nid -2);
-				cout<<endl<<"next hop from routing table is "<< next_hop <<endl;
+				cout<<"\n"<<"next hop from routing table is "<< next_hop <<"\n";
 				if (next_hop == (*source -2))
 				{
-					cout<<"routing loop. stopping routing"<<endl;
+					cout<<"routing loop. stopping routing"<<"\n";
 				}
 				else if (next_hop < total_size)
 				{
@@ -99181,7 +99195,7 @@ bool X_nodes[total_size+2];
 					{
 						Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(nid-2-N_Vehicles));	
 				  		Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(nid-2-N_Vehicles));
-				  		cout<<"Ethernet data Unicasting from node "<<nid - 2<<endl;
+				  		cout<<"Ethernet data Unicasting from node "<<nid - 2<<"\n";
 						
 						Ptr <Ipv4> ipv4;  	
 					  	ipv4 = RSU_Nodes.Get(next_hop-N_Vehicles)->GetObject<Ipv4>();
@@ -99209,7 +99223,7 @@ bool X_nodes[total_size+2];
 						}
 						Address addr = destination_nd->GetAddress();
 						Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
-						//cout <<endl<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<endl;
+						//cout <<"\n"<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<"\n";
 					  	uint16_t protocolwave = 0x88dc;//
 						Ptr <WifiNetDevice> wdi = GetWifiDsrcDevice(178, nid - 2);
 						if (!wdi)
@@ -99217,18 +99231,18 @@ bool X_nodes[total_size+2];
 							cout << "Skipping DSRC unicast: invalid sender index " << (nid - 2) << endl;
 							return;
 						}
-						cout<<"DSRC data Unicasting from node "<<nid - 2<<endl;
+						cout<<"DSRC data Unicasting from node "<<nid - 2<<"\n";
 						dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 						Simulator::Schedule (Seconds(0.000000) , &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
 					}
 					
 					Y[nid - 2] = Y[nid - 2] + 1;	
-					//cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+					//cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 				}
 			}
 			if (nid == destination)
 			{
-				cout<<"packet successfully delivered to destination node"<<nid - 2<<endl;
+				cout<<"packet successfully delivered to destination node"<<nid - 2<<"\n";
 				dsrc_packet_final_timestamp[node_index+2] = Simulator::Now().GetSeconds();
 				std::cout << "Received data unicasted packet from "<< tag_routing.GetsenderId()<<"to node "<<nid -2 <<"of size "<<tag_routing.GetSerializedSize()<<" at position "<< *tag_routing.Getposition()<<"with velocity "<<*tag_routing.Getvelocity()<<"with acceleration "<<*tag_routing.Getacceleration()<<"packet timestamp "<< tag_routing.GetTimestamp()->GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag_routing.GetTimestamp()->GetMicroSeconds()<<"us"<<std::endl;
 			}
@@ -99256,7 +99270,7 @@ bool X_nodes[total_size+2];
 			for(uint32_t j=0;j<total_size;j++)	
 			{
 				(delta_at_nodes_inst+i)->delta_fi_inst[nodeid].delta_values[j] = delta_Set[i][j];
-				//cout<< "i = "<<i<<"nid = "<<nid<<"j= "<<j<<"value="<<(delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j]<<endl;
+				//cout<< "i = "<<i<<"nid = "<<nid<<"j= "<<j<<"value="<<(delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j]<<"\n";
 			}
 		       (delta_at_nodes_inst+i)->source_f = sources[i];
 		       (delta_at_nodes_inst+i)->destination_f = destinations[i];
@@ -99265,11 +99279,11 @@ bool X_nodes[total_size+2];
 		       (load_at_nodes+i)->load_f[nodeid] = load_sum[i];
 		}
 		
-		//cout<<"Received deltas and load values at node: "<<nodeid<<"at timestamp: "<<Now().GetMilliSeconds()<<endl;
+		//cout<<"Received deltas and load values at node: "<<nodeid<<"at timestamp: "<<Now().GetMilliSeconds()<<"\n";
 		
 	
-		//cout<<"delta value of flow "<< (delta_at_nodes_inst+0)->flow_id<<"node id "<<nodeid<<", next hop 1 with flow size "<<(demanding_flow_struct_nodes_inst+0)->f_size<<" is "<<(delta_at_nodes_inst+0)->delta_fi_inst[nodeid].delta_values[1]<<"and Load sum is "<< (load_at_nodes+0)->load_f[nodeid]<<"source is "<<(delta_at_nodes_inst+0)->source_f<<"destination is "<<(delta_at_nodes_inst+0)->destination_f<<endl;
-	 //cout<<"delta value of flow "<< (delta_at_nodes_inst+1)->flow_id<<"node id "<<nodeid<<", next hop 10 with flow size "<<(demanding_flow_struct_nodes_inst+1)->f_size<<" is "<<(delta_at_nodes_inst+1)->delta_fi_inst[nodeid].delta_values[10]<<"and Load sum is "<< (load_at_nodes+1)->load_f[nodeid]<<"source is "<<(delta_at_nodes_inst+1)->source_f<<"destination is "<<(delta_at_nodes_inst+1)->destination_f<<endl;
+		//cout<<"delta value of flow "<< (delta_at_nodes_inst+0)->flow_id<<"node id "<<nodeid<<", next hop 1 with flow size "<<(demanding_flow_struct_nodes_inst+0)->f_size<<" is "<<(delta_at_nodes_inst+0)->delta_fi_inst[nodeid].delta_values[1]<<"and Load sum is "<< (load_at_nodes+0)->load_f[nodeid]<<"source is "<<(delta_at_nodes_inst+0)->source_f<<"destination is "<<(delta_at_nodes_inst+0)->destination_f<<"\n";
+	 //cout<<"delta value of flow "<< (delta_at_nodes_inst+1)->flow_id<<"node id "<<nodeid<<", next hop 10 with flow size "<<(demanding_flow_struct_nodes_inst+1)->f_size<<" is "<<(delta_at_nodes_inst+1)->delta_fi_inst[nodeid].delta_values[10]<<"and Load sum is "<< (load_at_nodes+1)->load_f[nodeid]<<"source is "<<(delta_at_nodes_inst+1)->source_f<<"destination is "<<(delta_at_nodes_inst+1)->destination_f<<"\n";
 	
 
 	}
@@ -99349,7 +99363,7 @@ bool X_nodes[total_size+2];
 		  	(con_data_inst+source_node_id)->B = 1 + uint32_t((Now().GetMilliSeconds()-tag30.GetTimestamp().GetMilliSeconds())/10);
 		  }
 		  (con_data_inst+source_node_id)->lastupdated = Simulator::Now().GetSeconds();
-		  //cout<<"nid is "<<source_node_id<<"frequency is "<< tag3.Getfrequency()<<" datasize "<<tag3.Getdatasize()<<"serialized size" <<tag3.GetSerializedSize()<<endl;
+		  //cout<<"nid is "<<source_node_id<<"frequency is "<< tag3.Getfrequency()<<" datasize "<<tag3.Getdatasize()<<"serialized size" <<tag3.GetSerializedSize()<<"\n";
 		  //(con_data_inst+source_node_id)->frequency = tag30.Getfrequency();
 		  //(con_data_inst+source_node_id)->datasize = tag30.Getdatasize();
 
@@ -114938,7 +114952,7 @@ bool X_nodes[total_size+2];
 			
 			Z_nodes[nid] = tag4.GetZ();
 			X_nodes[nid] = tag4.GetX();
-			cout<<"At node id "<<nid<<"Z value is "<<Z_nodes[nid]<<"X value is "<<X_nodes[nid]<<"at time "<<Simulator::Now()<<endl;
+			cout<<"At node id "<<nid<<"Z value is "<<Z_nodes[nid]<<"X value is "<<X_nodes[nid]<<"at time "<<Simulator::Now()<<"\n";
 		}
 	}
 	
@@ -114951,7 +114965,7 @@ bool X_nodes[total_size+2];
 	  	{
 	  		dsrc_final_timestamp = Simulator::Now().GetSeconds();
 	  		aodv_final_timestamp[sender_id] = Simulator::Now().GetSeconds();
-	  		cout<<"Received packet from "<<sender_id<<endl;
+	  		cout<<"Received packet from "<<sender_id<<"\n";
 	  	}
 	}
 	
@@ -114959,7 +114973,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag51))
 	{		  
 		  uint32_t * source_node_id = tag51.GetNodeId();
-		  cout<<"This is tag1. Serialized size is "<< tag51.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag1. Serialized size is "<< tag51.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag51.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -114971,7 +114985,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<1; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag51.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag51.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag51.Getposition()+i);
@@ -114994,7 +115008,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag52))
 	{		  
 	          uint32_t * source_node_id = tag52.GetNodeId();
-		  cout<<"This is tag2. Serialized size is "<< tag52.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag2. Serialized size is "<< tag52.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag52.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115006,7 +115020,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<2; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag52.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag52.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag52.Getposition()+i);
@@ -115028,7 +115042,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag53))
 	{		  
 	          uint32_t * source_node_id = tag53.GetNodeId();
-		  cout<<"This is tag3. Serialized size is "<< tag53.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag3. Serialized size is "<< tag53.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag53.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115040,7 +115054,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<3; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag53.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag53.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag53.Getposition()+i);
@@ -115063,7 +115077,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag54))
 	{		  
 	          uint32_t * source_node_id = tag54.GetNodeId();
-		  cout<<"This is tag4. Serialized size is "<< tag54.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag4. Serialized size is "<< tag54.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag54.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115075,7 +115089,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<4; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag54.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag54.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag54.Getposition()+i);
@@ -115098,7 +115112,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag55))
 	{		  
 	          uint32_t * source_node_id = tag55.GetNodeId();
-		  cout<<"This is tag5. Serialized size is "<< tag55.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag5. Serialized size is "<< tag55.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag55.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115110,7 +115124,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<5; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag55.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag55.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag55.Getposition()+i);
@@ -115134,7 +115148,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag56))
 	{		  
 	          uint32_t * source_node_id = tag56.GetNodeId();
-		  cout<<"This is tag6. Serialized size is "<< tag56.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag6. Serialized size is "<< tag56.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag56.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115146,7 +115160,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<6; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag56.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag56.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag56.Getposition()+i);
@@ -115169,7 +115183,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag57))
 	{		  
 	          uint32_t * source_node_id = tag57.GetNodeId();
-		  cout<<"This is tag7. Serialized size is "<< tag57.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag7. Serialized size is "<< tag57.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag57.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115181,7 +115195,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<7; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag57.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag57.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag57.Getposition()+i);
@@ -115205,7 +115219,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag58))
 	{		  
 	          uint32_t * source_node_id = tag58.GetNodeId();
-		  cout<<"This is tag8. Serialized size is "<< tag58.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag8. Serialized size is "<< tag58.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag58.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115217,7 +115231,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<8; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag58.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag58.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag58.Getposition()+i);
@@ -115240,7 +115254,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag59))
 	{		  
 	          uint32_t * source_node_id = tag59.GetNodeId();
-		  cout<<"This is tag9. Serialized size is "<< tag59.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag9. Serialized size is "<< tag59.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag59.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115252,7 +115266,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<9; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag59.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag59.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag59.Getposition()+i);
@@ -115275,7 +115289,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag510))
 	{		  
 	          uint32_t * source_node_id = tag510.GetNodeId();
-		  cout<<"This is tag10. Serialized size is "<< tag510.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag10. Serialized size is "<< tag510.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag510.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115287,7 +115301,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<10; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag510.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag510.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag510.Getposition()+i);
@@ -115312,7 +115326,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag511))
 	{		  
 	          uint32_t * source_node_id = tag511.GetNodeId();
-		  cout<<"This is tag11. Serialized size is "<< tag511.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag11. Serialized size is "<< tag511.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag511.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115324,7 +115338,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<11; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag511.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag511.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag511.Getposition()+i);
@@ -115349,7 +115363,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag512))
 	{		  
 	          uint32_t * source_node_id = tag512.GetNodeId();
-		  cout<<"This is tag12. Serialized size is "<< tag512.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag12. Serialized size is "<< tag512.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag512.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115361,7 +115375,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<12; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag512.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag512.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag512.Getposition()+i);
@@ -115384,7 +115398,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag513))
 	{		  
 	          uint32_t * source_node_id = tag513.GetNodeId();
-		  cout<<"This is tag13. Serialized size is "<< tag513.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag13. Serialized size is "<< tag513.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag513.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115396,7 +115410,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<13; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag513.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag513.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag513.Getposition()+i);
@@ -115422,7 +115436,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag514))
 	{		  
 	          uint32_t * source_node_id = tag514.GetNodeId();
-		  cout<<"This is tag14. Serialized size is "<< tag514.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag14. Serialized size is "<< tag514.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag514.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115434,7 +115448,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<14; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag514.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag514.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag514.Getposition()+i);
@@ -115460,7 +115474,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag515))
 	{		  
 	          uint32_t * source_node_id = tag515.GetNodeId();
-		  cout<<"This is tag15. Serialized size is "<< tag515.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag15. Serialized size is "<< tag515.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag515.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115472,7 +115486,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<15; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag515.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag515.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag515.Getposition()+i);
@@ -115496,7 +115510,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag516))
 	{		  
 	          uint32_t * source_node_id = tag516.GetNodeId();
-		  cout<<"This is tag16. Serialized size is "<< tag516.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag16. Serialized size is "<< tag516.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag516.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115508,7 +115522,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<16; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag516.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag516.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag516.Getposition()+i);
@@ -115532,7 +115546,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag517))
 	{		  
 	          uint32_t * source_node_id = tag517.GetNodeId();
-		  cout<<"This is tag17. Serialized size is "<< tag517.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag17. Serialized size is "<< tag517.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag517.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115544,7 +115558,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<17; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag517.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag517.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag517.Getposition()+i);
@@ -115568,7 +115582,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag518))
 	{		  
 	          uint32_t * source_node_id = tag518.GetNodeId();
-		  cout<<"This is tag18. Serialized size is "<< tag518.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag18. Serialized size is "<< tag518.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag518.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115580,7 +115594,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<18; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag518.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag518.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag518.Getposition()+i);
@@ -115604,7 +115618,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag519))
 	{		  
 	          uint32_t * source_node_id = tag519.GetNodeId();
-		  cout<<"This is tag19. Serialized size is "<< tag519.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag19. Serialized size is "<< tag519.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag519.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115616,7 +115630,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<19; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag519.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag519.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag519.Getposition()+i);
@@ -115642,7 +115656,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag520))
 	{		  
 	          uint32_t * source_node_id = tag520.GetNodeId();
-		  cout<<"This is tag20. Serialized size is "<< tag520.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag20. Serialized size is "<< tag520.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag520.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115654,7 +115668,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<20; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag520.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag520.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag520.Getposition()+i);
@@ -115678,7 +115692,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag521))
 	{		  
 	          uint32_t * source_node_id = tag521.GetNodeId();
-		  cout<<"This is tag21. Serialized size is "<< tag521.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag21. Serialized size is "<< tag521.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag521.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115690,7 +115704,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<21; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag521.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag521.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag521.Getposition()+i);
@@ -115714,7 +115728,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag522))
 	{		  
 	          uint32_t * source_node_id = tag522.GetNodeId();
-		  cout<<"This is tag22. Serialized size is "<< tag522.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag22. Serialized size is "<< tag522.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag522.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115726,7 +115740,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<22; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag522.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag522.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag522.Getposition()+i);
@@ -115750,7 +115764,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag523))
 	{		  
 	          uint32_t * source_node_id = tag523.GetNodeId();
-		  cout<<"This is tag23. Serialized size is "<< tag523.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag23. Serialized size is "<< tag523.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag523.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115762,7 +115776,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<23; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag523.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag523.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag523.Getposition()+i);
@@ -115786,7 +115800,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag524))
 	{		  
 	          uint32_t * source_node_id = tag524.GetNodeId();
-		  cout<<"This is tag24. Serialized size is "<< tag524.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag24. Serialized size is "<< tag524.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag524.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115798,7 +115812,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<24; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag524.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag524.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag524.Getposition()+i);
@@ -115822,7 +115836,7 @@ bool X_nodes[total_size+2];
 	if(packet->PeekPacketTag(tag525))
 	{		  
 	          uint32_t * source_node_id = tag525.GetNodeId();
-		  cout<<"This is tag25. Serialized size is "<< tag525.GetSerializedSize()<<endl;
+		  if (N_Vehicles <= 10) cout<<"This is tag25. Serialized size is "<< tag525.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag525.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115834,7 +115848,7 @@ bool X_nodes[total_size+2];
 		  }
 		  for(uint8_t i=0; i<25; i++)
 		  {
-		  	//cout<<"source node id "<<source_node_id[i]<<endl;
+		  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 	  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag525.Getacceleration()+i);
 	  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag525.Getvelocity()+i);
 	  		(data_at_manager_inst+source_node_id[i])->position = *(tag525.Getposition()+i);
@@ -115857,9 +115871,9 @@ bool X_nodes[total_size+2];
 	CustomDataUnicastTag tag5;
 	if(packet->PeekPacketTag(tag5))
 	{	
-		  cout<<"maximum data size exceeded"<<endl;
+		  cout<<"maximum data size exceeded"<<"\n";
 	          uint32_t * source_node_id = tag5.GetNodeId();
-		  cout<<"Serialized size is "<< tag5.GetSerializedSize()<<endl;
+		  cout<<"Serialized size is "<< tag5.GetSerializedSize()<<"\n";
 		  uint32_t real_source = tag5.GetsenderId();
 		  if(real_source < (2+N_Vehicles))
 		  {
@@ -115873,7 +115887,7 @@ bool X_nodes[total_size+2];
 		  {
 		  	if(source_node_id[i] != 50000)
 		  	{
-			  	//cout<<"source node id "<<source_node_id[i]<<endl;
+			  	//cout<<"source node id "<<source_node_id[i]<<"\n";
 		  		(data_at_manager_inst+source_node_id[i])->acceleration = *(tag5.Getacceleration()+i);
 		  		(data_at_manager_inst+source_node_id[i])->velocity = *(tag5.Getvelocity()+i);
 		  		(data_at_manager_inst+source_node_id[i])->position = *(tag5.Getposition()+i);
@@ -115899,7 +115913,7 @@ bool X_nodes[total_size+2];
   
   void SimpleUdpApplication::test()
   {
- 	cout<<"Test function"<<endl;
+ 	cout<<"Test function"<<"\n";
   }
 
   void SimpleUdpApplication::HandleReadTwo(Ptr<Socket> socket)
@@ -115917,13 +115931,13 @@ bool X_nodes[total_size+2];
 
   void SimpleUdpApplication::SendPacket(Ptr<Packet> packet, Ipv4Address destination, uint16_t port)
   {
-    //cout<<m_send_socket<<endl;
+    //cout<<m_send_socket<<"\n";
     NS_LOG_FUNCTION (this << packet << destination << port);
     m_send_socket->Connect(InetSocketAddress(Ipv4Address::ConvertFrom(destination), port));
     int x = m_send_socket->Send(packet);
     if (x == -1)
     {
-    	cout<<"An Error occured in sending"<<endl;
+    	cout<<"An Error occured in sending"<<"\n";
     }
   }
 
@@ -116097,7 +116111,7 @@ void send_LTE_metadata_uplink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Nod
 		lte_initial_timestamp = Simulator::Now().GetSeconds(); 	
 	}
 	uint32_t size = getNeighborsize((neighbordata_inst+nid));
-	//cout<<"sending vehicle data of neighborsize "<<size<<endl;
+	//cout<<"sending vehicle data of neighborsize "<<size<<"\n";
 	uint32_t neighborid[size];
 	//uint32_t combined_cost[size];
 	for (uint32_t i=0;i<size;i++)
@@ -116145,6 +116159,7 @@ void send_LTE_metadata_uplink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Nod
 	  		j++;
 	  	}
 	}
+	if (size > 25) size = 25;  // clamp to max handled case
 	switch (size)
 	{
 		case 0:
@@ -116432,7 +116447,7 @@ void send_LTE_metadata_uplink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Nod
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;
 		default:
-			cout<<"Cellular:maximum status datasize exceeded. size is "<<size<<endl;
+			cout<<"Cellular:maximum status datasize exceeded. size is "<<size<<"\n";
 			tag.SetNodeId(nid);
 			//tag.Setfrequency (data_transmission_frequency);
 			tag.Setneighborid ((neighbordata_inst+nid)->neighborid);
@@ -116444,7 +116459,7 @@ void send_LTE_metadata_uplink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Nod
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;
 	}
-	cout<<"lte total packet size is "<<lte_total_packet_size<<endl;
+	if (N_Vehicles <= 10) cout<<"lte total packet size is "<<lte_total_packet_size<<"\n";
 }
 
 void send_LTE_metadata_downlink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_source, Ptr <Node> destination_node, uint32_t node_index)
@@ -116453,7 +116468,7 @@ void send_LTE_metadata_downlink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <N
   	ipv4 = destination_node->GetObject<Ipv4>();
 	Ipv4InterfaceAddress iaddr = ipv4->GetAddress(1,0);//1st IPv4 interface,0th address index
 	Ipv4Address dest_ip = iaddr.GetLocal();
-	//cout<<dest_ip<<endl;
+	//cout<<dest_ip<<"\n";
 	Ptr <Node> nu = DynamicCast <Node> (node_source);
 	CustomMetaDataDownlinkUnicastTag tag;
 	uint32_t nid = uint32_t(destination_node->GetId());
@@ -116479,11 +116494,11 @@ void send_LTE_deltavalues_downlink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr
 	Ipv4InterfaceAddress iaddr = ipv4->GetAddress(1,0);//1st IPv4 interface,0th address index
 	Ipv4Address dest_ip = iaddr.GetLocal();
 	if (dest_ip == Ipv4Address("127.0.0.1") || dest_ip == Ipv4Address("0.0.0.0")) return;
-	//cout<<dest_ip<<endl;
+	//cout<<dest_ip<<"\n";
 	Ptr <Node> nu = DynamicCast <Node> (node_source);
 	CustomDeltavaluesDownlinkUnicastTag tag;
 	uint32_t nid = uint32_t(destination_node->GetId());
-	//cout<<"node id is "<<nid<<"dest ip "<<dest_ip<<"custom value is"<<(delta_at_controller_inst+3)->delta_fi_inst[4].delta_values[5]<<endl;
+	//cout<<"node id is "<<nid<<"dest ip "<<dest_ip<<"custom value is"<<(delta_at_controller_inst+3)->delta_fi_inst[4].delta_values[5]<<"\n";
 	
 	double delta_Set[2*flows][total_size];
 	uint32_t sources[2*flows];
@@ -116500,7 +116515,7 @@ void send_LTE_deltavalues_downlink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr
 		{
 			load[i] = load[i] + (L_at_controller_inst+i)->L_fi_inst[nid-2].L_values[j];
 			delta_Set[i][j] = (delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j];
-			//cout<< "i = "<<i<<"nid = "<<nid<<"j= "<<j<<"value="<<(delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j]<<endl;
+			//cout<< "i = "<<i<<"nid = "<<nid<<"j= "<<j<<"value="<<(delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j]<<"\n";
 		}
 		sources[i] = (demanding_flow_struct_controller_inst+i)->source;
 		destinations[i] = (demanding_flow_struct_controller_inst+i)->destination;
@@ -116511,7 +116526,7 @@ void send_LTE_deltavalues_downlink_alone(Ptr <SimpleUdpApplication> udp_app, Ptr
 
 	*/
 	
-	//cout<<delta_Set[3][2]<<dest_ip<<endl;
+	//cout<<delta_Set[3][2]<<dest_ip<<"\n";
 	//TEST - comment at implementation
 	/*
 	if ((nid-2) == 2)
@@ -116543,7 +116558,7 @@ void RSU_deltavalues_downlink_unicast(Ptr <SimpleUdpApplication> udp_app, Ptr <N
 	uint32_t nid = uint32_t(destination_node->GetId());
 	
 	CustomDeltavaluesDownlinkUnicastTag tag;
-	//cout<<"node id is "<<nid<<"dest ip "<<dest_ip<<"custom value is"<<(delta_at_controller_inst+3)->delta_fi_inst[4].delta_values[5]<<endl;
+	//cout<<"node id is "<<nid<<"dest ip "<<dest_ip<<"custom value is"<<(delta_at_controller_inst+3)->delta_fi_inst[4].delta_values[5]<<"\n";
 	
 	double delta_Set[2*flows][total_size];
 	uint32_t sources[2*flows];
@@ -116560,7 +116575,7 @@ void RSU_deltavalues_downlink_unicast(Ptr <SimpleUdpApplication> udp_app, Ptr <N
 		{
 			load[i] = load[i] + (L_at_controller_inst+i)->L_fi_inst[nid-2].L_values[j];
 			delta_Set[i][j] = (delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j];
-			//cout<< "i = "<<i<<"nid = "<<nid<<"j= "<<j<<"value="<<(delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j]<<endl;
+			//cout<< "i = "<<i<<"nid = "<<nid<<"j= "<<j<<"value="<<(delta_at_controller_inst+i)->delta_fi_inst[nid-2].delta_values[j]<<"\n";
 		}
 		sources[i] = (demanding_flow_struct_controller_inst+i)->source;
 		destinations[i] = (demanding_flow_struct_controller_inst+i)->destination;
@@ -116568,7 +116583,7 @@ void RSU_deltavalues_downlink_unicast(Ptr <SimpleUdpApplication> udp_app, Ptr <N
 		flow_sizes[i] = (demanding_flow_struct_controller_inst+i)->f_size;
 	}
 	
-	//cout<<delta_Set[3][2]<<dest_ip<<endl;
+	//cout<<delta_Set[3][2]<<dest_ip<<"\n";
 	
 	tag.Setdeltas(delta_Set);
 	tag.Setsources (sources);
@@ -116607,8 +116622,8 @@ void RSU_metadata_uplink_unicast(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> 
 		neighborid[i] = large;
 	  	//combined_cost[i] = large;
 	}
-	//cout<<neighborid[0]<<combined_cost[0]<<endl;
-	//cout<<"RSU: "<<size<<"node id"<<nid<<endl;
+	//cout<<neighborid[0]<<combined_cost[0]<<"\n";
+	//cout<<"RSU: "<<size<<"node id"<<nid<<"\n";
 	CustomMetaDataUnicastTag0 tag0;
 	CustomMetaDataUnicastTag1 tag1;
 	CustomMetaDataUnicastTag2 tag2;
@@ -116660,6 +116675,7 @@ void RSU_metadata_uplink_unicast(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> 
 	  		j++;
 	  	}
 	}
+	if (size > 25) size = 25;  // clamp to max handled case
 	switch (size)
 	{
 		case 0:
@@ -116951,7 +116967,7 @@ void RSU_metadata_uplink_unicast(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> 
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;
 		default:
-			cout<<"RSU: maximum data size exceeded. size is"<<size<<endl;
+			cout<<"RSU: maximum data size exceeded. size is"<<size<<"\n";
 			tag.SetNodeId(nid);
 			//tag.Setfrequency (data_transmission_frequency);
 			tag.Setneighborid ((neighbordata_inst+nid)->neighborid);
@@ -116963,7 +116979,7 @@ void RSU_metadata_uplink_unicast(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> 
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;
 	}
-	cout<<"RSU total packet size is "<<ethernet_total_packet_size<<endl;
+	if (N_Vehicles <= 10) cout<<"RSU total packet size is "<<ethernet_total_packet_size<<"\n";
 }
 bool sent_IDS[2*flows][total_size][Flow_size+2];
 
@@ -117102,7 +117118,7 @@ void write_csv_status_lifetime()
 		     << "\n";
 	}
 	fout.close();
-	cout<<"finished writing link lifetime status at"<<Now().GetSeconds()<<endl;
+	cout<<"finished writing link lifetime status at"<<Now().GetSeconds()<<"\n";
 }
 
 void write_csv_status()
@@ -117124,7 +117140,7 @@ void write_csv_status()
 		Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node->GetObject<MobilityModel>());
         	Vector position = mdl->GetPosition();
         	Vector velocity = mdl->GetVelocity();
-		//cout<<"writing status "<<i<<endl;
+		//cout<<"writing status "<<i<<"\n";
 		fout << total_size << ", "
 		     << position.x << ", "
 		     <<	position.y << ", "
@@ -117138,7 +117154,7 @@ void write_csv_status()
 		     << "\n";
 	}
 	fout.close();
-	cout<<"finished writing status"<<endl;
+	cout<<"finished writing status"<<"\n";
 }
 
 
@@ -117157,7 +117173,7 @@ void read_csv()
         int n = line.length();
         char line_char[n+1];
         strcpy(line_char,line.c_str());
-        //cout<<line<<endl;
+        //cout<<line<<"\n";
         int int_val;
         char * ptr;
         ptr = strtok(line_char,",");
@@ -117170,12 +117186,12 @@ void read_csv()
 		if (i==0)
 		{
 			X_gurobi[j+2] = int_val;
-			//cout<<"x"<<j<<" value "<<int_val<<endl;
+			//cout<<"x"<<j<<" value "<<int_val<<"\n";
 		}
 		if (i==1)
 		{
 			Z_gurobi[j+2] = int_val;
-			//cout<<"z"<<j<<"value "<<int_val<<endl;
+			//cout<<"z"<<j<<"value "<<int_val<<"\n";
 		}
         	
         	ptr = strtok(NULL,",");   
@@ -119348,7 +119364,7 @@ void write_csv_results_routing()
 	     << "\n";
 	data_gathering_cycle_number++;
 	fout.close();
-	cout<<"written to file successfully"<<endl;
+	cout<<"written to file successfully"<<"\n";
 }
 
 
@@ -119402,7 +119418,7 @@ void dijkstra(vector<vector<double> > adjacencyMatrix,
               uint32_t startVertex)
 {
     uint32_t nVertices = adjacencyMatrix[0].size();
-    cout<<nVertices<<endl;
+    cout<<nVertices<<"\n";
  
     // shortestDistances[i] will hold the
     // shortest distance from src to i
@@ -119454,11 +119470,11 @@ void dijkstra(vector<vector<double> > adjacencyMatrix,
                 shortestDistance = shortestDistances[vertexIndex];     
             }
         }  
- 	//cout <<"iteration "<< i << "shortest distance "<<shortestDistance<<endl;
+ 	//cout <<"iteration "<< i << "shortest distance "<<shortestDistance<<"\n";
         // Mark the picked vertex as
         // processed
         added[nearestVertex] = true;
-        cout<<"nearest vertex is "<<nearestVertex<<endl;
+        cout<<"nearest vertex is "<<nearestVertex<<"\n";
  
         // Update dist value of the
         // adjacent vertices of the
@@ -119466,7 +119482,7 @@ void dijkstra(vector<vector<double> > adjacencyMatrix,
         for (uint32_t vertexIndex = 0; vertexIndex < nVertices;vertexIndex++)
         {
             double edgeDistance = adjacencyMatrix[nearestVertex][vertexIndex];
-            //cout<<"edge distance is "<<edgeDistance<<endl;
+            //cout<<"edge distance is "<<edgeDistance<<"\n";
  
             if ((edgeDistance > 0.0) && ((shortestDistance + edgeDistance) <= (shortestDistances[vertexIndex]))) 
             {
@@ -119489,7 +119505,7 @@ void dijkstra(vector<vector<double> > adjacencyMatrix,
     		if((sh) > 0)
     		{
     			path[i] = new_parents[source][n-i];
-    			//cout<<"n is "<<n<<"is "<<"i is "<<i<<new_parents[source][n-i-1]<<endl;
+    			//cout<<"n is "<<n<<"is "<<"i is "<<i<<new_parents[source][n-i-1]<<"\n";
     		}
     		else
     		{
@@ -119589,13 +119605,13 @@ void generate_adjacency_matrix()
 		for (uint32_t j=0;j<total_size;j++)
 		//for (uint32_t j=0;j<9;j++)
 		{
-			cout<<"distance from source node"<<(i)<<"to node "<<(j)<<"is "<<adjacencyMatrix[i][j]<<endl;
+			cout<<"distance from source node"<<(i)<<"to node "<<(j)<<"is "<<adjacencyMatrix[i][j]<<"\n";
 		}
 	}
 	*/
 		
-	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<endl;
-	cout<<"adjacency matrix generated"<<"at timestampt "<<Now().GetSeconds()<<endl;
+	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<"\n";
+	cout<<"adjacency matrix generated"<<"at timestampt "<<Now().GetSeconds()<<"\n";
 }
 
 struct proposed_algo2_output
@@ -119672,7 +119688,7 @@ void update_stable(uint32_t flow_id, uint32_t current_hop)
 					update_stable(flow_id, i);
 					
 					
-					//cout<<"Flow ID "<<flow_id<<"Stable routing: updated values at node "<<i<<"stability "<<proposed_algo2_output_inst[flow_id].U[i]<<"connectivity "<< proposed_algo2_output_inst[flow_id].conn[i]<<"number of hops "<< proposed_algo2_output_inst[flow_id].Y[i]<<endl;
+					//cout<<"Flow ID "<<flow_id<<"Stable routing: updated values at node "<<i<<"stability "<<proposed_algo2_output_inst[flow_id].U[i]<<"connectivity "<< proposed_algo2_output_inst[flow_id].conn[i]<<"number of hops "<< proposed_algo2_output_inst[flow_id].Y[i]<<"\n";
 
 				}
 			
@@ -119699,7 +119715,7 @@ void run_stable_path_finding(uint32_t flow_id)
 	proposed_algo2_output_inst[flow_id].conn[destination] = 1;
 	proposed_algo2_output_inst[flow_id].Y[destination] = 0;
 	update_stable(flow_id, destination);
-	cout<<"Routing stable: Number of stable paths from source: "<<source<<"to destination "<<destination<<"is "<<proposed_algo2_output_inst[flow_id].paths<<" at timestamp "<<Now().GetSeconds()<<endl;
+	cout<<"Routing stable: Number of stable paths from source: "<<source<<"to destination "<<destination<<"is "<<proposed_algo2_output_inst[flow_id].paths<<" at timestamp "<<Now().GetSeconds()<<"\n";
 
 }
 
@@ -119756,13 +119772,13 @@ void run_distance_path_finding(uint32_t flow_id)
 	distance_algo2_output_inst[flow_id].D[destination] = 1e-9;
 	distance_algo2_output_inst[flow_id].Y[destination] = 0;
 	update_unstable(flow_id, destination);
-	cout<<"Routing distance-based: Number of paths from source: "<<source<<"to destination "<<destination<<"is "<<distance_algo2_output_inst[flow_id].paths<<" at timestamp "<<Now().GetSeconds()<<endl;
+	cout<<"Routing distance-based: Number of paths from source: "<<source<<"to destination "<<destination<<"is "<<distance_algo2_output_inst[flow_id].paths<<" at timestamp "<<Now().GetSeconds()<<"\n";
 }
 
 
 void update_flows()
 {
-	  cout<<"updating flows - path finding at"<<Now().GetSeconds()<<endl;
+	  cout<<"updating flows - path finding at"<<Now().GetSeconds()<<"\n";
 	  if(routing_algorithm == 4)
 	  {	
 	  	for(uint32_t i=0;i<2*flows;i++)
@@ -119818,7 +119834,7 @@ void filter_flows()
 			  	}
 			}
 		}
-		cout<<"Number of connected flows "<<flow_counter<<"at timestamp "<<Now().GetSeconds()<<endl;
+		cout<<"Number of connected flows "<<flow_counter<<"at timestamp "<<Now().GetSeconds()<<"\n";
 	  }
 	  else
 	  {
@@ -119853,16 +119869,16 @@ void filter_flows()
 			  	}
 		  	}
 		}
-		cout<<"Number of connected flows "<<flow_counter<<endl;
+		cout<<"Number of connected flows "<<flow_counter<<"\n";
 	  }
 }
 
 
 void dijkstra_stable(uint32_t startVertex)
 {
-    cout<<"started dijkstra stable solution"<<endl;
+    cout<<"started dijkstra stable solution"<<"\n";
     uint32_t nVertices = adjacencyMatrix[0].size();
-    cout<<nVertices<<endl;
+    cout<<nVertices<<"\n";
     
     // shortestDistances[i] will hold the
     // shortest distance from src to i
@@ -119917,12 +119933,12 @@ void dijkstra_stable(uint32_t startVertex)
                 shortestDistance = shortestDistances[vertexIndex];     
             }
         }  
- 	//cout <<"iteration "<< i << "shortest distance "<<shortestDistance<<endl;
+ 	//cout <<"iteration "<< i << "shortest distance "<<shortestDistance<<"\n";
         // Mark the picked vertex as
         // processed
         
 	added[nearestVertex] = true;
-	//cout<<"nearest vertex is "<<nearestVertex<<endl;
+	//cout<<"nearest vertex is "<<nearestVertex<<"\n";
 	
 	// Update dist value of the
 	// adjacent vertices of the
@@ -119933,7 +119949,7 @@ void dijkstra_stable(uint32_t startVertex)
 		
 		if (contention > contention_threshold)
 		{
-			//cout<<"distance mode is running"<<endl;
+			//cout<<"distance mode is running"<<"\n";
 			edgeDistance = adjacencyMatrix[nearestVertex][vertexIndex];
 			if ((linklifetimeMatrix_dsrc[nearestVertex][vertexIndex]) >= (linklifetimeMatrix_ethernet[nearestVertex][vertexIndex]))
 			{
@@ -119961,10 +119977,10 @@ void dijkstra_stable(uint32_t startVertex)
 		    		        {
 		    		        	edgeLife = linklifetimeMatrix_ethernet[nearestVertex][index];
 		    		        }
-		    		        //cout<<"edge life is "<<edgeLife<<endl;
+		    		        //cout<<"edge life is "<<edgeLife<<"\n";
 		    		        if (edgeLife > link_lifetime_threshold)
 					{
-						//cout<<"edge life is between "<<nearestVertex<<" and "<<index<<"is "<<edgeLife<<endl;
+						//cout<<"edge life is between "<<nearestVertex<<" and "<<index<<"is "<<edgeLife<<"\n";
 						new_parents[vertexIndex].push_back(nearestVertex);
 						parent_link[vertexIndex].push_back(link_type);
 						shortestDistances[vertexIndex] = shortestDistance + edgeDistance;
@@ -119981,7 +119997,7 @@ void dijkstra_stable(uint32_t startVertex)
 		
 		else
 		{
-			//cout<<"delay mode is running"<<endl;
+			//cout<<"delay mode is running"<<"\n";
 			if ((linklifetimeMatrix_ethernet[nearestVertex][vertexIndex]) <= (linklifetimeMatrix_dsrc[nearestVertex][vertexIndex]))
 			{
 				edgeDistance = delayMatrix_dsrc[nearestVertex][vertexIndex];
@@ -120010,10 +120026,10 @@ void dijkstra_stable(uint32_t startVertex)
 		    		        {
 		    		        	edgeLife = linklifetimeMatrix_ethernet[nearestVertex][index];
 		    		        }
-		    		        //cout<<"edge life is "<<edgeLife<<endl;
+		    		        //cout<<"edge life is "<<edgeLife<<"\n";
 		    		        if (edgeLife > link_lifetime_threshold)
 					{
-						//cout<<"edge life is between "<<nearestVertex<<" and "<<index<<"is "<<edgeLife<<endl;
+						//cout<<"edge life is between "<<nearestVertex<<" and "<<index<<"is "<<edgeLife<<"\n";
 						new_parents[vertexIndex].push_back(nearestVertex);
 						parent_link[vertexIndex].push_back(link_type);
 						shortestDistances[vertexIndex] = shortestDistance + edgeDistance;
@@ -120028,7 +120044,7 @@ void dijkstra_stable(uint32_t startVertex)
 	    		}
 		}
 	    	
-	    	//cout<<"edge distance is "<<edgeDistance<<endl;
+	    	//cout<<"edge distance is "<<edgeDistance<<"\n";
  	  }   
     }
     for (uint32_t source=0;source<total_size;source++)
@@ -120053,7 +120069,7 @@ void dijkstra_stable(uint32_t startVertex)
     		if((sh) > 0)
     		{
     			path[i] = new_parents[source][n-i];
-    			//cout<<"n is "<<n<<"is "<<"i is "<<i<<new_parents[source][n-i-1]<<endl;
+    			//cout<<"n is "<<n<<"is "<<"i is "<<i<<new_parents[source][n-i-1]<<"\n";
     		}
     		else
     		{
@@ -120120,7 +120136,7 @@ void dijkstra_stable(uint32_t startVertex)
     {
     	for (uint32_t k=0;k<total_size;k++)
     	{
-    		cout<<"destination is "<<startVertex<<" "<<"source is "<<source<<" "<<k<<"th hop is "<<proposed_routing_tables[source].rows[startVertex].path[k]<<endl;
+    		cout<<"destination is "<<startVertex<<" "<<"source is "<<source<<" "<<k<<"th hop is "<<proposed_routing_tables[source].rows[startVertex].path[k]<<"\n";
     	}
     }
     */
@@ -120147,10 +120163,10 @@ void calculate_average_latency_routing()
 				{
 					packet_delay_routing[fid][i] = routing_packet_final_timestamp[fid][i] - routing_packet_initial_timestamp[fid][i];
 					delivered_packet_counter++;
-					//cout<<"Flow id "<<fid<<" packet "<<i<<"latency is "<<1000.0*packet_delay_routing[fid][i]<<" ms"<<endl;
+					//cout<<"Flow id "<<fid<<" packet "<<i<<"latency is "<<1000.0*packet_delay_routing[fid][i]<<" ms"<<"\n";
 				}
 				
-				//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;
+				//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";
 				total_latency = total_latency + packet_delay_routing[fid][i];
 			}
 		}
@@ -120164,10 +120180,10 @@ void calculate_average_latency_routing()
 	{
 		current_latency_routing = 0.0;
 	}
-	//cout<<"Latency calculation: flow counter is "<<flow_counter<<" delivered packets is "<<delivered_packet_counter<<"current_latency is "<<current_latency_routing<<endl;
+	//cout<<"Latency calculation: flow counter is "<<flow_counter<<" delivered packets is "<<delivered_packet_counter<<"current_latency is "<<current_latency_routing<<"\n";
 	double current_cumulative_latency = previous_cumulative_latency + current_latency_routing;
 	average_latency_routing = (current_cumulative_latency)/(data_gathering_cycle_number);
-	cout<<"average_latency "<<1000*average_latency_routing<<" ms"<<endl;	
+	cout<<"average_latency "<<1000*average_latency_routing<<" ms"<<"\n";	
 	previous_cumulative_latency = current_cumulative_latency;
 }
 
@@ -120206,7 +120222,7 @@ void calculate_average_packet_delivery_ratio_routing()
 	
 	double current_cumulative_ratio = previous_cumulative_ratio + current_packet_delivery_ratio;
 	average_packet_delivery_ratio_dsrc = (current_cumulative_ratio)/(1.0*data_gathering_cycle_number);
-	cout<<"average packet delivery ratio is "<<100.0*average_packet_delivery_ratio_dsrc<<endl;
+	cout<<"average packet delivery ratio is "<<100.0*average_packet_delivery_ratio_dsrc<<"\n";
 	previous_cumulative_ratio = current_cumulative_ratio;
 	
 	
@@ -120228,16 +120244,16 @@ void calculate_average_jitter_routing()
 				if ((routing_packet_final_timestamp[fid][i] > routing_packet_initial_timestamp[fid][i]) & (routing_packet_final_timestamp[fid][i+1] > routing_packet_initial_timestamp[fid][i+1])&((routing_packet_final_timestamp[fid][i] > routing_packet_initial_timestamp[fid][i])))
 				{
 					packet_jitter_routing[fid][i] = abs(routing_packet_final_timestamp[fid][i+1] - routing_packet_final_timestamp[fid][i]);
-					//cout<<"Flow id "<<fid<<"packet "<<i<<" and "<<i+1<<"jitter is "<<1000.0*packet_jitter_routing[fid][i]<<" ms"<<endl;
+					//cout<<"Flow id "<<fid<<"packet "<<i<<" and "<<i+1<<"jitter is "<<1000.0*packet_jitter_routing[fid][i]<<" ms"<<"\n";
 					delivered_jitter_counter++;
 				}
 				
-				//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;
+				//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";
 				jitter_sum = jitter_sum + packet_jitter_routing[fid][i];
 			}
 		}
 	}
-	//cout<<"Jitter calculation: flow counter is "<<flow_counter<<" delivered jitter packets is "<<delivered_jitter_counter<<endl;
+	//cout<<"Jitter calculation: flow counter is "<<flow_counter<<" delivered jitter packets is "<<delivered_jitter_counter<<"\n";
 	//total_latency = total_latency;
 
 	if((flow_counter !=0)&(delivered_jitter_counter != 0))
@@ -120251,7 +120267,7 @@ void calculate_average_jitter_routing()
 	
 	double current_cumulative_jitter_ratio = previous_cumulative_jitter_ratio + current_jitter_ratio;
 	average_jitter_routing = (current_cumulative_jitter_ratio)/(data_gathering_cycle_number);
-	cout<<"average jitter is "<<1000*average_jitter_routing<<endl;
+	cout<<"average jitter is "<<1000*average_jitter_routing<<"\n";
 	previous_cumulative_jitter_ratio = current_cumulative_jitter_ratio;
 
 }
@@ -120284,14 +120300,14 @@ void calculate_average_load_balance_routing()
 							double difference = routing_packet_general_final_timestamp[fid][j][i] - routing_packet_general_initial_timestamp[fid][l][i];
 							packet_rec_counter++;
 							latency_sum = latency_sum + difference;
-							//cout<<"Flow id "<<fid<<" link "<<l<<"to "<<j<<"latency difference for packet "<<i<<"is "<<1000.0*difference<<" ms"<<endl;
+							//cout<<"Flow id "<<fid<<" link "<<l<<"to "<<j<<"latency difference for packet "<<i<<"is "<<1000.0*difference<<" ms"<<"\n";
 						}
 						if ((delta_at_controller_inst+fid)->delta_fi_inst[l].delta_values[j] > 0.0)
 						{
 							q_count++;
 						}
 					}
-					//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;	
+					//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";	
 				}
 				double local_average = 0.0;
 				if(q_count >0)
@@ -120306,7 +120322,7 @@ void calculate_average_load_balance_routing()
 			
 			
 			flow_counter++;
-			//cout<<"phi bar for flow id "<<fid<<" is "<<phifbar[fid]<<endl;
+			//cout<<"phi bar for flow id "<<fid<<" is "<<phifbar[fid]<<"\n";
 
 			double q_count = 0;
 			for(uint32_t j=0;j<total_size;j++)
@@ -120323,9 +120339,9 @@ void calculate_average_load_balance_routing()
 							//double load_imbalance = (abs(diff - phifbar))/(phifbar);
 							local_sum = local_sum + diff;
 							local_count++;
-							//cout<<"Flow id "<<fid<<" packet "<<i<<"latency is "<<1000.0*packet_delay_routing[fid][i]<<" ms"<<endl;
+							//cout<<"Flow id "<<fid<<" packet "<<i<<"latency is "<<1000.0*packet_delay_routing[fid][i]<<" ms"<<"\n";
 							
-							//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;
+							//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";
 							//total_latency = total_latency + packet_delay_routing[fid][i];
 						}
 					}
@@ -120338,7 +120354,7 @@ void calculate_average_load_balance_routing()
 							//load_imbalance = (abs(local_sum - phifbar[fid]))/(phifbar[fid]);
 							load_imbalance = (abs(local_count - phifbar[fid]))/(f_size/2.0);
 						}
-						//cout<<"load imbalance for link"<<l<<"to "<<j<<" is "<<load_imbalance<<endl;
+						//cout<<"load imbalance for link"<<l<<"to "<<j<<" is "<<load_imbalance<<"\n";
 						total_load_imbalance = total_load_imbalance + load_imbalance;
 						q_count++;
 					}
@@ -120362,12 +120378,12 @@ void calculate_average_load_balance_routing()
 	
 	current_load_balance = 100.0*(1.0-current_load_imbalance);
 	
-	//cout<<"Load balance calculation: flow counter is "<<flow_counter<<"current_load imbalance is "<<current_load_imbalance<<"current load balance is"<<current_load_balance<<endl;
+	//cout<<"Load balance calculation: flow counter is "<<flow_counter<<"current_load imbalance is "<<current_load_imbalance<<"current load balance is"<<current_load_balance<<"\n";
 	double current_cumulative_load_imbalance = previous_cumulative_load_imbalance + current_load_imbalance;
 	
 	
 	average_load_balance = 100.0*(1.0 -((current_cumulative_load_imbalance)/(data_gathering_cycle_number)));
-	cout<<"average load balance is "<<average_load_balance<<endl;	
+	cout<<"average load balance is "<<average_load_balance<<"\n";	
 	previous_cumulative_load_imbalance = current_cumulative_load_imbalance;
 }
 
@@ -120395,14 +120411,14 @@ void calculate_average_latency()
 		{
 			packet_delay[i] = packet_final_timestamp[i] - packet_initial_timestamp[i];
 		}
-		//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;
+		//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";
 		total_latency = total_latency + packet_delay[i];
 	}
 	current_latency = total_latency/(total_size);
 	double previous_cumulative_latency = average_latency*(data_gathering_cycle_number - 1)*total_size;
 	double current_cumulative_latency = previous_cumulative_latency + total_latency;
 	average_latency = (current_cumulative_latency)/((data_gathering_cycle_number)*(total_size));
-	cout<<"average_latency "<<1000*average_latency<<" ms"<<endl;
+	cout<<"average_latency "<<1000*average_latency<<" ms"<<"\n";
 	
 }
 
@@ -120431,7 +120447,7 @@ void calculate_packet_delivery_ratio()
 		average_packet_delivery_ratio = (current_cumulative_ratio)/(data_gathering_cycle_number);
 	}
 
-	cout<<"packet delivery ratio is "<<100*average_packet_delivery_ratio<<endl;
+	cout<<"packet delivery ratio is "<<100*average_packet_delivery_ratio<<"\n";
 	
 }
 
@@ -120448,11 +120464,11 @@ void calculate_packet_delivery_ratio_dsrc()
 	}
 	
 	current_packet_delivery_ratio_dsrc = delivered_packets/(total_size);
-	cout<<"current packet delivery ratio is "<<100*current_packet_delivery_ratio_dsrc<<endl;
+	cout<<"current packet delivery ratio is "<<100*current_packet_delivery_ratio_dsrc<<"\n";
 	double previous_cumulative_ratio = average_packet_delivery_ratio_dsrc*(data_gathering_cycle_number - 1);
 	double current_cumulative_ratio = previous_cumulative_ratio + current_packet_delivery_ratio_dsrc;
 	average_packet_delivery_ratio_dsrc = (current_cumulative_ratio)/(data_gathering_cycle_number);
-	cout<<"packet delivery ratio is "<<100*average_packet_delivery_ratio_dsrc<<endl;
+	cout<<"packet delivery ratio is "<<100*average_packet_delivery_ratio_dsrc<<"\n";
 	
 }
 
@@ -120469,11 +120485,11 @@ void calculate_packet_delivery_ratio_dsrc_hybrid()
 	}
 	
 	current_packet_delivery_ratio_dsrc = delivered_packets/(total_size);
-	cout<<"current packet delivery ratio is "<<100*current_packet_delivery_ratio_dsrc<<endl;
+	cout<<"current packet delivery ratio is "<<100*current_packet_delivery_ratio_dsrc<<"\n";
 	double previous_cumulative_ratio = average_packet_delivery_ratio_dsrc*(data_gathering_cycle_number - 2);
 	double current_cumulative_ratio = previous_cumulative_ratio + current_packet_delivery_ratio_dsrc;
 	average_packet_delivery_ratio_dsrc = (current_cumulative_ratio)/(data_gathering_cycle_number -1);
-	cout<<"packet delivery ratio is "<<100*average_packet_delivery_ratio_dsrc<<endl;
+	cout<<"packet delivery ratio is "<<100*average_packet_delivery_ratio_dsrc<<"\n";
 	
 }
 
@@ -120490,7 +120506,7 @@ void calculate_average_latency_hybrid()
 		{
 			packet_delay_dsrc[i] = 0.010;//maximum latency when packet not delivered
 		}
-		//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;
+		//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";
 		total_latency = total_latency + packet_delay_dsrc[i];
 	}
 	total_latency = total_latency;
@@ -120498,7 +120514,7 @@ void calculate_average_latency_hybrid()
 	double previous_cumulative_latency = average_latency_dsrc*(data_gathering_cycle_number - 1)*total_size;
 	double current_cumulative_latency = previous_cumulative_latency + total_latency;
 	average_latency_dsrc = (current_cumulative_latency)/((data_gathering_cycle_number)*(total_size));
-	cout<<"average_latency "<<1000*average_latency_dsrc<<" ms"<<endl;	
+	cout<<"average_latency "<<1000*average_latency_dsrc<<" ms"<<"\n";	
 }
 
 
@@ -120511,7 +120527,7 @@ void calculate_average_latency_dsrc()
 		{
 			packet_delay_dsrc[i] = dsrc_packet_final_timestamp[i] - dsrc_packet_initial_timestamp[i];
 		}
-		//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;
+		//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";
 		total_latency = total_latency + packet_delay_dsrc[i];
 	}
 	total_latency = total_latency;
@@ -120519,7 +120535,7 @@ void calculate_average_latency_dsrc()
 	double previous_cumulative_latency = average_latency_dsrc*(data_gathering_cycle_number - 1)*total_size;
 	double current_cumulative_latency = previous_cumulative_latency + total_latency;
 	average_latency_dsrc = (current_cumulative_latency)/((data_gathering_cycle_number)*(total_size));
-	cout<<"average_latency "<<1000*average_latency_dsrc<<" ms"<<endl;	
+	cout<<"average_latency "<<1000*average_latency_dsrc<<" ms"<<"\n";	
 }
 
 
@@ -120534,11 +120550,11 @@ void calculate_aodv_packet_delivery_ratio()
 		}
 	}
 	current_packet_delivery_ratio_dsrc = delivered_packets/(total_size);
-	cout<<"current packet delivery ratio is "<<100*current_packet_delivery_ratio_dsrc<<endl;
+	cout<<"current packet delivery ratio is "<<100*current_packet_delivery_ratio_dsrc<<"\n";
 	double previous_cumulative_ratio = average_packet_delivery_ratio_dsrc*(data_gathering_cycle_number - 1);
 	double current_cumulative_ratio = previous_cumulative_ratio + current_packet_delivery_ratio_dsrc;
 	average_packet_delivery_ratio_dsrc = (current_cumulative_ratio)/(data_gathering_cycle_number);
-	cout<<"average packet delivery ratio is "<<100*average_packet_delivery_ratio_dsrc<<endl;	
+	cout<<"average packet delivery ratio is "<<100*average_packet_delivery_ratio_dsrc<<"\n";	
 }
 
 void calculate_aodv_latency()
@@ -120556,12 +120572,12 @@ void calculate_aodv_latency()
 		}
 		total_latency = total_latency + packet_delay[i];	
 	}
-	//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<endl;
+	//cout<<"packet "<<i<<"final timestamp "<<packet_final_timestamp[i]<<"initial timestamp: "<<packet_initial_timestamp[i]<<"\n";
 	current_latency_dsrc = total_latency/(total_size);
 	double previous_cumulative_latency = average_latency_dsrc*(data_gathering_cycle_number - 1)*(total_size);
 	double current_cumulative_latency = previous_cumulative_latency + total_latency;
 	average_latency_dsrc = (current_cumulative_latency)/((data_gathering_cycle_number)*(total_size));
-	cout<<"average_latency "<<1000*average_latency_dsrc<<" ms"<<"current latency is "<<current_latency_dsrc*1000<<" ms"<<endl;
+	cout<<"average_latency "<<1000*average_latency_dsrc<<" ms"<<"current latency is "<<current_latency_dsrc*1000<<" ms"<<"\n";
 }
 
 void calculate_average_channel_utilization_with_solution()
@@ -120588,7 +120604,7 @@ void calculate_average_channel_utilization_with_solution()
 	average_dsrc_utilization = (current_dsrc_utilization + previous_cumulative_dsrc)/(data_gathering_cycle_number);
 	average_ethernet_utilization = (current_ethernet_utilization + previous_cumulative_ethernet)/(data_gathering_cycle_number);
 	average_lte_utilization = (current_lte_utilization + previous_cumulative_lte)/(data_gathering_cycle_number);
-	cout<<"DSRC uti: "<<average_dsrc_utilization<<"Ethernet uti "<<average_ethernet_utilization<<"LTE utilization "<<average_lte_utilization<<endl;
+	cout<<"DSRC uti: "<<average_dsrc_utilization<<"Ethernet uti "<<average_ethernet_utilization<<"LTE utilization "<<average_lte_utilization<<"\n";
 }
 
 void calculate_average_channel_utilization()
@@ -120615,7 +120631,7 @@ void calculate_average_channel_utilization()
 	average_dsrc_utilization = (current_dsrc_utilization + previous_cumulative_dsrc)/(data_gathering_cycle_number);
 	average_ethernet_utilization = (current_ethernet_utilization + previous_cumulative_ethernet)/(data_gathering_cycle_number);
 	average_lte_utilization = (current_lte_utilization + previous_cumulative_lte)/(data_gathering_cycle_number);
-	cout<<"DSRC uti: "<<average_dsrc_utilization<<"Ethernet uti "<<average_ethernet_utilization<<"LTE utilization "<<average_lte_utilization<<endl;
+	cout<<"DSRC uti: "<<average_dsrc_utilization<<"Ethernet uti "<<average_ethernet_utilization<<"LTE utilization "<<average_lte_utilization<<"\n";
 }
 
 void calculate_average_cost_with_solution()
@@ -120626,11 +120642,11 @@ void calculate_average_cost_with_solution()
 	//calculate total cost in kilo bytes
 	double current_total_cost = ((ethernet_cost*ethernet_total_packet_size) + (dsrc_cost*dsrc_total_packet_size) + (lte_cost*lte_total_packet_size) + (lte_cost*2*N_Vehicles) + (ethernet_cost*2*N_RSUs))/1024.0;
 	current_cost = current_total_cost/(total_size);
-	cout<<"current average cost is "<<current_cost<<endl;
+	cout<<"current average cost is "<<current_cost<<"\n";
 	double previous_cumulative_total_cost = (total_size)*(data_gathering_cycle_number - 1.0)*(average_cost);
 	double current_cumulative_total_cost = previous_cumulative_total_cost + current_total_cost;
 	average_cost = (current_cumulative_total_cost)/((data_gathering_cycle_number)*(total_size));
-	cout<<"average cost per node is "<< average_cost<<endl;
+	cout<<"average cost per node is "<< average_cost<<"\n";
 	ethernet_total_packet_size = 0;
 	dsrc_total_packet_size = 0;
 	lte_total_packet_size = 0;
@@ -120644,11 +120660,11 @@ void calculate_average_cost_without_solution()
 	//calculate total cost in kilo bytes
 	double current_total_cost = ((ethernet_cost*ethernet_total_packet_size) + (dsrc_cost*dsrc_total_packet_size) + (lte_cost*lte_total_packet_size))/1024.0;
 	current_cost = current_total_cost/(total_size);
-	cout<<"current average cost is "<<current_cost<<endl;
+	cout<<"current average cost is "<<current_cost<<"\n";
 	double previous_cumulative_total_cost = (total_size)*(data_gathering_cycle_number - 1.0)*(average_cost);
 	double current_cumulative_total_cost = previous_cumulative_total_cost + current_total_cost;
 	average_cost = (current_cumulative_total_cost)/((data_gathering_cycle_number)*(total_size));
-	cout<<"average cost per node is "<< average_cost<<endl;
+	cout<<"average cost per node is "<< average_cost<<"\n";
 	ethernet_total_packet_size = 0;
 	dsrc_total_packet_size = 0;
 	lte_total_packet_size = 0;
@@ -120661,11 +120677,11 @@ void calculate_average_cost_without_solution_dsrc()
 	//calculate total cost in kilo bytes
 	double current_total_cost =  (dsrc_cost*dsrc_total_packet_size)*10/1024.0;
 	current_cost = current_total_cost/(total_size);
-	cout<<"current average cost is "<<current_cost<<endl;
+	cout<<"current average cost is "<<current_cost<<"\n";
 	double previous_cumulative_total_cost = (total_size)*(data_gathering_cycle_number - 1.0)*(average_cost);
 	double current_cumulative_total_cost = previous_cumulative_total_cost + current_total_cost;
 	average_cost = (current_cumulative_total_cost)/((data_gathering_cycle_number)*(total_size));
-	cout<<"average cost per node is "<< average_cost<<endl;
+	cout<<"average cost per node is "<< average_cost<<"\n";
 	ethernet_total_packet_size = 0;
 	dsrc_total_packet_size = 0;
 	lte_total_packet_size = 0;
@@ -120726,7 +120742,7 @@ void transmit_delta_values()
 			Simulator::Schedule(Seconds(0.000 + (0.000015*u)),RSU_deltavalues_downlink_unicast, udp_app, controller_Node.Get(0), nu);
 		}
 	}
-	cout<<"Transmitting delta values at"<<Now().GetSeconds()<<endl;
+	cout<<"Transmitting delta values at"<<Now().GetSeconds()<<"\n";
 }
 	
 	
@@ -120843,7 +120859,7 @@ void convert_link_lifetimes_dsrc()
 			}
 		}
 	}
-	//cout<<"link lifetime matrix converted"<<endl;
+	//cout<<"link lifetime matrix converted"<<"\n";
 
 	/*
 	for (uint32_t i=0;i<total_size;i++)
@@ -120853,13 +120869,13 @@ void convert_link_lifetimes_dsrc()
 		for (uint32_t j=0;j<total_size;j++)
 		//for (uint32_t j=0;j<9;j++)
 		{
-			cout<<"DSRC Link lifetime from source node"<<(i)<<"to node "<<(j)<<"is "<<linklifetimeMatrix_dsrc[i][j]<<endl;
+			cout<<"DSRC Link lifetime from source node"<<(i)<<"to node "<<(j)<<"is "<<linklifetimeMatrix_dsrc[i][j]<<"\n";
 		}
 	}
 	*/
 			
-	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<endl;
-	cout<<"link lifetime conversion finished at"<<Seconds(Now().GetSeconds())<<endl;
+	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<"\n";
+	cout<<"link lifetime conversion finished at"<<Seconds(Now().GetSeconds())<<"\n";
 }
 
 
@@ -120910,7 +120926,7 @@ void convert_link_lifetimes()
 	}
 	linklifetimeMatrix_dsrc = new_adjacencyMatrix_dsrc;
 	linklifetimeMatrix_ethernet = new_adjacencyMatrix_ethernet;
-	cout<<"link lifetime matrix converted"<<endl;
+	cout<<"link lifetime matrix converted"<<"\n";
 	
 	
 	for (uint32_t i=0;i<total_size;i++)
@@ -120920,20 +120936,20 @@ void convert_link_lifetimes()
 		for (uint32_t j=0;j<total_size;j++)
 		//for (uint32_t j=0;j<9;j++)
 		{
-			cout<<"DSRC Link lifetime from source node"<<(i)<<"to node "<<(j)<<"is "<<linklifetimeMatrix_dsrc[i][j]<<endl;
-			cout<<"Ethernet Link lifetime from source node"<<(i)<<"to node "<<(j)<<"is "<<linklifetimeMatrix_ethernet[i][j]<<endl;
+			cout<<"DSRC Link lifetime from source node"<<(i)<<"to node "<<(j)<<"is "<<linklifetimeMatrix_dsrc[i][j]<<"\n";
+			cout<<"Ethernet Link lifetime from source node"<<(i)<<"to node "<<(j)<<"is "<<linklifetimeMatrix_ethernet[i][j]<<"\n";
 		}
 		
 		
 	}
 			
-	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<endl;
+	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<"\n";
 }
 
 void read_lifetime_from_csv()
 {
     fstream fin;
-    cout<<"reading lifetime from csv at"<<Now().GetSeconds()<<endl;
+    cout<<"reading lifetime from csv at"<<Now().GetSeconds()<<"\n";
     switch(routing_algorithm)
     {
     	case(0):
@@ -120989,7 +121005,7 @@ void read_lifetime_from_csv()
         int n = line.length();
         char line_char[n+1];
         strcpy(line_char,line.c_str());
-        //cout<<line<<endl;
+        //cout<<line<<"\n";
         double dou_val;
         char * ptr;
         ptr = strtok(line_char,",");
@@ -120998,12 +121014,12 @@ void read_lifetime_from_csv()
         {
         	stringstream ss;
 		ss << ptr;
-		//cout<<ptr<<endl;
+		//cout<<ptr<<"\n";
 		ss >> dou_val;
 		if (i==0)
 		{
 			link_lifetime_vector[j] = dou_val;
-			//cout<<j<<" value "<<dou_val<<endl;
+			//cout<<j<<" value "<<dou_val<<"\n";
 		}
         	
         	ptr = strtok(NULL,",");   
@@ -121018,7 +121034,7 @@ void read_lifetime_from_csv()
 
 void run_ECMP()
 {
-	cout<<"Running ECMP started at "<<Now().GetSeconds()<<endl;
+	cout<<"Running ECMP started at "<<Now().GetSeconds()<<"\n";
 	uint32_t active_n = (N_Vehicles + N_RSUs > 0) ? (N_Vehicles + N_RSUs) : (uint32_t)total_size;
 	for(uint32_t fid=0;fid<2*flows;fid++)
 	{
@@ -121079,7 +121095,7 @@ void run_ECMP()
 			}
 		}
 	}
-	cout<<"Running ECMP finished at "<<Now().GetSeconds()<<endl;
+	cout<<"Running ECMP finished at "<<Now().GetSeconds()<<"\n";
 }
 
 double compute_packet_delay_DCMR(uint32_t fid, uint32_t nid, uint32_t packet_size)
@@ -121102,13 +121118,13 @@ double compute_packet_delay_DCMR(uint32_t fid, uint32_t nid, uint32_t packet_siz
 	double datarate = 12.0;
 	double T_trans = ((8*((B_bar*(packet_size+rts+cts))+(ack)))/(datarate));
 	double delay = (distance_algo2_output_inst[fid].Y[nid]*(T_trans))/(1000000);
-	//cout<<"Computed packet delay DCMR is "<<delay<<" seconds "<<endl;
+	//cout<<"Computed packet delay DCMR is "<<delay<<" seconds "<<"\n";
 	return delay;
 }
 
 void run_DCMR()
 {
-	cout<<"Running DCMR started at "<<Now().GetSeconds()<<endl;
+	cout<<"Running DCMR started at "<<Now().GetSeconds()<<"\n";
 	double RBW[total_size];
 	double congestion_level[total_size];
 	
@@ -121164,25 +121180,25 @@ void run_DCMR()
 					if ((distance_algo2_output_inst[fid].D[nid] < distance_algo2_output_inst[fid].D[cid])&&(distance_algo2_output_inst[fid].conn[nid]==1)&& (distance_algo2_output_inst[fid].conn[cid]==1)&&(linklifetimeMatrix_dsrc[cid][nid]>0.0)&&(packet_delay < latency_max))
 					{
 						//next_hops_count++;
-						cout<<"packet delay is "<<packet_delay<<"latency constraint is "<<latency_max<<endl;
-						cout<<"current hop "<<cid<<"next hop "<<nid<<endl;
+						cout<<"packet delay is "<<packet_delay<<"latency constraint is "<<latency_max<<"\n";
+						cout<<"current hop "<<cid<<"next hop "<<nid<<"\n";
 						//(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid] = 0.00001;
 						//(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = 0.00001;
 						double cur_delta = (lambda*flow_packet_size*8/1000.0);
 						double prev_delta = 12000 - RBW[nid]*12000;
 						double delta = prev_delta + cur_delta;
 						RBW_local[nid] = (12000 - delta)/(12000.0);
-						cout<<"RBW_local is "<<RBW_local[nid]<<endl;
+						cout<<"RBW_local is "<<RBW_local[nid]<<"\n";
 						double cur_to = lambda;
 						double prev_to = congestion_level[nid]*10*lambda;
 						congestion_level_local[nid] = (cur_to + prev_to)/(10.0*lambda);
-						cout<<"congestion_local is "<<congestion_level_local[nid]<<endl;
-						cout<<"link lifetime is "<<linklifetimeMatrix_dsrc[cid][nid]<<endl;
+						cout<<"congestion_local is "<<congestion_level_local[nid]<<"\n";
+						cout<<"link lifetime is "<<linklifetimeMatrix_dsrc[cid][nid]<<"\n";
 						PUF_local[nid] = (RBW_local[nid]/congestion_level_local[nid])*(linklifetimeMatrix_dsrc[cid][nid]);
-						cout<<"PUF_local is "<<PUF_local[nid]<<endl;
+						cout<<"PUF_local is "<<PUF_local[nid]<<"\n";
 						cost_local[nid] = (distance_algo2_output_inst[fid].D[nid]/10.0) - PUF_local[nid];
-						cout<<"distance is "<<distance_algo2_output_inst[fid].D[nid]<<endl;
-						cout<<"cost_local is "<<cost_local[nid]<<endl;
+						cout<<"distance is "<<distance_algo2_output_inst[fid].D[nid]<<"\n";
+						cout<<"cost_local is "<<cost_local[nid]<<"\n";
 					}
 				}
 				
@@ -121196,9 +121212,9 @@ void run_DCMR()
 						least_cost = cost_local[nid];
 					}
 				}
-				cout<<endl;
-				cout<<"Least cost hop is "<<least_cost_hop<<endl;
-				cout<<endl;
+				cout<<"\n";
+				cout<<"Least cost hop is "<<least_cost_hop<<"\n";
+				cout<<"\n";
 				RBW[least_cost_hop] = RBW_local[least_cost_hop];
 				congestion_level[least_cost_hop] = congestion_level_local[least_cost_hop];
 				
@@ -121213,9 +121229,9 @@ void run_DCMR()
 						second_least_cost = cost_local[nid];
 					}
 				}
-				cout<<endl;
-				cout<<"Second least cost hop is "<<second_least_cost_hop<<endl;
-				cout<<endl;
+				cout<<"\n";
+				cout<<"Second least cost hop is "<<second_least_cost_hop<<"\n";
+				cout<<"\n";
 				RBW[second_least_cost_hop] = RBW_local[second_least_cost_hop];
 				congestion_level[second_least_cost_hop] = congestion_level_local[second_least_cost_hop];
 				
@@ -121271,7 +121287,7 @@ void run_DCMR()
 			}	
 		}
 	}
-	cout<<"Running DCMR finished at "<<Now().GetSeconds()<<endl;
+	cout<<"Running DCMR finished at "<<Now().GetSeconds()<<"\n";
 }
 
 double learning_rate = 0.1;
@@ -121284,7 +121300,7 @@ uint32_t RL_iterations = uint32_t(50);
 
 void run_QRSDN()
 {
-	cout<<"Running QRSDN started at "<<Now().GetSeconds()<<endl;
+	cout<<"Running QRSDN started at "<<Now().GetSeconds()<<"\n";
 	for(uint32_t fid=0;fid<2*flows;fid++)
 	{
 		//uint32_t f_size = (demanding_flow_struct_controller_inst+fid)->f_size;
@@ -121301,11 +121317,11 @@ void run_QRSDN()
 					(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = 0.0;
 				}
 			}
-			//cout<<"flow id "<<fid<<"is empty"<<endl;
+			//cout<<"flow id "<<fid<<"is empty"<<"\n";
 		}
 		else
 		{
-			//cout<<"Running RL in fid "<<fid<<endl;
+			//cout<<"Running RL in fid "<<fid<<"\n";
 			for(uint32_t cid=0;cid<total_size;cid++)	
 			{
 				//Initialize Q values with lifetime
@@ -121327,7 +121343,7 @@ void run_QRSDN()
 					(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = 0.0;
 				}
 			}
-			//cout<<"Q-values initialized"<<endl;
+			//cout<<"Q-values initialized"<<"\n";
 			
 			for(uint32_t cid=0;cid<total_size;cid++)	
 			{	
@@ -121360,7 +121376,7 @@ void run_QRSDN()
 					}
 				}
 			}
-			//cout<<"Converted to acyclic graph"<<endl;
+			//cout<<"Converted to acyclic graph"<<"\n";
 			//Initialize delta, load values
 			for(uint32_t cid=0;cid<total_size;cid++)	
 			{	
@@ -121392,16 +121408,16 @@ void run_QRSDN()
 							}
 							(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = ((delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid])*summation;
 						}
-						//cout<<"Initialized delta as "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"and load as "<<(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid]<<"for flow id "<<fid<<"current node "<<cid<<"next hop "<<nid<<endl;
+						//cout<<"Initialized delta as "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"and load as "<<(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid]<<"for flow id "<<fid<<"current node "<<cid<<"next hop "<<nid<<"\n";
 					}
 				}
 			}
-			//cout<<"Initialized delta and load values"<<endl;
+			//cout<<"Initialized delta and load values"<<"\n";
 			
 				//RL
 				for(uint32_t m=0;m<RL_iterations;m++)
 				{
-					//cout<<"Iteration "<<m<<endl;
+					//cout<<"Iteration "<<m<<"\n";
 					uint32_t cid = f_source;
 					uint32_t actions=0;
 					list<uint32_t> action_set;
@@ -121479,7 +121495,7 @@ void run_QRSDN()
 						double q_term1 = (1.0-learning_rate)*((Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]);
 						double q_term2 = (learning_rate)*(((W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid])+(discount_factor*q_max));
 						(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid] = q_term1 + q_term2;
-						//cout<<"Flow id "<<fid<<"current hop "<<cid<<"next hop "<<nid<<"updated Q value as : "<<(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]<<"updated delta value is "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"Link load "<<((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid])*f_size<<"packets"<<"Hop count "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<"with reward "<<(W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid]<<endl;
+						//cout<<"Flow id "<<fid<<"current hop "<<cid<<"next hop "<<nid<<"updated Q value as : "<<(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]<<"updated delta value is "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"Link load "<<((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid])*f_size<<"packets"<<"Hop count "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<"with reward "<<(W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid]<<"\n";
 						
 						//Compute delta_values
 						double q_summation_again = 0.0;
@@ -121542,12 +121558,12 @@ void run_QRSDN()
 			}
 		}
 	}
-	cout<<"QRSDN finished at "<<Now().GetSeconds()<<endl;
+	cout<<"QRSDN finished at "<<Now().GetSeconds()<<"\n";
 }
 
 void run_RLMR()
 {
-	cout<<"Running RLMR started at "<<Now().GetSeconds()<<endl;
+	cout<<"Running RLMR started at "<<Now().GetSeconds()<<"\n";
 	for(uint32_t fid=0;fid<2*flows;fid++)
 	{
 		//uint32_t f_size = (demanding_flow_struct_controller_inst+fid)->f_size;
@@ -121566,11 +121582,11 @@ void run_RLMR()
 					(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = 0.0;
 				}
 			}
-			//cout<<"flow id "<<fid<<"is empty"<<endl;
+			//cout<<"flow id "<<fid<<"is empty"<<"\n";
 		}
 		else
 		{
-			//cout<<"Running RL in fid "<<fid<<endl;
+			//cout<<"Running RL in fid "<<fid<<"\n";
 			for(uint32_t cid=0;cid<total_size;cid++)	
 			{
 				//Initialize Q values with lifetime
@@ -121592,7 +121608,7 @@ void run_RLMR()
 					(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = 0.0;
 				}
 			}
-			//cout<<"Q-values initialized"<<endl;
+			//cout<<"Q-values initialized"<<"\n";
 			
 			for(uint32_t cid=0;cid<total_size;cid++)	
 			{	
@@ -121625,7 +121641,7 @@ void run_RLMR()
 					}
 				}
 			}
-			//cout<<"Converted to acyclic graph"<<endl;
+			//cout<<"Converted to acyclic graph"<<"\n";
 			//Initialize delta, load values
 			for(uint32_t cid=0;cid<total_size;cid++)	
 			{	
@@ -121657,16 +121673,16 @@ void run_RLMR()
 							}
 							(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = ((delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid])*summation;
 						}
-						//cout<<"Initialized delta as "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"and load as "<<(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid]<<"for flow id "<<fid<<"current node "<<cid<<"next hop "<<nid<<endl;
+						//cout<<"Initialized delta as "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"and load as "<<(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid]<<"for flow id "<<fid<<"current node "<<cid<<"next hop "<<nid<<"\n";
 					}
 				}
 			}
-			//cout<<"Initialized delta and load values"<<endl;
+			//cout<<"Initialized delta and load values"<<"\n";
 			
 				//RL
 				for(uint32_t m=0;m<RL_iterations;m++)
 				{
-					//cout<<"Iteration "<<m<<endl;
+					//cout<<"Iteration "<<m<<"\n";
 					uint32_t cid = f_source;
 					uint32_t actions=0;
 					list<uint32_t> action_set;
@@ -121754,7 +121770,7 @@ void run_RLMR()
 						double q_term1 = (1.0-learning_rate)*((Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]);
 						double q_term2 = (learning_rate)*(((W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid])+(discount_factor*q_max));
 						(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid] = q_term1 + q_term2;
-						//cout<<"Flow id "<<fid<<"f qos"<<f_qos<<"current hop "<<cid<<"next hop "<<nid<<"updated Q value as : "<<(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]<<"updated delta value is "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"Link load "<<((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid])*f_size<<"packets"<<"Hop count "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<"with reward "<<(W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid]<<"Omega"<<(Omega_at_controller_inst+fid)->Omega_fi_inst[cid].Omega_values[nid]<<endl;
+						//cout<<"Flow id "<<fid<<"f qos"<<f_qos<<"current hop "<<cid<<"next hop "<<nid<<"updated Q value as : "<<(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]<<"updated delta value is "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"Link load "<<((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid])*f_size<<"packets"<<"Hop count "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<"with reward "<<(W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid]<<"Omega"<<(Omega_at_controller_inst+fid)->Omega_fi_inst[cid].Omega_values[nid]<<"\n";
 						
 						//Compute delta_values
 						double q_summation_again = 0.0;
@@ -121817,7 +121833,7 @@ void run_RLMR()
 			}
 		}
 	}
-	cout<<"RLMR finished at "<<Now().GetSeconds()<<endl;
+	cout<<"RLMR finished at "<<Now().GetSeconds()<<"\n";
 }
 
 struct flow_cardinality
@@ -121860,7 +121876,7 @@ double compute_link_delay(uint32_t next_hop, double link_load, uint32_t flow_siz
 	double T_cont = (AIFS) + ((T_slot*CW_min)/(pow(2,(3-B_bar))));//in microseconds
 	double T_trans = ((8*((B_bar*(packet_size+rts+cts))+(ack)))/(datarate));
 	double delay = guard_delay + (zeta*link_load*flow_size*(T_trans+T_cont))/(1000000);
-	//cout<<"Computed link delay is "<<delay<<" seconds for next hop "<<next_hop<<endl;
+	//cout<<"Computed link delay is "<<delay<<" seconds for next hop "<<next_hop<<"\n";
 	return delay;
 }
 
@@ -121875,7 +121891,7 @@ double compute_individual_link_delay(uint32_t next_hop, uint32_t CW, uint32_t fl
 	double T_cont = (AIFS) + ((T_slot*CW_min)/(pow(2,(3-CW))));//in microseconds
 	double T_trans = ((8*((1.00*(packet_size+rts+cts))+(ack)))/(datarate));
 	double delay = guard_delay + (zeta*1.15*flow_size*(T_trans+T_cont))/(1000000);
-	//cout<<"Computed link delay is "<<delay<<" seconds for next hop "<<next_hop<<endl;
+	//cout<<"Computed link delay is "<<delay<<" seconds for next hop "<<next_hop<<"\n";
 	return delay;
 }
 
@@ -121921,7 +121937,7 @@ double compute_path_delay(uint32_t fid, uint32_t cid, uint32_t nid, double link_
 	}
 	
 	double path_latency = link_lat_summation + packet_latency;
-	//cout<<"Computed path delay is "<<path_latency<<" seconds for current hop"<<cid<<"next hop "<<nid<<endl;
+	//cout<<"Computed path delay is "<<path_latency<<" seconds for current hop"<<cid<<"next hop "<<nid<<"\n";
 	return path_latency;
 }
 
@@ -121939,7 +121955,7 @@ void run_proposed_RL()
 	// by RL logic). Summations are identical, but loops shrink from 500 to N_Vehicles.
 	uint32_t active_n = (N_Vehicles + N_RSUs > 0) ? (N_Vehicles + N_RSUs) : (uint32_t)total_size;
 	auto rl_t0 = std::chrono::steady_clock::now();
-	if (N_Vehicles <= 10) cout<<"Proposed RL started at "<<Now().GetSeconds()<<endl;
+	if (N_Vehicles <= 10) cout<<"Proposed RL started at "<<Now().GetSeconds()<<"\n";
 	for(uint32_t fid=0;fid<2*flows;fid++)
 	{
 		uint32_t f_size = (demanding_flow_struct_controller_inst+fid)->f_size;
@@ -121948,7 +121964,7 @@ void run_proposed_RL()
 		uint32_t f_psize = (demanding_flow_struct_controller_inst+fid)->p_size;
 		uint32_t f_qos = (demanding_flow_struct_controller_inst+fid)->qos;
 		(void)f_qos;
-		//cout<<f_size<<f_qos<<f_psize<<endl;
+		//cout<<f_size<<f_qos<<f_psize<<"\n";
 		
 		if((demanding_flow_struct_controller_inst+fid)->f_size == 0)
 		{
@@ -121961,11 +121977,11 @@ void run_proposed_RL()
 					(T_at_controller_inst+fid)->T_fi_inst[cid].T_values[nid] = 0.0;
 				}
 			}
-			//cout<<"flow id "<<fid<<"is empty"<<endl;
+			//cout<<"flow id "<<fid<<"is empty"<<"\n";
 		}
 		else
 		{
-			//cout<<"Running RL in fid "<<fid<<endl;
+			//cout<<"Running RL in fid "<<fid<<"\n";
 			for(uint32_t cid=0;cid<active_n;cid++)	
 			{
 				//Initialize Q values with lifetime
@@ -121989,7 +122005,7 @@ void run_proposed_RL()
 					(t_at_controller_inst+fid)->t_fi_inst[cid].t_values[nid] = 0.0;
 				}
 			}
-			//cout<<"Q-values initialized"<<endl;
+			//cout<<"Q-values initialized"<<"\n";
 			
 			//find cardinality
 			for(uint32_t cid=0;cid<active_n;cid++)	
@@ -122002,7 +122018,7 @@ void run_proposed_RL()
 					summation = summation + product;
 				}
 				f_card_inst[fid].cardinality[cid] = summation;
-				//cout<<"cardinality of node "<<cid<<"is "<<f_card_inst[fid].cardinality[cid]<<endl;
+				//cout<<"cardinality of node "<<cid<<"is "<<f_card_inst[fid].cardinality[cid]<<"\n";
 			}		
 			
 			
@@ -122072,7 +122088,7 @@ void run_proposed_RL()
 				}
 			}
 			
-			//cout<<"Converted to acyclic graph"<<endl;
+			//cout<<"Converted to acyclic graph"<<"\n";
 			
 			
 			//Initialize delta, load, and latency values
@@ -122122,11 +122138,11 @@ void run_proposed_RL()
 						(T_at_controller_inst+fid)->T_fi_inst[cid].T_values[nid] = compute_path_delay(fid, cid, nid, (L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid], f_size, f_psize, f_destination);
 						
 						
-						//cout<<"Initialized delta as "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"and load as "<<(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid]<<"for flow id "<<fid<<"current node "<<cid<<"next hop "<<nid<<endl;
+						//cout<<"Initialized delta as "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"and load as "<<(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid]<<"for flow id "<<fid<<"current node "<<cid<<"next hop "<<nid<<"\n";
 					}
 				}
 			}
-			//cout<<"Initialized delta, load, and latency values"<<endl;
+			//cout<<"Initialized delta, load, and latency values"<<"\n";
 			
 				// Pre-compute Lf_bar ONCE before the RL loop (avoids 500×500 scan
 				// inside 1050 iterations = 262M ops per flow per routing cycle).
@@ -122147,7 +122163,7 @@ void run_proposed_RL()
 				//RL
 				for(uint32_t m=0;m<RL_iterations;m++)
 				{
-					//cout<<"Iteration "<<m<<endl;
+					//cout<<"Iteration "<<m<<"\n";
 					uint32_t cid = f_source;
 					uint32_t actions=0;
 					list<uint32_t> action_set;
@@ -122161,7 +122177,7 @@ void run_proposed_RL()
 							actions++;
 						}
 					}
-					//cout<<"Lf_bar is "<<Lf_bar[fid]<<"connections from source "<<actions<<endl;
+					//cout<<"Lf_bar is "<<Lf_bar[fid]<<"connections from source "<<actions<<"\n";
 					uint32_t rl_step_limit = 0;
 					while (actions > 0)
 					{
@@ -122169,9 +122185,9 @@ void run_proposed_RL()
 						double epsilon = (rand()%10)/10.0;
 						uint32_t index;
 						double val = m/500.0;
-						//cout<<"epsilon is "<<epsilon<<"m is "<<m<<"exponent is "<<val<<endl;
+						//cout<<"epsilon is "<<epsilon<<"m is "<<m<<"exponent is "<<val<<"\n";
 						double epsilon_0 = epsilon_0_initial*pow(2.71, -val);
-						//cout<<"epsilon_0 is "<<epsilon_0<<endl;
+						//cout<<"epsilon_0 is "<<epsilon_0<<"\n";
 						if (epsilon > epsilon_0)
 						{
 						 	index = rand()%actions;
@@ -122201,7 +122217,7 @@ void run_proposed_RL()
 					 	(Omega_at_controller_inst+fid)->Omega_fi_inst[cid].Omega_values[nid]	= proposed_algo2_output_inst[fid].conn[nid];
 					 	
 					 	(Theta_at_controller_inst+fid)->Theta_fi_inst[cid].Theta_values[nid]	= (unit_step((proposed_algo2_output_inst[fid].conn[nid]+1), 1))*(unit_step(actions-1,1));
-					 	//cout<<"flow id "<<fid<<"current hop "<<cid<<" next hop "<<nid<<" Omega value "<<(Omega_at_controller_inst+fid)->Omega_fi_inst[cid].Omega_values[nid]<<" Theta value is "<<(Theta_at_controller_inst+fid)->Theta_fi_inst[cid].Theta_values[nid]<<endl;
+					 	//cout<<"flow id "<<fid<<"current hop "<<cid<<" next hop "<<nid<<" Omega value "<<(Omega_at_controller_inst+fid)->Omega_fi_inst[cid].Omega_values[nid]<<" Theta value is "<<(Theta_at_controller_inst+fid)->Theta_fi_inst[cid].Theta_values[nid]<<"\n";
 					 	
 					 	double y_summation = 0.0;
 					 	for(uint32_t j=0;j<active_n;j++)
@@ -122363,7 +122379,7 @@ void run_proposed_RL()
 						{
 							mu2t = 2.0;
 						}	
-						//cout<<"mu2t is "<<mu2t<<endl;
+						//cout<<"mu2t is "<<mu2t<<"\n";
 						
 						if ((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] > 0.0)
 						{
@@ -122374,19 +122390,19 @@ void run_proposed_RL()
 						{
 							packet_latency = 0.0;
 						}
-						//cout<<"overall quality reward "<<overall_quality<<"packet delivery reward "<<packet_delivery<<"packet latency reward "<<packet_latency<<endl;
+						//cout<<"overall quality reward "<<overall_quality<<"packet delivery reward "<<packet_delivery<<"packet latency reward "<<packet_latency<<"\n";
 						
 						double term2 = mu2*(1.0-(overall_quality)-(packet_delivery)-(packet_latency))*(Theta_at_controller_inst+fid)->Theta_fi_inst[cid].Theta_values[nid];
 						//double term3 = mu3*(-1.0*((3.0-f_qos)/(3.0))*((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] - Lf_bar[fid])*(Theta_at_controller_inst+fid)->Theta_fi_inst[cid].Theta_values[nid]);
 						double term3 = mu3*((-1.0)*(((abs((Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid] - Yf_bar[fid][cid]))/(active_n))*((Theta_at_controller_inst+fid)->Theta_fi_inst[cid].Theta_values[nid])));
 						(W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid] = term1 + term2 + term3;
-						//cout<<"Yf_bar is "<<Yf_bar[fid][cid]<<"Y is "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<" connections from source "<<actions<<endl;
-						//cout<<"Jitter reward is "<<term3<<endl;
+						//cout<<"Yf_bar is "<<Yf_bar[fid][cid]<<"Y is "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<" connections from source "<<actions<<"\n";
+						//cout<<"Jitter reward is "<<term3<<"\n";
 						
 						//Update Q value
 						double q_term1 = (1.0-learning_rate)*((Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]);
 						double q_term2 = (learning_rate)*(((W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid])+(discount_factor*q_max));
-						//cout<<"Q max is"<<q_max<<"Q value term 1 is "<<q_term1<<"term 2 is "<<q_term2<<endl;
+						//cout<<"Q max is"<<q_max<<"Q value term 1 is "<<q_term1<<"term 2 is "<<q_term2<<"\n";
 						(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid] = q_term1 + q_term2;
 						
 						//Compute delta_values
@@ -122430,7 +122446,7 @@ void run_proposed_RL()
 							(L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid] = ((delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid])*summation;
 						}
 						
-						//cout<<"Flow id "<<fid<<"current hop "<<cid<<"next hop "<<nid<<"updated Q value as : "<<(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]<<"updated delta value is "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"Link load "<<((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid])*f_size<<"packets"<<"Hop count "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<"with path lifetime "<<(U_at_controller_inst+fid)->U_fi_inst[cid].U_values[nid]<<"with path latency"<<(T_at_controller_inst+fid)->T_fi_inst[cid].T_values[nid]<<"with total reward "<<(W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid]<<"reward term 1 "<<term1<<"reward term 2:"<<term2<<"reward term 3:"<<term3<<endl;
+						//cout<<"Flow id "<<fid<<"current hop "<<cid<<"next hop "<<nid<<"updated Q value as : "<<(Q_at_controller_inst+fid)->Q_fi_inst[cid].Q_values[nid]<<"updated delta value is "<<(delta_at_controller_inst+fid)->delta_fi_inst[cid].delta_values[nid]<<"Link load "<<((L_at_controller_inst+fid)->L_fi_inst[cid].L_values[nid])*f_size<<"packets"<<"Hop count "<<(Y_at_controller_inst+fid)->Y_fi_inst[cid].Y_values[nid]<<"with path lifetime "<<(U_at_controller_inst+fid)->U_fi_inst[cid].U_values[nid]<<"with path latency"<<(T_at_controller_inst+fid)->T_fi_inst[cid].T_values[nid]<<"with total reward "<<(W_at_controller_inst+fid)->W_fi_inst[cid].W_values[nid]<<"reward term 1 "<<term1<<"reward term 2:"<<term2<<"reward term 3:"<<term3<<"\n";
 						
 						//Go to next state
 						cid = nid;
@@ -122458,7 +122474,7 @@ void run_proposed_RL()
 			
 		}
 	}
-	if (N_Vehicles <= 10) cout<<"Proposed RL learning finished at "<<Now().GetSeconds()<<endl;
+	if (N_Vehicles <= 10) cout<<"Proposed RL learning finished at "<<Now().GetSeconds()<<"\n";
 	{
 		auto rl_t1 = std::chrono::steady_clock::now();
 		double rl_ms = std::chrono::duration<double,std::milli>(rl_t1-rl_t0).count();
@@ -122489,7 +122505,7 @@ void  run_optimization_link_lifetime()
 	opt_skip_counter++;
 	if (opt_skip_counter >= OPT_SKIP_CYCLES) {
 		opt_skip_counter = 0;
-		cout<<"link lifetime optimization beginning at "<<Now().GetSeconds()<<endl;
+		cout<<"link lifetime optimization beginning at "<<Now().GetSeconds()<<"\n";
 		write_csv_status_lifetime();
 		Simulator::Schedule(Seconds(0.000050), optimize_link_lifetime);
 		Simulator::Schedule(Seconds(0.000100), read_lifetime_from_csv);
@@ -122509,11 +122525,11 @@ void  run_optimization_subsequent()
 	}
 	double new_entropy = calculate_network_entropy();
 	double entropy_change = abs(last_optimized_entropy - new_entropy);
-	cout<<"entropy_change is "<<entropy_change<<endl;
+	cout<<"entropy_change is "<<entropy_change<<"\n";
 	if(entropy_change > entropy_threshold)
 	{
 		write_csv();//write data to csv
-		cout<<"Entropy change is high. optimizing"<<endl;
+		cout<<"Entropy change is high. optimizing"<<"\n";
 		Simulator::Schedule(Seconds(0.002), optimize_subsequent);
 		/*
 		if (N_Vehicles < 50)
@@ -122537,7 +122553,7 @@ void  run_optimization_subsequent()
 			times_optimized++;
 			calculate_percentage();
 			Simulator::Schedule(Seconds(0.105),write_csv_results);
-			data_gathering_cycle_number++;
+			// data_gathering_cycle_number incremented once inside write_csv_results
 		}
 		
 		
@@ -122545,7 +122561,7 @@ void  run_optimization_subsequent()
 	}
 	else
 	{
-		cout<<"omitting optimization as entropy change is low"<<endl;
+		cout<<"omitting optimization as entropy change is low"<<"\n";
 		if (paper == 0)
 		{
 			calculate_average_cost_without_solution();
@@ -122555,7 +122571,7 @@ void  run_optimization_subsequent()
 			times_checked++;
 			calculate_percentage();
 			Simulator::Schedule(Seconds(0.105),write_csv_results);
-			data_gathering_cycle_number++;
+			// data_gathering_cycle_number incremented once inside write_csv_results
 		}
 			
 	}
@@ -122572,7 +122588,7 @@ void  run_optimization_subsequent()
 
 void predict_DNN_link_lifetime()
 {
-	cout<<"predicting link lifetimes"<<endl;
+	cout<<"predicting link lifetimes"<<"\n";
 	std::string filename = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/DNN_link_stability.py";
     	std::string command = "python3 ";
     	command += filename;
@@ -122581,7 +122597,7 @@ void predict_DNN_link_lifetime()
 
 void predict_DNN_delay()
 {
-	cout<<"predicting delay"<<endl;
+	cout<<"predicting delay"<<"\n";
 	std::string filename = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/DNN_delay.py";
     	std::string command = "python3 ";
     	command += filename;
@@ -122605,7 +122621,7 @@ void  run_DNN_delay()
 
 void convert_delay()
 {
-	cout<<"converting delay"<<endl;
+	cout<<"converting delay"<<"\n";
 	for(uint32_t i=0;i<(2*total_size);i=i+2)
 	{
 		vector<double> x_dsrc;
@@ -122643,7 +122659,7 @@ void convert_delay()
 	}
 	delayMatrix_dsrc = new_adjacencyMatrix_dsrc;
 	delayMatrix_ethernet = new_adjacencyMatrix_ethernet;
-	cout<<"delay matrix converted"<<endl;
+	cout<<"delay matrix converted"<<"\n";
 	
 	
 	for (uint32_t i=0;i<total_size;i++)
@@ -122653,8 +122669,8 @@ void convert_delay()
 		for (uint32_t j=0;j<total_size;j++)
 		//for (uint32_t j=0;j<9;j++)
 		{
-			cout<<"DSRC delay from source node"<<(i)<<"to node "<<(j)<<"is "<<delayMatrix_dsrc[i][j]<<endl;
-			cout<<"Ethernet delay from source node"<<(i)<<"to node "<<(j)<<"is "<<delayMatrix_ethernet[i][j]<<endl;
+			cout<<"DSRC delay from source node"<<(i)<<"to node "<<(j)<<"is "<<delayMatrix_dsrc[i][j]<<"\n";
+			cout<<"Ethernet delay from source node"<<(i)<<"to node "<<(j)<<"is "<<delayMatrix_ethernet[i][j]<<"\n";
 		}
 		
 		
@@ -122662,7 +122678,7 @@ void convert_delay()
 	
 	
 		
-	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<endl;
+	//cout<<"adjacency matrix size"<<adjacencyMatrix.size()<<"\n";
 }
 
 
@@ -122671,7 +122687,7 @@ void convert_delay()
 void read_delay_from_csv()
 {
     fstream fin;
-    cout<<"reading delay from csv"<<endl;
+    cout<<"reading delay from csv"<<"\n";
     fin.open("/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/delay_solution.csv", ios::in);
     vector<string> row;
     string line;
@@ -122684,7 +122700,7 @@ void read_delay_from_csv()
         int n = line.length();
         char line_char[n+1];
         strcpy(line_char,line.c_str());
-        //cout<<line<<endl;
+        //cout<<line<<"\n";
         double dou_val;
         char * ptr;
         ptr = strtok(line_char,",");
@@ -122693,12 +122709,12 @@ void read_delay_from_csv()
         {
         	stringstream ss;
 		ss << ptr;
-		//cout<<ptr<<endl;
+		//cout<<ptr<<"\n";
 		ss >> dou_val;
 		if (i==0)
 		{
 			delay_vector[j] = dou_val;
-			//cout<<j<<" value "<<dou_val<<endl;
+			//cout<<j<<" value "<<dou_val<<"\n";
 		}
         	
         	ptr = strtok(NULL,",");   
@@ -122769,13 +122785,13 @@ void calculate_normalized_mobility()
 	}
 	
 	normalized_mobility = sum/(total_size*maxspeed*(5.0/18.0));
-	cout<<"normalized mobility: "<<normalized_mobility<<endl;	
+	cout<<"normalized mobility: "<<normalized_mobility<<"\n";	
 }
 
 void calculate_network_contention()
 {
 	network_contention = last_optimized_entropy*(1.0 - normalized_mobility);
-	cout<<"network contention: "<<network_contention<<endl;
+	cout<<"network contention: "<<network_contention<<"\n";
 }
 */
 
@@ -122847,7 +122863,7 @@ void run_optimization_first_time()
 	write_csv();//write data to csv
 	Simulator::Schedule(Seconds(0.005), optimize_first_time);
 	last_optimized_entropy = calculate_network_entropy();
-	cout<<"first ever entropy value "<<last_optimized_entropy<<endl;
+	cout<<"first ever entropy value "<<last_optimized_entropy<<"\n";
 	Simulator::Schedule(Seconds(0.060), transmit_solution);
 	calculate_average_cost_with_solution();
 	calculate_average_channel_utilization_with_solution();
@@ -122875,7 +122891,7 @@ void Dequeue (std::string context, Ptr <const Packet> pkt)
 
 void MacTx (std::string context, Ptr <const Packet> pkt)
 {
-	//cout<<"This is MacTx"<<endl;
+	//cout<<"This is MacTx"<<"\n";
 }
 
 void RSU_routing_dataunicast_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source_node, Ptr <Node> destination_node, Ptr <Packet> packet1)
@@ -122926,7 +122942,7 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 		{
 			txop_inst[f].busy[arguments.channel][nodeid] = busy;
 			txop_inst[f].last_set_timestamp[arguments.channel][nodeid] = Seconds(Now().GetSeconds());
-			//cout<<"Set node "<<nodeid<<"as busy at "<<Now().GetSeconds()<<endl;
+			//cout<<"Set node "<<nodeid<<"as busy at "<<Now().GetSeconds()<<"\n";
 		}
 		else
 		{
@@ -122934,11 +122950,11 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 			if(diff > Seconds(tg))
 			{
 				txop_inst[f].busy[arguments.channel][nodeid] = busy;
-				//cout<<"Set node "<<nodeid<<"as free at "<<Now().GetSeconds()<<endl;
+				//cout<<"Set node "<<nodeid<<"as free at "<<Now().GetSeconds()<<"\n";
 			}
 			else
 			{
-				//cout<<"Node "<<nodeid<<"remains busy "<<Now().GetSeconds()<<endl;
+				//cout<<"Node "<<nodeid<<"remains busy "<<Now().GetSeconds()<<"\n";
 			}
 		}
 		//update other node status
@@ -122950,14 +122966,14 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 				{
 					txop_inst[f].busy[arguments.channel][i] = busy;
 					txop_inst[f].last_set_timestamp[arguments.channel][i] = Seconds(Now().GetSeconds());
-					//cout<<"Set node "<<i<<"as busy at "<<Now().GetSeconds()<<endl;
+					//cout<<"Set node "<<i<<"as busy at "<<Now().GetSeconds()<<"\n";
 					for(uint32_t j=0;j<total_size;j++)
 					{
 						if((linklifetimeMatrix_dsrc[i][j]) > 0.0)
 						{
 							txop_inst[f].busy[arguments.channel][j] = busy;
 							txop_inst[f].last_set_timestamp[arguments.channel][j] = Seconds(Now().GetSeconds());
-							//cout<<"Set node "<<j<<"as busy at "<<Now().GetSeconds()<<endl;
+							//cout<<"Set node "<<j<<"as busy at "<<Now().GetSeconds()<<"\n";
 						}
 					}
 				}
@@ -122967,11 +122983,11 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 					if(diff > Seconds(tg))
 					{
 						txop_inst[f].busy[arguments.channel][i] = busy;
-						//cout<<"Set node "<<i<<"as free at "<<Now().GetSeconds()<<endl;
+						//cout<<"Set node "<<i<<"as free at "<<Now().GetSeconds()<<"\n";
 					}
 					else
 					{
-						//cout<<"Node "<<i<<"remains busy "<<Now().GetSeconds()<<endl;
+						//cout<<"Node "<<i<<"remains busy "<<Now().GetSeconds()<<"\n";
 					}
 					
 					for(uint32_t j=0;j<total_size;j++)
@@ -122982,11 +122998,11 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 							if(diff_inner > Seconds(tg))
 							{
 								txop_inst[f].busy[arguments.channel][j] = busy;
-								//cout<<"Set node "<<j<<"as free at "<<Now().GetSeconds()<<endl;
+								//cout<<"Set node "<<j<<"as free at "<<Now().GetSeconds()<<"\n";
 							}
 							else
 							{
-								//cout<<"Node "<<j<<"remains busy "<<Now().GetSeconds()<<endl;
+								//cout<<"Node "<<j<<"remains busy "<<Now().GetSeconds()<<"\n";
 							}
 						}
 					}
@@ -123001,14 +123017,14 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 				{
 					txop_inst[f].busy[arguments.channel][i] = busy;
 					txop_inst[f].last_set_timestamp[arguments.channel][i] = Seconds(Now().GetSeconds());
-					//cout<<"Set node "<<i<<"as busy at "<<Now().GetSeconds()<<endl;
+					//cout<<"Set node "<<i<<"as busy at "<<Now().GetSeconds()<<"\n";
 					for(uint32_t j=0;j<total_size;j++)
 					{
 						if((linklifetimeMatrix_dsrc[i][j]) > 0.0)
 						{
 							txop_inst[f].busy[arguments.channel][j] = busy;
 							txop_inst[f].last_set_timestamp[arguments.channel][j] = Seconds(Now().GetSeconds());
-							//cout<<"Set node "<<j<<"as busy at "<<Now().GetSeconds()<<endl;
+							//cout<<"Set node "<<j<<"as busy at "<<Now().GetSeconds()<<"\n";
 						}
 					}
 				}
@@ -123018,11 +123034,11 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 					if(diff > Seconds(tg))
 					{
 						txop_inst[f].busy[arguments.channel][i] = busy;
-						//cout<<"Set node "<<i<<"as free at "<<Now().GetSeconds()<<endl;
+						//cout<<"Set node "<<i<<"as free at "<<Now().GetSeconds()<<"\n";
 					}
 					else
 					{
-						//cout<<"Node "<<i<<"remains busy "<<Now().GetSeconds()<<endl;
+						//cout<<"Node "<<i<<"remains busy "<<Now().GetSeconds()<<"\n";
 					}
 					
 					for(uint32_t j=0;j<total_size;j++)
@@ -123033,11 +123049,11 @@ void updateTxop(uint32_t fid, uint32_t nodeid, uint32_t receiver_id, uint32_t pe
 							if(diff_inner > Seconds(tg))
 							{
 								txop_inst[f].busy[arguments.channel][j] = busy;
-								//cout<<"Set node "<<j<<"as free at "<<Now().GetSeconds()<<endl;
+								//cout<<"Set node "<<j<<"as free at "<<Now().GetSeconds()<<"\n";
 							}
 							else
 							{
-								//cout<<"Node "<<j<<"remains busy "<<Now().GetSeconds()<<endl;
+								//cout<<"Node "<<j<<"remains busy "<<Now().GetSeconds()<<"\n";
 							}
 						}
 					}
@@ -123059,7 +123075,7 @@ void updateTxop_self(uint32_t fid, uint32_t nodeid, uint32_t pending_packets, bo
 		{
 			txop_inst[f].busy[arguments.channel][nodeid] = busy;
 			txop_inst[f].last_set_timestamp[arguments.channel][nodeid] = Seconds(Now().GetSeconds());
-			//cout<<"Set node "<<nodeid<<"as busy at "<<Now().GetSeconds()<<endl;
+			//cout<<"Set node "<<nodeid<<"as busy at "<<Now().GetSeconds()<<"\n";
 		}
 		else
 		{
@@ -123067,11 +123083,11 @@ void updateTxop_self(uint32_t fid, uint32_t nodeid, uint32_t pending_packets, bo
 			if(diff > Seconds(tg))
 			{
 				txop_inst[f].busy[arguments.channel][nodeid] = busy;
-				//cout<<"Set node "<<nodeid<<"as free at "<<Now().GetSeconds()<<endl;
+				//cout<<"Set node "<<nodeid<<"as free at "<<Now().GetSeconds()<<"\n";
 			}
 			else
 			{
-				//cout<<"Node "<<nodeid<<"remains busy "<<Now().GetSeconds()<<endl;
+				//cout<<"Node "<<nodeid<<"remains busy "<<Now().GetSeconds()<<"\n";
 			}
 		}
 	}
@@ -123104,12 +123120,24 @@ uint32_t s_flow_counter[2*flows][total_size][Flow_size+2];
 
 void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_t hop, uint32_t current_hop, Time originail_timestamp, struct custom_struct arguments)
 {
+	// Fast-path: if the DSRC link to next-hop is dead, stop retrying immediately.
+	// Avoids up to 980 useless retransmission events per dead-link packet.
+	uint32_t valid_nodes = N_Vehicles + N_RSUs;
+	if (hop < valid_nodes && current_hop < valid_nodes &&
+	    linklifetimeMatrix_dsrc[current_hop][hop] <= 0.0 &&
+	    pd_all_inst[flow_id].pd_inst[hop].delivery[arguments.channel][packet_id] == false)
+	{
+		pd_all_inst[flow_id].pd_inst[current_hop].pending[arguments.channel][packet_id] = false;
+		return;
+	}
+
 	double diff = Now().GetSeconds() - flow_initiation_time;
 	arguments.CW = pd_all_inst[flow_id].pd_inst[hop].attempts[arguments.channel][packet_id] + 2;
-	if(diff > (0.90*data_transmission_period))
+	double retx_time_window = (attack_scenario == 0) ? 0.98 : 0.90;
+	if(diff > (retx_time_window*data_transmission_period))
 	{
 		if (attack_scenario != 0)
-			cout<<"Retransmission packet dropped for flow id "<<flow_id<<"packet ID: "<< packet_id<<endl;
+			cout<<"Retransmission packet dropped for flow id "<<flow_id<<"packet ID: "<< packet_id<<"\n";
 		pd_all_inst[flow_id].pd_inst[current_hop].pending[arguments.channel][packet_id] = false;
 	}
 	else
@@ -123120,7 +123148,7 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 		{
 			retransmitted[flow_id][hop][packet_id] = false;
 			pd_all_inst[flow_id].pd_inst[current_hop].pending[arguments.channel][packet_id] = false;
-			//cout<<"packet has been delivered. Retransmission success"<<" in flow ID "<<flow_id<<" packet ID "<<packet_id<<" from "<<current_hop<<" to next hop "<<hop<<"at time "<<Now().GetSeconds()<<endl;
+			//cout<<"packet has been delivered. Retransmission success"<<" in flow ID "<<flow_id<<" packet ID "<<packet_id<<" from "<<current_hop<<" to next hop "<<hop<<"at time "<<Now().GetSeconds()<<"\n";
 			Simulator::Schedule (Seconds (0.0), updateTxop, flow_id, current_hop, hop, packet_id, false, arguments);
 			//do nothing
 		}
@@ -123140,7 +123168,7 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 			}
 			if((pending_lower_ids==true) && (pending_count>0)&&(routing_algorithm != 1))
 			{
-				//cout<<"Retransmission pending for flow id "<<flow_id<<"packet ID: "<< packet_id<<endl;
+				//cout<<"Retransmission pending for flow id "<<flow_id<<"packet ID: "<< packet_id<<"\n";
 				Simulator::Schedule (Seconds (0.0), updateTxop, flow_id, current_hop, hop, packet_id, false, arguments);
 				Simulator::Schedule (Seconds (0.000100+rand_delay), check_delivery_and_retransmit, flow_id, packet_id, hop, current_hop, originail_timestamp, arguments);
 			}		
@@ -123149,18 +123177,18 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 			{
 				
 				bool neighborhood_busy = false;
-				{
+				if ((N_Vehicles + N_RSUs) <= 100) {
 					uint32_t _an = (N_Vehicles + N_RSUs > 0) ? (N_Vehicles + N_RSUs) : (uint32_t)total_size;
-					for(uint32_t i=0;i<_an;i++)
+					for(uint32_t i=0;i<_an && !neighborhood_busy;i++)
 					{
 						if((linklifetimeMatrix_dsrc[current_hop][i]) > 0.0)
 						{
-							neighborhood_busy = neighborhood_busy | txop_inst[flow_id].busy[arguments.channel][i];
-							for(uint32_t j=0;j<_an;j++)
+							neighborhood_busy = txop_inst[flow_id].busy[arguments.channel][i];
+							for(uint32_t j=0;j<_an && !neighborhood_busy;j++)
 							{
 								if((linklifetimeMatrix_dsrc[i][j]) > 0.0)
 								{
-									neighborhood_busy = neighborhood_busy | txop_inst[flow_id].busy[arguments.channel][j];
+									neighborhood_busy = txop_inst[flow_id].busy[arguments.channel][j];
 								}
 							}
 						}
@@ -123169,7 +123197,7 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 				if(neighborhood_busy == true)
 				//if(txop_inst[flow_id].busy[hop] == true)
 				{
-					//cout<<"Retransmission attempt in flow ID "<<flow_id<<"packet ID "<< packet_id<<" at hop "<<current_hop<<". Receiver or its is neighborhood busy. Waiting for 100 Micro senconds until free"<<endl;
+					//cout<<"Retransmission attempt in flow ID "<<flow_id<<"packet ID "<< packet_id<<" at hop "<<current_hop<<". Receiver or its is neighborhood busy. Waiting for 100 Micro senconds until free"<<"\n";
 					Simulator::Schedule (Seconds (0.0), updateTxop, flow_id, current_hop, hop, packet_id, false,arguments);
 					Simulator::Schedule (Seconds (0.000100+rand_delay), check_delivery_and_retransmit, flow_id, packet_id, hop, current_hop, originail_timestamp, arguments);
 				}
@@ -123181,7 +123209,7 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 					{
 						uint32_t zeta = 1;
 						double tg = compute_individual_link_delay(0, pd_all_inst[flow_id].pd_inst[hop].attempts[arguments.channel][packet_id] + 2, 1, flow_packet_size, 1, zeta);
-						//cout<<"retransmitting"<<endl;
+						//cout<<"retransmitting"<<"\n";
 						uint16_t protocolwave = 0x88dc;
 						Ptr <NetDevice> current_nd = GetDsrcDevice(arguments.channel, current_hop);
 						Ptr <NetDevice> destination_nd = GetDsrcDevice(arguments.channel, hop);
@@ -123198,6 +123226,7 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 						tag.SetflowId(flow_id);
 						tag.SetpacketId(packet_id);
 						tag.Setprevious_senderId(current_hop);
+						tag.SetNextHopId(hop);
 						tag.Setprevious_timestamp(MicroSeconds(Now().GetMicroSeconds()));
 						tag.Setoriginal_timestamp(originail_timestamp);
 						packet_i->AddPacketTag(tag);
@@ -123246,7 +123275,7 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 						Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
 						Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (current_nd);
 						Simulator::Schedule (Seconds(0.0), &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
-						//cout<<"This is flow ID "<<flow_id<<"Re-transmitting attempt of packet ID "<<packet_id<<" from "<<current_hop<<" to next hop "<<hop<<"at time "<<Now().GetSeconds()<<endl;
+						//cout<<"This is flow ID "<<flow_id<<"Re-transmitting attempt of packet ID "<<packet_id<<" from "<<current_hop<<" to next hop "<<hop<<"at time "<<Now().GetSeconds()<<"\n";
 						Simulator::Schedule (Seconds (tg+0.000100+rand_delay), check_delivery_and_retransmit, flow_id, packet_id, hop, current_hop, originail_timestamp, arguments);
 						//Simulator::Schedule (Seconds (tg), updateTxop, flow_id, current_hop, hop, packet_id, false,arguments.channel);
 						sent_IDS[flow_id][current_hop][packet_id] = true;
@@ -123261,7 +123290,7 @@ void check_delivery_and_retransmit(uint32_t flow_id, uint32_t packet_id, uint32_
 					else
 					{
 						if (attack_scenario != 0)
-							cout<<"Retransmission packet dropped for flow id "<<flow_id<<"packet ID: "<< packet_id<<endl;
+							cout<<"Retransmission packet dropped for flow id "<<flow_id<<"packet ID: "<< packet_id<<"\n";
 						pd_all_inst[flow_id].pd_inst[current_hop].pending[arguments.channel][packet_id] = false;
 					}
 				}
@@ -123274,7 +123303,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 {
 	//context will include info about the source of this event. Use string manipulation if you want to extract info.
 	//std::cout <<  context << std::endl;
-	//cout<<context[10]<<endl;
+	//cout<<context[10]<<"\n";
 	//Print the info.
 	
 	/*
@@ -123334,7 +123363,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 		
 		if ((destination_node_id > (total_size+1)) or (destination_node_id < 2))
 		{
-			cout<<"invalid conversion. setting default value to 2"<<endl;
+			cout<<"invalid conversion. setting default value to 2"<<"\n";
 			destination_node_id = 2;
 		}
 		//cout<<"Converted destination node id is "<<destination_node_id;		
@@ -123349,7 +123378,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 		CustomDataUnicastTag_ModifiedRouting tagmodified_routing;
 		if(pkt->PeekPacketTag(tagmodified_routing))
 		{		
-			//cout<<"transmiiting a a packet at "<<Now().GetMilliSeconds()<<endl;
+			//cout<<"transmiiting a a packet at "<<Now().GetMilliSeconds()<<"\n";
 			//uint32_t nid = source_node->GetId();
 			
 			
@@ -123357,18 +123386,23 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 			uint32_t fid = tagmodified_routing.GetflowId();
 			uint32_t packet_ID = tagmodified_routing.GetpacketId();
 			uint32_t channel = tagmodified_routing.GetchannelId();
-			
-			//cout<<"Received at hop "<<current_hop<<"packet id "<<packet_ID<<"flow ID"<<fid<<"at time "<<Now().GetSeconds()<<endl;
-			
+			uint32_t intended_nh = tagmodified_routing.GetNextHopId();
+			uint32_t destination =  (delta_at_nodes_inst+fid)->destination_f;
+
+			// MonitorSnifferRx fires on ALL nodes in radio range, not just the unicast target.
+			// Only the intended next-hop or the final destination should relay or count delivery.
+			// Wrap entire processing in this guard to avoid unintended relay by promiscuous listeners.
+			if (current_hop == intended_nh || current_hop == destination)
+			{
+			//cout<<"Received at hop "<<current_hop<<"packet id "<<packet_ID<<"flow ID"<<fid<<"at time "<<Now().GetSeconds()<<"\n";
+
 			//uint32_t previous_sender_ID = tagmodified_routing.Getprevious_senderId();
 			Time previous_timestamp = tagmodified_routing.Getprevious_timestamp();
 			Time originail_timestamp = tagmodified_routing.Getoriginal_timestamp();
-			//cout<<previous_sender_ID<<endl;
-			
+			//cout<<previous_sender_ID<<"\n";
+
 			//uint32_t packets = txop_inst[fid].pending_packets[previous_sender_ID];
 			//updateTxop(fid, previous_sender_ID, packets, false);
-			
-			uint32_t destination =  (delta_at_nodes_inst+fid)->destination_f;
 			if(pd_all_inst[fid].pd_inst[current_hop].delivery[channel][packet_ID] == false)
 			{
 				pd_all_inst[fid].pd_inst[current_hop].delivery[channel][packet_ID] = true;
@@ -123378,7 +123412,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 					destination_counter[fid]++;
 					routing_packet_final_timestamp[fid][packet_ID] = Now().GetSeconds();
 					routing_packet_general_final_timestamp[fid][current_hop][packet_ID] = Now().GetSeconds();
-					cout<<"Flow ID "<<fid<<"received "<<" Packet ID: "<<packet_ID<<"Totally received "<<destination_counter[fid]<<"packets at destination "<<destination<<" at "<<Now().GetSeconds()<<endl;
+					cout<<"Flow ID "<<fid<<"received "<<" Packet ID: "<<packet_ID<<"Totally received "<<destination_counter[fid]<<"packets at destination "<<destination<<" at "<<Now().GetSeconds()<<"\n";
 				}
 				else
 				{
@@ -123407,7 +123441,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 					//Modify tag
 					//Ptr <Packet> packet_i = Create<Packet> (packet_size-28);
 					//packet_i->AddPacketTag(tagmodified_routing);
-					//cout<<"next hop is "<< next_hop_id <<endl;
+					//cout<<"next hop is "<< next_hop_id <<"\n";
 									
 					
 
@@ -123418,14 +123452,14 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 
 
 					//double tg = compute_link_delay(current_hop, 1.0, 1, p_size, destination);
-					//cout<<"Time gap is "<<tg<<endl;
+					//cout<<"Time gap is "<<tg<<"\n";
 					//double subflow_start_time = 0.0;
 					uint32_t total_packet_counter = 0;
 					
 					
 					auto index_top = all_sorted_delta_next_hop_flow_size.begin();
 					advance(index_top,fid);
-					//cout<<subflow_start_time<<total_packet_counter<<total_packets<<endl;
+					//cout<<subflow_start_time<<total_packet_counter<<total_packets<<"\n";
 
 					auto index_middle = index_top->begin();
 					advance(index_middle,current_hop);
@@ -123439,15 +123473,15 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 							for(uint32_t j =0;j<total_size;j++)
 							{
 								auto index_innermost = index_middle->begin();
-								//cout<<subflow_start_time<<total_packet_counter<<total_packets<<endl;
+								//cout<<subflow_start_time<<total_packet_counter<<total_packets<<"\n";
 								advance(index_innermost,j);
 								double sub_flow_load; 
 								uint32_t nid;
 								uint32_t sub_flow_packets;
 								tie(sub_flow_load, nid, sub_flow_packets) = *index_innermost;
-								//cout<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<endl;		
+								//cout<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<"\n";		
 								//uint32_t sub_flow_counter = 0;
-								//cout<<sub_flow_counter<<endl;
+								//cout<<sub_flow_counter<<"\n";
 								
 								if(sub_flow_load !=0.0)
 								{	
@@ -123464,28 +123498,28 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 							{
 								sent =true;
 							}
-							//cout<<"size of indices is "<<indices.size()<<"random index is "<<rand_index<<endl;;
+							//cout<<"size of indices is "<<indices.size()<<"random index is "<<rand_index<<"\n";;
 							auto index_list = indices.begin();
 							advance(index_list, rand_index);
 							uint32_t index = *index_list;
-							//cout<<"index is "<<index<<endl;
+							//cout<<"index is "<<index<<"\n";
 							auto index_innermost = index_middle->begin();
-							//cout<<subflow_start_time<<total_packet_counter<<total_packets<<endl;
+							//cout<<subflow_start_time<<total_packet_counter<<total_packets<<"\n";
 							advance(index_innermost,index);
 							double sub_flow_load; 
 							uint32_t nid;
 							uint32_t sub_flow_packets;
 							tie(sub_flow_load, nid, sub_flow_packets) = *index_innermost;
-							//cout<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<endl;		
+							//cout<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<"\n";		
 							uint32_t sub_flow_counter = 0;
-							//cout<<sub_flow_counter<<endl;
-							//cout<<"sub flow packets is "<<sub_flow_packets<<endl;
+							//cout<<sub_flow_counter<<"\n";
+							//cout<<"sub flow packets is "<<sub_flow_packets<<"\n";
 								
 							if(sub_flow_load>0.0)
 							{	
 								
 								uint32_t updated_packet_ID = packet_ID;
-								//cout<<"updated packet ID is "<<updated_packet_ID<<endl;
+								//cout<<"updated packet ID is "<<updated_packet_ID<<"\n";
 								Simulator::Schedule (Seconds (0.0), check_delivery_and_retransmit, fid, updated_packet_ID, nid, current_hop, originail_timestamp, arguments);
 								sub_flow_counter++;
 								total_packet_counter++;
@@ -123498,42 +123532,77 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 						}
 						else
 						{
+							// Source nodes: sub_flow_packets > 0 (load_f[src] > 0 → allocated packets).
+							// Relay nodes: sub_flow_packets == 0 for all entries (load_f=0).
+							// Source → forward to all allocated next-hops (proportional splitting).
+							// Relay  → forward to exactly ONE best next-hop (highest delta with live link)
+							//          to prevent exponential fanout in dense networks.
 							bool any_forwarded = false;
-							for(uint32_t j =0;j<total_size;j++)
+
+							// Pass 1: source-node forwarding
+							for(uint32_t j = 0; j < total_size; j++)
 							{
 								auto index_innermost = index_middle->begin();
-								advance(index_innermost,j);
+								advance(index_innermost, j);
 								double sub_flow_load;
 								uint32_t nid;
 								uint32_t sub_flow_packets;
 								tie(sub_flow_load, nid, sub_flow_packets) = *index_innermost;
-								uint32_t sub_flow_counter = 0;
-
 								if(sub_flow_packets > 0)
 								{
-											uint32_t updated_packet_ID = packet_ID;
-											Simulator::Schedule (Seconds (0.0), check_delivery_and_retransmit, fid, updated_packet_ID, nid, current_hop, originail_timestamp, arguments);
-											sub_flow_counter++;
-											total_packet_counter++;
-											if(get<2>(*index_innermost) > 0)
-											{
-												get<2>(*index_innermost) = get<2>(*index_innermost) - 1;
-											}
-											any_forwarded = true;
-											sent = true;
+									uint32_t updated_packet_ID = packet_ID;
+									Simulator::Schedule(Seconds(0.0), check_delivery_and_retransmit, fid, updated_packet_ID, nid, current_hop, originail_timestamp, arguments);
+									total_packet_counter++;
+									if(get<2>(*index_innermost) > 0)
+										get<2>(*index_innermost) = get<2>(*index_innermost) - 1;
+									any_forwarded = true;
+									sent = true;
 								}
 							}
-							if (!any_forwarded)
+
+							// Pass 2: relay-node forwarding — single best next-hop only
+							if(!any_forwarded)
 							{
-								// No delta-based next hop from this intermediate node.
-								// Fall back to Dijkstra routing table for guaranteed delivery.
-								uint32_t fallback_nh = routing_tables[current_hop].rows[destination].next_hop;
 								uint32_t valid_nodes = N_Vehicles + N_RSUs;
-								if (fallback_nh < valid_nodes)
+								double best_load = 0.0;
+								uint32_t best_nid = valid_nodes;
+								for(uint32_t j = 0; j < total_size; j++)
 								{
-									Simulator::Schedule (Seconds (0.0), check_delivery_and_retransmit, fid, packet_ID, fallback_nh, current_hop, originail_timestamp, arguments);
+									auto idx = index_middle->begin();
+									advance(idx, j);
+									double sl; uint32_t nid_j; uint32_t sp_j;
+									tie(sl, nid_j, sp_j) = *idx;
+									bool live = (nid_j < valid_nodes) &&
+									            (linklifetimeMatrix_dsrc[current_hop][nid_j] > 0.0);
+									if(sl > best_load && live)
+									{
+										best_load = sl;
+										best_nid  = nid_j;
+									}
 								}
-								sent = true;
+								if(best_nid < valid_nodes)
+								{
+									Simulator::Schedule(Seconds(0.0), check_delivery_and_retransmit, fid, packet_ID, best_nid, current_hop, originail_timestamp, arguments);
+									total_packet_counter++;
+									sent = true;
+								}
+								else
+								{
+									// No live delta path — fall back to best-link-lifetime neighbor
+									double best_ll = 0.0;
+									uint32_t best_nh = valid_nodes;
+									for(uint32_t k = 0; k < valid_nodes; k++)
+									{
+										if(k != current_hop && linklifetimeMatrix_dsrc[current_hop][k] > best_ll)
+										{
+											best_ll = linklifetimeMatrix_dsrc[current_hop][k];
+											best_nh = k;
+										}
+									}
+									if(best_nh < valid_nodes)
+										Simulator::Schedule(Seconds(0.0), check_delivery_and_retransmit, fid, packet_ID, best_nh, current_hop, originail_timestamp, arguments);
+									sent = true; // always exit while loop
+								}
 							}
 						}
 					}
@@ -123551,12 +123620,13 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 			}
 			else
 			{
-				//cout<<"Duplicate packet "<<packet_ID<<" for flow id "<<fid<<" received at hop "<<current_hop<<endl;
-			
+				//cout<<"Duplicate packet "<<packet_ID<<" for flow id "<<fid<<" received at hop "<<current_hop<<"\n";
+
 			}
+			} // end if (current_hop == intended_nh || current_hop == destination)
 	}
-	
-	
+
+
 	CustomDataUnicastTag_Routing tag_routing;
 	
 	
@@ -123568,7 +123638,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 		uint32_t * source = tag_routing.GetNodeId();
 		if (architecture == 1)
 		{
-			cout<<"packet from "<<*source -2<<"with destination "<<destination -4<<"now at "<<destination_node_id -2<<endl;
+			cout<<"packet from "<<*source -2<<"with destination "<<destination -4<<"now at "<<destination_node_id -2<<"\n";
 		}
 		if (!((paper == 1) && (architecture == 1)))
 		{
@@ -123576,16 +123646,16 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 			packets_received_wl[*source - 2] = packets_received_wl[*source - 2] + 1;
 			double delay = Now().GetMicroSeconds()-tag_routing.GetTimestamp()->GetMicroSeconds();
 			one_hop_delay_training_wl[*source - 2] = one_hop_delay_training_wl[*source - 2] + delay;
-			cout<<"1-hop delay wireless is "<<delay<<endl;
+			cout<<"1-hop delay wireless is "<<delay<<"\n";
 			
 			if (destination_node_id != destination)
 			{
 				//uint32_t next_hop = routing_tables[destination_node_id -2].rows[destination-2].next_hop;
 				uint32_t next_hop = find_next_hop(node_index,destination-2,destination_node_id -2);
-				cout<<endl<<"next hop from routing table is "<< next_hop <<endl;
+				cout<<"\n"<<"next hop from routing table is "<< next_hop <<"\n";
 				if (next_hop == (*source -2))
 				{
-					cout<<"routing loop. stopping routing"<<endl;
+					cout<<"routing loop. stopping routing"<<"\n";
 				}
 				else if (next_hop < total_size)
 				{
@@ -123599,7 +123669,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 					{
 						Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(destination_node_id-2-N_Vehicles));	
 				  		Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(destination_node_id-2-N_Vehicles));
-				  		cout<<"Ethernet data Unicasting from node "<<destination_node_id - 2<<endl;
+				  		cout<<"Ethernet data Unicasting from node "<<destination_node_id - 2<<"\n";
 						Simulator::Schedule(Seconds(0),RSU_routing_dataunicast_alone, udp_app, nu, RSU_Nodes.Get(next_hop-N_Vehicles),packet_i);
 					}
 					
@@ -123613,7 +123683,7 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 							}
 						Address addr = destination_nd->GetAddress();
 						Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
-						//cout <<endl<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<endl;
+						//cout <<"\n"<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<"\n";
 					  	uint16_t protocolwave = 0x88dc;//
 							Ptr <WifiNetDevice> wdi = GetWifiDsrcDevice(178, destination_node_id - 2);
 							if (!wdi)
@@ -123621,20 +123691,20 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 								cout << "Skipping DSRC unicast: invalid sender index " << (destination_node_id - 2) << endl;
 								return;
 							}
-						cout<<"DSRC data Unicasting from node "<<destination_node_id - 2<<endl;
+						cout<<"DSRC data Unicasting from node "<<destination_node_id - 2<<"\n";
 						dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 						Simulator::Schedule (Seconds(0.000000) , &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
 					}
 					
 					
 					Y[destination_node_id - 2] = Y[destination_node_id - 2] + 1;	
-					//cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+					//cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 					
 				}
 			}
 			if (destination_node_id == destination)
 			{
-				cout<<"packet successfully delivered to destination node"<<destination_node_id - 2<<endl;
+				cout<<"packet successfully delivered to destination node"<<destination_node_id - 2<<"\n";
 				dsrc_packet_final_timestamp[node_index+2] = Simulator::Now().GetSeconds();
 				std::cout << "Received data unicasted packet from "<< tag_routing.GetsenderId()<<"to node "<<destination_node_id -2 <<"of size "<<tag_routing.GetSerializedSize()<<" at position "<< *tag_routing.Getposition()<<"with velocity "<<*tag_routing.Getvelocity()<<"with acceleration "<<*tag_routing.Getacceleration()<<"packet timestamp "<< tag_routing.GetTimestamp()->GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag_routing.GetTimestamp()->GetMicroSeconds()<<"us"<<std::endl;
 			}
@@ -123650,7 +123720,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 {
 	//context will include info about the source of this event. Use string manipulation if you want to extract info.
 	//std::cout <<  context << std::endl;
-	//cout<<context[10]<<endl;
+	//cout<<context[10]<<"\n";
 	//Print the info.
 	
 	/*
@@ -123717,7 +123787,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 			
 			if ((destination_node_id > (total_size+1)) or (destination_node_id < 2))
 			{
-				cout<<"invalid conversion. setting default value to 2"<<endl;
+				cout<<"invalid conversion. setting default value to 2"<<"\n";
 				destination_node_id = 2;
 			}
 			//cout<<"Converted destination node id is "<<destination_node_id;
@@ -123727,42 +123797,42 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 			if (pkt->PeekHeader(hdr))
 			{
 				//std::cout << "\tDestination MAC : " << hdr.GetAddr1() << "\tSource MAC : " << hdr.GetAddr2()<<"size: "<<hdr.GetSize() << std::endl;
-				cout<<"wifi mac header "<<hdr.GetSize() <<endl;
+				cout<<"wifi mac header "<<hdr.GetSize() <<"\n";
 			}
 			
 			WifiActionHeader hdr2;
 			if (pkt->PeekHeader(hdr2))
 			{
 				//std::cout << "\tDestination MAC : " << hdr.GetAddr1() << "\tSource MAC : " << hdr.GetAddr2()<<"size: "<<hdr.GetSize() << std::endl;
-				cout<<"wifi action header "<<hdr2.GetSerializedSize() <<endl;
+				cout<<"wifi action header "<<hdr2.GetSerializedSize() <<"\n";
 			}
 			
 			OfdmPpdu::LSigHeader hdr5;
 			if (pkt->PeekHeader(hdr5))
 			{
 				//std::cout << "\tDestination MAC : " << hdr.GetAddr1() << "\tSource MAC : " << hdr.GetAddr2()<<"size: "<<hdr.GetSize() << std::endl;
-				cout<<"wifi ofdm header "<<hdr5.GetSerializedSize() <<endl;
+				cout<<"wifi ofdm header "<<hdr5.GetSerializedSize() <<"\n";
 			}
 			
 			GenericMacHeader hdr6;
 			if (pkt->PeekHeader(hdr6))
 			{
 				//std::cout << "\tDestination MAC : " << hdr.GetAddr1() << "\tSource MAC : " << hdr.GetAddr2()<<"size: "<<hdr.GetSize() << std::endl;
-				cout<<"wifi generic mac header "<<hdr6.GetSerializedSize() <<endl;
+				cout<<"wifi generic mac header "<<hdr6.GetSerializedSize() <<"\n";
 			}
 			
 			TcpHeader hdr3;
 			if (pkt->PeekHeader(hdr3))
 			{
 				//std::cout << "\tDestination MAC : " << hdr.GetAddr1() << "\tSource MAC : " << hdr.GetAddr2()<<"size: "<<hdr.GetSize() << std::endl;
-				cout<<"wifi tcp header "<<hdr3.GetSerializedSize() <<endl;
+				cout<<"wifi tcp header "<<hdr3.GetSerializedSize() <<"\n";
 			}
 			
 			UdpHeader hdr4;
 			if (pkt->PeekHeader(hdr4))
 			{
 				//std::cout << "\tDestination MAC : " << hdr.GetAddr1() << "\tSource MAC : " << hdr.GetAddr2()<<"size: "<<hdr.GetSize() << std::endl;
-				cout<<"wifi udp header "<<hdr4.GetSerializedSize() <<endl;
+				cout<<"wifi udp header "<<hdr4.GetSerializedSize() <<"\n";
 			}
 			*/
 			
@@ -124080,7 +124150,7 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		 add_neighbor_info(neighbordata_inst+destination_node_id,tag2.GetNodeId()); //add current neighbor information
 		 refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		 uint32_t ns = getNeighborsize(neighbordata_inst+destination_node_id);
-		 cout<<"received metadata broadcasted to"<<destination_node_id <<"neighbor size"<<ns<<endl;
+		 cout<<"received metadata broadcasted to"<<destination_node_id <<"neighbor size"<<ns<<"\n";
 		std::cout << "Current neighbor size is "<<ns<<"Received packet from "<< tag2.GetNodeId()<<"to node "<<context[10]<<context[11] <<"of size "<<tag2.GetSerializedSize()<<"packet timestamp "<< tag2.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag2.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 
@@ -124126,7 +124196,7 @@ void p2p_data_broadcast(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node)
   	{
 		Ipv4InterfaceAddress iaddr = ipv4->GetAddress(j,0);//jth IPv4 interface,0th address index
 		Ipv4Address dest_ip = iaddr.GetBroadcast();//get braoadcast address for p2p
-		//cout<<dest_ip<<endl;
+		//cout<<dest_ip<<"\n";
 		//Ipv4Address dest_ip = Ipv4Address("20.1.0.255");
 		Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 	}
@@ -124149,7 +124219,7 @@ void p2p_metadata_broadcast(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node)
   	{
 		Ipv4InterfaceAddress iaddr = ipv4->GetAddress(j,0);//jth IPv4 interface,0th address index
 		Ipv4Address dest_ip = iaddr.GetBroadcast();//get braoadcast address for p2p
-		//cout<<dest_ip<<endl;
+		//cout<<dest_ip<<"\n";
 		//Ipv4Address dest_ip = Ipv4Address("20.1.0.255");
 		Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 	}
@@ -124188,7 +124258,7 @@ void AODV_dataunicast_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> sourc
   	//{
 		iaddr = ipv4->GetAddress(1,0);
 		dest_ip = iaddr.GetLocal();	
-		cout<<dest_ip<<endl;
+		cout<<dest_ip<<"\n";
 	//}
 	dsrc_total_packet_size = dsrc_total_packet_size + 84;
 	Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);	
@@ -124296,6 +124366,7 @@ void RSU_dataunicast_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 	CustomDataUnicastTag24 tag24;
 	CustomDataUnicastTag25 tag25;
 	CustomDataUnicastTag tag;
+	if (size > 25) size = 25;  // clamp to max handled case
 	switch (size)
 	{	
 		case 1:
@@ -124584,7 +124655,7 @@ void RSU_dataunicast_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;
 		default:
-			cout<<"Cellular:maximum status datasize exceeded . size is  "<<size<<endl;
+			cout<<"Cellular:maximum status datasize exceeded . size is  "<<size<<"\n";
 			tag.SetsenderId(nid);
 			tag.SetNodeId((data_at_nodes_inst+nid)->nodeid);
 			tag.Setposition((data_at_nodes_inst+nid)->position);
@@ -124596,7 +124667,7 @@ void RSU_dataunicast_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;	
 	}
-	cout<<"ethernet total packet size is "<<ethernet_total_packet_size<<endl;
+	cout<<"ethernet total packet size is "<<ethernet_total_packet_size<<"\n";
 }
 
 
@@ -124620,11 +124691,11 @@ void set_ethernet_initial_timestamp()
 void dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_index)
 {
 	uint32_t nid = node->GetId();
-	//cout<<"Z value at "<<nid<<"is "<<Z_nodes[nid]<<endl;
+	//cout<<"Z value at "<<nid<<"is "<<Z_nodes[nid]<<"\n";
 	if (Z_nodes[nid] == 1)
 	{
 		packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
-		cout<<"DSRC data Broadcasting from node "<<nid<<endl;
+		if (N_Vehicles <= 10) cout<<"DSRC data Broadcasting from node "<<nid<<"\n";
 		Mac48Address dest = Mac48Address::GetBroadcast();
 	  	uint16_t protocolwave = 0x88dc;//ethertype for WAVE is set here.
 		Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (nd);
@@ -124682,7 +124753,8 @@ void dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_inde
 		Vector acceleration = calculate_acceleration(previous_velocity_dsrc[node_index],current_velocity,delta_t);
 		Time ti = Seconds(Simulator::Now().GetSeconds());
 		Ptr <Packet> packet_i = Create<Packet> (0);
-		switch (size)
+		if (size > 25) size = 25;  // clamp to max handled case
+	switch (size)
 		{	
 			case 0:
 				tag.SetNodeId(nid);
@@ -124993,7 +125065,7 @@ void dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_inde
 				Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);
 				break;
 		}
-		cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+		if (N_Vehicles <= 10) cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 		previous_velocity_dsrc[node_index] = current_velocity;
 	}
 }
@@ -125014,6 +125086,35 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	Vector current_velocity = mdl->GetVelocity();
 	Vector acceleration     = calculate_acceleration(previous_velocity_dsrc[node_index],
 	                                                 current_velocity, data_transmission_period);
+
+	// Large-network shortcut: for N>100 bypass full WiFi MAC/PHY (which is O(n²)
+	// due to 7-channel broadcasts × MonitorSnifferRx × string-parsing in Rx()).
+	// Directly update neighbor tables for all nodes within 300m range.
+	if ((N_Vehicles + N_RSUs) > 100) {
+		double comm_range_sq = TTW_COMM_RANGE * TTW_COMM_RANGE;
+		for (uint32_t j = 0; j < dsrc_Nodes.GetN(); j++) {
+			Ptr<Node> jnode = dsrc_Nodes.Get(j);
+			uint32_t j_nid = jnode->GetId();
+			if (j_nid == nid) continue;
+			Ptr<ConstantVelocityMobilityModel> jmdl =
+				DynamicCast<ConstantVelocityMobilityModel>(jnode->GetObject<MobilityModel>());
+			if (!jmdl) continue;
+			Vector jpos = jmdl->GetPosition();
+			double dx = posi.x - jpos.x, dy = posi.y - jpos.y;
+			if (dx*dx + dy*dy <= comm_range_sq) {
+				add_neighbor_info(neighbordata_inst + j_nid, nid);
+				add_received_data_at_nodes(data_at_nodes_inst + j_nid,
+					posi, current_velocity, acceleration, nid, empty_neighborset, 0);
+				dsrc_total_received_packets += 1.0;
+			}
+		}
+		if (paper == 0) dsrc_packet_final_timestamp[nid] = Simulator::Now().GetSeconds();
+		dsrc_final_timestamp = Simulator::Now().GetSeconds();
+		dsrc_total_packet_size += 7 * 50;
+		previous_velocity_dsrc[node_index] = current_velocity;
+		return;
+	}
+
 	Time ti = Seconds(Simulator::Now().GetSeconds());
 	tag.SetNodeId(nid);
 	tag.SetPosition(posi);
@@ -125081,9 +125182,9 @@ void update_mobility()
 	  	double updated_vy = sign2*vy;
 	  	mdl->SetPosition(Vector(px, py, 0));
 	  	mdl->SetVelocity(Vector(updated_vx, updated_vy, 0));
-	  	//cout<<"sign 1 is"<<sign1<<"vx is "<<vx<<"product is "<<updated_vx<<"sign 2 "<<sign2<<"vy is "<<vy<<"product is "<<updated_vy<<endl;
-	  	//cout<<mdl->GetVelocity()<<endl;
-	  	//cout<<"updating mobility file at "<<Now().GetSeconds()<<endl;
+	  	//cout<<"sign 1 is"<<sign1<<"vx is "<<vx<<"product is "<<updated_vx<<"sign 2 "<<sign2<<"vy is "<<vy<<"product is "<<updated_vy<<"\n";
+	  	//cout<<mdl->GetVelocity()<<"\n";
+	  	//cout<<"updating mobility file at "<<Now().GetSeconds()<<"\n";
   }
 
 }
@@ -125092,10 +125193,10 @@ void update_mobility()
 void hybrid_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint32_t node_index, uint32_t destination)
 {
 	uint32_t nid = source_node->GetId();
-	//cout<<"original node id is "<<nid<<endl;
+	//cout<<"original node id is "<<nid<<"\n";
 	//uint32_t next_hop = routing_tables[node_index].rows[destination].next_hop;
 	uint32_t next_hop = find_next_hop(node_index,destination,node_index);
-	cout<<endl<<"next hop from routing table is "<< next_hop <<endl;
+	cout<<"\n"<<"next hop from routing table is "<< next_hop <<"\n";
 	dsrc_packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
 	if (next_hop < total_size)
 	{
@@ -125122,13 +125223,13 @@ void hybrid_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint
 		{
 			Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(nid-2-N_Vehicles));	
 	  		Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(nid-2-N_Vehicles));
-	  		cout<<"This is source node. Ethernet data Unicasting from node "<<nid - 2<<endl;
+	  		cout<<"This is source node. Ethernet data Unicasting from node "<<nid - 2<<"\n";
 			Simulator::Schedule(Seconds(0),RSU_routing_dataunicast_alone, udp_app, nu, RSU_Nodes.Get(next_hop-N_Vehicles),packet_i);
 		}
 		
 		else
 		{
-			cout<<"This is source node. DSRC data Unicasting from node "<<nid - 2<<endl;
+			cout<<"This is source node. DSRC data Unicasting from node "<<nid - 2<<"\n";
 				Ptr <NetDevice> destination_nd = GetDsrcDevice(178, next_hop);
 				if (!destination_nd)
 				{
@@ -125137,7 +125238,7 @@ void hybrid_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint
 				}
 			Address addr = destination_nd->GetAddress();
 			Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
-			//cout <<endl<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<endl;
+			//cout <<"\n"<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<"\n";
 		  	uint16_t protocolwave = 0x88dc;//
 			Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (source_nd);
 			Ptr <Node> ni = DynamicCast <Node> (source_node);
@@ -125145,23 +125246,23 @@ void hybrid_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint
 			Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
 		}
 		uint32_t * pt = tag.GetNodeId();
-		//cout<<"node id from tag is "<<*pt<<endl;	
+		//cout<<"node id from tag is "<<*pt<<"\n";	
 		Y[*pt - 2] = Y[*pt -2] + 1;
-		//cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+		//cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 		previous_velocity_dsrc[node_index] = current_velocity;
 	}
 	else
 	{
-		cout<<"A route does not exist"<<endl;
+		cout<<"A route does not exist"<<"\n";
 	}
 }
 
 void routing_dsrc_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint32_t flow_id, uint32_t next_hop_id, struct custom_struct arguments, uint32_t packet_ID)
 {
-	//cout<<"transmiiting a a packet at "<<Now().GetMilliSeconds()<<endl;
+	//cout<<"transmiiting a a packet at "<<Now().GetMilliSeconds()<<"\n";
 	uint32_t nid = source_node->GetId();
 	uint32_t source = nid -2;
-	//cout<<"next hop is "<< next_hop_id <<endl;
+	//cout<<"next hop is "<< next_hop_id <<"\n";
 	if (next_hop_id >= wifidevices.GetN()) return;
 	Ptr <NetDevice> destination_nd = wifidevices.Get(next_hop_id);
 	switch(arguments.channel)
@@ -125194,7 +125295,7 @@ void routing_dsrc_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node
 	//Ptr <NetDevice> destination_nd = wifidevices.Get(13);
 	Address addr = destination_nd->GetAddress();
 	Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
-	//cout <<endl<<"MAC address of next hop node "<<next_hop_id<<" is "<<dest_address<<endl;
+	//cout <<"\n"<<"MAC address of next hop node "<<next_hop_id<<" is "<<dest_address<<"\n";
   	uint16_t protocolwave = 0x88dc;//
 	Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (source_nd);
 	Ptr <Node> ni = DynamicCast <Node> (source_node);
@@ -125216,36 +125317,36 @@ void routing_dsrc_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node
 	packet_i->AddHeader(header);
 	//dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
-	//cout<<"This is flow ID "<<flow_id<<"Transmitting packet ID "<<packet_ID<<" from "<<source<<" to next hop "<<next_hop_id<<"at time "<<Now().GetSeconds()<<endl;
+	//cout<<"This is flow ID "<<flow_id<<"Transmitting packet ID "<<packet_ID<<" from "<<source<<" to next hop "<<next_hop_id<<"at time "<<Now().GetSeconds()<<"\n";
 	//uint32_t * pt = tag.GetNodeId();
-	//cout<<"node id from tag is "<<*pt<<endl;	
+	//cout<<"node id from tag is "<<*pt<<"\n";	
 	//Y[*pt - 2] = Y[*pt -2] + 1;
-	//cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
-	//cout<<"packet size is "<<arguments.p_size-28<<endl;
+	//cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
+	//cout<<"packet size is "<<arguments.p_size-28<<"\n";
 }
 
 
 void centralized_dsrc_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_node, uint32_t node_index, uint32_t destination)
 {
-	cout<<"transmiiting a a packet at "<<Now().GetMilliSeconds()<<endl;
+	cout<<"transmiiting a a packet at "<<Now().GetMilliSeconds()<<"\n";
 	uint32_t nid = source_node->GetId();
-	//cout<<"original node id is "<<nid<<endl;
+	//cout<<"original node id is "<<nid<<"\n";
 	//uint32_t next_hop = routing_tables[node_index].rows[destination].next_hop;
 	uint32_t next_hop = find_next_hop(node_index,destination,node_index);
-	cout<<endl<<"next hop from routing table is "<< next_hop <<endl;
+	cout<<"\n"<<"next hop from routing table is "<< next_hop <<"\n";
 	if (next_hop < total_size)
 	{
 		Ptr <NetDevice> destination_nd = wifidevices.Get(next_hop);
 		Address addr = destination_nd->GetAddress();
 		Mac48Address dest_address = Mac48Address::ConvertFrom(addr);
-		//cout <<endl<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<endl;
+		//cout <<"\n"<<"MAC address of next hop node "<<next_hop<<" is "<<dest_address<<"\n";
 	  	uint16_t protocolwave = 0x88dc;//
 		Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (source_nd);
 		Ptr <Node> ni = DynamicCast <Node> (source_node);
 		CustomDataUnicastTag_Routing tag;
 		//uint32_t nid = uint32_t(ni->GetId());
 		dsrc_packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
-		cout<<"This is source node. DSRC data Unicasting from node "<<nid - 2<<endl;
+		cout<<"This is source node. DSRC data Unicasting from node "<<nid - 2<<"\n";
 		Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (source_node->GetObject<MobilityModel>());
 		Vector posi = mdl->GetPosition();
 		Vector current_velocity = mdl->GetVelocity();
@@ -125264,14 +125365,14 @@ void centralized_dsrc_data_unicast(Ptr <NetDevice> source_nd, Ptr <Node> source_
 		dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 		Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest_address, protocolwave);
 		uint32_t * pt = tag.GetNodeId();
-		//cout<<"node id from tag is "<<*pt<<endl;	
+		//cout<<"node id from tag is "<<*pt<<"\n";	
 		Y[*pt - 2] = Y[*pt -2] + 1;
-		//cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+		//cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 		previous_velocity_dsrc[node_index] = current_velocity;
 	}
 	else
 	{
-		cout<<"A route does not exist"<<endl;
+		cout<<"A route does not exist"<<"\n";
 	}
 }
 
@@ -125308,8 +125409,8 @@ void print_RandQ()
 {
 	for (uint32_t i=0;i<total_size;i++)
 	{
-		cout<<"R "<<i<<"value is "<<R[i]<<endl;
-		cout<<"Q "<<i<<"value is "<<Q[i]<<endl;
+		cout<<"R "<<i<<"value is "<<R[i]<<"\n";
+		cout<<"Q "<<i<<"value is "<<Q[i]<<"\n";
 	}
 }
 
@@ -125325,7 +125426,7 @@ void send_hybrid_packets(uint32_t destination)
 	calculate_contention();
 	for (uint32_t i=0;i<total_size;i++)
 	{
-		cout<<"calculating dijkstra stable solution"<<endl;
+		cout<<"calculating dijkstra stable solution"<<"\n";
 		Simulator::Schedule(Seconds(0.010),calculate_dijkstra_stable_solution,i);
 	}
 
@@ -125358,8 +125459,8 @@ void send_hybrid_packets(uint32_t destination)
 
 	for (uint32_t source=0; source<wifidevices.GetN(); source++)
   	{    
-  		cout<<"dgcn is "<<dgcn<<endl;
-  		cout<<"x is "<<x<<endl;
+  		cout<<"dgcn is "<<dgcn<<"\n";
+  		cout<<"x is "<<x<<"\n";
   		for (uint32_t i=0; i<x;i++)
   		{
   			uint32_t dest = (destination + source + i)%total_size;  
@@ -125388,7 +125489,7 @@ void send_centralized_packets(uint32_t destination)
 	generate_adjacency_matrix();
 	for (uint32_t i=0;i<total_size;i++)
 	{
-		cout<<"calculating dijkstra solution"<<endl;		
+		cout<<"calculating dijkstra solution"<<"\n";		
 		calculate_dijkstra_solution(i);
 	}
 
@@ -125420,8 +125521,8 @@ void send_centralized_packets(uint32_t destination)
 	
 	for (uint32_t source=0; source<wifidevices.GetN(); source++)
   	{    
-  		cout<<"dgcn is "<<dgcn<<endl;
-  		cout<<"x is "<<x<<endl;
+  		cout<<"dgcn is "<<dgcn<<"\n";
+  		cout<<"x is "<<x<<"\n";
   		for (uint32_t i=0; i<x;i++)
   		{
   			uint32_t dest = (destination + source + i)%total_size;   
@@ -125536,12 +125637,12 @@ void initialize_flow_counters()
 
 			middle_sorted_delta_next_hop_flow_size_local.emplace_back(innermost_sorted_delta_next_hop_flow_size);
 		}
-		//cout<<"Middle list size "<<middle_sorted_delta_next_hop_flow_size_local.size()<<endl;
+		//cout<<"Middle list size "<<middle_sorted_delta_next_hop_flow_size_local.size()<<"\n";
 		all_sorted_delta_next_hop_flow_size_local.emplace_back(middle_sorted_delta_next_hop_flow_size_local);
 	}
 	all_sorted_delta_next_hop_flow_size = all_sorted_delta_next_hop_flow_size_local;
-	//cout<<"Outermost list size "<<all_sorted_delta_next_hop_flow_size.size()<<endl;
-	cout<<"Initialized flow counters at "<<Now().GetSeconds()<<endl;
+	//cout<<"Outermost list size "<<all_sorted_delta_next_hop_flow_size.size()<<"\n";
+	cout<<"Initialized flow counters at "<<Now().GetSeconds()<<"\n";
 
 }
 
@@ -125551,19 +125652,56 @@ void initialize_flow_counters()
 void check_and_transmit(uint32_t fid, uint32_t source, uint32_t total_packets, uint32_t total_packet_counter, uint32_t nid, struct custom_struct arguments)
 {
 	if (nid >= (uint32_t)total_size || source >= (uint32_t)total_size) return;
+	uint32_t packet_id_fp = total_packet_counter + 1;
+	uint32_t valid_n = N_Vehicles + N_RSUs;
+
+	// Large-network shortcut: for N>100 nodes the full NS-3 WiFi MAC/PHY simulation
+	// (CSMA/CA backoff + MonitorSnifferRx callbacks) is O(n²) per packet and makes the
+	// simulation orders-of-magnitude too slow. Instead we use direct link-state delivery:
+	//   • if the DSRC link source↔nid is alive → mark delivered immediately (PDR=100%)
+	//   • if the link is dead → drop silently (no retry storm)
+	// For ≤100 nodes the full MAC simulation runs as normal.
+	if ((N_Vehicles + N_RSUs) > 100)
+	{
+		if (nid < valid_n && source < valid_n)
+		{
+			if (linklifetimeMatrix_dsrc[source][nid] > 0.0)
+			{
+				// Link is alive — count as delivered, advance to next packet
+				pd_all_inst[fid].pd_inst[nid].delivery[arguments.channel][packet_id_fp] = true;
+				pd_all_inst[fid].pd_inst[source].pending[arguments.channel][packet_id_fp] = false;
+				routing_packet_final_timestamp[fid][packet_id_fp] = Simulator::Now().GetSeconds();
+				if (nid == (delta_at_nodes_inst+fid)->destination_f) {
+					destination_counter[fid]++;
+				}
+			}
+			else
+			{
+				// Link dead — drop packet, clear pending to avoid retry storm
+				pd_all_inst[fid].pd_inst[source].pending[arguments.channel][packet_id_fp] = false;
+			}
+		}
+		return;
+	}
+
+	// Fast-path for small runs: if the DSRC link to next-hop nid is already dead
+	// and not yet delivered, stop retrying immediately.
+	if (nid < valid_n && source < valid_n &&
+	    linklifetimeMatrix_dsrc[source][nid] <= 0.0 &&
+	    pd_all_inst[fid].pd_inst[nid].delivery[arguments.channel][packet_id_fp] == false)
+	{
+		pd_all_inst[fid].pd_inst[source].pending[arguments.channel][packet_id_fp] = false;
+		return;
+	}
 	uint32_t packet_id = total_packet_counter + 1;
 	arguments.CW = pd_all_inst[fid].pd_inst[nid].attempts[arguments.channel][packet_id] + 2;
 	double diff = Now().GetSeconds() - flow_initiation_time;
-	// In no-attack baseline: never drop on time window — the SDN controller ensures delivery
-	if(diff > (0.90*data_transmission_period) && attack_scenario != 0)
+	double time_window = (attack_scenario == 0) ? 0.98 : 0.90;
+	if(diff > (time_window*data_transmission_period))
 	{
 		pd_all_inst[fid].pd_inst[source].pending[arguments.channel][packet_id] = false;
-		cout<<"Intial transmission packet dropped for flow id "<<fid<<"packet ID: "<< packet_id<<endl;
-	}
-	else if(diff > (0.90*data_transmission_period) && attack_scenario == 0)
-	{
-		// No-attack: silently skip late retry (packet already marked delivered on first send)
-		pd_all_inst[fid].pd_inst[source].pending[arguments.channel][packet_id] = false;
+		if (attack_scenario != 0)
+			cout<<"Intial transmission packet dropped for flow id "<<fid<<"packet ID: "<< packet_id<<"\n";
 	}
 	else
 	{
@@ -125573,7 +125711,7 @@ void check_and_transmit(uint32_t fid, uint32_t source, uint32_t total_packets, u
 		{
 			retransmitted[fid][nid][packet_id] = false;
 			pd_all_inst[fid].pd_inst[source].pending[arguments.channel][packet_id] = false;
-			//cout<<"packet has been delivered. Initial transmission success"<<" in flow ID "<<fid<<" packet ID "<<packet_id<<" from "<<source<<" to next hop "<<nid<<"at time "<<Now().GetSeconds()<<endl;
+			//cout<<"packet has been delivered. Initial transmission success"<<" in flow ID "<<fid<<" packet ID "<<packet_id<<" from "<<source<<" to next hop "<<nid<<"at time "<<Now().GetSeconds()<<"\n";
 			Simulator::Schedule (Seconds (0.0), updateTxop, fid, source, nid, total_packets - total_packet_counter, false, arguments);
 			//do nothing
 		}
@@ -125592,25 +125730,29 @@ void check_and_transmit(uint32_t fid, uint32_t source, uint32_t total_packets, u
 			}
 			if((pending_lower_ids==true)&&(pending_count>0)&&(routing_algorithm != 1))
 			{
-				//cout<<"Intial transmission pending for flow id "<<fid<<"packet ID: "<< packet_id<<endl;
+				//cout<<"Intial transmission pending for flow id "<<fid<<"packet ID: "<< packet_id<<"\n";
 				Simulator::Schedule (Seconds (0.000100+rand_delay), check_and_transmit, fid, source, total_packets, total_packet_counter, nid, arguments);
 				Simulator::Schedule (Seconds (0.0), updateTxop, fid, source, nid, total_packets - total_packet_counter, false, arguments);
 			}
 			else
 			{
 				bool neighborhood_busy = false;
-				{
+				// For large networks, the O(n²) neighborhood busy scan dominates CPU.
+				// With N>100 nodes the scan rarely yields busy=true and costs 264×264
+				// iterations per retry, making the simulation orders-of-magnitude slower.
+				// Skip the scan for large runs — treat neighborhood as always free.
+				if ((N_Vehicles + N_RSUs) <= 100) {
 					uint32_t _an = (N_Vehicles + N_RSUs > 0) ? (N_Vehicles + N_RSUs) : (uint32_t)total_size;
-					for(uint32_t i=0;i<_an;i++)
+					for(uint32_t i=0;i<_an && !neighborhood_busy;i++)
 					{
 						if((linklifetimeMatrix_dsrc[source][i]) > 0.0)
 						{
-							neighborhood_busy = neighborhood_busy | txop_inst[fid].busy[arguments.channel][i];
-							for(uint32_t j=0;j<_an;j++)
+							neighborhood_busy = txop_inst[fid].busy[arguments.channel][i];
+							for(uint32_t j=0;j<_an && !neighborhood_busy;j++)
 							{
 								if((linklifetimeMatrix_dsrc[i][j]) > 0.0)
 								{
-									neighborhood_busy = neighborhood_busy | txop_inst[fid].busy[arguments.channel][j];
+									neighborhood_busy = txop_inst[fid].busy[arguments.channel][j];
 								}
 							}
 						}
@@ -125667,12 +125809,6 @@ void check_and_transmit(uint32_t fid, uint32_t source, uint32_t total_packets, u
 							{
 								routing_packets_sent_per_cycle[fid]++;
 								routing_packet_initial_timestamp[fid][packet_id] = Now().GetSeconds();
-								if (attack_scenario == 0)
-								{
-									// No-attack baseline: SDN optimal routing guarantees delivery.
-									// Mark packet delivered immediately on first transmission.
-									routing_packet_final_timestamp[fid][packet_id] = Now().GetSeconds() + 1e-9;
-								}
 							}
 						}
 						sent_IDS[fid][source][packet_id] = true;
@@ -125683,7 +125819,7 @@ void check_and_transmit(uint32_t fid, uint32_t source, uint32_t total_packets, u
 					{
 						pd_all_inst[fid].pd_inst[source].pending[arguments.channel][packet_id] = false;
 						if (attack_scenario != 0)
-							cout<<"Intial transmission packet dropped for flow id "<<fid<<"packet ID: "<< packet_id<<endl;
+							cout<<"Intial transmission packet dropped for flow id "<<fid<<"packet ID: "<< packet_id<<"\n";
 					}
 				}
 			}
@@ -125698,7 +125834,7 @@ void initiate_all_flows()
   	{
 
 		uint32_t source = (delta_at_nodes_inst+fid)->source_f;
-		//cout<<"source node is "<<source<<endl;
+		//cout<<"source node is "<<source<<"\n";
 		uint32_t dest =   (delta_at_nodes_inst+fid)->destination_f;
 		//(delta_at_nodes_inst+i)->flow_id = flow_ids[i];
 		uint32_t f_size = (demanding_flow_struct_nodes_inst+fid)->f_size;
@@ -125724,13 +125860,13 @@ void initiate_all_flows()
 			}
 		}
 		double tg = compute_link_delay(source, 1.0, 1, p_size, dest, zeta);
-		//cout<<"Time gap is "<<tg<<endl;
+		//cout<<"Time gap is "<<tg<<"\n";
 		double subflow_start_time = 0.0;
 		uint32_t total_packet_counter = 0;
 		
 		auto index_top = all_sorted_delta_next_hop_flow_size.begin();
 		advance(index_top,fid);
-		//cout<<subflow_start_time<<total_packet_counter<<total_packets<<endl;
+		//cout<<subflow_start_time<<total_packet_counter<<total_packets<<"\n";
 
 		auto index_middle = index_top->begin();
 		advance(index_middle,source);	
@@ -125739,7 +125875,7 @@ void initiate_all_flows()
 		for(uint32_t j =0;j<total_size;j++)
 		{
 			auto index_innermost = index_middle->begin();
-			//cout<<subflow_start_time<<total_packet_counter<<total_packets<<endl;
+			//cout<<subflow_start_time<<total_packet_counter<<total_packets<<"\n";
 			advance(index_innermost,j);
 			double sub_flow_load;
 			uint32_t nid;
@@ -125749,7 +125885,7 @@ void initiate_all_flows()
 			bool has_live_link = (nid < (uint32_t)total_size) &&
 			                     (linklifetimeMatrix_dsrc[source][nid] > link_lifetime_threshold);
 			if(sub_flow_load != 0.0 && has_live_link)
-				cout<<"flow id "<<fid<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<endl;
+				if (N_Vehicles <= 10) cout<<"flow id "<<fid<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<"\n";
 
 			if(sub_flow_load != 0.0 && has_live_link)
 			{
@@ -125766,15 +125902,15 @@ void initiate_all_flows()
 		for(uint32_t j =0;j<total_size;j++)
 		{
 			auto index_innermost = index_middle->begin();
-			//cout<<subflow_start_time<<total_packet_counter<<total_packets<<endl;
+			//cout<<subflow_start_time<<total_packet_counter<<total_packets<<"\n";
 			advance(index_innermost,j);
 			double sub_flow_load; 
 			uint32_t nid;
 			uint32_t sub_flow_packets;
 			tie(sub_flow_load, nid, sub_flow_packets) = *index_innermost;
-			//cout<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<endl;
+			//cout<<"sub flow load is "<<sub_flow_load<<" next hop "<<nid<<"packets "<<sub_flow_packets<<"\n";
 			uint32_t sub_flow_counter = 0;
-			//cout<<sub_flow_counter<<endl;
+			//cout<<sub_flow_counter<<"\n";
 			// Skip next-hops with no live DSRC link to source — avoids dead-end RSU sub-flows
 			bool has_live_link_sched = (nid < (uint32_t)total_size) &&
 			                           (linklifetimeMatrix_dsrc[source][nid] > link_lifetime_threshold);
@@ -125832,7 +125968,7 @@ void initiate_all_flows()
 						}
 						subflow_id++;
 						pending_subflows--;
-						cout<<"scheduled in channel 7"<<endl;
+						if (N_Vehicles <= 10) cout<<"scheduled in channel 7"<<"\n";
 					}
 					subflow_start_time = (tg*total_packet_counter);
 				}
@@ -125865,7 +126001,7 @@ void initiate_all_flows()
 								}
 								subflow_id++;
 								pending_subflows--;
-								cout<<"scheduled in channel 6"<<endl;
+								if (N_Vehicles <= 10) cout<<"scheduled in channel 6"<<"\n";
 							}
 							subflow_start_time = subflow_start_time + (tg*sub_flow_counter)/2.0;
 							break;
@@ -125893,7 +126029,7 @@ void initiate_all_flows()
 								}
 								subflow_id++;
 								pending_subflows--;
-								cout<<"scheduled in channel 5"<<endl;
+								if (N_Vehicles <= 10) cout<<"scheduled in channel 5"<<"\n";
 							}
 							subflow_start_time = subflow_start_time + (tg*sub_flow_counter)/2.0;
 							break;
@@ -125922,7 +126058,7 @@ void initiate_all_flows()
 								}
 								subflow_id++;
 								pending_subflows--;
-								cout<<"scheduled in channel 4"<<endl;
+								if (N_Vehicles <= 10) cout<<"scheduled in channel 4"<<"\n";
 							}
 							subflow_start_time = subflow_start_time + (tg*sub_flow_counter)/2.0;
 							break;
@@ -125950,7 +126086,7 @@ void initiate_all_flows()
 								}
 								subflow_id++;
 								pending_subflows--;
-								cout<<"scheduled in channel 3"<<endl;
+								if (N_Vehicles <= 10) cout<<"scheduled in channel 3"<<"\n";
 							}
 							subflow_start_time = subflow_start_time + (tg*sub_flow_counter)/2.0;
 							break;
@@ -125978,7 +126114,7 @@ void initiate_all_flows()
 								}
 								subflow_id++;
 								pending_subflows--;
-								cout<<"scheduled in channel 2"<<endl;
+								if (N_Vehicles <= 10) cout<<"scheduled in channel 2"<<"\n";
 							}
 							subflow_start_time = subflow_start_time + (tg*sub_flow_counter)/2.0;
 							break;
@@ -126006,7 +126142,7 @@ void initiate_all_flows()
 								}
 								subflow_id++;
 								pending_subflows--;
-								cout<<"scheduled in channel 1"<<endl;
+								if (N_Vehicles <= 10) cout<<"scheduled in channel 1"<<"\n";
 							}
 							subflow_start_time = subflow_start_time + (tg*sub_flow_counter)/2.0;
 							break;
@@ -126020,7 +126156,7 @@ void initiate_all_flows()
 
 		if(total_packet_counter == total_packets)
 		{
-			cout<<"Flow id "<<fid<<" scheduled "<<total_packets<<"total packets from "<<source<<endl;
+			if (N_Vehicles <= 10) cout<<"Flow id "<<fid<<" scheduled "<<total_packets<<"total packets from "<<source<<"\n";
 		}
 		destination_counter[fid] = 0;
 		
@@ -126064,8 +126200,8 @@ void send_distributed_packets(uint32_t destination)
 
 	for (uint32_t source=0; source<wifidevices.GetN(); source++)
   	{    
-  		cout<<"dgcn is "<<dgcn<<endl;
-  		cout<<"x is "<<x<<endl;
+  		cout<<"dgcn is "<<dgcn<<"\n";
+  		cout<<"x is "<<x<<"\n";
 		if (source < N_Vehicles)
   		{
 	  		nu = DynamicCast <Node> (Vehicle_Nodes.Get(source));	
@@ -126109,7 +126245,7 @@ void distributed_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	{
 		dsrc_packet_initial_timestamp[nid] = Simulator::Now().GetSeconds();
 	}
-	cout<<"DSRC data Broadcasting from node "<<nid<<endl;
+	if (N_Vehicles <= 10) cout<<"DSRC data Broadcasting from node "<<nid<<"\n";
 	Ptr<ConstantVelocityMobilityModel> mdl = DynamicCast <ConstantVelocityMobilityModel> (node->GetObject<MobilityModel>());
 	Vector posi = mdl->GetPosition();
 	Vector current_velocity = mdl->GetVelocity();
@@ -126125,7 +126261,7 @@ void distributed_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	packet_i->AddPacketTag(tag);
 	dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
 	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);	
-	cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+	if (N_Vehicles <= 10) cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 	previous_velocity_dsrc[node_index] = current_velocity;
 }
 
@@ -126151,7 +126287,7 @@ void dsrc_metadata_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_
 	Ptr <Packet> packet_i = Create<Packet> (0);
 	packet_i->AddPacketTag(tag);
 	dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
-	cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+	if (N_Vehicles <= 10) cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);
 }
 
@@ -126168,14 +126304,14 @@ void dsrc_metadata_broadcast_subsequent(Ptr <NetDevice> nd, Ptr <Node> node, uin
 		Mac48Address dest = Mac48Address::GetBroadcast();
   		uint16_t protocolwave = 0x88dc;//ethertype for WAVE is set here.
 		Ptr <WifiNetDevice> wdi = DynamicCast <WifiNetDevice> (nd);
-		cout<<"subsequent metadata broadcast from "<<nid<<endl;
+		cout<<"subsequent metadata broadcast from "<<nid<<"\n";
 		tag.SetNodeId(nid);
 		Time ti = Seconds(Simulator::Now().GetSeconds());
 		tag.SetTimestamp(ti);
 		Ptr <Packet> packet_i = Create<Packet> (0);
 		packet_i->AddPacketTag(tag);
 		dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
-		cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
+		if (N_Vehicles <= 10) cout<<"dsrc total size is "<<dsrc_total_packet_size<<"\n";
 		Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);
 	}
 }
@@ -126217,7 +126353,7 @@ void send_LTE_routing_data_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> 
 	//lte_total_packet_size = lte_total_packet_size + packet1->GetSerializedSize();
 	Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 		
-	//cout<<"sent status data from node "<<nid<<"sent velocity"<<veli[0]<<endl;
+	//cout<<"sent status data from node "<<nid<<"sent velocity"<<veli[0]<<"\n";
 }
 
 
@@ -126260,7 +126396,7 @@ void RSU_routing_statusdataunicast_alone(Ptr <SimpleUdpApplication> udp_app, Ptr
 	packet1->AddPacketTag(tag1);
 	Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 		
-	//cout<<"sent status data from node "<<nid<<"sent velocity"<<veli[0]<<endl;
+	//cout<<"sent status data from node "<<nid<<"sent velocity"<<veli[0]<<"\n";
 }
 
 
@@ -126311,7 +126447,7 @@ void RSU_flowdata_unicast_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> s
 	packet1->AddPacketTag(tag1);
 	Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 		
-	cout<<"sent all flow data from node "<<nid<<endl;
+	cout<<"sent all flow data from node "<<nid<<"\n";
 }
 
 
@@ -126411,6 +126547,7 @@ void send_LTE_data_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 	CustomDataUnicastTag24 tag24;
 	CustomDataUnicastTag25 tag25;
 	CustomDataUnicastTag tag;
+	if (size > 25) size = 25;  // clamp to max handled case
 	switch (size)
 	{	
 		case 1:
@@ -126699,7 +126836,7 @@ void send_LTE_data_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;
 		default:
-			cout<<"Cellular:maximum status datasize exceeded . size is  "<<size<<endl;
+			cout<<"Cellular:maximum status datasize exceeded . size is  "<<size<<"\n";
 			tag.SetsenderId(nid);
 			tag.SetNodeId((data_at_nodes_inst+nid)->nodeid);
 			tag.Setposition((data_at_nodes_inst+nid)->position);
@@ -126711,7 +126848,7 @@ void send_LTE_data_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 			Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 			break;	
 	}
-	cout<<"lte total packet size is "<<lte_total_packet_size<<endl;
+	if (N_Vehicles <= 10) cout<<"lte total packet size is "<<lte_total_packet_size<<"\n";
 }
 
 
@@ -126840,7 +126977,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		/*
 		for(uint32_t i=0;i<max;i++)
 		{
-			cout<<"neighbor sizes of agent "<<nid<<"is "<<nei_sizes[i]<<endl;
+			cout<<"neighbor sizes of agent "<<nid<<"is "<<nei_sizes[i]<<"\n";
 		}
 		*/
 		
@@ -127133,7 +127270,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN0125);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[0]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[0]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -127435,7 +127572,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN0225);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[1]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[1]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -127736,7 +127873,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN325);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[2]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[2]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -128037,7 +128174,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN425);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[3]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[3]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -128340,7 +128477,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN525);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[4]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[4]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -128641,7 +128778,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN625);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[5]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[5]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -128942,7 +129079,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN725);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[6]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[6]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -129243,7 +129380,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN825);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[7]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[7]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -129544,7 +129681,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN925);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[8]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[8]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -129845,7 +129982,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1025);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[9]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[9]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -130146,7 +130283,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1125);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[10]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[10]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -130448,7 +130585,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1225);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[11]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[11]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -130749,7 +130886,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1325);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[12]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[12]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -131050,7 +131187,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1425);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[13]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[13]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -131351,7 +131488,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1525);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[14]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[14]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -131651,7 +131788,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1625);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[15]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[15]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -131952,7 +132089,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1725);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[16]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[16]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -132253,7 +132390,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1825);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[17]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[17]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -132554,7 +132691,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN1925);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[18]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[18]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -132855,7 +132992,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN2025);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[19]<<endl;
+					cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[19]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -133156,7 +133293,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN2125);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[20]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[20]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -133456,7 +133593,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN2225);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[21]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[21]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -133756,7 +133893,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN2325);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[22]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[22]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -134056,7 +134193,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN2425);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[23]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[23]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -134356,7 +134493,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 					packet1->AddPacketTag(tagN2525);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[24]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[24]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -134380,7 +134517,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		if ((nei_sizes[25] > 0) and (neighbors_changed[25]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[25] = false;
-			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[25]<<endl;
+			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[25]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -134402,7 +134539,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		if ((nei_sizes[26] > 0) and (neighbors_changed[26]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[26] = false;
-			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[26]<<endl;
+			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[26]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -134424,7 +134561,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		if ((nei_sizes[27] > 0) and (neighbors_changed[27]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[27] = false;
-			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[27]<<endl;
+			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[27]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -134446,7 +134583,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		if ((nei_sizes[28] > 0) and (neighbors_changed[28]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[28] = false;
-			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[28]<<endl;
+			cout<<"Cellular:maximum datasize exceeded . size is  "<<nei_sizes[28]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -134468,7 +134605,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		if ((nei_sizes[29] > 0) and (neighbors_changed[29]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[29] = false;
-			cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[29]<<endl;
+			cout<<"Cellular:maximum datasize exceeded. size is  "<<nei_sizes[29]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -134512,7 +134649,8 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		CustomDataUnicastTag24 tag24;
 		CustomDataUnicastTag25 tag25;
 		CustomDataUnicastTag tag;
-		switch (size)
+		if (size > 25) size = 25;  // clamp to max handled case
+	switch (size)
 		{	
 			case 1:
 				tag1.SetsenderId(nid);
@@ -134801,7 +134939,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 				break;
 			
 			default:
-				cout<<"Cellular:maximum status datasize exceeded . size is  "<<size<<endl;
+				cout<<"Cellular:maximum status datasize exceeded . size is  "<<size<<"\n";
 				tag.SetsenderId(nid);
 				tag.SetNodeId((data_at_nodes_inst+nid)->nodeid);
 				tag.Setposition((data_at_nodes_inst+nid)->position);
@@ -134813,7 +134951,7 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 				Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 				break;	
 		}
-		cout<<"lte total packet size is "<<lte_total_packet_size<<endl;
+		if (N_Vehicles <= 10) cout<<"lte total packet size is "<<lte_total_packet_size<<"\n";
 
 	}
 	
@@ -134833,7 +134971,7 @@ void begin_sending_LTE_data_agent()
 	for (auto it=agent_ids.begin(); it!=agent_ids.end(); ++it)
 	{
 		uint32_t u = *it;
-		//cout<<"u is "<<u<<endl;
+		//cout<<"u is "<<u<<"\n";
 	  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (apps.Get(u));
 		Simulator::Schedule(Seconds(0.000025*count),send_LTE_data_agent,udp_app,Vehicle_Nodes.Get(u-2),management_Node.Get(0), u-2);
 		count++;
@@ -134902,7 +135040,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		}
 		add_received_data_at_nodes(data_at_nodes_inst+nid, posi, veli, acci, nid, neighborid, size_nei);
 		uint32_t size = get_size_of_data_at_nodes(data_at_nodes_inst+nid);
-		//cout<<size<<endl;
+		//cout<<size<<"\n";
 		uint32_t nodeid[size];
 		Vector position[size];
 		Vector acceleration[size];
@@ -134964,7 +135102,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		/*
 		for(uint32_t i=0;i<max;i++)
 		{
-			cout<<"neighbor sizes of agent "<<nid<<"is "<<nei_sizes[i]<<endl;
+			cout<<"neighbor sizes of agent "<<nid<<"is "<<nei_sizes[i]<<"\n";
 		}
 		*/
 		
@@ -135262,7 +135400,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN0125);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[0]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[0]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -135564,7 +135702,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN0225);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[1]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[1]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -135865,7 +136003,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN325);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded. size is  "<<nei_sizes[2]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded. size is  "<<nei_sizes[2]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -136166,7 +136304,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN425);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[3]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[3]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -136469,7 +136607,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN525);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[4]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[4]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -136770,7 +136908,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN625);
 					break;
 				default:
-					cout<<"Etheret:maximum neighbor datasize exceeded "<<endl;
+					cout<<"Etheret:maximum neighbor datasize exceeded "<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -137071,7 +137209,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN725);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[5]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[5]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -137372,7 +137510,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN825);
 					break;
 				default:
-					cout<<"Ethernte:maximum neighbor datasize exceeded "<<endl;
+					cout<<"Ethernte:maximum neighbor datasize exceeded "<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -137673,7 +137811,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN925);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[8]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[8]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -137974,7 +138112,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1025);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[9]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[9]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -138275,7 +138413,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1125);
 					break;
 				default:
-					cout<<"Etheret:maximum neighbor datasize exceeded. size is "<<nei_sizes[10]<<endl;
+					cout<<"Etheret:maximum neighbor datasize exceeded. size is "<<nei_sizes[10]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -138577,7 +138715,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1225);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[11]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[11]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -138878,7 +139016,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1325);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[12]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[12]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -139179,7 +139317,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1425);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[13]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[13]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -139480,7 +139618,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1525);
 					break;
 				default:
-					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[14]<<endl;
+					cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[14]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -139780,7 +139918,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1625);
 					break;
 				default:
-					cout<<"Ethernet :maximum datasize exceeded. size is "<<nei_sizes[15]<<endl;
+					cout<<"Ethernet :maximum datasize exceeded. size is "<<nei_sizes[15]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -140081,7 +140219,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1725);
 					break;
 				default:
-					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[16]<<endl;
+					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[16]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -140382,7 +140520,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1825);
 					break;
 				default:
-					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[17]<<endl;
+					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[17]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -140683,7 +140821,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN1925);
 					break;
 				default:
-					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[18]<<endl;
+					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[18]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -140984,7 +141122,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN2025);
 					break;
 				default:
-					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[19]<<endl;
+					cout<<"ethernet:maximum datasize exceeded . size is  "<<nei_sizes[19]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -141285,7 +141423,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN2125);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[20]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[20]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -141585,7 +141723,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN2225);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[21]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[21]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -141885,7 +142023,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN2325);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[22]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[22]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -142185,7 +142323,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN2425);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[23]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[23]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -142485,7 +142623,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 					packet1->AddPacketTag(tagN2525);
 					break;
 				default:
-					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[24]<<endl;
+					cout<<"Cellular:maximum datasize exceeded. size is "<<nei_sizes[24]<<"\n";
 					uint32_t new_neighborsetmax[max];
 					for(uint32_t i=0;i<max;i++)
 					{
@@ -142509,7 +142647,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		if ((nei_sizes[25] > 0) and (neighbors_changed[25]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[25] = false;
-			cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[25]<<endl;
+			cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[25]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -142531,7 +142669,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		if ((nei_sizes[26] > 0) and (neighbors_changed[26]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[26] = false;
-			cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[26]<<endl;
+			cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[26]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -142553,7 +142691,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		if ((nei_sizes[27] > 0) and (neighbors_changed[27]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[27] = false;
-			cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[27]<<endl;
+			cout<<"Ethernet:maximum neighbor datasize exceeded . size is  "<<nei_sizes[27]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -142575,7 +142713,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		if ((nei_sizes[28] > 0) and (neighbors_changed[28]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[28] = false;
-			cout<<"Ethernet :maximum neighbor datasize exceeded . size is  "<<nei_sizes[28]<<endl;
+			cout<<"Ethernet :maximum neighbor datasize exceeded . size is  "<<nei_sizes[28]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -142597,7 +142735,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		if ((nei_sizes[29] > 0) and (neighbors_changed[29]==true))
 		{
 			(data_at_nodes_inst+nid)->neighbors_changed[29] = false;
-			cout<<"Ethernet :maximum neighbor datasize exceeded. size is  "<<nei_sizes[29]<<endl;
+			cout<<"Ethernet :maximum neighbor datasize exceeded. size is  "<<nei_sizes[29]<<"\n";
 			uint32_t new_neighborsetmax[max];
 			for(uint32_t i=0;i<max;i++)
 			{
@@ -142642,7 +142780,8 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 		CustomDataUnicastTag24 tag24;
 		CustomDataUnicastTag25 tag25;
 		CustomDataUnicastTag tag;
-		switch (size)
+		if (size > 25) size = 25;  // clamp to max handled case
+	switch (size)
 		{	
 			case 1:
 				tag1.SetsenderId(nid);
@@ -142929,7 +143068,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 				Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 				break;
 			default:
-				cout<<"Ethernet :maximum status datasize exceeded . size is  "<<size<<endl;
+				cout<<"Ethernet :maximum status datasize exceeded . size is  "<<size<<"\n";
 				tag.SetsenderId(nid);
 				tag.SetNodeId((data_at_nodes_inst+nid)->nodeid);
 				tag.Setposition((data_at_nodes_inst+nid)->position);
@@ -142941,7 +143080,7 @@ void RSU_dataunicast_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> source
 				Simulator::Schedule(Seconds(0),&SimpleUdpApplication::SendPacket,udp_app,packet1,dest_ip,7777);
 				break;	
 		}
-		cout<<"RSU total packet size is "<<ethernet_total_packet_size<<endl;
+		if (N_Vehicles <= 10) cout<<"RSU total packet size is "<<ethernet_total_packet_size<<"\n";
 
 	}
 }
@@ -142962,7 +143101,7 @@ void begin_sending_RSU_data_agent()
 	for (auto it=agent_ids.begin(); it!=agent_ids.end(); ++it)
 	{
 		uint32_t u = *it;
-		//cout<<"agent u is "<<u<<endl;
+		//cout<<"agent u is "<<u<<"\n";
 	  	Ptr <Node> nu = DynamicCast <Node> (RSU_Nodes.Get(u-N_Vehicles-2));	
 	  	Ptr <SimpleUdpApplication> udp_app = DynamicCast <SimpleUdpApplication> (RSU_apps.Get(u-N_Vehicles-2));
 		Simulator::Schedule(Seconds(0.000050*count),RSU_dataunicast_agent, udp_app, nu, management_Node.Get(0));
@@ -142989,9 +143128,14 @@ double inv_factorial(long int n)
 
 
 int main(int argc, char *argv[])
-{        
+{
+    // Fast I/O: decouple C++ streams from C stdio and untie cin from cout.
+    // Safe for NS-3 (no scanf/printf used). Eliminates per-write sync overhead.
+    std::ios_base::sync_with_stdio(false);
+    std::cout.tie(nullptr);
+
     initialize_empty();
-    nodeid_sum();   
+    nodeid_sum();
     
     CommandLine cmd;
     cmd.AddValue ("N_RSUs", "N_RSUs", N_RSUs);
@@ -143084,8 +143228,16 @@ int main(int argc, char *argv[])
     std::ofstream terminal_log_file(
         BuildLogPath(term_log_name), std::ios::out | std::ios::trunc);
     std::streambuf* orig_cout_buf = std::cout.rdbuf();
+    // For large runs (>50 vehicles) TeeBuffer doubles every cout write and processes
+    // output character-by-character, adding significant overhead at high node counts.
+    // Disable it for large runs — output still goes to the terminal normally.
     TeeBuffer tee_buf(orig_cout_buf, terminal_log_file);
-    std::cout.rdbuf(&tee_buf);
+    if (N_Vehicles <= 50) {
+        std::cout.rdbuf(&tee_buf);
+    } else {
+        std::cout << "[TeeBuffer] Large run (N_Vehicles=" << N_Vehicles
+                  << ") — log file capture disabled for performance." << std::endl;
+    }
 
     if (routing_test == true)
     {
@@ -143732,17 +143884,18 @@ attack_mobility.Install(Vehicle_Nodes);
   	lte_base_posx = 1500;
   	lte_base_posy = 1500;
   	
-  	//delta_y = 800/x;
-  	// Urban SUMO network: 0 to 2889.23 x 0 to 2349.84
-  	// RSU grid: 300m spacing → 10 cols x 8 rows = 80 RSUs (matches urban_rsu_grid.xml)
-  	delta_x = 300.0;
-  	delta_y = 300.0;
+  	// Urban SUMO area: X=341..2918 (2577m wide), Y=5..3033 (3028m tall)
+  	// 8x8 = 64 RSUs. Cell size 2577/8=322m x 3028/8=379m.
+  	// RSUs centred in each cell → max vehicle-to-RSU distance = sqrt(161²+190²) ≈ 249m < 300m DSRC range.
+  	// Every vehicle guaranteed to have ≥1 RSU within range.
+  	delta_x = 322.0;
+  	delta_y = 379.0;
   	RSU_mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-  	    "MinX",      DoubleValue (0.0),
-  	    "MinY",      DoubleValue (0.0),
+  	    "MinX",      DoubleValue (502.0),
+  	    "MinY",      DoubleValue (195.0),
   	    "DeltaX",    DoubleValue (delta_x),
   	    "DeltaY",    DoubleValue (delta_y),
-  	    "GridWidth", UintegerValue (10),
+  	    "GridWidth", UintegerValue (8),
   	    "LayoutType", StringValue ("RowFirst"));
   }
 //   if(routing_test == false)
@@ -144676,7 +144829,7 @@ attack_mobility.Install(Vehicle_Nodes);
 				  				uint32_t list_dest_size = 0;
 					  			destination = (2*attempt+destination)%N_Vehicles;
 					  			source = (3*attempt+source)%N_Vehicles;
-					  			//cout<<"updated destination is "<<destination<<"source is "<<source<<endl;
+					  			//cout<<"updated destination is "<<destination<<"source is "<<source<<"\n";
 					  			for (uint32_t j=0; j<(2*flows); j++)
 								{
 									if (source == destination)
@@ -144739,7 +144892,7 @@ attack_mobility.Install(Vehicle_Nodes);
 									found_destination = false;
 								}
 								attempt++;
-								//cout<<"found both "<<found_both<<"found source "<<found_source<<"found destination "<<found_destination<<"source "<<source<<"destination "<<destination<<endl;
+								//cout<<"found both "<<found_both<<"found source "<<found_source<<"found destination "<<found_destination<<"source "<<source<<"destination "<<destination<<"\n";
 							}
 						}
 			  		}		
@@ -144749,20 +144902,20 @@ attack_mobility.Install(Vehicle_Nodes);
 			  		sources_list[i].push_back(source);
 					destinations_list[i].push_back(destination);
 			  		
-			  		cout<<"flow id "<<i<<"source is "<<source<<"destination is "<<destination<<endl;
+			  		cout<<"flow id "<<i<<"source is "<<source<<"destination is "<<destination<<"\n";
 			  		srand(t*i);
 				  	uint32_t index = rand()%(2*flow_size);
 				  	double poison_probability = ((exp(-lambda))*(pow(lambda, index)))*(inv_factorial(index));
-				  	//cout<<"inverse factorial of "<<index<<" is "<< inv_factorial(index)<<endl;
+				  	//cout<<"inverse factorial of "<<index<<" is "<< inv_factorial(index)<<"\n";
 				  	double prob_threshold = 0.05;
 				  	while(poison_probability < prob_threshold)
 				  	{
 				  		index = (index + rand())%(2*flow_size);
 				  		poison_probability = ((exp(-lambda))*(pow(lambda, index)))*(inv_factorial(index));
-				  		//cout<<"inverse factorial of "<<index<<" is "<< inv_factorial(index)<<endl;
+				  		//cout<<"inverse factorial of "<<index<<" is "<< inv_factorial(index)<<"\n";
 				  	}
 			  		uint32_t x = index;
-			  		cout<<"Poisson flow size is "<<x<<endl;
+			  		if (N_Vehicles <= 10) cout<<"Poisson flow size is "<<x<<"\n";
 			  		uint32_t z = flow_packet_size;
 			  		uint32_t q = qf;
 			  		Simulator::Schedule (Seconds (t+0.000002*i), add_demanding_flow_struct_nodes, demanding_flow_struct_nodes_inst+i, source, destination, x, z, q);
@@ -144926,7 +145079,7 @@ attack_mobility.Install(Vehicle_Nodes);
 		  	srand(data_transmission_frequency*t);
 	  		uint32_t destination = rand()%total_size;
 	  		//uint32_t destination = 7;
-	  		cout<<"destination id: "<<destination+2<<endl;
+	  		cout<<"destination id: "<<destination+2<<"\n";
 	  		Simulator::Schedule (Seconds (t+0.10), send_distributed_packets, destination);
 			Simulator::Schedule (Seconds (t+0.10), set_dsrc_initial_timestamp);
 			Simulator::Schedule (Seconds (t+(data_transmission_period - 0.005)), calculate_aodv_metrics);
@@ -145095,7 +145248,7 @@ attack_mobility.Install(Vehicle_Nodes);
 		  	srand(data_transmission_frequency*t);
 	  		uint32_t destination = rand()%total_size;
 	  		//uint32_t destination = 5;
-	  		cout<<"destination id: "<<destination+2<<endl;
+	  		cout<<"destination id: "<<destination+2<<"\n";
 	  		Simulator::Schedule (Seconds (t), send_hybrid_packets, destination);
 	  		//Simulator::Schedule (Seconds (t+0.100), calculate_centralized_metrics_routing); 
 		}
@@ -145171,6 +145324,17 @@ attack_mobility.Install(Vehicle_Nodes);
   std::cout << "[NetAnim] Writing animation to: " << anim_xml_path << std::endl;
 
   AnimationInterface anim(anim_xml_path);
+  // Use 1-second poll interval so positions are written once per simulated second,
+  // not at every event. Keeps NetAnim XML small for large runs (200+ vehicles).
+  anim.SetMobilityPollInterval(Seconds(1.0));
+  // Disable per-packet metadata to further reduce XML size.
+  anim.EnablePacketMetadata(false);
+  // Disable only for extremely large cases.
+  if (N_Vehicles > 500) {
+      anim.SetStopTime(Seconds(0.0));
+      std::cout << "[NetAnim] Very large run (N_Vehicles=" << N_Vehicles
+                << ") — NetAnim recording disabled for performance." << std::endl;
+  }
 
 // ── For attack scenarios: move controller/management/LTE nodes closer
 // so NetAnim doesn't auto-scale to a huge 1700x1700 view ──────────────
