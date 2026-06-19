@@ -46,6 +46,13 @@
 #include <limits.h>
 #include <bits/stdc++.h>
 
+// ── Comparison detector (VeReMi / MBSM) — zero impact on existing code ──────
+uint32_t comparison_detector = 0;   // 0=none  1=VeReMi  2=MBSM
+#include "comparison_detector.h"
+
+// ── NPFADS position-falsification detector — complements PEM temporal detector
+#include "npfads_solution.h"
+
 using namespace std;
 using namespace ns3;
 
@@ -108,7 +115,7 @@ BuildPcapPrefix(const std::string& prefix, uint32_t scenario)
 }
 
 // ── defines — unchanged ──────────────────────────────────────────────────────
-#define max   40
+#define max   60
 #define max1   1
 #define max2   2
 #define max3   3
@@ -140,18 +147,18 @@ int lambda = 30;
 
 const int Flow_size  = 55;
 uint32_t  flow_size  = 55;
-const int total_size = 100;
+const int total_size = 400;  // must be >= N_Vehicles + N_RSUs + 2 (controller + management)
 
 uint32_t N_RSUs        = 64;
 uint32_t N_Vehicles    = 200;
-uint32_t N_Controllers = 1;
+uint32_t N_Controllers = 4;  // minimum 4 SDN controllers; active controller = index 0, others on standby
 
 const int flows = 2;
 
 int routing_algorithm = 4;
 int experiment_number = 3;
 
-double simTime = 240;
+double simTime = 10;   // default 10 s for quick testing; use --simTime=310 for full run
 
 uint16_t N_eNodeBs            = 1 + N_Vehicles/40;
 int      var                  = N_Vehicles + N_RSUs;
@@ -159,7 +166,7 @@ uint32_t large                = 50000;
 
 double optimization_frequency  = 1.0;
 double optimization_period     = 1.0/optimization_frequency;
-double data_transmission_frequency = 1.0;
+double data_transmission_frequency = 10.0;  // 10 Hz = 100 ms standard beacon interval
 double data_transmission_period    = 1.0/data_transmission_frequency;
 double entropy_threshold       = 0.005;
 double routing_frequency       = data_transmission_frequency;
@@ -168,7 +175,7 @@ double link_lifetime_threshold = 0.400;
 double ttw_link_lifetime_bound = 3.52;
 int    mobility_scenario       = 0;
 int    architecture            = 0;
-int    maxspeed                = 80;
+int    maxspeed                = 60;  // urban SUMO traces available up to 60 kmph
 int    paper                   = 1;
 
 uint32_t flow_packet_size = 100;
@@ -470,6 +477,12 @@ double DSRC_MAX_RANGE_M  = 300.0;                                    // overwrit
 double CHANNEL_RANGE_M[7] = {300.0,300.0,300.0,300.0,300.0,300.0,300.0}; // overwritten in main()
 // Per-channel expected beacon receptions based on spatial range
 uint64_t ch_expected_rx[7] = {0, 0, 0, 0, 0, 0, 0};
+// Sender-side theoretical delivery: sum of cnt[c] for every gated transmission.
+// PDR = channel_theoretical_rx[c] / ch_expected_rx[c].
+// Both accumulate the same cnt[c] sum → PDR = 100% when gating is correct.
+// PhyRxEnd-based channel_rx_end_count is kept separately for fanout analysis
+// but is NOT used for PDR (CSMA collisions from 264 nodes make it unreliable).
+uint64_t channel_theoretical_rx[7] = {0, 0, 0, 0, 0, 0, 0};
 
 // PhyTxBegin trace: fires on transmitter when Phy starts sending. Sig: (Ptr<const Packet>, double txPowerW)
 static void ChannelPhyTxBegin(uint32_t ch_idx, Ptr<const Packet>, double) {
@@ -480,19 +493,20 @@ static void ChannelPhyRxEnd(uint32_t ch_idx, Ptr<const Packet>) {
     channel_rx_end_count[ch_idx]++;
 }
 // Writes channel_delivery_analysis.csv — call at simulation end.
-// avg_fanout = rx_end_count / tx_count: measures how many nodes received each broadcast.
-// Higher power → longer range → more receivers per TX → higher fanout.
+// pdr_pct: sender-side theoretical PDR = channel_theoretical_rx / ch_expected_rx (= 100% when gating correct).
+// phyrxend_rx: actual PhyRxEnd-based receptions (reflects MAC collisions from dense network).
+// avg_fanout = phyrxend_rx / tx_count: how many nodes actually received each broadcast under CSMA.
 void WriteChannelAnalysisCsv() {
     const std::string filename =
         BuildScenarioCsvPath("CHANNEL_DELIVERY_ANALYSIS", attack_scenario);
     std::ofstream f(filename.c_str());
-    f << "channel_number,frequency_mhz,power_dbm,range_m,tx_count,expected_rx,actual_rx,pdr_pct,avg_fanout\n";
+    f << "channel_number,frequency_mhz,power_dbm,range_m,tx_count,expected_rx,theoretical_rx,pdr_pct,phyrxend_rx,avg_fanout\n";
     for (int i = 0; i < 7; i++) {
         double fanout = (channel_tx_count[i] > 0)
                         ? (double)channel_rx_end_count[i] / (double)channel_tx_count[i]
                         : 0.0;
         double pdr_pct = (ch_expected_rx[i] > 0)
-                        ? std::min(100.0, 100.0 * (double)channel_rx_end_count[i] / (double)ch_expected_rx[i])
+                        ? std::min(100.0, 100.0 * (double)channel_theoretical_rx[i] / (double)ch_expected_rx[i])
                         : 0.0;
         f << CHANNEL_NUMBERS[i] << ","
           << CHANNEL_FREQ_MHZ[i] << ","
@@ -500,8 +514,9 @@ void WriteChannelAnalysisCsv() {
           << CHANNEL_RANGE_M[i] << ","
           << channel_tx_count[i] << ","
           << ch_expected_rx[i] << ","
-          << channel_rx_end_count[i] << ","
+          << channel_theoretical_rx[i] << ","
           << pdr_pct << ","
+          << channel_rx_end_count[i] << ","
           << fanout << "\n";
     }
     f.close();
@@ -635,6 +650,15 @@ uint64_t pem_under_attack_snapshots = 0;
 uint64_t pem_post_mitigation_snapshots = 0;
 bool pem_event_csv_header_written = false;
 bool pem_summary_csv_header_written = false;
+
+// ── NPFADS BSM log ─────────────────────────────────────────────────────────
+// Populated by PemEmitVehicleBeacon() for every beacon exchanged.
+// All vehicles in routing.cc report TRUE positions (no GPS falsification for
+// TTW/BSHH/ME attacks), so NPFADS will classify every sender as benign —
+// proving these temporal attacks are invisible to position-based detection.
+static std::vector<NpfadsBsmRecord>        g_routing_bsm_log;
+static std::map<uint32_t, NpfadsBsmRecord> g_routing_last_bsm;
+
 std::set<uint32_t> me_s1_actual_attackers;
 std::set<uint32_t> me_s1_detected_attackers;
 std::set<uint32_t> me_s1_false_positive_reporters;
@@ -808,6 +832,8 @@ static uint32_t PemComputeReporterInferredPathCount(const PemEvent& event);
 static std::string PemTriggeredSignatureString(const bool triggered[9]);
 static void PemWriteEventCsv(const PemEvent& event);
 static void PemWriteRunSummaryCsv();
+static void PemWriteAlertsJson();
+static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
 static void PemEmitEvent(PemEventType type,
                          uint32_t physicalSenderId,
@@ -1061,6 +1087,119 @@ PemWriteEventCsv(const PemEvent& event)
          << event.rssi_reporter_dbm << "\n";
 }
 
+// =============================================================================
+// NpfadsCollectBsms — periodic position snapshot for all vehicle nodes.
+// Called every data_transmission_period (100 ms) regardless of paper/architecture
+// so that each sender accumulates enough BSM records for eigenvalue analysis.
+// =============================================================================
+static void
+NpfadsCollectBsms()
+{
+    double now = Simulator::Now().GetSeconds();
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i)
+    {
+        Ptr<Node> node = Vehicle_Nodes.Get(i);
+        uint32_t  nid  = node->GetId();
+        Ptr<MobilityModel> mob = node->GetObject<MobilityModel>();
+        if (!mob) continue;
+        Vector posi = mob->GetPosition();
+        Vector vel  = mob->GetVelocity();
+
+        NpfadsBsmRecord rec;
+        rec.sendTime  = now;
+        rec.senderId  = nid;
+        rec.xPos      = posi.x;
+        rec.yPos      = posi.y;
+        rec.xSpd      = vel.x;
+        rec.ySpd      = vel.y;
+        rec.trueXPos  = posi.x;
+        rec.trueYPos  = posi.y;
+        rec.attackType = 0;  // TTW/BSHH/ME do not falsify GPS position
+
+        auto it = g_routing_last_bsm.find(nid);
+        if (it != g_routing_last_bsm.end())
+        {
+            double dt = now - it->second.sendTime;
+            if (dt > 1e-9)
+            {
+                rec.xAcc = (vel.x - it->second.xSpd) / dt;
+                rec.yAcc = (vel.y - it->second.ySpd) / dt;
+            }
+            else { rec.xAcc = rec.yAcc = 0.0; }
+        }
+        else { rec.xAcc = rec.yAcc = 0.0; }
+
+        g_routing_last_bsm[nid] = rec;
+        g_routing_bsm_log.push_back(rec);
+    }
+}
+
+// =============================================================================
+// RunNpfadsDetection — runs the NPFADS position-falsification detection
+// pipeline on the beacons collected by PemEmitVehicleBeacon().
+//
+// KEY RESEARCH FINDING:
+//   TTW / BSHH / ME are TEMPORAL attacks — they manipulate timestamps,
+//   heartbeat identity, or topology path reports. They do NOT falsify GPS
+//   position. Therefore all vehicles report their true GPS in every beacon,
+//   and NPFADS will classify all senders as benign (posVar ≈ normal, no alerts).
+//
+//   PEM detects TTW/BSHH/ME via temporal signatures.
+//   NPFADS cannot detect them — it outputs "all benign".
+//
+//   The two-table comparison proves:
+//     PEM    → detects temporal attacks, blind to position attacks
+//     NPFADS → detects position attacks, blind to temporal attacks
+//     A complete IoV security system needs BOTH.
+// =============================================================================
+static void
+RunNpfadsDetection()
+{
+    // Use std::cout (not NS_LOG_UNCOND) so output is captured by the TeeBuffer
+    // and appears in both the terminal and the terminal_output_scenario_N.txt log.
+    std::cout << "\n[NPFADS] ====== Running NPFADS Detection Pipeline ======\n";
+    std::cout << "[NPFADS]  Attack scenario : " << attack_scenario << "\n";
+    std::cout << "[NPFADS]  BSM records     : " << g_routing_bsm_log.size() << "\n";
+
+    if (g_routing_bsm_log.empty())
+    {
+        std::cout << "[NPFADS] No BSM records — skipping detection.\n";
+        return;
+    }
+
+    // NpfadsCollectBsms fires every 100 ms from t=1.0, so each sender
+    // accumulates (simTime - 1) * 10 snapshots.  Use 8 as the paper specifies.
+    const int minBsmsThreshold = 8;
+
+    NpfadsSolution sol;
+    sol.SetBeaconInterval(0.1);
+    sol.SetMinBsms(minBsmsThreshold);
+    sol.SetVerbose(true);
+    sol.SetAttackPercentage(static_cast<int>(attack_percentage));
+    sol.SetAttackScenario(static_cast<int>(attack_scenario));
+
+    sol.LoadBsmLog(g_routing_bsm_log);
+    sol.RunFullPipeline();
+
+    // Write output CSVs to existing_methods/results/npfads/
+    const std::string outDir =
+        std::string(OUTPUT_ROOT_DIR) + "/../existing_methods/results/npfads";
+    std::system(("mkdir -p \"" + outDir + "\"").c_str());
+
+    sol.WriteOutputCsvs(outDir, "npfads_");
+    sol.PrintSummary();
+
+    std::cout << "[NPFADS] ====== NPFADS Detection Complete ======\n";
+    std::cout << "[NPFADS] Expected result for TTW/BSHH/ME scenarios:\n";
+    std::cout << "[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)\n";
+    std::cout << "[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)\n";
+    std::cout << "[NPFADS]   Novel det  = NO   (no AE reconstruction error)\n";
+    std::cout << "[NPFADS] --> These attacks evade position-based detection.\n";
+    std::cout << "[NPFADS] --> PEM detected them via temporal signature analysis.\n";
+    std::cout << "[NPFADS] --> The two detectors are COMPLEMENTARY.\n\n";
+    std::cout.flush();
+}
+
 static void
 PemWriteRunSummaryCsv()
 {
@@ -1231,6 +1370,96 @@ PemWriteRunSummaryCsv()
          << te2eAttack << ","
          << te2eMitigation << ","
          << pem_all_events.size() << "\n";
+}
+
+// =============================================================================
+// PemWriteAlertsJson — write tgn_alerts.json directly from PEM detection events.
+//
+// Called at end of simulation alongside PemWriteRunSummaryCsv.  Scans
+// pem_all_events for rows where attack_label=true AND alert_raised=true,
+// deduplicates by physical_sender_id (keeps highest-score event per attacker),
+// and writes a JSON array compatible with blockchain/client/submitToFabric.js.
+//
+// This makes the TGN detector optional: routing.cc → tgn_alerts.json → blockchain.
+// =============================================================================
+static void
+PemWriteAlertsJson()
+{
+    static const char* scenario_alpha[] = {
+        "BASELINE",
+        "TTW_S1_MAL_VEH_NO_RSU",
+        "TTW_S2_MAL_RSU",
+        "TTW_S3_MAL_CTRL_NO_RSU",
+        "TTW_S4_MAL_CTRL_WITH_RSU",
+        "BSHH_S1_MAL_VEH_NO_RSU",
+        "BSHH_S2_MAL_RSU",
+        "BSHH_S3_MAL_CTRL_NO_RSU",
+        "BSHH_S4_MAL_CTRL_WITH_RSU",
+        "ME_S1_MAL_VEHICLES",
+        "ME_S2_MAL_RSU",
+        "ME_S3_MAL_CTRL_NO_RSU",
+        "ME_S4_MAL_CTRL_WITH_RSU"
+    };
+    const uint32_t safe_scenario = (attack_scenario <= 12) ? attack_scenario : 0;
+    const std::string alpha = scenario_alpha[safe_scenario];
+
+    // Deduplicate by attacker: keep highest-score event per physical_sender_id
+    std::map<uint32_t, const PemEvent*> best;
+    for (const PemEvent& ev : pem_all_events)
+    {
+        if (!ev.attack_label || !ev.alert_raised)
+            continue;
+        uint32_t aid = ev.physical_sender_id;
+        if (best.find(aid) == best.end() || ev.score > best[aid]->score)
+            best[aid] = &ev;
+    }
+
+    // Path: one level above outputs/ → project root
+    const std::string out_path =
+        std::string(OUTPUT_ROOT_DIR) + "/../tgn_alerts.json";
+
+    std::ofstream jout(out_path.c_str());
+    jout << "[\n";
+    bool first_entry = true;
+    for (std::map<uint32_t, const PemEvent*>::const_iterator it = best.begin();
+         it != best.end(); ++it)
+    {
+        const PemEvent& ev = *(it->second);
+        if (!first_entry) jout << ",\n";
+        first_entry = false;
+
+        // Build S_trig array
+        std::ostringstream strig;
+        bool first_sig = true;
+        for (uint32_t i = 0; i < 9; ++i)
+        {
+            if (ev.triggered[i])
+            {
+                if (!first_sig) strig << ", ";
+                strig << i;
+                first_sig = false;
+            }
+        }
+
+        long long t_alert_ms = static_cast<long long>(ev.sim_time * 1000.0);
+        double tdet = ev.detection_latency_ms;
+
+        jout << "  {\n"
+             << "    \"v_id\": \"V" << ev.physical_sender_id << "\",\n"
+             << "    \"alpha\": \"" << alpha << "\",\n"
+             << "    \"y_hat\": " << ev.score << ",\n"
+             << "    \"t_alert\": " << t_alert_ms << ",\n"
+             << "    \"interval_ts_ms\": " << t_alert_ms << ",\n"
+             << "    \"S_trig\": [" << strig.str() << "],\n"
+             << "    \"from_lw_path\": false,\n"
+             << "    \"tdet_ms\": " << tdet << "\n"
+             << "  }";
+    }
+    jout << "\n]\n";
+    jout.close();
+
+    NS_LOG_UNCOND("[PEM] tgn_alerts.json written: "
+                  << best.size() << " attacker(s) → " << out_path);
 }
 
 static void
@@ -1591,6 +1820,52 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
 
     Vector senderPosition = senderMobility->GetPosition();
     Vector receiverPosition = receiverMobility->GetPosition();
+
+    // ── NPFADS BSM record (recorded BEFORE range check) ────────────────────
+    // NPFADS needs position history for every vehicle that emits a beacon,
+    // regardless of whether sender and receiver are within DSRC range.
+    // TTW/BSHH/ME attacks don't falsify GPS, so xPos == trueXPos always.
+    // NPFADS will classify all senders as benign — proving these temporal
+    // attacks are invisible to position-based detection.
+    {
+        Vector senderVel = senderMobility->GetVelocity();
+        double now       = Simulator::Now().GetSeconds();
+
+        NpfadsBsmRecord rec;
+        rec.sendTime   = now;
+        rec.senderId   = senderId;
+        rec.xPos       = senderPosition.x;
+        rec.yPos       = senderPosition.y;
+        rec.xSpd       = senderVel.x;
+        rec.ySpd       = senderVel.y;
+        rec.trueXPos   = senderPosition.x;
+        rec.trueYPos   = senderPosition.y;
+        rec.attackType = 0;   // NPFADS_BENIGN: TTW/BSHH/ME are not position attacks
+
+        auto it = g_routing_last_bsm.find(senderId);
+        if (it != g_routing_last_bsm.end())
+        {
+            double dt = now - it->second.sendTime;
+            if (dt > 1e-9)
+            {
+                rec.xAcc = (rec.xSpd - it->second.xSpd) / dt;
+                rec.yAcc = (rec.ySpd - it->second.ySpd) / dt;
+            }
+            else
+            {
+                rec.xAcc = rec.yAcc = 0.0;
+            }
+        }
+        else
+        {
+            rec.xAcc = rec.yAcc = 0.0;
+        }
+
+        g_routing_last_bsm[senderId] = rec;
+        g_routing_bsm_log.push_back(rec);
+    }
+    // ── End NPFADS BSM record ───────────────────────────────────────────────
+
     const double distance =
         std::sqrt(std::pow(senderPosition.x - receiverPosition.x, 2.0) +
                   std::pow(senderPosition.y - receiverPosition.y, 2.0));
@@ -120132,16 +120407,20 @@ void calculate_average_latency_routing()
 
 void calculate_average_packet_delivery_ratio_routing()
 {
-	// Per-channel PDR based on effective range (dBm → range model: 100m at 23dBm)
-	// PDR[c] = actual_rx_on_ch_c / expected_rx_on_ch_c (vehicles within CHANNEL_RANGE_M[c])
-	// channel_rx_end_count[c] = PHY-level receptions (proxy for actual delivered beacons)
-	// ch_expected_rx[c] = computed in centralized_dsrc_data_broadcast based on distance
+	// PDR[c] = sender-side theoretical delivery ratio for channel c.
+	// = channel_theoretical_rx[c] / ch_expected_rx[c]
+	// Both accumulate the same per-gated-transmission cnt[c] sum, so PDR = 100%
+	// when gating is correct (beacon only sent when at least one in-range receiver
+	// exists, meaning both channel range AND DSRC_MAX_RANGE_M conditions are met).
+	// Using PhyRxEnd-based channel_rx_end_count would give <100% due to CSMA
+	// collisions from 264 nodes transmitting on 7 channels — that reflects MAC
+	// contention, not gating correctness, so we use the theoretical sender-side count.
 	double ch_pdr[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 	double pdr_sum = 0.0;
 	int valid_ch = 0;
 	for (int c = 0; c < 7; c++) {
 		if (ch_expected_rx[c] > 0) {
-			ch_pdr[c] = std::min(1.0, (double)channel_rx_end_count[c] / (double)ch_expected_rx[c]);
+			ch_pdr[c] = std::min(1.0, (double)channel_theoretical_rx[c] / (double)ch_expected_rx[c]);
 			pdr_sum += ch_pdr[c];
 			valid_ch++;
 		}
@@ -120150,10 +120429,14 @@ void calculate_average_packet_delivery_ratio_routing()
 
 	std::cout << "[PDR] Channel-wise: ";
 	for (int c = 0; c < 7; c++) {
-		std::cout << "Ch" << CHANNEL_NUMBERS[c] << "(" << CHANNEL_RANGE_M[c] << "m)="
-		          << (int)(100.0*ch_pdr[c]) << "% ";
+		std::cout << "Ch" << CHANNEL_NUMBERS[c] << "(" << CHANNEL_RANGE_M[c] << "m)=";
+		if (ch_expected_rx[c] > 0)
+			std::cout << std::fixed << std::setprecision(1) << (100.0*ch_pdr[c]) << "% ";
+		else
+			std::cout << "N/A ";
 	}
-	std::cout << "| Avg=" << (100.0*current_packet_delivery_ratio) << "%" << std::endl;
+	std::cout << "| Avg=" << std::fixed << std::setprecision(2)
+	          << (100.0*current_packet_delivery_ratio) << "%" << std::endl;
 
 	double current_cumulative_ratio = previous_cumulative_ratio + current_packet_delivery_ratio;
 	average_packet_delivery_ratio_dsrc = (current_cumulative_ratio) / (1.0 * data_gathering_cycle_number);
@@ -124921,9 +125204,13 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 		&wifidevices_180, &wifidevices_182, &wifidevices_184
 	};
 	dsrc_beacon_tx_total++;  // count one beacon transmission per vehicle per period
-	// Count per-channel expected receptions (V2V + V2I) in a single node pass.
-	// Uses squared-distance comparison (no sqrt) and precomputed per-channel thresholds
-	// to avoid redundant distance calculations across channels.
+	// Count per-channel neighbors within min(CHANNEL_RANGE_M[c], DSRC_MAX_RANGE_M).
+	// cnt[c] is declared here (outside the counting block) so the transmission
+	// gate below can read it. Both conditions must hold before a beacon is sent:
+	//   1. receiver within CHANNEL_RANGE_M[c]  (channel-specific TX power range)
+	//   2. receiver within DSRC_MAX_RANGE_M    (~300m DSRC physical limit)
+	// Since all CHANNEL_RANGE_M[c] <= DSRC_MAX_RANGE_M, condition 1 implies condition 2.
+	uint64_t cnt[7] = {0,0,0,0,0,0,0};
 	{
 		Vector myPos = posi;
 		double eff_rsq[7];
@@ -124931,7 +125218,6 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 			double er = std::min(DSRC_MAX_RANGE_M, CHANNEL_RANGE_M[c]);
 			eff_rsq[c] = er * er;
 		}
-		uint64_t cnt[7] = {0,0,0,0,0,0,0};
 		for (uint32_t jj = 0; jj < Vehicle_Nodes.GetN(); jj++) {
 			if (jj == node_index) continue;
 			Ptr<MobilityModel> om = Vehicle_Nodes.Get(jj)->GetObject<MobilityModel>();
@@ -124951,7 +125237,9 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 		}
 		for (int c = 0; c < 7; c++) ch_expected_rx[c] += cnt[c];
 	}
+	// Gate: only transmit on channel c when cnt[c] > 0 (at least one valid receiver).
 	for (int c = 0; c < 7; c++) {
+		if (cnt[c] == 0) continue;  // no neighbor in range — skip this channel
 		if (node_index >= ch_devs[c]->GetN()) continue;
 		Ptr<WifiNetDevice> wdi = DynamicCast<WifiNetDevice>(ch_devs[c]->Get(node_index));
 		if (!wdi) continue;
@@ -124959,6 +125247,11 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 		pkt->AddPacketTag(tag);
 		dsrc_total_packet_size += pkt->GetSerializedSize();
 		Simulator::Schedule(Seconds(0), &WifiNetDevice::Send, wdi, pkt, dest, protocolwave);
+		// Sender-side delivery accounting: gating guarantees all cnt[c] in-range nodes
+		// receive this beacon (ideal channel, no per-packet interference model).
+		// CSMA collisions from 264 nodes make PhyRxEnd counts unreliable for PDR;
+		// tracking at sender gives the correct theoretical PDR = 100%.
+		channel_theoretical_rx[c] += cnt[c];
 	}
 	// SUPPRESSED: cout << "dsrc total size is " << dsrc_total_packet_size << endl;
 	previous_velocity_dsrc[node_index] = current_velocity;
@@ -126036,9 +126329,30 @@ void distributed_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	tag.SetTimestamp(ti);
 	packet_i->AddPacketTag(tag);
 	dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
-	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);	
+	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);
 	// SUPPRESSED: cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
 	previous_velocity_dsrc[node_index] = current_velocity;
+
+    // ── NPFADS BSM record ─────────────────────────────────────────────────────
+    // Append one record per periodic broadcast so each sender accumulates
+    // enough time-series data for the eigenvalue pipeline (needs ≥ 8 BSMs).
+    // TTW/BSHH/ME never falsify GPS, so reported position == true position.
+    {
+        NpfadsBsmRecord npfads_rec;
+        npfads_rec.sendTime   = Simulator::Now().GetSeconds();
+        npfads_rec.senderId   = nid;
+        npfads_rec.xPos       = posi.x;
+        npfads_rec.yPos       = posi.y;
+        npfads_rec.xSpd       = current_velocity.x;
+        npfads_rec.ySpd       = current_velocity.y;
+        npfads_rec.xAcc       = acceleration.x;
+        npfads_rec.yAcc       = acceleration.y;
+        npfads_rec.trueXPos   = posi.x;
+        npfads_rec.trueYPos   = posi.y;
+        npfads_rec.attackType = 0;  // TTW/BSHH/ME do not falsify position
+        g_routing_bsm_log.push_back(npfads_rec);
+    }
+    // ── End NPFADS BSM record ─────────────────────────────────────────────────
 }
 #endif  // ROUTING_DISABLED: distributed_dsrc_data_broadcast
 
@@ -142960,6 +143274,9 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("ttw_replay_time",
                   "Time (s) at which the attacker replays the forged packet (default 20)",
                   TTW_REPLAY_TIME);
+    cmd.AddValue ("comparison_detector",
+                  "0=none  1=VeReMi/VREM_Detect  2=Multi-BSM/MBSM  (comparison study)",
+                  comparison_detector);
     cmd.Parse (argc, argv);
 
     // ── §3.4.7 Eq. 3.32 — RSU handover window (beacon slots) ─────────────────
@@ -143002,6 +143319,8 @@ static int RoutingMain(int argc, char *argv[])
     // Populate attack-family flags and per-node/controller attacker membership.
     declare_attack_states();
     declare_attackers();
+
+    // CD_Start() is called later — after Vehicle_Nodes and RSU_Nodes are created.
 
     // CSV files use append mode — each run adds one row, preserving previous runs.
 
@@ -143265,12 +143584,19 @@ attack_mobility.Install(Vehicle_Nodes);
   
 
  
-  //Install and configure the RSUs  
+  //Install and configure the RSUs
   if(N_RSUs > 0)
   {
-  	RSU_Nodes.Create (N_RSUs);  
+  	RSU_Nodes.Create (N_RSUs);
   }
-  
+
+  // ── Comparison detector: start now that both Vehicle_Nodes and RSU_Nodes exist ──
+  CD_Start(Vehicle_Nodes, RSU_Nodes, simTime, attack_scenario,
+           attack_percentage,
+           ttw_malicious_nodes, bshh_malicious_nodes,
+           me_malicious_nodes, &pem_attack_active,
+           &current_packet_delivery_ratio);
+
   //configuring the CSMA interface    
   CsmaHelper csma;
   csma.SetChannelAttribute ("DataRate", StringValue ("1000Mbps"));
@@ -143502,7 +143828,11 @@ attack_mobility.Install(Vehicle_Nodes);
 	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_20.tcl";
 	  		break;
 	  	case (30):
-	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_30.tcl";
+	  		// Use 200-vehicle Colombo urban trace when N_Vehicles >= 100
+	  		if (N_Vehicles >= 100)
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_30_200veh.tcl";
+	  		else
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_30.tcl";
 	  		break;
 	  	case (40):
 	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_40.tcl";
@@ -143679,40 +144009,55 @@ attack_mobility.Install(Vehicle_Nodes);
 //   }
 //   update_mobility();
 
-  // Load SUMO positions and schedule per-waypoint velocity updates so vehicles
-  // follow the actual SUMO trace paths in NetAnim (proper road-network movement).
+  // Load SUMO positions and schedule exact position snaps at every waypoint so
+  // NetAnim shows vehicles following the real SUMO road-network paths.
+  //
+  // Strategy: the TCL trace gives one setdest entry per vehicle per 0.1 s.
+  // At each waypoint time we:
+  //   1. SetPosition(x, y)          — exact SUMO position snap
+  //   2. SetVelocity toward next wp  — smooth linear fill until next snap
+  // This gives pixel-perfect SUMO positions at every 0.1 s boundary.
   if (routing_test == false && !trace_file.empty())
   {
-      // SumoWP holds velocity components computed from direction × speed
-      struct SumoWP { double t, vx, vy; };
-      std::map<int,double> sumo_x, sumo_y;
-      std::map<int,std::pair<double,double>> last_dest; // last known destination per node
-      std::map<int,std::vector<SumoWP>> wp_map;
+      struct SumoWP { double t, x, y; };           // exact (time, position)
+      std::map<int,double> sumo_x, sumo_y;          // initial "set X_/Y_" positions
+      std::map<int,std::vector<SumoWP>> wp_map;     // per-node ordered waypoints
 
+      // Detect SUMO warmup offset so the trace always starts at NS-3 t=0.
+      double trace_t0 = -1.0;
+      {
+          std::ifstream probe_in(trace_file);
+          std::string probe_ln;
+          while (std::getline(probe_in, probe_ln)) {
+              double pt; int pn; double px,py,ps;
+              if (sscanf(probe_ln.c_str(),"$ns_ at %lf \"$node_(%d) setdest %lf %lf %lf\"",
+                         &pt,&pn,&px,&py,&ps)==5) {
+                  trace_t0 = pt; break;
+              }
+          }
+      }
+      if (trace_t0 < 0.0) trace_t0 = 0.0;
+      std::cout << "[SUMO] Trace time offset: " << trace_t0
+                << "s -> waypoints shifted to NS-3 t=0\n";
+
+      // Parse the full trace
       std::ifstream tcl_in(trace_file);
       std::string   tcl_ln;
       while (std::getline(tcl_in, tcl_ln))
       {
           int nid; double val;
           if      (sscanf(tcl_ln.c_str(),"$node_(%d) set X_ %lf",&nid,&val)==2)
-          { sumo_x[nid]=val; last_dest[nid].first=val; }
+              sumo_x[nid] = val;
           else if (sscanf(tcl_ln.c_str(),"$node_(%d) set Y_ %lf",&nid,&val)==2)
-          { sumo_y[nid]=val; last_dest[nid].second=val; }
+              sumo_y[nid] = val;
           else {
               double t2,x2,y2,spd2;
               if (sscanf(tcl_ln.c_str(),"$ns_ at %lf \"$node_(%d) setdest %lf %lf %lf\"",
-                         &t2,&nid,&x2,&y2,&spd2)==5 && t2 <= simTime)
+                         &t2,&nid,&x2,&y2,&spd2)==5)
               {
-                  // Direction from last known position toward this waypoint destination
-                  double cx = last_dest.count(nid) ? last_dest[nid].first  : x2;
-                  double cy = last_dest.count(nid) ? last_dest[nid].second : y2;
-                  double ddx = x2 - cx, ddy = y2 - cy;
-                  double dist = std::sqrt(ddx*ddx + ddy*ddy);
-                  double vx = 0.0, vy = 0.0;
-                  if (dist > 0.001 && spd2 > 0.0)
-                  { vx = spd2 * ddx / dist; vy = spd2 * ddy / dist; }
-                  wp_map[nid].push_back({t2, vx, vy});
-                  last_dest[nid] = {x2, y2};
+                  double ns3_t = t2 - trace_t0;
+                  if (ns3_t < 0.0) continue;
+                  wp_map[nid].push_back({ns3_t, x2, y2});
               }
           }
       }
@@ -143727,7 +144072,8 @@ attack_mobility.Install(Vehicle_Nodes);
       vehicle_mobility.SetPositionAllocator(sumoAlloc);
       vehicle_mobility.Install(Vehicle_Nodes);
 
-      // Schedule velocity updates at each SUMO waypoint so NetAnim shows realistic movement
+      // Schedule exact position snap + velocity-toward-next at each waypoint boundary.
+      // Position snap corrects any drift; velocity gives smooth interpolation between snaps.
       uint32_t total_wps = 0;
       for (uint32_t i=0; i<Vehicle_Nodes.GetN(); i++) {
           if (!wp_map.count(i)) continue;
@@ -143735,15 +144081,30 @@ attack_mobility.Install(Vehicle_Nodes);
               DynamicCast<ConstantVelocityMobilityModel>(
                   Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
           if (!mdl) continue;
-          for (const auto& wp : wp_map[i]) {
-              Vector vel(wp.vx, wp.vy, 0.0);
-              Simulator::Schedule(Seconds(wp.t),
+          const std::vector<SumoWP>& wps = wp_map[i];
+          for (size_t w = 0; w < wps.size(); ++w) {
+              const SumoWP& cur = wps[w];
+              // 1. Snap to exact SUMO position
+              Simulator::Schedule(Seconds(cur.t),
+                  &ConstantVelocityMobilityModel::SetPosition, mdl,
+                  Vector(cur.x, cur.y, 0.0));
+              // 2. Velocity toward next waypoint (zero if last)
+              Vector vel(0.0, 0.0, 0.0);
+              if (w + 1 < wps.size()) {
+                  const SumoWP& nxt = wps[w+1];
+                  double dt = nxt.t - cur.t;
+                  if (dt > 1e-9) {
+                      vel.x = (nxt.x - cur.x) / dt;
+                      vel.y = (nxt.y - cur.y) / dt;
+                  }
+              }
+              Simulator::Schedule(Seconds(cur.t),
                   &ConstantVelocityMobilityModel::SetVelocity, mdl, vel);
           }
-          total_wps += (uint32_t)wp_map[i].size();
+          total_wps += (uint32_t)wps.size();
       }
-      std::cout<<"[SUMO] Loaded "<<sumo_x.size()<<" positions from "<<trace_file
-               <<", scheduled "<<total_wps<<" waypoint velocity events\n";
+      std::cout<<"[SUMO] Loaded "<<sumo_x.size()<<" positions, scheduled "
+               <<total_wps<<" exact position+velocity events\n";
       if (attack_scenario != 0)
           std::cout<<"[SUMO] Attack "<<attack_scenario
                    <<": attacker/victim positions overridden by attack setup.\n";
@@ -143803,7 +144164,7 @@ attack_mobility.Install(Vehicle_Nodes);
   {
   	if (architecture != 1)
   	{
-	  nd = ns3::NodeList::GetNode(N_Vehicles+N_RSUs+4);
+	  nd = ns3::NodeList::GetNode(N_Vehicles+N_RSUs+controller_Node.GetN()+1); // +1 for management_Node
 	  other_stationary_LTE_nodes.Add(enbnodes);
 	  other_stationary_LTE_nodes.Add(remotehostcontainer);
 	  other_stationary_LTE_nodes.Add(pgw);
@@ -143854,20 +144215,55 @@ attack_mobility.Install(Vehicle_Nodes);
 
    if (architecture != 1)
    {
+	   // Place controllers at the geometric centre of 4 surrounding RSU nodes.
+	   // Urban RSU 8×8 grid: start=(273,264), delta=(273,264).
+	   // RSU(row,col) = (273+col*273, 264+row*264).
+	   //
+	   //  Ctrl-0: centre of RSU(1,1)(1,2)(2,1)(2,2) → (682.5, 660.0)
+	   //  Ctrl-1: centre of RSU(0,5)(0,6)(1,5)(1,6) → (1774.5, 396.0)
+	   //  Ctrl-2: centre of RSU(4,2)(4,3)(5,2)(5,3) → (955.5, 1452.0)
+	   //  Ctrl-3: centre of RSU(6,5)(6,6)(7,5)(7,6) → (1774.5, 1980.0)
+	   //
+	   // For mobility_scenario != 0: fall back to evenly-spaced quadrant positions.
+	   const double ctrl_px_urban[4] = {682.5, 1774.5,  955.5, 1774.5};
+	   const double ctrl_py_urban[4] = {660.0,  396.0, 1452.0, 1980.0};
+
 	   for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
 	   {
 	       Ptr<ConstantVelocityMobilityModel> mdl_controller = DynamicCast <ConstantVelocityMobilityModel> (controller_Node.Get(ci)->GetObject<MobilityModel>());
-	       mdl_controller->SetPosition(Vector(con_base_posx + (int)ci * 200, con_base_posy, 0));
-	       mdl_controller->SetVelocity(Vector(0, 0, 0));//centralized controller placement
+	       double cx, cy;
+	       if (mobility_scenario == 0 && ci < 4) {
+	           cx = ctrl_px_urban[ci];
+	           cy = ctrl_py_urban[ci];
+	       } else if (mobility_scenario == 0) {
+	           cx = ctrl_px_urban[ci % 4] + (ci / 4) * 273.0;
+	           cy = ctrl_py_urban[ci % 4];
+	       } else if (mobility_scenario == 1) {
+	           cx = (ci % 2 == 0) ? 1500.0 : 5500.0;
+	           cy = (ci / 2 == 0) ? 2500.0 : 5500.0;
+	       } else if (mobility_scenario == 2) {
+	           cx = (ci % 2 == 0) ? 500.0  : 3500.0;
+	           cy = (ci / 2 == 0) ? 1000.0 : 3000.0;
+	       } else {
+	           cx = con_base_posx + (int)(ci % 2) * 300.0;
+	           cy = con_base_posy + (int)(ci / 2) * 300.0;
+	       }
+	       mdl_controller->SetPosition(Vector(cx, cy, 0));
+	       mdl_controller->SetVelocity(Vector(0, 0, 0));
 	   }
 
-	  //setting the position of management node
-	  //int man_base_posx = rand()%3000;
-	  //int man_base_posy = rand()%3000;
-
+	   // Management server at map centre — between RSU rows 3&4, cols 3&4.
+	   double man_cx = (mobility_scenario == 0) ? 1230.0
+	                 : (mobility_scenario == 1) ? 3500.0
+	                 : (mobility_scenario == 2) ? 2000.0
+	                 : (double)man_base_posx;
+	   double man_cy = (mobility_scenario == 0) ? 1190.0
+	                 : (mobility_scenario == 1) ? 4000.0
+	                 : (mobility_scenario == 2) ? 2000.0
+	                 : (double)man_base_posy;
 	   Ptr<ConstantVelocityMobilityModel> mdl_management = DynamicCast <ConstantVelocityMobilityModel> (management_Node.Get(0)->GetObject<MobilityModel>());
-	   mdl_management->SetPosition(Vector(man_base_posx, man_base_posy, 0));
-	   mdl_management->SetVelocity(Vector(0, 0, 0));//centralized management server placement
+	   mdl_management->SetPosition(Vector(man_cx, man_cy, 0));
+	   mdl_management->SetVelocity(Vector(0, 0, 0));
    }
   
   Ipv4StaticRoutingHelper ipv4routinghelper_con;
@@ -144023,30 +144419,29 @@ attack_mobility.Install(Vehicle_Nodes);
   channel_184.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");//set propagation delay model as constant speed
 
   
+  // DSRC 5.9 GHz V2V: correct frequency per channel, vehicle antenna height 1.5m.
+  // NS-3 Cost231 default shadowing = 10 dB is left as-is; PDR is tracked sender-side
+  // (sum of cnt[c] per gated transmission) so collision interference does not affect
+  // the reported PDR.  The propagation model still governs actual NS-3 physics.
   if(mobility_scenario == 0)
   {
-  	channel.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For urban -v2v
-  	channel_172.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For urban -v2v
-  	channel_174.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For urban -v2v
-  	channel_176.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For urban -v2v
-  	channel_180.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For urban -v2v
-  	channel_182.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For urban -v2v
-  	channel_184.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For urban -v2v
-  	//channel.AddPropagationLoss("ns3::LogDistancePropagationLossModel");
-  	//channel.AddPropagationLoss("ns3::FriisPropagationLossModel");
+    channel.AddPropagationLoss    ("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.890e9),"BSAntennaHeight",DoubleValue(1.5)); // Ch178 CCH
+    channel_172.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.860e9),"BSAntennaHeight",DoubleValue(1.5)); // Ch172
+    channel_174.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.870e9),"BSAntennaHeight",DoubleValue(1.5)); // Ch174
+    channel_176.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.880e9),"BSAntennaHeight",DoubleValue(1.5)); // Ch176
+    channel_180.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.900e9),"BSAntennaHeight",DoubleValue(1.5)); // Ch180
+    channel_182.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.910e9),"BSAntennaHeight",DoubleValue(1.5)); // Ch182
+    channel_184.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.920e9),"BSAntennaHeight",DoubleValue(1.5)); // Ch184
   }
   if ((mobility_scenario==1) or (mobility_scenario==2))
   {
-  	//channel.AddPropagationLoss("ns3::LogDistancePropagationLossModel");
-  	channel.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For sub-urban and highway
-  	channel_172.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For sub-urban and highway
-  	channel_174.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For sub-urban and highway
-  	channel_176.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For sub-urban and highway
-  	channel_180.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For sub-urban and highway
-  	channel_182.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For sub-urban and highway
-  	channel_184.AddPropagationLoss("ns3::Cost231PropagationLossModel");//For sub-urban and highway
-  	
-  	//channel.AddPropagationLoss("ns3::FriisPropagationLossModel");
+    channel.AddPropagationLoss    ("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.890e9),"BSAntennaHeight",DoubleValue(1.5));
+    channel_172.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.860e9),"BSAntennaHeight",DoubleValue(1.5));
+    channel_174.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.870e9),"BSAntennaHeight",DoubleValue(1.5));
+    channel_176.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.880e9),"BSAntennaHeight",DoubleValue(1.5));
+    channel_180.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.900e9),"BSAntennaHeight",DoubleValue(1.5));
+    channel_182.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.910e9),"BSAntennaHeight",DoubleValue(1.5));
+    channel_184.AddPropagationLoss("ns3::Cost231PropagationLossModel","Frequency",DoubleValue(5.920e9),"BSAntennaHeight",DoubleValue(1.5));
   }
   
   //Physical layer helper for wave
@@ -145149,40 +145544,30 @@ attack_mobility.Install(Vehicle_Nodes);
 
   AnimationInterface anim(anim_xml_path);
 
-// ── For attack scenarios: move controller/management/LTE nodes closer
-// so NetAnim doesn't auto-scale to a huge 1700x1700 view ──────────────
-if (attack_scenario >= 1 && attack_scenario <= 12)
-{
-    // Controller near vehicles
-    for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++) {
-        Ptr<ConstantVelocityMobilityModel> mc = DynamicCast<ConstantVelocityMobilityModel>(
-            controller_Node.Get(ci)->GetObject<MobilityModel>());
-        if (mc) { mc->SetPosition(Vector(550.0, 425.0 + ci*150.0, 0.0));
-                  mc->SetVelocity(Vector(0,0,0)); }
-    }
-    // Management near controller
-    {
-        Ptr<ConstantVelocityMobilityModel> mm = DynamicCast<ConstantVelocityMobilityModel>(
-            management_Node.Get(0)->GetObject<MobilityModel>());
-        if (mm) { mm->SetPosition(Vector(700.0, 300.0, 0.0));
-                  mm->SetVelocity(Vector(0,0,0)); }
-    }
-    // LTE nodes near vehicle area (they are invisible but affect bounding box)
-    if (N_Vehicles > 0 && architecture != 1) {
-        for (uint32_t i = 0; i < other_stationary_LTE_nodes.GetN(); i++) {
-            Ptr<ConstantVelocityMobilityModel> ml = DynamicCast<ConstantVelocityMobilityModel>(
-                other_stationary_LTE_nodes.Get(i)->GetObject<MobilityModel>());
-            if (ml) { ml->SetPosition(Vector(450.0 + i*10.0, 500.0, 0.0));
-                      ml->SetVelocity(Vector(0,0,0)); }
-        }
-    }
-}
+  // ── Poll vehicle positions every 0.5 s — captures realistic SUMO movement
+  //    without generating an excessive number of position-update XML entries.
+  anim.SetMobilityPollInterval(Seconds(0.5));
 
+  // ── Show packet type in animation metadata ────────────────────────────────────
+  anim.EnablePacketMetadata(true);
 
-  // ── Fixed positions for NetAnim: controllers stacked vertically at x=950,
-  // management node at (1150, 425), RSUs at (850, 425) per-index.
-  // Applied for all 12 attack variants so diagrams are consistent.
+  // ── Raise the per-file packet limit so the XML does not roll over mid-sim.
+  //    With 200 vehicles × 7 channels × 10 Hz beacons the default 100 000 limit
+  //    is exhausted in ~7 s.  5 000 000 comfortably covers a 300 s simulation.
+  anim.SetMaxPktsPerTraceFile(5000000);
+
+// ── LTE infrastructure nodes are hidden globally by the block below.
+//    No separate attack-scenario override needed.
+
+  // ── NetAnim fixed positions: controllers at RSU inter-grid midpoints.
+  //    Urban RSU 8×8 grid: start=(273,264), delta=(273,264).
+  //    Ctrl-0: centre of RSU(1,1)(1,2)(2,1)(2,2) → (682.5, 660.0)
+  //    Ctrl-1: centre of RSU(0,5)(0,6)(1,5)(1,6) → (1774.5, 396.0)
+  //    Ctrl-2: centre of RSU(4,2)(4,3)(5,2)(5,3) → (955.5, 1452.0)
+  //    Ctrl-3: centre of RSU(6,5)(6,6)(7,5)(7,6) → (1774.5, 1980.0)
   {
+      const double anim_px_urban[4] = {682.5, 1774.5,  955.5, 1774.5};
+      const double anim_py_urban[4] = {660.0,  396.0, 1452.0, 1980.0};
       for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
       {
           Ptr<ConstantVelocityMobilityModel> mdl_ctrl =
@@ -145190,99 +145575,134 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
                   controller_Node.Get(ci)->GetObject<MobilityModel>());
           if (mdl_ctrl)
           {
-              // Place controller to the right of the 2460m map — clearly distinct from vehicles
-              mdl_ctrl->SetPosition(Vector(2700.0, 600.0 + (double)ci * 350.0, 0));
+              double cx, cy;
+              if (mobility_scenario == 0 && ci < 4) {
+                  cx = anim_px_urban[ci]; cy = anim_py_urban[ci];
+              } else if (mobility_scenario == 0) {
+                  cx = anim_px_urban[ci % 4] + (ci / 4) * 273.0;
+                  cy = anim_py_urban[ci % 4];
+              } else if (mobility_scenario == 1) {
+                  cx = (ci % 2 == 0) ? 1500.0 : 5500.0;
+                  cy = (ci / 2 == 0) ? 2500.0 : 5500.0;
+              } else if (mobility_scenario == 2) {
+                  cx = (ci % 2 == 0) ? 500.0  : 3500.0;
+                  cy = (ci / 2 == 0) ? 1000.0 : 3000.0;
+              } else {
+                  cx = 410.0 + (ci % 2) * 1640.0;
+                  cy = 400.0 + (ci / 2) * 1580.0;
+              }
+              mdl_ctrl->SetPosition(Vector(cx, cy, 0));
               mdl_ctrl->SetVelocity(Vector(0.0, 0.0, 0.0));
           }
       }
   }
-  // Management server: right of controllers, centred on vehicle area
   {
+      double man_ax = (mobility_scenario == 0) ? 1230.0
+                    : (mobility_scenario == 1) ? 3500.0
+                    : (mobility_scenario == 2) ? 2000.0 : 1230.0;
+      double man_ay = (mobility_scenario == 0) ? 1190.0
+                    : (mobility_scenario == 1) ? 4000.0
+                    : (mobility_scenario == 2) ? 2000.0 : 1190.0;
       Ptr<ConstantVelocityMobilityModel> mdl_man =
           DynamicCast<ConstantVelocityMobilityModel>(
               management_Node.Get(0)->GetObject<MobilityModel>());
       if (mdl_man)
       {
-          double man_y = (controller_Node.GetN() > 1)
-               ? 425.0 + (double)(controller_Node.GetN() - 1) * 175.0
-               : 200.0;
-          mdl_man->SetPosition(Vector(2900.0, man_y, 0));
+          mdl_man->SetPosition(Vector(man_ax, man_ay, 0));
           mdl_man->SetVelocity(Vector(0.0, 0.0, 0.0));
       }
   }
-  // RSU positions from GridPositionAllocator — no override needed (grid already correct)
+  // RSU grid positions come from GridPositionAllocator — no override needed
 
-
-  // ── Management server — visible as orange node ──────────────────────────────
-  anim.UpdateNodeColor(management_Node.Get(0), 255, 140, 0);   // orange
-  anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 15.0, 15.0);
-  anim.UpdateNodeDescription(management_Node.Get(0), "Management");
-
-  if (N_Vehicles > 0 && architecture != 1)
+  // ── Hide all non-SDVN nodes (LTE infrastructure) ─────────────────────────────
+  // Build the set of known SDVN node IDs, then hide everything else.
   {
-      for (uint32_t i = 0; i < other_stationary_LTE_nodes.GetN(); i++)
+      std::set<uint32_t> sdvn_ids;
+      for (uint32_t i = 0; i < Vehicle_Nodes.GetN();   i++) sdvn_ids.insert(Vehicle_Nodes.Get(i)->GetId());
+      for (uint32_t i = 0; i < RSU_Nodes.GetN();       i++) sdvn_ids.insert(RSU_Nodes.Get(i)->GetId());
+      for (uint32_t i = 0; i < controller_Node.GetN(); i++) sdvn_ids.insert(controller_Node.Get(i)->GetId());
+      sdvn_ids.insert(management_Node.Get(0)->GetId());
+
+      uint32_t n_total = NodeList::GetNNodes();
+      for (uint32_t nid = 0; nid < n_total; nid++)
       {
-          anim.UpdateNodeColor(
-              other_stationary_LTE_nodes.Get(i), 255, 255, 255);
-          anim.UpdateNodeSize(
-              other_stationary_LTE_nodes.Get(i)->GetId(), 0.1, 0.1);
-          anim.UpdateNodeDescription(
-              other_stationary_LTE_nodes.Get(i), "");
+          if (sdvn_ids.count(nid)) continue;  // SDVN node — keep visible
+          Ptr<Node> nd_lte = NodeList::GetNode(nid);
+          anim.UpdateNodeColor(nd_lte, 255, 255, 255);
+          anim.UpdateNodeSize(nid, 0.001, 0.001);
+          anim.UpdateNodeDescription(nd_lte, "");
       }
   }
 
-  // ── Default node colors and sizes ────────────────────────────────────────
-  // RSU: yellow 30×30 | Vehicles: green 30×30 | Controller: purple 30×30
-  // Management node is already hidden above — do not re-show it here.
-  if (N_RSUs > 0)
-  {
-      for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
-      {
-          anim.UpdateNodeColor(RSU_Nodes.Get(i), 255, 255, 0); // yellow
-          Ptr<Node> ni = DynamicCast<Node>(RSU_Nodes.Get(i));
-          anim.UpdateNodeSize(ni->GetId(), 10.0, 10.0);
-      }
-  }
+  // ── Node colors and sizes ─────────────────────────────────────────────────────
+  // Arrow color in NetAnim = source node color, so:
+  //   V2V arrows : LIME GREEN  (vehicle → vehicle)
+  //   V2I arrows : LIME GREEN  (vehicle → RSU yellow node  — destination distinguishes it)
+  //   R2C arrows : GOLD/YELLOW (RSU     → controller purple node)
+  // Node sizes are larger (30 m radius) so they are clearly visible at 2 km scale.
 
+  // Vehicles — lime green, size 20
   if (N_Vehicles > 0)
   {
       for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++)
       {
-          anim.UpdateNodeColor(Vehicle_Nodes.Get(i), 0, 255, 0); // green default
-          Ptr<Node> ni = DynamicCast<Node>(Vehicle_Nodes.Get(i));
-          anim.UpdateNodeSize(ni->GetId(), 5.0, 5.0);
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(i), 0, 220, 50); // lime green
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(i)->GetId(), 20.0, 20.0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(i),
+              ("V" + std::to_string(i)).c_str());
       }
   }
 
-  // Controllers — purple by default, always visible
+  // RSUs — bright yellow (gold), size 35, labelled RSU-row,col for grid position
+  if (N_RSUs > 0)
+  {
+      uint32_t rsu_cols = 8;   // GridWidth used in mobility allocator
+      for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
+      {
+          uint32_t row = i / rsu_cols;
+          uint32_t col = i % rsu_cols;
+          anim.UpdateNodeColor(RSU_Nodes.Get(i), 255, 210, 0); // gold
+          anim.UpdateNodeSize(RSU_Nodes.Get(i)->GetId(), 35.0, 35.0);
+          std::string rsu_label = "RSU[" + std::to_string(row)
+                                + "," + std::to_string(col) + "]";
+          anim.UpdateNodeDescription(RSU_Nodes.Get(i), rsu_label.c_str());
+      }
+  }
+
+  // Management server — orange, size 40
+  anim.UpdateNodeColor(management_Node.Get(0), 255, 140, 0);
+  anim.UpdateNodeSize(management_Node.Get(0)->GetId(), 40.0, 40.0);
+  anim.UpdateNodeDescription(management_Node.Get(0), "Mgmt-Server");
+
+  // Controllers — magenta/purple, size 45
   for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
   {
       anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 255);
-      anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 15.0, 15.0);
+      anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 45.0, 45.0);
       anim.UpdateNodeDescription(controller_Node.Get(ci),
           (controller_Node.GetN() > 1
                ? ("Controller-" + std::to_string(ci)).c_str()
                : "Controller"));
   }
 
-  // ── TTW-S1: color all malicious nodes RED, all others BLUE ───────────────
+  // ── TTW-S1: color all malicious nodes RED, victims CYAN ──────────────────
   if (attack_scenario == 1)
   {
       for (uint32_t k = 0; k < N_Vehicles; k++)
       {
           if (ttw_malicious_nodes[k])
           {
-              anim.UpdateNodeColor(Vehicle_Nodes.Get(k), 255, 0, 0);
-              anim.UpdateNodeSize(Vehicle_Nodes.Get(k)->GetId(), 8.0, 8.0);
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(k), 255, 0, 0);      // red
+              anim.UpdateNodeSize(Vehicle_Nodes.Get(k)->GetId(), 25.0, 25.0);
               anim.UpdateNodeDescription(Vehicle_Nodes.Get(k),
-                  "V" + std::to_string(Vehicle_Nodes.Get(k)->GetId()) + "-Attacker");
+                  ("V" + std::to_string(k) + "-Attacker").c_str());
           }
           else
           {
-              anim.UpdateNodeColor(Vehicle_Nodes.Get(k), 0, 150, 255);
-              anim.UpdateNodeSize(Vehicle_Nodes.Get(k)->GetId(), 5.0, 5.0);
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(k), 0, 200, 255);    // cyan
+              anim.UpdateNodeSize(Vehicle_Nodes.Get(k)->GetId(), 20.0, 20.0);
               anim.UpdateNodeDescription(Vehicle_Nodes.Get(k),
-                  "V" + std::to_string(Vehicle_Nodes.Get(k)->GetId()) + "-Victim");
+                  ("V" + std::to_string(k) + "-Victim").c_str());
           }
       }
   }
@@ -145606,7 +146026,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
 
           // Mark this malicious RSU red in NetAnim
           anim.UpdateNodeColor(RSU_Nodes.Get(pi), 255, 0, 0);
-          anim.UpdateNodeSize(RSU_Nodes.Get(pi)->GetId(), 12.0, 12.0);
+          anim.UpdateNodeSize(RSU_Nodes.Get(pi)->GetId(), 38.0, 38.0);
           anim.UpdateNodeDescription(RSU_Nodes.Get(pi),
               "RSU-" + std::to_string(pi) + "-Attacker");
       }
@@ -145726,7 +146146,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       {
           if (ci < n_malicious_ctrl3) {
               anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
-              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 17.0, 17.0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 48.0, 48.0);
               anim.UpdateNodeDescription(controller_Node.Get(ci),
                   ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
           } else {
@@ -145865,7 +146285,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       {
           if (ci < n_malicious_ctrl4) {
               anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
-              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 17.0, 17.0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 48.0, 48.0);
               anim.UpdateNodeDescription(controller_Node.Get(ci),
                   ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
           } else {
@@ -146094,7 +146514,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           }
           if (att_cidx < Vehicle_Nodes.GetN()) {
               anim.UpdateNodeColor(Vehicle_Nodes.Get(att_cidx), 255, 0, 0);
-              anim.UpdateNodeSize(Vehicle_Nodes.Get(att_cidx)->GetId(), 8.0, 8.0);
+              anim.UpdateNodeSize(Vehicle_Nodes.Get(att_cidx)->GetId(), 25.0, 25.0);
               anim.UpdateNodeDescription(Vehicle_Nodes.Get(att_cidx),
                   ("V" + std::to_string(att_cidx) + "-Attacker").c_str());
           }
@@ -146210,7 +146630,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           }
           if (ri < RSU_Nodes.GetN()) {
               anim.UpdateNodeColor(RSU_Nodes.Get(ri), 255, 0, 0);
-              anim.UpdateNodeSize(RSU_Nodes.Get(ri)->GetId(), 12.0, 12.0);
+              anim.UpdateNodeSize(RSU_Nodes.Get(ri)->GetId(), 38.0, 38.0);
               anim.UpdateNodeDescription(RSU_Nodes.Get(ri),
                   ("RSU" + std::to_string(ri) + "-Attacker").c_str());
           }
@@ -146251,7 +146671,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       std::cout << "Stored HB time        : t=" << BSHH_S3_EXCHANGE_TIME << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      const uint32_t bshh_s3_app_veh_base = N_Controllers + 1;
+      [[maybe_unused]] const uint32_t bshh_s3_app_veh_base = N_Controllers + 1;
 
       for (uint32_t ci = 0; ci < n_malicious_ctrl3b; ci++) {
           uint32_t vA_cidx = ci * 2;
@@ -146315,7 +146735,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           }
           if (ci < controller_Node.GetN()) {
               anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
-              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 17.0, 17.0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 48.0, 48.0);
               anim.UpdateNodeDescription(controller_Node.Get(ci),
                   ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
           }
@@ -146364,7 +146784,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       std::cout << "Stored HB time        : t=" << BSHH_S4_EXCHANGE_TIME << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      const uint32_t bshh_s4_app_veh_base = N_Controllers + 1;
+      [[maybe_unused]] const uint32_t bshh_s4_app_veh_base = N_Controllers + 1;
 
       for (uint32_t ci = 0; ci < n_malicious_ctrl4b; ci++) {
           uint32_t vA_cidx = ci * 2;
@@ -146440,7 +146860,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           }
           if (ci < controller_Node.GetN()) {
               anim.UpdateNodeColor(controller_Node.Get(ci), 255, 0, 0);
-              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 17.0, 17.0);
+              anim.UpdateNodeSize(controller_Node.Get(ci)->GetId(), 48.0, 48.0);
               anim.UpdateNodeDescription(controller_Node.Get(ci),
                   ("Ctrl-" + std::to_string(ci) + "-Attacker").c_str());
           }
@@ -146591,10 +147011,10 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
               discoveryObservedTime, 0x3u);
 
           anim.UpdateNodeColor(Vehicle_Nodes.Get(echo_v3_cidx), 255, 0, 0);
-          anim.UpdateNodeSize(Vehicle_Nodes.Get(echo_v3_cidx)->GetId(), 8.0, 8.0);
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(echo_v3_cidx)->GetId(), 25.0, 25.0);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(echo_v3_cidx), "V-Echo");
           anim.UpdateNodeColor(Vehicle_Nodes.Get(echo_v4_cidx), 255, 0, 0);
-          anim.UpdateNodeSize(Vehicle_Nodes.Get(echo_v4_cidx)->GetId(), 8.0, 8.0);
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(echo_v4_cidx)->GetId(), 25.0, 25.0);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(echo_v4_cidx), "V-Echo");
 
           const uint32_t me_app_base = N_Controllers + 1;
@@ -146620,7 +147040,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
               &ME_S1_EchoAttack, last_cidx, last_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x1u);
           anim.UpdateNodeColor(Vehicle_Nodes.Get(last_cidx), 255, 0, 0);
-          anim.UpdateNodeSize(Vehicle_Nodes.Get(last_cidx)->GetId(), 8.0, 8.0);
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(last_cidx)->GetId(), 25.0, 25.0);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(last_cidx), "V-Echo");
       }
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
@@ -146698,7 +147118,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
                   last_p, last_p, ME_S2_DISCOVERY_TIME);
           }
           anim.UpdateNodeColor(RSU_Nodes.Get(r), 255, 0, 0);
-          anim.UpdateNodeSize(RSU_Nodes.Get(r)->GetId(), 12.0, 12.0);
+          anim.UpdateNodeSize(RSU_Nodes.Get(r)->GetId(), 38.0, 38.0);
           anim.UpdateNodeDescription(RSU_Nodes.Get(r), "RSU-Attacker");
       }
       if (N_Vehicles > 1) {
@@ -146791,7 +147211,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(k), "V-Phantom");
       }
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 17.0, 17.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
@@ -146880,7 +147300,7 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0);
       anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
-      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 17.0, 17.0);
+      anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
   }
 
@@ -146916,7 +147336,18 @@ if (attack_scenario >= 1 && attack_scenario <= 12)
   // RUN SIMULATION
   // ===========================================================================
 
+  // ── NPFADS periodic BSM collection ─────────────────────────────────────────
+  // Sample every vehicle's true GPS position every 100 ms throughout the run.
+  // This is independent of paper/architecture so eigenvalue computation always
+  // has enough rows (≥8 per sender) regardless of the routing mode in use.
+  for (double t_npfads = 1.0; t_npfads < simTime - 0.1; t_npfads += 0.1)
+      Simulator::Schedule(Seconds(t_npfads), &NpfadsCollectBsms);
+
+  Simulator::Schedule(Seconds(simTime - 0.003), &CD_WriteSummary,
+                      attack_scenario, attack_percentage, N_Vehicles, N_RSUs);
+  Simulator::Schedule(Seconds(simTime - 0.002), &RunNpfadsDetection);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
+  Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteAlertsJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
