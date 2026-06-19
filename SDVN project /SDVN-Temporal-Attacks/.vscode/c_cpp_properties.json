@@ -1,0 +1,41 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/nimesha/ns-allinone-3.35/ns-3.35/build",
+                "/home/nimesha/ns-allinone-3.35/ns-3.35/build/ns3",
+                "/home/nimesha/ns-allinone-3.35/ns-3.35/src/**",
+                "/usr/include/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++-11",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/crypto",
+                "${workspaceFolder}/tgn",
+                "${workspaceFolder}/blockchain"
+            ],
+            "defines": ["_WIN32"],
+            "compilerPath": "",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-x64",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/crypto",
+                    "${workspaceFolder}/tgn",
+                    "${workspaceFolder}/blockchain"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}

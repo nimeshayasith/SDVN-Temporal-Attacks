@@ -1,0 +1,349 @@
+================================================================================
+  COMMENTED / DISABLED CODE REPORT  —  routing.cc
+  Project: SDVN Temporal-Echo Topology Attack (FYP, University of Ruhuna EIE)
+  Generated: 2026-06-15
+================================================================================
+
+This report lists every block of code that was disabled or suppressed in
+routing.cc as part of the "no routing, no RL" cleanup for attack scenario
+simulation. Line numbers refer to the current routing.cc in:
+
+  /scratch/SDVN project /SDVN-Temporal-Attacks/routing.cc
+
+--------------------------------------------------------------------------------
+SECTION 1 — ROUTING FUNCTION BODIES (#if 0 ... #endif)
+--------------------------------------------------------------------------------
+
+These functions contain DSRC unicast routing logic and routing orchestration.
+They are wrapped in #if 0 // ROUTING_DISABLED blocks so the compiler skips
+them entirely. The functions still exist in the file for reference / future
+re-enabling, but they produce no object code and are never called.
+
+  1A. routing_dsrc_data_unicast
+      Lines: 125054 – 125121  (68 lines)
+      Marker: #if 0  // ROUTING_DISABLED: routing_dsrc_data_unicast
+      Signature: void routing_dsrc_data_unicast(Ptr<NetDevice> source_nd,
+                     Ptr<Node> source_node, uint32_t flow_id,
+                     uint32_t next_hop_id, struct custom_struct arguments,
+                     uint32_t packet_ID)
+      What it did: Sent DSRC unicast packets hop-by-hop toward a destination
+                   using pre-computed next-hop tables. Called routing tables
+                   (find_next_hop) and transmitted via WifiNetDevice::Send()
+                   unicast to specific MAC addresses.
+      Why disabled: No routing decisions are made in this project. DSRC is
+                    used only for V2V beacon exchange, not for packet routing.
+
+  1B. send_hybrid_packets
+      Lines: 125213 – 125280  (68 lines)
+      Marker: #if 0  // ROUTING_DISABLED: send_hybrid_packets
+      Signature: void send_hybrid_packets(uint32_t destination)
+      What it did: Hybrid architecture routing orchestrator. Ran
+                   calculate_dijkstra_stable_solution(), then scheduled
+                   hybrid_data_unicast() for each source node. Used a
+                   triangular wave timing pattern based on
+                   data_gathering_cycle_number.
+      Why disabled: Hybrid routing architecture is not used. No routing.
+
+  1C. send_centralized_packets
+      Lines: 125283 – 125336  (54 lines)
+      Marker: #if 0  // ROUTING_DISABLED: send_centralized_packets
+      Signature: void send_centralized_packets(uint32_t destination)
+      What it did: Centralized routing orchestrator. Ran
+                   calculate_dijkstra_solution() to build routing tables,
+                   then scheduled centralized_dsrc_data_unicast() for each
+                   source→destination flow pair.
+      Why disabled: Centralized routing architecture is not used. No routing.
+
+  1D. check_and_transmit
+      Lines: 125460 – 125579  (120 lines)
+      Marker: #if 0  // ROUTING_DISABLED: check_and_transmit
+      Signature: void check_and_transmit(uint32_t fid, uint32_t source,
+                     uint32_t total_packets, uint32_t total_packet_counter,
+                     uint32_t nid, struct custom_struct arguments)
+      What it did: Packet transmission orchestrator that checked flow queues
+                   and called routing_dsrc_data_unicast() for each pending
+                   packet. Managed per-flow packet counters and scheduling.
+      Why disabled: Calls routing_dsrc_data_unicast (also disabled). No routing.
+                    Disabled to prevent linker errors from the callee being absent.
+
+  1E. initiate_all_flows
+      Lines: 125582 – 125916  (335 lines)
+      Marker: #if 0  // ROUTING_DISABLED: initiate_all_flows
+      Signature: void initiate_all_flows()
+      What it did: Flow routing initiator — set up all source/destination
+                   flows, called check_and_transmit() to begin scheduled
+                   packet transmissions for every active flow in the network.
+                   Largest disabled block.
+      Why disabled: Calls check_and_transmit (also disabled). Entire flow
+                    routing subsystem is not needed. No routing.
+
+  1F. distributed_dsrc_data_broadcast  (alternate version)
+      Lines: 125986 – 126019  (34 lines)
+      Marker: #if 0  // ROUTING_DISABLED: distributed_dsrc_data_broadcast
+      Signature: void distributed_dsrc_data_broadcast(Ptr<NetDevice> nd,
+                     Ptr<Node> node, uint32_t node_index)
+      What it did: An older single-channel (Ch178 only) DSRC broadcast
+                   function for the distributed architecture. Was called
+                   in the paper==0 scheduling loop.
+      Why disabled: Replaced by the active centralized_dsrc_data_broadcast()
+                    which broadcasts on all 7 channels simultaneously and
+                    computes per-channel PDR. The old version used only Ch178
+                    and did not support the 7-channel range model.
+
+Summary of ROUTING_DISABLED blocks:
+  Total blocks:     6
+  Total lines disabled: ~679 lines (125054–126019 span)
+
+--------------------------------------------------------------------------------
+SECTION 2 — RL / OPTIMIZATION / LTE UPLOAD BLOCKS (#if 0 ... #endif)
+--------------------------------------------------------------------------------
+
+These blocks handle reinforcement learning routing decisions, optimization,
+and LTE uplink scheduling. They are wrapped in #if 0 // ROUTING_RL_DISABLED.
+
+  2A. Flow instantiation and path selection (RL)
+      Lines: 144535 – 144716  (182 lines)
+      Marker: #if 0  // ROUTING_RL_DISABLED: flow instantiation and path selection
+      What it contained:
+        - Flow table setup for all source→destination node pairs
+        - RL-based path selection (proposed algorithm)
+        - delta_at_nodes instantiation (routing split ratios)
+        - Calls to begin_sending_LTE_data_agent() and
+          begin_sending_RSU_data_agent() for RL data upload
+        - Scheduling of initiate_all_flows() (also disabled in Sec. 1E)
+      Why disabled: Reinforcement learning routing is not implemented in this
+                    project. No routing decisions. Attack scenarios only need
+                    beacon exchange and PEM metrics.
+
+  2B. LTE upload, optimization, and routing algorithm scheduling
+      Lines: 144723 – 144770  (48 lines)
+      Marker: #if 0  // ROUTING_RL_DISABLED: LTE upload, optimization, and routing algorithms
+      What it contained:
+        - Simulator::Schedule calls for:
+            send_LTE_data_agent() (LTE uplink topology upload)
+            RSU_dataunicast_agent() (CSMA topology upload)
+            calculate_average_packet_delivery_ratio_routing() (old routing PDR)
+            calculate_performance_evaluation_metrics() (old RL performance)
+            write_optimization_link_lifetime_data() (optimization data)
+        - Comparison algorithm scheduling (QRSDN, RLMR, DCMR, ECMP)
+      Why disabled: LTE routing and RL metric collection are not needed.
+                    PDR is now computed from beacons per channel (see Sec. 4).
+
+Summary of ROUTING_RL_DISABLED blocks:
+  Total blocks:     2
+  Total lines disabled: ~230 lines (144535–144770 span)
+
+--------------------------------------------------------------------------------
+SECTION 3 — INDIVIDUAL COMMENTED SCHEDULING CALLS
+--------------------------------------------------------------------------------
+
+These are single-line Simulator::Schedule() calls that were commented out
+with // ROUTING_DISABLED: prefix. They existed inside functions that are still
+active (the Rx callback and the RSU data relay loop).
+
+  3A. RSU_routing_dataunicast_alone call in Rx() callback
+      Line:  123511
+      Original code:
+        Simulator::Schedule(Seconds(0), RSU_routing_dataunicast_alone,
+            udp_app, nu, RSU_Nodes.Get(next_hop-N_Vehicles), packet_i);
+      Disabled as:
+        //ROUTING_DISABLED: Simulator::Schedule(Seconds(0), RSU_routing_dataunicast_alone, ...);
+      What it did: When the Rx callback received a CustomDataUnicastTag_Routing
+                   packet at an RSU node, this call forwarded it hop-by-hop
+                   toward the destination using wired CSMA Ethernet.
+      Why disabled: No unicast routing forwarding. RSUs are used only for
+                    beacon aggregation and attack infrastructure (CSMA link
+                    to controller for attack scenarios).
+
+  3B. RSU_routing_dataunicast_alone call in Rx() callback (second instance)
+      Line:  125026
+      Original code:
+        Simulator::Schedule(Seconds(0), RSU_routing_dataunicast_alone,
+            udp_app, nu, RSU_Nodes.Get(next_hop-N_Vehicles), packet_i);
+      Disabled as:
+        //ROUTING_DISABLED: Simulator::Schedule(Seconds(0), RSU_routing_dataunicast_alone, ...);
+      Why disabled: Same reason as 3A above.
+
+  3C. RSU_flowdata_unicast_alone scheduling call in main()
+      Line:  144794
+      Original code:
+        Simulator::Schedule(Seconds(t+0.000060*u), RSU_flowdata_unicast_alone,
+            udp_app, nu, management_Node.Get(0));
+      Disabled as:
+        // Simulator::Schedule(...)  // ROUTING_RL_DISABLED — no routing in this project
+      What it did: Scheduled RSU→management-server flow data uploads used
+                   by the RL optimization layer to build the global topology.
+      Why disabled: RL optimization and management server are not used.
+
+--------------------------------------------------------------------------------
+SECTION 4 — SUPPRESSED VERBOSE PRINT STATEMENTS
+--------------------------------------------------------------------------------
+
+These are std::cout lines that were generating massive console output during
+simulation, causing terminal flooding and preventing the simulation from
+completing within the timeout. They are preserved in-place with a
+// SUPPRESSED: prefix so the original message content is visible for debugging.
+
+Total suppressed lines: 36
+
+  4A. Per-tag-type beacon reception prints in Rx() callback
+      These printed one line per received beacon packet (per vehicle × per
+      broadcast period), resulting in 200 vehicles × 12 beacons/s × 200
+      receivers = ~480,000 lines/second of output.
+
+      Line   123691  — CustomDataTag (tag)    reception print
+      Line   123701  — CustomDataTag1 (tagd1) reception print
+      Line   123711  — CustomDataTag2 (tagd2) reception print
+      Line   123721  — CustomDataTag3 (tagd3) reception print
+      Line   123731  — CustomDataTag4 (tagd4) reception print
+      Line   123741  — CustomDataTag5 (tagd5) reception print
+      Line   123751  — CustomDataTag6 (tagd6) reception print
+      Line   123761  — CustomDataTag7 (tagd7) reception print
+      Line   123772  — CustomDataTag8 (tagd8) reception print  [+1 offset due to line break]
+      Line   123782  — CustomDataTag9 (tagd9) reception print
+      Line   123792  — CustomDataTag10 (tagd10) reception print
+      Line   123802  — CustomDataTag11 (tagd11) reception print
+      Line   123812  — CustomDataTag12 (tagd12) reception print
+      Line   123822  — CustomDataTag13 (tagd13) reception print
+      Line   123832  — CustomDataTag14 (tagd14) reception print
+      Line   123842  — CustomDataTag15 (tagd15) reception print
+      Line   123852  — CustomDataTag16 (tagd16) reception print
+      Line   123863  — CustomDataTag17 (tagd17) reception print  [+1 offset]
+      Line   123873  — CustomDataTag18 (tagd18) reception print
+      Line   123883  — CustomDataTag19 (tagd19) reception print
+      Line   123893  — CustomDataTag20 (tagd20) reception print
+      Line   123903  — CustomDataTag21 (tagd21) reception print
+      Line   123913  — CustomDataTag22 (tagd22) reception print
+      Line   123923  — CustomDataTag23 (tagd23) reception print
+      Line   123933  — CustomDataTag24 (tagd24) reception print
+      Line   123943  — CustomDataTag25 (tagd25) reception print
+      Line   123954  — CustomDataTagmax (tagdmax) reception print  [+1 offset]
+
+      Format of suppressed message:
+        "Received data broadcasted packet from <nodeId> to node <destId>
+         of size <bytes> at position <pos> with velocity <vel>
+         with acceleration <accel> packet timestamp <t>s with delay <us>us"
+
+  4B. DSRC broadcast initiation prints
+
+      Line   124510  — In old distributed_dsrc_data_broadcast (still-active variant):
+                       "DSRC data Broadcasting from node <nid>"
+
+      Line   124879  — In centralized_dsrc_data_broadcast (active beacon function):
+                       "dsrc total size is <size>"
+
+      Line   124893  — In centralized_dsrc_data_broadcast (active beacon function):
+                       "DSRC data Broadcasting from node <nid> on all 7 channels"
+
+      Line   124939  — In centralized_dsrc_data_broadcast (active beacon function):
+                       "dsrc total size is <size>"
+
+      Line   125986-block internal:
+      Line   126000  — In disabled distributed_dsrc_data_broadcast block:
+                       "DSRC data Broadcasting from node <nid>"
+      Line   126016  — In disabled distributed_dsrc_data_broadcast block:
+                       "dsrc total size is <size>"
+
+  4C. Size prints in other broadcast helpers
+
+      Line   98257   — In early packet-size tracking block:
+                       "dsrc total size is <dsrc_total_packet_size>"
+
+      Line   126044  — "dsrc total size is <dsrc_total_packet_size>"
+      Line   126068  — "dsrc total size is <dsrc_total_packet_size>"
+
+--------------------------------------------------------------------------------
+SECTION 5 — WHAT WAS DELIBERATELY KEPT (NOT COMMENTED OUT)
+--------------------------------------------------------------------------------
+
+The following functions were NOT disabled, even though they may appear related
+to routing. Here is the reason each was kept:
+
+  5A. centralized_dsrc_data_broadcast()  (lines ~124867 – ~124945)
+      STATUS: ACTIVE — kept and enhanced
+      REASON: This is the BEACON EXCHANGE function, not routing. It broadcasts
+              each vehicle's position, velocity, acceleration, and neighbour
+              list to all nearby vehicles on all 7 DSRC channels. This is the
+              fundamental V2V awareness mechanism required for:
+                - Neighbour discovery (topology awareness)
+                - PEM baseline (normal beacon pattern establishes the baseline
+                  from which attacks deviate)
+                - Per-channel PDR computation (ch_expected_rx tracking)
+              DSRC beacons ≠ routing. Beacons say "I am here at position X".
+              Routing would say "forward this packet toward destination Y".
+              This function does the former only.
+
+  5B. calculate_average_packet_delivery_ratio_routing()  (lines ~120112 – ~120145)
+      STATUS: ACTIVE — refactored for per-channel PDR
+      REASON: PDR (Packet Delivery Ratio) is one of the five PEM metrics
+              required by the project (alongside MCC, AUROC, Tdet, Te2e).
+              The function was refactored to compute PDR from beacon delivery
+              (ch_expected_rx vs channel_rx_end_count) rather than from routing
+              flow delivery. This gives a meaningful PDR even with no routing.
+
+  5C. PemWriteRunSummaryCsv(), PemWriteEventLogCsv()
+      STATUS: ACTIVE
+      REASON: PEM metric recording is the core of this project. All 12 attack
+              scenarios feed into the PEM framework. These write the output
+              CSV files used for the FYP report.
+
+  5D. TTW_InitLog(), TTW_SendHelloBeacon(), TTW_SendTopologyUpdate(),
+      TTW_StorePacket(), TTW_ReplayAttack(), TTW_RunReplayDetection()
+      STATUS: ACTIVE
+      REASON: These implement the TTW-S1 attack (attack_scenario=4), which is
+              fully implemented and the first of 12 attack variants.
+
+  5E. AttackGetDSRCDevice(), AttackGetControllerIP(), AttackSendRSUToController(),
+      AttackSendDSRCBeacon(), AttackSendHeartbeat()
+      STATUS: ACTIVE
+      REASON: These are attack infrastructure helpers used by all 12 attack
+              scenario implementations. They send actual 802.11p frames and
+              CSMA packets to simulate the attack channel without routing.
+
+  5F. RSU_dataunicast_agent()  (lines ~132992+)
+      STATUS: ACTIVE (scheduled when N_RSUs > 0)
+      REASON: RSUs aggregate beacon data from vehicles and forward topology
+              snapshots to the controller. This is not routing — it is the
+              V2R→R2C topology sensing path that the attack scenarios use as
+              their ground truth. Needed for RSU-attacker variants (S2, S4).
+
+  5G. WriteChannelAnalysisCsv()
+      STATUS: ACTIVE — called at simulation end
+      REASON: Writes per-channel PDR data to
+              CHANNEL_DELIVERY_ANALYSIS/<scenario>.csv for report analysis.
+
+  5H. SimpleUdpApplication and CSMA wired network
+      STATUS: ACTIVE
+      REASON: CSMA Ethernet is the R2C (RSU→Controller) link. It carries
+              attack packets (from malicious RSU in S2/S4 variants) to the
+              controller. It is not routing — it is the attack delivery path.
+
+--------------------------------------------------------------------------------
+SECTION 6 — SUMMARY TABLE
+--------------------------------------------------------------------------------
+
+  Category                                Lines Disabled   Method
+  ─────────────────────────────────────────────────────────────────────────────
+  routing_dsrc_data_unicast               125054–125121    #if 0 ROUTING_DISABLED
+  send_hybrid_packets                     125213–125280    #if 0 ROUTING_DISABLED
+  send_centralized_packets                125283–125336    #if 0 ROUTING_DISABLED
+  check_and_transmit                      125460–125579    #if 0 ROUTING_DISABLED
+  initiate_all_flows                      125582–125916    #if 0 ROUTING_DISABLED
+  distributed_dsrc_data_broadcast (old)   125986–126019    #if 0 ROUTING_DISABLED
+  Flow instantiation / RL path select     144535–144716    #if 0 ROUTING_RL_DISABLED
+  LTE upload / optimization / RL algos    144723–144770    #if 0 ROUTING_RL_DISABLED
+  RSU_routing_dataunicast_alone (×2)      123511, 125026   // ROUTING_DISABLED: prefix
+  RSU_flowdata_unicast_alone              144794           // ROUTING_RL_DISABLED comment
+  Verbose Rx beacon prints (27 tags)      123691–123954    // SUPPRESSED: prefix
+  Broadcast initiation prints (6 lines)   124510,124879,   // SUPPRESSED: prefix
+                                          124893,124939,
+                                          126000,126016
+  dsrc_total_packet_size prints (3 lines) 98257,126044,    // SUPPRESSED: prefix
+                                          126068
+  ─────────────────────────────────────────────────────────────────────────────
+  TOTAL SUPPRESSED PRINTS:                36 lines
+  TOTAL CODE LINES DISABLED (approx):    ~1140 lines across 8 #if 0 blocks
+
+--------------------------------------------------------------------------------
+END OF REPORT
+================================================================================

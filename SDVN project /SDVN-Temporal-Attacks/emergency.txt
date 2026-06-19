@@ -1,0 +1,65 @@
+EMERGENCY — Changes That Affect the NS-3 Simulation Command
+=============================================================
+Command affected:
+  ./waf --run "scratch/routing --simTime=60 --N_Vehicles=10 --N_RSUs=0 --attack_scenario=1"
+
+------------------------------------------------------------------------
+CHANGE 1 — routing.cc: PemWriteAlertsJson() added
+------------------------------------------------------------------------
+What changed:
+  A new function PemWriteAlertsJson() was added to routing.cc.
+  It is scheduled at:
+    Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteAlertsJson);
+  (runs 1 ms before simulation ends)
+
+What it does:
+  Scans all PEM detection events (pem_all_events).
+  Filters: attack_label=true AND alert_raised=true.
+  Deduplicates by physical_sender_id (keeps highest anomaly score per node).
+  Writes the result to:
+    <project-root>/tgn_alerts.json
+  i.e.  SDVN-Temporal-Attacks/tgn_alerts.json
+
+JSON format written:
+  [
+    {
+      "v_id":           "V5",
+      "alpha":          "TTW_S1_MAL_VEH_NO_RSU",
+      "y_hat":          0.261658,
+      "t_alert":        20080,
+      "interval_ts_ms": 20080,
+      "S_trig":         [0, 2],
+      "from_lw_path":   false,
+      "tdet_ms":        50
+    },
+    ...
+  ]
+
+Why it matters:
+  Before this change, tgn_alerts.json had to be generated separately
+  by pem_to_alerts.py (which reads PEM_RUN_SUMMARY CSV and produces
+  less accurate scores).
+  Now routing.cc writes the file directly with real PEM event data
+  (actual node IDs, actual anomaly scores, actual simulation timestamps).
+  This is the file that submitToFabric.js reads to submit to Fabric.
+
+------------------------------------------------------------------------
+CHANGE 2 — routing.cc: Forward declaration added
+------------------------------------------------------------------------
+  static void PemWriteAlertsJson();
+  Added near line 835, before the function body, to satisfy C++ ordering.
+
+------------------------------------------------------------------------
+NEW OUTPUT FILE (did not exist before):
+------------------------------------------------------------------------
+  SDVN-Temporal-Attacks/tgn_alerts.json
+  — auto-generated at end of every simulation run (attack_scenario > 0)
+  — overwritten each run
+  — consumed by: blockchain/client/submitToFabric.js --alerts ../../tgn_alerts.json
+
+------------------------------------------------------------------------
+UNCHANGED — these files were NOT modified and do NOT affect the waf command:
+------------------------------------------------------------------------
+  blockchain/client/submitToFabric.js   (blockchain only, not NS-3)
+  blockchain/client/eventListener.js    (blockchain only, not NS-3)
+  blockchain/chaincode/temporalecho/    (chaincode only, not NS-3)

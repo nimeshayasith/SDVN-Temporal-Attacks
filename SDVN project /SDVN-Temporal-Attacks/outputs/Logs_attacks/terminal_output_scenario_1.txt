@@ -1,0 +1,100 @@
+Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 78397 exact position+velocity events
+[SUMO] Attack 1: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/01_TTW_S1_Malicious_Vehicle.xml
+[TTW-S1] WARNING: every vehicle is malicious; attackers will target each other
+
+========================================
+SCENARIO 01 - TTW-S1 ATTACK CONFIGURED
+Active attackers (36): V13 V10 V16 V40 V38 V20 V29 V19 V27 V7 V48 V35 V1 V45 V30 V36 V41 V49 V6 V5 V11 V26 V4 V24 V28 V15 V2 V44 V3 V17 V25 V31 V23 V32 V33 V12 
+Victim pool (0): 
+Activation probability : 0.75
+Replay jitter window   : +/-0.04 s
+Support evidence prob. : 1
+Timeline:
+  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller
+  t=10s  STEP 3   : Each attacker stores old packet
+  t=15s           : Physical links break
+  t=20s  STEP 4+5 : Each attacker replays forged packet
+  t=20s  STEP 6   : Controller has wrong topology
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+
+[NPFADS] ====== Running NPFADS Detection Pipeline ======
+[NPFADS]  Attack scenario : 1
+[NPFADS]  BSM records     : 4500
+[NPFADS-SOL] Loaded 4500 BSM records
+[NPFADS-SOL] Eigenvalues computed for 50 senders
+[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
+  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
+  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
+  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
+  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
+
+╔═══════════════════════════════════════════════════════════════════╗
+║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
+║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
+╠═════════╪═════════════════╪═════════════════╪════════════════════╣
+║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Detection latency estimate: 800 ms  (= 8 × 100 ms beacon interval)                    ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+  Paper reference values (Table 6, MDS at fog node):
+    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
+    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
+    Type 16:  F1 = 0.98
+
+  NADM paper values: UC_known=0.09617  NASEA=0.99944
+
+[NPFADS] ====== NPFADS Detection Complete ======
+[NPFADS] Expected result for TTW/BSHH/ME scenarios:
+[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
+[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
+[NPFADS]   Novel det  = NO   (no AE reconstruction error)
+[NPFADS] --> These attacks evade position-based detection.
+[NPFADS] --> PEM detected them via temporal signature analysis.
+[NPFADS] --> The two detectors are COMPLEMENTARY.
+
+[TTW-S1][t=10.000]  V15 --HELLO beacon--> V18  dist=11902.842m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V21 --HELLO beacon--> V15  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V45 --HELLO beacon--> V21  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V43 --HELLO beacon--> V45  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V25 --HELLO beacon--> V43  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V34 --HELLO beacon--> V25  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V24 --HELLO beacon--> V34  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V32 --HELLO beacon--> V24  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V12 --HELLO beacon--> V32  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V53 --HELLO beacon--> V12  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V40 --HELLO beacon--> V53  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V6 --HELLO beacon--> V40  dist=3685.968m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V50 --HELLO beacon--> V6  dist=4383.980m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V35 --HELLO beacon--> V50  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V41 --HELLO beacon--> V35  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V46 --HELLO beacon--> V41  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V54 --HELLO beacon--> V46  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V11 --HELLO beacon--> V54  dist=5590.331m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V10 --HELLO beacon--> V11  dist=382.289m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V16 --HELLO beacon--> V10  dist=6851.866m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V31 --HELLO beacon--> V16  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V9 --HELLO beacon--> V31  dist=5797.850m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V29 --HELLO beacon--> V9  dist=6495.397m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V33 --HELLO beacon--> V29  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V20 --HELLO beacon--> V33  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V7 --HELLO beacon--> V20  dist=8589.874m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V49 --HELLO beacon--> V7  dist=9289.552m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V8 --HELLO beacon--> V49  dist=9298.564m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V22 --HELLO beacon--> V8  dist=9998.323m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V30 --HELLO beacon--> V22  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V36 --HELLO beacon--> V30  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V28 --HELLO beacon--> V36  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V37 --HELLO beacon--> V28  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V38 --HELLO beacon--> V37  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V17 --HELLO beacon--> V38  dist=350.000m  OUT-OF-RANGE
+[TTW-S1][t=10.000]  V18 --HELLO beacon--> V17  dist=260.100m  DELIVERED

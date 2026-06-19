@@ -1,0 +1,26 @@
+# Generated SUMO data — large XML/TCL files, not source code
+sumo_maps/
+mobility/
+
+# NS-3 simulation outputs
+*.xml
+*.csv
+*.pcap
+routing-animation.xml
+pem_event_log.csvs
+pem_run_summary.csvss
+channel_delivery_analysis.csv
+optimization_link_lifetime_data.csv
+link_lifetime_solution*.csv
+ttw_attack_scenario*.txt
+bshh_s*_attack_log.txt
+me_s*_attack_log.txt
+
+# Build artifacts
+*.o
+*.so
+*.pyc
+__pycache__/
+
+# Legacy entry
+./sdvn-temporal-attacks.cc

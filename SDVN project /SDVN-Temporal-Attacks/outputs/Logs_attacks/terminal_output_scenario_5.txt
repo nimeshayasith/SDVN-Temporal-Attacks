@@ -1,0 +1,96 @@
+Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 78397 exact position+velocity events
+[SUMO] Attack 5: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/05_BSHH_S1_Malicious_Vehicle.xml
+
+========================================
+SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED
+Attackers (25): V4 V18 V0 V3 V21 V12 V2 V24 V19 V20 V13 V8 V22 V5 V23 V17 V1 V9 V7 V11 V14 V10 V15 V16 V6 
+Victim pool (25): V40 V44 V45 V37 V49 V39 V29 V46 V43 V32 V27 V31 V36 V41 V26 V35 V30 V42 V38 V34 V25 V33 V48 V47 V28 
+Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count
+Replay jitter window   : +/-0.04 s
+Support evidence prob. : 1
+Timeline:
+  t=5.000s  STEP 1 : V2V heartbeat exchange
+  t=5.010s  STEP 2 : Both send honest heartbeats to controller
+  t=5.050s  STEP 3 : Attacker stores captured heartbeat (t=5)
+  t=10.000s STEP 4 : Attacker sends old heartbeat to victim
+  t=10.010s STEP 5 : Victim forwards old heartbeat to controller
+  t=10.020s STEP 6 : Attacker hijacks same old heartbeat to controller
+  t=10.030s STEP 7 : Controller holds conflicting liveness
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[BSHH-S1][t=5.032]  V23 captured heartbeat for replay  Heartbeat(Sender=V49, t=5.004)
+[BSHH-S1][t=5.034]  V26 captured heartbeat for replay  Heartbeat(Sender=V54, t=5.019)
+[BSHH-S1][t=5.040]  V17 captured heartbeat for replay  Heartbeat(Sender=V44, t=4.999)
+[BSHH-S1][t=5.040]  V24 captured heartbeat for replay  Heartbeat(Sender=V48, t=5.000)
+[BSHH-S1][t=5.045]  V18 captured heartbeat for replay  Heartbeat(Sender=V32, t=5.005)
+[BSHH-S1][t=5.047]  V13 captured heartbeat for replay  Heartbeat(Sender=V36, t=5.000)
+[BSHH-S1][t=5.049]  V5 captured heartbeat for replay  Heartbeat(Sender=V50, t=5.002)
+[BSHH-S1][t=5.053]  V25 captured heartbeat for replay  Heartbeat(Sender=V37, t=4.997)
+[BSHH-S1][t=5.053]  V28 captured heartbeat for replay  Heartbeat(Sender=V31, t=4.990)
+[BSHH-S1][t=5.056]  V9 captured heartbeat for replay  Heartbeat(Sender=V45, t=5.002)
+[BSHH-S1][t=5.057]  V22 captured heartbeat for replay  Heartbeat(Sender=V40, t=5.008)
+[BSHH-S1][t=5.058]  V10 captured heartbeat for replay  Heartbeat(Sender=V46, t=5.011)
+[BSHH-S1][t=5.059]  V21 captured heartbeat for replay  Heartbeat(Sender=V52, t=4.993)
+[BSHH-S1][t=5.062]  V14 captured heartbeat for replay  Heartbeat(Sender=V47, t=5.016)
+[BSHH-S1][t=5.062]  V12 captured heartbeat for replay  Heartbeat(Sender=V43, t=5.007)
+[BSHH-S1][t=5.063]  V29 captured heartbeat for replay  Heartbeat(Sender=V51, t=4.986)
+[BSHH-S1][t=5.063]  V7 captured heartbeat for replay  Heartbeat(Sender=V34, t=5.016)
+[BSHH-S1][t=5.064]  V27 captured heartbeat for replay  Heartbeat(Sender=V41, t=4.982)
+[BSHH-S1][t=5.066]  V16 captured heartbeat for replay  Heartbeat(Sender=V39, t=5.005)
+[BSHH-S1][t=5.067]  V8 captured heartbeat for replay  Heartbeat(Sender=V42, t=4.984)
+[BSHH-S1][t=5.074]  V19 captured heartbeat for replay  Heartbeat(Sender=V30, t=4.985)
+[BSHH-S1][t=5.076]  V20 captured heartbeat for replay  Heartbeat(Sender=V53, t=4.999)
+[BSHH-S1][t=5.079]  V6 captured heartbeat for replay  Heartbeat(Sender=V35, t=4.994)
+[BSHH-S1][t=5.082]  V15 captured heartbeat for replay  Heartbeat(Sender=V38, t=5.010)
+[BSHH-S1][t=5.087]  V11 captured heartbeat for replay  Heartbeat(Sender=V33, t=5.001)
+[BSHH-S1][t=9.974]  V26 --REPLAY old heartbeat--> V54  Heartbeat(Sender=V26, t=5.019)  [MALICIOUS â€” replayed attacker old heartbeat]
+[BSHH-S1][t=9.990]  V9 --REPLAY old heartbeat--> V45  Heartbeat(Sender=V9, t=5.002)  [MALICIOUS â€” replayed attacker old heartbeat]
+[BSHH-S1][t=9.990]  V23 --REPLAY old heartbeat--> V49  Heartbeat(Sender=V23, t=5.004)  [MALICIOUS â€” replayed attacker old heartbeat]
+[BSHH-S1][t=9.993]  V18 --REPLAY old heartbeat--> V32  Heartbeat(Sender=V18, t=5.005)  [MALICIOUS â€” replayed attacker old heartbeat]
+[BSHH-S1][t=9.996]  V17 --REPLAY old heartbeat--> V44  Heartbeat(Sender=V17, t=4.999)  [MALICIOUS â€” replayed attacker old heartbeat]
+[BSHH-S1][t=9.998]  V27 --REPLAY old heartbeat--> V41  Heartbeat(Sender=V27, t=4.982)  [MALICIOUS â€” replayed attacker old heartbeat]
+
+[NPFADS] ====== Running NPFADS Detection Pipeline ======
+[NPFADS]  Attack scenario : 5
+[NPFADS]  BSM records     : 4500
+[NPFADS-SOL] Loaded 4500 BSM records
+[NPFADS-SOL] Eigenvalues computed for 50 senders
+[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
+  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
+  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
+  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
+  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
+
+╔═══════════════════════════════════════════════════════════════════╗
+║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
+║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
+╠═════════╪═════════════════╪═════════════════╪════════════════════╣
+║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Detection latency estimate: 800 ms  (= 8 × 100 ms beacon interval)                    ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+  Paper reference values (Table 6, MDS at fog node):
+    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
+    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
+    Type 16:  F1 = 0.98
+
+  NADM paper values: UC_known=0.09617  NASEA=0.99944
+
+[NPFADS] ====== NPFADS Detection Complete ======
+[NPFADS] Expected result for TTW/BSHH/ME scenarios:
+[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
+[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
+[NPFADS]   Novel det  = NO   (no AE reconstruction error)
+[NPFADS] --> These attacks evade position-based detection.
+[NPFADS] --> PEM detected them via temporal signature analysis.
+[NPFADS] --> The two detectors are COMPLEMENTARY.
+

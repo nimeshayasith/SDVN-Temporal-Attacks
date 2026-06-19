@@ -1,0 +1,83 @@
+Solution at controller cleared
+[CD] detector=2  scenario=7  malicious_nodes=200  rsus=0
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 316389 exact position+velocity events
+[SUMO] Attack 7: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/07_BSHH_S3_Malicious_Controller_No_RSU.xml
+
+========================================
+SCENARIO 07 - BSHH-S3 ATTACK CONFIGURED
+Malicious controllers : 4 / 4
+Victim pairs          : 4
+Stored HB time        : t=5
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[BSHH-S3][t=5.000]  V0(ns3=5) --heartbeat--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.000]  V1(ns3=6) --heartbeat--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.001]  V2(ns3=7) --heartbeat--> Controller  Heartbeat(V2(ns3=7), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.001]  V3(ns3=8) --heartbeat--> Controller  Heartbeat(V3(ns3=8), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.002]  V4(ns3=9) --heartbeat--> Controller  Heartbeat(V4(ns3=9), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.002]  V5(ns3=10) --heartbeat--> Controller  Heartbeat(V5(ns3=10), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.003]  V6(ns3=11) --heartbeat--> Controller  Heartbeat(V6(ns3=11), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.003]  V7(ns3=12) --heartbeat--> Controller  Heartbeat(V7(ns3=12), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.100]  Ctrl0(ns3=0) stores stale copies  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  (internal replay at t=10)
+[BSHH-S3][t=5.101]  Ctrl1(ns3=1) stores stale copies  HB(V2(ns3=7), t=5.000)  HB(V3(ns3=8), t=5.000)  (internal replay at t=10)
+[BSHH-S3][t=5.102]  Ctrl2(ns3=2) stores stale copies  HB(V4(ns3=9), t=5.000)  HB(V5(ns3=10), t=5.000)  (internal replay at t=10)
+[BSHH-S3][t=5.103]  Ctrl3(ns3=3) stores stale copies  HB(V6(ns3=11), t=5.000)  HB(V7(ns3=12), t=5.000)  (internal replay at t=10)
+[BSHH-S3][t=10.000]  Ctrl0(ns3=0) --INTERNAL REPLAY--> own liveness table  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[BSHH-S3][t=10.001]  Ctrl1(ns3=1) --INTERNAL REPLAY--> own liveness table  HB(V2(ns3=7), t=5.000)  HB(V3(ns3=8), t=5.000)  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[BSHH-S3][t=10.002]  Ctrl2(ns3=2) --INTERNAL REPLAY--> own liveness table  HB(V4(ns3=9), t=5.000)  HB(V5(ns3=10), t=5.000)  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[BSHH-S3][t=10.003]  Ctrl3(ns3=3) --INTERNAL REPLAY--> own liveness table  HB(V6(ns3=11), t=5.000)  HB(V7(ns3=12), t=5.000)  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+
+[CD] ══════════════════════════════════════════════
+  Detector    : Multi_BSM_MBSM (Trabelsi 2022)
+  Scenario    : [7] BSHH-S3: Malicious Controller, No RSU
+  Attack%     : 100% (200 malicious nodes)
+  TP=0  TN=0  FP=0  FN=0
+  MCC=0.000  AUROC=0.500  Tdet=-1.000 ms
+  PDR(attack)=0.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+
+
+[NPFADS] ====== Running NPFADS Detection Pipeline ======
+[NPFADS]  Attack scenario : 7
+[NPFADS]  BSM records     : 4
+[NPFADS-SOL] Loaded 4 BSM records
+[NPFADS-SOL] Eigenvalues computed for 4 senders
+[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
+  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
+  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
+  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
+  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
+
+╔═══════════════════════════════════════════════════════════════════╗
+║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
+║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
+╠═════════╪═════════════════╪═════════════════╪════════════════════╣
+║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Detection latency estimate: 100 ms  (= 1 × 100 ms beacon interval)                    ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+  Paper reference values (Table 6, MDS at fog node):
+    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
+    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
+    Type 16:  F1 = 0.98
+
+  NADM paper values: UC_known=0.09617  NASEA=0.99944
+
+[NPFADS] ====== NPFADS Detection Complete ======
+[NPFADS] Expected result for TTW/BSHH/ME scenarios:
+[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
+[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
+[NPFADS]   Novel det  = NO   (no AE reconstruction error)
+[NPFADS] --> These attacks evade position-based detection.
+[NPFADS] --> PEM detected them via temporal signature analysis.
+[NPFADS] --> The two detectors are COMPLEMENTARY.
+

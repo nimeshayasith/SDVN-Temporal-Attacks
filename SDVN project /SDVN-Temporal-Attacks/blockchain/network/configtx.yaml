@@ -1,0 +1,212 @@
+# configtx.yaml — Fabric channel and endorsement policy for TETA-Guard
+#
+# SmartBFT ordering (Fabric 3.x, §7): OrdererType: BFT with 4 ordering nodes.
+# For f=1 Byzantine fault tolerance at the ordering layer: 3f+1 = 4 orderers.
+# Endorsement policy (peer layer): MAJORITY of 5 RSU peers = 3-of-5 endorsements,
+# independently tolerating 1 additional Byzantine peer (⌊(5-1)/3⌋ = 1).
+#
+# Requires Fabric 3.1 binaries:
+#   curl -sSL https://bit.ly/2ysbOFE | bash -s -- 3.1.0
+#
+# Generate channel genesis block (Fabric 3.x — no system channel):
+#   export FABRIC_CFG_PATH=./
+#   configtxgen -profile TetaChannel -channelID teta-channel \
+#               -outputBlock ./channel-artifacts/teta-channel.block
+#
+# Join orderers (via osnadmin, see create_channel.sh):
+#   osnadmin channel join --channelID teta-channel \
+#     --config-block ./channel-artifacts/teta-channel.block \
+#     -o orderer1.tetaguard.net:9443 \
+#     --ca-file ./crypto-config/ordererOrganizations/orderer.tetaguard.net/tlsca/tlsca.orderer.tetaguard.net-cert.pem \
+#     --client-cert ./crypto-config/ordererOrganizations/orderer.tetaguard.net/users/Admin@orderer.tetaguard.net/tls/client.crt \
+#     --client-key  ./crypto-config/ordererOrganizations/orderer.tetaguard.net/users/Admin@orderer.tetaguard.net/tls/client.key
+
+Organizations:
+  - &OrdererOrg
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - orderer1.tetaguard.net:7050
+      - orderer2.tetaguard.net:7150
+      - orderer3.tetaguard.net:7250
+      - orderer4.tetaguard.net:7350
+
+  - &TetaGuardOrg
+    Name: TetaGuardMSP
+    ID: TetaGuardMSP
+    MSPDir: ./crypto-config/peerOrganizations/tetaguard.net/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('TetaGuardMSP.admin', 'TetaGuardMSP.peer', 'TetaGuardMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('TetaGuardMSP.admin', 'TetaGuardMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('TetaGuardMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('TetaGuardMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.rsu1.tetaguard.net
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    # V3_0 enables SmartBFT ordering service support (Fabric 3.x requirement).
+    V3_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      # PBFT equivalent at peer layer: ⌊(5-1)/3⌋ = 1 Byzantine fault tolerance.
+      # MAJORITY of 5 RSU peers = 3 endorsements required.
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  # SmartBFT (Byzantine Fault Tolerant) ordering — Fabric 3.x §7.
+  # 4 orderer nodes satisfy 3f+1 = 4 for f=1 Byzantine fault tolerance.
+  # This replaces the etcdraft (crash-fault-tolerant) orderer used in Fabric 2.x.
+  OrdererType: BFT
+  Addresses:
+    - orderer1.tetaguard.net:7050
+    - orderer2.tetaguard.net:7150
+    - orderer3.tetaguard.net:7250
+    - orderer4.tetaguard.net:7350
+  # C-1: BatchTimeout 20ms — worst-case commit path (BFT latency + block delivery)
+  # still fits within the 100ms beacon budget. See §3.4.10 latency analysis.
+  BatchTimeout: 20ms
+  BatchSize:
+    MaxMessageCount: 50
+    AbsoluteMaxBytes: 10 MB
+    PreferredMaxBytes: 512 KB
+  SmartBFT:
+    # SmartBFT consensus parameters (§7, Algorithm 4 ordering layer).
+    RequestBatchMaxCount:      50
+    RequestBatchMaxInterval:   20ms
+    RequestForwardTimeout:     2s
+    RequestComplainTimeout:    20s
+    RequestAutoRemoveTimeout:  3m0s
+    ViewChangeResendInterval:  5s
+    ViewChangeTimeout:         20s
+    LeaderHeartbeatTimeout:    1m0s
+    CollectTimeout:            1s
+    RequestBatchMaxBytes:      10485760
+    IncomingMessageBufferSize: 200
+    RequestPoolSize:           100000
+    LeaderHeartbeatCount:      10
+  # ConsenterMapping: one entry per ordering node (4 total for f=1 BFT).
+  # Identity = MSP signing cert (used for BFT message signing).
+  # TLS certs = used to authenticate cluster-internal consensus messages.
+  ConsenterMapping:
+    - ID: 1
+      Host: orderer1.tetaguard.net
+      Port: 7050
+      MSPID: OrdererMSP
+      Identity: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer1.tetaguard.net/msp/signcerts/orderer1.tetaguard.net-cert.pem
+      ClientTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer1.tetaguard.net/tls/server.crt
+      ServerTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer1.tetaguard.net/tls/server.crt
+    - ID: 2
+      Host: orderer2.tetaguard.net
+      Port: 7150
+      MSPID: OrdererMSP
+      Identity: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer2.tetaguard.net/msp/signcerts/orderer2.tetaguard.net-cert.pem
+      ClientTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer2.tetaguard.net/tls/server.crt
+      ServerTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer2.tetaguard.net/tls/server.crt
+    - ID: 3
+      Host: orderer3.tetaguard.net
+      Port: 7250
+      MSPID: OrdererMSP
+      Identity: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer3.tetaguard.net/msp/signcerts/orderer3.tetaguard.net-cert.pem
+      ClientTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer3.tetaguard.net/tls/server.crt
+      ServerTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer3.tetaguard.net/tls/server.crt
+    - ID: 4
+      Host: orderer4.tetaguard.net
+      Port: 7350
+      MSPID: OrdererMSP
+      Identity: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer4.tetaguard.net/msp/signcerts/orderer4.tetaguard.net-cert.pem
+      ClientTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer4.tetaguard.net/tls/server.crt
+      ServerTLSCert: ./crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer4.tetaguard.net/tls/server.crt
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  # TetaChannel: application channel genesis block (Fabric 3.x — no system channel).
+  # Orderers join via osnadmin channel join; peers join via peer channel join.
+  TetaChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *TetaGuardOrg
+      Capabilities:
+        <<: *ApplicationCapabilities
+    Consortiums:
+      TetaConsortium:
+        Organizations:
+          - *TetaGuardOrg
