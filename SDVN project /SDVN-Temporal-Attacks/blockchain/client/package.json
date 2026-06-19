@@ -1,0 +1,22 @@
+{
+  "name": "teta-guard-blockchain-client",
+  "version": "1.0.0",
+  "description": "TETA-Guard TGN → Hyperledger Fabric blockchain client (§10)",
+  "main": "submitToFabric.js",
+  "scripts": {
+    "submit": "node submitToFabric.js",
+    "listen": "node eventListener.js",
+    "enroll": "node enrollAdmin.js"
+  },
+  "dependencies": {
+    "fabric-network": "^2.2.20",
+    "fabric-ca-client": "^2.2.20",
+    "fs-extra": "^11.1.1",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "license": "Apache-2.0"
+}

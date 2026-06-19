@@ -1,0 +1,334 @@
+Solution at controller cleared
+[SUMO] Loaded 304 positions from /home/sdvn_echo_topology/mobility/mobility_urban_30.tcl, scheduled 537 waypoint velocity events
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/XML/00_Baseline_No_Attack.xml
+RSU total packet size is 332
+RSU total packet size is 1104
+RSU total packet size is 2228
+RSU total packet size is 3616
+RSU total packet size is 5180
+Current neighbor size is 15Received neighborset from 86
+This is tag16. Serialized size is 1432
+RSU total packet size is 6480
+RSU total packet size is 6900
+RSU total packet size is 7232
+RSU total packet size is 7564
+RSU total packet size is 7984
+Current neighbor size is 2Received neighborset from 91
+This is tag3. Serialized size is 340
+RSU total packet size is 8668
+RSU total packet size is 9704
+RSU total packet size is 11356
+RSU total packet size is 13360
+RSU total packet size is 13956
+RSU total packet size is 14288
+Current neighbor size is 1Received neighborset from 82
+This is tag2. Serialized size is 256
+Current neighbor size is 10Received neighborset from 84
+This is tag11. Serialized size is 1012
+Current neighbor size is 1Received neighborset from 89
+This is tag2. Serialized size is 256
+Current neighbor size is 9Received neighborset from 93
+This is tag10. Serialized size is 928
+Current neighbor size is 20Received neighborset from 95
+This is tag21. Serialized size is 1852
+Current neighbor size is 6Received neighborset from 83
+This is tag7. Serialized size is 676
+Current neighbor size is 1Received neighborset from 90
+This is tag2. Serialized size is 256
+Current neighbor size is 13Received neighborset from 85
+This is tag14. Serialized size is 1264
+Current neighbor size is 5Received neighborset from 92
+This is tag6. Serialized size is 592
+Current neighbor size is 4Received neighborset from 96
+This is tag5. Serialized size is 508
+Current neighbor size is 1Received neighborset from 97
+This is tag2. Serialized size is 256
+Current neighbor size is 12Received neighborset from 87
+This is tag13. Serialized size is 1180
+Current neighbor size is 2Received neighborset from 88
+This is tag3. Serialized size is 340
+Current neighbor size is 16Received neighborset from 94
+This is tag17. Serialized size is 1516
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=74% Ch174(316m)=77% Ch176(316m)=75% Ch178(1122m)=75% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=76% | Avg=82.7107%
+average packet delivery ratio is 82.7107
+average jitter is 0
+average load balance is 100
+written to file successfully
+RSU total packet size is 14600
+This is tag2. Serialized size is 256
+RSU total packet size is 15332
+This is tag7. Serialized size is 676
+RSU total packet size is 16544
+Current neighbor size is 11Received neighborset from 84
+This is tag12. Serialized size is 1096
+RSU total packet size is 17864
+This is tag14. Serialized size is 1264
+RSU total packet size is 19352
+This is tag16. Serialized size is 1432
+RSU total packet size is 20588
+This is tag13. Serialized size is 1180
+RSU total packet size is 20984
+This is tag3. Serialized size is 340
+RSU total packet size is 21296
+This is tag2. Serialized size is 256
+RSU total packet size is 21608
+This is tag2. Serialized size is 256
+RSU total packet size is 22004
+This is tag3. Serialized size is 340
+RSU total packet size is 22652
+This is tag6. Serialized size is 592
+RSU total packet size is 23636
+This is tag10. Serialized size is 928
+RSU total packet size is 25376
+Current neighbor size is 17Received neighborset from 94
+This is tag18. Serialized size is 1600
+RSU total packet size is 27284
+This is tag21. Serialized size is 1852
+RSU total packet size is 27848
+This is tag5. Serialized size is 508
+RSU total packet size is 28160
+This is tag2. Serialized size is 256
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=73% Ch174(316m)=76% Ch176(316m)=75% Ch178(1122m)=76% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=75% | Avg=82.4816%
+average packet delivery ratio is 82.5961
+average jitter is 0
+average load balance is 100
+written to file successfully
+RSU total packet size is 28472
+This is tag2. Serialized size is 256
+RSU total packet size is 29204
+This is tag7. Serialized size is 676
+RSU total packet size is 30356
+This is tag12. Serialized size is 1096
+RSU total packet size is 31656
+Current neighbor size is 12Received neighborset from 85
+This is tag13. Serialized size is 1180
+RSU total packet size is 33144
+This is tag16. Serialized size is 1432
+RSU total packet size is 34380
+This is tag13. Serialized size is 1180
+RSU total packet size is 34776
+This is tag3. Serialized size is 340
+RSU total packet size is 35088
+This is tag2. Serialized size is 256
+RSU total packet size is 35400
+This is tag2. Serialized size is 256
+RSU total packet size is 35796
+This is tag3. Serialized size is 340
+RSU total packet size is 36444
+This is tag6. Serialized size is 592
+RSU total packet size is 37428
+This is tag10. Serialized size is 928
+RSU total packet size is 39084
+This is tag18. Serialized size is 1600
+RSU total packet size is 40992
+This is tag21. Serialized size is 1852
+RSU total packet size is 41556
+This is tag5. Serialized size is 508
+RSU total packet size is 41868
+This is tag2. Serialized size is 256
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=74% Ch174(316m)=76% Ch176(316m)=75% Ch178(1122m)=75% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=75% | Avg=82.5318%
+average packet delivery ratio is 82.5747
+average jitter is 0
+average load balance is 100
+written to file successfully
+RSU total packet size is 42180
+This is tag2. Serialized size is 256
+RSU total packet size is 42912
+This is tag7. Serialized size is 676
+RSU total packet size is 44064
+This is tag12. Serialized size is 1096
+RSU total packet size is 45364
+Current neighbor size is 12Received neighborset from 85
+This is tag13. Serialized size is 1180
+RSU total packet size is 46852
+This is tag16. Serialized size is 1432
+RSU total packet size is 48088
+This is tag13. Serialized size is 1180
+RSU total packet size is 48484
+This is tag3. Serialized size is 340
+RSU total packet size is 48796
+This is tag2. Serialized size is 256
+RSU total packet size is 49108
+This is tag2. Serialized size is 256
+RSU total packet size is 49504
+This is tag3. Serialized size is 340
+RSU total packet size is 50152
+This is tag6. Serialized size is 592
+RSU total packet size is 51136
+This is tag10. Serialized size is 928
+RSU total packet size is 52792
+This is tag18. Serialized size is 1600
+RSU total packet size is 54700
+This is tag21. Serialized size is 1852
+RSU total packet size is 55264
+This is tag5. Serialized size is 508
+RSU total packet size is 55576
+This is tag2. Serialized size is 256
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=74% Ch174(316m)=76% Ch176(316m)=75% Ch178(1122m)=75% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=75% | Avg=82.4642%
+average packet delivery ratio is 82.5471
+average jitter is 0
+average load balance is 100
+written to file successfully
+RSU total packet size is 55888
+This is tag2. Serialized size is 256
+RSU total packet size is 56620
+This is tag7. Serialized size is 676
+RSU total packet size is 57772
+This is tag12. Serialized size is 1096
+RSU total packet size is 59072
+Current neighbor size is 12Received neighborset from 85
+This is tag13. Serialized size is 1180
+RSU total packet size is 60548
+Current neighbor size is 14Received neighborset from 86
+This is tag15. Serialized size is 1348
+RSU total packet size is 61784
+This is tag13. Serialized size is 1180
+RSU total packet size is 62180
+This is tag3. Serialized size is 340
+RSU total packet size is 62492
+This is tag2. Serialized size is 256
+RSU total packet size is 62804
+This is tag2. Serialized size is 256
+RSU total packet size is 63200
+This is tag3. Serialized size is 340
+RSU total packet size is 63848
+This is tag6. Serialized size is 592
+RSU total packet size is 64832
+This is tag10. Serialized size is 928
+RSU total packet size is 66484
+Current neighbor size is 16Received neighborset from 94
+This is tag17. Serialized size is 1516
+RSU total packet size is 68392
+This is tag21. Serialized size is 1852
+RSU total packet size is 68956
+This is tag5. Serialized size is 508
+RSU total packet size is 69268
+This is tag2. Serialized size is 256
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=74% Ch174(316m)=76% Ch176(316m)=75% Ch178(1122m)=75% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=75% | Avg=82.5025%
+average packet delivery ratio is 82.5382
+average jitter is 0
+average load balance is 100
+written to file successfully
+RSU total packet size is 69580
+This is tag2. Serialized size is 256
+RSU total packet size is 70312
+This is tag7. Serialized size is 676
+RSU total packet size is 71464
+This is tag12. Serialized size is 1096
+RSU total packet size is 72852
+Current neighbor size is 13Received neighborset from 85
+This is tag14. Serialized size is 1264
+RSU total packet size is 74416
+Current neighbor size is 15Received neighborset from 86
+This is tag16. Serialized size is 1432
+RSU total packet size is 75652
+This is tag13. Serialized size is 1180
+RSU total packet size is 76048
+This is tag3. Serialized size is 340
+RSU total packet size is 76360
+This is tag2. Serialized size is 256
+RSU total packet size is 76672
+This is tag2. Serialized size is 256
+RSU total packet size is 77068
+This is tag3. Serialized size is 340
+RSU total packet size is 77716
+This is tag6. Serialized size is 592
+RSU total packet size is 78700
+This is tag10. Serialized size is 928
+RSU total packet size is 80352
+Current neighbor size is 16Received neighborset from 94
+This is tag17. Serialized size is 1516
+RSU total packet size is 82260
+This is tag21. Serialized size is 1852
+RSU total packet size is 82824
+This is tag5. Serialized size is 508
+RSU total packet size is 83136
+This is tag2. Serialized size is 256
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=74% Ch174(316m)=76% Ch176(316m)=75% Ch178(1122m)=75% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=75% | Avg=82.4795%
+average packet delivery ratio is 82.5284
+average jitter is 0
+average load balance is 100
+written to file successfully
+RSU total packet size is 83448
+This is tag2. Serialized size is 256
+RSU total packet size is 84180
+This is tag7. Serialized size is 676
+RSU total packet size is 85332
+This is tag12. Serialized size is 1096
+RSU total packet size is 86652
+This is tag14. Serialized size is 1264
+RSU total packet size is 88140
+This is tag16. Serialized size is 1432
+RSU total packet size is 89376
+This is tag13. Serialized size is 1180
+RSU total packet size is 89772
+This is tag3. Serialized size is 340
+RSU total packet size is 90084
+This is tag2. Serialized size is 256
+RSU total packet size is 90396
+This is tag2. Serialized size is 256
+RSU total packet size is 90792
+This is tag3. Serialized size is 340
+RSU total packet size is 91440
+This is tag6. Serialized size is 592
+RSU total packet size is 92424
+This is tag10. Serialized size is 928
+RSU total packet size is 93996
+This is tag17. Serialized size is 1516
+RSU total packet size is 95904
+This is tag21. Serialized size is 1852
+RSU total packet size is 96468
+This is tag5. Serialized size is 508
+RSU total packet size is 96780
+This is tag2. Serialized size is 256
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=74% Ch174(316m)=75% Ch176(316m)=75% Ch178(1122m)=75% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=75% | Avg=82.5119%
+average packet delivery ratio is 82.526
+average jitter is 0
+average load balance is 100
+written to file successfully
+RSU total packet size is 97092
+This is tag2. Serialized size is 256
+RSU total packet size is 97824
+This is tag7. Serialized size is 676
+RSU total packet size is 98976
+This is tag12. Serialized size is 1096
+RSU total packet size is 100276
+Current neighbor size is 12Received neighborset from 85
+This is tag13. Serialized size is 1180
+RSU total packet size is 101764
+This is tag16. Serialized size is 1432
+RSU total packet size is 103000
+This is tag13. Serialized size is 1180
+RSU total packet size is 103396
+This is tag3. Serialized size is 340
+RSU total packet size is 103708
+This is tag2. Serialized size is 256
+RSU total packet size is 104020
+This is tag2. Serialized size is 256
+RSU total packet size is 104416
+This is tag3. Serialized size is 340
+RSU total packet size is 105064
+This is tag6. Serialized size is 592
+RSU total packet size is 106048
+This is tag10. Serialized size is 928
+RSU total packet size is 107620
+This is tag17. Serialized size is 1516
+RSU total packet size is 109528
+This is tag21. Serialized size is 1852
+RSU total packet size is 110092
+This is tag5. Serialized size is 508
+RSU total packet size is 110404
+This is tag2. Serialized size is 256
+average_latency 0 ms
+[PDR] Channel-wise: Ch172(316m)=74% Ch174(316m)=75% Ch176(316m)=75% Ch178(1122m)=75% Ch180(100m)=100% Ch182(100m)=100% Ch184(707m)=75% | Avg=82.4652%
+average packet delivery ratio is 82.5184
+average jitter is 0
+average load balance is 100
+written to file successfully

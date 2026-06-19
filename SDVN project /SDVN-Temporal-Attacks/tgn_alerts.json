@@ -1,0 +1,12 @@
+[
+  {
+    "v_id": "V7",
+    "alpha": "TTW_S2_MAL_RSU",
+    "y_hat": 0.35,
+    "t_alert": 20050,
+    "interval_ts_ms": 20050,
+    "S_trig": [0, 2, 6],
+    "from_lw_path": false,
+    "tdet_ms": 50
+  }
+]

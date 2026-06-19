@@ -1,7 +1,12 @@
 ./sdvn-temporal-attacks.cc
 npfads_plots/*
-./SDVN project /SDVN-Temporal-Attacks/sumo_maps/*
-./SDVN project /SDVN-Temporal-Attacks/mobility/*
-./SDVN project /SDVN-Temporal-Attacks-codes.zip
+SDVN project /SDVN-Temporal-Attacks/sumo_maps/
+SDVN project /SDVN-Temporal-Attacks/mobility/
+SDVN project /SDVN-Temporal-Attacks/outputs/XML/
+SDVN project /SDVN-Temporal-Attacks/existing_methods/*.pkl
+SDVN project /*.zip
+SDVN project /*.rar
+SDVN project /SDVN-Temporal-Attacks/*.zip
+SDVN project /SDVN-Temporal-Attacks/*.rar
 
 

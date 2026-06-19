@@ -1,0 +1,317 @@
+Cleared old summary files.
+
+══════════════════════════════════════════════════════════
+ Run 1 / 20  |  VeReMi  |  TTW-S2  |  ATK=0%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=0  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=2  malicious_nodes=0  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=3385  FP=53455  FN=0
+  MCC=1.000  AUROC=0.530  Tdet=-1.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 1037s
+
+══════════════════════════════════════════════════════════
+ Run 2 / 20  |  VeReMi  |  TTW-S2  |  ATK=25%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=25  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=2  malicious_nodes=50  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=6674  FP=33606  FN=0
+  MCC=0.010  AUROC=0.583  Tdet=100.000 ms
+  PDR(attack)=75.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 954s
+
+══════════════════════════════════════════════════════════
+ Run 3 / 20  |  VeReMi  |  TTW-S2  |  ATK=50%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=50  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=2  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=13274  FP=15013  FN=0
+  MCC=0.025  AUROC=0.735  Tdet=100.000 ms
+  PDR(attack)=50.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 841s
+
+══════════════════════════════════════════════════════════
+ Run 4 / 20  |  VeReMi  |  TTW-S2  |  ATK=75%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=75  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=2  malicious_nodes=150  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=9  TN=19447  FP=6593  FN=0
+  MCC=0.032  AUROC=0.873  Tdet=100.000 ms
+  PDR(attack)=25.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 742s
+
+══════════════════════════════════════════════════════════
+ Run 5 / 20  |  VeReMi  |  TTW-S2  |  ATK=100%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=100  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=2  malicious_nodes=200  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=25918  FP=4577  FN=0
+  MCC=1.000  AUROC=0.925  Tdet=-1.000 ms
+  PDR(attack)=0.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 681s
+
+══════════════════════════════════════════════════════════
+ Run 6 / 20  |  VeReMi  |  BSHH-S6  |  ATK=0%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=0  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=6  malicious_nodes=0  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=3385  FP=53455  FN=0
+  MCC=1.000  AUROC=0.530  Tdet=-1.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 1023s
+
+══════════════════════════════════════════════════════════
+ Run 7 / 20  |  VeReMi  |  BSHH-S6  |  ATK=25%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=25  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=6  malicious_nodes=50  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=6674  FP=31606  FN=0
+  MCC=0.011  AUROC=0.587  Tdet=100.000 ms
+  PDR(attack)=75.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 953s
+
+══════════════════════════════════════════════════════════
+ Run 8 / 20  |  VeReMi  |  BSHH-S6  |  ATK=50%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=50  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=6  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=13274  FP=13013  FN=0
+  MCC=0.028  AUROC=0.752  Tdet=100.000 ms
+  PDR(attack)=50.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 834s
+
+══════════════════════════════════════════════════════════
+ Run 9 / 20  |  VeReMi  |  BSHH-S6  |  ATK=75%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=75  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=6  malicious_nodes=150  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=9  TN=19447  FP=5693  FN=0
+  MCC=0.035  AUROC=0.887  Tdet=100.000 ms
+  PDR(attack)=25.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 746s
+
+══════════════════════════════════════════════════════════
+ Run 10 / 20  |  VeReMi  |  BSHH-S6  |  ATK=100%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=100  Random=0  N_Vehicles=200
+[CD] detector=1  scenario=6  malicious_nodes=200  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=25918  FP=4577  FN=0
+  MCC=1.000  AUROC=0.925  Tdet=-1.000 ms
+  PDR(attack)=0.000%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 686s
+
+══════════════════════════════════════════════════════════
+ Run 11 / 20  |  MBSM  |  TTW-S2  |  ATK=0%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=0  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=2  malicious_nodes=0  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=388  FP=113292  FN=0
+  MCC=1.000  AUROC=0.502  Tdet=-1.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 1018s
+
+══════════════════════════════════════════════════════════
+ Run 12 / 20  |  MBSM  |  TTW-S2  |  ATK=25%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=25  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=2  malicious_nodes=50  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=10527  FP=70004  FN=0
+  MCC=0.006  AUROC=0.565  Tdet=50.000 ms
+  PDR(attack)=75.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 945s
+
+══════════════════════════════════════════════════════════
+ Run 13 / 20  |  MBSM  |  TTW-S2  |  ATK=50%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=50  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=2  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=24205  FP=32324  FN=0
+  MCC=0.016  AUROC=0.714  Tdet=50.000 ms
+  PDR(attack)=50.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 831s
+
+══════════════════════════════════════════════════════════
+ Run 14 / 20  |  MBSM  |  TTW-S2  |  ATK=75%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=75  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=2  malicious_nodes=150  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=9  TN=38084  FP=13945  FN=0
+  MCC=0.022  AUROC=0.866  Tdet=50.000 ms
+  PDR(attack)=25.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 745s
+
+══════════════════════════════════════════════════════════
+ Run 15 / 20  |  MBSM  |  TTW-S2  |  ATK=100%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=2  pct=100  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=2  malicious_nodes=200  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=51414  FP=9516  FN=0
+  MCC=1.000  AUROC=0.922  Tdet=-1.000 ms
+  PDR(attack)=0.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 686s
+
+══════════════════════════════════════════════════════════
+ Run 16 / 20  |  MBSM  |  BSHH-S6  |  ATK=0%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=0  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=6  malicious_nodes=0  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=388  FP=113292  FN=0
+  MCC=1.000  AUROC=0.502  Tdet=-1.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 1016s
+
+══════════════════════════════════════════════════════════
+ Run 17 / 20  |  MBSM  |  BSHH-S6  |  ATK=25%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=25  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=6  malicious_nodes=50  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=10527  FP=66004  FN=0
+  MCC=0.006  AUROC=0.569  Tdet=50.000 ms
+  PDR(attack)=75.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 941s
+
+══════════════════════════════════════════════════════════
+ Run 18 / 20  |  MBSM  |  BSHH-S6  |  ATK=50%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=50  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=6  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=20  TN=24205  FP=28324  FN=0
+  MCC=0.018  AUROC=0.730  Tdet=50.000 ms
+  PDR(attack)=50.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 834s
+
+══════════════════════════════════════════════════════════
+ Run 19 / 20  |  MBSM  |  BSHH-S6  |  ATK=75%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=75  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=6  malicious_nodes=150  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=9  TN=38084  FP=12145  FN=0
+  MCC=0.024  AUROC=0.879  Tdet=50.000 ms
+  PDR(attack)=25.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 746s
+
+══════════════════════════════════════════════════════════
+ Run 20 / 20  |  MBSM  |  BSHH-S6  |  ATK=100%
+══════════════════════════════════════════════════════════
+[declare_attackers] scenario=6  pct=100  Random=0  N_Vehicles=200
+[CD] detector=2  scenario=6  malicious_nodes=200  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=0  TN=51414  FP=9516  FN=0
+  MCC=1.000  AUROC=0.922  Tdet=-1.000 ms
+  PDR(attack)=0.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+  → Done in 683s
+
+══════════════════════════════════════════════════════════
+ ALL 20 RUNS COMPLETE  (total: 16942s)
+══════════════════════════════════════════════════════════
+
+=== VeReMi summary ===
+attack_scenario,scenario_name,N_Vehicles,N_RSUs,attack_percentage,n_malicious,detector,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_baseline_pct
+2,"TTW-S2: Malicious RSU",200,64,0,0,"VeReMi_VREM_Detect (Mekonen 2025)",0,3385,53455,0,1.000,0.530,-1.000,100.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,25,50,"VeReMi_VREM_Detect (Mekonen 2025)",20,6674,33606,0,0.010,0.583,100.000,75.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,50,100,"VeReMi_VREM_Detect (Mekonen 2025)",20,13274,15013,0,0.025,0.735,100.000,50.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,75,150,"VeReMi_VREM_Detect (Mekonen 2025)",9,19447,6593,0,0.032,0.873,100.000,25.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,100,200,"VeReMi_VREM_Detect (Mekonen 2025)",0,25918,4577,0,1.000,0.925,-1.000,0.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,0,0,"VeReMi_VREM_Detect (Mekonen 2025)",0,3385,53455,0,1.000,0.530,-1.000,100.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,25,50,"VeReMi_VREM_Detect (Mekonen 2025)",20,6674,31606,0,0.011,0.587,100.000,75.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,50,100,"VeReMi_VREM_Detect (Mekonen 2025)",20,13274,13013,0,0.028,0.752,100.000,50.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,75,150,"VeReMi_VREM_Detect (Mekonen 2025)",9,19447,5693,0,0.035,0.887,100.000,25.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,100,200,"VeReMi_VREM_Detect (Mekonen 2025)",0,25918,4577,0,1.000,0.925,-1.000,0.000,100.000
+
+=== MBSM summary ===
+attack_scenario,scenario_name,N_Vehicles,N_RSUs,attack_percentage,n_malicious,detector,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_baseline_pct
+2,"TTW-S2: Malicious RSU",200,64,0,0,"Multi_BSM_MBSM (Trabelsi 2022)",0,388,113292,0,1.000,0.502,-1.000,100.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,25,50,"Multi_BSM_MBSM (Trabelsi 2022)",20,10527,70004,0,0.006,0.565,50.000,75.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,50,100,"Multi_BSM_MBSM (Trabelsi 2022)",20,24205,32324,0,0.016,0.714,50.000,50.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,75,150,"Multi_BSM_MBSM (Trabelsi 2022)",9,38084,13945,0,0.022,0.866,50.000,25.000,100.000
+2,"TTW-S2: Malicious RSU",200,64,100,200,"Multi_BSM_MBSM (Trabelsi 2022)",0,51414,9516,0,1.000,0.922,-1.000,0.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,0,0,"Multi_BSM_MBSM (Trabelsi 2022)",0,388,113292,0,1.000,0.502,-1.000,100.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,25,50,"Multi_BSM_MBSM (Trabelsi 2022)",20,10527,66004,0,0.006,0.569,50.000,75.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,50,100,"Multi_BSM_MBSM (Trabelsi 2022)",20,24205,28324,0,0.018,0.730,50.000,50.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,75,150,"Multi_BSM_MBSM (Trabelsi 2022)",9,38084,12145,0,0.024,0.879,50.000,25.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,100,200,"Multi_BSM_MBSM (Trabelsi 2022)",0,51414,9516,0,1.000,0.922,-1.000,0.000,100.000
+
+Copied VeReMi CSV → veremi_raw/
+Copied MBSM CSV → mbsm_raw/
+Copied pairs CSV → knn_raw/
+
+══════════════════════════════════════════════════════════
+ Generating charts...
+══════════════════════════════════════════════════════════
+Traceback (most recent call last):
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/existing_methods/generate_charts.py", line 22, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+Chart generation failed.
+
+══════════════════════════════════════════════════════════
+ Running KNN bagging detector...
+══════════════════════════════════════════════════════════
+Traceback (most recent call last):
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/existing_methods/temporal_veremi_compare_knn.py", line 95, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+KNN failed.
+
+══════════════════════════════════════════════════════════
+ ALL STEPS COMPLETE
+══════════════════════════════════════════════════════════

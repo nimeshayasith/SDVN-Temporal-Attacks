@@ -1,0 +1,13 @@
+{
+    "C_Cpp.default.compilerPath": "/usr/bin/g++-11",
+    "C_Cpp.files.exclude": {
+        "**/routing.cc": true,
+        "**/crypto/*.cc": true,
+        "**/crypto/*.h": true,
+        "**/tgn/tgn_detector.cc": true,
+        "**/temporal_mbsm_detector.cc": true,
+        "**/temporal_veremi_detector.cc": true,
+        "**/temporal_mbsm_compare.cc": true,
+        "**/temporal_veremi_compare.cc": true
+    }
+}

@@ -1,0 +1,275 @@
+Solution at controller cleared
+[CD] detector=2  scenario=9  malicious_nodes=200  rsus=0
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 316389 exact position+velocity events
+[SUMO] Attack 9: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/09_ME_S1_Malicious_Vehicles.xml
+
+========================================
+SCENARIO 09 - ME-S1 ATTACK CONFIGURED
+  Total vehicles        : 200
+  Attack percentage     : 100%
+  Echo attackers        : 100
+  Benign (real link) veh: 100
+  Active attack groups  : 50
+  Real link pair        : V129<->V122
+  Echo attackers (NS-3 IDs): V35 V27 V84 V15 V11 V73 V61 V49 V21 V18 V14 V34 V101 V68 V76 V19 V95 V97 V71 V57 V16 V30 V20 V90 V64 V38 V80 V13 V6 V33 V93 V5 V74 V17 V66 V12 V67 V81 V24 V60 V52 V56 V26 V77 V50 V65 V43 V79 V39 V58 V46 V23 V85 V87 V75 V72 V59 V42 V48 V63 V32 V53 V82 V54 V29 V69 V62 V104 V37 V83 V78 V55 V10 V47 V8 V98 V103 V88 V7 V31 V100 V86 V45 V22 V44 V89 V92 V40 V36 V9 V99 V91 V102 V70 V94 V28 V25 V51 V41 V96 
+  Active groups (all echo V129<->V122):
+    Group 1: V35+V27 echo V129<->V122
+    Group 2: V84+V15 echo V129<->V122
+    Group 3: V11+V73 echo V129<->V122
+    Group 4: V61+V49 echo V129<->V122
+    Group 5: V21+V18 echo V129<->V122
+    Group 6: V14+V34 echo V129<->V122
+    Group 7: V101+V68 echo V129<->V122
+    Group 8: V76+V19 echo V129<->V122
+    Group 9: V95+V97 echo V129<->V122
+    Group 10: V71+V57 echo V129<->V122
+    Group 11: V16+V30 echo V129<->V122
+    Group 12: V20+V90 echo V129<->V122
+    Group 13: V64+V38 echo V129<->V122
+    Group 14: V80+V13 echo V129<->V122
+    Group 15: V6+V33 echo V129<->V122
+    Group 16: V93+V5 echo V129<->V122
+    Group 17: V74+V17 echo V129<->V122
+    Group 18: V66+V12 echo V129<->V122
+    Group 19: V67+V81 echo V129<->V122
+    Group 20: V24+V60 echo V129<->V122
+    Group 21: V52+V56 echo V129<->V122
+    Group 22: V26+V77 echo V129<->V122
+    Group 23: V50+V65 echo V129<->V122
+    Group 24: V43+V79 echo V129<->V122
+    Group 25: V39+V58 echo V129<->V122
+    Group 26: V46+V23 echo V129<->V122
+    Group 27: V85+V87 echo V129<->V122
+    Group 28: V75+V72 echo V129<->V122
+    Group 29: V59+V42 echo V129<->V122
+    Group 30: V48+V63 echo V129<->V122
+    Group 31: V32+V53 echo V129<->V122
+    Group 32: V82+V54 echo V129<->V122
+    Group 33: V29+V69 echo V129<->V122
+    Group 34: V62+V104 echo V129<->V122
+    Group 35: V37+V83 echo V129<->V122
+    Group 36: V78+V55 echo V129<->V122
+    Group 37: V10+V47 echo V129<->V122
+    Group 38: V8+V98 echo V129<->V122
+    Group 39: V103+V88 echo V129<->V122
+    Group 40: V7+V31 echo V129<->V122
+    Group 41: V100+V86 echo V129<->V122
+    Group 42: V45+V22 echo V129<->V122
+    Group 43: V44+V89 echo V129<->V122
+    Group 44: V92+V40 echo V129<->V122
+    Group 45: V36+V9 echo V129<->V122
+    Group 46: V99+V91 echo V129<->V122
+    Group 47: V102+V70 echo V129<->V122
+    Group 48: V94+V28 echo V129<->V122
+    Group 49: V25+V51 echo V129<->V122
+    Group 50: V41+V96 echo V129<->V122
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[ME-S1][t=10.020]  STEP①  V129 <-> V122 HELLO exchange (real link)
+[ME-S1][t=10.020]  STEP②  V129, V122 report real link to controller
+[ME-S1][t=10.020]  STEP③  V35, V27 overhear HELLO — stored for echo
+[ME-S1][t=10.101]  STEP④  V84 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.101]  STEP④  V15 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.101]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.102]  STEP④  V21 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.102]  STEP④  V18 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.102]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.104]  STEP④  V66 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.104]  STEP④  V12 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.104]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.104]  STEP④  V20 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.104]  STEP④  V90 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.104]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.106]  STEP④  V46 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.106]  STEP④  V23 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.106]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.109]  STEP④  V16 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.109]  STEP④  V30 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.109]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.110]  STEP④  V14 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.110]  STEP④  V34 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.110]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.111]  STEP④  V61 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.111]  STEP④  V49 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.111]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.111]  STEP④  V75 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.111]  STEP④  V72 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.111]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.112]  STEP④  V35 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.112]  STEP④  V27 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.112]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.114]  STEP④  V101 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.114]  STEP④  V68 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.114]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.115]  STEP④  V80 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.115]  STEP④  V13 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.115]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.115]  STEP④  V71 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.115]  STEP④  V57 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.115]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.118]  STEP④  V11 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.118]  STEP④  V73 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.118]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.123]  STEP④  V50 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.123]  STEP④  V65 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.123]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.124]  STEP④  V44 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.124]  STEP④  V89 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.124]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.126]  STEP④  V29 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.126]  STEP④  V69 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.126]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.132]  STEP④  V95 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.132]  STEP④  V97 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.132]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.134]  STEP④  V102 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.134]  STEP④  V70 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.134]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.135]  STEP④  V41 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.135]  STEP④  V96 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.135]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.136]  STEP④  V24 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP④  V60 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.136]  STEP④  V32 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP④  V53 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.136]  STEP④  V25 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP④  V51 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.138]  STEP④  V94 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.138]  STEP④  V28 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.138]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.138]  STEP④  V26 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.138]  STEP④  V77 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.138]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.141]  STEP④  V100 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.141]  STEP④  V86 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.141]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.142]  STEP④  V52 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.142]  STEP④  V56 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.142]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.142]  STEP④  V45 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.142]  STEP④  V22 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.142]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.143]  STEP④  V92 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.143]  STEP④  V40 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.143]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.145]  STEP④  V93 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.145]  STEP④  V5 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.145]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.146]  STEP④  V10 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.146]  STEP④  V47 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.146]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.147]  STEP④  V8 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.147]  STEP④  V98 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.147]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.147]  STEP④  V78 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.147]  STEP④  V55 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.147]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.153]  STEP④  V82 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.153]  STEP④  V54 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.153]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.154]  STEP④  V43 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.154]  STEP④  V79 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.154]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.155]  STEP④  V64 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.155]  STEP④  V38 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.155]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.156]  STEP④  V39 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.156]  STEP④  V58 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.156]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.157]  STEP④  V37 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.157]  STEP④  V83 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.157]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.160]  STEP④  V99 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.160]  STEP④  V91 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.160]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.161]  STEP④  V48 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.161]  STEP④  V63 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.161]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.161]  STEP④  V76 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.161]  STEP④  V19 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.161]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.167]  STEP④  V74 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.167]  STEP④  V17 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.167]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.167]  STEP④  V59 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.167]  STEP④  V42 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.167]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.173]  STEP④  V85 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.173]  STEP④  V87 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.173]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.173]  STEP④  V6 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.173]  STEP④  V33 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.173]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.175]  STEP④  V62 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.175]  STEP④  V104 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.175]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.176]  STEP④  V67 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.176]  STEP④  V81 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.176]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.180]  STEP④  V36 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.180]  STEP④  V9 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.180]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.180]  STEP④  V103 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.180]  STEP④  V88 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.180]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+[ME-S1][t=10.197]  STEP④  V7 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.197]  STEP④  V31 --ECHO--> Controller  <V129 sees V122>  FALSE REPORTER
+[ME-S1][t=10.197]  STEP⑤  Controller infers phantom paths for V129->V122  *** ATTACK COMPLETE ***
+
+[CD] ══════════════════════════════════════════════
+  Detector    : Multi_BSM_MBSM (Trabelsi 2022)
+  Scenario    : [9] ME-S1: Malicious Vehicles, No RSU
+  Attack%     : 100% (200 malicious nodes)
+  TP=0  TN=0  FP=0  FN=0
+  MCC=0.000  AUROC=0.500  Tdet=-1.000 ms
+  PDR(attack)=0.000%  PDR(baseline)=100.000%
+  Output: comparison_mbsm_summary.csv
+[CD] ══════════════════════════════════════════════
+
+
+[NPFADS] ====== Running NPFADS Detection Pipeline ======
+[NPFADS]  Attack scenario : 9
+[NPFADS]  BSM records     : 2
+[NPFADS-SOL] Loaded 2 BSM records
+[NPFADS-SOL] Eigenvalues computed for 2 senders
+[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
+  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
+  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
+  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
+  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
+
+╔═══════════════════════════════════════════════════════════════════╗
+║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
+║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
+╠═════════╪═════════════════╪═════════════════╪════════════════════╣
+║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Detection latency estimate: 100 ms  (= 1 × 100 ms beacon interval)                    ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+  Paper reference values (Table 6, MDS at fog node):
+    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
+    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
+    Type 16:  F1 = 0.98
+
+  NADM paper values: UC_known=0.09617  NASEA=0.99944
+
+[NPFADS] ====== NPFADS Detection Complete ======
+[NPFADS] Expected result for TTW/BSHH/ME scenarios:
+[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
+[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
+[NPFADS]   Novel det  = NO   (no AE reconstruction error)
+[NPFADS] --> These attacks evade position-based detection.
+[NPFADS] --> PEM detected them via temporal signature analysis.
+[NPFADS] --> The two detectors are COMPLEMENTARY.
+

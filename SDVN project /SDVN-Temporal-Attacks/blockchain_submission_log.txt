@@ -1,0 +1,9 @@
+[2026-06-17T20:55:03.563Z] AnchorCheckpoint created  id=7ac763dc732fca57860c442128083d403800d213814de69eb129c684831feb14  block=1  by=peer0.rsu1.tetaguard.net
+[2026-06-17T21:23:05.077Z] AttackDetected  vehicle=V0  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.87
+[2026-06-17T21:24:54.243Z] AttackDetected  vehicle=V0  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.87
+[2026-06-17T21:33:11.586Z] AttackDetected  vehicle=V0  variant=TTW_S1_MAL_VEH_NO_RSU  score=1
+[2026-06-17T22:24:10.972Z] AttackDetected  vehicle=V205  variant=BSHH_S2_MAL_RSU  score=0.1
+[2026-06-17T22:26:05.031Z] AttackDetected  vehicle=V6  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.25
+[2026-06-17T22:29:19.950Z] AttackDetected  vehicle=V5  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.261658
+[2026-06-18T18:59:31.784Z] TrustRound #4  participating=8/8  mode=rsu
+[2026-06-18T19:04:31.824Z] TrustRound #2969  participating=8/8  mode=rsu

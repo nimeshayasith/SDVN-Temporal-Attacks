@@ -1,0 +1,40 @@
+=== Run 1/4: VeReMi S2 ATK=50% ===
+[CD] detector=1  scenario=2  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=1  TN=117  FP=286  FN=0
+  MCC=0.032  AUROC=0.645  Tdet=100.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+[CD] ══════════════════════════════════════════════
+Time: 875s
+=== Run 2/4: VeReMi S6 ATK=50% ===
+[CD] detector=1  scenario=6  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=1  TN=117  FP=286  FN=0
+  MCC=0.032  AUROC=0.645  Tdet=100.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+[CD] ══════════════════════════════════════════════
+Time: 830s
+=== Run 3/4: MBSM S2 ATK=50% ===
+[CD] detector=2  scenario=2  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=1  TN=4  FP=801  FN=0
+  MCC=0.002  AUROC=0.502  Tdet=50.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+[CD] ══════════════════════════════════════════════
+Time: 849s
+=== Run 4/4: MBSM S6 ATK=50% ===
+[CD] detector=2  scenario=6  malicious_nodes=100  rsus=64
+[CD] ══════════════════════════════════════════════
+  TP=1  TN=4  FP=801  FN=0
+  MCC=0.002  AUROC=0.502  Tdet=50.000 ms
+  PDR(attack)=100.000%  PDR(baseline)=100.000%
+[CD] ══════════════════════════════════════════════
+Time: 888s
+=== ALL DONE ===
+attack_scenario,scenario_name,N_Vehicles,N_RSUs,attack_percentage,n_malicious,detector,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_baseline_pct
+2,"TTW-S2: Malicious RSU",200,64,50,100,"VeReMi_VREM_Detect (Mekonen 2025)",1,117,286,0,0.032,0.645,100.000,100.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,50,100,"VeReMi_VREM_Detect (Mekonen 2025)",1,117,286,0,0.032,0.645,100.000,100.000,100.000
+---
+attack_scenario,scenario_name,N_Vehicles,N_RSUs,attack_percentage,n_malicious,detector,tp,tn,fp,fn,mcc,auroc,tdet_ms,pdr_under_attack_pct,pdr_baseline_pct
+2,"TTW-S2: Malicious RSU",200,64,50,100,"Multi_BSM_MBSM (Trabelsi 2022)",1,4,801,0,0.002,0.502,50.000,100.000,100.000
+6,"BSHH-S2: Malicious RSU",200,64,50,100,"Multi_BSM_MBSM (Trabelsi 2022)",1,4,801,0,0.002,0.502,50.000,100.000,100.000

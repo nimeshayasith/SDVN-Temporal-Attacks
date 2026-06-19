@@ -1,0 +1,62 @@
+# crypto-config.yaml — MSP certificate configuration for TETA-Guard
+#
+# SmartBFT orderer: 4 orderer nodes (3f+1 = 4 for f=1 Byzantine fault tolerance).
+# This replaces the single orderer used with etcdraft.
+#
+# Two deployment modes — both share the same TetaGuardOrg:
+#
+#   RSU mode  (N_RSUs > 0): 5 fixed RSU Fabric peers
+#     peer0.rsu1..5.tetaguard.net  (ports 7051..7055)
+#     Endorsement: OutOf(3, RSU1..RSU5)  — tolerates 1 Byzantine RSU
+#
+#   OBU mode  (N_RSUs = 0): 3 designated OBU Fabric peers
+#     peer0.obu1..3.tetaguard.net  (ports 7061..7063)
+#     Endorsement: OutOf(2, OBU1..OBU3)  — tolerates 1 crash fault
+#
+# Generate crypto material:
+#   cryptogen generate --config=./crypto-config.yaml --output=./crypto-config
+
+OrdererOrgs:
+  - Name: OrdererOrg
+    Domain: orderer.tetaguard.net
+    EnableNodeOUs: true
+    # 4 orderer nodes for SmartBFT: 3f+1 = 4 satisfies f=1 Byzantine fault tolerance.
+    Specs:
+      - Hostname: orderer1
+        CommonName: orderer1.tetaguard.net
+      - Hostname: orderer2
+        CommonName: orderer2.tetaguard.net
+      - Hostname: orderer3
+        CommonName: orderer3.tetaguard.net
+      - Hostname: orderer4
+        CommonName: orderer4.tetaguard.net
+
+PeerOrgs:
+  - Name: TetaGuardOrg
+    Domain: tetaguard.net
+    EnableNodeOUs: true
+    CA:
+      Hostname: ca
+    Template:
+      Count: 0  # peers listed explicitly below
+    Specs:
+      # ── RSU peers (fixed roadside infrastructure) ─────────────────────────
+      - Hostname: peer0.rsu1
+        CommonName: peer0.rsu1.tetaguard.net
+      - Hostname: peer0.rsu2
+        CommonName: peer0.rsu2.tetaguard.net
+      - Hostname: peer0.rsu3
+        CommonName: peer0.rsu3.tetaguard.net
+      - Hostname: peer0.rsu4
+        CommonName: peer0.rsu4.tetaguard.net
+      - Hostname: peer0.rsu5
+        CommonName: peer0.rsu5.tetaguard.net
+      # ── OBU peers (designated vehicles, used when N_RSUs = 0) ────────────
+      - Hostname: peer0.obu1
+        CommonName: peer0.obu1.tetaguard.net
+      - Hostname: peer0.obu2
+        CommonName: peer0.obu2.tetaguard.net
+      - Hostname: peer0.obu3
+        CommonName: peer0.obu3.tetaguard.net
+    Users:
+      Count: 1  # Admin user

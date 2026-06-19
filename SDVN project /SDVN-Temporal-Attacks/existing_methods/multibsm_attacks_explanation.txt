@@ -1,0 +1,269 @@
+================================================================================
+  Multi-BSM Position Falsification Attack — Code and Output Explanation
+================================================================================
+File    : multibsm_attacks.cc
+Based on: Trabelsi et al., Electronics 2022, 11, 3282
+Sim     : NS-3.35 standalone scratch file
+Scenarios: 0 (baseline), 13 (Type 1), 14 (Type 2), 15 (Type 3)
+================================================================================
+
+
+1. OVERVIEW
+-----------
+This NS-3.35 simulation implements three BSM (Basic Safety Message) position
+falsification attacks in a Software-Defined Vehicular Network (SDVN). An
+attacker vehicle falsifies its GPS position in the BSMs it broadcasts to the
+Road-Side Unit (RSU). The RSU runs physics-based detection on every received
+BSM and reports results to the PEM (Performance Evaluation Metrics) layer.
+
+All BSMs are transmitted as real NS-3 UDP packets carrying a custom NS-3 Tag
+(BsmTag), following the same tag-based packet architecture used in routing.cc.
+This makes packet flows visible in NetAnim and ensures realistic network
+behaviour.
+
+
+2. ATTACK TYPES
+---------------
+
+Scenario 0  — Baseline (no attack)
+  All vehicles broadcast true GPS positions. No falsification. Used to confirm
+  zero false positives from the detection algorithms.
+
+Scenario 13 — Type 1: Fixed Position Falsification
+  The attacker always reports the hardcoded coordinate (1000.0, 2000.0) in
+  every BSM, regardless of its true position. The reported speed is real
+  (from the NS-3 mobility model). Detection: the RSU notices that the reported
+  position never changes across consecutive BSMs while reported speed > 0.
+
+Scenario 14 — Type 2: Random Position Falsification
+  The attacker generates a fresh uniformly-random (x, y) coordinate in every
+  BSM. Area: [0, SIM_AREA_MAX] x [0, SIM_AREA_MAX] metres. Detection: the RSU
+  checks whether the reported displacement between consecutive BSMs exceeds
+  what the reported speed physically allows (|delta_pos| > v * dt * 1.5).
+
+Scenario 15 — Type 3: Stealthy (Delayed) Position Falsification
+  Phase 1 (0 to T3_legit_duration=20s): attacker broadcasts true GPS, building
+  a trusted history at the RSU.
+  Phase 2 (20s to end): attacker freezes its reported position at the last real
+  coordinate (g_t3_freeze_x, g_t3_freeze_y) but continues to report a non-zero
+  real speed. Detection: RSU sees speed > 0 with zero positional change —
+  immediate physical contradiction.
+
+
+3. NETWORK TOPOLOGY
+-------------------
+A P2P star topology is created in MBSM_SetupNetworkForAnim():
+
+  Vehicle_0  ---[P2P 1Gbps, 1ms]---+
+  Vehicle_1  ---[P2P 1Gbps, 1ms]---+
+  Vehicle_2  ---[P2P 1Gbps, 1ms]---+--> RSU_0
+  Vehicle_3  ---[P2P 1Gbps, 1ms]---+
+  Vehicle_4  ---[P2P 1Gbps, 1ms]---+
+  Vehicle_5  ---[P2P 1Gbps, 1ms]---+
+
+Each vehicle i gets IP address 10.1.(i+1).1/30.
+The RSU gets 10.1.(i+1).2/30 on each link.
+Global routing (Ipv4GlobalRoutingHelper::PopulateRoutingTables) ensures all
+vehicles can reach the RSU's primary IP (g_rsu_ip_anim).
+BSM_PORT = 7777 (UDP).
+
+
+4. NS-3 PACKET TAG: BsmTag
+---------------------------
+BsmTag is a custom NS-3 Tag subclass that encodes all BSM fields into a 45-byte
+serialized buffer. It is attached to a Ptr<Packet> before sending and extracted
+at the RSU using PeekPacketTag().
+
+  Field           Size    Description
+  ----------      ----    -----------
+  m_vehicleId     4 B     NS-3 global node ID of the sending vehicle
+  m_posX          8 B     Reported X position in metres
+  m_posY          8 B     Reported Y position in metres
+  m_speed         8 B     Reported speed in m/s
+  m_direction     8 B     Reported heading in radians
+  m_timestamp     8 B     Simulation time at transmission (seconds)
+  m_isFalsified   1 B     0 = legitimate BSM, 1 = forged/falsified BSM
+                 ----
+  TOTAL          45 B
+
+NS-3 Tag interface methods implemented:
+  GetTypeId()         — registers "BsmTag" with the NS-3 type registry
+  GetInstanceTypeId() — returns the registered TypeId
+  GetSerializedSize() — returns 45
+  Serialize(buf)      — writes fields to TagBuffer in fixed order
+  Deserialize(buf)    — reads fields from TagBuffer in same order
+  Print(os)           — outputs human-readable tag summary
+
+This matches the pattern used by CustomDataTag1 and CustomHeartbeatTag in
+routing.cc.
+
+
+5. PACKET FLOW (SEND PATH)
+--------------------------
+Each BSM is sent by MBSM_SendBsm():
+
+  1. A new UDP socket is created on the vehicle node:
+       sock = Socket::CreateSocket(src, TypeId::LookupByName("ns3::UdpSocketFactory"))
+
+  2. Socket is connected to the RSU's IP on port 7777:
+       sock->Connect(InetSocketAddress(g_rsu_ip_anim, BSM_PORT))
+
+  3. An empty Ptr<Packet> is created and the BsmTag attached:
+       pkt = Create<Packet>(0)
+       tag.SetVehicleId(src->GetId()); tag.SetPosX(px); ...
+       pkt->AddPacketTag(tag)
+
+  4. Packet is sent and socket closed:
+       sock->Send(pkt); sock->Close()
+
+  5. The packet travels through the P2P link to the RSU node via IP routing.
+
+
+6. PACKET FLOW (RECEIVE PATH)
+------------------------------
+The RSU's receive socket is set up in MBSM_SetupNetworkForAnim():
+
+  g_rsu_recv_socket = Socket::CreateSocket(RSU_Nodes.Get(0), UdpSocketFactory)
+  g_rsu_recv_socket->Bind(InetSocketAddress(Ipv4Address::GetAny(), BSM_PORT))
+  g_rsu_recv_socket->SetRecvCallback(MakeCallback(&MBSM_RSUSocketReceive))
+
+MBSM_RSUSocketReceive() fires when a packet arrives:
+
+  while ((pkt = sock->Recv())) {
+      BsmTag tag;
+      if (!pkt->PeekPacketTag(tag)) continue;
+      // Reconstruct BsmRecord from tag fields
+      bsm.vehicle_id   = tag.GetVehicleId();
+      bsm.pos_x        = tag.GetPosX();
+      ...
+      MBSM_RSUReceive(bsm);  // run detection + PEM
+  }
+
+
+7. DETECTION ALGORITHMS (in MBSM_Detect)
+-----------------------------------------
+The RSU runs two physics-based checks on every received BSM:
+
+  Trigger A — Frozen Position with Non-Zero Speed:
+    Fires if:
+      reported_speed > 0.1 m/s
+      AND |pos_reported - pos_last_reported| < FREEZE_DIST_THRESHOLD_M (0.5 m)
+      AND time_delta >= 2 * BSM_INTERVAL_S (0.1 s)
+    Catches: Type 1 (always fixed), Type 3 Phase 2 (frozen + moving)
+
+  Trigger B — Impossible Displacement:
+    Fires if:
+      |delta_pos_reported| > speed_reported * delta_t * DISPLACEMENT_FACTOR (1.5)
+    Catches: Type 2 (random large jumps exceed physical speed limit)
+
+If either trigger fires, anomaly_raised = true and the RSU logs an ALERT.
+
+
+8. PEM ACCOUNTING
+-----------------
+After detection, MBSM_RSUReceive updates PEM counters:
+
+  is_attack=true,  detected=true  ->  pem_tp++   (True Positive)
+  is_attack=true,  detected=false ->  pem_fn++   (False Negative)
+  is_attack=false, detected=true  ->  pem_fp++   (False Positive)
+  is_attack=false, detected=false ->  pem_tn++   (True Negative)
+
+MCC (Matthews Correlation Coefficient):
+  MCC = (TP*TN - FP*FN) / sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  Range: -1 (worst) to +1 (perfect). Values above 0.85 are considered good.
+
+Detection latency (Tdet): milliseconds from pem_attack_start_time to
+pem_first_alert_time.
+
+
+9. KEY CONSTANTS
+----------------
+  BSM_INTERVAL_S         = 0.05 s    (20 Hz BSM rate)
+  DSRC_RANGE_M           = 250.0 m   (RSU communication range)
+  SIM_AREA_MAX           = 500.0 m   (grid boundary for random positions)
+  T1_FIXED_X/Y           = 1000, 2000 (Type 1 hardcoded fake coords)
+  T3_legit_duration      = 20.0 s    (Type 3 phase 1 duration)
+  FREEZE_DIST_THRESHOLD_M = 0.5 m   (Trigger A positional freeze threshold)
+  DISPLACEMENT_FACTOR    = 1.5       (Trigger B tolerance multiplier)
+  BSM_PORT               = 7777      (UDP port for vehicle->RSU BSMs)
+
+
+10. OUTPUT FILES
+----------------
+  multibsm_attack13.txt         Human-readable event log for scenario 13
+  multibsm_attack14.txt         Human-readable event log for scenario 14
+  multibsm_attack15.txt         Human-readable event log for scenario 15
+  multibsm_baseline.txt         Event log for baseline (scenario 0)
+
+  multibsm_events.csv           Per-BSM event log
+    Columns: sim_time_s, vehicle_id, reported_pos_x, reported_pos_y,
+             speed_ms, direction_rad, is_attack, alert_raised
+
+  multibsm_pem_summary.csv      Per-run PEM summary
+    Columns: attack_scenario, tp, tn, fp, fn, mcc, acr_pct,
+             precision, recall, tdet_ms
+
+  multibsm_anim_scenario{N}.xml NetAnim XML (N = 0, 13, 14, or 15)
+    Node colours:
+      Red   = attacker vehicle (V0)
+      Green = legitimate vehicles
+      Amber = RSU
+
+    Packet arrows in NetAnim are generated automatically because:
+      AnimationInterface::EnablePacketMetadata(true) is set, and
+      real BsmTag packets are sent over the P2P links.
+
+
+11. SIMULATION RESULTS
+----------------------
+Run commands (NS-3.35 on Linux):
+  ./waf --run "scratch/multibsm_attacks --simTime=60 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=13"
+  ./waf --run "scratch/multibsm_attacks --simTime=60 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=14"
+  ./waf --run "scratch/multibsm_attacks --simTime=60 --N_Vehicles=6 --N_RSUs=1 --attack_scenario=15"
+
+Results:
+
+  Scenario 13 (Type 1 — Fixed Position):
+    TP=712  TN=1575  FP=0  FN=1
+    MCC=0.999   ACR=99.956%   Tdet=51.002 ms
+    Note: FN=1 is the very first falsified BSM before position history exists.
+          After that, every fixed-position + non-zero-speed BSM is detected.
+
+  Scenario 14 (Type 2 — Random Position):
+    TP=708  TN=1575  FP=0  FN=5
+    MCC=0.995   ACR=99.781%   Tdet=51.002 ms
+    Note: FN=5 occur when the random fake coord happens to be close enough to
+          the previous fake coord that the displacement check does not fire
+          (~0.7% miss rate). All other random jumps are physically impossible.
+
+  Scenario 15 (Type 3 — Stealthy Freeze):
+    TP=315  TN=1973  FP=0  FN=0
+    MCC=1.000   ACR=100.000%   Tdet=1.002 ms
+    Note: Perfect detection. The first frozen BSM (Phase 2 t=20s) triggers
+          immediately because speed=12 m/s + zero positional change is an
+          instantaneous physical contradiction. FN=0 because even a single
+          freeze event is unambiguously detectable.
+
+  FP=0 in ALL scenarios: legitimate vehicles never trigger either detection
+  rule, confirming zero false alarms.
+
+  All three scenarios exceed the project thresholds:
+    MCC > 0.85 (project threshold)
+    Tdet < 100 ms (beacon interval budget)
+    FP = 0
+
+
+12. BUILD INSTRUCTIONS
+----------------------
+Copy to NS-3.35 scratch directory and build:
+
+  cp multibsm_attacks.cc ~/ns-allinone-3.35/ns-3.35/scratch/
+  cd ~/ns-allinone-3.35/ns-3.35
+  ./waf build
+
+Build: clean (zero errors, zero warnings on GCC with -Werror).
+
+================================================================================
+Department of EIE, University of Ruhuna
+FYP: Temporal-Echo Topology Poisoning in SDVNs
+================================================================================

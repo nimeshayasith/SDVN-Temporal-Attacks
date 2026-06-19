@@ -1,0 +1,405 @@
+================================================================================
+  Link Latency Attack (LLA) — Code and Output Explanation
+================================================================================
+File    : attack_link_latency.cc
+Based on: Soltani et al., CNSM 2021 — "Security Analysis of SDN Topology
+          Discovery Mechanism and Defense Proposal"
+Sim     : NS-3.35 standalone scratch file
+Scenarios: 0 (baseline), 16 (Full LLA), 17 (Relay only),
+           18 (Basic LFA), 19 (Gradual LFA)
+================================================================================
+
+
+1. OVERVIEW
+-----------
+This NS-3.35 simulation implements four Link Latency Attack (LLA) variants
+against an SDN network's topology discovery mechanism. The target defence is
+TopoGuard+, which uses the Link Latency Inspector (LLI) to validate LLDP
+topology advertisements. A second defence — MLLG (Multi-Layer Link Guard) —
+runs alongside TopoGuard+ to demonstrate how its additional checks close the
+gaps that TopoGuard+ alone cannot cover.
+
+All LLDP events are transmitted as real NS-3 UDP packets carrying a custom
+NS-3 Tag (LldpTag), following the same tag-based packet architecture used in
+routing.cc. The controller processes packets on reception via a socket
+callback — not by direct function call — making every LLDP event visible as
+a packet arrow in NetAnim.
+
+
+2. HOW TopoGuard+ WORKS
+------------------------
+TopoGuard+ validates every LLDP advertisement using:
+
+  Eq. 1:  Tl = TLLDP - Tp1 - Tp2         (link latency residual)
+  Eq. 2:  Th = Q3 + 3*(Q3 - Q1)          (IQR upper fence on Tl history)
+
+  ALARM if Tl > Th
+
+Where:
+  TLLDP = measured time for LLDP probe: ctrl->sw1->(path)->sw2->ctrl
+  Tp1, Tp2 = probe RTTs to sw1 and sw2 (measured via separate control probes)
+  Tl = residual link latency (should match physical inter-switch delay)
+  Th = adaptive threshold from last 20 Tl observations (IQR Tukey fence)
+
+Legitimate baseline:
+  TLLDP_LEGIT = 6 ms  (ctrl->s1: 0.5ms + s1->s2: 5ms + s2->ctrl: 0.5ms)
+  Tp = 1 ms each
+  Tl = 6 - 1 - 1 = 4 ms
+  Th = 4 ms  (history all 4ms -> IQR=0 -> Th = 4 + 3*0 = 4 ms)
+
+
+3. NETWORK TOPOLOGY
+-------------------
+
+                   +--- h1 (compromised, at s1)
+  ctrl --- s1 --- s2 --- s3 --- h2 (compromised, at s3)
+    +--------------------------------------+  (OOB relay h1->h2: 10ms)
+
+  NO physical link between s1 and s3. Any LLDP claiming s1<->s3 is forged.
+
+  Link delays:
+    ctrl <-> s1, s2, s3  :  0.5 ms  (control plane)
+    s1 <-> s2, s2 <-> s3 :  5.0 ms  (data plane)
+    s1 <-> h1, s3 <-> h2 :  5.0 ms  (host-switch)
+    h1 <-> h2 (OOB relay) : 10.0 ms
+
+  LLDP_PORT = 6633 (UDP, controller receives all LldpTag packets here)
+
+
+4. ATTACK SCENARIOS
+-------------------
+
+Scenario 16 — Full LLA (Overload + Relay)
+  Phase 1 — Overload (t=5s):
+    h1 and h2 launch ARP flood. Probe RTTs: 1ms -> 130ms.
+    Legitimate LLDP Tl = 6 - 130 - 130 = -254 ms (NEGATIVE)
+    TopoGuard+: -254 < Th(4) -> NO ALARM  ==>  TG FAILS
+    MLLG: fires NEG_TL (Tl<0) and HIGH_TP (Tp=130ms > 50ms)
+
+  Phase 2 — Relay (t=11s, every 5s):
+    h2 relays forged LLDP claiming s1<->s3.
+    Relay Tl = 21 - 130 - 130 = -239 ms (NEGATIVE)
+    TopoGuard+: -239 < Th -> NO ALARM  ==>  FAKE LINK ACCEPTED
+    MLLG: fires NEG_TL|HIGH_TP on every relay
+
+  Outcome: TopoGuard+ bypassed for full simulation. MLLG FN=0.
+
+Scenario 17 — Relay Only (No Overload)
+  No overload. Tp = 1ms (normal).
+  Relay TLLDP = 21ms. Tl = 21 - 1 - 1 = 19ms.
+
+  First 4 relays: 19ms > Th(4ms) -> TG=ALARM  (detected)
+  After 5th relay: 5 values of 19ms are now in the 20-sample IQR window.
+    -> Q3 = sorted[15] = 19ms (25% of window is now 19ms)
+    -> Th = 19 + 3*(19-4) = 64 ms
+  From 5th relay onward: 19ms < 64ms -> TG=PASS  ==>  TG eventually fails
+
+  MLLG: HIGH_TL fires on EVERY relay (19ms > 8ms). MCC=1.000. FN=0.
+
+  Outcome: Shows that even relay-only attacks eventually bypass TopoGuard+'s
+  adaptive IQR threshold. MLLG's fixed checks remain reliable.
+
+Scenario 18 — Basic LFA (Direct Data-Plane Injection)
+  h1 directly injects an LLDP into the data plane claiming s1<->s3.
+  Path: ctrl->s1(0.5ms) + s1->h1(5ms) + h1->s3(10ms) + s3->ctrl(0.5ms) = 16ms
+  Tl = 16 - 1 - 1 = 14 ms > Th(4ms) -> TG=ALARM  (immediate detection)
+  MLLG: HIGH_TL fires (14ms > 8ms)
+
+  Outcome: Both defences detect immediately. MCC=1.000. Fake link rejected.
+  This shows why scenario 16/19 require overload or gradual inflation.
+
+Scenario 19 — Gradual LFA (Threshold Inflation + Relay)
+  Phase 1 — Gradual injection (t=10s to t=30s, 5 batches of 3):
+    Batch 1 (t=10s): inject Tl=5ms x3  -> Th stays 4ms
+    Batch 2 (t=15s): inject Tl=6ms x3  -> Th rises to 8ms  [MLLG TH_DRIFT]
+    Batch 3 (t=20s): inject Tl=7ms x3  -> Th rises to 12ms [MLLG TH_DRIFT]
+    Batch 4 (t=25s): inject Tl=8ms x3  -> Th rises to 16ms [MLLG TH_DRIFT]
+    Batch 5 (t=30s): inject Tl=9ms x3  -> Th rises to 20ms [MLLG TH_DRIFT+HIGH_TL]
+
+  Phase 2 — Relay (t=35s):
+    Relay Tl = 21 - 1 - 1 = 19ms < Th(20ms) -> TG=PASS  ==>  ATTACK SUCCEEDS
+    MLLG: HIGH_TL fires (19ms > 8ms)
+
+  Outcome: TopoGuard+ bypassed. MLLG detects via TH_DRIFT during inflation
+  and HIGH_TL on the final relay.
+
+
+5. NS-3 PACKET TAG: LldpTag
+-----------------------------
+LldpTag is a custom NS-3 Tag subclass that encodes all LLDP event parameters
+into a 34-byte serialized buffer. It is attached to a Ptr<Packet> before
+sending and extracted at the controller using PeekPacketTag().
+
+  Field           Size    Description
+  ----------      ----    -----------
+  m_sw1Idx        4 B     Index of switch 1 (0=s1, 1=s2, 2=s3)
+  m_sw2Idx        4 B     Index of switch 2
+  m_tlldpMs       8 B     Measured TLLDP value (ms)
+  m_tp1Ms         8 B     Probe RTT to sw1 (ms)
+  m_tp2Ms         8 B     Probe RTT to sw2 (ms)
+  m_isAttack      1 B     0 = legitimate LLDP, 1 = forged/injected
+  m_eventType     1 B     0=LEGIT, 1=RELAY_FAKE, 2=BASIC_LFA, 3=GRADUAL_INJECT
+                 ----
+  TOTAL          34 B
+
+NS-3 Tag interface methods implemented:
+  GetTypeId()         — registers "LldpTag" with the NS-3 type registry
+  GetInstanceTypeId() — returns the registered TypeId
+  GetSerializedSize() — returns 34
+  Serialize(buf)      — writes all fields using WriteU32/WriteDouble/WriteU8
+  Deserialize(buf)    — reads all fields in the same order
+  Print(os)           — outputs human-readable tag summary
+
+This matches the pattern used by CustomMetaDataUnicastTag0 and
+CustomHeartbeatTag in routing.cc.
+
+
+6. PACKET FLOW (SEND PATH)
+--------------------------
+Each LLDP event is sent by LLA_SendLldpPacket():
+
+  1. A UDP socket is created on the source node (switch or host):
+       sock = Socket::CreateSocket(src_node, TypeId::LookupByName("ns3::UdpSocketFactory"))
+
+  2. Socket connected to controller IP on LLDP port 6633:
+       sock->Connect(InetSocketAddress(ctrl_ip, LLDP_PORT))
+
+  3. LldpTag created, fields set, attached to empty packet:
+       pkt = Create<Packet>(0)
+       tag.SetSw1Idx(sw1_idx); tag.SetTlldpMs(tlldp_ms); ...
+       pkt->AddPacketTag(tag)
+
+  4. Packet sent and socket closed:
+       sock->Send(pkt); sock->Close()
+
+  5. Packet travels via P2P links through IP routing to controller.
+
+Sender nodes per event type:
+  LLDP_LEGIT         -> g_Switch_Nodes.Get(sw1_idx)  (legitimate switch)
+  LLDP_RELAY_FAKE    -> g_Host_Nodes.Get(1) (h2 at s3, end of OOB relay)
+  LLDP_BASIC_LFA     -> g_Host_Nodes.Get(0) (h1 at s1, injects directly)
+  LLDP_GRADUAL_INJECT -> g_Host_Nodes.Get(0) (h1 at s1)
+
+
+HOW MALICIOUS TIMESTAMPS ARE CREATED — NEW PACKETS, NOT MODIFIED PACKETS
+-------------------------------------------------------------------------
+The attacker does NOT intercept and modify existing LLDP packets in flight.
+For every attack event, LLA_SendLldpPacket() creates a BRAND NEW NS-3 packet
+with a FABRICATED m_tlldpMs value chosen by the attacker:
+
+  pkt = Create<Packet>(0)          <- brand new empty packet
+  tag.SetTlldpMs(tlldp_ms)        <- attacker-controlled fake TLLDP value
+  tag.SetTp1Ms(tp1_ms)
+  tag.SetTp2Ms(tp2_ms)
+  tag.SetIsAttack(1)
+  pkt->AddPacketTag(tag)
+  sock->Send(pkt)                  <- injected into network
+
+The m_tlldpMs field is not a physically measured time. It is a value the
+attacker chooses to make  Tl = TLLDP - Tp1 - Tp2  land where the attack
+needs it:
+
+  Scenario 16 (Full LLA):
+    m_tlldpMs = TLLDP_RELAY_FAKE_MS = 21 ms  (hardcoded)
+    With overload Tp=130ms: Tl = 21-130-130 = -239ms < Th  ->  TG passes
+
+  Scenario 17 (Relay only):
+    m_tlldpMs = TLLDP_RELAY_FAKE_MS = 21 ms  (same hardcoded value)
+    No overload: Tl = 21-1-1 = 19ms; initially > Th=4ms but Th adapts
+
+  Scenario 18 (Basic LFA):
+    m_tlldpMs = TLLDP_BASIC_FAKE_MS = 16 ms  (hardcoded)
+    Tl = 16-1-1 = 14ms > Th=4ms  ->  immediately detected
+
+  Scenario 19 (Gradual LFA):
+    Attacker REVERSE-CALCULATES: tlldp_syn = fake_tl_ms + Tp1 + Tp2
+    e.g. batch 3: target Tl=7ms  ->  tlldp_syn = 7+1+1 = 9ms
+    Controller computes: Tl = 9-1-1 = 7ms  (exactly what attacker wanted)
+    This is done to inflate the IQR history step by step, raising Th.
+
+The controller has no way to verify whether TLLDP in the tag reflects a
+real physical measurement. It reads the field, computes Tl, and updates
+its topology table — trusting the packet entirely.
+
+
+7. PACKET FLOW (RECEIVE PATH)
+------------------------------
+The controller socket is set up in LLA_SetupNetworkForAnim():
+
+  g_ctrl_recv_socket = Socket::CreateSocket(ctrl_node, UdpSocketFactory)
+  g_ctrl_recv_socket->Bind(InetSocketAddress(Ipv4Address::GetAny(), LLDP_PORT))
+  g_ctrl_recv_socket->SetRecvCallback(MakeCallback(&LLA_CtrlReceive))
+
+LLA_CtrlReceive() fires when a packet arrives at the controller:
+
+  while ((pkt = sock->Recv())) {
+      LldpTag tag;
+      if (!pkt->PeekPacketTag(tag)) continue;
+      r = RunLLI(tag.GetTlldpMs(), tag.GetTp1Ms(), tag.GetTp2Ms(),
+                 tag.GetIsAttack());
+      AccountPEM(r);
+      LogEvent(now, event_type, sw1, sw2, r);
+      // If is_attack && !topoguard_alarm: g_fake_link_accepted = true
+  }
+
+The RunLLI function receives the Tp values directly from the tag. It no longer
+needs to query the global g_overload_active flag — the tag carries everything
+needed for self-contained detection.
+
+
+8. MLLG FOUR CHECKS
+--------------------
+MLLG runs four independent checks after each Tl computation:
+
+  Check 1 — NEG_TL:
+    Condition: Tl < 0
+    Catches: Scenario 16 (overloaded probes make Tl deeply negative)
+
+  Check 2 — HIGH_TP:
+    Condition: Tp1 > MLLG_TP_THRESHOLD (50ms) OR Tp2 > MLLG_TP_THRESHOLD
+    Catches: Scenario 16 (ARP flood inflates Tp to 130ms)
+
+  Check 3 — HIGH_TL:
+    Condition: Tl > MLLG_TL_HIGH (8ms)
+    Catches: Scenarios 17, 18, 19 relay (Tl=14ms or 19ms exceeds fixed bound)
+
+  Check 4 — TH_DRIFT:
+    Condition: current_Th - previous_Th > MLLG_TH_DRIFT (2ms)
+    Catches: Scenario 19 gradual injection (each batch step inflates Th by 4ms)
+
+MLLG alarm fires if ANY of the four checks is triggered.
+
+
+9. KEY CONSTANTS
+----------------
+  TLLDP_LEGIT_MS         =  6.0 ms    Legitimate s1<->s2 LLDP time
+  TLLDP_RELAY_FAKE_MS    = 21.0 ms    Relay s1<->s3 (via OOB) LLDP time
+  TLLDP_BASIC_FAKE_MS    = 16.0 ms    Basic LFA injection time
+  PROBE_RTT_NORMAL_MS    =  1.0 ms    Normal probe RTT
+  PROBE_RTT_OVERLOADED_MS= 130.0 ms   Overloaded probe RTT (ARP flood)
+  TL_LEGIT_BASELINE_MS   =  4.0 ms    = TLLDP_LEGIT - 2*Tp_normal
+  MLLG_TP_THRESHOLD_MS   = 50.0 ms    HIGH_TP alarm threshold
+  MLLG_TL_HIGH_MS        =  8.0 ms    HIGH_TL alarm threshold
+  MLLG_TH_DRIFT_MS       =  2.0 ms    TH_DRIFT alarm per event
+  TL_HISTORY_DEPTH       = 20         IQR sliding window size
+  LLDP_PORT              = 6633       UDP port for LLDP->controller packets
+
+
+10. PEM ACCOUNTING
+------------------
+AccountPEM() updates four counters based on (is_attack, detection_result):
+
+  is_attack=true,  topoguard_alarm=true   -> TG TP++
+  is_attack=true,  topoguard_alarm=false  -> TG FN++
+  is_attack=false, topoguard_alarm=true   -> TG FP++
+  is_attack=false, topoguard_alarm=false  -> TG TN++
+  (same logic applied separately for MLLG alarm)
+
+MCC (Matthews Correlation Coefficient):
+  MCC = (TP*TN - FP*FN) / sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+
+Detection latency (Tdet): milliseconds from pem_attack_injection_time to
+pem_first_alert_time (first TP detection).
+
+
+11. OUTPUT FILES
+----------------
+  lla_attack16.txt              Detailed event log for scenario 16
+  lla_attack17.txt              Detailed event log for scenario 17
+  lla_attack18.txt              Detailed event log for scenario 18
+  lla_attack19.txt              Detailed event log for scenario 19
+  lla_baseline.txt              Event log for baseline (scenario 0)
+
+  lla_events.csv                Per-event CSV log
+    Columns: sim_time_s, event_type, sw1_id, sw2_id, tl_ms, th_ms,
+             tp1_ms, tp2_ms, topoguard_alarm, mllg_alarm, mllg_reason,
+             is_attack_event
+
+  lla_pem_summary.csv           Per-run PEM metrics
+    Columns: attack_scenario, detector, tp, tn, fp, fn, mcc, tdet_ms,
+             fake_link_accepted, fake_link_accept_time
+
+  lla_anim_scenario{N}.xml      NetAnim XML (N = 0, 16, 17, 18, or 19)
+    Node colours:
+      Blue    = controller
+      Grey    = switches (s1, s2, s3)
+      Orange  = hosts (h1 at s1, h2 at s3)
+    Packet arrows visible because EnablePacketMetadata(true) is set and
+    real LldpTag packets are sent via LLA_SendLldpPacket().
+
+
+12. SIMULATION RESULTS
+----------------------
+Build: ./waf build  — clean (zero errors, zero warnings)
+Run  : ./waf --run "scratch/attack_link_latency --attack_scenario=16"
+       ./waf --run "scratch/attack_link_latency --attack_scenario=17"
+       ./waf --run "scratch/attack_link_latency --attack_scenario=18"
+       ./waf --run "scratch/attack_link_latency --attack_scenario=19"
+
+--- Scenario 16 (Full LLA: Overload + Relay) ---
+  TopoGuard+: TP=1   TN=22  FP=2   FN=9   MCC=0.027  Tdet=45005ms
+  MLLG:       TP=10  TN=4   FP=20  FN=0   MCC=0.236  Tdet=5.5ms
+  Fake link: YES
+
+  Notes:
+    TG FN=9: 9 relay injections pass because Tl is negative (< corrupted Th).
+    TG FP=2: Post-overload, Th=-194ms; legit Tl=4ms > -194ms -> false alarm.
+    MLLG FP=20: Legitimate LLDP during overload has Tp=130ms > 50ms. MLLG
+      correctly flags these as suspicious. They count as FP only because the
+      is_attack label is false for legitimate (non-injected) LLDP events —
+      but the network IS under active attack and Tp IS genuinely anomalous.
+    MLLG FN=0: Every relay injection detected. Zero misses.
+
+--- Scenario 17 (Relay Only) ---
+  TopoGuard+: TP=4   TN=24  FP=0   FN=6   MCC=0.566  Tdet=5.5ms
+  MLLG:       TP=10  TN=24  FP=0   FN=0   MCC=1.000  Tdet=5.5ms
+  Fake link: YES
+
+  Notes:
+    TG detects first 4 relays. On 5th relay, window has 5/20 samples at 19ms
+    -> Q3 jumps to 19ms -> Th = 19+3*(19-4) = 64ms -> TG stops detecting.
+    MLLG: perfect detection via HIGH_TL on every relay. Zero FP. Zero FN.
+    Shows MLLG's fixed-threshold HIGH_TL is immune to IQR drift.
+
+--- Scenario 18 (Basic LFA) ---
+  TopoGuard+: TP=1   TN=24  FP=0   FN=0   MCC=1.000  Tdet=5.5ms
+  MLLG:       TP=1   TN=24  FP=0   FN=0   MCC=1.000  Tdet=5.5ms
+  Fake link: NO
+
+  Notes: Both defences detect immediately. Fake link rejected.
+    TG: Tl=14ms > Th=4ms -> ALARM on first and only injection.
+    MLLG: HIGH_TL (14ms > 8ms) -> ALARM.
+    Perfect result. Confirms why attacker needs overload or gradual inflation.
+
+--- Scenario 19 (Gradual LFA) ---
+  TopoGuard+: TP=4   TN=24  FP=0   FN=12  MCC=0.408  Tdet=5.5ms
+  MLLG:       TP=7   TN=24  FP=0   FN=9   MCC=0.564  Tdet=5105ms
+  Fake link: YES
+
+  Notes:
+    TG TP=4: Batch 1 (3 events, Tl=5>Th=4) + 1st event of Batch 2 detected.
+      After Th inflates to 8ms, subsequent injects pass TG.
+    TG FN=12: Remaining injections + relay pass undetected.
+    MLLG TP=7: TH_DRIFT at each batch step (4) + HIGH_TL at batch 5 (2)
+      + HIGH_TL on relay (1) = 7 TP.
+    MLLG Tdet=5105ms: First detection at t=15.106s (5.1s after t=10s start).
+    FP=0 for both: baseline LLDP never falsely flagged.
+
+  Overall: TopoGuard+ bypassed by gradual inflation. MLLG detects anomalous
+    threshold behaviour via TH_DRIFT throughout the inflation phase.
+
+
+13. BUILD INSTRUCTIONS
+----------------------
+Copy to NS-3.35 scratch directory and build:
+
+  cp attack_link_latency.cc ~/ns-allinone-3.35/ns-3.35/scratch/
+  cd ~/ns-allinone-3.35/ns-3.35
+  ./waf build
+
+Build: clean (zero errors, zero warnings on GCC with -Werror).
+
+================================================================================
+Department of EIE, University of Ruhuna
+FYP: Temporal-Echo Topology Poisoning in SDVNs
+================================================================================

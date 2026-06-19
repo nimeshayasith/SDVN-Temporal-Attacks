@@ -1,0 +1,7 @@
+Solution at controller cleared
+[CD] detector=2  scenario=11  malicious_nodes=200  rsus=0
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 316389 exact position+velocity events
+[SUMO] Attack 11: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/11_ME_S3_Malicious_Controller_No_RSU.xml
+[ERROR] ME-S3 needs at least 2 non-malicious vehicles for real link pair.
