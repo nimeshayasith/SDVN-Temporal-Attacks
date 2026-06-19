@@ -1,0 +1,13 @@
+attack_type,type_name,classifier,n_samples,n_folds,acc_mean,acc_std,prec_mean,prec_std,recall_mean,recall_std,f1_mean,f1_std,mcc_mean,mcc_std,auroc_mean,auroc_std,tdet_ms
+2,TTW-S2 — Malicious RSU,DT+Bagging,3040,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+2,TTW-S2 — Malicious RSU,RF+Bagging,3040,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+2,TTW-S2 — Malicious RSU,KNN+Bagging,3040,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+2,TTW-S2 — Malicious RSU,MLP+Bagging,3040,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+6,BSHH-S2 — Malicious RSU,DT+Bagging,496,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+6,BSHH-S2 — Malicious RSU,RF+Bagging,496,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+6,BSHH-S2 — Malicious RSU,KNN+Bagging,496,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+6,BSHH-S2 — Malicious RSU,MLP+Bagging,496,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+-1,Scenario -1,DT+Bagging,3536,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+-1,Scenario -1,RF+Bagging,3536,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+-1,Scenario -1,KNN+Bagging,3536,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,-1.0
+-1,Scenario -1,MLP+Bagging,3536,5,100.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,0.0,1.0,4.965068306494546e-17,-1.0
