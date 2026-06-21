@@ -4,6 +4,11 @@
  * All structs, enums, and constants that cross module boundaries are defined
  * here.  Every crypto .cc file includes this header.
  *
+ * NIST Security Level 5 primitives:
+ *   Dilithium5  (ML-DSA-87,   FIPS 204)  — long-term identity signatures
+ *   Kyber-1024  (ML-KEM-1024, FIPS 203)  — KEM component 1
+ *   FireSaber                             — KEM component 2 (hybrid partner)
+ *
  * Three canonical interface structs (from the implementation guide):
  *   BeaconMessage       — vehicle wire format  (crypto input)
  *   CryptoVerifiedEvent — crypto → TGN boundary (Section 8.2)
@@ -33,10 +38,12 @@ extern "C" {
 #define SESSION_KEY_LEN          32u        /* K_{Vi,nk} — 256-bit HMAC key  */
 #define HMAC_SHA256_LEN          32u        /* HMAC-SHA256 tag               */
 
-/* Dilithium2 (NIST ML-DSA, FIPS 204) — exact sizes per liboqs */
-#define DILITHIUM2_SIG_LEN     2420u        /* OQS_SIG_dilithium_2_length_signature    */
-#define DILITHIUM2_PK_LEN      1312u        /* OQS_SIG_dilithium_2_length_public_key   */
-#define DILITHIUM2_SK_LEN      2528u        /* OQS_SIG_dilithium_2_length_secret_key   */
+/* Dilithium5 (NIST ML-DSA-87, FIPS 204) — NIST Security Level 5
+ * Quantum-resistant under Module-LWE hardness assumption.
+ * Sizes from liboqs OQS_SIG_alg_dilithium_5 / OQS_SIG_alg_ml_dsa_87. */
+#define DILITHIUM5_SIG_LEN     4595u        /* OQS_SIG_dilithium_5_length_signature    */
+#define DILITHIUM5_PK_LEN      2592u        /* OQS_SIG_dilithium_5_length_public_key   */
+#define DILITHIUM5_SK_LEN      4864u        /* OQS_SIG_dilithium_5_length_secret_key   */
 
 #define R_COMM_METERS          300.0f       /* DSRC communication range (m)  */
 #define RSSI_MIN_DBM           -85.0f       /* RSSImin at r_comm, 5.9 GHz    */
@@ -45,35 +52,36 @@ extern "C" {
 #define MAX_REPORTS_PER_RSU      64u        /* Max individual sigs per AggregateReport */
 #define MAX_OBSERVATIONS_PER_RSU 200u       /* Max obs in BeaconEvidenceRecord */
 
-/* Kyber-512 wire sizes (liboqs OQS_KEM_alg_kyber_512 / ML-KEM-512 FIPS 203) */
-#define KYBER512_PK_LEN   800u   /* OQS_KEM_kyber_512_length_public_key    */
-#define KYBER512_SK_LEN  1632u   /* OQS_KEM_kyber_512_length_secret_key    */
-#define KYBER512_CT_LEN   768u   /* OQS_KEM_kyber_512_length_ciphertext    */
-#define KYBER512_SS_LEN    32u   /* OQS_KEM_kyber_512_length_shared_secret */
+/* Kyber-1024 wire sizes (liboqs OQS_KEM_alg_kyber_1024 / ML-KEM-1024, FIPS 203)
+ * NIST Security Level 5 */
+#define KYBER1024_PK_LEN  1568u  /* OQS_KEM_kyber_1024_length_public_key    */
+#define KYBER1024_SK_LEN  3168u  /* OQS_KEM_kyber_1024_length_secret_key    */
+#define KYBER1024_CT_LEN  1568u  /* OQS_KEM_kyber_1024_length_ciphertext    */
+#define KYBER1024_SS_LEN    32u  /* OQS_KEM_kyber_1024_length_shared_secret */
 
-/* Saber wire sizes (liboqs OQS_KEM_alg_saber — the actual paper KEM partner) */
-#define SABER_PK_LEN      992u   /* OQS_KEM_saber_length_public_key        */
-#define SABER_SK_LEN     2304u   /* OQS_KEM_saber_length_secret_key        */
-#define SABER_CT_LEN     1088u   /* OQS_KEM_saber_length_ciphertext        */
-#define SABER_SS_LEN       32u   /* OQS_KEM_saber_length_shared_secret     */
+/* FireSaber wire sizes (liboqs OQS_KEM_alg_saber_firesaber)
+ * NIST Security Level 5 — hybrid KEM partner for Kyber-1024 */
+#define FIRESABER_PK_LEN  1312u  /* OQS_KEM_saber_firesaber_length_public_key    */
+#define FIRESABER_SK_LEN  3040u  /* OQS_KEM_saber_firesaber_length_secret_key    */
+#define FIRESABER_CT_LEN  1472u  /* OQS_KEM_saber_firesaber_length_ciphertext    */
+#define FIRESABER_SS_LEN    32u  /* OQS_KEM_saber_firesaber_length_shared_secret */
 
 /*
  * KemExchangeState — held by vehicle during Section 3.3 handshake.
- * Step 1: kem_vehicle_keygen()  fills pk_sk_* fields.
+ * Step 1: kem_vehicle_keygen()  fills pk/sk fields.
  * Step 3: kem_rsu_encapsulate() fills ct_* fields (RSU side).
  * Step 4: kem_vehicle_decapsulate() consumes ct_* + sk_* → session key.
  *
- * Buffer sizes: Kyber-512 component uses KYBER512_* sizes.
- *               Saber component uses SABER_* sizes (larger — 992 vs 800 byte pk).
+ * Buffer sizes: Kyber-1024 (KYBER1024_*) + FireSaber (FIRESABER_*) — both Level 5.
  */
 typedef struct {
-    uint8_t pk_kyber[KYBER512_PK_LEN]; /* Vehicle Kyber-512 public key (sent to RSU) */
-    uint8_t sk_kyber[KYBER512_SK_LEN]; /* Vehicle Kyber-512 secret key (stays local) */
-    uint8_t pk_saber[SABER_PK_LEN];   /* Vehicle Saber public key (sent to RSU)      */
-    uint8_t sk_saber[SABER_SK_LEN];   /* Vehicle Saber secret key (stays local)      */
-    uint8_t ct_kyber[KYBER512_CT_LEN]; /* Ciphertext from RSU (Kyber component)      */
-    uint8_t ct_saber[SABER_CT_LEN];   /* Ciphertext from RSU (Saber component)       */
-    bool    has_ciphertext;            /* Set true after RSU calls kem_rsu_encapsulate */
+    uint8_t pk_kyber[KYBER1024_PK_LEN]; /* Vehicle Kyber-1024 public key (sent to RSU)  */
+    uint8_t sk_kyber[KYBER1024_SK_LEN]; /* Vehicle Kyber-1024 secret key (stays local)  */
+    uint8_t pk_saber[FIRESABER_PK_LEN]; /* Vehicle FireSaber public key (sent to RSU)   */
+    uint8_t sk_saber[FIRESABER_SK_LEN]; /* Vehicle FireSaber secret key (stays local)   */
+    uint8_t ct_kyber[KYBER1024_CT_LEN]; /* Ciphertext from RSU (Kyber-1024 component)  */
+    uint8_t ct_saber[FIRESABER_CT_LEN]; /* Ciphertext from RSU (FireSaber component)   */
+    bool    has_ciphertext;             /* Set true after RSU calls kem_rsu_encapsulate */
 } KemExchangeState;
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -82,12 +90,12 @@ typedef struct {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 typedef struct {
-    uint8_t  vehicle_id[16];                /* Unique vehicle identifier     */
-    uint8_t  session_key[SESSION_KEY_LEN];  /* K_{Vi,nk} — HMAC session key  */
-    uint8_t  sign_pub_key[DILITHIUM2_PK_LEN]; /* PK_{Vi} — Dilithium2 pub key*/
-    uint32_t lkh_leaf_index;                /* Position in LKH tree          */
-    uint64_t key_creation_time_ms;          /* For key rotation tracking     */
-    bool     revoked;                       /* Set by LKH revocation         */
+    uint8_t  vehicle_id[16];                  /* Unique vehicle identifier     */
+    uint8_t  session_key[SESSION_KEY_LEN];    /* K_{Vi,nk} — HMAC session key  */
+    uint8_t  sign_pub_key[DILITHIUM5_PK_LEN]; /* PK_{Vi} — Dilithium5 pub key  */
+    uint32_t lkh_leaf_index;                  /* Position in LKH tree          */
+    uint64_t key_creation_time_ms;            /* For key rotation tracking     */
+    bool     revoked;                         /* Set by LKH revocation         */
 } VehicleKeyRecord;
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -140,16 +148,16 @@ typedef enum {
 typedef struct {
     uint8_t vehicle_id[16];
     uint8_t msg_payload[256];                   /* Topology observation for Vi */
-    uint8_t individual_sig[DILITHIUM2_SIG_LEN]; /* Dilithium2 signature        */
-    uint8_t pub_key[DILITHIUM2_PK_LEN];         /* Dilithium2 public key       */
+    uint8_t individual_sig[DILITHIUM5_SIG_LEN]; /* Dilithium5 signature        */
+    uint8_t pub_key[DILITHIUM5_PK_LEN];         /* Dilithium5 public key       */
 } IndividualSignedReport;
 
 typedef struct {
     IndividualSignedReport reports[MAX_REPORTS_PER_RSU];
     uint32_t n_reports;                         /* Actual count n              */
-    uint32_t threshold_t;                       /* t = ⌊n/2⌋ + 1              */
-    uint8_t  agg_sig[DILITHIUM2_SIG_LEN];       /* Aggregated signature        */
-    uint8_t  agg_pk[DILITHIUM2_PK_LEN];         /* Aggregated public key       */
+    uint32_t threshold_t;                       /* t = floor(n/2) + 1         */
+    uint8_t  agg_sig[DILITHIUM5_SIG_LEN];       /* Aggregated signature        */
+    uint8_t  agg_pk[DILITHIUM5_PK_LEN];         /* Aggregated public key       */
     uint64_t timestamp_ms;
 } AggregateReport;
 
@@ -175,8 +183,8 @@ typedef struct {
 
 typedef struct {
     LocationBindingPayload payload;
-    uint8_t signature[DILITHIUM2_SIG_LEN];  /* Dilithium2 sig over payload   */
-    uint8_t pub_key[DILITHIUM2_PK_LEN];     /* PK_{Vk}                       */
+    uint8_t signature[DILITHIUM5_SIG_LEN];  /* Dilithium5 sig over payload   */
+    uint8_t pub_key[DILITHIUM5_PK_LEN];     /* PK_{Vk}                       */
 } LocationBoundReport;
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -234,6 +242,11 @@ typedef struct {
     bool     location_binding_verified;  /* true if Module 4 passed         */
     bool     threshold_sig_verified;     /* true if Module 3 passed         */
     uint8_t  crypto_filter_result;       /* Always CRYPTO_ACCEPT here       */
+
+    /* Ground-truth label — set by pipeline from pem_event_log.csv attack_label.
+     * Controller-origin attacks reach here with is_attack=true (crypto layer
+     * cannot block them since the controller holds valid credentials). */
+    bool     is_attack;
 } CryptoVerifiedEvent;
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -277,35 +290,35 @@ typedef struct {
         float    gps_lat;
         float    gps_lon;
         float    rssi_dbm;
-        uint8_t  rsu_sig[DILITHIUM2_SIG_LEN]; /* RSU Dilithium2 sig over record */
+        uint8_t  rsu_sig[DILITHIUM5_SIG_LEN]; /* RSU Dilithium5 sig over record */
     } observations[MAX_OBSERVATIONS_PER_RSU];
 } BeaconEvidenceRecord;
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 11. DILITHIUM2 API — shared across all modules  (Section 3.3)
+ * 11. DILITHIUM5 API — shared across all modules  (Section 3.3)
  *
  * Single canonical implementation in dilithium.cc.
  * Consumed by: kem.cc, threshold_sig.cc, location_binding.cc
  *
- * With liboqs: OQS_SIG_alg_dilithium_2 (FIPS 204 ML-DSA-44)
+ * With liboqs: OQS_SIG_alg_dilithium_5 (FIPS 204 ML-DSA-87) — Level 5
  * Without:     HMAC-SHA256 stub (simulation only, NOT quantum-resistant)
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /* Generate long-term identity keypair SKVk / PKVk (called once at registration) */
-void dilithium2_keygen(uint8_t pk[DILITHIUM2_PK_LEN],
-                        uint8_t sk[DILITHIUM2_SK_LEN]);
+void dilithium5_keygen(uint8_t pk[DILITHIUM5_PK_LEN],
+                        uint8_t sk[DILITHIUM5_SK_LEN]);
 
 /* σVk = Sign(SKVk, m')  — sign a topology report or heartbeat */
-void dilithium2_sign(const uint8_t *msg,    size_t msg_len,
-                      const uint8_t  sk[DILITHIUM2_SK_LEN],
-                      uint8_t        sig_out[DILITHIUM2_SIG_LEN],
+void dilithium5_sign(const uint8_t *msg,    size_t msg_len,
+                      const uint8_t  sk[DILITHIUM5_SK_LEN],
+                      uint8_t        sig_out[DILITHIUM5_SIG_LEN],
                       size_t        *sig_len_out);
 
 /* Verify(σVk, PKVk) = 1  — returns true iff signature is valid */
-bool dilithium2_verify(const uint8_t *msg,      size_t msg_len,
-                        const uint8_t  sig[DILITHIUM2_SIG_LEN],
+bool dilithium5_verify(const uint8_t *msg,      size_t msg_len,
+                        const uint8_t  sig[DILITHIUM5_SIG_LEN],
                         size_t         sig_len,
-                        const uint8_t  pk[DILITHIUM2_PK_LEN]);
+                        const uint8_t  pk[DILITHIUM5_PK_LEN]);
 
 /* ══════════════════════════════════════════════════════════════════════════
  * 12. FORWARD DECLARATIONS — cross-module function interfaces

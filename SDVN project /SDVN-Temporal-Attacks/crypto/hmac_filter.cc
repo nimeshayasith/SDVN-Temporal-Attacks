@@ -3,7 +3,7 @@
  *                  Algorithm 3 — LW-MITIGATE
  *
  * Intercepts every BeaconMessage BEFORE it reaches the TGN or blockchain.
- * Implements the three checks from Eqs. 3.14, 3.15, 3.16.
+ * Implements the three checks from Eqs. 3.15, 3.16, 3.17.
  *
  * Exact lw_mitigate() signature (Section 4.4):
  *   CryptoVerifyResult lw_mitigate(
@@ -58,7 +58,7 @@ void generate_nonce(uint8_t nonce_out[NONCE_LEN]) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Authenticated payload construction  (Section 4.3, Eq. 3.35)
+ * Authenticated payload construction  (Section 4.3, Eq. 3.49)
  *   m' = m || τ_s || nonce
  * ══════════════════════════════════════════════════════════════════════════ */
 
@@ -106,7 +106,7 @@ static bool ct_memcmp(const uint8_t *a, const uint8_t *b, size_t n) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Nonce novelty check  (Section 4.4, Eq. 3.16)
+ * Nonce novelty check  (Section 4.4, Eq. 3.17)
  *   Circular per-sender cache; returns true if nonce is new.
  * ══════════════════════════════════════════════════════════════════════════ */
 
@@ -142,12 +142,12 @@ CryptoVerifyResult lw_mitigate(const BeaconMessage *msg,
     if (key_revoked)
         return CRYPTO_DROP_REVOKED_KEY;
 
-    /* ── Step 1: Build m' = m || τ_s || nonce  (Eq. 3.35) ─────────────── */
+    /* ── Step 1: Build m' = m || τ_s || nonce  (Eq. 3.49) ─────────────── */
     uint8_t m_prime[1024];
     size_t  m_prime_len;
     build_authenticated_payload(msg, m_prime, &m_prime_len);
 
-    /* ── Step 2: Recompute HMAC-SHA256 and compare  (Eq. 3.14) ─────────── */
+    /* ── Step 2: Recompute HMAC-SHA256 and compare  (Eq. 3.15) ─────────── */
     uint8_t mac_computed[HMAC_SHA256_LEN];
     compute_hmac(session_key, SESSION_KEY_LEN,
                  m_prime, m_prime_len,
@@ -156,13 +156,13 @@ CryptoVerifyResult lw_mitigate(const BeaconMessage *msg,
     if (!ct_memcmp(mac_computed, msg->mac, HMAC_SHA256_LEN))
         return CRYPTO_DROP_INVALID_MAC;
 
-    /* ── Step 3: Timestamp freshness  (Eq. 3.15) ────────────────────────── */
+    /* ── Step 3: Timestamp freshness  (Eq. 3.16) ────────────────────────── */
     int64_t delta = (int64_t)recv_time_ms - (int64_t)msg->sender_timestamp_ms;
     if (delta < 0) delta = -delta;
     if ((uint64_t)delta > FRESHNESS_WINDOW_MS)
         return CRYPTO_DROP_STALE_TIMESTAMP;
 
-    /* ── Step 4: Nonce novelty  (Eq. 3.16) ──────────────────────────────── */
+    /* ── Step 4: Nonce novelty  (Eq. 3.17) ──────────────────────────────── */
     if (!nonce_is_novel(nonce_cache, msg->nonce))
         return CRYPTO_DROP_REPLAYED_NONCE;
 
@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
     const char *input  = (argc > 1) ? argv[1] : "pem_event_log.csv";
     const char *output = (argc > 2) ? argv[2] : "hmac_filter_result.csv";
 
-    printf("=== hmac_filter.cc — Algorithm 3 LW-MITIGATE (Eqs. 3.14-3.16) ===\n");
+    printf("=== hmac_filter.cc — Algorithm 3 LW-MITIGATE (Eqs. 3.15-3.17) ===\n");
 
     /* ── Self-tests ──────────────────────────────────────────────────────── */
     {
@@ -260,12 +260,17 @@ int main(int argc, char *argv[]) {
         r = lw_mitigate(&msg, 10005, key, false, &cache);
         printf("[HMAC] Test2 replayed nonce:  %s (expected DROP_REPLAYED_NONCE)\n", result_str(r));
 
-        /* Test 3: stale timestamp (TTW) */
-        BeaconMessage msg2 = msg;
-        generate_nonce(msg2.nonce);
-        beacon_sign(&msg2, key);
-        msg2.sender_timestamp_ms = 5000;  /* far in the past */
-        r = lw_mitigate(&msg2, 10000, key, false, &cache);
+        /* Test 3: stale timestamp (TTW replay)
+         * Simulate attacker replaying a legitimately-signed message from the past.
+         * The timestamp is set to an old value BEFORE signing, so the MAC is valid
+         * but the staleness check (Step 3) must catch it. */
+        BeaconMessage msg2;
+        memset(&msg2, 0, sizeof(msg2));
+        snprintf((char *)msg2.vehicle_id, 16, "V0");
+        msg2.sender_timestamp_ms = 5000;   /* old timestamp — set before signing */
+        msg2.sequence_number = 2;
+        beacon_sign(&msg2, key);           /* MAC covers τ_s=5000; MAC is valid  */
+        r = lw_mitigate(&msg2, 10000, key, false, &cache); /* recv at 10000: delta=5000ms > 110ms */
         printf("[HMAC] Test3 stale timestamp: %s (expected DROP_STALE_TIMESTAMP)\n", result_str(r));
 
         /* Test 4: bad MAC */

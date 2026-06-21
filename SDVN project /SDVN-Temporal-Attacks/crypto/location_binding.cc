@@ -3,13 +3,13 @@
  *
  * Defends against ME (Multipath Echo) false witness attack.
  * Binds every topology observation to reporter GPS position and RSSI so that
- * out-of-range reporters are detected even if they hold valid Dilithium2 keys.
+ * out-of-range reporters are detected even if they hold valid Dilithium5 keys.
  *
  * Equations implemented:
- *   Eq. 3.25  m'_{Vk} = e_ij || pos_{Vk} || RSSI_{Vk←Vi} || τ_s || nonce
- *   Eq. 3.26  σ_{Vk}  = Sign(SK_{Vk}, m'_{Vk})
- *   Eq. 3.27  Accept_{Vk}(e_ij):  (i) crypto  (ii) spatial  (iii) signal
- *   Eq. 3.28  Accept(e_ij): |{Vk : Accept_{Vk}=1}| ≥ t
+ *   Eq. 3.27  m'_{Vk} = e_ij || pos_{Vk} || RSSI_{Vk←Vi} || τ_s || nonce
+ *   Eq. 3.28  σ_{Vk}  = Sign(SK_{Vk}, m'_{Vk})
+ *   Eq. 3.29  Accept_{Vk}(e_ij):  (i) crypto  (ii) spatial  (iii) signal
+ *   Eq. 3.30  Accept(e_ij): |{Vk : Accept_{Vk}=1}| ≥ t, t >= floor(n/2)+1
  *
  * Key function signatures (exactly as per Section 6):
  *   void create_location_bound_report(...)
@@ -59,11 +59,11 @@ static void fill_random(uint8_t *buf, size_t len) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Dilithium2 sign / verify — delegated to dilithium.cc (Section 3.3)
+ * Dilithium5 sign / verify — delegated to dilithium.cc (Section 3.3)
  *
- * The private dilithium2_sign_lb / dilithium2_verify_lb duplicates have
+ * The private dilithium5_sign_lb / dilithium5_verify_lb duplicates have
  * been removed. All signing and verification now uses the shared
- * dilithium2_sign() / dilithium2_verify() declared in teta_guard_types.h
+ * dilithium5_sign() / dilithium5_verify() declared in teta_guard_types.h
  * and defined in dilithium.cc.
  * ══════════════════════════════════════════════════════════════════════════ */
 
@@ -84,7 +84,7 @@ float haversine_distance_m(float lat1, float lon1, float lat2, float lon2) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * create_location_bound_report()  (Section 6.3, Eqs. 3.25 + 3.26)
+ * create_location_bound_report()  (Section 6.3, Eqs. 3.27 + 3.28)
  *
  * Vehicle Vk constructs and signs a location-bound topology observation.
  * ══════════════════════════════════════════════════════════════════════════ */
@@ -95,12 +95,12 @@ void create_location_bound_report(const uint8_t   link_id[8],
                                    float            rssi_from_vi,
                                    uint64_t         sender_ts_ms,
                                    const uint8_t    reporter_id[16],
-                                   const uint8_t    sk_vk[DILITHIUM2_SK_LEN],
-                                   const uint8_t    pk_vk[DILITHIUM2_PK_LEN],
+                                   const uint8_t    sk_vk[DILITHIUM5_SK_LEN],
+                                   const uint8_t    pk_vk[DILITHIUM5_PK_LEN],
                                    LocationBoundReport *out_report) {
     memset(out_report, 0, sizeof(*out_report));
 
-    /* Build m'_{Vk}  (Eq. 3.25) */
+    /* Build m'_{Vk}  (Eq. 3.27) */
     LocationBindingPayload *p = &out_report->payload;
     memcpy(p->link_id,    link_id,     8);
     p->reporter_lat        = reporter_lat;
@@ -111,16 +111,16 @@ void create_location_bound_report(const uint8_t   link_id[8],
     memcpy(p->reporter_id, reporter_id, 16);
     fill_random(p->nonce, NONCE_LEN);   /* fresh nonce per report */
 
-    /* σ_{Vk} = Sign(SK_{Vk}, m'_{Vk})  (Eq. 3.26) */
+    /* σ_{Vk} = Sign(SK_{Vk}, m'_{Vk})  (Eq. 3.28) */
     size_t sig_len;
-    dilithium2_sign((const uint8_t *)p, sizeof(LocationBindingPayload),
+    dilithium5_sign((const uint8_t *)p, sizeof(LocationBindingPayload),
                     sk_vk, out_report->signature, &sig_len);
 
-    memcpy(out_report->pub_key, pk_vk, DILITHIUM2_PK_LEN);
+    memcpy(out_report->pub_key, pk_vk, DILITHIUM5_PK_LEN);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * verify_single_witness()  (Section 6.4, Eq. 3.27)
+ * verify_single_witness()  (Section 6.4, Eq. 3.29)
  *
  * Accept_{Vk}(e_ij) = 1 iff all three hold:
  *   (i)   Verify(σ_{Vk}, PK_{Vk}) = 1           crypto authenticity
@@ -134,10 +134,10 @@ bool verify_single_witness(const LocationBoundReport *report,
                             float link_endpoint_lat,
                             float link_endpoint_lon) {
     /* (i) Cryptographic authenticity — Section 3.3 shared module */
-    bool crypto_ok = dilithium2_verify(
+    bool crypto_ok = dilithium5_verify(
         (const uint8_t *)&report->payload,
         sizeof(LocationBindingPayload),
-        report->signature, DILITHIUM2_SIG_LEN,
+        report->signature, DILITHIUM5_SIG_LEN,
         report->pub_key);
     if (!crypto_ok) return false;
 
@@ -154,9 +154,14 @@ bool verify_single_witness(const LocationBoundReport *report,
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * verify_quorum()  (Section 6.5, Eq. 3.28)
+ * verify_quorum()  (Section 6.5, Eq. 3.30)
  *
- * Accept(e_ij) = 1 iff |{Vk : Accept_{Vk}(e_ij)=1}| ≥ t
+ * Accept(e_ij) = 1  iff  |{Vk : Accept_Vk(e_ij) = 1}| ≥ t
+ *
+ * The strict-majority constraint t ≥ ⌊n/2⌋+1 is enforced internally.
+ * If the caller passes a weaker value it is silently raised to the minimum.
+ * This prevents a colluding minority smaller than ⌊n/2⌋+1 from passing the
+ * quorum gate even if the caller accidentally uses a lower threshold.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 bool verify_quorum(const LocationBoundReport *reports,
@@ -164,6 +169,13 @@ bool verify_quorum(const LocationBoundReport *reports,
                     uint32_t threshold_t,
                     float    link_ep_lat,
                     float    link_ep_lon) {
+    if (n_reports == 0) return false;
+
+    /* Enforce strict majority: t must be at least ⌊n/2⌋+1 regardless of what
+     * the caller supplied.  This is the anti-collusion requirement from Eq. 3.30. */
+    uint32_t min_t = (n_reports / 2) + 1;
+    if (threshold_t < min_t) threshold_t = min_t;
+
     uint32_t accepted = 0;
     for (uint32_t k = 0; k < n_reports; k++) {
         if (verify_single_witness(&reports[k], link_ep_lat, link_ep_lon))
@@ -216,11 +228,12 @@ static int load_pem(const char *file, PemRow *rows, int max) {
 
 /* ── main ─────────────────────────────────────────────────────────────────── */
 
+#ifndef LOCATION_BINDING_NO_MAIN
 int main(int argc, char *argv[]) {
     const char *input  = (argc > 1) ? argv[1] : "pem_event_log.csv";
     const char *output = (argc > 2) ? argv[2] : "location_binding_result.csv";
 
-    printf("=== location_binding.cc — Location-Binding Signatures (Eqs. 3.25-3.28) ===\n");
+    printf("=== location_binding.cc — Location-Binding Signatures (Eqs. 3.27-3.30) ===\n");
     printf("[LBS] R_COMM=%.0f m   RSSI_min=%.1f dBm\n", R_COMM_METERS, RSSI_MIN_DBM);
 
     /* Haversine self-test: same point → 0 m */
@@ -232,20 +245,11 @@ int main(int argc, char *argv[]) {
         printf("[LBS] haversine ~300m test: %.1f m\n", d2);
     }
 
-    /* Pre-generate Dilithium2 keypairs for V0..V9 */
-    static uint8_t pks[10][DILITHIUM2_PK_LEN];
-    static uint8_t sks[10][DILITHIUM2_SK_LEN];
-    for (int i = 0; i < 10; i++) {
-        fill_random(sks[i], DILITHIUM2_SK_LEN);
-#ifdef HAVE_OPENSSL
-        SHA256(sks[i], 32, pks[i]);
-        for (size_t j = 32; j < DILITHIUM2_PK_LEN; j++)
-            pks[i][j] = sks[i][(j * 7) % DILITHIUM2_SK_LEN] ^ 0xA5;
-#else
-        for (size_t j = 0; j < DILITHIUM2_PK_LEN; j++)
-            pks[i][j] = sks[i][(j + 5) % DILITHIUM2_SK_LEN] ^ 0x3C;
-#endif
-    }
+    /* Pre-generate Dilithium5 keypairs for V0..V9 via canonical keygen */
+    static uint8_t pks[10][DILITHIUM5_PK_LEN];
+    static uint8_t sks[10][DILITHIUM5_SK_LEN];
+    for (int i = 0; i < 10; i++)
+        dilithium5_keygen(pks[i], sks[i]);
 
     /* Self-test: in-range reporter → accepted */
     {
@@ -323,10 +327,10 @@ int main(int argc, char *argv[]) {
                                       (uint64_t)(rows[i].t * 1000),
                                       rid, sks[vid], pks[vid], &rep);
 
-        /* Per-condition results — Section 3.3 shared dilithium2_verify */
-        bool crypto_ok = dilithium2_verify(
+        /* Per-condition results — Section 3.3 shared dilithium5_verify */
+        bool crypto_ok = dilithium5_verify(
             (const uint8_t *)&rep.payload, sizeof(LocationBindingPayload),
-            rep.signature, DILITHIUM2_SIG_LEN, rep.pub_key);
+            rep.signature, DILITHIUM5_SIG_LEN, rep.pub_key);
 
         float dist = haversine_distance_m(lat, lon, lat_ep, lon_ep);
         bool spatial_ok = (dist <= R_COMM_METERS);
@@ -346,3 +350,4 @@ int main(int argc, char *argv[]) {
     printf("[LBS] Wrote %s\n", output);
     return 0;
 }
+#endif /* LOCATION_BINDING_NO_MAIN */

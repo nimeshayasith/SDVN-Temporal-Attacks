@@ -3,7 +3,7 @@
  *
  * Implements binary Logical Key Hierarchy tree with O(log n) revocation cost.
  *
- * Equation 3.17:  C_revoke = O(log n)
+ * Equation 3.18:  C_revoke = O(log n)
  *   1,000 vehicles → ~10 KEK updates  (vs. 1,000 under naïve full re-key)
  *
  * Exact C struct layout (Section 7.2):
@@ -161,7 +161,7 @@ void distribute_kek_updates(LKHTree *tree) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * lkh_revoke_vehicle()  (Section 7.3, Eq. 3.17)
+ * lkh_revoke_vehicle()  (Section 7.3, Eq. 3.18)
  *
  * Revokes vehicle Vk:
  *   1. Mark leaf as revoked
@@ -249,7 +249,7 @@ bool lkh_is_revoked(const LKHTree *tree, const uint8_t vehicle_id[16]) {
 /* ── main ─────────────────────────────────────────────────────────────────── */
 
 int main(void) {
-    printf("=== lkh_mgmt.cc — LKH Key Revocation (Eq. 3.17, O(log n)) ===\n");
+    printf("=== lkh_mgmt.cc — LKH Key Revocation (Eq. 3.18, O(log n)) ===\n");
     printf("[LKH] sizeof(LKHNode)  = %zu bytes\n", sizeof(LKHNode));
     printf("[LKH] sizeof(LKHTree)  = %zu bytes\n", sizeof(LKHTree));
 

@@ -14,3 +14,32 @@
   V5 -> Controller : <V5 sees V6, t=10.000>  ACCEPTED
   V6 -> Controller : <V6 sees V5, t=10.000>  ACCEPTED
 
+[t=10.100]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V5 sees V6, t=10.000>
+  Link physically breaks at t≈12.5s (dist > 300.0m)
+  Controller WILL NOT time out this entry
+
+[t=20.000]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V5 sees V6, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V5 sees V6, t=20.000>  timestamp changed 10.000 -> 20.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=20.000 — no external packet required
+
+[t=20.000]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V5<->V6 was ACTIVE at t=20.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V5  ->  V6    t=20.000    YES <- FORGED
+  V6  ->  V5    t=10.000    No
+
+========================================================
+  TTW ATTACK S3 COMPLETE
+========================================================
+[t=20.050]  DETECTION + MITIGATION
+  Internal replay detected and removed
+  Score: 0.350
+  Latency: 50.000 ms
+

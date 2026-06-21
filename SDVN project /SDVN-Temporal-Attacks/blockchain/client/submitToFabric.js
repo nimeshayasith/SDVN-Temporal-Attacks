@@ -44,18 +44,21 @@ const THETA_FS = '0.05';
 /**
  * submitToFabric — main entry point implementing Algorithm 2, Step 22.
  *
- * @param {string} trustedNodeID   — nk identifier (peer ID)
- * @param {Array}  alertSet        — array of AlertObject from tgn_alerts.json
- * @param {Object} beaconEvidence  — BeaconEvidenceRecord B_nk(t) for this interval
- * @param {number} beaconInterval  — current beacon interval timestamp (ms)
- * @param {Object} ctrlTopo        — optional ControllerTopologyClaim for Flow 3
+ * @param {string}  trustedNodeID  — nk identifier (peer ID)
+ * @param {Array}   alertSet       — array of AlertObject from tgn_alerts.json
+ * @param {Object}  beaconEvidence — BeaconEvidenceRecord B_nk(t) for this interval
+ * @param {number}  beaconInterval — current beacon interval timestamp (ms)
+ * @param {Object}  ctrlTopo       — optional ControllerTopologyClaim for Flow 3
+ * @param {boolean} noRSUMode      — true for no-RSU scenarios (1,3,5,7,9,11):
+ *                                   active set filled by OBU peers only (thesis binary switch)
  */
 async function submitToFabric(
     trustedNodeID,
     alertSet,
     beaconEvidence,
     beaconInterval,
-    ctrlTopo = null
+    ctrlTopo = null,
+    noRSUMode = false
 ) {
     const gateway = new Gateway();
     try {
@@ -185,27 +188,24 @@ async function submitToFabric(
             : [];
 
         // ── Flow 2 + Mitigate: submit all detection events with PBFT consensus ──
-        // SubmitAlert (single-peer path) is NOT used here because it calls
-        // runMitigation with only 1 approving peer which fails the 2/3 PBFT gate.
-        // Mitigate with all 5 RSU peer IDs in detEvents satisfies PBFT quorum.
+        // Peer set follows the thesis binary mode switch (Eq. 3.40):
+        //   with-RSU scenarios  → all np slots filled by Tier-1 RSU peers only
+        //   no-RSU scenarios    → all np slots filled by Tier-2 OBU peers only
+        // Pass --no_rsu flag when running no-RSU attack scenarios (1,3,5,7,9,11).
 
         // ── Full Mitigate call (if alerts exist) ──────────────────────────────
         if (alertSet.length > 0) {
-            // PBFT-FIX: fan out one DetectionEvent per ALL active peers (RSU + OBU) so
-            // that collectApprovingPeers sees every peer that may appear in activePeers
-            // and checkPBFTTrustWeight reaches the 2/3 quorum.
+            const RSU_PEERS = channelPeers.length > 0 ? channelPeers : [
+                'peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
+                'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
+                'peer0.rsu5.tetaguard.net'
+            ];
             const OBU_PEERS = [
                 'peer0.obu1.tetaguard.net', 'peer0.obu2.tetaguard.net',
                 'peer0.obu3.tetaguard.net'
             ];
-            const allRSUPeers = [
-                ...(channelPeers.length > 0 ? channelPeers : [
-                    'peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
-                    'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
-                    'peer0.rsu5.tetaguard.net'
-                ]),
-                ...OBU_PEERS
-            ];
+            // Binary mode switch: no mixing of RSU and OBU in the active set.
+            const allRSUPeers = noRSUMode ? OBU_PEERS : RSU_PEERS;
             // Normalise full variant strings (e.g. "TTW_S1_MAL_VEH_NO_RSU") to the
             // short forms the chaincode mitigation branches check ("TTW", "BSHH", "ME").
             // Without this, pushFlowModDrop/pushRerouteFlowMod are never called because
@@ -257,11 +257,14 @@ async function submitToFabric(
         // post-mitigation — so quarantined RSU peers are moved to REMOVED as
         // soon as their monitoring window elapses, even when no attack fires.
         try {
-            const allPeerIDs = channelPeers.length > 0
-                ? channelPeers
-                : ['peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
-                   'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
-                   'peer0.rsu5.tetaguard.net'];
+            // Binary mode: pass only the tier-appropriate peer list
+            const allPeerIDs = noRSUMode
+                ? ['peer0.obu1.tetaguard.net', 'peer0.obu2.tetaguard.net',
+                   'peer0.obu3.tetaguard.net']
+                : (channelPeers.length > 0 ? channelPeers
+                   : ['peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
+                      'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
+                      'peer0.rsu5.tetaguard.net']);
             const activePeers = await contract.submitTransaction(
                 'PeriodicPeerReSelection',
                 JSON.stringify(allPeerIDs)
@@ -340,12 +343,14 @@ async function main() {
     let evidencePath = null;
     let ctrlTopoPath = null;
     let nodeID       = PEER_ID;
+    let noRSUMode    = false;  // set true for scenarios without RSU infrastructure
 
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--alerts'   && args[i+1]) alertsPath   = args[++i];
         if (args[i] === '--evidence' && args[i+1]) evidencePath = args[++i];
         if (args[i] === '--ctrl_topo'&& args[i+1]) ctrlTopoPath = args[++i];
         if (args[i] === '--node_id'  && args[i+1]) nodeID       = args[++i];
+        if (args[i] === '--no_rsu')                noRSUMode    = true;
     }
 
     if (!fs.existsSync(alertsPath)) {
@@ -367,7 +372,7 @@ async function main() {
 
     const beaconInterval = alerts.length > 0 ? alerts[0].t_alert : Date.now();
 
-    await submitToFabric(nodeID, alerts, beaconEvidence, beaconInterval, ctrlTopo);
+    await submitToFabric(nodeID, alerts, beaconEvidence, beaconInterval, ctrlTopo, noRSUMode);
 }
 
 main().catch(err => {

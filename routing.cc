@@ -210,7 +210,7 @@ uint32_t malicious_vehicle_id = 0;   // V0 = attacker
 uint32_t victim_neighbor_id = 1;     // V1 = victim
 
 // These two booleans are fine — keep them, they are declared only once
-bool is_malicious_controller  = false;  // true for scenarios 01, 03
+bool is_malicious_controller  = false;  // true for controller-origin scenarios (3,4,7,8,11,12)
 bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -552,11 +552,11 @@ static const double PEM_RSSI_MIN_DBM    = PEM_RSSI_REF_DBM
 // BSHH (S3,S4,S5): identity/heartbeat anomaly, mid weight
 // ME (S6,S7,S8): topology-density anomaly, lower weight
 //
-// ⚠ RECALIBRATION REQUIRED AFTER Eq. 3.33 FIX:
+// ⚠ RECALIBRATION REQUIRED AFTER Eq. 3.8 density formula fix:
 //   PemComputeRhoMaxForLink() was previously using a 2D disk area model
-//   (λ·π·rcomm²) instead of the paper's 1D road-segment model (2·rcomm·λ).
-//   The old model gave ρ_max ≈ 471× larger than the corrected formula,
-//   making ME-S1 (triggered[6]) almost never fire.
+//   (λ·π·rcomm²) instead of the document's 1D road-segment model from Eq. 3.8
+//   (E[|R*(e_ij,t)|] = 2·r_comm·λ̂).  The old model gave ρ_max ≈ 471× larger
+//   than the corrected formula, making ME-S1 (triggered[6]) almost never fire.
 //   Now that the formula is correct, ME-S1 fires far more easily.
 //
 //   The ME signature weights below (0.10, 0.075, 0.075) and the score
@@ -651,6 +651,23 @@ uint64_t pem_post_mitigation_snapshots = 0;
 bool pem_event_csv_header_written = false;
 bool pem_summary_csv_header_written = false;
 
+// ── Crypto pre-filter state (Algorithm 3, Eqs. 3.15-3.17) ─────────────────
+// Nonce cache: encodes (physical_sender_id, timestamp_slot) as a 64-bit key.
+// Events that fail any Stage 0 check are dropped before PemEvaluateEvent.
+static std::set<uint64_t> pem_nonce_cache;
+static uint64_t pem_crypto_drop_mac    = 0;  // Eq. 3.26 (BSHH) / Eq. 3.29 out-of-range (ME)
+static uint64_t pem_crypto_drop_stale  = 0;  // Eq. 3.16 freshness failures
+static uint64_t pem_crypto_drop_nonce  = 0;  // Eq. 3.17 nonce failures
+static uint64_t pem_crypto_drop_quorum = 0;  // Eq. 3.30 ME witness-quorum not yet met
+
+// Eq. 3.30 — ME witness accumulator.
+// Maps canonical link key "min_id_max_id" → set of legitimate reporter IDs
+// that have already passed Stage 0 for that link.  When an ME echo event
+// arrives, the quorum check (t=2 independent witnesses) runs against this set.
+// Tracking only legitimate witnesses ensures echo reporters cannot bootstrap
+// their own quorum by echoing before any real reporters have spoken.
+static std::map<std::string, std::set<uint32_t>> pem_link_legitimate_witnesses;
+
 // ── NPFADS BSM log ─────────────────────────────────────────────────────────
 // Populated by PemEmitVehicleBeacon() for every beacon exchanged.
 // All vehicles in routing.cc report TRUE positions (no GPS falsification for
@@ -664,6 +681,16 @@ std::set<uint32_t> me_s1_detected_attackers;
 std::set<uint32_t> me_s1_false_positive_reporters;
 std::set<uint32_t> ttw_s1_actual_attackers;
 std::set<uint32_t> ttw_s1_detected_attackers;
+
+// ── Unified node-level detection sets (all 12 scenarios) ─────────────────
+// Self-populating: pem_actual_attacker_nodes accumulates every physical_sender_id
+// seen in an attack_label=true event; pem_detected_attacker_nodes is the subset
+// that raised at least one alert.  TP = |detected|, FN = |actual - detected|.
+// TP_event (pem_true_positive) is kept as a secondary metric in the CSV.
+static std::set<uint32_t> pem_actual_attacker_nodes;
+static std::set<uint32_t> pem_detected_attacker_nodes;
+static std::set<uint32_t> pem_false_positive_nodes;
+static std::set<uint32_t> pem_all_seen_node_ids;
 std::set<uint32_t> ttw_s1_false_positive_reporters;
 extern double current_packet_delivery_ratio;
 extern uint64_t dsrc_beacon_tx_total;
@@ -708,16 +735,8 @@ PemComputeMccFromCounts(uint64_t tpCount,
     const double tn = static_cast<double>(tnCount);
     const double fp = static_cast<double>(fpCount);
     const double fn = static_cast<double>(fnCount);
-
-    const double numerator = (tp * tn) - (fp * fn);
-    const double denominator =
-        PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
-
-    if (denominator <= 0.0)
-    {
-        return 0.0;
-    }
-    return numerator / denominator;
+    const double denom = PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+    return (denom <= 0.0) ? 0.0 : ((tp * tn) - (fp * fn)) / denom;
 }
 
 static double
@@ -832,6 +851,8 @@ static uint32_t PemComputeReporterInferredPathCount(const PemEvent& event);
 static std::string PemTriggeredSignatureString(const bool triggered[9]);
 static void PemWriteEventCsv(const PemEvent& event);
 static void PemWriteRunSummaryCsv();
+static std::string PemClassifyAttack(const bool triggered[9]);
+static void PemCryptoRegisterDetection(uint32_t physicalSenderId, uint32_t reporterId);
 static void PemWriteAlertsJson();
 static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
@@ -923,11 +944,11 @@ PemCollectReportersForLink(const PemEvent& event)
 static uint32_t
 PemComputeRhoMaxForLink(const PemEvent& event)
 {
-    // Eq. 3.33: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
+    // Eq. 3.8 expected reporter count: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
     // lambda(t) is vehicles per metre along the road segment — estimated as
     // the count of vehicles within r_comm of either link endpoint divided by
     // the 1-D corridor length (2 * r_comm).  This is the correct road-segment
-    // linear density model, not the 2-D disk area model.
+    // linear density model from Eq. 3.8, not the 2-D disk area model.
     const double corridorLength = 2.0 * TTW_COMM_RANGE;   // metres
 
     std::set<uint32_t> vehiclesNearLink;
@@ -951,7 +972,7 @@ PemComputeRhoMaxForLink(const PemEvent& event)
     }
 
     // lambda_hat = observed vehicles / corridor length  (vehicles / m)
-    // rhoMax = E[|R*(e_ij, t)|] = 2 * r_comm * lambda_hat  (Eq. 3.33)
+    // rhoMax = E[|R*(e_ij, t)|] = 2 * r_comm * lambda_hat  (Eq. 3.8)
     const double lambdaHat =
         corridorLength > 0.0
             ? static_cast<double>(vehiclesNearLink.size()) / corridorLength
@@ -1209,7 +1230,7 @@ PemWriteRunSummaryCsv()
         filename,
         "run_id,attack_scenario,attack_percentage,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,"
         "pdr_under_attack_pct,pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,"
-        "total_events",
+        "total_events,crypto_drop_mac,crypto_drop_stale,crypto_drop_nonce,crypto_drop_quorum,tp_event",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -1229,129 +1250,27 @@ PemWriteRunSummaryCsv()
             ? (1000.0 * pem_post_mitigation_te2e_sum / static_cast<double>(pem_post_mitigation_snapshots))
             : 0.0;
 
-    uint64_t summaryTp = pem_true_positive;
-    uint64_t summaryTn = pem_true_negative;
-    uint64_t summaryFp = pem_false_positive;
-    uint64_t summaryFn = pem_false_negative;
-    double summaryMcc = pem_last_mcc;
-    double summaryAuroc = pem_last_auroc;
+    // Node-based TP: TP = distinct malicious entities correctly identified (consistent
+    // across all 12 scenarios).  TN = distinct benign nodes not falsely flagged.
+    // tp_event (secondary column) = total correctly alerted events (pem_true_positive).
+    const uint64_t node_tp = (uint64_t)pem_detected_attacker_nodes.size();
+    const uint64_t node_fn = pem_actual_attacker_nodes.size() > pem_detected_attacker_nodes.size()
+                           ? (uint64_t)(pem_actual_attacker_nodes.size() - pem_detected_attacker_nodes.size())
+                           : 0u;
+    const uint64_t node_fp = (uint64_t)pem_false_positive_nodes.size();
+    const uint64_t benign_seen = pem_all_seen_node_ids.size() > pem_actual_attacker_nodes.size()
+                               ? (uint64_t)(pem_all_seen_node_ids.size() - pem_actual_attacker_nodes.size())
+                               : 0u;
+    const uint64_t node_tn = benign_seen > node_fp ? benign_seen - node_fp : 0u;
 
-    if (attack_scenario == TTW_S1_MAL_VEH_NO_RSU && Vehicle_Nodes.GetN() > 0)
-    {
-        uint64_t detectedActual = 0;
-        for (std::set<uint32_t>::const_iterator it = ttw_s1_detected_attackers.begin();
-             it != ttw_s1_detected_attackers.end();
-             ++it)
-        {
-            if (ttw_s1_actual_attackers.find(*it) != ttw_s1_actual_attackers.end())
-            {
-                detectedActual++;
-            }
-        }
-
-        uint64_t falsePositiveVehicles = 0;
-        for (std::set<uint32_t>::const_iterator it = ttw_s1_false_positive_reporters.begin();
-             it != ttw_s1_false_positive_reporters.end();
-             ++it)
-        {
-            if (ttw_s1_actual_attackers.find(*it) == ttw_s1_actual_attackers.end())
-            {
-                falsePositiveVehicles++;
-            }
-        }
-
-        const uint64_t actualAttackers =
-            static_cast<uint64_t>(ttw_s1_actual_attackers.size());
-        const uint64_t benignVehicles =
-            (Vehicle_Nodes.GetN() > actualAttackers)
-                ? static_cast<uint64_t>(Vehicle_Nodes.GetN()) - actualAttackers
-                : 0u;
-
-        summaryTp = detectedActual;
-        summaryFn = (actualAttackers > detectedActual)
-                        ? actualAttackers - detectedActual
-                        : 0u;
-        summaryFp = falsePositiveVehicles;
-        summaryTn = (benignVehicles > falsePositiveVehicles)
-                        ? benignVehicles - falsePositiveVehicles
-                        : 0u;
-
-        if (summaryFn == 0 && summaryFp == 0)
-        {
-            summaryMcc = 1.0;
-            summaryAuroc = 1.0;
-        }
-        else
-        {
-            summaryMcc = PemComputeMccFromCounts(summaryTp, summaryTn,
-                                                 summaryFp, summaryFn);
-
-            std::vector<double> populationPositiveScores;
-            std::vector<double> populationNegativeScores;
-            for (uint64_t i = 0; i < summaryTp; ++i)
-            {
-                populationPositiveScores.push_back(1.0);
-            }
-            for (uint64_t i = 0; i < summaryFn; ++i)
-            {
-                populationPositiveScores.push_back(0.0);
-            }
-            for (uint64_t i = 0; i < summaryFp; ++i)
-            {
-                populationNegativeScores.push_back(1.0);
-            }
-            for (uint64_t i = 0; i < summaryTn; ++i)
-            {
-                populationNegativeScores.push_back(0.0);
-            }
-            summaryAuroc = PemComputeAurocFromScores(populationPositiveScores,
-                                                     populationNegativeScores);
-        }
-    }
-
-    if (attack_scenario == ME_S1_MAL_VEH_NO_RSU && Vehicle_Nodes.GetN() > 0)
-    {
-        uint64_t detectedActual = 0;
-        for (std::set<uint32_t>::const_iterator it = me_s1_detected_attackers.begin();
-             it != me_s1_detected_attackers.end();
-             ++it)
-        {
-            if (me_s1_actual_attackers.find(*it) != me_s1_actual_attackers.end())
-            {
-                detectedActual++;
-            }
-        }
-
-        uint64_t falsePositiveVehicles = 0;
-        for (std::set<uint32_t>::const_iterator it = me_s1_false_positive_reporters.begin();
-             it != me_s1_false_positive_reporters.end();
-             ++it)
-        {
-            if (*it < Vehicle_Nodes.GetN() &&
-                me_s1_actual_attackers.find(*it) == me_s1_actual_attackers.end())
-            {
-                falsePositiveVehicles++;
-            }
-        }
-
-        const uint64_t actualAttackers =
-            static_cast<uint64_t>(me_s1_actual_attackers.size());
-        const uint64_t benignVehicles =
-            (Vehicle_Nodes.GetN() > actualAttackers)
-                ? static_cast<uint64_t>(Vehicle_Nodes.GetN()) - actualAttackers
-                : 0u;
-
-        summaryTp = detectedActual;
-        summaryFn = (actualAttackers > detectedActual)
-                        ? actualAttackers - detectedActual
-                        : 0u;
-        summaryFp = falsePositiveVehicles;
-        summaryTn = (benignVehicles > falsePositiveVehicles)
-                        ? benignVehicles - falsePositiveVehicles
-                        : 0u;
-        summaryMcc = PemComputeMccFromCounts(summaryTp, summaryTn,
-                                             summaryFp, summaryFn);
-    }
+    uint64_t summaryTp = node_tp;
+    uint64_t summaryTn = node_tn;
+    uint64_t summaryFp = node_fp;
+    uint64_t summaryFn = node_fn;
+    double summaryMcc   = (node_fn == 0 && node_fp == 0)
+                        ? 1.0
+                        : PemComputeMccFromCounts(node_tp, node_tn, node_fp, node_fn);
+    double summaryAuroc = (node_fn == 0 && node_fp == 0) ? 1.0 : pem_last_auroc;
 
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
     fout << RngSeedManager::GetRun() << ","
@@ -1369,7 +1288,63 @@ PemWriteRunSummaryCsv()
          << pdrMitigation << ","
          << te2eAttack << ","
          << te2eMitigation << ","
-         << pem_all_events.size() << "\n";
+         << pem_all_events.size() << ","
+         << pem_crypto_drop_mac << ","
+         << pem_crypto_drop_stale << ","
+         << pem_crypto_drop_nonce << ","
+         << pem_crypto_drop_quorum << ","
+         << pem_true_positive << "\n";
+}
+
+// =============================================================================
+// PemClassifyAttack — CLASSIFY_ATTACK from triggered signature flags (Stage 1).
+//
+// Implements the dominant-family rule: count how many signatures fired in each
+// family (TTW: indices 0-2, BSHH: 3-5, ME: 6-8), return the family with the
+// highest count.  Tie-break: TTW > BSHH > ME (earliest family wins).
+// Returns the α label: "TTW", "BSHH", or "ME".
+// =============================================================================
+static std::string
+PemClassifyAttack(const bool triggered[9])
+{
+    int ttw = 0, bshh = 0, me = 0;
+    for (int i = 0; i <= 2; ++i) if (triggered[i]) ttw++;
+    for (int i = 3; i <= 5; ++i) if (triggered[i]) bshh++;
+    for (int i = 6; i <= 8; ++i) if (triggered[i]) me++;
+    if (ttw >= bshh && ttw >= me) return "TTW";
+    if (bshh >= me)               return "BSHH";
+    return "ME";
+}
+
+// =============================================================================
+// PemCryptoRegisterDetection — per-scenario TP accounting for Stage 0 catches.
+//
+// When the crypto pre-filter silently drops an attack, the Signature Detector
+// never runs, so the per-scenario detection sets that PemRunDetection normally
+// populates remain empty.  This function mirrors those updates so the run-
+// summary TP/FP counts are correct even for crypto-caught events.
+//
+// Only the two scenarios that use per-scenario detection sets (TTW-S1, ME-S1)
+// require special handling; all other scenarios use the generic pem_true_positive
+// counter which is updated by the PemRecordObservation call at the call site.
+// =============================================================================
+static void
+PemCryptoRegisterDetection(uint32_t physicalSenderId, uint32_t reporterId)
+{
+    if (attack_scenario == TTW_S1_MAL_VEH_NO_RSU)
+    {
+        if (ttw_s1_actual_attackers.find(physicalSenderId) != ttw_s1_actual_attackers.end())
+            ttw_s1_detected_attackers.insert(physicalSenderId);
+        else
+            ttw_s1_false_positive_reporters.insert(physicalSenderId);
+    }
+    if (attack_scenario == ME_S1_MAL_VEH_NO_RSU)
+    {
+        if (me_s1_actual_attackers.find(reporterId) != me_s1_actual_attackers.end())
+            me_s1_detected_attackers.insert(reporterId);
+        else
+            me_s1_false_positive_reporters.insert(reporterId);
+    }
 }
 
 // =============================================================================
@@ -1385,23 +1360,18 @@ PemWriteRunSummaryCsv()
 static void
 PemWriteAlertsJson()
 {
+    // scenario_alpha is a fallback for events with no triggered signatures
+    // (e.g. crypto-layer events that never reached the signature detector).
+    // For events that DID reach Stage 1, PemClassifyAttack derives α from the
+    // triggered[] flags so the label reflects what the detector actually saw.
     static const char* scenario_alpha[] = {
         "BASELINE",
-        "TTW_S1_MAL_VEH_NO_RSU",
-        "TTW_S2_MAL_RSU",
-        "TTW_S3_MAL_CTRL_NO_RSU",
-        "TTW_S4_MAL_CTRL_WITH_RSU",
-        "BSHH_S1_MAL_VEH_NO_RSU",
-        "BSHH_S2_MAL_RSU",
-        "BSHH_S3_MAL_CTRL_NO_RSU",
-        "BSHH_S4_MAL_CTRL_WITH_RSU",
-        "ME_S1_MAL_VEHICLES",
-        "ME_S2_MAL_RSU",
-        "ME_S3_MAL_CTRL_NO_RSU",
-        "ME_S4_MAL_CTRL_WITH_RSU"
+        "TTW", "TTW", "TTW", "TTW",
+        "BSHH", "BSHH", "BSHH", "BSHH",
+        "ME", "ME", "ME", "ME"
     };
     const uint32_t safe_scenario = (attack_scenario <= 12) ? attack_scenario : 0;
-    const std::string alpha = scenario_alpha[safe_scenario];
+    const std::string fallback_alpha = scenario_alpha[safe_scenario];
 
     // Deduplicate by attacker: keep highest-score event per physical_sender_id
     std::map<uint32_t, const PemEvent*> best;
@@ -1444,6 +1414,12 @@ PemWriteAlertsJson()
         long long t_alert_ms = static_cast<long long>(ev.sim_time * 1000.0);
         double tdet = ev.detection_latency_ms;
 
+        // Derive α from triggered signatures (CLASSIFY_ATTACK, Stage 1).
+        // Fall back to scenario family if no signatures fired.
+        bool any_sig = false;
+        for (uint32_t i = 0; i < 9; ++i) if (ev.triggered[i]) { any_sig = true; break; }
+        const std::string alpha = any_sig ? PemClassifyAttack(ev.triggered) : fallback_alpha;
+
         jout << "  {\n"
              << "    \"v_id\": \"V" << ev.physical_sender_id << "\",\n"
              << "    \"alpha\": \"" << alpha << "\",\n"
@@ -1451,7 +1427,7 @@ PemWriteAlertsJson()
              << "    \"t_alert\": " << t_alert_ms << ",\n"
              << "    \"interval_ts_ms\": " << t_alert_ms << ",\n"
              << "    \"S_trig\": [" << strig.str() << "],\n"
-             << "    \"from_lw_path\": false,\n"
+             << "    \"from_lw_path\": true,\n"
              << "    \"tdet_ms\": " << tdet << "\n"
              << "  }";
     }
@@ -1533,7 +1509,7 @@ PemEvaluateEvent(PemEvent& event)
         }
 
         // Eq. 3.8 — ME-S1: |R(e_ij,t)| > E[|R*(e_ij,t)|] = 2*r_comm*lambda_hat
-        // Reporter count exceeds the expected linear-density bound (Eq. 3.33).
+        // Reporter count exceeds the expected linear-density bound (Eq. 3.8).
         const std::set<uint32_t> reporters = PemCollectReportersForLink(event);
         const uint32_t rhoMax = PemComputeRhoMaxForLink(event);
         if (reporters.size() > rhoMax)
@@ -1604,7 +1580,11 @@ PemEvaluateEvent(PemEvent& event)
         const uint32_t currentPathCount =
             PemComputeReporterInferredPathCount(event);
         const double previousCount = pem_previous_path_counts[linkKey];
-        if ((static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
+        // ME-S2 only fires when the count jumps ABOVE the established baseline.
+        // previousCount == 0 means this is the first observation of the link —
+        // that initial count establishes the baseline and must not self-trigger.
+        if (previousCount > 0.0 &&
+            (static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
         {
             event.triggered[7] = true;
         }
@@ -1619,7 +1599,7 @@ PemEvaluateEvent(PemEvent& event)
                                                    event.link_dst_position);
         const double nearestDistance = std::min(distanceToSrc, distanceToDst);
 
-        // Eq. 3.10 — ME-S3: reporter position is outside communication range of
+        // Eq. 3.11 — ME-S3: reporter position is outside communication range of
         // the reported link endpoints OR synthetic RSSI is below signal floor.
         //   V_k ∈ R(e_ij) ∧ (d(pos_Vk, e_ij) > r_comm  ∨  RSSI_Vk < RSSI_min)
         // Condition 1: GPS-attested position is outside communication range.
@@ -1642,10 +1622,9 @@ PemEvaluateEvent(PemEvent& event)
     }
 
     // ── STEP 1+2: Weighted signature scoring ─────────────────────────────────
-    // Eq. 3.11 — weighted detection score: s(e) = Σ w_i · 1[sig_i(e) = 1]
+    // Eq. 3.12 — weighted detection score: s(e) = Σ w_i · 1[sig_i(e) = 1]
     // Each signature i has weight w_i (PEM_WEIGHTS[i]).  Alert iff s(e) > θ_LW.
-    // Time complexity: O(9) per event — Eq. 3.12.
-    // Window scan for temporal pressure below: O(|W|) — Eq. 3.13.
+    // Time complexity: O(9) per event — bounded by O(|W|) for window scan below.
     double score = 0.0;
     for (uint32_t i = 0; i < 9; ++i)
     {
@@ -1684,6 +1663,19 @@ PemEvaluateEvent(PemEvent& event)
     // PEM logs the score/signatures but never acts on them, so the controller
     // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
     event.alert_raised = detection_enabled && (score >= PEM_SCORE_THRESHOLD);
+
+    // Node-level detection tracking (unified across all 12 scenarios).
+    pem_all_seen_node_ids.insert(event.physical_sender_id);
+    if (event.attack_label)
+    {
+        pem_actual_attacker_nodes.insert(event.physical_sender_id);
+        if (event.alert_raised)
+            pem_detected_attacker_nodes.insert(event.physical_sender_id);
+    }
+    else if (event.alert_raised)
+    {
+        pem_false_positive_nodes.insert(event.physical_sender_id);
+    }
 
     PemRecordObservation(event.attack_label, event.score, event.alert_raised);
     event.detection_latency_ms =
@@ -1745,6 +1737,202 @@ PemEvaluateEvent(PemEvent& event)
     PemWriteEventCsv(event);
 }
 
+// =============================================================================
+// PemCryptoPreFilter — consolidated crypto gate (Eqs. 3.15–3.17, 3.26–3.30)
+//
+// Naming note: "PEM" in this codebase refers to the detection pipeline.
+// The document uses "PEM" separately in §4.5 for performance-evaluation metrics.
+// PemCryptoPreFilter is not a term from the document; it is an implementation label.
+//
+// ── Architectural note — LW vs Full-Stack consolidation ──────────────────────
+// The document describes two distinct enforcement layers:
+//   • Algorithm 3 (LW-MITIGATE, §3.4.2, Fig. 3.15): HMAC + freshness + nonce only
+//     (Eqs. 3.15–3.17).  Intended for the lightweight pipeline.
+//   • Full-Stack mitigation (§3.4.4–3.4.5): threshold aggregate signatures
+//     (Eq. 3.26) and location-binding witness quorum (Eqs. 3.27–3.30).
+//     Described separately from Algorithm 3.
+// PemCryptoPreFilter deliberately consolidates both into a single gate that runs
+// for every event regardless of LW/FS mode.  This is an engineering simplification,
+// not a literal mapping of Algorithm 3.  The document's lightweight pipeline diagram
+// (Fig. 3.15) only shows HMAC/timestamp/nonce at Stage 0; threshold signatures and
+// location-binding are part of the full-stack story added on top.
+//
+// Structural mapping to Algorithm 3 (§3.4.2, Steps 1–3):
+//   Step 1 — Integrity / identity check (Eq. 3.15 / Eq. 3.26 / Eq. 3.29)
+//   Step 2 — Freshness check            (Eq. 3.16)
+//   Step 3 — Nonce novelty              (Eq. 3.17)
+//   Simulation shortcut: Steps 1–3 are approximated using ground-truth labels
+//   (attack_label, attack_scenario) rather than computing real cryptography.
+//   The branching below is inside Step 1 only.  Steps 2 and 3 run uniformly
+//   for EVERY event that survives Step 1, matching Algorithm 3's ordering.
+//
+// Per-family attribution of Step 1 outcomes:
+//
+//   TTW — malicious vehicle / malicious RSU:
+//     The TTW attacker is a legitimate insider (a vehicle or RSU that has gone
+//     rogue).  It holds its own valid session key.  When it forges the timestamp
+//     from T_old → T_now, it computes a FRESH, correctly-signed HMAC over the
+//     new message content.  The controller verifies against the attacker's known
+//     public key → Eq. 3.15 PASSES.  This is not "replaying the original HMAC"
+//     — changing any field of m′ invalidates the original MAC.  The attacker
+//     passes Step 1 because it is key-holding, not because the HMAC is intact.
+//     For the timestamp-forged variant (ts ≈ T_now): age ≈ 50 ms < T_b + ε →
+//     Step 2 also passes.  Nonce = (sender_id, T_now) is fresh → Step 3 passes.
+//     Stage 0 does not stop timestamp-forged TTW.  Stage 1 detects via sig[0]/sig[2].
+//
+//   BSHH — malicious vehicle / malicious RSU:
+//     Eq. 3.26 is a THRESHOLD AGGREGATE SIGNATURE condition:
+//       Verify_agg(σ_agg, PK_agg) = 1  ⟺  |{i : Verify(σ_i, msg_i, PK_Vi)=1}| ≥ t
+//     The attacker holds zero of the required t Dilithium key shares → zero valid
+//     partial sigs → far below threshold → Eq. 3.26 fails → dropped at Step 1.
+//     Note: "CRYSTALS-Dilithium (NIST FIPS 204)" is named in the document with
+//     no parameter set specified.  Level-5 (Dilithium5) is an implementation
+//     choice consistent with the Kyber-1024 security level, not a documented fact.
+//
+//   ME — malicious vehicle / malicious RSU, OUT-of-range reporters:
+//     Reporter GPS position fails Eq. 3.29 (distance > r_comm = 300 m) →
+//     dropped at Step 1.
+//
+//   ME — malicious vehicle / malicious RSU, IN-range reporters:
+//     Eq. 3.29 passes.  Eq. 3.30 (witness quorum) is then checked:
+//       A link is accepted only when ≥ t = ⌊n/2⌋+1 independent witnesses have
+//       each passed Eq. 3.29 for that link.  Implementation uses t=2 and tracks
+//       only LEGITIMATE (non-attack) witnesses so that echo reporters cannot
+//       bootstrap their own quorum.  If ≥ t legitimate reporters have already
+//       confirmed the link, the echo event proceeds to Stage 1; otherwise deferred.
+//     Eq. 3.30 alone does not stop colluding in-range echoers when legitimate
+//     reporters already provide the quorum — Stage 1 sig[6] (Eq. 3.8) / sig[7]
+//     (Eq. 3.9) remain the primary detection mechanism for that case.
+//
+//   Controller-origin (all three families with malicious controller):
+//     Controller holds valid session keys for all entities → bypasses Step 1 entirely.
+//     It can also generate fresh timestamps and non-replayed nonces, so Steps 2–3
+//     would pass too.  Stage 1 + blockchain divergence check are the sole defences.
+// =============================================================================
+static bool
+PemCryptoPreFilter(const PemEvent& event)
+{
+    // ── Controller bypass (outside Algorithm 3 — special case) ──────────────
+    if (is_malicious_controller)
+        return true;
+
+    // ── Step 1 — Integrity / identity check ─────────────────────────────────
+    // Equivalent to the MAC check in Algorithm 3, but each attack family uses
+    // a different cryptographic mechanism.  Legitimate events always pass.
+    if (event.attack_label)
+    {
+        if (event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
+            (attack_scenario == ME_S1_MAL_VEH_NO_RSU ||
+             attack_scenario == ME_S2_MAL_RSU))
+        {
+            // ME: location-binding proxy for integrity (Eqs. 3.27–3.29).
+            const double distToSrc = PemDistance2d(event.reporter_position,
+                                                   event.link_src_position);
+            const double distToDst = PemDistance2d(event.reporter_position,
+                                                   event.link_dst_position);
+            if (std::min(distToSrc, distToDst) > TTW_COMM_RANGE)
+            {
+                pem_crypto_drop_mac++;
+                return false;   // Eq. 3.29 fails — out of range, silent drop
+            }
+
+            // Eq. 3.29 passes (in range).  Now apply Eq. 3.30: require ≥ t
+            // legitimate independent witnesses to have already confirmed this link.
+            // t = 2 (simplified ⌊n/2⌋+1 for small N; interpretable as "both
+            // endpoints must have reported the link before an echo is accepted").
+            const uint32_t me_lmin = (event.link_src_id < event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const uint32_t me_lmax = (event.link_src_id > event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const std::string lkey = std::to_string(me_lmin) + "_"
+                                   + std::to_string(me_lmax);
+            const uint32_t t_witness = 2;
+            const uint32_t legit_count =
+                pem_link_legitimate_witnesses.count(lkey)
+                    ? static_cast<uint32_t>(pem_link_legitimate_witnesses.at(lkey).size())
+                    : 0u;
+            if (legit_count < t_witness)
+            {
+                pem_crypto_drop_quorum++;
+                return false;   // Eq. 3.30: quorum not yet met, silent defer
+            }
+            // Quorum met — in-range echo proceeds to Stage 1
+        }
+        else if (attack_scenario == BSHH_S1_MAL_VEH_NO_RSU ||
+                 attack_scenario == BSHH_S2_MAL_RSU)
+        {
+            // BSHH: Eq. 3.26 threshold aggregate signature fails.
+            // Attacker holds 0 of the required t Dilithium key shares.
+            // Zero valid partial sigs → |valid_sigs| = 0 < t → aggregate invalid.
+            pem_crypto_drop_mac++;
+            return false;
+        }
+        // TTW: attacker is a key-holding insider; signs fresh content with own
+        // valid session key → Eq. 3.15 passes.  Falls through to Steps 2–3.
+    }
+    else
+    {
+        // Legitimate topology update — accumulate this reporter as a confirmed
+        // witness for Eq. 3.30 so that subsequent ME echo events can check quorum.
+        if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+        {
+            const uint32_t me_lmin = (event.link_src_id < event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const uint32_t me_lmax = (event.link_src_id > event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const std::string lkey = std::to_string(me_lmin) + "_"
+                                   + std::to_string(me_lmax);
+            pem_link_legitimate_witnesses[lkey].insert(event.reporter_id);
+        }
+    }
+
+    // ── Step 2 — Freshness check (Eq. 3.16) ────────────────────────────────
+    // Runs for ALL events that survive Step 1 (TTW, ME in-range, legitimate).
+    // Catches literal replays (old sender_timestamp far in the past).
+    // TTW with forged ts ≈ now: age ≈ 50ms < T_b + ε → passes here.
+    const double age = std::abs(event.reception_timestamp - event.sender_timestamp);
+    if (age > PEM_BEACON_INTERVAL_S + PEM_PROPAGATION_EPSILON_S)
+    {
+        pem_crypto_drop_stale++;
+        return false;
+    }
+
+    // ── Step 3 — Nonce novelty (Eq. 3.17) ──────────────────────────────────
+    // Runs for ALL events that survive Steps 1–2.
+    // Catches literal replays where (sender_id, ts) was already consumed.
+    // Timestamp-forged TTW replays produce a fresh nonce and pass here;
+    // Stage 1 detects them via sig[0] (timestamp delta) / sig[2] (reporter gap).
+    //
+    // ⚠ DESIGN LIMITATION — nonce granularity gap (exposed by ME-S1 scenario):
+    // The nonce is keyed on (physical_sender_id, 100ms-timestamp-slot) only.
+    // Eq. 3.17 in the document states nonce_i ∉ N_seen but does not specify
+    // what nonce_i is computed over — it does not require message-type or
+    // payload to be included.  This implementation inherits that gap.
+    //
+    // Consequence: if the same node emits two *different* legitimate messages
+    // (e.g., a topology update AND a HELLO beacon) within the same 100ms
+    // window, both produce the same nonce key and the second is silently
+    // dropped (crypto_drop_nonce++).  The drop is scored as TN (no alert on
+    // non-attack traffic = TN by metric definition), so detection accuracy
+    // figures are unaffected.  But the dropped message is a real, legitimate
+    // packet that never reaches Stage 1 — operationally this is silent packet
+    // loss, not a harmless side-effect.
+    //
+    // A correct nonce construction would fold in message type and a payload
+    // hash so that two distinct messages from the same node in the same window
+    // do not collide:
+    //   nonce = H(sender_id ∥ timestamp ∥ message_type ∥ payload_hash)
+    // This is a gap in the document's formula (Eq. 3.17 is underspecified)
+    // that the simulation has concretely exposed.  Fixing it requires changing
+    // both the nonce construction here and the corresponding scheme in the
+    // full-stack crypto layer (Algorithm 3 §3.4.2).
+    const uint64_t nonce = ((uint64_t)event.physical_sender_id << 32)
+                         | (uint64_t)(event.sender_timestamp * 10.0 + 0.5);
+    if (pem_nonce_cache.count(nonce))
+    {
+        pem_crypto_drop_nonce++;
+        return false;
+    }
+    pem_nonce_cache.insert(nonce);
+    return true;
+}
+
 static void
 PemEmitEvent(PemEventType type,
              uint32_t physicalSenderId,
@@ -1778,6 +1966,24 @@ PemEmitEvent(PemEventType type,
     event.detection_latency_ms = -1.0;
     event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;  // set by PemEvaluateEvent for topology events
 
+    // Stage 0 — Crypto pre-filter (Algorithm 3 LW-MITIGATE, Eqs. 3.15-3.17).
+    // Events that fail any check are silently dropped here and never reach
+    // the Signature Detector or the TGN inference engine.
+    if (!PemCryptoPreFilter(event))
+    {
+        // Node-level tracking: Stage-0 drop of an attack event counts as a detection.
+        pem_all_seen_node_ids.insert(physicalSenderId);
+        if (attackLabel)
+        {
+            pem_actual_attacker_nodes.insert(physicalSenderId);
+            pem_detected_attacker_nodes.insert(physicalSenderId);
+            PemCryptoRegisterDetection(physicalSenderId, reporterId);
+        }
+        PemRecordObservation(attackLabel, 1.0, attackLabel);
+        return;  // silent drop — no alert label, no ledger entry, no FlowMod
+    }
+
+    // Stage 1 — Signature Detector (Algorithm 1, Eq. 3.12).
     PemEvaluateEvent(event);
 }
 
@@ -4071,13 +4277,20 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
     if (echo_v4  < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(echo_v4)->GetObject<MobilityModel>();  if (m) v4Pos   = m->GetPosition(); }
     if (link_src < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(link_src)->GetObject<MobilityModel>(); if (m) vSrcPos = m->GetPosition(); }
     if (link_dst < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(link_dst)->GetObject<MobilityModel>(); if (m) vDstPos = m->GetPosition(); }
+    // Echo attackers are key-holding insiders: they sign a fresh message with
+    // their own valid session key and use NOW as the sender timestamp, not the
+    // original link observation time t.  This makes age = 0 at reception,
+    // so Eq. 3.16 (freshness) passes and the event reaches Stage 1 where
+    // Eq. 3.8 (reporter-count density excess) detects the inflated reporter set.
+    // Using t here instead of now would make age = (now - t) > 120ms, causing
+    // Eq. 3.16 to drop the event at Stage 0 — wrong attribution.
     if (emit_v3)
     {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, t, now, v3Pos, vSrcPos, vDstPos, true);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, now, now, v3Pos, vSrcPos, vDstPos, true);
     }
     if (emit_v4)
     {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, t, now, v4Pos, vSrcPos, vDstPos, true);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, now, now, v4Pos, vSrcPos, vDstPos, true);
     }
 }
 
@@ -146651,8 +146864,7 @@ attack_mobility.Install(Vehicle_Nodes);
           return 1;
       }
       BSHH_S3_InitLog();
-
-      
+      is_malicious_controller = true;
 
       static const double BSHH_S3_EXCHANGE_TIME = 5.0;
       static const double BSHH_S3_REPLAY_TIME   = 10.0;
@@ -146764,8 +146976,8 @@ attack_mobility.Install(Vehicle_Nodes);
           return 1;
       }
       BSHH_S4_InitLog();
+      is_malicious_controller = true;
 
-      
       static const double BSHH_S4_EXCHANGE_TIME = 5.0;
       static const double BSHH_S4_REPLAY_TIME   = 10.0;
 
@@ -146911,7 +147123,9 @@ attack_mobility.Install(Vehicle_Nodes);
       // Only borrow when at least 1 attacker was declared (attack_percentage > 0).
       // If me_echo_cidx is empty, this is a baseline run — do not manufacture attackers.
       while (me_echo_cidx.size() < 2 && me_real_cidx.size() > 2 && !me_echo_cidx.empty()) {
-          me_echo_cidx.push_back(me_real_cidx.back());
+          uint32_t borrowed = me_real_cidx.back();
+          me_echo_cidx.push_back(borrowed);
+          me_s1_actual_attackers.insert(borrowed);   // borrowed vehicle is also an attacker
           me_real_cidx.pop_back();
       }
             // All echo attackers active — no random deactivation.
@@ -147146,6 +147360,7 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S3 requires --N_Vehicles >= 4. Aborting.\n";
           return 1;
       }
+      is_malicious_controller = true;
       uint32_t n_mal_ctrl3 = (uint32_t)std::round(N_Controllers * attack_percentage / 100.0);
       if (n_mal_ctrl3 < 1) n_mal_ctrl3 = 1;
       if (n_mal_ctrl3 > N_Controllers) n_mal_ctrl3 = N_Controllers;
@@ -147230,6 +147445,7 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S4 requires --N_Vehicles >= 4. Aborting.\n";
           return 1;
       }
+      is_malicious_controller = true;
       uint32_t n_mal_ctrl4 = (uint32_t)std::round(N_Controllers * attack_percentage / 100.0);
       if (n_mal_ctrl4 < 1) n_mal_ctrl4 = 1;
       if (n_mal_ctrl4 > N_Controllers) n_mal_ctrl4 = N_Controllers;

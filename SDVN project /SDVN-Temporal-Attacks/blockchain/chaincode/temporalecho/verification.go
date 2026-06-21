@@ -26,6 +26,21 @@ func verifyThresholdSig(evidence []IndividualSigEvidence, thresholdT int) bool {
 	return valid >= thresholdT
 }
 
+// loadFloatParam reads a named float64 parameter from the ledger, returning
+// defaultVal when the key is absent or unparseable.  Used for calibration
+// values (θFS, θLW) that are TBD in the thesis and set via SetSimParams.
+func loadFloatParam(ctx contractapi.TransactionContextInterface, key string, defaultVal float64) float64 {
+	d, err := ctx.GetStub().GetState(key)
+	if err != nil || len(d) == 0 {
+		return defaultVal
+	}
+	var v float64
+	if _, err2 := fmt.Sscanf(string(d), "%f", &v); err2 != nil || v <= 0 {
+		return defaultVal
+	}
+	return v
+}
+
 // loadSimParams reads simulation-configurable spatial thresholds from the ledger.
 // VF-02 FIX: verifyQuorum previously used compile-time constants rCommMeters=300.0
 // and rssiMinDBm=-85.0. Tests with different rcomm values (e.g. 150 m) required

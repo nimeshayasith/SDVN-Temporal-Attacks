@@ -1,6 +1,6 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 3686 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
 [SUMO] Attack 2: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/02_TTW_S2_Malicious_RSU.xml
 
@@ -8,7 +8,7 @@ Solution at controller cleared
 SCENARIO 02 - TTW-S2 ATTACK CONFIGURED
 Malicious RSUs : 1 / 1
 Victim pairs   (1):
-  RSU_7  ->  V5 <-> V6
+  RSU_11  ->  V5 <-> V6
 Timeline:
   t=10s  STEP 1+2 : Each pair -> its RSU -> Controller (legit)
   t=10s  STEP 3   : Each malicious RSU stores pair's old packet
@@ -17,20 +17,20 @@ Timeline:
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
-[TTW-S2][t=10.000]  V5 --HELLO + topo--> RSU_7  <V5 sees V6, t=10.000>
-[TTW-S2][t=10.000]  V6 --HELLO + topo--> RSU_7  <V6 sees V5, t=10.000>
-[TTW-S2][t=10.100]  RSU_7 --aggregate forward--> Controller  [<V5 sees V6>, <V6 sees V5>]  t=10.000  ACCEPTED
-Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.100s with delay 1ms
+[TTW-S2][t=10.000]  V5 --HELLO + topo--> RSU_11  <V5 sees V6, t=10.000>
+[TTW-S2][t=10.000]  V6 --HELLO + topo--> RSU_11  <V6 sees V5, t=10.000>
+[TTW-S2][t=10.100]  RSU_11 --aggregate forward--> Controller  [<V5 sees V6>, <V6 sees V5>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.100s with delay 1ms
 [TTW-S2][t=10.200]  Malicious RSU stored old packet  <V5 sees V6, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=20.000]  Pipeline armed: RSU NS3-ID=7 will inject 1 forged pair(s)
+[TTW-S2][t=20.000]  Pipeline armed: RSU NS3-ID=11 will inject 1 forged pair(s)
     V5 sees V6
-[TTW-S2][t=20.000]  RSU_7 --FORGED replay--> Controller  <V5 sees V6, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=20.000]  RSU_11 --FORGED replay--> Controller  <V5 sees V6, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
 
 [NPFADS] ====== Running NPFADS Detection Pipeline ======
 [NPFADS]  Attack scenario : 2
-[NPFADS]  BSM records     : 579
-[NPFADS-SOL] Loaded 579 BSM records
-[NPFADS-SOL] Eigenvalues computed for 2 senders
+[NPFADS]  BSM records     : 1735
+[NPFADS-SOL] Loaded 1735 BSM records
+[NPFADS-SOL] Eigenvalues computed for 6 senders
 [NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
   npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
   npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)

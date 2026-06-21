@@ -1,15 +1,15 @@
 /*
- * kem.cc — Kyber-512 + Saber Hybrid-KEM  (Module 1, Section 3)
+ * kem.cc — Kyber-1024 + FireSaber Hybrid-KEM  (Module 1, Section 3)
  *
  * Establishes K_{Vi,nk}: 32-byte session key shared between vehicle Vi
- * and trusted node nk.  Also generates Dilithium2 signing keypairs
+ * and trusted node nk.  Also generates Dilithium5 signing keypairs
  * (SK_{Vi}, PK_{Vi}) stored in VehicleKeyRecord (Section 3.5).
  *
  * liboqs constants used:
- *   KEM:  OQS_KEM_alg_kyber_512 (Kyber component, pre-standard)
- *         OQS_KEM_alg_ml_kem_512 (FIPS 203 preferred on liboqs ≥0.10)
- *         OQS_KEM_alg_saber      (Saber component — paper's hybrid partner)
- *   SIG:  OQS_SIG_alg_dilithium_2 (NIST ML-DSA, FIPS 204)
+ *   KEM:  OQS_KEM_alg_kyber_1024 (Kyber component, pre-standard)
+ *         OQS_KEM_alg_ml_kem_1024 (FIPS 203 preferred on liboqs ≥0.10)
+ *         OQS_KEM_alg_saber_firesaber      (Saber component — paper's hybrid partner)
+ *   SIG:  OQS_SIG_alg_dilithium_5 (NIST ML-DSA, FIPS 204)
  *
  * Build:
  *   g++ -std=c++17 -O2 kem.cc -lssl -lcrypto -o kem
@@ -94,7 +94,7 @@ static void print_hex(const char *label, const uint8_t *d, size_t n, size_t max)
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * Perform Kyber-512 + Saber hybrid key encapsulation for vehicle Vi.
+ * Perform Kyber-1024 + FireSaber hybrid key encapsulation for vehicle Vi.
  * Implements Section 3.3 Steps 3-4.
  *
  * trusted_pk    : RSU/nk Kyber public key (or simulated pk)
@@ -104,15 +104,15 @@ static void print_hex(const char *label, const uint8_t *d, size_t n, size_t max)
 static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
                               uint8_t out_session_key[SESSION_KEY_LEN]) {
 #ifdef HAVE_LIBOQS
-    /* Kyber-512 component */
-    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_512);
+    /* Kyber-1024 component */
+    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_1024);
     uint8_t ct_k[kem_k->length_ciphertext];
     uint8_t ss_k[kem_k->length_shared_secret];
     OQS_KEM_encaps(kem_k, ct_k, ss_k, trusted_pk);
     OQS_KEM_free(kem_k);
 
-    /* Saber component — OQS_KEM_alg_saber (Section 3.3, paper's actual KEM partner) */
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);
+    /* Saber component — OQS_KEM_alg_saber_firesaber (Section 3.3, paper's actual KEM partner) */
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
     uint8_t ct_s[kem_s->length_ciphertext];
     uint8_t ss_s[kem_s->length_shared_secret];
     OQS_KEM_encaps(kem_s, ct_s, ss_s, trusted_pk);
@@ -137,8 +137,8 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
 }
 
 /*
- * Dilithium2 keypair generation delegates to dilithium.cc (Section 3.3).
- * dilithium2_keygen() is declared in teta_guard_types.h and defined in
+ * Dilithium5 keypair generation delegates to dilithium.cc (Section 3.3).
+ * dilithium5_keygen() is declared in teta_guard_types.h and defined in
  * dilithium.cc — the single canonical Dilithium module for TETA-Guard.
  */
 
@@ -147,26 +147,26 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * Step 1 — Vehicle generates its Kyber+Saber KEM keypair.
+ * Step 1 — Vehicle generates its Kyber+FireSaber KEM keypair.
  * pk_kyber/pk_saber are sent to the RSU; sk_* stays at the vehicle.
  */
 void kem_vehicle_keygen(KemExchangeState *state) {
     memset(state, 0, sizeof(*state));
 #ifdef HAVE_LIBOQS
-    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_512);
+    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_1024);
     OQS_KEM_keypair(kem_k, state->pk_kyber, state->sk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);  /* Saber — paper's actual KEM partner */
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);  /* Saber — paper's actual KEM partner */
     OQS_KEM_keypair(kem_s, state->pk_saber, state->sk_saber);
     OQS_KEM_free(kem_s);
 #else
-    fill_random(state->sk_kyber, KYBER512_SK_LEN);
-    fill_random(state->sk_saber, KYBER512_SK_LEN);
-    for (size_t i = 0; i < KYBER512_PK_LEN; i++) {
-        state->pk_kyber[i] = state->sk_kyber[i % KYBER512_SK_LEN] ^ 0xABu;
-        state->pk_saber[i] = state->sk_saber[i % KYBER512_SK_LEN] ^ 0xCDu;
-    }
+    fill_random(state->sk_kyber, KYBER1024_SK_LEN);
+    fill_random(state->sk_saber, FIRESABER_SK_LEN);
+    for (size_t i = 0; i < KYBER1024_PK_LEN; i++)
+        state->pk_kyber[i] = state->sk_kyber[i % KYBER1024_SK_LEN] ^ 0xABu;
+    for (size_t i = 0; i < FIRESABER_PK_LEN; i++)
+        state->pk_saber[i] = state->sk_saber[i % FIRESABER_SK_LEN] ^ 0xCDu;
 #endif
     state->has_ciphertext = false;
 }
@@ -180,13 +180,13 @@ void kem_vehicle_keygen(KemExchangeState *state) {
 void kem_rsu_encapsulate(KemExchangeState *state,
                           uint8_t out_session_key[SESSION_KEY_LEN]) {
 #ifdef HAVE_LIBOQS
-    uint8_t ss_k[KYBER512_SS_LEN], ss_s[KYBER512_SS_LEN];
+    uint8_t ss_k[KYBER1024_SS_LEN], ss_s[KYBER1024_SS_LEN];
 
-    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_512);
+    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_1024);
     OQS_KEM_encaps(kem_k, state->ct_kyber, ss_k, state->pk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
     OQS_KEM_encaps(kem_s, state->ct_saber, ss_s, state->pk_saber);
     OQS_KEM_free(kem_s);
 
@@ -198,17 +198,17 @@ void kem_rsu_encapsulate(KemExchangeState *state,
     hkdf_sha256(combined, 32, out_session_key);
 #else
     /* Simulated: HKDF(pk_kyber || pk_saber) as deterministic shared secret */
-    uint8_t ikm[KYBER512_PK_LEN * 2];
-    memcpy(ikm,                   state->pk_kyber, KYBER512_PK_LEN);
-    memcpy(ikm + KYBER512_PK_LEN, state->pk_saber, KYBER512_PK_LEN);
+    uint8_t ikm[KYBER1024_PK_LEN + FIRESABER_PK_LEN];
+    memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
+    memcpy(ikm + KYBER1024_PK_LEN, state->pk_saber, FIRESABER_PK_LEN);
     hkdf_sha256(ikm, sizeof(ikm), out_session_key);
     /* Ciphertext is deterministic XOR of pk with key so decaps can invert */
-    for (size_t i = 0; i < KYBER512_CT_LEN; i++) {
-        state->ct_kyber[i] = state->pk_kyber[i % KYBER512_PK_LEN]
+    for (size_t i = 0; i < KYBER1024_CT_LEN; i++)
+        state->ct_kyber[i] = state->pk_kyber[i % KYBER1024_PK_LEN]
                              ^ out_session_key[i % SESSION_KEY_LEN];
-        state->ct_saber[i] = state->pk_saber[i % KYBER512_PK_LEN]
+    for (size_t i = 0; i < FIRESABER_CT_LEN; i++)
+        state->ct_saber[i] = state->pk_saber[i % FIRESABER_PK_LEN]
                              ^ out_session_key[i % SESSION_KEY_LEN];
-    }
 #endif
     state->has_ciphertext = true;
 }
@@ -224,14 +224,14 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
     if (!state->has_ciphertext) return false;
 
 #ifdef HAVE_LIBOQS
-    uint8_t ss_k[KYBER512_SS_LEN], ss_s[KYBER512_SS_LEN];
+    uint8_t ss_k[KYBER1024_SS_LEN], ss_s[KYBER1024_SS_LEN];
 
-    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_512);
+    OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_1024);
     OQS_STATUS rc_k = OQS_KEM_decaps(kem_k, ss_k, state->ct_kyber, state->sk_kyber);
     OQS_KEM_free(kem_k);
     if (rc_k != OQS_SUCCESS) return false;
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
     OQS_STATUS rc_s = OQS_KEM_decaps(kem_s, ss_s, state->ct_saber, state->sk_saber);
     OQS_KEM_free(kem_s);
     if (rc_s != OQS_SUCCESS) return false;
@@ -244,9 +244,9 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
     hkdf_sha256(combined, 32, out_session_key);
 #else
     /* Simulated: same HKDF(pk_kyber || pk_saber) — matches kem_rsu_encapsulate */
-    uint8_t ikm[KYBER512_PK_LEN * 2];
-    memcpy(ikm,                   state->pk_kyber, KYBER512_PK_LEN);
-    memcpy(ikm + KYBER512_PK_LEN, state->pk_saber, KYBER512_PK_LEN);
+    uint8_t ikm[KYBER1024_PK_LEN + FIRESABER_PK_LEN];
+    memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
+    memcpy(ikm + KYBER1024_PK_LEN, state->pk_saber, FIRESABER_PK_LEN);
     hkdf_sha256(ikm, sizeof(ikm), out_session_key);
 #endif
     return true;
@@ -308,9 +308,9 @@ VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
                (char *)vehicle_id);
     }
 
-    /* Generate Dilithium2 signing key pair — sk_vi stays at vehicle */
-    uint8_t sk_vi[DILITHIUM2_SK_LEN];
-    dilithium2_keygen(rec->sign_pub_key, sk_vi);
+    /* Generate Dilithium5 signing key pair — sk_vi stays at vehicle */
+    uint8_t sk_vi[DILITHIUM5_SK_LEN];
+    dilithium5_keygen(rec->sign_pub_key, sk_vi);
 
     return rec;
 }
@@ -328,6 +328,8 @@ VehicleKeyRecord *kem_lookup(const uint8_t vehicle_id[16]) {
 }
 
 /* Mark a vehicle's key as revoked (called by lkh_mgmt after LKH update) */
+/* Not compiled in PHASE8_TESTS — lkh_mgmt.cc provides the canonical version */
+#ifndef PHASE8_TESTS
 void mark_key_revoked(VehicleKeyRecord *keystore, const uint8_t vehicle_id[16]) {
     for (uint32_t i = 0; i < g_keystore_count; i++) {
         if (memcmp(g_keystore[i].vehicle_id, vehicle_id, 16) == 0) {
@@ -340,6 +342,7 @@ void mark_key_revoked(VehicleKeyRecord *keystore, const uint8_t vehicle_id[16]) 
     }
     (void)keystore;
 }
+#endif /* PHASE8_TESTS */
 
 /* Generate a deterministic test vehicle ID from integer index */
 static void make_vehicle_id(uint8_t vid[16], int idx) {
@@ -350,12 +353,12 @@ static void make_vehicle_id(uint8_t vid[16], int idx) {
 /* ── main: full Section 3.3 round-trip demonstration ────────────────────── */
 
 int main(void) {
-    printf("=== kem.cc — Kyber+Saber Hybrid KEM + Dilithium2 (Module 1) ===\n");
+    printf("=== kem.cc — Kyber-1024+FireSaber Hybrid KEM + Dilithium5 (Module 1) ===\n");
 #ifdef HAVE_LIBOQS
     printf("[KEM] Backend: liboqs  — REAL post-quantum crypto active\n");
-    printf("[KEM]   Kyber-512: OQS_KEM_alg_kyber_512  (IND-CCA2)\n");
-    printf("[KEM]   Saber:     OQS_KEM_alg_saber      (IND-CCA2)\n");
-    printf("[KEM]   Signing:   OQS_SIG_alg_dilithium_2 (FIPS 204 ML-DSA)\n");
+    printf("[KEM]   Kyber-1024: OQS_KEM_alg_kyber_1024  (IND-CCA2, Level 5)\n");
+    printf("[KEM]   Saber:     OQS_KEM_alg_saber_firesaber      (IND-CCA2)\n");
+    printf("[KEM]   Signing:   OQS_SIG_alg_dilithium_5 (FIPS 204 ML-DSA)\n");
 #else
     fprintf(stderr,
         "\n"
@@ -363,11 +366,11 @@ int main(void) {
         "║  WARNING — PQC STUB MODE  (kem.cc)                          ║\n"
         "║                                                              ║\n"
         "║  liboqs is NOT linked.  The following are SIMULATED:        ║\n"
-        "║    • Kyber-512 KEM  →  HKDF-SHA256(pk_kyber||pk_saber)      ║\n"
-        "║    • Saber KEM      →  XOR fallback (not IND-CCA2 secure)   ║\n"
-        "║    • Dilithium2 sig →  random 32-byte buffer (no math)      ║\n"
+        "║    • Kyber-1024 KEM  →  HKDF-SHA256(pk_kyber||pk_saber)      ║\n"
+        "║    • FireSaber KEM      →  XOR fallback (not IND-CCA2 secure)   ║\n"
+        "║    • Dilithium5 sig →  random 32-byte buffer (no math)      ║\n"
         "║                                                              ║\n"
-        "║  Paper claims Kyber-512 and Saber IND-CCA2 security.        ║\n"
+        "║  Paper claims Kyber-1024 and FireSaber IND-CCA2 security.        ║\n"
         "║  Neither is operative in this build.                        ║\n"
         "║                                                              ║\n"
         "║  To enable real PQC:                                        ║\n"
@@ -433,11 +436,11 @@ int main(void) {
     printf("\n[KEM] --- Size report ---\n");
     printf("[KEM] sizeof(VehicleKeyRecord) = %zu bytes\n", sizeof(VehicleKeyRecord));
     printf("[KEM] sizeof(KemExchangeState) = %zu bytes\n", sizeof(KemExchangeState));
-    printf("[KEM]   KYBER512_PK_LEN : %u\n", KYBER512_PK_LEN);
-    printf("[KEM]   KYBER512_SK_LEN : %u\n", KYBER512_SK_LEN);
-    printf("[KEM]   KYBER512_CT_LEN : %u\n", KYBER512_CT_LEN);
+    printf("[KEM]   KYBER1024_PK_LEN : %u\n", KYBER1024_PK_LEN);
+    printf("[KEM]   KYBER1024_SK_LEN : %u\n", KYBER1024_SK_LEN);
+    printf("[KEM]   KYBER1024_CT_LEN : %u\n", KYBER1024_CT_LEN);
     printf("[KEM]   SESSION_KEY_LEN : %u\n", SESSION_KEY_LEN);
-    printf("[KEM]   DILITHIUM2_PK   : %u\n", DILITHIUM2_PK_LEN);
+    printf("[KEM]   DILITHIUM5_PK   : %u\n", DILITHIUM5_PK_LEN);
 
     /* ── Write CSV ────────────────────────────────────────────────────────── */
     FILE *f = fopen("kem_session_keys.csv", "w");

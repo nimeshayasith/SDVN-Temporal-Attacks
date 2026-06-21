@@ -1,7 +1,7 @@
 # crypto/Makefile — Build all TETA-Guard Crypto Layer modules
 #
 # Section 3 of the TETA-Guard Technical Reference
-#   dilithium.cc           — Section 3.3: shared Dilithium2 module (FIPS 204)
+#   dilithium.cc           — Section 3.3: shared Dilithium5 module (FIPS 204)
 #                            SINGLE canonical implementation used by M1, M3, M4
 #   Module 1 (kem.cc)              — Kyber+Saber Hybrid-KEM; calls dilithium.cc for keygen
 #   Module 2 (hmac_filter.cc)      — HMAC-Timestamp-Nonce Pre-Detection Filter
@@ -49,12 +49,14 @@ MODULES := dilithium kem hmac_filter threshold_sig location_binding lkh_mgmt cry
 # We build it as dilithium.o so kem, threshold_sig, location_binding, and
 # crypto_pipeline can all link against the single compiled copy.
 DILITHIUM_OBJ := dilithium.o
+THRESH_OBJ    := threshold_sig.o
+LBS_OBJ       := location_binding.o
 
 .PHONY: all clean test pipeline test_dilithium $(MODULES)
 
 all: $(MODULES)
 
-# ── Section 3.3: standalone Dilithium2 object (shared by M1, M3, M4, M6) ──────
+# ── Section 3.3: standalone Dilithium5 object (shared by M1, M3, M4, M6) ──────
 $(DILITHIUM_OBJ): dilithium.cc teta_guard_types.h
 	$(CXX) $(CXXFLAGS) -DDILITHIUM_NO_MAIN -c dilithium.cc -o $(DILITHIUM_OBJ)
 
@@ -74,24 +76,32 @@ hmac_filter: hmac_filter.cc teta_guard_types.h
 threshold_sig: threshold_sig.cc $(DILITHIUM_OBJ) teta_guard_types.h
 	$(CXX) $(CXXFLAGS) threshold_sig.cc $(DILITHIUM_OBJ) $(LIBS) -o threshold_sig
 
+# Module 3 as linkable object (no main; used by crypto_pipeline)
+$(THRESH_OBJ): threshold_sig.cc teta_guard_types.h
+	$(CXX) $(CXXFLAGS) -DTHRESHOLD_SIG_NO_MAIN -c threshold_sig.cc -o $(THRESH_OBJ)
+
 # ── Module 4: Location-Binding Sig (links dilithium.o) ────────────────────────
 location_binding: location_binding.cc $(DILITHIUM_OBJ) teta_guard_types.h
 	$(CXX) $(CXXFLAGS) location_binding.cc $(DILITHIUM_OBJ) $(LIBS) -lm -o location_binding
+
+# Module 4 as linkable object (no main; used by crypto_pipeline)
+$(LBS_OBJ): location_binding.cc teta_guard_types.h
+	$(CXX) $(CXXFLAGS) -DLOCATION_BINDING_NO_MAIN -c location_binding.cc -o $(LBS_OBJ)
 
 # ── Module 5: LKH Revocation (no Dilithium dependency) ────────────────────────
 lkh_mgmt: lkh_mgmt.cc teta_guard_types.h
 	$(CXX) $(CXXFLAGS) lkh_mgmt.cc $(LIBS) -o lkh_mgmt
 
-# ── Module 6: Pipeline (links dilithium.o transitively via M3+M4 logic) ───────
-crypto_pipeline: crypto_pipeline.cc $(DILITHIUM_OBJ) teta_guard_types.h
-	$(CXX) $(CXXFLAGS) crypto_pipeline.cc $(DILITHIUM_OBJ) $(LIBS) -lm -o crypto_pipeline
+# ── Module 6: Pipeline (links dilithium.o + M3 + M4 objects) ─────────────────
+crypto_pipeline: crypto_pipeline.cc $(DILITHIUM_OBJ) $(THRESH_OBJ) $(LBS_OBJ) teta_guard_types.h
+	$(CXX) $(CXXFLAGS) crypto_pipeline.cc $(DILITHIUM_OBJ) $(THRESH_OBJ) $(LBS_OBJ) $(LIBS) -lm -o crypto_pipeline
 
 # ── Run all self-tests ─────────────────────────────────────────────────────────
 test: all
-	@echo "=== Section 3.3: CRYSTALS-Dilithium2 (shared module) ==="
+	@echo "=== Section 3.3: CRYSTALS-Dilithium5 (shared module, Level 5) ==="
 	./dilithium
 	@echo ""
-	@echo "=== Module 1: KEM (Kyber+Saber Hybrid) ==="
+	@echo "=== Module 1: KEM (Kyber-1024+FireSaber Hybrid, Level 5) ==="
 	./kem
 	@echo ""
 	@echo "=== Module 2: HMAC Pre-Detection Filter ==="
@@ -119,4 +129,4 @@ pipeline: crypto_pipeline
 	./crypto_pipeline ../pem_event_log.csv ../tgn_alerts.json
 
 clean:
-	rm -f $(MODULES) $(DILITHIUM_OBJ) *.csv *.log *.json
+	rm -f $(MODULES) $(DILITHIUM_OBJ) $(THRESH_OBJ) $(LBS_OBJ) *.csv *.log *.json
