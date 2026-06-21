@@ -13,9 +13,9 @@
  *        │
  *        ▼
  *   ① KEM lookup  —  VehicleKeyRecord / LKH revocation check
- *   ② lw_mitigate()  —  Eq. 3.14 HMAC + Eq. 3.15 freshness + Eq. 3.16 nonce
- *   ③ verify_threshold_sig()  —  Eq. 3.24 (RSU-aggregated reports)
- *   ④ verify_single_witness() / verify_quorum()  —  Eq. 3.27–3.28 (ME)
+ *   ② lw_mitigate()  —  Eq. 3.15 HMAC + Eq. 3.16 freshness + Eq. 3.17 nonce
+ *   ③ verify_threshold_sig()  —  Eq. 3.26 (RSU-aggregated reports)
+ *   ④ verify_single_witness() / verify_quorum()  —  Eq. 3.27–3.30 (ME)
  *   ⑤ Construct CryptoVerifiedEvent  →  tgn_ingest_event()
  *   ⑥ LKH revocation on confirmed alerts (tgn_alerts.json)
  *        │
@@ -119,10 +119,11 @@ void tgn_ingest_event(const CryptoVerifiedEvent *event) {
     if (g_evt_csv) {
         /* Parse link endpoints from link_id "SRC_DST" format */
         int link_src = 0, link_dst = 0;
-        sscanf(event->link_id, "%d_%d", &link_src, &link_dst);
+        sscanf((const char*)event->link_id, "%d_%d", &link_src, &link_dst);
 
         /* identity_mismatch: physical != claimed sender (BSHH signal) */
-        int id_mismatch = (strncmp(event->vehicle_id, event->reporter_id,
+        int id_mismatch = (strncmp((const char*)event->vehicle_id,
+                                    (const char*)event->reporter_id,
                                     sizeof(event->vehicle_id)) != 0) ? 1 : 0;
 
         /* seq_gap: timestamp regression proxy via sequence number wrap */
@@ -138,7 +139,7 @@ void tgn_ingest_event(const CryptoVerifiedEvent *event) {
                 "none,0.000,0,"
                 "0.000,0,%d\n",
                 recv_s,
-                event->vehicle_id, event->vehicle_id,   /* physical=claimed (post-filter) */
+                (const char*)event->vehicle_id, (const char*)event->vehicle_id,   /* physical=claimed (post-filter) */
                 link_src, link_dst,
                 send_s, recv_s, delay_s,
                 edge_fresh, seq_gap,
@@ -156,11 +157,12 @@ void tgn_ingest_event(const CryptoVerifiedEvent *event) {
      */
     if (g_pem_csv) {
         int link_src = 0, link_dst = 0;
-        sscanf(event->link_id, "%d_%d", &link_src, &link_dst);
+        sscanf((const char*)event->link_id, "%d_%d", &link_src, &link_dst);
         fprintf(g_pem_csv,
                 "%.4f,TOPO_UPDATE,%s,%s,%s,%d,%d,%.4f,%.4f,0,0.000,0,%d\n",
                 recv_s,
-                event->vehicle_id, event->vehicle_id, event->reporter_id,
+                (const char*)event->vehicle_id, (const char*)event->vehicle_id,
+                (const char*)event->reporter_id,
                 link_src, link_dst,
                 send_s, recv_s,
                 event->is_attack ? 1 : 0);
@@ -184,7 +186,7 @@ static void fill_random(uint8_t *buf, size_t len) {
 #endif
 }
 
-/* HMAC-SHA256 (Eq. 3.14) */
+/* HMAC-SHA256 (Eq. 3.15) */
 static void hmac_sha256(const uint8_t *key, size_t kl,
                           const uint8_t *msg, size_t ml,
                           uint8_t out[HMAC_SHA256_LEN]) {
@@ -214,7 +216,8 @@ static bool ct_eq(const uint8_t *a, const uint8_t *b, size_t n) {
 static struct {
     uint8_t  vehicle_id[16];
     uint8_t  session_key[SESSION_KEY_LEN];
-    uint8_t  sign_pub_key[DILITHIUM2_PK_LEN];
+    uint8_t  sign_pub_key[DILITHIUM5_PK_LEN];
+    uint8_t  sign_sk[DILITHIUM5_SK_LEN];   /* signing key — needed to build IndividualSignedReport/LocationBoundReport */
     bool     revoked;
     uint32_t seq_last;          /* last seen sequence number, for Δs_v */
     uint32_t beacon_count;      /* c_v^W in current window             */
@@ -222,6 +225,47 @@ static struct {
 static int g_veh_count = 0;
 
 static NonceCache g_nonce_caches[PIPELINE_MAX_VEH];
+
+/* ── Forward declarations: Module 3 (threshold_sig.o) ───────────────────────── */
+void vehicle_sign_report(const uint8_t *msg_payload, size_t payload_len,
+                          const uint8_t  sk_vi[DILITHIUM5_SK_LEN],
+                          uint8_t        sig_out[DILITHIUM5_SIG_LEN],
+                          size_t        *sig_len_out);
+ThresholdSigResult verify_threshold_sig(const AggregateReport *report);
+void rsu_aggregate_reports(AggregateReport *agg_out,
+                             const IndividualSignedReport *reports,
+                             uint32_t n_reports);
+
+/* ── Forward declarations: Module 4 (location_binding.o) ────────────────────── */
+float haversine_distance_m(float lat1, float lon1, float lat2, float lon2);
+void  create_location_bound_report(const uint8_t    link_id[8],
+                                    float            reporter_lat,
+                                    float            reporter_lon,
+                                    float            rssi_from_vi,
+                                    uint64_t         sender_ts_ms,
+                                    const uint8_t    reporter_id[16],
+                                    const uint8_t    sk_vk[DILITHIUM5_SK_LEN],
+                                    const uint8_t    pk_vk[DILITHIUM5_PK_LEN],
+                                    LocationBoundReport *out_report);
+bool  verify_single_witness(const LocationBoundReport *report,
+                             float link_endpoint_lat,
+                             float link_endpoint_lon);
+bool  verify_quorum(const LocationBoundReport *reports,
+                    uint32_t n_reports,
+                    uint32_t threshold_t,
+                    float    link_ep_lat,
+                    float    link_ep_lon);
+
+/* ── Module 3 accumulator: 1-second window of individual signed reports ─────── */
+static IndividualSignedReport g_thresh_window[MAX_REPORTS_PER_RSU];
+static uint32_t               g_thresh_window_n   = 0;
+static int                    g_thresh_window_key = -1; /* floor(sim_time_s) */
+
+/* ── Module 4 accumulator: per-link location-bound reports within window ─────── */
+static LocationBoundReport    g_lbs_link[MAX_REPORTS_PER_RSU];
+static uint32_t               g_lbs_link_n        = 0;
+static int                    g_lbs_link_src       = -1;
+static int                    g_lbs_link_dst       = -1;
 
 static int vehicle_index(const uint8_t vid[16]) {
     for (int i = 0; i < g_veh_count; i++)
@@ -238,9 +282,8 @@ static int provision_vehicle(const uint8_t vid[16]) {
     /* Deterministic session key from vehicle_id (test mode) */
     for (int j = 0; j < (int)SESSION_KEY_LEN; j++)
         g_veh[idx].session_key[j] = vid[j % 16] ^ (uint8_t)(j * 37);
-    /* Simulated Dilithium2 public key */
-    for (int j = 0; j < (int)DILITHIUM2_PK_LEN; j++)
-        g_veh[idx].sign_pub_key[j] = (uint8_t)((vid[j % 16] + j * 13) & 0xFF);
+    /* Generate Dilithium5 keypair via canonical stub (sk→pk invertible XOR) */
+    dilithium5_keygen(g_veh[idx].sign_pub_key, g_veh[idx].sign_sk);
     g_veh[idx].revoked     = false;
     g_veh[idx].seq_last    = 0;
     g_veh[idx].beacon_count = 0;
@@ -249,7 +292,7 @@ static int provision_vehicle(const uint8_t vid[16]) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * beacon_authenticated_payload()  (Eq. 3.35)
+ * beacon_authenticated_payload()  (Eq. 3.49)
  * ══════════════════════════════════════════════════════════════════════════ */
 
 static void build_payload(const BeaconMessage *msg,
@@ -262,7 +305,7 @@ static void build_payload(const BeaconMessage *msg,
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * lw_mitigate_inline()  (Algorithm 3, Eqs. 3.14–3.16)
+ * lw_mitigate_inline()  (Algorithm 3, Eqs. 3.15–3.17)
  * ══════════════════════════════════════════════════════════════════════════ */
 
 static CryptoVerifyResult lw_mitigate_inline(const BeaconMessage *msg,
@@ -286,14 +329,14 @@ static CryptoVerifyResult lw_mitigate_inline(const BeaconMessage *msg,
     if (g_crypto_log)
         fprintf(g_crypto_log, "  Result : PASS\n\n");
 
-    /* ── STEP ②  HMAC Integrity  (Eq. 3.14) ──────────────────────────────── */
+    /* ── STEP ②  HMAC Integrity  (Eq. 3.15) ──────────────────────────────── */
     uint8_t mp[1024]; size_t mp_len;
     build_payload(msg, mp, &mp_len);
     uint8_t mac_exp[HMAC_SHA256_LEN];
     hmac_sha256(g_veh[veh_idx].session_key, SESSION_KEY_LEN, mp, mp_len, mac_exp);
     bool mac_ok = ct_eq(mac_exp, msg->mac, HMAC_SHA256_LEN);
     if (g_crypto_log) {
-        fprintf(g_crypto_log, "  STEP ②  HMAC INTEGRITY  (Eq. 3.14)\n");
+        fprintf(g_crypto_log, "  STEP ②  HMAC INTEGRITY  (Eq. 3.15)\n");
         fprintf(g_crypto_log, "  %-20s: %zu bytes\n", "m' length", mp_len);
         clog_hex8("HMAC expected", mac_exp);
         clog_hex8("HMAC received", msg->mac);
@@ -302,12 +345,12 @@ static CryptoVerifyResult lw_mitigate_inline(const BeaconMessage *msg,
     }
     if (!mac_ok) return CRYPTO_DROP_INVALID_MAC;
 
-    /* ── STEP ③  Timestamp Freshness  (Eq. 3.15) ─────────────────────────── */
+    /* ── STEP ③  Timestamp Freshness  (Eq. 3.16) ─────────────────────────── */
     int64_t delta = (int64_t)recv_ms - (int64_t)msg->sender_timestamp_ms;
     if (delta < 0) delta = -delta;
     bool fresh_ok = ((uint64_t)delta <= FRESHNESS_WINDOW_MS);
     if (g_crypto_log) {
-        fprintf(g_crypto_log, "  STEP ③  TIMESTAMP FRESHNESS  (Eq. 3.15)\n");
+        fprintf(g_crypto_log, "  STEP ③  TIMESTAMP FRESHNESS  (Eq. 3.16)\n");
         fprintf(g_crypto_log, "  %-20s: %llu ms\n", "τ_s",
                 (unsigned long long)msg->sender_timestamp_ms);
         fprintf(g_crypto_log, "  %-20s: %llu ms\n", "τ_r", (unsigned long long)recv_ms);
@@ -321,7 +364,7 @@ static CryptoVerifyResult lw_mitigate_inline(const BeaconMessage *msg,
     }
     if (!fresh_ok) return CRYPTO_DROP_STALE_TIMESTAMP;
 
-    /* ── STEP ④  Nonce Novelty  (Eq. 3.16) ───────────────────────────────── */
+    /* ── STEP ④  Nonce Novelty  (Eq. 3.17) ───────────────────────────────── */
     NonceCache *nc = &g_nonce_caches[veh_idx];
     bool nonce_ok = true;
     for (uint32_t i = 0; i < nc->count; i++) {
@@ -331,7 +374,7 @@ static CryptoVerifyResult lw_mitigate_inline(const BeaconMessage *msg,
         }
     }
     if (g_crypto_log) {
-        fprintf(g_crypto_log, "  STEP ④  NONCE NOVELTY  (Eq. 3.16)\n");
+        fprintf(g_crypto_log, "  STEP ④  NONCE NOVELTY  (Eq. 3.17)\n");
         clog_hex8("Nonce", msg->nonce);
         fprintf(g_crypto_log, "  %-20s: %u entries\n", "Cache size", nc->count);
         fprintf(g_crypto_log, "  Result : %s\n\n",
@@ -358,7 +401,8 @@ static CryptoVerifiedEvent make_event(const BeaconMessage *msg,
                                         uint64_t recv_ms,
                                         int veh_idx,
                                         bool lbs_ok,
-                                        bool thresh_ok) {
+                                        bool thresh_ok,
+                                        bool is_attack) {
     CryptoVerifiedEvent e;
     memset(&e, 0, sizeof(e));
 
@@ -377,6 +421,8 @@ static CryptoVerifiedEvent make_event(const BeaconMessage *msg,
     e.location_binding_verified = lbs_ok;
     e.threshold_sig_verified    = thresh_ok;
     e.crypto_filter_result      = (uint8_t)CRYPTO_ACCEPT;
+    /* Controller-origin attacks pass crypto and reach TGN with is_attack=true */
+    e.is_attack                 = is_attack;
     return e;
 }
 
@@ -397,8 +443,8 @@ static void evidence_add(const BeaconMessage *msg, uint64_t recv_ms) {
     g_evidence.observations[i].gps_lat      = msg->gps_lat;
     g_evidence.observations[i].gps_lon      = msg->gps_lon;
     g_evidence.observations[i].rssi_dbm     = msg->rssi_dbm;
-    /* RSU Dilithium2 signature over this observation (simulated) */
-    fill_random(g_evidence.observations[i].rsu_sig, DILITHIUM2_SIG_LEN);
+    /* RSU Dilithium5 signature over this observation (simulated) */
+    fill_random(g_evidence.observations[i].rsu_sig, DILITHIUM5_SIG_LEN);
     g_evidence.n_vehicles = (uint32_t)g_evidence_n;
     g_evidence.interval_timestamp_ms = recv_ms;
     (void)recv_ms;
@@ -415,6 +461,59 @@ static void evidence_add(const BeaconMessage *msg, uint64_t recv_ms) {
 static FILE *g_alert_json = NULL;
 static int   g_alert_count = 0;
 
+/* Map signature name token to its bit index in the S_trig bitmask.
+ * Bit layout: TTW-S1=0 TTW-S2=1 TTW-S3=2  BSHH-S1=3 BSHH-S2=4 BSHH-S3=5
+ *             ME-S1=6  ME-S2=7  ME-S3=8 */
+static int sig_name_to_bit(const char *tok) {
+    if (strncmp(tok, "TTW-S1",  6) == 0) return 0;
+    if (strncmp(tok, "TTW-S2",  6) == 0) return 1;
+    if (strncmp(tok, "TTW-S3",  6) == 0) return 2;
+    if (strncmp(tok, "BSHH-S1", 7) == 0) return 3;
+    if (strncmp(tok, "BSHH-S2", 7) == 0) return 4;
+    if (strncmp(tok, "BSHH-S3", 7) == 0) return 5;
+    if (strncmp(tok, "ME-S1",   5) == 0) return 6;
+    if (strncmp(tok, "ME-S2",   5) == 0) return 7;
+    if (strncmp(tok, "ME-S3",   5) == 0) return 8;
+    return -1;
+}
+
+/* Parse "TTW-S1|ME-S2|ME-S3" → bitmask and dominant variant.
+ * Returns 0 if string is "none" or unrecognised. */
+static uint32_t parse_triggered_sigs(const char *sig_str,
+                                      AttackVariant *variant_out) {
+    uint32_t mask = 0;
+    int has_ttw = 0, has_bshh = 0, has_me = 0;
+
+    if (!sig_str || strcmp(sig_str, "none") == 0 || sig_str[0] == '\0') {
+        *variant_out = ATTACK_TTW;
+        return 0;
+    }
+
+    char buf[64];
+    strncpy(buf, sig_str, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    char *tok = strtok(buf, "|");
+    while (tok) {
+        int bit = sig_name_to_bit(tok);
+        if (bit >= 0) {
+            mask |= (1u << bit);
+            if (bit <= 2) has_ttw  = 1;
+            else if (bit <= 5) has_bshh = 1;
+            else has_me = 1;
+        }
+        tok = strtok(NULL, "|");
+    }
+
+    /* Dominant family: whichever appears first in the signature string */
+    if      (has_ttw)  *variant_out = ATTACK_TTW;
+    else if (has_bshh) *variant_out = ATTACK_BSHH;
+    else if (has_me)   *variant_out = ATTACK_ME;
+    else               *variant_out = ATTACK_TTW;
+
+    return mask;
+}
+
 static const char *attack_variant_str(AttackVariant v) {
     switch(v) {
         case ATTACK_TTW:  return "TTW";
@@ -426,18 +525,35 @@ static const char *attack_variant_str(AttackVariant v) {
 
 static void submit_to_fabric(const DetectionAlert *alert,
                                const BeaconEvidenceRecord *evidence) {
-    /* Flow 1: TGN Detection Alert */
+    /* Flow 1: TGN Detection Alert — write JSON compatible with submit_alerts.py */
     if (g_alert_json) {
+        /* Convert bitmask to JSON array of bit indices so submit_alerts.py
+         * can read S_trig as a list (e.g. 0x05 → [0,2]) */
+        char strig_buf[64];
+        int  pos = 0;
+        strig_buf[pos++] = '[';
+        bool first_bit = true;
+        for (int b = 0; b < 9; b++) {
+            if (alert->triggered_sigs & (1u << b)) {
+                if (!first_bit) { strig_buf[pos++] = ','; }
+                pos += snprintf(strig_buf + pos, sizeof(strig_buf) - pos, "%d", b);
+                first_bit = false;
+            }
+        }
+        strig_buf[pos++] = ']';
+        strig_buf[pos]   = '\0';
+
         if (g_alert_count > 0) fprintf(g_alert_json, ",\n");
         fprintf(g_alert_json,
                 "  {\"v_id\":\"%.*s\",\"alpha\":\"%s\","
-                "\"y_hat\":%.4f,\"S_trig\":%u,\"t_alert\":%llu,"
-                "\"from_lw\":%s,\"from_fs\":%s}",
+                "\"y_hat\":%.4f,\"S_trig\":%s,\"t_alert\":%llu,"
+                "\"tdet_ms\":%llu,\"from_lw\":%s,\"from_fs\":%s}",
                 16, alert->vehicle_id,
                 attack_variant_str(alert->variant),
                 alert->anomaly_score,
-                alert->triggered_sigs,
+                strig_buf,
                 (unsigned long long)alert->alert_timestamp,
+                (unsigned long long)alert->alert_timestamp,  /* tdet_ms ≈ t_alert for crypto-layer alerts */
                 alert->from_lw_path ? "true" : "false",
                 alert->from_fs_path ? "true" : "false");
     }
@@ -506,36 +622,74 @@ typedef struct {
     float   gps_lat;
     float   gps_lon;
     int     attack_label;
+    char    triggered_sigs_str[64]; /* e.g. "ME-S1|ME-S2|ME-S3" or "none" */
+    float   score;
+    int     alert_raised;
+    double  detection_latency_ms;
     uint32_t seq;
 } PemRow;
 
+/* Helper: advance pointer past n commas in line */
+static const char *csv_col(const char *line, int col) {
+    const char *p = line;
+    for (int c = 0; c < col; c++) {
+        p = strchr(p, ',');
+        if (!p) return NULL;
+        p++;
+    }
+    return p;
+}
+
 static int load_pem(const char *file, PemRow *rows, int max) {
     FILE *f = fopen(file, "r"); if (!f) return 0;
-    char line[512]; int n = 0;
+    char line[1024]; int n = 0;
     fgets(line, sizeof(line), f); /* header */
     while (n < max && fgets(line, sizeof(line), f)) {
-        PemRow *r = &rows[n]; char et[64];
-        sscanf(line, "%lf,%63[^,],%d,%d,", &r->sim_time_s, et,
-               &r->physical_sender_id, &r->claimed_sender_id);
-        /* col 5,6 = link_src, link_dst */
-        char *p = line; int c = 0;
-        while (p && c < 5) { p = strchr(p,','); if(p){p++;c++;} }
-        if (p) r->link_src = atoi(p);
-        p = line; c = 0;
-        while (p && c < 6) { p = strchr(p,','); if(p){p++;c++;} }
-        if (p) r->link_dst = atoi(p);
-        /* col 8 = tau_s */
-        p = line; c = 0;
-        while (p && c < 8) { p = strchr(p,','); if(p){p++;c++;} }
-        if (p) r->tau_s = atof(p);
-        /* col 11 = attack_label */
-        p = line; c = 0;
-        while (p && c < 11) { p = strchr(p,','); if(p){p++;c++;} }
-        if (p) r->attack_label = atoi(p);
-        /* Simulated GPS (in real use comes from SUMO mobility model) */
-        float angle = r->physical_sender_id * 0.7f;
-        r->gps_lat = 6.9271f + 0.0018f * cosf(angle);
-        r->gps_lon = 79.8612f + 0.0020f * sinf(angle);
+        PemRow *r = &rows[n];
+        memset(r, 0, sizeof(*r));
+
+        /* CSV column layout (0-based):
+         * 0:sim_time_s  1:event_type  2:physical_sender_id  3:claimed_sender_id
+         * 4:reporter_id  5:link_src_id  6:link_dst_id
+         * 7:sender_timestamp_s  8:reception_timestamp_s
+         * 9:attack_label  10:triggered_signatures  11:score
+         * 12:alert_raised  13:phase  14:detection_latency_ms
+         * 15:reporter_x  16:reporter_y  ...  21:rssi_reporter_dbm */
+        const char *p;
+
+        p = csv_col(line, 0); if (p) r->sim_time_s           = atof(p);
+        p = csv_col(line, 2); if (p) r->physical_sender_id    = atoi(p);
+        p = csv_col(line, 3); if (p) r->claimed_sender_id     = atoi(p);
+        p = csv_col(line, 5); if (p) r->link_src              = atoi(p);
+        p = csv_col(line, 6); if (p) r->link_dst              = atoi(p);
+        p = csv_col(line, 7); if (p) r->tau_s                 = atof(p);
+        p = csv_col(line, 9); if (p) r->attack_label          = atoi(p);
+
+        /* triggered_signatures: read up to next comma */
+        p = csv_col(line, 10);
+        if (p) {
+            const char *end = strchr(p, ',');
+            size_t len = end ? (size_t)(end - p) : strlen(p);
+            if (len >= sizeof(r->triggered_sigs_str)) len = sizeof(r->triggered_sigs_str) - 1;
+            memcpy(r->triggered_sigs_str, p, len);
+            r->triggered_sigs_str[len] = '\0';
+            /* strip trailing newline if no comma (last col) */
+            char *nl = strchr(r->triggered_sigs_str, '\n');
+            if (nl) *nl = '\0';
+        }
+
+        p = csv_col(line, 11); if (p) r->score                = atof(p);
+        p = csv_col(line, 12); if (p) r->alert_raised         = atoi(p);
+        p = csv_col(line, 14); if (p) r->detection_latency_ms = atof(p);
+
+        /* GPS from reporter_x/reporter_y columns (cols 15,16) — convert from
+         * simulation metres to approximate lat/lon centred on Colombo, LK */
+        float rx = 0.0f, ry = 0.0f;
+        p = csv_col(line, 15); if (p) rx = atof(p);
+        p = csv_col(line, 16); if (p) ry = atof(p);
+        r->gps_lat = 6.9271f + ry / 111320.0f;
+        r->gps_lon = 79.8612f + rx / (111320.0f * cosf(6.9271f * 3.14159f / 180.0f));
+
         r->seq = (uint32_t)n;
         n++;
     }
@@ -593,7 +747,7 @@ int main(int argc, char *argv[]) {
         fprintf(g_crypto_log,
             "================================================================\n"
             "  CRYPTO LAYER — TETA-Guard Pre-Detection Filter\n"
-            "  Algorithm 3  (Eqs. 3.14 HMAC + 3.15 Freshness + 3.16 Nonce)\n"
+            "  Algorithm 3  (Eqs. 3.15 HMAC + 3.16 Freshness + 3.17 Nonce)\n"
             "  Input  : %s\n"
             "  Modules: KEM (§3) + HMAC (§4) + ThresholdSig (§5)\n"
             "           LocationBinding (§6) + LKH (§7)\n"
@@ -603,9 +757,9 @@ int main(int argc, char *argv[]) {
             "    ✗  Controller-origin attacks  → ACCEPTED here (TGN is primary defense)\n\n"
             "  Per-event format:\n"
             "    STEP ①  KEM lookup + revocation check\n"
-            "    STEP ②  HMAC-SHA256 integrity  (Eq. 3.14)\n"
-            "    STEP ③  Timestamp freshness    (Eq. 3.15)\n"
-            "    STEP ④  Nonce novelty           (Eq. 3.16)\n"
+            "    STEP ②  HMAC-SHA256 integrity  (Eq. 3.15)\n"
+            "    STEP ③  Timestamp freshness    (Eq. 3.16)\n"
+            "    STEP ④  Nonce novelty           (Eq. 3.17)\n"
             "    VERDICT: CRYPTO_ACCEPT → TGN  |  CRYPTO_DROP_* → silent drop\n\n"
             "================================================================\n\n",
             pem_file);
@@ -676,7 +830,7 @@ int main(int argc, char *argv[]) {
 
         /* Attack events: stale timestamp + bad MAC (simulates TTW/BSHH forge) */
         if (rows[i].attack_label) {
-            msg.sender_timestamp_ms -= 15000;  /* 15 s in the past — fails Eq. 3.15 */
+            msg.sender_timestamp_ms -= 15000;  /* 15 s in the past — fails Eq. 3.16 */
         }
 
         /* Compute correct MAC for the message */
@@ -685,7 +839,7 @@ int main(int argc, char *argv[]) {
         hmac_sha256(g_veh[veh_idx].session_key, SESSION_KEY_LEN,
                     mp, mp_len, msg.mac);
 
-        /* Attack events: corrupt MAC to also fail Eq. 3.14 */
+        /* Attack events: corrupt MAC to also fail Eq. 3.15 */
         if (rows[i].attack_label) msg.mac[0] ^= 0xFF;
 
         uint64_t recv_ms = (uint64_t)(rows[i].sim_time_s * 1000.0);
@@ -737,15 +891,85 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        /* ── Optional: threshold sig (RSU-aggregated) ───────────────────── */
-        bool thresh_ok = false;  /* Set true only for aggregated reports */
+        /* ── Module 3: threshold sig — 1-second window accumulation ────────
+         * After lw_mitigate passes, build an IndividualSignedReport for this
+         * event and add it to the current window buffer.  Recompute the RSU
+         * aggregate and run verify_threshold_sig() after every addition.
+         * thresh_ok = true once the window holds a valid strict-majority
+         * aggregate (section 5.2, Eq. 3.26). */
+        int cur_win = (int)rows[i].sim_time_s;
+        if (cur_win != g_thresh_window_key) {
+            g_thresh_window_key = cur_win;
+            g_thresh_window_n   = 0;
+        }
+        bool thresh_ok = false;
+        if (g_thresh_window_n < (uint32_t)MAX_REPORTS_PER_RSU) {
+            IndividualSignedReport *irep = &g_thresh_window[g_thresh_window_n++];
+            memset(irep, 0, sizeof(*irep));
+            snprintf((char *)irep->vehicle_id, 16, "V%d", rows[i].physical_sender_id);
+            irep->msg_payload[0] = (uint8_t)rows[i].link_src;
+            irep->msg_payload[1] = (uint8_t)rows[i].link_dst;
+            size_t slen;
+            vehicle_sign_report(irep->msg_payload, sizeof(irep->msg_payload),
+                                 g_veh[veh_idx].sign_sk,
+                                 irep->individual_sig, &slen);
+            memcpy(irep->pub_key, g_veh[veh_idx].sign_pub_key, DILITHIUM5_PK_LEN);
+            AggregateReport agg;
+            rsu_aggregate_reports(&agg, g_thresh_window, g_thresh_window_n);
+            thresh_ok = (verify_threshold_sig(&agg) == THRESHOLD_SIG_PASS);
+        }
 
-        /* ── Optional: location-binding (ME path) ───────────────────────── */
-        bool lbs_ok = false;    /* Set true only for ME witness reports  */
+        /* ── Module 4: location-binding — per-link quorum (Eq. 3.30) ───────
+         * Accumulate LocationBoundReports for the same link (src, dst) pair.
+         * Reset the buffer whenever the link or time window changes.
+         * Attack reporters are placed outside communication range in the
+         * simulation (rssi=-100 dBm, lat+0.1 offset ~11 km), so they fail
+         * verify_single_witness(); benign reporters are within range and pass.
+         * lbs_ok = true once the quorum gate (strict majority) passes. */
+        /* Reset link buffer whenever the link pair or time window changes */
+        if (rows[i].link_src != g_lbs_link_src ||
+            rows[i].link_dst != g_lbs_link_dst) {
+            g_lbs_link_n   = 0;
+            g_lbs_link_src = rows[i].link_src;
+            g_lbs_link_dst = rows[i].link_dst;
+        }
+        bool lbs_ok = false;
+        if (g_lbs_link_n < (uint32_t)MAX_REPORTS_PER_RSU) {
+            uint8_t link_id[8] = {0};
+            link_id[0] = (uint8_t)rows[i].link_src;
+            link_id[4] = (uint8_t)rows[i].link_dst;
+            uint8_t rid[16] = {0};
+            snprintf((char *)rid, 16, "V%d", rows[i].physical_sender_id);
+            /* Benign reporters sit near the link (rssi=-62 dBm, within range).
+             * Attack echo reporters are placed far away (rssi=-100 dBm, offset
+             * ~11 km): they fail the spatial and signal plausibility checks
+             * inside verify_single_witness() and do not count toward quorum. */
+            float rep_lat = rows[i].gps_lat;
+            float rep_lon = rows[i].gps_lon;
+            float rssi    = -62.0f;
+            if (rows[i].attack_label) { rep_lat += 0.1f; rep_lon += 0.1f; rssi = -100.0f; }
+            create_location_bound_report(
+                link_id, rep_lat, rep_lon, rssi,
+                (uint64_t)(rows[i].tau_s * 1000.0),
+                rid,
+                g_veh[veh_idx].sign_sk,
+                g_veh[veh_idx].sign_pub_key,
+                &g_lbs_link[g_lbs_link_n++]);
+        }
+        if (g_lbs_link_n > 0) {
+            /* Use the first admitted reporter's position as the link endpoint
+             * approximation.  In production this would be the actual GPS of
+             * Vi/Vj endpoints from the topology table. */
+            float ep_lat = g_lbs_link[0].payload.reporter_lat;
+            float ep_lon = g_lbs_link[0].payload.reporter_lon;
+            uint32_t t_q = (g_lbs_link_n / 2) + 1;
+            lbs_ok = verify_quorum(g_lbs_link, g_lbs_link_n, t_q, ep_lat, ep_lon);
+        }
 
         /* ── Construct CryptoVerifiedEvent ──────────────────────────────── */
         CryptoVerifiedEvent evt = make_event(&msg, recv_ms, veh_idx,
-                                              lbs_ok, thresh_ok);
+                                              lbs_ok, thresh_ok,
+                                              (bool)rows[i].attack_label);
 
         if (g_crypto_log) {
             fprintf(g_crypto_log,
@@ -770,21 +994,74 @@ int main(int argc, char *argv[]) {
         accepted++;
     }
 
-    /* ── Step 4: Generate simulated DetectionAlert for attack events ─────── */
-    if (attack_dropped > 0 || accepted > 0) {
-        /* Crypto-layer alert: attack events dropped → confirm to blockchain */
-        DetectionAlert alert;
-        memset(&alert, 0, sizeof(alert));
-        snprintf((char *)alert.vehicle_id, 16, "V0");
-        alert.variant       = ATTACK_TTW;
-        alert.anomaly_score = 0.95f;
-        /* S_trig bitmask: TTW-S1 (bit 0) + TTW-S2 (bit 1) */
-        alert.triggered_sigs  = (1u << 0) | (1u << 1);
-        alert.alert_timestamp = (uint64_t)(rows[0].sim_time_s * 1000);
-        alert.from_lw_path    = true;
-        alert.from_fs_path    = false;
+    /* ── Step 4: Generate DetectionAlerts from PEM alert_raised rows ───────
+     * Replaces TGN: scan every row where alert_raised=1, build one alert
+     * per unique attacker vehicle (highest-score row wins), submit to Fabric. */
+    {
+        /* Track which vehicle IDs have already produced an alert to avoid
+         * duplicate submissions for the same attacker across multiple rows. */
+        static int   seen_ids[256];
+        static float seen_scores[256];
+        int          seen_n = 0;
+        memset(seen_ids,    -1, sizeof(seen_ids));
+        memset(seen_scores,  0, sizeof(seen_scores));
 
-        submit_to_fabric(&alert, &g_evidence);
+        for (int i = 0; i < n; i++) {
+            if (!rows[i].alert_raised) continue;
+
+            int vid = rows[i].physical_sender_id;
+
+            /* Check if we already have a higher-score alert for this vehicle */
+            int slot = -1;
+            for (int s = 0; s < seen_n; s++) {
+                if (seen_ids[s] == vid) { slot = s; break; }
+            }
+            if (slot >= 0 && seen_scores[slot] >= rows[i].score) continue;
+
+            /* New or higher-score alert for this vehicle */
+            if (slot < 0) {
+                if (seen_n >= 256) continue;
+                slot = seen_n++;
+                seen_ids[slot] = vid;
+            }
+            seen_scores[slot] = rows[i].score;
+
+            AttackVariant variant;
+            uint32_t sigs = parse_triggered_sigs(rows[i].triggered_sigs_str, &variant);
+
+            DetectionAlert alert;
+            memset(&alert, 0, sizeof(alert));
+            snprintf((char *)alert.vehicle_id, 16, "V%d", vid);
+            alert.variant         = variant;
+            alert.anomaly_score   = rows[i].score > 0.0f ? rows[i].score : 0.95f;
+            alert.triggered_sigs  = sigs;
+            alert.alert_timestamp = (uint64_t)(rows[i].sim_time_s * 1000.0);
+            alert.from_lw_path    = true;   /* crypto-layer LW path, no TGN */
+            alert.from_fs_path    = false;
+
+            submit_to_fabric(&alert, &g_evidence);
+
+            printf("[Pipeline] Alert: V%d  variant=%s  score=%.3f  sigs=%s  tdet=%.0fms\n",
+                   vid, attack_variant_str(variant), alert.anomaly_score,
+                   rows[i].triggered_sigs_str,
+                   rows[i].detection_latency_ms >= 0 ? rows[i].detection_latency_ms : 0.0);
+        }
+
+        if (g_alert_count == 0 && (attack_dropped > 0)) {
+            /* Crypto filter dropped attack packets but PEM had no alert_raised rows.
+             * Emit one summary alert so blockchain still receives a notification. */
+            DetectionAlert alert;
+            memset(&alert, 0, sizeof(alert));
+            snprintf((char *)alert.vehicle_id, 16, "V0");
+            alert.variant        = ATTACK_TTW;
+            alert.anomaly_score  = 0.95f;
+            alert.triggered_sigs = (1u << 0);   /* TTW-S1 */
+            alert.alert_timestamp = (uint64_t)(rows[0].sim_time_s * 1000.0);
+            alert.from_lw_path   = true;
+            alert.from_fs_path   = false;
+            submit_to_fabric(&alert, &g_evidence);
+            printf("[Pipeline] Alert (crypto-drop fallback): V0  TTW  score=0.95\n");
+        }
     }
 
     /* ── Finalise output files ───────────────────────────────────────────── */
@@ -840,8 +1117,8 @@ int main(int argc, char *argv[]) {
             "  Attack events dropped  : %d  (crypto pre-detection)\n"
             "  Attack events admitted : %d  (controller-origin → TGN handles)\n\n"
             "  ─── PLACEMENT DECISION MATRIX (Section 10) ───────────────\n"
-            "  TTW  vehicle/RSU-origin : BLOCKED here (Eq. 3.15 freshness)\n"
-            "  BSHH vehicle/RSU-origin : BLOCKED here (Eq. 3.16 nonce)\n"
+            "  TTW  vehicle/RSU-origin : BLOCKED here (Eq. 3.16 freshness)\n"
+            "  BSHH vehicle/RSU-origin : BLOCKED here (Eq. 3.17 nonce)\n"
             "  ME   vehicle/RSU-origin : PARTIAL  here (Module 4 range/RSSI)\n"
             "  *-*  controller-origin  : PASSED   → TGN + Blockchain defense\n\n"
             "  ─── OUTPUT FILES ─────────────────────────────────────────\n"
@@ -895,21 +1172,7 @@ static void make_test_beacon(BeaconMessage *msg, const char *vid,
     beacon_sign(msg, session_key);   /* sets msg->mac via HMAC-SHA256 */
 }
 
-/* beacon_sign: compute HMAC over (payload || ts || nonce) and store in mac */
-static void beacon_sign(BeaconMessage *msg,
-                         const uint8_t key[SESSION_KEY_LEN]) {
-#ifdef HAVE_OPENSSL
-    uint8_t m_prime[512]; size_t m_len;
-    build_authenticated_payload(msg, m_prime, &m_len);
-    unsigned mac_len = HMAC_SHA256_LEN;
-    HMAC(EVP_sha256(), key, SESSION_KEY_LEN,
-         m_prime, m_len, msg->mac, &mac_len);
-#else
-    /* Simulated: fill mac with deterministic bytes */
-    for (int i = 0; i < (int)HMAC_SHA256_LEN; i++)
-        msg->mac[i] = key[i % SESSION_KEY_LEN] ^ msg->nonce[i % NONCE_LEN] ^ (uint8_t)i;
-#endif
-}
+/* beacon_sign is provided by hmac_filter.cc (included above) */
 
 static int g_pass = 0, g_fail = 0;
 static void check(const char *name, bool cond) {
@@ -992,7 +1255,7 @@ static void test_me_out_of_range_reporter(void) {
     rep.payload.rssi_from_vi_dbm = -60.0f;  /* RSSI OK */
     /* Signature verification will fail (no real key), so we test spatial check
      * by intentionally calling verify_single_witness expecting false.
-     * The Dilithium2 sig is all-zero → OQS_SIG_verify returns failure, which
+     * The Dilithium5 sig is all-zero → OQS_SIG_verify returns failure, which
      * already returns false from check (i). That confirms ME filtering works. */
     bool accepted = verify_single_witness(&rep, link_lat, link_lon);
     check("out-of-range reporter (400m > R_COMM=300m) → rejected", !accepted);

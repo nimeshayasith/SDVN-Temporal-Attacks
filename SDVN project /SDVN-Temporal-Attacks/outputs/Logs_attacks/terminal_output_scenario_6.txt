@@ -1,0 +1,61 @@
+Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Attack 6: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/06_BSHH_S2_Malicious_RSU.xml
+
+========================================
+SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED
+Malicious RSUs : 1 / 1
+Victim pairs   : 1
+Stored HB time : t=5 (from legitimate exchange)
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
+[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
+Current neighbor size is 0Received packet from 11 of size 12packet timestamp 5.000s with delay 1ms
+[BSHH-S2][t=5.100]  RSU0(ns3=11) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
+[BSHH-S2][t=10.000]  RSU0(ns3=11) --REPLAY old heartbeat--> Controller  Heartbeat(physical=RSU0(ns3=11), claimed=V0(ns3=5), t=5.000)  *** ATTACK COMPLETE ***
+Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.000s with delay 1ms
+
+[NPFADS] ====== Running NPFADS Detection Pipeline ======
+[NPFADS]  Attack scenario : 6
+[NPFADS]  BSM records     : 1134
+[NPFADS-SOL] Loaded 1134 BSM records
+[NPFADS-SOL] Eigenvalues computed for 6 senders
+[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
+  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
+  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
+  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
+  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
+
+╔═══════════════════════════════════════════════════════════════════╗
+║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
+║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
+╠═════════╪═════════════════╪═════════════════╪════════════════════╣
+║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  Detection latency estimate: 800 ms  (= 8 × 100 ms beacon interval)                    ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+  Paper reference values (Table 6, MDS at fog node):
+    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
+    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
+    Type 16:  F1 = 0.98
+
+  NADM paper values: UC_known=0.09617  NASEA=0.99944
+
+[NPFADS] ====== NPFADS Detection Complete ======
+[NPFADS] Expected result for TTW/BSHH/ME scenarios:
+[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
+[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
+[NPFADS]   Novel det  = NO   (no AE reconstruction error)
+[NPFADS] --> These attacks evade position-based detection.
+[NPFADS] --> PEM detected them via temporal signature analysis.
+[NPFADS] --> The two detectors are COMPLEMENTARY.
+

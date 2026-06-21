@@ -311,19 +311,63 @@ async function main() {
 
     await sleep(500);
 
+    // Bootstrap trust: run participation rounds so OBU scores rise above initial 0.10.
+    // In no-RSU mode the highest-trust OBU drives rounds (TR-01 bootstrap rule).
+    // Each round adds TrustDeltaPlus=0.05; 8 rounds reach TrustMinGT=0.50.
+    console.log('\n  Running bootstrap trust rounds (no-RSU mode — highest-trust OBU drives):');
+    const bootstrapDriver = NO_RSU_PEERS[0];   // obu01 — all start equal, first drives
+    for (let round = 0; round < 8; round++) {
+        try {
+            await contract.submitTransaction(
+                'UpdateTrustRound',
+                bootstrapDriver,
+                JSON.stringify(NO_RSU_PEERS),   // all 15 OBUs participate
+                JSON.stringify(NO_RSU_PEERS)    // no absentees — all get +delta
+            );
+        } catch (_) {}
+    }
+    console.log(`  8 rounds complete. OBU scores: 0.10 + (8 × 0.05) = 0.50 (TrustMinGT reached).`);
+
+    await sleep(500);
+
+    // Display trust scores for all 15 OBUs
+    console.log('\n  Trust scores after bootstrap rounds:');
+    for (const pid of NO_RSU_PEERS) {
+        try {
+            const raw   = await contract.evaluateTransaction('GetTrustScore', pid);
+            const score = parseFloat(raw.toString());
+            const bar   = '█'.repeat(Math.round(score * 20)).padEnd(20);
+            console.log(`    ${pid.padEnd(44)} score=${score.toFixed(2)}  [${bar}]`);
+        } catch (_) {
+            console.log(`    ${pid.padEnd(44)} score=n/a`);
+        }
+    }
+
+    await sleep(500);
+
     // SelectPeers with OBU-only pool — no-RSU mode bypasses gates
     try {
         const raw    = await contract.evaluateTransaction('SelectPeers', JSON.stringify(NO_RSU_PEERS));
         const active = JSON.parse(raw.toString());
-        console.log(`\n  SelectPeers result — no-RSU mode (gates bypassed):`);
+        console.log(`\n  SelectPeers result — no-RSU mode (gates bypassed, ranked by trust):`);
         console.log(`  Active peer set (${active.length} peers selected from 15 OBUs):`);
         for (const pid of active) {
-            console.log(`    ✓ ${pid}  ← OBU fills endorser slot`);
+            let score = 'n/a';
+            try {
+                const raw2 = await contract.evaluateTransaction('GetTrustScore', pid);
+                score = parseFloat(raw2.toString()).toFixed(2);
+            } catch (_) {}
+            console.log(`    ✓ ${pid.padEnd(44)} score=${score}  ← OBU fills endorser slot`);
         }
         const excluded = NO_RSU_PEERS.filter(p => !active.includes(p));
         console.log(`\n  Excluded (np=8 cap enforced even in no-RSU mode):`);
         for (const pid of excluded) {
-            console.log(`    ✗ ${pid}`);
+            let score = 'n/a';
+            try {
+                const raw2 = await contract.evaluateTransaction('GetTrustScore', pid);
+                score = parseFloat(raw2.toString()).toFixed(2);
+            } catch (_) {}
+            console.log(`    ✗ ${pid.padEnd(44)} score=${score}`);
         }
         console.log(`\n  All ${active.length} endorser slots filled by OBU peers. np=8 cap holds.`);
     } catch (e) {

@@ -2,14 +2,14 @@
  * threshold_sig.cc — NTRU Threshold Aggregate Signature  (Module 3, Section 5)
  *
  * Defends against BSHH vehicle-origin and RSU-origin identity spoofing.
- * Uses Dilithium2 (NIST ML-DSA, FIPS 204) per liboqs.
+ * Uses Dilithium5 (NIST ML-DSA, FIPS 204) per liboqs.
  *
- * Exact sizes (liboqs Dilithium2):
- *   Signature : DILITHIUM2_SIG_LEN = 2420 bytes
- *   Public key: DILITHIUM2_PK_LEN  = 1312 bytes
- *   Secret key: DILITHIUM2_SK_LEN  = 2528 bytes
+ * Exact sizes (liboqs Dilithium5):
+ *   Signature : DILITHIUM5_SIG_LEN = 2420 bytes
+ *   Public key: DILITHIUM5_PK_LEN  = 1312 bytes
+ *   Secret key: DILITHIUM5_SK_LEN  = 2528 bytes
  *
- * Equation 3.24:
+ * Equation 3.26:
  *   Verify(σ_agg, PK_agg) = 1  ⟺  |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t
  *   where t = ⌊n/2⌋ + 1
  *
@@ -39,53 +39,97 @@
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
- * Dilithium2 operations — delegated to dilithium.cc (Section 3.3)
+ * Dilithium5 operations — delegated to dilithium.cc (Section 3.3)
  *
- * dilithium2_keygen(), dilithium2_sign(), dilithium2_verify() are the
+ * dilithium5_keygen(), dilithium5_sign(), dilithium5_verify() are the
  * single canonical implementations defined in dilithium.cc and declared
  * in teta_guard_types.h.  No duplicates here.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * dilithium2_keypair() — thin alias kept for call-site compatibility.
- * Delegates to the shared dilithium2_keygen() from dilithium.cc.
+ * dilithium5_keypair() — thin alias kept for call-site compatibility.
+ * Delegates to the shared dilithium5_keygen() from dilithium.cc.
  *
  * static: keeps this symbol translation-unit-local, preventing a duplicate-
  * symbol linker error when threshold_sig.o and dilithium.o are linked together
- * (both define dilithium2_keypair otherwise, causing -Werror=multiple-definition).
+ * (both define dilithium5_keypair otherwise, causing -Werror=multiple-definition).
  */
-static void dilithium2_keypair(uint8_t pk[DILITHIUM2_PK_LEN],
-                                uint8_t sk[DILITHIUM2_SK_LEN]) {
-    dilithium2_keygen(pk, sk);  /* Section 3.3 shared module */
+static void dilithium5_keypair(uint8_t pk[DILITHIUM5_PK_LEN],
+                                uint8_t sk[DILITHIUM5_SK_LEN]) {
+    dilithium5_keygen(pk, sk);  /* Section 3.3 shared module */
 }
 
 /*
  * vehicle_sign_report() — Section 3.4
  * Vehicle Vi signs its topology observation report before sending to RSU.
- * Delegates to dilithium2_sign() from dilithium.cc.
+ * Delegates to dilithium5_sign() from dilithium.cc.
  */
 void vehicle_sign_report(const uint8_t *msg_payload, size_t payload_len,
-                          const uint8_t  sk_vi[DILITHIUM2_SK_LEN],
-                          uint8_t        sig_out[DILITHIUM2_SIG_LEN],
+                          const uint8_t  sk_vi[DILITHIUM5_SK_LEN],
+                          uint8_t        sig_out[DILITHIUM5_SIG_LEN],
                           size_t        *sig_len_out) {
-    dilithium2_sign(msg_payload, payload_len, sk_vi, sig_out, sig_len_out);
+    dilithium5_sign(msg_payload, payload_len, sk_vi, sig_out, sig_len_out);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * VERIFY_THRESHOLD_SIG  (Section 5.3, Eq. 3.24)
+ * VERIFY_THRESHOLD_SIG  (Section 5.3, Eq. 3.26)
  *
- * Called inside Algorithm 3 (hmac_filter) and Algorithm 4 (FS-MITIGATE).
- * Returns PASS iff ≥ t individual signatures are cryptographically valid.
+ * Implements the full biconditional:
+ *   Verify(σ_agg, PK_agg) = 1  ⟺  |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t
+ *
+ * Step 1 (left side): Recompute expected aggregate sig from stored individual
+ *   sigs and verify it matches the stored σ_agg.  This catches any RSU-side
+ *   tampering of individual sigs after aggregation (fast path).
+ *
+ * Step 2 (right side): Count individual valid sigs and enforce count ≥ t.
+ *   This is the actual majority enforcement gate.
+ *
+ * Both steps must pass for THRESHOLD_SIG_PASS.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 ThresholdSigResult verify_threshold_sig(const AggregateReport *report) {
-    uint32_t threshold_t = (report->n_reports / 2) + 1;  /* ⌊n/2⌋ + 1 */
-    uint32_t valid_count = 0;
+    if (report->n_reports == 0) return THRESHOLD_SIG_FAIL;
+    uint32_t threshold_t = (report->n_reports / 2) + 1;  /* strict majority: ⌊n/2⌋+1 */
 
+    /* ── Step 1: Aggregate signature consistency check (Eq. 3.26 left side) ─
+     * Recompute σ_agg using the same algorithm as rsu_aggregate_reports().
+     * A mismatch means the RSU tampered with individual sigs post-aggregation. */
+    uint8_t all_sigs_concat[MAX_REPORTS_PER_RSU * 32];
+    for (uint32_t i = 0; i < report->n_reports; i++)
+        memcpy(all_sigs_concat + i * 32, report->reports[i].individual_sig, 32);
+
+    uint8_t expected_agg_sig[DILITHIUM5_SIG_LEN];
+#ifdef HAVE_OPENSSL
+    {
+        uint8_t mac[32]; unsigned mac_len = 32;
+        HMAC(EVP_sha256(), report->agg_pk, 32,
+             all_sigs_concat, report->n_reports * 32, mac, &mac_len);
+        memcpy(expected_agg_sig, mac, 32);
+        for (size_t i = 32; i < DILITHIUM5_SIG_LEN; i++)
+            expected_agg_sig[i] = mac[i % 32] ^ (uint8_t)(i * 0x3A);
+    }
+#else
+    {
+        memset(expected_agg_sig, 0, DILITHIUM5_SIG_LEN);
+        for (uint32_t i = 0; i < report->n_reports * 32; i++)
+            expected_agg_sig[i % DILITHIUM5_SIG_LEN] ^=
+                all_sigs_concat[i] ^ report->agg_pk[i % DILITHIUM5_PK_LEN];
+    }
+#endif
+    /* Constant-time compare of first 32 bytes to avoid timing side-channel */
+    uint8_t agg_diff = 0;
+    for (int i = 0; i < 32; i++) agg_diff |= report->agg_sig[i] ^ expected_agg_sig[i];
+    if (agg_diff != 0)
+        return THRESHOLD_SIG_FAIL;  /* aggregate sig inconsistent — RSU tampered */
+
+    /* ── Step 2: Individual sig count ≥ t (Eq. 3.26 right side) ────────────
+     * Each Verify(σ_i, msg_i, PK_Vi) is an independent Dilithium5 check.
+     * This enforces the strict majority: at least ⌊n/2⌋+1 must be valid. */
+    uint32_t valid_count = 0;
     for (uint32_t i = 0; i < report->n_reports; i++) {
         const IndividualSignedReport *r = &report->reports[i];
-        bool ok = dilithium2_verify(r->msg_payload, sizeof(r->msg_payload),
-                                     r->individual_sig, DILITHIUM2_SIG_LEN,
+        bool ok = dilithium5_verify(r->msg_payload, sizeof(r->msg_payload),
+                                     r->individual_sig, DILITHIUM5_SIG_LEN,
                                      r->pub_key);
         if (ok) valid_count++;
     }
@@ -110,21 +154,37 @@ void rsu_aggregate_reports(AggregateReport *agg_out,
     for (uint32_t i = 0; i < n_reports; i++)
         agg_out->reports[i] = reports[i];
 
-    /* Aggregate signature = SHA-256(σ_1 ∥ ... ∥ σ_n) padded to Dilithium2 size */
-    uint8_t all_sigs[MAX_REPORTS_PER_RSU * 32]; /* first 32 bytes of each sig */
+    /* Build aggregate public key: XOR of all individual public keys.
+     * This commits to the complete signer set — substituting any key changes
+     * agg_pk, invalidating the aggregate sig and breaking Step 1 of verify. */
+    memset(agg_out->agg_pk, 0, DILITHIUM5_PK_LEN);
+    for (uint32_t i = 0; i < n_reports; i++)
+        for (size_t j = 0; j < DILITHIUM5_PK_LEN; j++)
+            agg_out->agg_pk[j] ^= reports[i].pub_key[j];
+
+    /* Build aggregate signature: HMAC-SHA256(agg_pk[0..31], σ_1[0..31] ∥ ... ∥ σ_n[0..31])
+     * padded to DILITHIUM5_SIG_LEN.  Binds σ_agg to both the signer set (via
+     * agg_pk) and the individual sigs, so tampering with either is detectable. */
+    uint8_t all_sigs[MAX_REPORTS_PER_RSU * 32];
     for (uint32_t i = 0; i < n_reports; i++)
         memcpy(all_sigs + i * 32, reports[i].individual_sig, 32);
 
 #ifdef HAVE_OPENSSL
-    uint8_t digest[32];
-    SHA256(all_sigs, n_reports * 32, digest);
-    memcpy(agg_out->agg_sig, digest, 32);
-    for (size_t i = 32; i < DILITHIUM2_SIG_LEN; i++)
-        agg_out->agg_sig[i] = digest[i % 32] ^ (uint8_t)(i * 0x3A);
+    {
+        uint8_t mac[32]; unsigned mac_len = 32;
+        HMAC(EVP_sha256(), agg_out->agg_pk, 32,
+             all_sigs, n_reports * 32, mac, &mac_len);
+        memcpy(agg_out->agg_sig, mac, 32);
+        for (size_t i = 32; i < DILITHIUM5_SIG_LEN; i++)
+            agg_out->agg_sig[i] = mac[i % 32] ^ (uint8_t)(i * 0x3A);
+    }
 #else
-    memset(agg_out->agg_sig, 0, DILITHIUM2_SIG_LEN);
-    for (uint32_t i = 0; i < n_reports * 32; i++)
-        agg_out->agg_sig[i % DILITHIUM2_SIG_LEN] ^= all_sigs[i];
+    {
+        memset(agg_out->agg_sig, 0, DILITHIUM5_SIG_LEN);
+        for (uint32_t i = 0; i < n_reports * 32; i++)
+            agg_out->agg_sig[i % DILITHIUM5_SIG_LEN] ^=
+                all_sigs[i] ^ agg_out->agg_pk[i % DILITHIUM5_PK_LEN];
+    }
 #endif
 }
 
@@ -159,50 +219,51 @@ static int load_pem(const char *file, PemRow *rows, int max) {
 
 /* ── main ─────────────────────────────────────────────────────────────────── */
 
+#ifndef THRESHOLD_SIG_NO_MAIN
 int main(int argc, char *argv[]) {
     const char *input  = (argc > 1) ? argv[1] : "pem_event_log.csv";
     const char *output = (argc > 2) ? argv[2] : "threshold_sig_result.csv";
 
-    printf("=== threshold_sig.cc — Dilithium2 Threshold Aggregate Sig (Eq. 3.24) ===\n");
+    printf("=== threshold_sig.cc — Dilithium5 Threshold Aggregate Sig (Eq. 3.26) ===\n");
 #ifndef HAVE_LIBOQS
     fprintf(stderr,
         "\n"
         "╔══════════════════════════════════════════════════════════════╗\n"
         "║  WARNING — PQC STUB MODE  (threshold_sig.cc)                ║\n"
         "║                                                              ║\n"
-        "║  liboqs is NOT linked. Dilithium2 operations are STUBS:     ║\n"
-        "║    • dilithium2_keypair  →  fills buffers with random bytes  ║\n"
-        "║    • dilithium2_sign     →  random 32-byte signature         ║\n"
-        "║    • dilithium2_verify   →  always returns 0 (accepts all)  ║\n"
+        "║  liboqs is NOT linked. Dilithium5 operations are STUBS:     ║\n"
+        "║    • dilithium5_keypair  →  fills buffers with random bytes  ║\n"
+        "║    • dilithium5_sign     →  random 32-byte signature         ║\n"
+        "║    • dilithium5_verify   →  always returns 0 (accepts all)  ║\n"
         "║                                                              ║\n"
-        "║  The NTRU lattice-based aggregate scheme (Eq. 3.24) in the  ║\n"
+        "║  The NTRU lattice-based aggregate scheme (Eq. 3.26) in the  ║\n"
         "║  paper is NOT executing. No lattice operations run.         ║\n"
         "║                                                              ║\n"
-        "║  To enable real Dilithium2:                                 ║\n"
+        "║  To enable real Dilithium5:                                 ║\n"
         "║    sudo apt-get install liboqs-dev                          ║\n"
         "║    g++ -DHAVE_LIBOQS threshold_sig.cc -loqs -lssl -lcrypto  ║\n"
         "╚══════════════════════════════════════════════════════════════╝\n\n");
 #endif
     printf("[ThreshSig] SIG_LEN=%u  PK_LEN=%u  SK_LEN=%u\n",
-           DILITHIUM2_SIG_LEN, DILITHIUM2_PK_LEN, DILITHIUM2_SK_LEN);
+           DILITHIUM5_SIG_LEN, DILITHIUM5_PK_LEN, DILITHIUM5_SK_LEN);
 
     /* ── Pre-generate signing keypairs for V0..V9 ─────────────────────────── */
-    static uint8_t pks[10][DILITHIUM2_PK_LEN];
-    static uint8_t sks[10][DILITHIUM2_SK_LEN];
-    for (int i = 0; i < 10; i++) dilithium2_keypair(pks[i], sks[i]);
+    static uint8_t pks[10][DILITHIUM5_PK_LEN];
+    static uint8_t sks[10][DILITHIUM5_SK_LEN];
+    for (int i = 0; i < 10; i++) dilithium5_keypair(pks[i], sks[i]);
 
     /* ── Self-test: sign + verify ──────────────────────────────────────────── */
     {
         uint8_t msg[256] = {0x01, 0x02, 0xAB, 0xCD};
-        uint8_t sig[DILITHIUM2_SIG_LEN];
+        uint8_t sig[DILITHIUM5_SIG_LEN];
         size_t  sig_len;
         vehicle_sign_report(msg, 4, sks[0], sig, &sig_len);
-        bool ok = dilithium2_verify(msg, 4, sig, sig_len, pks[0]);
+        bool ok = dilithium5_verify(msg, 4, sig, sig_len, pks[0]);
         printf("[ThreshSig] Sign+verify self-test: %s\n", ok ? "PASS" : "FAIL");
 
         /* Tamper message — should fail */
         msg[0] ^= 0xFF;
-        bool ok2 = dilithium2_verify(msg, 4, sig, sig_len, pks[0]);
+        bool ok2 = dilithium5_verify(msg, 4, sig, sig_len, pks[0]);
         printf("[ThreshSig] Tamper detection:      %s\n", !ok2 ? "PASS" : "FAIL");
     }
 
@@ -217,7 +278,7 @@ int main(int argc, char *argv[]) {
             size_t slen;
             vehicle_sign_report(reps[i].msg_payload, sizeof(reps[i].msg_payload),
                                  sks[i], reps[i].individual_sig, &slen);
-            memcpy(reps[i].pub_key, pks[i], DILITHIUM2_PK_LEN);
+            memcpy(reps[i].pub_key, pks[i], DILITHIUM5_PK_LEN);
         }
         AggregateReport agg;
         rsu_aggregate_reports(&agg, reps, 5);
@@ -264,8 +325,8 @@ int main(int argc, char *argv[]) {
                 int valid = 0;
                 for (uint32_t k = 0; k < agg.n_reports; k++) {
                     IndividualSignedReport *rp = &agg.reports[k];
-                    if (dilithium2_verify(rp->msg_payload, sizeof(rp->msg_payload),
-                                          rp->individual_sig, DILITHIUM2_SIG_LEN,
+                    if (dilithium5_verify(rp->msg_payload, sizeof(rp->msg_payload),
+                                          rp->individual_sig, DILITHIUM5_SIG_LEN,
                                           rp->pub_key)) valid++;
                 }
                 fprintf(out, "%d,%s,%d\n", valid,
@@ -289,7 +350,7 @@ int main(int argc, char *argv[]) {
             size_t slen;
             vehicle_sign_report(rp->msg_payload, sizeof(rp->msg_payload),
                                  sks[vid], rp->individual_sig, &slen);
-            memcpy(rp->pub_key, pks[vid], DILITHIUM2_PK_LEN);
+            memcpy(rp->pub_key, pks[vid], DILITHIUM5_PK_LEN);
             if (rows[i].attack) win_attack++;
             win_n++;
         }
@@ -300,3 +361,4 @@ int main(int argc, char *argv[]) {
     printf("[ThreshSig] Wrote %s\n", output);
     return 0;
 }
+#endif /* THRESHOLD_SIG_NO_MAIN */

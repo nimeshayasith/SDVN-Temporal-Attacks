@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 	"time"
@@ -271,8 +272,11 @@ func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
 	}
 	thresholdT := n/2 + 1
 
-	const thetaLW = float32(0.30) // LW path uses lower threshold than FS (θFS=0.40)
-	return t.runMitigation(ctx, []DetectionEvent{event}, thetaLW, thresholdT)
+	// θLW = 0.30 is a simulation calibration value chosen for this implementation.
+	// The thesis (Table 4.7) marks θLW as TBD, to be determined by grid search on
+	// collected data. Update via SetSimParams("SIM_THETA_LW", "0.xx") in production.
+	thetaLW := loadFloatParam(ctx, "SIM_THETA_LW", 0.30)
+	return t.runMitigation(ctx, []DetectionEvent{event}, float32(thetaLW), thresholdT)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -291,8 +295,12 @@ func (t *TemporalEchoMitigator) Mitigate(
 	var alerts []DetectionEvent
 	json.Unmarshal([]byte(alertsJSON), &alerts)
 
-	thetaFS := float32(0.40)
-	if v, err := strconv.ParseFloat(thetaFSStr, 32); err == nil {
+	// θFS = 0.40 is a simulation calibration value (thesis Table 4.7 marks it TBD,
+	// to be selected by maximising MCC on collected data).
+	// Caller may override via thetaFSStr; ledger key SIM_THETA_FS is the fallback.
+	defaultThetaFS := loadFloatParam(ctx, "SIM_THETA_FS", 0.40)
+	thetaFS := float32(defaultThetaFS)
+	if v, err := strconv.ParseFloat(thetaFSStr, 32); err == nil && v > 0 {
 		thetaFS = float32(v)
 	}
 
@@ -395,6 +403,12 @@ func (t *TemporalEchoMitigator) runMitigation(
 
 		variant := alert.AttackVariant
 
+		// In no-RSU mode there are no RSU-level OpenFlow switches, so FlowMod
+		// records (DROP, REROUTE, OVERRIDE) have nothing to be delivered to.
+		// Read once per alert; all three variant branches below use this flag.
+		noRSUFlag, _ := ctx.GetStub().GetState("SIM_NO_RSU_MODE")
+		isNoRSU := string(noRSUFlag) == "1"
+
 		if variant == "TTW" || variant == "BSHH" || variant == "TTW_BSHH_COMBINED" {
 			sigEvidence := getSignatureEvidence(ctx, alert.VehicleID, alert.AlertTS)
 			if !verifyThresholdSig(sigEvidence, thresholdT) {
@@ -402,23 +416,63 @@ func (t *TemporalEchoMitigator) runMitigation(
 				commitLog(ctx, logEntry)
 				continue
 			}
-			if err := pushFlowModDrop(ctx, alert.VehicleID); err != nil {
-				logEntry.Actions = append(logEntry.Actions, "FLOWMOD_FAIL:"+err.Error())
+
+			// DROP FlowMod only in with-RSU mode — no OpenFlow switches in no-RSU.
+			if !isNoRSU {
+				if err := pushFlowModDrop(ctx, alert.VehicleID); err != nil {
+					logEntry.Actions = append(logEntry.Actions, "FLOWMOD_FAIL:"+err.Error())
+				} else {
+					logEntry.Actions = append(logEntry.Actions, "FLOWMOD_DROP")
+				}
 			} else {
-				logEntry.Actions = append(logEntry.Actions, "FLOWMOD_DROP")
+				logEntry.Actions = append(logEntry.Actions, "FLOWMOD_DROP_SKIPPED_NO_RSU")
 			}
+
+			// LKH session-key revocation — both modes.
 			if err := revokeSessionKey(ctx, alert.VehicleID); err != nil {
 				logEntry.Actions = append(logEntry.Actions, "KEY_REVOKE_FAIL")
 			} else {
 				logEntry.Actions = append(logEntry.Actions, "KEY_REVOKED")
 			}
-			// Tier-2 cooperative removal: publish BlacklistBeacon to ledger so
-			// OBU peers can propagate the revoked cert fingerprint via V2V
-			// within ⌈diam(Gt)⌉ beacon intervals (paper §Conflict Resolution, item 2).
+
+			// Cooperative blacklist beacon — both modes. In no-RSU mode this is
+			// the primary isolation mechanism (signed beacon propagates via OBU V2V,
+			// vehicles locally exclude the node within ⌈diam(Gt)⌉ beacon intervals).
 			if err := publishBlacklistBeacon(ctx, alert.VehicleID); err != nil {
 				logEntry.Actions = append(logEntry.Actions, "BLACKLIST_BEACON_FAIL")
 			} else {
 				logEntry.Actions = append(logEntry.Actions, "BLACKLIST_BEACON_PUBLISHED")
+			}
+
+			// Attacker vehicle's CA certificate revocation — both modes.
+			// Thesis §vehicle removal step iv: "Vk's CA certificate is revoked,
+			// permanently excluding it until manual re-admission via the consortium CA."
+			// The actual CA call is off-chain; the event is the notification boundary.
+			if err := revokeVehicleCert(ctx, alert.VehicleID); err != nil {
+				logEntry.Actions = append(logEntry.Actions, "VEHICLE_CERT_REVOKE_FAIL")
+			} else {
+				logEntry.Actions = append(logEntry.Actions, "VEHICLE_CERT_REVOKED")
+			}
+
+			// RSU-specific parallel action: if the attacker is itself an RSU peer,
+			// trigger zone-coverage reassignment to an adjacent trusted controller.
+			// This runs in parallel with the peer-demotion pipeline (which fires
+			// below via updateTrust → demotePeerToClient). The two are independent:
+			// demotion handles the consortium-peer role; zone reassignment handles
+			// the data-plane coverage continuity for the RSU's geographic zone.
+			//
+			// Must read IsRSUPeer and ZoneID HERE, before updateTrust runs below.
+			// demotePeerToClient (called by updateTrust when zero=true) clears
+			// IsRSUPeer as part of Stage 1 demotion. If this check ran after
+			// updateTrust, the attacker would look like a vehicle and zone
+			// reassignment would be silently skipped — a real correctness bug.
+			attackerTrust := loadTrust(ctx, alert.VehicleID)
+			if attackerTrust.IsRSUPeer {
+				if err := triggerRSUZoneReassignment(ctx, alert.VehicleID, attackerTrust.ZoneID); err != nil {
+					logEntry.Actions = append(logEntry.Actions, "RSU_ZONE_REASSIGN_FAIL:"+err.Error())
+				} else {
+					logEntry.Actions = append(logEntry.Actions, "RSU_ZONE_REASSIGNED")
+				}
 			}
 
 		} else if variant == "ME" {
@@ -434,23 +488,42 @@ func (t *TemporalEchoMitigator) runMitigation(
 			} else {
 				logEntry.Actions = append(logEntry.Actions, "PATHS_INVALIDATED")
 			}
-			if err := pushRerouteFlowMod(ctx, alert.VehicleID); err != nil {
-				logEntry.Actions = append(logEntry.Actions, "REROUTE_FAIL")
+			// REROUTE FlowMod only in with-RSU mode — no OpenFlow switches in no-RSU.
+			if !isNoRSU {
+				if err := pushRerouteFlowMod(ctx, alert.VehicleID); err != nil {
+					logEntry.Actions = append(logEntry.Actions, "REROUTE_FAIL")
+				} else {
+					logEntry.Actions = append(logEntry.Actions, "REROUTE_FLOWMOD")
+				}
 			} else {
-				logEntry.Actions = append(logEntry.Actions, "REROUTE_FLOWMOD")
+				logEntry.Actions = append(logEntry.Actions, "REROUTE_FLOWMOD_SKIPPED_NO_RSU")
 			}
 
 		} else if variant == "CTRL_ORIGIN" {
-			beaconEvidence := getAllBeaconEvidence(ctx, alert.AlertTS)
-			if err := pushFlowModOverride(ctx, alert.VehicleID, beaconEvidence); err != nil {
-				logEntry.Actions = append(logEntry.Actions, "CTRL_OVERRIDE_FAIL")
+			// OVERRIDE FlowMod is explicit in Algorithm 4. In no-RSU mode no OpenFlow
+			// switches exist to receive it; the ControllerRevokedBeacon and
+			// CheckControllerTrustAndReassign path below handle the no-RSU case.
+			if !isNoRSU {
+				beaconEvidence := getAllBeaconEvidence(ctx, alert.AlertTS)
+				if err := pushFlowModOverride(ctx, alert.VehicleID, beaconEvidence); err != nil {
+					logEntry.Actions = append(logEntry.Actions, "CTRL_OVERRIDE_FAIL")
+				} else {
+					logEntry.Actions = append(logEntry.Actions, "CTRL_OVERRIDE_FLOWMOD")
+				}
 			} else {
-				logEntry.Actions = append(logEntry.Actions, "CTRL_OVERRIDE_FLOWMOD")
+				logEntry.Actions = append(logEntry.Actions, "CTRL_OVERRIDE_FLOWMOD_SKIPPED_NO_RSU")
 			}
 		}
 
-		flagReauth(ctx, alert.VehicleID, variant)
-		logEntry.Actions = append(logEntry.Actions, "REAUTH_FLAGGED")
+		// Re-authentication is a vehicle mechanism (REAUTH:<id> → vehicles must
+		// pass a fresh identity proof before rejoining). Controllers are not vehicles;
+		// their re-admission path is RegisterController after a new trust record is
+		// established. Calling flagReauth for a controller ID would write a spurious
+		// REAUTH:<ctrl_id> key and pollute the ClearReauth audit trail.
+		if variant != "CTRL_ORIGIN" {
+			flagReauth(ctx, alert.VehicleID, variant)
+			logEntry.Actions = append(logEntry.Actions, "REAUTH_FLAGGED")
+		}
 
 		if variant != "CTRL_ORIGIN" {
 			if _, err := updateTrust(ctx, alert.VehicleID, false, true); err == nil {
@@ -865,17 +938,25 @@ func (t *TemporalEchoMitigator) GetLatestControllerReassignment(
 }
 
 // SetSimParams stores simulation parameters on the ledger (VF-02).
-// Called at bootstrap to configure verifyQuorum thresholds.
+// Called at bootstrap to configure verifyQuorum thresholds and scenario mode.
+// noRSUModeStr: "1" for no-RSU scenarios (1,3,5,7,9,11) — selectPeers uses
+// OBU-only active set. "0" or "" for with-RSU scenarios (RSU-only active set).
 func (t *TemporalEchoMitigator) SetSimParams(
 	ctx contractapi.TransactionContextInterface,
 	rCommMetersStr string,
 	rssiMinDBmStr string,
+	noRSUModeStr string,
 ) error {
 	if rCommMetersStr != "" {
 		ctx.GetStub().PutState("SIM_RCOMM", []byte(rCommMetersStr))
 	}
 	if rssiMinDBmStr != "" {
 		ctx.GetStub().PutState("SIM_RSSI_MIN", []byte(rssiMinDBmStr))
+	}
+	if noRSUModeStr == "1" {
+		ctx.GetStub().PutState("SIM_NO_RSU_MODE", []byte("1"))
+	} else {
+		ctx.GetStub().PutState("SIM_NO_RSU_MODE", []byte("0"))
 	}
 	return nil
 }
@@ -1166,33 +1247,158 @@ func publishBlacklistBeacon(ctx contractapi.TransactionContextInterface, vehicle
 }
 
 // publishControllerRevokedBeacon writes a ControllerRevokedBeacon to the ledger
-// and emits ControllerRevokedBeaconPublished (paper §No-RSU controller removal, step ii).
-// Notifies backup controller to begin soliciting topology via V2X (step iii via ledger).
+// and emits ControllerRevokedBeaconPublished.
+//
+// No-RSU path (thesis §No-RSU controller removal):
+//   step ii  — beacon propagates via OBU V2V peers telling vehicles to stop
+//               submitting topology updates to Cj (credential already revoked)
+//   step iii — Ck* reads the beacon on the ledger and begins actively soliciting
+//               topology observations from vehicles through its OWN V2X interface
+//               (direction: Ck* solicits FROM vehicles, not vehicles soliciting from Ck*)
+//
+// Because no RSU beacon evidence exists in no-RSU mode, Ck* must rebuild topology
+// from scratch.  Routing degrades to distributed vehicle-level decisions for
+// InterimFallbackIntervals = ⌈Llink/Tb⌉ beacon intervals until Ck* has sufficient
+// observations to resume centralised routing.
+//
+// With-RSU path: also published, but the southbound switchover in that case is
+// simulated via FlowMod OVERRIDE rules installed by runMitigation (see comment
+// in CheckControllerTrustAndReassign for the documented deviation).
 func publishControllerRevokedBeacon(
 	ctx contractapi.TransactionContextInterface,
 	controllerID string,
 	backupCtrlID string,
 ) error {
 	nowMs := time.Now().UnixMilli()
+
+	// Compute ⌈Llink/Tb⌉ — the interim degraded-routing window (no-RSU path only).
+	// Llink = 2·r_comm / v_max (ms);  Tb = 100 ms beacon interval.
+	rCommM := loadFloatParam(ctx, "SIM_RCOMM", 300.0)
+	vMaxKmh := loadFloatParam(ctx, "SIM_VMAX_KMH", 80.0)
+	vMaxMperMs := vMaxKmh / 3600.0
+	lLinkMs := (2.0 * rCommM) / vMaxMperMs
+	const tbMs = 100.0
+	interimIntervals := int(math.Ceil(lLinkMs / tbMs))
+
 	beacon := ControllerRevokedBeacon{
-		ControllerID:    controllerID,
-		BackupCtrlID:    backupCtrlID,
-		PublishedAtMs:   nowMs,
-		PublisherPeerID: ctx.GetStub().GetTxID(),
-		DocType:         "CTRL_REVOKED_BEACON",
+		ControllerID:            controllerID,
+		BackupCtrlID:            backupCtrlID,
+		PublishedAtMs:           nowMs,
+		PublisherPeerID:         ctx.GetStub().GetTxID(),
+		InterimFallbackIntervals: interimIntervals,
+		DocType:                 "CTRL_REVOKED_BEACON",
 	}
 	data, _ := json.Marshal(beacon)
 	if err := ctx.GetStub().PutState("CTRL_REVOKED_BEACON:"+controllerID, data); err != nil {
 		return err
 	}
 	evPayload, _ := json.Marshal(map[string]interface{}{
-		"type":          "CTRL_REVOKED_BEACON_PUBLISHED",
-		"controller_id": controllerID,
-		"backup_ctrl":   backupCtrlID,
-		"published_at":  nowMs,
-		"note":          "Backup controller notified via ledger to solicit topology via V2X",
+		"type":                      "CTRL_REVOKED_BEACON_PUBLISHED",
+		"controller_id":             controllerID,
+		"backup_ctrl":               backupCtrlID,
+		"published_at":              nowMs,
+		"interim_fallback_intervals": interimIntervals,
+		// Ck* actively solicits topology FROM vehicles via its own V2X interface —
+		// vehicles do not initiate contact with Ck*.
+		"solicitation_direction": "backup_controller_solicits_from_vehicles",
+		"note": "Ck* self-solicits topology via V2X; vehicles fall back to distributed routing for interim_fallback_intervals beacon intervals",
 	})
 	return ctx.GetStub().SetEvent("ControllerRevokedBeaconPublished", evPayload)
+}
+
+// revokeVehicleCert writes a CERT_REVOKED:<vehicle_id> ledger record and emits
+// VehicleCertRevocationRequested so eventListener.js can action the CA call.
+// Thesis §vehicle removal step iv: "Vk's CA certificate is revoked, permanently
+// excluding it until manual re-admission through the consortium CA."
+// Mirrors the peer (CertRevocationRequested) and controller
+// (ControllerCredentialRevocationRequested) revocation patterns.
+func revokeVehicleCert(ctx contractapi.TransactionContextInterface, vehicleID string) error {
+	nowMs := time.Now().UnixMilli()
+	record := map[string]interface{}{
+		"vehicle_id":    vehicleID,
+		"action":        "REVOKE_VEHICLE_CERTIFICATE",
+		"revoked_at_ms": nowMs,
+		"reason":        "attack_confirmed_ttw_bshh",
+	}
+	data, _ := json.Marshal(record)
+	if err := ctx.GetStub().PutState("CERT_REVOKED:"+vehicleID, data); err != nil {
+		return err
+	}
+	evPayload, _ := json.Marshal(map[string]interface{}{
+		"type":          "VEHICLE_CERT_REVOCATION_REQUESTED",
+		"vehicle_id":    vehicleID,
+		"revoked_at_ms": nowMs,
+	})
+	return ctx.GetStub().SetEvent("VehicleCertRevocationRequested", evPayload)
+}
+
+// triggerRSUZoneReassignment handles the data-plane role of malicious-RSU removal:
+// partial zone-coverage reassignment to an adjacent trusted controller.
+// Runs in parallel with the 3-stage peer-demotion pipeline (consortium-peer role).
+//
+// Selection rule: prefers a controller whose ZoneID matches the compromised RSU's
+// zone (closest proxy for geographic adjacency), falling back to the highest-trust
+// controller above τCmin if no zone match exists.
+//
+// This selection rule is an implementation design choice for an underspecified
+// thesis mechanism. The thesis says only "transfers rk's coverage area to the
+// adjacent trusted controller" — singular, geographic-adjacency-based — without
+// specifying how adjacency is determined or how ties are broken. The zone-ID-match
+// heuristic is a reasonable interpretation of "adjacent," but it is NOT the same
+// as the Eq. 3.43 argmax-τCk backup-controller logic used in
+// CheckControllerTrustAndReassign (which covers controller-removal, a different
+// mechanism). The thesis does not say to reuse that selection function here.
+func triggerRSUZoneReassignment(
+	ctx contractapi.TransactionContextInterface,
+	compromisedRSUID string,
+	zoneID string,
+) error {
+	allCtrls := loadControllerRegistry(ctx)
+	bestID := ""
+	bestScore := -1.0
+	for _, cid := range allCtrls {
+		r := loadCtrlTrust(ctx, cid)
+		if r.Score <= TrustCtrlMin {
+			continue
+		}
+		if r.ZoneID == zoneID && zoneID != "" {
+			// Zone-ID match: treat as geographically adjacent — use immediately.
+			bestID = cid
+			bestScore = r.Score
+			break
+		}
+		if r.Score > bestScore {
+			bestID = cid
+			bestScore = r.Score
+		}
+	}
+	if bestID == "" {
+		return fmt.Errorf("triggerRSUZoneReassignment: no eligible controller above τCmin for zone %q", zoneID)
+	}
+
+	nowMs := time.Now().UnixMilli()
+	reassignment := RSUZoneReassignment{
+		CompromisedRSUID: compromisedRSUID,
+		ZoneID:           zoneID,
+		BackupCtrlID:     bestID,
+		BackupCtrlScore:  bestScore,
+		AssignedAtMs:     nowMs,
+		DocType:          "RSU_ZONE_REASSIGNMENT",
+	}
+	data, _ := json.Marshal(reassignment)
+	key := fmt.Sprintf("RSU_ZONE_REASSIGN:%s:%d", compromisedRSUID, nowMs)
+	if err := ctx.GetStub().PutState(key, data); err != nil {
+		return err
+	}
+	evPayload, _ := json.Marshal(map[string]interface{}{
+		"type":              "RSU_ZONE_REASSIGNMENT_TRIGGERED",
+		"compromised_rsu":   compromisedRSUID,
+		"zone_id":           zoneID,
+		"backup_controller": bestID,
+		"backup_score":      bestScore,
+		"assigned_at_ms":    nowMs,
+	})
+	return ctx.GetStub().SetEvent("RSUZoneReassignmentTriggered", evPayload)
 }
 
 func commitLog(ctx contractapi.TransactionContextInterface, entry MitigationLogEntry) {

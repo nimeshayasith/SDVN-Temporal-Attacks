@@ -1,9 +1,1178 @@
-[2026-06-17T20:55:03.563Z] AnchorCheckpoint created  id=7ac763dc732fca57860c442128083d403800d213814de69eb129c684831feb14  block=1  by=peer0.rsu1.tetaguard.net
-[2026-06-17T21:23:05.077Z] AttackDetected  vehicle=V0  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.87
-[2026-06-17T21:24:54.243Z] AttackDetected  vehicle=V0  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.87
-[2026-06-17T21:33:11.586Z] AttackDetected  vehicle=V0  variant=TTW_S1_MAL_VEH_NO_RSU  score=1
-[2026-06-17T22:24:10.972Z] AttackDetected  vehicle=V205  variant=BSHH_S2_MAL_RSU  score=0.1
-[2026-06-17T22:26:05.031Z] AttackDetected  vehicle=V6  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.25
-[2026-06-17T22:29:19.950Z] AttackDetected  vehicle=V5  variant=TTW_S1_MAL_VEH_NO_RSU  score=0.261658
-[2026-06-18T18:59:31.784Z] TrustRound #4  participating=8/8  mode=rsu
-[2026-06-18T19:04:31.824Z] TrustRound #2969  participating=8/8  mode=rsu
+================================================================
+  BLOCKCHAIN SUBMISSION LOG — TETA-Guard
+  TemporalEchoMitigator::SubmitAlert  (Algorithm 4, Eq. 3.36)
+  Run started : 2026-06-20 12:04:02
+================================================================
+
+  Pipeline position:
+    routing.cc / tgn_detector.cc  → tgn_alerts.json
+    submit_alerts.py (this script) → Hyperledger Fabric
+    TemporalEchoMitigator.SubmitAlert → PBFT consensus
+    Smart contract executes Algorithm 4 → FlowMod + Revoke + LOG
+
+================================================================
+
+────────────────────────────────────────────────────────────────
+[12:04:02]  ALERT 1/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V150
+    α (variant): ME
+    ŷ_v (score): 0.0750
+    S_trig     : [7]  →  ME-S2
+    t_alert    : 10000 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V150)
+    LOG(L, {V150, 0.0750, 10000})  ← immutable ledger
+    EMIT(AttackDetected, {V150, ME, 0.0750})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:03]  ALERT 2/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V0
+    α (variant): ME
+    ŷ_v (score): 0.0789
+    S_trig     : [7]  →  ME-S2
+    t_alert    : 10000 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V0)
+    LOG(L, {V0, 0.0789, 10000})  ← immutable ledger
+    EMIT(AttackDetected, {V0, ME, 0.0789})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:03]  ALERT 3/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.0824
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10100 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.0824, 10100})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.0824})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:04]  ALERT 4/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.0865
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10100 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.0865, 10100})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.0865})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:04]  ALERT 5/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.0908
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10101 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.0908, 10101})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.0908})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:05]  ALERT 6/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.0953
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10101 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.0953, 10101})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.0953})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:05]  ALERT 7/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1000
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10102 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1000, 10102})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1000})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:06]  ALERT 8/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1050
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10102 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1050, 10102})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1050})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:06]  ALERT 9/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1102
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10102 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1102, 10102})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1102})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:07]  ALERT 10/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1157
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10102 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1157, 10102})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1157})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:07]  ALERT 11/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1213
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10103 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1213, 10103})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1213})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:08]  ALERT 12/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1273
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10103 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1273, 10103})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1273})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:08]  ALERT 13/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1334
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10104 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1334, 10104})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1334})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:09]  ALERT 14/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1401
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10104 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1401, 10104})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1401})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:09]  ALERT 15/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1471
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10104 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1471, 10104})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1471})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:10]  ALERT 16/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1544
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10104 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1544, 10104})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1544})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:10]  ALERT 17/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1617
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10105 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1617, 10105})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1617})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:11]  ALERT 18/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1698
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10105 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1698, 10105})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1698})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:11]  ALERT 19/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1778
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10106 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1778, 10106})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1778})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:12]  ALERT 20/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1867
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10106 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1867, 10106})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1867})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:12]  ALERT 21/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.1960
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10106 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.1960, 10106})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.1960})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:13]  ALERT 22/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2058
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10106 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2058, 10106})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2058})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:13]  ALERT 23/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2154
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10107 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2154, 10107})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2154})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:14]  ALERT 24/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2262
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10107 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2262, 10107})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2262})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:14]  ALERT 25/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2367
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10108 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2367, 10108})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2367})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:15]  ALERT 26/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2485
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10108 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2485, 10108})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2485})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:15]  ALERT 27/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2609
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10108 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2609, 10108})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2609})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:16]  ALERT 28/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2740
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10108 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2740, 10108})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2740})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:16]  ALERT 29/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.2866
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10109 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.2866, 10109})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.2866})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:17]  ALERT 30/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.3010
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10109 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.3010, 10109})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.3010})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:17]  ALERT 31/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.3148
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10110 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.3148, 10110})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.3148})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:18]  ALERT 32/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.3305
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10110 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.3305, 10110})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.3305})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:18]  ALERT 33/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.3471
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10110 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.3471, 10110})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.3471})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:19]  ALERT 34/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.3644
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10110 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.3644, 10110})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.3644})
+
+  VERDICT: COMMITTED — record immutable
+
+────────────────────────────────────────────────────────────────
+[12:04:19]  ALERT 35/35
+
+  STEP ①  ALERT RECEIVED FROM TGN  (Eq. 3.36)
+    Vid        : V9999
+    α (variant): ME
+    ŷ_v (score): 0.3750
+    S_trig     : [8]  →  ME-S3
+    t_alert    : 10111 ms
+
+  STEP ②  FABRIC INVOCATION  (Section 9.3)
+    Channel    : teta-channel
+    Chaincode  : temporalecho
+    Function   : SubmitAlert
+    Endorsers  : 3/5 peers required
+    Peers      : peer0.rsu1.tetaguard.net, peer0.rsu2.tetaguard.net, peer0.rsu3.tetaguard.net
+    Mode       : DRY RUN (no actual invocation)
+
+  STEP ③  PBFT CONSENSUS  (§3.4.10)
+    Policy     : OutOf(3, RSU1..RSU5)
+    Tolerance  : ⌊(5-1)/3⌋ = 1 faulty peer(s) tolerated
+
+  STEP ④  SMART CONTRACT ACTIONS  (Algorithm 4)
+    GET_WITNESSES(e_ij, t)
+    VERIFY_QUORUM(W_v, t)       ← Module 4 quorum check
+    INVALIDATE_PATHS(P_false)   ← phantom paths removed
+    PUSH_REROUTE_FLOWMOD()
+    FLAG_REAUTH(V9999)
+    LOG(L, {V9999, 0.3750, 10111})  ← immutable ledger
+    EMIT(AttackDetected, {V9999, ME, 0.3750})
+
+  VERDICT: COMMITTED — record immutable
+
+================================================================
+  RUN SUMMARY
+================================================================
+
+  Alerts submitted : 35
+  Alerts failed    : 0
+  Run finished     : 2026-06-20 12:04:19
+
+================================================================

@@ -29,8 +29,9 @@ const (
 	TrustInitTier2 = 0.10
 
 	TrustMinDwellMs     = 3000
-	HWCapacityMinMB     = 2048
-	FaultToleranceF     = 2  // tolerate f=2 Byzantine peers
+	HWCapacityMinMB     = 2048  // ≥ 2 GB RAM (Cmin RAM floor)
+	HWStorageMinGB      = 8     // ≥ 8 GB storage (Cmin storage floor)
+	FaultToleranceF     = 2     // tolerate f=2 Byzantine peers
 	NpConsensus         = 8  // active peer slots: np ≥ 3f+1=7, rounded up to 8 for redundancy
 	QuarantineMonitorMs = int64(30000) // 30 s monitoring window before permanent removal
 )
@@ -169,21 +170,43 @@ func (t *TemporalEchoMitigator) RegisterRSUPeer(
 }
 
 // RegisterOBUPeer registers an OBU as Tier 2 candidate with dwell time tracking (TR-3).
+// hwCapacityMBStr: RAM in MB (Cmin: ≥ 2048 MB).
+// hwStorageGBStr:  storage in GB (Cmin: ≥ 8 GB).
 func (t *TemporalEchoMitigator) RegisterOBUPeer(
 	ctx contractapi.TransactionContextInterface,
 	peerID string,
 	hwCapacityMBStr string,
+	hwStorageGBStr string,
 ) error {
 	hwCap := 0
 	fmt.Sscanf(hwCapacityMBStr, "%d", &hwCap)
+	hwStorage := 0
+	fmt.Sscanf(hwStorageGBStr, "%d", &hwStorage)
 	r := TrustRecord{
-		PeerID:     peerID,
-		Score:      TrustInitTier2,
-		IsRSUPeer:  false,
-		JoinedAtMs: time.Now().UnixMilli(),
-		HWCapacity: hwCap,
-		DocType:    "TRUST_RECORD",
+		PeerID:      peerID,
+		Score:       TrustInitTier2,
+		IsRSUPeer:   false,
+		JoinedAtMs:  time.Now().UnixMilli(),
+		HWCapacity:  hwCap,
+		HWStorageGB: hwStorage,
+		DocType:     "TRUST_RECORD",
 	}
+	return saveTrust(ctx, r)
+}
+
+// SetRSUZone stores the geographic zone ID for an RSU peer.
+// Called at bootstrap (alongside RegisterRSUPeer) so that triggerRSUZoneReassignment
+// can identify which coverage area to partially reassign on RSU compromise.
+func (t *TemporalEchoMitigator) SetRSUZone(
+	ctx contractapi.TransactionContextInterface,
+	peerID string,
+	zoneID string,
+) error {
+	r := loadTrust(ctx, peerID)
+	if !r.IsRSUPeer {
+		return fmt.Errorf("SetRSUZone: peer %s is not a Tier 1 RSU", peerID)
+	}
+	r.ZoneID = zoneID
 	return saveTrust(ctx, r)
 }
 
@@ -322,14 +345,38 @@ func monitorAndRemovePeer(ctx contractapi.TransactionContextInterface, peerID st
 		if err := saveTrust(ctx, r); err != nil {
 			return err
 		}
+
+		// Write certificate revocation record to ledger (thesis: removal includes
+		// cert revocation via the consortium CA; re-admission requires a fresh cert
+		// and a new RegisterRSUPeer call). The actual CA interaction is off-chain —
+		// eventListener.js reads this record and actions the revocation.
+		certRevoke := map[string]interface{}{
+			"peer_id":       peerID,
+			"action":        "REVOKE_PEER_CERTIFICATE",
+			"revoked_at_ms": nowMs,
+			"reason":        "quarantine_window_elapsed_trust_not_recovered",
+		}
+		cData, _ := json.Marshal(certRevoke)
+		ctx.GetStub().PutState("CERT_REVOKED:"+peerID, cData)
+
 		payload, _ := json.Marshal(map[string]interface{}{
 			"type":          "PEER_REMOVED",
 			"peer_id":       peerID,
 			"removed_at_ms": nowMs,
 			"trust_score":   r.Score,
 			"message":       "RSU peer permanently removed after quarantine monitoring",
+			"cert_revoked":  true,
 		})
 		ctx.GetStub().SetEvent("PeerRemoved", payload)
+
+		// Emit separate CertRevocationRequested so eventListener.js can action
+		// the CA call independently of the removal event handler.
+		certPayload, _ := json.Marshal(map[string]interface{}{
+			"type":          "CERT_REVOCATION_REQUESTED",
+			"peer_id":       peerID,
+			"revoked_at_ms": nowMs,
+		})
+		ctx.GetStub().SetEvent("CertRevocationRequested", certPayload)
 	}
 	return nil
 }
@@ -531,16 +578,14 @@ func selectPeers(ctx contractapi.TransactionContextInterface, allPeers []string)
 	nowMs := time.Now().UnixMilli()
 	tMinMs := computeTMinMs(ctx)
 
-	// Detect no-RSU scenario (S1, S3, S5, S7, S9, S11):
-	// if no RSU peer exists in the pool, OBU dwell-time / HW-capacity /
-	// checkpoint-sync gates are bypassed so OBUs can fill all np slots.
-	noRSUMode := true
-	for _, pid := range allPeers {
-		r := loadTrust(ctx, pid)
-		if r.IsRSUPeer {
-			noRSUMode = false
-			break
-		}
+	// Detect no-RSU scenario from the ledger flag set by SetSimParams.
+	// Reading from SIM_NO_RSU_MODE rather than inferring from peer existence
+	// is necessary because RSU peers are always registered on the Fabric network
+	// (bootstrapped at startup) regardless of whether the NS-3 scenario has RSU
+	// infrastructure — so peer-existence detection would always return false.
+	noRSUMode := false
+	if flag, err := ctx.GetStub().GetState("SIM_NO_RSU_MODE"); err == nil && string(flag) == "1" {
+		noRSUMode = true
 	}
 
 	type peerScore struct {
@@ -561,9 +606,8 @@ func selectPeers(ctx contractapi.TransactionContextInterface, allPeers []string)
 			continue
 		}
 		if !r.IsRSUPeer {
-			// In no-RSU scenarios OBUs are the only available peers —
-			// bypass dwell-time, HW-capacity and checkpoint-sync gates
-			// so all np slots can be filled from OBUs.
+			// Eq. 3.40 conditions 2 (Cmin hardware floor) and 3 (Tmin dwell time)
+			// are bypassed in no-RSU mode; conditions 1, 4, 5 remain mandatory.
 			if !noRSUMode {
 				if r.JoinedAtMs > 0 && (nowMs-r.JoinedAtMs) < tMinMs {
 					continue
@@ -571,9 +615,17 @@ func selectPeers(ctx contractapi.TransactionContextInterface, allPeers []string)
 				if r.HWCapacity > 0 && r.HWCapacity < HWCapacityMinMB {
 					continue
 				}
-				if !obuHasSyncedFromRecentCheckpoint(ctx, pid) {
+				if r.HWStorageGB > 0 && r.HWStorageGB < HWStorageMinGB {
 					continue
 				}
+			}
+			// Checkpoint-sync is enforced unconditionally regardless of mode.
+			// It is not one of the five Eq. 3.40 conditions and is not subject
+			// to the no-RSU bypass — it is a consensus-participation precondition
+			// from the anchor-checkpoint protocol (§5.1): an OBU must sync from
+			// the most recent anchor before it may vote in any consensus round.
+			if !obuHasSyncedFromRecentCheckpoint(ctx, pid) {
+				continue
 			}
 		}
 		eligible = append(eligible, peerScore{pid, r.Score})
@@ -757,14 +809,27 @@ func (t *TemporalEchoMitigator) CheckControllerTrustAndReassign(
 		return err
 	}
 
+	nowMs := time.Now().UnixMilli()
+
 	credRevoke := map[string]interface{}{
 		"controller_id": controllerID,
 		"action":        "REVOKE_CTRL_CREDENTIALS",
 		"backup_ctrl":   backupID,
-		"timestamp_ms":  time.Now().UnixMilli(),
+		"timestamp_ms":  nowMs,
 	}
 	cData, _ := json.Marshal(credRevoke)
 	ctx.GetStub().PutState("CTRL_REVOKED:"+controllerID, cData)
+
+	// Emit ControllerCredentialRevocationRequested so eventListener.js can action
+	// the CA call (thesis: "REVOKE CTRL CRED(Cj)" — both with-RSU and no-RSU paths).
+	// The actual CA interaction is off-chain; the event is the notification boundary.
+	ctrlCertPayload, _ := json.Marshal(map[string]interface{}{
+		"type":          "CTRL_CREDENTIAL_REVOCATION_REQUESTED",
+		"controller_id": controllerID,
+		"zone_id":       ctrlRecord.ZoneID,
+		"revoked_at_ms": nowMs,
+	})
+	ctx.GetStub().SetEvent("ControllerCredentialRevocationRequested", ctrlCertPayload)
 
 	evPayload, _ := json.Marshal(map[string]interface{}{
 		"type":         "CONTROLLER_REASSIGNMENT",
@@ -772,13 +837,24 @@ func (t *TemporalEchoMitigator) CheckControllerTrustAndReassign(
 		"backup_ctrl":  backupID,
 		"trust_score":  newScore,
 		"zone_id":      ctrlRecord.ZoneID,
-		"timestamp_ms": time.Now().UnixMilli(),
+		"timestamp_ms": nowMs,
 	})
 	ctx.GetStub().SetEvent("ControllerRemoved", evPayload)
 
-	// No-RSU Tier-2 path: publish ControllerRevokedBeacon to ledger so OBU peers
-	// can distribute it via V2V and the backup controller begins soliciting topology
-	// directly via V2X (paper §No-RSU controller removal, steps ii–iii).
+	// Publish ControllerRevokedBeacon for both paths.
+	// No-RSU path: steps ii–iii of the three-step removal (beacon propagation +
+	// Ck* self-solicitation via V2X). With-RSU path: also published.
+	//
+	// The FlowMod OVERRIDE rules (priority 65535/65534) that runMitigation installs
+	// ARE a thesis-specified action — Algorithm 4 explicitly includes "the smart
+	// contract additionally issues a FlowMod directly overriding the controller's
+	// current routing table" as one of its own steps. The OVERRIDE FlowMod is
+	// therefore correct per thesis, not a substitute.
+	// What IS missing from this implementation is the ADDITIONAL southbound-repoint
+	// mechanism: RSU OpenFlow agents physically switching their connection from Cj to
+	// Ck*, with Ck* receiving an instant topology snapshot from RSU beacon evidence.
+	// That piece requires live OpenFlow controller infrastructure outside the NS-3
+	// simulation scope and is the only actual gap relative to the thesis specification.
 	_ = publishControllerRevokedBeacon(ctx, controllerID, backupID)
 
 	return nil

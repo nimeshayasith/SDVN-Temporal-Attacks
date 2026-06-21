@@ -194,17 +194,19 @@ const (
 //	failure/inconsistency  → max(0, τk - Δ-)
 //	attack detection       → DemotePeerToClient (RSU peer) or zero (OBU)
 type TrustRecord struct {
-	PeerID     string    `json:"peer_id"`
-	Score      float64   `json:"trust_score"`     // τk ∈ [0.0, 1.0]
-	IsRSUPeer  bool      `json:"is_rsu_peer"`     // true = Tier 1 (RSU, starts at 1.0)
-	Flagged    bool      `json:"flagged"`         // true = attack-detected
-	FlaggedAt  int64     `json:"flagged_at_ms"`
-	UpdatedAt  int64     `json:"updated_at_ms"`
-	JoinedAtMs int64     `json:"joined_at_ms"`    // when OBU entered RSU coverage (TR-3)
-	HWCapacity int       `json:"hw_capacity_mb"`  // RAM in MB (0 = unknown/RSU) (TR-3)
-	State      PeerState `json:"state"`           // ACTIVE | QUARANTINED_CLIENT | REMOVED
-	DemotedAt  int64     `json:"demoted_at_ms"`   // when first quarantined (for removal check)
-	DocType    string    `json:"doc_type"`
+	PeerID      string    `json:"peer_id"`
+	Score       float64   `json:"trust_score"`     // τk ∈ [0.0, 1.0]
+	IsRSUPeer   bool      `json:"is_rsu_peer"`     // true = Tier 1 (RSU, starts at 1.0)
+	ZoneID      string    `json:"zone_id"`         // geographic zone (RSU only; set via SetRSUZone)
+	Flagged     bool      `json:"flagged"`         // true = attack-detected
+	FlaggedAt   int64     `json:"flagged_at_ms"`
+	UpdatedAt   int64     `json:"updated_at_ms"`
+	JoinedAtMs  int64     `json:"joined_at_ms"`    // when OBU entered RSU coverage (TR-3)
+	HWCapacity  int       `json:"hw_capacity_mb"`  // RAM in MB (0 = unknown/RSU) (Cmin: ≥2048)
+	HWStorageGB int       `json:"hw_storage_gb"`   // storage in GB (0 = unknown/RSU) (Cmin: ≥8)
+	State       PeerState `json:"state"`           // ACTIVE | QUARANTINED_CLIENT | REMOVED
+	DemotedAt   int64     `json:"demoted_at_ms"`   // when first quarantined (for removal check)
+	DocType     string    `json:"doc_type"`
 }
 
 // ControllerTrustRecord holds the trust score τCj for an SDN controller.
@@ -263,18 +265,53 @@ type BlacklistBeacon struct {
 }
 
 // ControllerRevokedBeacon is published to the ledger when a controller is
-// removed on the Tier-2 (no-RSU) path.  OBU peers propagate it via V2V so
-// vehicles begin soliciting topology from the backup controller directly
-// via V2X, bypassing the revoked controller (paper §No-RSU controller removal).
+// removed on the no-RSU path.  The three-step no-RSU removal process
+// (thesis §No-RSU controller removal):
+//   step i  — Cj's CA certificate is revoked via ControllerCredentialRevocationRequested
+//   step ii — this beacon propagates via OBU V2V peers, telling vehicles to stop
+//              submitting topology updates to Cj
+//   step iii— Ck* reads the beacon on the ledger and begins actively soliciting
+//              topology observations from vehicles through its own V2X interface
+//              (direction: Ck* → vehicles, not vehicles → Ck*)
+//
+// Because there is no RSU beacon evidence available in no-RSU mode (unlike the
+// with-RSU path where Ck* gets an instant snapshot), Ck* must rebuild topology
+// state from scratch.  Routing falls back to distributed vehicle-level decisions
+// for InterimFallbackIntervals = ⌈Llink/Tb⌉ beacon intervals while Ck* accumulates
+// sufficient observations to resume centralised routing.
 //
 // Ledger key: CTRL_REVOKED_BEACON:<controller_id>
 // doc_type:   "CTRL_REVOKED_BEACON"
 type ControllerRevokedBeacon struct {
-	ControllerID    string `json:"controller_id"`
-	BackupCtrlID    string `json:"backup_ctrl_id"`
-	PublishedAtMs   int64  `json:"published_at_ms"`
-	PublisherPeerID string `json:"publisher_peer_id"`
-	DocType         string `json:"doc_type"`
+	ControllerID            string `json:"controller_id"`
+	BackupCtrlID            string `json:"backup_ctrl_id"`
+	PublishedAtMs           int64  `json:"published_at_ms"`
+	PublisherPeerID         string `json:"publisher_peer_id"`
+	InterimFallbackIntervals int   `json:"interim_fallback_intervals"` // ⌈Llink/Tb⌉
+	DocType                 string `json:"doc_type"`
+}
+
+// ─── RSU Zone Reassignment (malicious RSU removal) ──────────────────────────
+//
+// RSUZoneReassignment is written when a malicious RSU peer is confirmed via
+// TTW or BSHH detection.  The compromised RSU's coverage zone is partially
+// reassigned to an adjacent trusted controller so the physical area is not
+// left without SDN management (thesis §RSU removal, data-plane role).
+//
+// This runs in parallel with the 3-stage peer-demotion pipeline — the
+// demotion pipeline handles the consortium-peer role (removing rk from Pactive,
+// zeroing trust, CA-cert revocation); this record handles the data-plane role
+// (zone coverage continuity).
+//
+// Ledger key: RSU_ZONE_REASSIGN:<rsu_id>:<assigned_at_ms>
+// doc_type:   "RSU_ZONE_REASSIGNMENT"
+type RSUZoneReassignment struct {
+	CompromisedRSUID string `json:"compromised_rsu_id"`
+	ZoneID           string `json:"zone_id"`           // zone the RSU was covering
+	BackupCtrlID     string `json:"backup_ctrl_id"`    // controller assuming partial coverage
+	BackupCtrlScore  float64 `json:"backup_ctrl_score"`
+	AssignedAtMs     int64  `json:"assigned_at_ms"`
+	DocType          string `json:"doc_type"`
 }
 
 // ─── Anchor Checkpoint Protocol (Section 5.1) ────────────────────────────────
