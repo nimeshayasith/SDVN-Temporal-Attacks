@@ -1,29 +1,27 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [SUMO] Attack 10: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/10_ME_S2_Malicious_RSU.xml
 
 ========================================
 SCENARIO 10 - ME-S2 ATTACK CONFIGURED
-  Total vehicles    : 6
+  Total vehicles    : 4
   Total RSUs        : 1
   Attack percentage : 20%
   Malicious RSUs    : 1
   Real link         : V6<->V7
-  Phantom reporters (3): V5 V10 V9 
+  Phantom reporters (2): V5 V8 
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S2][t=10.000]  STEP①②③  V6<->V7 HELLO; all four vehicles report to RSU_11; RSU aggregates
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.000s with delay 1ms
-[ME-S2][t=10.100]  STEP④  RSU_11 INJECTS echo <V6 sees V7> as-if-by V5 and V10
-[ME-S2][t=10.100]  STEP⑥  Phantom paths: V6->V5->V7, V6->V10->V7  *** ATTACK COMPLETE ***
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.100s with delay 1ms
-[ME-S2][t=10.102]  STEP④  RSU_11 INJECTS echo <V6 sees V7> as-if-by V9 and V9
-[ME-S2][t=10.102]  STEP⑥  Phantom paths: V6->V9->V7, V6->V9->V7  *** ATTACK COMPLETE ***
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.102s with delay 1ms
+[ME-S2][t=10.000]  STEP①②③  V6<->V7 HELLO; vehicles report to RSU_9; RSU aggregates
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.000s with delay 1ms
+[ME-S2][t=10.100]  STEP④  RSU_9 INJECTS echo <V6 sees V7> as-if-by V5 and V8
+[ME-S2][t=10.100]  STEP⑥  Phantom: V6->V5->V7, V6->V8->V7  *** ATTACK COMPLETE ***
+[ME-S2][t=10.100]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V9
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.100s with delay 1ms
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=4 (Tier 1: all RSU-reported events, tau_k=1)
 [CryptoFilter] 4 in → 4 out  (dropped: 0 MAC, 0 stale, 0 nonce)
@@ -45,6 +43,6 @@ Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 4
-  Stage-0 blocked (attacks): 4
+  Stage-0 blocked (attacks): 2
   |E_t^trusted|  : 4
 ============================================================

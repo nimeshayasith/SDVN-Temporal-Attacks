@@ -201,6 +201,14 @@ struct TrustedNodeCryptoState {
     std::set<uint64_t>                           nonce_cache;
     std::map<std::string, std::set<uint32_t>>    link_witnesses;     // legit reporters only
     std::map<std::string, std::set<uint32_t>>    link_all_reporters; // legit + in-range attackers
+    // Eq. 3.26: per-link accumulator of real IndividualSignedReports from legitimate
+    // reporters.  Populated by vehicle_sign_report() when !attack_label events arrive.
+    // Consumed by verify_threshold_sig() in Step 1c when an attack event arrives.
+    // Capped at MAX_REPORTS_PER_RSU entries per link (AggregateReport struct limit).
+    std::map<std::string, std::vector<IndividualSignedReport>> link_signed_reports;
+    // Per-reporter key material: lazy-generated Dilithium5 keypairs keyed by reporter ID.
+    // Matches the per-reporter key pairs used in TetaGuardLocBindVerify().
+    std::map<uint32_t, LocBindKeyPair>           reporter_thresh_keys;
 };
 
 // Indexed by reporter_id (RSU NS-3 node ID, OBU vehicle ID, or controller ID)
@@ -370,6 +378,9 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // Both sets are updated: link_witnesses (legit only) and link_all_reporters
     // (all reporters including legit), so n_total for future quorum computations
     // reflects every reporter that has been seen for this link.
+    // For Eq. 3.26 (Step 1c): also call vehicle_sign_report() and store the
+    // IndividualSignedReport so that verify_threshold_sig() has real signature
+    // material to check when an attack event arrives for the same link.
     if (!event.attack_label && event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
         const uint32_t me_lmin = std::min(event.link_src_id, event.link_dst_id);
@@ -377,36 +388,65 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         const std::string lkey = std::to_string(me_lmin) + "_" + std::to_string(me_lmax);
         state.link_witnesses[lkey].insert(event.reporter_id);
         state.link_all_reporters[lkey].insert(event.reporter_id);
+
+        // Eq. 3.26 real crypto: sign this legitimate report so the aggregate can
+        // be verified via verify_threshold_sig() in Step 1c when needed.
+        if (has_RSU_infrastructure &&
+            state.link_signed_reports[lkey].size() < MAX_REPORTS_PER_RSU)
+        {
+            // Lazy keypair generation per reporter (same pattern as LocBind keys)
+            uint32_t rid = event.reporter_id;
+            if (!state.reporter_thresh_keys.count(rid))
+            {
+                if (!g_locbind_ca_ready) { teta_ca_init(); g_locbind_ca_ready = true; }
+                LocBindKeyPair &kp = state.reporter_thresh_keys[rid];
+                dilithium5_keygen(kp.pk, kp.sk);
+                uint8_t vid_bytes[16]; memset(vid_bytes, 0, sizeof(vid_bytes));
+                snprintf((char *)vid_bytes, sizeof(vid_bytes), "V%u", rid);
+                dilithium5_issue_cert(vid_bytes, kp.pk,
+                    (uint64_t)(Simulator::Now().GetSeconds() * 1000.0), &kp.cert);
+            }
+            LocBindKeyPair &kp = state.reporter_thresh_keys[rid];
+
+            // Build a 4-byte payload encoding the link (src_id || dst_id)
+            uint8_t msg_payload[4];
+            msg_payload[0] = (uint8_t)(event.link_src_id & 0xFF);
+            msg_payload[1] = (uint8_t)((event.link_src_id >> 8) & 0xFF);
+            msg_payload[2] = (uint8_t)(event.link_dst_id & 0xFF);
+            msg_payload[3] = (uint8_t)((event.link_dst_id >> 8) & 0xFF);
+
+            uint64_t ts_ms = (uint64_t)(event.sender_timestamp * 1000.0);
+
+            // Nonce: deterministic from (reporter_id, link_key, timestamp) so the
+            // same report can't be submitted twice under a different nonce.
+            uint8_t nonce[NONCE_LEN]; memset(nonce, 0, NONCE_LEN);
+            uint32_t nonce_seed = rid ^ me_lmin ^ me_lmax ^ (uint32_t)(ts_ms & 0xFFFFFFFF);
+            memcpy(nonce, &nonce_seed, sizeof(nonce_seed));
+
+            IndividualSignedReport isr;
+            memset(&isr, 0, sizeof(isr));
+            memcpy(isr.msg_payload, msg_payload, 4);
+            isr.timestamp_ms = ts_ms;
+            memcpy(isr.nonce, nonce, NONCE_LEN);
+            memcpy(isr.pub_key, kp.pk, DILITHIUM5_PK_LEN);
+            isr.cert = kp.cert;
+            snprintf((char *)isr.vehicle_id, sizeof(isr.vehicle_id), "V%u", rid);
+            size_t sig_len_out = 0;
+            vehicle_sign_report(msg_payload, 4, ts_ms, nonce, kp.sk,
+                                isr.individual_sig, &sig_len_out);
+            state.link_signed_reports[lkey].push_back(isr);
+        }
     }
 
     // ── Step 1c — Threshold aggregate signature (Eq. 3.26) for RSU-relayed reports ─
-    // Distinct from Step 1 (MAC/identity: physical ≠ claimed) and Step 1b
-    // (ME location-binding: out-of-range / low-RSSI reporters).
-    //
     // Eq. 3.26: Verify(σ_agg, PK_agg) = 1
     //           ⟺ |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t
     //           where t = max(THRESHOLD_T_FLOOR, ⌊n/2⌋ + 1)
     //
-    // Catches the case where an attacker has:
-    //   • a valid individual identity (Step 1 passes, physical == claimed), AND
-    //   • is within communication range (Step 1b passes), BUT
-    //   • cannot marshal a majority of legitimate co-signers.
-    // A single compromised RSU or colluding group smaller than t cannot satisfy
-    // the aggregate quorum even when each member holds valid individual keys.
-    //
-    // Simulation proxy:
-    //   link_witnesses      → legitimate signers (passed all prior checks)
-    //   link_all_reporters  → all claimed signers (legit + in-range attackers)
-    //   n is computed from link_all_reporters so a compromised RSU cannot lower
-    //   t by deflating the reported signer count.
-    //   THRESHOLD_T_FLOOR (= 3) from teta_guard_types.h — same floor applied by
-    //   verify_threshold_sig() in threshold_sig.cc (Gates A/B/C/D + nonce replay).
-    //
-    // Real crypto path: verify_threshold_sig() (compiled above via threshold_sig.cc
-    // include) runs full Gate A (CA cert), Gate B (cert pk match), Gate D
-    // (freshness within THRESH_REPORT_WINDOW_MS), Gate C (Dilithium5 verify) for
-    // every signer, plus cross-aggregate replay via g_thresh_nonce_cache and
-    // within-aggregate dedup via seen_vids[].
+    // Real crypto path: build AggregateReport from stored IndividualSignedReports,
+    // call rsu_aggregate_reports() + verify_threshold_sig() (Gates A/B/C/D + nonce
+    // replay from threshold_sig.cc).  The attacker holds no key shares for the
+    // legitimate reporters → zero valid partial signatures → below threshold → DROP.
     if (has_RSU_infrastructure &&
         event.attack_label &&
         event.type == PEM_EVENT_TOPOLOGY_UPDATE)
@@ -416,19 +456,39 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         const std::string s1c_key =
             std::to_string(s1c_lmin) + "_" + std::to_string(s1c_lmax);
 
-        // n from all_reporters — cannot be inflated/deflated by attacker RSU
-        const uint32_t n_all = state.link_all_reporters.count(s1c_key)
-            ? static_cast<uint32_t>(state.link_all_reporters.at(s1c_key).size())
-            : 0u;
-        const uint32_t legit_signers = state.link_witnesses.count(s1c_key)
-            ? static_cast<uint32_t>(state.link_witnesses.at(s1c_key).size())
-            : 0u;
+        // Also count this attacker in link_all_reporters so t = ⌊n/2⌋+1 uses the
+        // real total reporter count (Eq. 3.26 left side denominator).
+        state.link_all_reporters[s1c_key].insert(event.reporter_id);
 
-        // t = max(THRESHOLD_T_FLOOR, ⌊n/2⌋+1) — matches verify_threshold_sig()
-        const uint32_t agg_t = std::max(static_cast<uint32_t>(THRESHOLD_T_FLOOR),
-                                        (n_all / 2u) + 1u);
+        const auto &signed_vec = state.link_signed_reports.count(s1c_key)
+            ? state.link_signed_reports.at(s1c_key)
+            : std::vector<IndividualSignedReport>{};
 
-        if (legit_signers < agg_t)
+        if (signed_vec.empty())
+        {
+            // No legitimate signed reports accumulated yet → attacker cannot
+            // satisfy any quorum (0 valid sigs < THRESHOLD_T_FLOOR = 3).
+            tg_crypto_drop_mac++;
+            return false;
+        }
+
+        // Build AggregateReport from stored legitimate IndividualSignedReports
+        AggregateReport agg;
+        memset(&agg, 0, sizeof(agg));
+        const uint32_t n_reps =
+            (uint32_t)signed_vec.size() < MAX_REPORTS_PER_RSU
+                ? (uint32_t)signed_vec.size()
+                : MAX_REPORTS_PER_RSU;
+        rsu_aggregate_reports(&agg,
+                              signed_vec.data(),
+                              n_reps);
+
+        // verify_threshold_sig() implements the full Eq. 3.26 biconditional:
+        //   Step 1: aggregate sig consistency (tamper detection)
+        //   Step 2: per-signer Dilithium5 verify, count valid ≥ t
+        // Returns THRESHOLD_SIG_PASS only when quorum is met.
+        ThresholdSigResult tsr = verify_threshold_sig(&agg);
+        if (tsr != THRESHOLD_SIG_PASS)
         {
             tg_crypto_drop_mac++;
             return false;   // Eq. 3.26: |{valid σ_i}| < t — aggregate rejected

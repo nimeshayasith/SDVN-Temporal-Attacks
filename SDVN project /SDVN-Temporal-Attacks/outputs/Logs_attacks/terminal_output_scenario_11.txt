@@ -1,52 +1,52 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [SUMO] Attack 11: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/11_ME_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
 SCENARIO 11 - ME-S3 ATTACK CONFIGURED
-  Total vehicles      : 6
+  Total vehicles      : 4
   Total controllers   : 4
-  Attack percentage   : 20%
+  Attack percentage   : 25%
   Malicious controllers: 1
   Real link           : V6<->V7
-  Phantom reporters (3): V5 V10 V9 
+  Phantom reporters (2): V5 V8 
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [ME-S3][t=10.000]  V1 --topo--> Controller  <V1 sees V2>  ACCEPTED (real link)
 [ME-S3][t=10.000]  V2 --topo--> Controller  <V2 sees V1>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V0 --topo--> Controller  <V0 sees V5>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V5 --topo--> Controller  <V5 sees V0>  ACCEPTED (real link)
-[ME-S3][t=10.100]  STEP③  Controller FORGES: <V6 sees V7> via V5 and V10
-[ME-S3][t=10.100]  STEP④  Phantom paths: V6->V5->V7, V6->V10->V7  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.102]  STEP③  Controller FORGES: <V6 sees V7> via V9 and V9
-[ME-S3][t=10.102]  STEP④  Phantom paths: V6->V9->V7, V6->V9->V7  *** ATTACK COMPLETE (no external packet) ***
-[TGN] Online mode — 8 events already processed inline. Running secondary crypto audit...
+[ME-S3][t=10.000]  V0 --topo--> Controller  <V0 sees V3>  ACCEPTED (real link)
+[ME-S3][t=10.000]  V3 --topo--> Controller  <V3 sees V0>  ACCEPTED (real link)
+[ME-S3][t=10.100]  STEP③  Controller FORGES: <V6 sees V7> via V5 and V8
+[ME-S3][t=10.100]  STEP④  Phantom: V6->V5->V7, V6->V8->V7  *** ATTACK COMPLETE (no external packet) ***
+[Trust][t=10.100]  C_0 tau=0.900 >= tau_min^C — monitoring
+[ME-S3][t=10.100]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V0  propagation=200.000 ms
+[TGN] Online mode — 6 events already processed inline. Running secondary crypto audit...
 [TGN] Tier2: admitted 4/4 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 0 1 2 5 ctrl 
+[TGN] Trusted nodes (Tier 2 OBU): 0 1 2 3 ctrl 
 [TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 8 in → 8 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+[CryptoFilter] 6 in → 6 out  (dropped: 0 MAC, 0 stale, 0 nonce)
                log: crypto_filter_log.txt
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 11 — ME-S3: Malicious Controller, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 4 / 0 / 4
-  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 4
+  TP/TN/FP/FN : 0 / 4 / 0 / 2
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 2
   [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
   MCC         : 0.000
   AUROC       : 1.000
-  ACR         : 50.000 %
+  ACR         : 66.667 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 8
+  Events      : 6
   Stage-0 blocked (attacks): 0
   |E_t^trusted|  : 4
 ============================================================

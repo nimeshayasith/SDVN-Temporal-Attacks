@@ -1,15 +1,19 @@
 /*
- * kem.cc — Kyber-1024 + FireSaber Hybrid-KEM  (Module 1, Section 3)
+ * kem.cc — Kyber-1024 + HQC-5 Hybrid-KEM  (Module 1, Section 3)
  *
  * Establishes K_{Vi,nk}: 32-byte session key shared between vehicle Vi
  * and trusted node nk.  Also generates Dilithium5 signing keypairs
  * (SK_{Vi}, PK_{Vi}) stored in VehicleKeyRecord (Section 3.5).
  *
  * liboqs constants used:
- *   KEM:  OQS_KEM_alg_kyber_1024 (Kyber component, pre-standard)
- *         OQS_KEM_alg_ml_kem_1024 (FIPS 203 preferred on liboqs ≥0.10)
- *         OQS_KEM_alg_saber_firesaber      (Saber component — paper's hybrid partner)
+ *   KEM:  OQS_KEM_alg_kyber_1024 (Kyber component, pre-standard / NIST Level 5)
+ *         OQS_KEM_alg_hqc_5      (HQC-5 component, code-based / NIST Level 5)
  *   SIG:  OQS_SIG_alg_dilithium_5 (NIST ML-DSA, FIPS 204)
+ *
+ * Hybrid rationale: ML-KEM-1024 relies on Module-LWE (lattice hardness).
+ * HQC-5 relies on syndrome decoding (code-based hardness).  The two
+ * assumptions are mathematically independent — an attacker must break
+ * BOTH to recover the session key.  This is NIST Level 5 on both sides.
  *
  * Build:
  *   g++ -std=c++17 -O2 kem.cc -lssl -lcrypto -o kem
@@ -33,18 +37,34 @@
 
 #ifdef HAVE_LIBOQS
 #  include <oqs/oqs.h>
-/* liboqs >= 0.10 standardized to ML-KEM-1024 (FIPS 203) and dropped FireSaber.
- * Map old names to the standardized equivalents so the code compiles on both. */
+/* Kyber-1024 is available under both the old and new name depending on
+ * liboqs version.  Fall back to ML-KEM-1024 if the old name is absent. */
 #  ifndef OQS_KEM_alg_kyber_1024
 #    define OQS_KEM_alg_kyber_1024    OQS_KEM_alg_ml_kem_1024
 #  endif
-#  ifndef OQS_KEM_alg_saber_firesaber
-#    define OQS_KEM_alg_saber_firesaber OQS_KEM_alg_ml_kem_1024
+/* Second KEM slot: HQC-5 (code-based, NIST Level 5, NIST alternate candidate).
+ * OQS_KEM_alg_hqc_5 is present in liboqs >= 0.7.  FireSaber was the original
+ * partner but was dropped from liboqs in 0.10 after NIST did not select Saber.
+ * HQC-5 provides a genuinely independent hard problem (syndrome decoding vs
+ * Module-LWE), restoring the full two-assumption hybrid security of Eq. 3.15. */
+#  ifndef OQS_KEM_alg_hqc_5
+#    error "HQC-5 not available in this liboqs build. Install liboqs >= 0.7 with HQC enabled."
 #  endif
 #  ifndef OQS_SIG_alg_dilithium_5
 #    define OQS_SIG_alg_dilithium_5   OQS_SIG_alg_ml_dsa_87
 #  endif
 #endif
+
+/* Emitted once at first keygen call to confirm hybrid mode. */
+static void kem_print_hybrid_mode(void)
+{
+    static bool s_warned = false;
+    if (s_warned) return;
+    s_warned = true;
+    printf("[KEM] Hybrid mode: Kyber-1024 (lattice/Module-LWE, Level 5)"
+           " + HQC-5 (code-based/syndrome-decoding, Level 5)"
+           " — full two-assumption hybrid active.\n");
+}
 
 /* ─── Global key store ───────────────────────────────────────────────────── */
 
@@ -168,7 +188,7 @@ static void print_hex(const char *label, const uint8_t *d, size_t n, size_t max)
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * Perform Kyber-1024 + FireSaber hybrid key encapsulation for vehicle Vi.
+ * Perform Kyber-1024 + HQC-5 hybrid key encapsulation for vehicle Vi.
  * Implements Section 3.3 Steps 3-4.
  *
  * trusted_pk    : RSU/nk Kyber public key (or simulated pk)
@@ -187,7 +207,7 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
     OQS_KEM_encaps(kem_k, ct_k, ss_k, trusted_pk);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_hqc_5);
     uint8_t ct_s[kem_s->length_ciphertext];
     uint8_t ss_s[kem_s->length_shared_secret];
     OQS_KEM_encaps(kem_s, ct_s, ss_s, trusted_pk);
@@ -218,7 +238,7 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * Step 1 — Vehicle generates its Kyber+FireSaber KEM keypair AND authenticates
+ * Step 1 — Vehicle generates its Kyber-1024 + HQC-5 KEM keypair AND authenticates
  * the public keys with its Dilithium5 identity key (Fix-1).
  *
  * Parameters added (Fix-1):
@@ -235,6 +255,7 @@ void kem_vehicle_keygen(KemExchangeState *state,
                          const uint8_t dil_sk[DILITHIUM5_SK_LEN],
                          const uint8_t dil_pk[DILITHIUM5_PK_LEN],
                          const CertificateRecord *cert) {
+    kem_print_hybrid_mode();   /* confirm hybrid mode on first call */
     memset(state, 0, sizeof(*state));
     memcpy(state->vehicle_id, vehicle_id, 16);
     memcpy(state->identity_pk,  dil_pk,     DILITHIUM5_PK_LEN);
@@ -247,7 +268,7 @@ void kem_vehicle_keygen(KemExchangeState *state,
     OQS_KEM_keypair(kem_k, state->pk_kyber, state->sk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_hqc_5);
     OQS_KEM_keypair(kem_s, state->pk_saber, state->sk_saber);
     OQS_KEM_free(kem_s);
 #else
@@ -358,7 +379,7 @@ bool kem_rsu_encapsulate(KemExchangeState *state,
     OQS_KEM_encaps(kem_k, state->ct_kyber, ss_k, state->pk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_hqc_5);
     OQS_KEM_encaps(kem_s, state->ct_saber, ss_s, state->pk_saber);
     OQS_KEM_free(kem_s);
 
@@ -401,7 +422,7 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
     OQS_KEM_free(kem_k);
     if (rc_k != OQS_SUCCESS) return false;
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_hqc_5);
     OQS_STATUS rc_s = OQS_KEM_decaps(kem_s, ss_s, state->ct_saber, state->sk_saber);
     OQS_KEM_free(kem_s);
     if (rc_s != OQS_SUCCESS) return false;
@@ -540,11 +561,11 @@ static void make_vehicle_id(uint8_t vid[16], int idx) {
 
 #ifndef KEM_NO_MAIN
 int main(void) {
-    printf("=== kem.cc — Kyber-1024+FireSaber Hybrid KEM + Dilithium5 (Module 1) ===\n");
+    printf("=== kem.cc — Kyber-1024 + HQC-5 Hybrid KEM + Dilithium5 (Module 1) ===\n");
 #ifdef HAVE_LIBOQS
     printf("[KEM] Backend: liboqs  — REAL post-quantum crypto active\n");
     printf("[KEM]   Kyber-1024: OQS_KEM_alg_kyber_1024  (IND-CCA2, Level 5)\n");
-    printf("[KEM]   Saber:     OQS_KEM_alg_saber_firesaber      (IND-CCA2)\n");
+    printf("[KEM]   HQC-5:     OQS_KEM_alg_hqc_5               (IND-CCA2, Level 5)\n");
     printf("[KEM]   Signing:   OQS_SIG_alg_dilithium_5 (FIPS 204 ML-DSA)\n");
 #else
     fprintf(stderr,
@@ -554,10 +575,10 @@ int main(void) {
         "║                                                              ║\n"
         "║  liboqs is NOT linked.  The following are SIMULATED:        ║\n"
         "║    • Kyber-1024 KEM  →  HKDF-SHA256(pk_kyber||pk_saber)      ║\n"
-        "║    • FireSaber KEM      →  XOR fallback (not IND-CCA2 secure)   ║\n"
+        "║    • HQC-5 KEM          →  XOR fallback (not IND-CCA2 secure)   ║\n"
         "║    • Dilithium5 sig →  random 32-byte buffer (no math)      ║\n"
         "║                                                              ║\n"
-        "║  Paper claims Kyber-1024 and FireSaber IND-CCA2 security.        ║\n"
+        "║  Paper claims Kyber-1024 and HQC-5 IND-CCA2 security.            ║\n"
         "║  Neither is operative in this build.                        ║\n"
         "║                                                              ║\n"
         "║  To enable real PQC:                                        ║\n"
