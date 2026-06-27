@@ -524,8 +524,24 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // Per-verifier separation is correct: two RSUs each maintain their OWN
     // N_seen (g_per_node_crypto_state[reporter_id]).  The second RSU's cache
     // does NOT contain the first RSU's consumed nonces — verifiers are independent.
+    //
+    // Nonce construction — Eq. 3.17: nonce_i ∉ N_seen
+    //   Previous key: (claimed_sender_id ∥ ts_slot) — underspecified.
+    //   Two distinct legitimate messages from the same node in the same 100 ms
+    //   window (e.g. a topology_update and a heartbeat at t=10.0) produced the
+    //   same key → second message silently dropped as false replay.
+    //
+    //   Fix: H(sender_id ∥ ts_slot ∥ message_type ∥ link_payload)
+    //   Folds in event.type (3 bits) and a hash of the link endpoints (15 bits)
+    //   so each distinct message has a unique nonce even at the same timestamp.
+    //   Replay of the SAME message still collides (same type + same link + same ts).
+    const uint32_t ts_slot   = (uint32_t)(event.sender_timestamp * 10.0 + 0.5);
+    const uint32_t type_bits = (uint32_t)event.type;
+    const uint32_t link_hash = event.link_src_id * 1000003u ^ event.link_dst_id;
     const uint64_t nonce_key = ((uint64_t)event.claimed_sender_id << 32)
-                             | (uint64_t)(event.sender_timestamp * 10.0 + 0.5);
+                             | ((uint64_t)(ts_slot   & 0x3FFFu) << 18)
+                             | ((uint64_t)(type_bits & 0x7u)    << 15)
+                             | ((uint64_t)(link_hash & 0x7FFFu));
     if (state.nonce_cache.count(nonce_key))
     {
         tg_crypto_drop_nonce++;
