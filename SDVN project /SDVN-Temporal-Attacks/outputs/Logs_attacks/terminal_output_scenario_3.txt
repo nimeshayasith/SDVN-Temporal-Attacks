@@ -21,6 +21,7 @@ Timeline:
 [TTW-S3][t=10.000]  V6 --topo update--> Controller  <V6 sees V5, t=10.000>  ACCEPTED
 [TTW-S3][t=10.100]  Controller keeps stale copy  <V5 sees V6, t=10.000>  (internal replay at t=20.000)
 [TTW-S3][t=20.000]  Controller --TIMESTAMP FORGE + REINSERTION--> own table  <V5 sees V6, t=20.000>  (stored=10.000)  TABLE POISONED  *** ATTACK COMPLETE ***
+[Trust][t=20.050]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 [Trust][t=20.050]  C_0 tau=0.900 >= tau_min^C — monitoring
 [TTW-S3][t=20.050]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=100.000 ms
 [TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...

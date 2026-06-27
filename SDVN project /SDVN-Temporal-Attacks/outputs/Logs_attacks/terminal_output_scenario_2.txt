@@ -26,21 +26,22 @@ Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.1
 [TTW-S2][t=20.000]  Pipeline armed: RSU NS3-ID=7 will inject 1 forged pair(s)
     V5 sees V6
 [TTW-S2][t=20.000]  RSU_7 --FORGED replay--> Controller  <V5 sees V6, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TGN] Online mode — 3 events already processed inline. Running secondary crypto audit...
+[TTW-S2][t=20.050]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V7
+[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
 [TGN] DIVERGENCE(phantom): controller has V5<->V6 (t=20.000) not in E_t^trusted
 [TGN] Eq.3.45 δ=1 (phantom=1 stale=0 missed=0)  Eq.3.46 δ_thresh=15 (raw=13.20)
 [TGN] 0 < δ ≤ δ_thresh → within propagation-delay tolerance; no controller-origin alert
-[CryptoFilter] 4 in → 4 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+[CryptoFilter] 5 in → 5 out  (dropped: 0 MAC, 0 stale, 0 nonce)
                log: crypto_filter_log.txt
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 2 — TTW-S2: Malicious RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 0 / 3 / 0 / 0
+  TP/TN/FP/FN : 0 / 4 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 3 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
   MCC         : 0.000
   AUROC       : 0.500
   ACR         : 100.000 %
@@ -49,7 +50,7 @@ Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.1
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 3
-  Stage-0 blocked (attacks): 0
+  Events      : 4
+  Stage-0 blocked (attacks): 1
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
 ============================================================

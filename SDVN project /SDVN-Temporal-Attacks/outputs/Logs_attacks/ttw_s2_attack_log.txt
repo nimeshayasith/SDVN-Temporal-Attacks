@@ -48,3 +48,12 @@
 ========================================================
   TTW ATTACK S2 COMPLETE
 ========================================================
+[t=20.050]  DETECTION + MITIGATION
+  Ghost link V5<->V6 removed
+  Score: 1.000
+  Latency: 50.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V7): O(log 2) = 1 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V7 excluded until re-admission via consortium CA
+

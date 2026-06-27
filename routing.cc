@@ -1301,7 +1301,7 @@ static const double PEM_BEACON_INTERVAL_S = 0.100;
 static const double PEM_PROPAGATION_EPSILON_S = 0.020;
 static const double PEM_HEARTBEAT_WINDOW_S = 0.400;
 static const double PEM_SCORE_THRESHOLD = 0.075;
-static const double PEM_ME_TOLERANCE_MU = 0.30;
+static const double PEM_ME_TOLERANCE_MU = 0.20;   // µ = 0.20 per Eq. 3.8
 static const double PEM_ME_DELTA_MAX = 1.0;
 static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
 
@@ -1449,6 +1449,9 @@ struct ControllerRecord {
 std::vector<ControllerRecord> g_ctrl_table;
 uint32_t g_backup_ctrl_ns3_id = UINT32_MAX;  // set to management_Node after TrustInit()
 bool     g_ctrl_reassigned    = false;       // set when zone is reassigned
+// Stage-2 monitoring flag: prevents scheduling more than one recurring tick at a time.
+// Set to true when the first quarantine begins; the tick clears it when all quarantines end.
+static bool g_trust_stage2_armed = false;
 
 std::vector<double> pem_positive_scores;
 std::vector<double> pem_negative_scores;
@@ -1464,6 +1467,13 @@ struct PemNodeLWState {
     std::map<uint32_t, std::vector<PemEvent>>    heartbeat_history;
     std::map<std::string, std::vector<PemEvent>> link_report_history;
     std::map<std::string, double>                link_first_recorded_time;
+    // §3.1.3 deliberate design: per-trusted-node (per-RSU) beacon reception clock.
+    // PDF Eq. 3.3 notation τ_r^last(Vi) appears controller-centric, but §3.1.3
+    // places detection logic inside each trusted node n_k running Algorithm 1
+    // independently. Each entry in g_pem_node_lw_state is keyed by reporter_id
+    // (the trusted RSU), so this map tracks the most recent legitimate beacon
+    // reception time for each claimed sender Vi as observed by that specific RSU —
+    // a correct distributed implementation of the controller-centric notation.
     std::map<uint32_t, double>                   last_authentic_beacon_reception;
     std::map<std::string, double>                previous_path_counts;
 };
@@ -1788,6 +1798,10 @@ static void TrustInit()
     }
 }
 
+// Forward declarations for Stage-2 monitor (defined after TrustRunDemotionPipeline).
+static void TrustStage2MonitorTick();
+static void TrustStage2ArmMonitor();
+
 // Eq. 3.38: per-round node trust update.
 static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool flagged)
 {
@@ -1800,6 +1814,7 @@ static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool fl
         if (r.state != TRUST_QUARANTINE) {
             r.state     = TRUST_QUARANTINE;
             r.demoted_at = Simulator::Now().GetSeconds();
+            TrustStage2ArmMonitor();   // §3.4.11 Stage-2: start recurring beacon-interval check
         }
     } else if (correct_participation) {
         r.tau = (r.tau + TRUST_DELTA_PLUS < 1.0) ? r.tau + TRUST_DELTA_PLUS : 1.0;
@@ -1856,6 +1871,58 @@ static std::vector<uint32_t> TrustSelectActivePeers()
 // Three-stage demotion pipeline (§3.4.11).
 // Run after every mitigation event and periodically every beacon interval.
 // Also rebuilds P_active so callers always see an up-to-date peer set.
+// §3.4.11 Stage-2 recurring monitor tick — Eq. 3.51 continuous re-evaluation.
+// Fires every PEM_BEACON_INTERVAL_S (0.1s) for the lifetime of any active quarantine.
+// Self-reschedules only while at least one node remains in TRUST_QUARANTINE state;
+// clears g_trust_stage2_armed and stops when all quarantines have resolved.
+static void TrustStage2MonitorTick()
+{
+    double now = Simulator::Now().GetSeconds();
+    // Re-evaluate demotion pipeline at this beacon-interval tick (Stage 2 + Stage 3).
+    // This is the "every beacon interval" re-check required by §3.4.11 Stage 2:
+    // trust scores and eligibility are verified continuously, not only at attack events.
+    {
+        for (auto& kv : g_trust_table) {
+            TrustRecord& r = kv.second;
+            if (r.state == TRUST_QUARANTINE && r.demoted_at >= 0.0) {
+                double elapsed = now - r.demoted_at;
+                if (elapsed >= TRUST_TQUAR_S && r.tau <= TRUST_TAU_MIN) {
+                    r.state = TRUST_REMOVED;
+                    std::cout << "[Trust][t=" << now << "]  Node " << kv.first
+                              << ": QUARANTINE -> REMOVED  (Stage-2 tick, tau=" << r.tau
+                              << " after T_quar=" << TRUST_TQUAR_S << "s)\n";
+                }
+            }
+        }
+    }
+    // Check whether any quarantine is still active.
+    bool any_active = false;
+    for (const auto& kv : g_trust_table)
+        if (kv.second.state == TRUST_QUARANTINE) { any_active = true; break; }
+
+    if (any_active) {
+        // Reschedule for the next beacon interval.
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &TrustStage2MonitorTick);
+    } else {
+        // All quarantines resolved — disarm so the next quarantine re-arms cleanly.
+        g_trust_stage2_armed = false;
+        std::cout << "[Trust][t=" << now << "]  Stage-2 monitor disarmed"
+                     " (no active quarantines)\n";
+    }
+}
+
+// Arms the Stage-2 recurring monitor the first time any node enters quarantine.
+// Idempotent: a second call while already armed is a no-op.
+static void TrustStage2ArmMonitor()
+{
+    if (g_trust_stage2_armed) return;
+    g_trust_stage2_armed = true;
+    Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &TrustStage2MonitorTick);
+    std::cout << "[Trust][t=" << Simulator::Now().GetSeconds()
+              << "]  Stage-2 monitor armed (T_b=" << PEM_BEACON_INTERVAL_S
+              << "s, T_quar=" << TRUST_TQUAR_S << "s)\n";
+}
+
 static void TrustRunDemotionPipeline(double now)
 {
     for (auto& kv : g_trust_table) {
@@ -1928,6 +1995,7 @@ static std::string TrustReassignController(uint32_t mal_ctrl_ns3_id, double now)
         r.state          = TRUST_QUARANTINE;
         r.flagged        = true;
         r.demoted_at     = now;
+        TrustStage2ArmMonitor();   // §3.4.11 Stage-2: start recurring beacon-interval check
     }
     g_backup_ctrl_ns3_id = best_id;
     g_ctrl_reassigned    = true;
@@ -2135,13 +2203,14 @@ PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
     }
 
     // lambda_hat = observed vehicles / corridor length  (vehicles / m)
-    // rhoMax = E[|R*(e_ij, t)|] = 2 * r_comm * lambda_hat  (Eq. 3.8)
+    // rhoMax = ⌊(1+µ) · 2·r_comm · λ̂(t)⌋  (Eq. 3.8, µ = PEM_ME_TOLERANCE_MU = 0.20)
     const double lambdaHat =
         corridorLength > 0.0
             ? static_cast<double>(vehiclesNearLink.size()) / corridorLength
             : 0.0;
     uint32_t rhoMax =
-        static_cast<uint32_t>(std::floor(2.0 * TTW_COMM_RANGE * lambdaHat));
+        static_cast<uint32_t>(
+            std::floor((1.0 + PEM_ME_TOLERANCE_MU) * 2.0 * TTW_COMM_RANGE * lambdaHat));
 
     // A physical link has two endpoints; below that, the density estimate is
     // under-sampled rather than physically meaningful.
@@ -2648,11 +2717,13 @@ PemEvaluateEvent(PemEvent& event)
         std::map<uint32_t, double>::const_iterator lastBeaconIt =
             ns.last_authentic_beacon_reception.find(event.claimed_sender_id);
         if (lastBeaconIt != ns.last_authentic_beacon_reception.end() &&
-            event.sender_timestamp > lastBeaconIt->second)
+            event.sender_timestamp > lastBeaconIt->second + PEM_BEACON_INTERVAL_S)
         {
-            // Eq. 3.3 — TTW-S2: a topology timestamp attributed to reporter Vi
-            // cannot be newer than the controller's latest authentic beacon
-            // reception from Vi — direct sequence inversion.
+            // Eq. 3.3 — TTW-S2: a topology update attributed to Vi cannot carry
+            // a sender timestamp more than one beacon interval (T_b = 100 ms)
+            // ahead of the last authentic beacon reception from Vi.
+            // The +T_b tolerance prevents false positives on legitimate updates
+            // whose sender_timestamp naturally leads the reception clock by < T_b.
             // Key: claimed_sender_id (not reporter_id) so RSU-forwarded attacks
             // are checked against the victim vehicle's authentic beacon record.
             event.triggered[1] = true;
@@ -2733,9 +2804,11 @@ PemEvaluateEvent(PemEvent& event)
             }
         }
         // Eq. 3.7 — BSHH-S3: heartbeat arrived but no matching beacon observed
-        // for the claimed identity within the liveness window — and the physical
-        // sender is impersonating another node (physical != claimed).
-        if (!beaconSeen && event.physical_sender_id != event.claimed_sender_id)
+        // for the claimed identity within the liveness window W.
+        // No identity-mismatch guard: the PDF requires only the absence of a
+        // corroborating beacon. This makes it the only BSHH signature that fires
+        // for controller-origin attacks (physical == claimed == 9999).
+        if (!beaconSeen)
         {
             event.triggered[5] = true;
         }

@@ -443,13 +443,25 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     //           ⟺ |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t
     //           where t = max(THRESHOLD_T_FLOOR, ⌊n/2⌋ + 1)
     //
+    // §3.4.4 scope: "For RSU-aggregated beacon reports" — the check applies ONLY
+    // when an RSU (not a vehicle, not the controller) is the physical sender.
+    // Three conditions narrow this to genuine RSU-relayed events:
+    //   (a) physical_sender ≠ link_src_id : not V1 self-reporting directly
+    //   (b) physical_sender ≠ link_dst_id : not V2 self-reporting directly
+    //   (c) physical_sender ≠ 9999u       : not a controller-internal sentinel
+    //       (TTW-S4, ME-S4 use 9999 as reporter; they reach Stage-1 for detection,
+    //        not Stage-0 drop — threshold aggregate sigs don't apply there)
+    //
     // Real crypto path: build AggregateReport from stored IndividualSignedReports,
     // call rsu_aggregate_reports() + verify_threshold_sig() (Gates A/B/C/D + nonce
     // replay from threshold_sig.cc).  The attacker holds no key shares for the
     // legitimate reporters → zero valid partial signatures → below threshold → DROP.
     if (has_RSU_infrastructure &&
         event.attack_label &&
-        event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+        event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
+        event.physical_sender_id != event.link_src_id &&
+        event.physical_sender_id != event.link_dst_id &&
+        event.physical_sender_id != 9999u)
     {
         const uint32_t s1c_lmin = std::min(event.link_src_id, event.link_dst_id);
         const uint32_t s1c_lmax = std::max(event.link_src_id, event.link_dst_id);
