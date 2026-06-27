@@ -275,7 +275,7 @@ struct TGNParams {
 //   See InitWeightsRandom: gs = d + 6  (d=32, 6 = five features + φ).
 struct NodeFeatures {
     uint32_t node_id;
-    double   tau_s;            // τ_dev: normalised temporal deviation (recv−τ_s)/T_b, clamped [−50,50]
+    double   tau_dev;          // τ_dev: normalised temporal deviation (recv−τ_s)/T_b, clamped [−50,50] (Eq. 3.20)
     double   sender_ts_raw;    // raw sender_timestamp — used only for edge-freshness computation
     double   beacon_count;     // c_v^W — events in sliding window W_max (§3.4.3); window size = N_beacon (Eq. 3.32)
     double   seq_gap;          // Δs_v — backward timestamp regression (TTW-S2 signal)
@@ -504,6 +504,15 @@ private:
     // φ = log(1 + Δt/T_b)  — temporal position encoding (Eq 3.22, §3.4.3)
     // Issue 8.4 flowchart note: The flowchart wrote "GRU update: h_new = GRU(h_old, H_agg)"
     //   with no time encoding shown. φ IS computed here and concatenated into gru_in.
+    //
+    // §3.4.3 TBPTT note: the PDF describes Window-Based Truncated BPTT with W_BPTT=100
+    // events per node.  That is a TRAINING-ONLY concern — tgn_train.py detaches each
+    // node's memory after W_BPTT events so gradients do not back-propagate further.
+    // At INFERENCE, the GRU memory is carried forward continuously across ALL events
+    // with no windowing — passing the full recurrent history is the CORRECT behaviour:
+    // truncation bounds the backward graph during learning; it must not bound the
+    // forward context seen by the trained model at detection time.
+    // Result: this function intentionally has no TBPTT window counter.
     void UpdateNodeMemory(const NodeFeatures& feat, double recv_time)
     {
         NodeState& ns = states_[feat.node_id];
@@ -511,7 +520,7 @@ private:
         double delta_t = (std::max)(0.0, recv_time - ns.last_event_time);
         double phi     = std::log(1.0 + delta_t / params_.T_b);
 
-        Vec raw = { feat.tau_s, feat.beacon_count,
+        Vec raw = { feat.tau_dev, feat.beacon_count,
                     feat.seq_gap, feat.reporter_count, feat.identity_mismatch, phi };
         Vec gru_in;
         gru_in.reserve(params_.dim + 6);
@@ -581,13 +590,13 @@ private:
     {
         double s = 0.0;
 
-        // TTW staleness: tau_s is now τ_dev = (recv−τ_s)/T_b, clamped [−50,50].
+        // TTW staleness: tau_dev = (recv−τ_s)/T_b, clamped [−50,50] (Eq. 3.20).
         // τ_dev > 1 means the packet is already 1 T_b old at reception → stale.
         // Equivalent to the old (last_event_time − sender_ts − T_b) / T_b formula.
         {
             auto it = states_.find(feat.node_id);
             if (it != states_.end())
-                s += (std::min)(2.0, (std::max)(0.0, feat.tau_s - 1.0));
+                s += (std::min)(2.0, (std::max)(0.0, feat.tau_dev - 1.0));
         }
 
         // TTW-S2: timestamp regression (seq_gap > 0 means sender_ts went backwards)
@@ -853,7 +862,7 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
     f.node_id        = e.claimed_sender_id;
     f.sender_ts_raw  = e.sender_timestamp;
     // τ_dev = clip((recv − τ_s) / T_b, −50, 50).  Fresh packet → ≈0; TTW replay → large positive.
-    f.tau_s = std::max(-50.0, std::min(50.0,
+    f.tau_dev = std::max(-50.0, std::min(50.0,
                   (e.reception_timestamp - e.sender_timestamp) / TGN_BEACON_INTERVAL));
 
     // c_v^W — beacon count in sliding window of size W_max (§3.4.3).
@@ -873,15 +882,20 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
     }
 
     // ── RSU path detection ────────────────────────────────────────────────────
-    // Vehicle IDs: 0 … N_Vehicles-1.  RSU IDs: N_Vehicles … N_Vehicles+N_RSUs-1.
-    // Both bounds are required.  Without the upper bound, the controller sentinel
-    // 9999 satisfies (9999 >= N_Vehicles) whenever N_RSUs > 0, causing controller
-    // events in "With RSU" scenarios to silently take the RSU code path — which
-    // suppresses identity_mismatch and switches reporter tracking to claimed_sender.
+    // Actual NS-3 node ID layout (from main()):
+    //   0 … N_Vehicles-1                  : vehicle nodes
+    //   N_Vehicles … N_Vehicles+N_Controllers-1  : SDN controller nodes
+    //   N_Vehicles+N_Controllers           : management node (1)
+    //   N_Vehicles+N_Controllers+1 … +N_RSUs : RSU nodes  ← rsu_base here
+    // Must use N_Controllers in the offset; omitting it gives a range that starts
+    // at N_Vehicles and misidentifies controller nodes as RSUs (and misses real RSUs).
+    // Both bounds required: sentinel 9999 satisfies (>= rsu_base) when N_RSUs > 0
+    // and would silently take the RSU code path without the upper-bound guard.
+    const uint32_t rsu_base = (uint32_t)N_Vehicles + (uint32_t)N_Controllers + 1u;
     const bool physical_is_rsu =
         (N_RSUs > 0)
-        && (e.physical_sender_id >= (uint32_t)N_Vehicles)
-        && (e.physical_sender_id <  (uint32_t)(N_Vehicles + N_RSUs));
+        && (e.physical_sender_id >= rsu_base)
+        && (e.physical_sender_id <  rsu_base + (uint32_t)N_RSUs);
 
     // ρ_v — distinct reporters for this link (ME signal, Eq 3.20)
     //   No RSU : track reporter_id (distinct physical vehicles that echoed the link)
@@ -1956,6 +1970,13 @@ static void TGN_ProcessEventInline(const PemEvent& e)
 
 // =============================================================================
 //  SECTION 11  Top-level entry point — called by routing.cc after Simulator::Destroy()
+//
+//  §3.4.3 TBPTT note: the batch-replay path below (TGN_ProcessAllEvents, called
+//  when online mode is not active) feeds pem_all_events sequentially into
+//  TGNDetector::ProcessEvent() with no gradient windowing.  This is correct:
+//  TBPTT is a TRAINING concept (bounding the backward graph in tgn_train.py);
+//  inference always uses the full recurrent history.  No TBPTT window should ever
+//  be applied here, regardless of the W_BPTT value used during training.
 // =============================================================================
 
 static void TGN_RunPipeline()

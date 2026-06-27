@@ -1,43 +1,45 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 5532 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [SUMO] Attack 9: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/09_ME_S1_Malicious_Vehicles.xml
 
 ========================================
 SCENARIO 09 - ME-S1 ATTACK CONFIGURED
-  Total vehicles        : 3
-  Attack percentage     : 34%
-  Echo attackers        : 1
+  Total vehicles        : 4
+  Attack percentage     : 20%
+  Echo attackers        : 2
   Benign (real link) veh: 2
-  Active attack groups  : 0
-  Real link pair        : V7<->V6
-  Echo attackers (NS-3 IDs): V5 
-  Active groups (all echo V7<->V6):
+  Active attack groups  : 1
+  Real link pair        : V7<->V8
+  Echo attackers (NS-3 IDs): V5 V6 
+  Active groups (all echo V7<->V8):
+    Group 1: V5+V6 echo V7<->V8
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S1][t=9.995]  STEP①  V7 <-> V6 HELLO exchange (real link)
-[ME-S1][t=9.995]  STEP②  V7, V6 report real link to controller
-[ME-S1][t=9.995]  STEP③  V5, V5 overhear HELLO — stored for echo
-[ME-S1][t=10.091]  STEP④  V5 --ECHO--> Controller  <V7 sees V6>  FALSE REPORTER
-[ME-S1][t=10.091]  STEP⑤  Controller infers 2 path(s) for V7->V6  *** ATTACK COMPLETE ***
-[ME-S1][t=10.091]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V0  propagation=200.000 ms
-[TGN] Online mode — 3 events already processed inline. Running secondary crypto audit...
+[ME-S1][t=10.003]  STEP①  V7 <-> V8 HELLO exchange (real link)
+[ME-S1][t=10.003]  STEP②  V7, V8 report real link to controller
+[ME-S1][t=10.003]  STEP③  V5, V6 overhear HELLO — stored for echo
+[ME-S1][t=10.136]  STEP④  V5 --ECHO--> Controller  <V7 sees V8>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP④  V6 --ECHO--> Controller  <V7 sees V8>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP⑤  Controller infers 4 path(s) for V7->V8  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
+[ME-S1][t=10.136]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V0  propagation=200.000 ms
+[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 1 2 ctrl 
-[TGN] |E_t^trusted|=3 (Tier 2: 3 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 3 in → 3 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+[TGN] Trusted nodes (Tier 2 OBU): 2 3 ctrl 
+[TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 6 in → 6 out  (dropped: 0 MAC, 0 stale, 0 nonce)
                log: crypto_filter_log.txt
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 9 — ME-S1: Malicious Vehicles, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 3 / 0 / 0
+  TP/TN/FP/FN : 0 / 4 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 3 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
   MCC         : 0.000
   AUROC       : 0.500
   ACR         : 100.000 %
@@ -46,7 +48,7 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 3
-  Stage-0 blocked (attacks): 1
-  |E_t^trusted|  : 3
+  Events      : 4
+  Stage-0 blocked (attacks): 2
+  |E_t^trusted|  : 4
 ============================================================

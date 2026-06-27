@@ -3,4 +3,47 @@ Solution at controller cleared
 [SUMO] Loaded 304 positions, scheduled 3686 exact position+velocity events
 [SUMO] Attack 4: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/04_TTW_S4_Malicious_Controller_With_RSU.xml
-[ERROR] TTW-S4 requires --N_RSUs=1. Aborting.
+
+========================================
+SCENARIO 04 - TTW-S4 ATTACK CONFIGURED
+Attacker      : 1 malicious controller(s) / 4 total (RSU in path)
+Poisoned pairs: 1 / 1
+  V5 <-> V6
+Timeline:
+  t=10s  : V pairs -> RSU -> Controller, ctrl stores stale
+  t=15s  : Physical link breaks
+  t=20s  : Controller internal replay (RSU path variant)
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[TTW-S4][t=10.000]  V5/V6 --DSRC--> RSU_7 --CSMA--> Controller  <V5 sees V6, t=10.000>  ACCEPTED
+Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.000s with delay 1ms
+[TTW-S4][t=10.100]  Controller stores stale copy (from RSU aggregate)  <V5 sees V6, t=10.000>  (internal replay at t=20.000)
+[TTW-S4][t=20.000]  Controller --TIMESTAMP FORGE + REINSERTION (RSU path)--> own table  <V5 sees V6, t=20.000>  (stored=10.000)  TABLE POISONED  *** ATTACK COMPLETE ***
+[Trust][t=20.050]  C_0 tau=0.900 >= tau_min^C — monitoring
+[TTW-S4][t=20.050]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V5
+[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=2 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 6 in → 6 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+               log: crypto_filter_log.txt
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
+
+========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
+  Scenario  : 4 — TTW-S4: Malicious Controller, With RSU
+  RSU mode  : WITH RSU
+  TP/TN/FP/FN : 0 / 4 / 0 / 1
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 1
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 1.000
+  ACR         : 80.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 5
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 2
+============================================================
