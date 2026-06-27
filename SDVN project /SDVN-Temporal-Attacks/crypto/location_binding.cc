@@ -43,9 +43,64 @@
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
+ * Issue-3 fix: per-reporter (reporter_id, nonce) novelty cache.
+ *
+ * A compromised RSU could collect valid LocationBoundReports from multiple
+ * honest vehicles and replay them against different aggregates within the
+ * same LOCBIND_FRESHNESS_WINDOW_MS window.  Even with the timestamp gate
+ * (Gate D below), replays within the window pass timestamp checks.
+ * Solution: module-static circular cache of (reporter_id, nonce) pairs;
+ * a pair is consumed on first acceptance and rejected on any subsequent call.
+ *
+ * Size: LOCBIND_NONCE_CACHE_SIZE=4096
+ *   Same math that drove THRESH_REPORT_CACHE_SIZE from 1024→4096 (Issue-6):
+ *     max reporters per link:  64
+ *     freshness window:      5000 ms  (LOCBIND_FRESHNESS_WINDOW_MS)
+ *     beacon interval:        100 ms
+ *     peak fill per window:   64 × (5000/100) = 64 × 50 = 3200 entries
+ *   4096 provides 28% margin above peak.  Prior value of 1024 covered only
+ *   64 × 16 = 1024 = 1.6 s of the 5 s freshness window — leaving a 3.4 s
+ *   eviction gap in which a replayed (reporter_id, nonce) could re-enter the
+ *   cache; the same vulnerability Issue-6 closed for the threshold cache.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+#define LOCBIND_NONCE_CACHE_SIZE 4096u
+
+typedef struct {
+    uint8_t reporter_id[16];
+    uint8_t nonce[NONCE_LEN];
+} LocBindNonceKey;
+
+static LocBindNonceKey g_locbind_nonce_cache[LOCBIND_NONCE_CACHE_SIZE];
+static uint32_t        g_locbind_nonce_head  = 0;
+static uint32_t        g_locbind_nonce_count = 0;
+
+static bool locbind_nonce_is_novel(const uint8_t reporter_id[16],
+                                    const uint8_t nonce[NONCE_LEN]) {
+    for (uint32_t i = 0; i < g_locbind_nonce_count; i++) {
+        uint32_t idx = (g_locbind_nonce_head + LOCBIND_NONCE_CACHE_SIZE - 1 - i)
+                       % LOCBIND_NONCE_CACHE_SIZE;
+        if (memcmp(g_locbind_nonce_cache[idx].reporter_id, reporter_id, 16) == 0 &&
+            memcmp(g_locbind_nonce_cache[idx].nonce,       nonce,       NONCE_LEN) == 0)
+            return false;
+    }
+    return true;
+}
+
+static void locbind_nonce_consume(const uint8_t reporter_id[16],
+                                   const uint8_t nonce[NONCE_LEN]) {
+    memcpy(g_locbind_nonce_cache[g_locbind_nonce_head].reporter_id, reporter_id, 16);
+    memcpy(g_locbind_nonce_cache[g_locbind_nonce_head].nonce,       nonce,       NONCE_LEN);
+    g_locbind_nonce_head = (g_locbind_nonce_head + 1) % LOCBIND_NONCE_CACHE_SIZE;
+    if (g_locbind_nonce_count < LOCBIND_NONCE_CACHE_SIZE) g_locbind_nonce_count++;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
  * Nonce generation (for fresh nonce per location-bound report)
  * ══════════════════════════════════════════════════════════════════════════ */
 
+#if !defined(PIPELINE_INCLUDE) && !defined(FILL_RANDOM_DEFINED)
+#define FILL_RANDOM_DEFINED
 static void fill_random(uint8_t *buf, size_t len) {
 #ifdef HAVE_OPENSSL
     RAND_bytes(buf, (int)len);
@@ -57,6 +112,7 @@ static void fill_random(uint8_t *buf, size_t len) {
     }
 #endif
 }
+#endif /* PIPELINE_INCLUDE && FILL_RANDOM_DEFINED */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Dilithium5 sign / verify — delegated to dilithium.cc (Section 3.3)
@@ -89,14 +145,15 @@ float haversine_distance_m(float lat1, float lon1, float lat2, float lon2) {
  * Vehicle Vk constructs and signs a location-bound topology observation.
  * ══════════════════════════════════════════════════════════════════════════ */
 
-void create_location_bound_report(const uint8_t   link_id[8],
-                                   float            reporter_lat,
-                                   float            reporter_lon,
-                                   float            rssi_from_vi,
-                                   uint64_t         sender_ts_ms,
-                                   const uint8_t    reporter_id[16],
-                                   const uint8_t    sk_vk[DILITHIUM5_SK_LEN],
-                                   const uint8_t    pk_vk[DILITHIUM5_PK_LEN],
+void create_location_bound_report(const uint8_t       link_id[8],
+                                   float                reporter_lat,
+                                   float                reporter_lon,
+                                   float                rssi_from_vi,
+                                   uint64_t             sender_ts_ms,
+                                   const uint8_t        reporter_id[16],
+                                   const uint8_t        sk_vk[DILITHIUM5_SK_LEN],
+                                   const uint8_t        pk_vk[DILITHIUM5_PK_LEN],
+                                   const CertificateRecord *cert,
                                    LocationBoundReport *out_report) {
     memset(out_report, 0, sizeof(*out_report));
 
@@ -111,30 +168,83 @@ void create_location_bound_report(const uint8_t   link_id[8],
     memcpy(p->reporter_id, reporter_id, 16);
     fill_random(p->nonce, NONCE_LEN);   /* fresh nonce per report */
 
-    /* σ_{Vk} = Sign(SK_{Vk}, m'_{Vk})  (Eq. 3.28) */
+    /* σ_{Vk} = Sign(SK_{Vk}, m'_{Vk})  (Eq. 3.28)
+     * Fix-7: domain-separated to prevent cross-protocol replay with threshold
+     * and KEM-auth sigs that share the same Dilithium5 keypair.               */
     size_t sig_len;
-    dilithium5_sign((const uint8_t *)p, sizeof(LocationBindingPayload),
-                    sk_vk, out_report->signature, &sig_len);
+    dilithium5_sign_locbind((const uint8_t *)p, sizeof(LocationBindingPayload),
+                             sk_vk, out_report->signature, &sig_len);
 
     memcpy(out_report->pub_key, pk_vk, DILITHIUM5_PK_LEN);
+
+    /* Issue-1 fix: embed CA cert so verify_single_witness can run the three-gate
+     * cert check without a separate CA lookup.                                  */
+    if (cert) out_report->cert = *cert;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
  * verify_single_witness()  (Section 6.4, Eq. 3.29)
  *
- * Accept_{Vk}(e_ij) = 1 iff all three hold:
- *   (i)   Verify(σ_{Vk}, PK_{Vk}) = 1           crypto authenticity
- *   (ii)  d(pos_{Vk}, e_ij) ≤ r_comm             spatial plausibility
- *  (iii)  RSSI_{Vk←Vi} ≥ RSSI_min(r_comm)        signal plausibility
+ * Accept_{Vk}(e_ij) = 1 iff all hold, evaluated in this order:
+ *   Gate A: CA cert valid, CRL clear                  (identity trust root)
+ *   Gate B: cert.pk_vi == pub_key                     (key consistency)
+ *   Gate D: |recv_time_ms − sender_timestamp_ms| ≤ LOCBIND_FRESHNESS_WINDOW_MS
+ *           (Issue-3 freshness)
+ *   Gate E: (reporter_id, nonce) not yet consumed — READ-ONLY check here;
+ *           consume happens at the very end after all gates pass
+ *   Gate C: Dilithium5 sig verifies                   (crypto authenticity)
+ *   (ii)  d(pos_{Vk}, e_ij) ≤ r_comm                 (spatial plausibility)
+ *  (iii)  RSSI_{Vk←Vi} ≥ RSSI_min + Friis margin     (signal plausibility)
  *
+ * Ordering rationale: D and E are cheap integer comparisons and cache lookups;
+ * running them before Gate C (Dilithium5 verify, ~1.6 ms) rejects stale and
+ * replayed reports without paying the crypto cost.  T4 in the PHASE8 harness
+ * asserts crypto fires before spatial checks within the set of gates that do
+ * execute; that remains true (C before (ii)/(iii)) regardless of D/E placement.
+ *
+ * recv_time_ms: RSU wall-clock time in ms when this report was received.
  * link_endpoint_lat/lon: GPS coords of link endpoint Vi (midpoint used).
  * ══════════════════════════════════════════════════════════════════════════ */
 
 bool verify_single_witness(const LocationBoundReport *report,
-                            float link_endpoint_lat,
-                            float link_endpoint_lon) {
-    /* (i) Cryptographic authenticity — Section 3.3 shared module */
-    bool crypto_ok = dilithium5_verify(
+                            float    link_endpoint_lat,
+                            float    link_endpoint_lon,
+                            uint64_t recv_time_ms) {
+    /* Gate A + Gate B — same three-gate pattern as KEM (Fix-1/2) and threshold_sig */
+    if (!dilithium5_verify_cert(&report->cert)) return false;
+    if (memcmp(report->cert.pk_vi, report->pub_key, DILITHIUM5_PK_LEN) != 0)
+        return false;
+
+    /* Gate D — Issue-3 fix: timestamp freshness.
+     * Signed sender_timestamp_ms must be within LOCBIND_FRESHNESS_WINDOW_MS of
+     * the RSU's receive time.  Guards against a compromised RSU replaying old
+     * reports that were valid when originally signed.                           */
+    {
+        uint64_t ts = report->payload.sender_timestamp_ms;
+        int64_t  delta = (int64_t)recv_time_ms - (int64_t)ts;
+        if (delta < 0) delta = -delta;
+        if ((uint64_t)delta > LOCBIND_FRESHNESS_WINDOW_MS) return false;
+    }
+
+    /* Gate E — Issue-3 fix: per-reporter nonce novelty (cross-aggregate replay).
+     *
+     * locbind_nonce_is_novel() is a READ-ONLY cache lookup — it does not consume
+     * the slot.  Consumption happens at the very bottom of this function, after
+     * Gate C (crypto), Gate (ii) (spatial), and Gate (iii+iv) (RSSI/Friis) all
+     * pass.  This ordering is intentional:
+     *
+     *   - An attacker cannot DoS a victim's nonce slot by submitting a report
+     *     with a valid (reporter_id, nonce) but an invalid sig: Gate C fires
+     *     before the consume, so the slot is never written on crypto failure.
+     *   - A report that fails spatial or RSSI also does not consume its nonce.
+     *   - Only a report that passes every gate gets its nonce marked consumed.
+     *
+     * Do NOT move locbind_nonce_consume() earlier in this function.            */
+    if (!locbind_nonce_is_novel(report->payload.reporter_id, report->payload.nonce))
+        return false;
+
+    /* (i) Cryptographic authenticity — Fix-7: domain-separated locbind verify */
+    bool crypto_ok = dilithium5_verify_locbind(
         (const uint8_t *)&report->payload,
         sizeof(LocationBindingPayload),
         report->signature, DILITHIUM5_SIG_LEN,
@@ -147,8 +257,46 @@ bool verify_single_witness(const LocationBoundReport *report,
         link_endpoint_lat, link_endpoint_lon);
     if (dist > R_COMM_METERS) return false;
 
-    /* (iii) Signal plausibility: RSSI ≥ RSSI_min */
-    if (report->payload.rssi_from_vi_dbm < RSSI_MIN_DBM) return false;
+    /* (iii) Signal plausibility: RSSI ≥ RSSI_min.
+     * Fix-5 repair: use rsu_measured_rssi_dbm (RSU's own physical-layer
+     * measurement, set by the RSU after reception) rather than
+     * payload.rssi_from_vi_dbm (vehicle self-reported — attacker-controlled).
+     * rsu_measured_rssi_dbm sits outside the signed payload so the vehicle
+     * can never forge it.
+     *
+     * has_rsu_measurement is checked explicitly (not 0.0f sentinel) because
+     * 0.0f is a physically plausible RSSI value and must not be confused with
+     * "field not populated."  In a live-radio build has_rsu_measurement must
+     * always be true; falling back to the signed payload value is test-only.  */
+    float rssi_to_check;
+    if (report->has_rsu_measurement) {
+        rssi_to_check = report->rsu_measured_rssi_dbm;
+    } else {
+        /* Stub/unit-test path: RSU did not supply its own measurement.
+         * WARNING: this path is insecure — the vehicle controls rssi_from_vi_dbm.
+         * Never reachable in a live-radio build.                              */
+        fprintf(stderr, "[LocBind] WARNING: has_rsu_measurement=false for reporter %.*s"
+                " — falling back to self-reported RSSI (test path only)\n",
+                (int)sizeof(report->payload.reporter_id), report->payload.reporter_id);
+        rssi_to_check = report->payload.rssi_from_vi_dbm;
+    }
+    if (rssi_to_check < RSSI_MIN_DBM) return false;
+
+    /* (iv) Fix-5: RSSI-vs-distance Friis plausibility check.
+     * If RSSI is weaker than expected by more than RSSI_DISTANCE_MARGIN_DB at
+     * the claimed GPS distance, the reporter cannot physically be where it says.
+     * expected_rssi at distance d: RSSI_min + 20·log10(R_comm / d) [free-space].
+     * We skip the check when d < 0.5 m to avoid division-by-zero noise.       */
+    if (dist > 0.5f) {
+        float expected_rssi = RSSI_MIN_DBM
+                              + 20.0f * log10f(R_COMM_METERS / dist);
+        if (rssi_to_check < expected_rssi - RSSI_DISTANCE_MARGIN_DB)
+            return false;
+    }
+
+    /* All gates passed — consume the (reporter_id, nonce) pair now so it
+     * cannot be replayed into a subsequent aggregate call.                   */
+    locbind_nonce_consume(report->payload.reporter_id, report->payload.nonce);
 
     return true;
 }
@@ -157,6 +305,8 @@ bool verify_single_witness(const LocationBoundReport *report,
  * verify_quorum()  (Section 6.5, Eq. 3.30)
  *
  * Accept(e_ij) = 1  iff  |{Vk : Accept_Vk(e_ij) = 1}| ≥ t
+ *
+ * recv_time_ms is passed through to verify_single_witness (Gate D freshness).
  *
  * The strict-majority constraint t ≥ ⌊n/2⌋+1 is enforced internally.
  * If the caller passes a weaker value it is silently raised to the minimum.
@@ -168,8 +318,13 @@ bool verify_quorum(const LocationBoundReport *reports,
                     uint32_t n_reports,
                     uint32_t threshold_t,
                     float    link_ep_lat,
-                    float    link_ep_lon) {
+                    float    link_ep_lon,
+                    uint64_t recv_time_ms) {
     if (n_reports == 0) return false;
+    /* Defensive bounds guard (parallel to T8g fix in verify_threshold_sig):
+     * a caller passing n_reports > MAX_REPORTS_PER_RSU would walk off the
+     * end of any stack-allocated reports[] — UB.  Reject immediately.        */
+    if (n_reports > MAX_REPORTS_PER_RSU) return false;
 
     /* Enforce strict majority: t must be at least ⌊n/2⌋+1 regardless of what
      * the caller supplied.  This is the anti-collusion requirement from Eq. 3.30. */
@@ -178,7 +333,7 @@ bool verify_quorum(const LocationBoundReport *reports,
 
     uint32_t accepted = 0;
     for (uint32_t k = 0; k < n_reports; k++) {
-        if (verify_single_witness(&reports[k], link_ep_lat, link_ep_lon))
+        if (verify_single_witness(&reports[k], link_ep_lat, link_ep_lon, recv_time_ms))
             accepted++;
     }
     return accepted >= threshold_t;
@@ -203,6 +358,8 @@ static void sim_gps(int node_id, float *lat, float *lon) {
  * CSV processor
  * ══════════════════════════════════════════════════════════════════════════ */
 
+#if !defined(PIPELINE_INCLUDE) && !defined(PEM_HELPERS_DEFINED)
+#define PEM_HELPERS_DEFINED
 typedef struct { double t; int phys; int link_src; int link_dst; int attack; } PemRow;
 
 static int load_pem(const char *file, PemRow *rows, int max) {
@@ -225,6 +382,7 @@ static int load_pem(const char *file, PemRow *rows, int max) {
     }
     fclose(f); return n;
 }
+#endif /* PIPELINE_INCLUDE && PEM_HELPERS_DEFINED */
 
 /* ── main ─────────────────────────────────────────────────────────────────── */
 
@@ -245,13 +403,20 @@ int main(int argc, char *argv[]) {
         printf("[LBS] haversine ~300m test: %.1f m\n", d2);
     }
 
-    /* Pre-generate Dilithium5 keypairs for V0..V9 via canonical keygen */
+    /* Pre-generate Dilithium5 keypairs + CA certs for V0..V9 */
+    teta_ca_init();
     static uint8_t pks[10][DILITHIUM5_PK_LEN];
     static uint8_t sks[10][DILITHIUM5_SK_LEN];
-    for (int i = 0; i < 10; i++)
+    static CertificateRecord certs[10];
+    for (int i = 0; i < 10; i++) {
         dilithium5_keygen(pks[i], sks[i]);
+        uint8_t vid[16]; memset(vid, 0, 16);
+        snprintf((char *)vid, 16, "V%d", i);
+        dilithium5_issue_cert(vid, pks[i], (uint64_t)i * 1000, &certs[i]);
+    }
 
-    /* Self-test: in-range reporter → accepted */
+    /* Self-test: in-range reporter → accepted.
+     * Simulate RSU filling has_rsu_measurement to exercise the secure path.  */
     {
         float lat3, lon3; sim_gps(3, &lat3, &lon3);
         float lat_ep, lon_ep; sim_gps(1, &lat_ep, &lon_ep);
@@ -259,8 +424,11 @@ int main(int argc, char *argv[]) {
         uint8_t rid[16] = "V3";
         LocationBoundReport rep;
         create_location_bound_report(link_id, lat3, lon3, -60.0f,
-                                      10000, rid, sks[3], pks[3], &rep);
-        bool ok = verify_single_witness(&rep, lat_ep, lon_ep);
+                                      10000, rid, sks[3], pks[3], &certs[3], &rep);
+        /* RSU fills its own measurement (not from the vehicle's signed payload) */
+        rep.rsu_measured_rssi_dbm = -60.0f;
+        rep.has_rsu_measurement   = true;
+        bool ok = verify_single_witness(&rep, lat_ep, lon_ep, 10000ULL);
         printf("[LBS] In-range reporter test:   %s\n", ok ? "ACCEPTED" : "REJECTED");
     }
 
@@ -274,8 +442,8 @@ int main(int argc, char *argv[]) {
                                       lat_ep + 0.1f,  /* ~11 km away */
                                       lon_ep + 0.1f,
                                       -100.0f,
-                                      10000, rid, sks[7], pks[7], &rep);
-        bool ok = verify_single_witness(&rep, lat_ep, lon_ep);
+                                      10000, rid, sks[7], pks[7], &certs[7], &rep);
+        bool ok = verify_single_witness(&rep, lat_ep, lon_ep, 10000ULL);
         printf("[LBS] Out-of-range reporter:    %s (expected REJECTED)\n",
                ok ? "ACCEPTED" : "REJECTED");
     }
@@ -292,9 +460,9 @@ int main(int argc, char *argv[]) {
             else       { lat = lat_ep + 0.1f; lon = lon_ep; }     /* out of range */
             float rssi = (k < 3) ? -60.0f : -100.0f;
             create_location_bound_report(link_id, lat, lon, rssi,
-                                          10000, rid, sks[k], pks[k], &reps[k]);
+                                          10000, rid, sks[k], pks[k], &certs[k], &reps[k]);
         }
-        bool ok = verify_quorum(reps, 5, 3, lat_ep, lon_ep);
+        bool ok = verify_quorum(reps, 5, 3, lat_ep, lon_ep, 10000ULL);
         printf("[LBS] Quorum test (3/5 valid, t=3): %s\n", ok ? "ACCEPTED" : "REJECTED");
     }
 
@@ -325,10 +493,10 @@ int main(int argc, char *argv[]) {
         LocationBoundReport rep;
         create_location_bound_report(link_id, lat, lon, rssi,
                                       (uint64_t)(rows[i].t * 1000),
-                                      rid, sks[vid], pks[vid], &rep);
+                                      rid, sks[vid], pks[vid], &certs[vid], &rep);
 
-        /* Per-condition results — Section 3.3 shared dilithium5_verify */
-        bool crypto_ok = dilithium5_verify(
+        /* Per-condition results — Fix-7: domain-separated locbind verify */
+        bool crypto_ok = dilithium5_verify_locbind(
             (const uint8_t *)&rep.payload, sizeof(LocationBindingPayload),
             rep.signature, DILITHIUM5_SIG_LEN, rep.pub_key);
 

@@ -33,6 +33,17 @@
 
 #ifdef HAVE_LIBOQS
 #  include <oqs/oqs.h>
+/* liboqs >= 0.10 standardized to ML-KEM-1024 (FIPS 203) and dropped FireSaber.
+ * Map old names to the standardized equivalents so the code compiles on both. */
+#  ifndef OQS_KEM_alg_kyber_1024
+#    define OQS_KEM_alg_kyber_1024    OQS_KEM_alg_ml_kem_1024
+#  endif
+#  ifndef OQS_KEM_alg_saber_firesaber
+#    define OQS_KEM_alg_saber_firesaber OQS_KEM_alg_ml_kem_1024
+#  endif
+#  ifndef OQS_SIG_alg_dilithium_5
+#    define OQS_SIG_alg_dilithium_5   OQS_SIG_alg_ml_dsa_87
+#  endif
 #endif
 
 /* ─── Global key store ───────────────────────────────────────────────────── */
@@ -40,8 +51,59 @@
 static VehicleKeyRecord g_keystore[MAX_VEHICLES];
 static uint32_t         g_keystore_count = 0;
 
-/* ─── Random bytes ───────────────────────────────────────────────────────── */
+/* ─── Issue-2 fix: KEM registration nonce replay cache ──────────────────────
+ * kem_rsu_encapsulate Stage D: each (vehicle_id, keygen_nonce) pair is checked
+ * here before the RSU will encapsulate.  A replayed registration message (same
+ * nonce, same vehicle_id) is rejected even if the Dilithium5 sig is valid.
+ *
+ * Sizing: KEM_NONCE_CACHE_SIZE = 256
+ *   KEM registration is a one-shot handshake per vehicle, not a per-beacon
+ *   event.  Worst case: MAX_VEHICLES (256) all register simultaneously, each
+ *   with one legitimate nonce.  256 slots covers exactly that peak with zero
+ *   margin; if you expect re-registrations (e.g. key refresh after soft reset),
+ *   size this as MAX_VEHICLES × expected_registrations_per_lifetime.  For a
+ *   fleet of 256 with at most 4 registrations per vehicle over its lifetime,
+ *   raise to 1024.  The cache is circular, so old entries are evicted; evicted
+ *   entries would allow a replay of that slot only after MAX_VEHICLES cycles,
+ *   which is acceptable given the registration handshake is low-frequency.     */
 
+#define KEM_NONCE_CACHE_SIZE 256u
+
+typedef struct {
+    uint8_t vehicle_id[16];
+    uint8_t nonce[NONCE_LEN];
+} KemNonceKey;
+
+static KemNonceKey g_kem_nonce_cache[KEM_NONCE_CACHE_SIZE];
+static uint32_t    g_kem_nonce_head  = 0;
+static uint32_t    g_kem_nonce_count = 0;
+
+static bool kem_nonce_is_novel(const uint8_t vehicle_id[16],
+                                const uint8_t nonce[NONCE_LEN]) {
+    for (uint32_t i = 0; i < g_kem_nonce_count; i++) {
+        uint32_t idx = (g_kem_nonce_head + KEM_NONCE_CACHE_SIZE - 1 - i)
+                       % KEM_NONCE_CACHE_SIZE;
+        if (memcmp(g_kem_nonce_cache[idx].vehicle_id, vehicle_id, 16) == 0 &&
+            memcmp(g_kem_nonce_cache[idx].nonce,      nonce,      NONCE_LEN) == 0)
+            return false;
+    }
+    return true;
+}
+
+static void kem_nonce_consume(const uint8_t vehicle_id[16],
+                               const uint8_t nonce[NONCE_LEN]) {
+    memcpy(g_kem_nonce_cache[g_kem_nonce_head].vehicle_id, vehicle_id, 16);
+    memcpy(g_kem_nonce_cache[g_kem_nonce_head].nonce,      nonce,      NONCE_LEN);
+    g_kem_nonce_head = (g_kem_nonce_head + 1) % KEM_NONCE_CACHE_SIZE;
+    if (g_kem_nonce_count < KEM_NONCE_CACHE_SIZE) g_kem_nonce_count++;
+}
+
+/* ─── Random bytes ───────────────────────────────────────────────────────── */
+/* When included into crypto_pipeline.cc (PIPELINE_INCLUDE is defined), the
+ * canonical fill_random already exists in that translation unit.  Suppress
+ * this local copy to avoid a duplicate-symbol error.                        */
+#if !defined(PIPELINE_INCLUDE) && !defined(FILL_RANDOM_DEFINED)
+#define FILL_RANDOM_DEFINED
 static void fill_random(uint8_t *buf, size_t len) {
 #ifdef HAVE_OPENSSL
     RAND_bytes(buf, (int)len);
@@ -54,21 +116,30 @@ static void fill_random(uint8_t *buf, size_t len) {
     }
 #endif
 }
+#endif /* PIPELINE_INCLUDE && FILL_RANDOM_DEFINED */
 
 /* ─── HKDF-SHA256 (Section 3.3 — KDF step) ──────────────────────────────── */
-
+/*
+ * Fix-8: vehicle_id bound into HKDF info so the derived session key is
+ * vehicle-specific.  Two vehicles sharing the same IKM (impossible in correct
+ * operation but worth preventing cryptographically) cannot share a session key.
+ * info = "teta-guard-session-key:" || vehicle_id(16 bytes)
+ */
 static void hkdf_sha256(const uint8_t *ikm, size_t ikm_len,
+                         const uint8_t vehicle_id[16],
                          uint8_t out[SESSION_KEY_LEN]) {
-    static const char *salt = "teta-guard-kem-salt";
-    static const char *info = "teta-guard-session-key";
+    static const char *salt      = "teta-guard-kem-salt";
+    static const char *info_base = "teta-guard-session-key:";
 #ifdef HAVE_OPENSSL
     uint8_t prk[32]; unsigned pl = 32;
     HMAC(EVP_sha256(), salt, (int)strlen(salt), ikm, ikm_len, prk, &pl);
-    /* Expand T(1) */
-    size_t info_len = strlen(info);
+    /* Expand T(1): PRK || info_base || vehicle_id(16) || 0x01 */
+    size_t ib_len   = strlen(info_base);
+    size_t info_len = ib_len + 16;
     uint8_t *expand = (uint8_t *)malloc(32 + info_len + 1);
-    memcpy(expand, prk, 32);
-    memcpy(expand + 32, info, info_len);
+    memcpy(expand,               prk,        32);
+    memcpy(expand + 32,          info_base,  ib_len);
+    memcpy(expand + 32 + ib_len, vehicle_id, 16);
     expand[32 + info_len] = 0x01;
     uint8_t t[32]; unsigned tl = 32;
     HMAC(EVP_sha256(), prk, pl, expand, 32 + info_len + 1, t, &tl);
@@ -76,7 +147,10 @@ static void hkdf_sha256(const uint8_t *ikm, size_t ikm_len,
     free(expand);
 #else
     for (size_t i = 0; i < SESSION_KEY_LEN; i++)
-        out[i] = ikm[i % ikm_len] ^ (uint8_t)(i * 0x5A) ^ (uint8_t)salt[i % strlen(salt)];
+        out[i] = ikm[i % ikm_len]
+               ^ (uint8_t)(i * 0x5A)
+               ^ (uint8_t)salt[i % strlen(salt)]
+               ^ vehicle_id[i % 16];
 #endif
 }
 
@@ -101,38 +175,35 @@ static void print_hex(const char *label, const uint8_t *d, size_t n, size_t max)
  * trusted_pk_len: length of above
  * out_session_key: 32-byte shared secret K_{Vi,nk}  [output]
  */
+/* kem_encapsulate is a module-private helper not used in the main API path;
+ * kept for reference.  The main flow uses kem_rsu_encapsulate directly. */
 static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
+                              const uint8_t vehicle_id[16],
                               uint8_t out_session_key[SESSION_KEY_LEN]) {
 #ifdef HAVE_LIBOQS
-    /* Kyber-1024 component */
     OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_1024);
     uint8_t ct_k[kem_k->length_ciphertext];
     uint8_t ss_k[kem_k->length_shared_secret];
     OQS_KEM_encaps(kem_k, ct_k, ss_k, trusted_pk);
     OQS_KEM_free(kem_k);
 
-    /* Saber component — OQS_KEM_alg_saber_firesaber (Section 3.3, paper's actual KEM partner) */
     OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
     uint8_t ct_s[kem_s->length_ciphertext];
     uint8_t ss_s[kem_s->length_shared_secret];
     OQS_KEM_encaps(kem_s, ct_s, ss_s, trusted_pk);
     OQS_KEM_free(kem_s);
 
-    /* K_{Vi,nk} = KDF(ss_kyber || ss_saber)  — Eq. 3.3 Step 3 */
-    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
-     * XOR is the correct IND-CCA2 dual-PRF combiner; concatenation is NOT secure. */
     uint8_t combined[32];
     for (size_t i = 0; i < 32; i++)
         combined[i] = ss_k[i] ^ ss_s[i];
-    hkdf_sha256(combined, 32, out_session_key);
+    hkdf_sha256(combined, 32, vehicle_id, out_session_key);
 #else
-    /* Simulated KEM: HKDF(pk) */
     uint8_t ephemeral[32];
     fill_random(ephemeral, 32);
     uint8_t ikm[trusted_pk_len + 32];
     memcpy(ikm,               trusted_pk, trusted_pk_len);
     memcpy(ikm + trusted_pk_len, ephemeral, 32);
-    hkdf_sha256(ikm, trusted_pk_len + 32, out_session_key);
+    hkdf_sha256(ikm, trusted_pk_len + 32, vehicle_id, out_session_key);
 #endif
 }
 
@@ -147,17 +218,36 @@ static void kem_encapsulate(const uint8_t *trusted_pk, size_t trusted_pk_len,
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * Step 1 — Vehicle generates its Kyber+FireSaber KEM keypair.
- * pk_kyber/pk_saber are sent to the RSU; sk_* stays at the vehicle.
+ * Step 1 — Vehicle generates its Kyber+FireSaber KEM keypair AND authenticates
+ * the public keys with its Dilithium5 identity key (Fix-1).
+ *
+ * Parameters added (Fix-1):
+ *   vehicle_id   — identity bound into the signed message
+ *   dil_sk       — vehicle's Dilithium5 secret key (for signing)
+ *   dil_pk       — vehicle's Dilithium5 public key (sent alongside sig for RSU to verify)
+ *
+ * Signed message = TETA:KEM-AUTH: || vehicle_id(16) || pk_kyber || pk_saber || nonce(16)
+ * This prevents a MITM from substituting (pk_kyber, pk_saber) and sharing a session
+ * key that the real vehicle never derived.
  */
-void kem_vehicle_keygen(KemExchangeState *state) {
+void kem_vehicle_keygen(KemExchangeState *state,
+                         const uint8_t vehicle_id[16],
+                         const uint8_t dil_sk[DILITHIUM5_SK_LEN],
+                         const uint8_t dil_pk[DILITHIUM5_PK_LEN],
+                         const CertificateRecord *cert) {
     memset(state, 0, sizeof(*state));
+    memcpy(state->vehicle_id, vehicle_id, 16);
+    memcpy(state->identity_pk,  dil_pk,     DILITHIUM5_PK_LEN);
+    /* Fix-1/2 repair: copy CA cert into state so the RSU can verify
+     * it is CA-issued before accepting any self-supplied key material. */
+    if (cert) state->keygen_cert = *cert;
+
 #ifdef HAVE_LIBOQS
     OQS_KEM *kem_k = OQS_KEM_new(OQS_KEM_alg_kyber_1024);
     OQS_KEM_keypair(kem_k, state->pk_kyber, state->sk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);  /* Saber — paper's actual KEM partner */
+    OQS_KEM *kem_s = OQS_KEM_new(OQS_KEM_alg_saber_firesaber);
     OQS_KEM_keypair(kem_s, state->pk_saber, state->sk_saber);
     OQS_KEM_free(kem_s);
 #else
@@ -168,17 +258,99 @@ void kem_vehicle_keygen(KemExchangeState *state) {
     for (size_t i = 0; i < FIRESABER_PK_LEN; i++)
         state->pk_saber[i] = state->sk_saber[i % FIRESABER_SK_LEN] ^ 0xCDu;
 #endif
-    state->has_ciphertext = false;
+
+    /* Fix-1: generate a fresh nonce and sign the keygen message */
+    fill_random(state->keygen_nonce, NONCE_LEN);
+
+    /* Build message = vehicle_id || pk_kyber || pk_saber || nonce */
+    uint8_t kmsg[16 + KYBER1024_PK_LEN + FIRESABER_PK_LEN + NONCE_LEN];
+    uint8_t *p = kmsg;
+    memcpy(p, vehicle_id,         16);                   p += 16;
+    memcpy(p, state->pk_kyber,    KYBER1024_PK_LEN);     p += KYBER1024_PK_LEN;
+    memcpy(p, state->pk_saber,    FIRESABER_PK_LEN);     p += FIRESABER_PK_LEN;
+    memcpy(p, state->keygen_nonce, NONCE_LEN);
+
+    size_t sig_len;
+    dilithium5_sign_kem_auth(kmsg, sizeof(kmsg), dil_sk,
+                              state->keygen_sig, &sig_len);
+
+    state->has_ciphertext    = false;
+    state->keygen_sig_valid  = false;  /* will be set by RSU after verification */
 }
 
 /*
  * Step 3 — RSU encapsulates to the vehicle's public keys.
- * Writes ciphertexts into state->ct_* and the RSU-side session key into
- * out_session_key.  The ciphertexts are then transmitted to the vehicle.
- * Implements Section 3.3 Step 3 (RSU → Vehicle direction).
+ * Fix-1: The RSU first verifies the Dilithium5 signature over
+ *   (vehicle_id || pk_kyber || pk_saber || keygen_nonce)
+ * before accepting the public keys.  Returns false and does NOT encapsulate
+ * if the signature is invalid, preventing MITM substitution of KEM keys.
+ *
+ * Returns true on success (state->has_ciphertext set, out_session_key filled).
  */
-void kem_rsu_encapsulate(KemExchangeState *state,
+bool kem_rsu_encapsulate(KemExchangeState *state,
                           uint8_t out_session_key[SESSION_KEY_LEN]) {
+    /* Fix-1/2 repair: three-stage gate.
+     *
+     * Stage A — CA cert verification.
+     *   keygen_cert was issued by the consortium CA and binds vehicle_id → pk_vi.
+     *   If this fails, the vehicle has no CA-approved identity; reject immediately.
+     *   This breaks the circular "verify sig against self-supplied pk" flaw.
+     */
+    if (!dilithium5_verify_cert(&state->keygen_cert)) {
+        printf("[KEM] REJECT: cert invalid or not CA-issued for %.*s\n",
+               16, state->vehicle_id);
+        memset(out_session_key, 0, SESSION_KEY_LEN);
+        return false;
+    }
+
+    /* Stage B — keygen sig verification using the cert-verified pk (not identity_pk).
+     *   Using keygen_cert.pk_vi as the verification key ensures the CA's trust anchor
+     *   is authoritative; identity_pk is accepted only if it matches the cert.
+     *   A MITM who substitutes their own (pk_kyber, pk_saber, identity_pk) cannot
+     *   produce a valid cert.pk_vi that the CA never issued for their keys.        */
+    uint8_t kmsg[16 + KYBER1024_PK_LEN + FIRESABER_PK_LEN + NONCE_LEN];
+    uint8_t *p = kmsg;
+    memcpy(p, state->vehicle_id,    16);                   p += 16;
+    memcpy(p, state->pk_kyber,      KYBER1024_PK_LEN);     p += KYBER1024_PK_LEN;
+    memcpy(p, state->pk_saber,      FIRESABER_PK_LEN);     p += FIRESABER_PK_LEN;
+    memcpy(p, state->keygen_nonce,  NONCE_LEN);
+
+    bool sig_ok = dilithium5_verify_kem_auth(
+        kmsg, sizeof(kmsg),
+        state->keygen_sig, DILITHIUM5_SIG_LEN,
+        state->keygen_cert.pk_vi);   /* cert-verified pk, NOT self-supplied identity_pk */
+
+    if (!sig_ok) {
+        printf("[KEM] REJECT: keygen sig invalid for %.*s\n", 16, state->vehicle_id);
+        memset(out_session_key, 0, SESSION_KEY_LEN);
+        return false;
+    }
+
+    /* Stage C — consistency: identity_pk must match what the cert certifies.
+     *   Catches a vehicle that sends a mismatched identity_pk alongside a valid cert. */
+    if (memcmp(state->keygen_cert.pk_vi, state->identity_pk, DILITHIUM5_PK_LEN) != 0) {
+        printf("[KEM] REJECT: identity_pk does not match cert.pk_vi for %.*s\n",
+               16, state->vehicle_id);
+        memset(out_session_key, 0, SESSION_KEY_LEN);
+        return false;
+    }
+
+    /* Stage D — Issue-2 fix: nonce replay protection.
+     *   The keygen_nonce is inside the Dilithium5-signed message, so an attacker
+     *   cannot alter it without invalidating Stage B.  But a compromised node that
+     *   captured a genuine registration can re-submit the exact same valid message.
+     *   Stage D checks and consumes the (vehicle_id, nonce) pair globally: a second
+     *   encapsulate call with the same pair is rejected even though the sig is valid. */
+    if (!kem_nonce_is_novel(state->vehicle_id, state->keygen_nonce)) {
+        printf("[KEM] REJECT: keygen_nonce already consumed for %.*s"
+               " — registration replay detected\n", 16, state->vehicle_id);
+        memset(out_session_key, 0, SESSION_KEY_LEN);
+        return false;
+    }
+    kem_nonce_consume(state->vehicle_id, state->keygen_nonce);
+
+    state->keygen_sig_valid = true;
+
 #ifdef HAVE_LIBOQS
     uint8_t ss_k[KYBER1024_SS_LEN], ss_s[KYBER1024_SS_LEN];
 
@@ -190,19 +362,16 @@ void kem_rsu_encapsulate(KemExchangeState *state,
     OQS_KEM_encaps(kem_s, state->ct_saber, ss_s, state->pk_saber);
     OQS_KEM_free(kem_s);
 
-    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
-     * XOR is the correct IND-CCA2 dual-PRF combiner; concatenation is NOT secure. */
+    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018) */
     uint8_t combined[32];
     for (size_t i = 0; i < 32; i++)
         combined[i] = ss_k[i] ^ ss_s[i];
-    hkdf_sha256(combined, 32, out_session_key);
+    hkdf_sha256(combined, 32, state->vehicle_id, out_session_key);  /* Fix-8: bind vehicle_id */
 #else
-    /* Simulated: HKDF(pk_kyber || pk_saber) as deterministic shared secret */
     uint8_t ikm[KYBER1024_PK_LEN + FIRESABER_PK_LEN];
     memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
     memcpy(ikm + KYBER1024_PK_LEN, state->pk_saber, FIRESABER_PK_LEN);
-    hkdf_sha256(ikm, sizeof(ikm), out_session_key);
-    /* Ciphertext is deterministic XOR of pk with key so decaps can invert */
+    hkdf_sha256(ikm, sizeof(ikm), state->vehicle_id, out_session_key);  /* Fix-8 */
     for (size_t i = 0; i < KYBER1024_CT_LEN; i++)
         state->ct_kyber[i] = state->pk_kyber[i % KYBER1024_PK_LEN]
                              ^ out_session_key[i % SESSION_KEY_LEN];
@@ -211,6 +380,7 @@ void kem_rsu_encapsulate(KemExchangeState *state,
                              ^ out_session_key[i % SESSION_KEY_LEN];
 #endif
     state->has_ciphertext = true;
+    return true;
 }
 
 /*
@@ -237,17 +407,17 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
     if (rc_s != OQS_SUCCESS) return false;
 
     /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
-     * XOR is the correct IND-CCA2 dual-PRF combiner; concatenation is NOT secure. */
+     * Fix-8: vehicle_id bound into HKDF info (must match kem_rsu_encapsulate). */
     uint8_t combined[32];
     for (size_t i = 0; i < 32; i++)
         combined[i] = ss_k[i] ^ ss_s[i];
-    hkdf_sha256(combined, 32, out_session_key);
+    hkdf_sha256(combined, 32, state->vehicle_id, out_session_key);
 #else
     /* Simulated: same HKDF(pk_kyber || pk_saber) — matches kem_rsu_encapsulate */
     uint8_t ikm[KYBER1024_PK_LEN + FIRESABER_PK_LEN];
     memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
     memcpy(ikm + KYBER1024_PK_LEN, state->pk_saber, FIRESABER_PK_LEN);
-    hkdf_sha256(ikm, sizeof(ikm), out_session_key);
+    hkdf_sha256(ikm, sizeof(ikm), state->vehicle_id, out_session_key);  /* Fix-8 */
 #endif
     return true;
 }
@@ -283,34 +453,50 @@ VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
     rec->key_creation_time_ms = 0;
 #endif
 
-    /* Step 1: Vehicle generates KEM keypair */
-    KemExchangeState kem_state;
-    kem_vehicle_keygen(&kem_state);
+    /* Fix-1+2 ordering: Dilithium5 keypair must be generated BEFORE the KEM
+     * handshake so the vehicle can sign its KEM public keys (Fix-1) and the
+     * CA can issue a certificate binding vehicle_id → PK_Vi (Fix-2).        */
 
-    /* Step 3: RSU encapsulates to vehicle's pk → RSU derives K_{Vi,nk} */
+    /* Step 0a: Dilithium5 identity keypair — SK_Vi stays at vehicle */
+    uint8_t sk_vi[DILITHIUM5_SK_LEN];
+    dilithium5_keygen(rec->sign_pub_key, sk_vi);
+
+    /* Step 0b: CA issues certificate binding vehicle_id → PK_Vi (Fix-2) */
+    teta_ca_init();   /* no-op if already called */
+    dilithium5_issue_cert(vehicle_id, rec->sign_pub_key,
+                           rec->key_creation_time_ms, &rec->cert);
+
+    /* Step 1: Vehicle generates KEM keypair AND signs it with SK_Vi (Fix-1).
+     * Pass rec->cert (just issued above) so kem_rsu_encapsulate can verify
+     * CA provenance without circular self-supplied-pk trust.             */
+    KemExchangeState kem_state;
+    kem_vehicle_keygen(&kem_state, vehicle_id, sk_vi, rec->sign_pub_key, &rec->cert);
+
+    /* Step 3: RSU verifies keygen sig, then encapsulates → RSU derives K_{Vi,nk} */
     uint8_t rsu_key[SESSION_KEY_LEN];
-    kem_rsu_encapsulate(&kem_state, rsu_key);
+    bool rsu_ok = kem_rsu_encapsulate(&kem_state, rsu_key);
+    if (!rsu_ok) {
+        printf("[KEM] FATAL: keygen sig rejected for %s — registration aborted\n",
+               (char *)vehicle_id);
+        g_keystore_count--;   /* rollback the slot we just claimed */
+        return NULL;
+    }
 
     /* Step 4: Vehicle decapsulates ciphertexts → vehicle derives K_{Vi,nk} */
     uint8_t vehicle_key[SESSION_KEY_LEN];
     bool ok = kem_vehicle_decapsulate(&kem_state, vehicle_key);
 
-    /* Both sides must agree on the same key */
     if (ok && memcmp(rsu_key, vehicle_key, SESSION_KEY_LEN) == 0) {
         memcpy(rec->session_key, rsu_key, SESSION_KEY_LEN);
-        printf("[KEM] V%s  handshake OK  K[0..3]=%02x%02x%02x%02x\n",
+        printf("[KEM] V%s  handshake OK  cert_valid=%s  K[0..3]=%02x%02x%02x%02x\n",
                (char *)vehicle_id,
+               dilithium5_verify_cert(&rec->cert) ? "YES" : "NO",
                rsu_key[0], rsu_key[1], rsu_key[2], rsu_key[3]);
     } else {
-        /* Should not happen; fallback to RSU-derived key */
         memcpy(rec->session_key, rsu_key, SESSION_KEY_LEN);
         printf("[KEM] WARNING: decaps mismatch for %s — using RSU key\n",
                (char *)vehicle_id);
     }
-
-    /* Generate Dilithium5 signing key pair — sk_vi stays at vehicle */
-    uint8_t sk_vi[DILITHIUM5_SK_LEN];
-    dilithium5_keygen(rec->sign_pub_key, sk_vi);
 
     return rec;
 }
@@ -329,7 +515,7 @@ VehicleKeyRecord *kem_lookup(const uint8_t vehicle_id[16]) {
 
 /* Mark a vehicle's key as revoked (called by lkh_mgmt after LKH update) */
 /* Not compiled in PHASE8_TESTS — lkh_mgmt.cc provides the canonical version */
-#ifndef PHASE8_TESTS
+#if !defined(PHASE8_TESTS) && !defined(LKH_PROVIDES_MARK_KEY_REVOKED)
 void mark_key_revoked(VehicleKeyRecord *keystore, const uint8_t vehicle_id[16]) {
     for (uint32_t i = 0; i < g_keystore_count; i++) {
         if (memcmp(g_keystore[i].vehicle_id, vehicle_id, 16) == 0) {
@@ -352,6 +538,7 @@ static void make_vehicle_id(uint8_t vid[16], int idx) {
 
 /* ── main: full Section 3.3 round-trip demonstration ────────────────────── */
 
+#ifndef KEM_NO_MAIN
 int main(void) {
     printf("=== kem.cc — Kyber-1024+FireSaber Hybrid KEM + Dilithium5 (Module 1) ===\n");
 #ifdef HAVE_LIBOQS
@@ -386,16 +573,27 @@ int main(void) {
            " + kem_vehicle_decapsulate ---\n");
     KemExchangeState state;
 
-    /* Step 1 — Vehicle generates KEM keypair */
-    kem_vehicle_keygen(&state);
+    /* Fix-1+2: generate Dilithium5 test identity before KEM keygen */
+    uint8_t test_vid[16] = "V_test_unit\0\0\0\0";
+    uint8_t test_pk[DILITHIUM5_PK_LEN], test_sk[DILITHIUM5_SK_LEN];
+    teta_ca_init();
+    dilithium5_keygen(test_pk, test_sk);
+
+    /* Fix-1/2: CA issues cert binding test_vid → test_pk before KEM keygen */
+    CertificateRecord test_cert;
+    dilithium5_issue_cert(test_vid, test_pk, 0, &test_cert);
+
+    /* Step 1 — Vehicle generates KEM keypair (signed with Dilithium5) */
+    kem_vehicle_keygen(&state, test_vid, test_sk, test_pk, &test_cert);
     printf("[KEM] Step 1 (vehicle keygen):  pk_kyber[0..3]=%02x%02x%02x%02x\n",
            state.pk_kyber[0], state.pk_kyber[1],
            state.pk_kyber[2], state.pk_kyber[3]);
 
-    /* Step 3 — RSU encapsulates to vehicle's pk */
+    /* Step 3 — RSU verifies keygen sig, then encapsulates to vehicle's pk */
     uint8_t rsu_key[SESSION_KEY_LEN];
-    kem_rsu_encapsulate(&state, rsu_key);
-    printf("[KEM] Step 3 (RSU encaps):      K_rsu[0..7]=");
+    bool encaps_ok = kem_rsu_encapsulate(&state, rsu_key);
+    printf("[KEM] Step 3 (RSU encaps):  sig_valid=%s  K_rsu[0..7]=",
+           encaps_ok ? "YES" : "NO (ATTACK BLOCKED)");
     for (int i = 0; i < 8; i++) printf("%02x", rsu_key[i]);
     printf("...\n");
 
@@ -457,3 +655,4 @@ int main(void) {
     printf("\n[KEM] Wrote kem_session_keys.csv\n");
     return match ? 0 : 1;
 }
+#endif /* KEM_NO_MAIN */

@@ -736,7 +736,7 @@ t=10.0s  V1 → Controller : <V1 sees V0, t=10>   LEGITIMATE
 t=10.1s  V2 → Controller : <V0 sees V1, t=10>   ECHO (V2 never observed this link)
 t=10.1s  V3 → Controller : <V0 sees V1, t=10>   ECHO (V3 never observed this link)
 
-Controller has 4 reporters for the V0↔V1 link. Infers:
+Controller infers phantom paths. Infers:
   Path 1: V0 → V1          REAL
   Path 2: V0 → V2 → V1     PHANTOM (V2 is 700m from V0)
   Path 3: V0 → V3 → V1     PHANTOM (V3 is 850m from V0)
@@ -744,9 +744,15 @@ Controller has 4 reporters for the V0↔V1 link. Infers:
 Packets routed on phantom paths are dropped  ← ATTACK SUCCESS
 
 PEM fires:
-  ME-S1 (signature 6): 4 reporters > expected density bound (≈ 2)
+  ME-S1 (signature 6): PEM sees 4 reporters (V0, V1, V2, V3) under undirected link key
+                        > effectiveRhoMax ≈ 2.6 → fires
   ME-S3 (signature 8): V2 position (700m) and V3 position (850m) are both
                         outside the 300m comm range of the V0↔V1 link
+
+TGN HeuristicScore sees 3 reporters under directed key "v0_v1" (V0 + echo V2 + echo V3).
+V1's report uses key "v1_v0" (reversed) → does NOT count toward "v0_v1".
+  Benign baseline: 1 (V0 alone). After V2 echo: count=2 > rhoMax=1.5 → fires.
+  Final count=3: score = min(2.0, (3-1)×0.8) = 1.6.
 ```
 
 Log file: `me_s1_attack_log.txt`
@@ -765,6 +771,27 @@ t=10.1s  RSU_0 (malicious) injects additional entries into a second controller m
            <V0 sees V1, reported by phantom V3, t=10>   FORGED
          physical_sender = RSU_0, claimed_sender = V2 (or V3) for each forged entry
          Controller infers phantom paths via V2 and V3  ← ATTACK SUCCESS
+
+PEM fires:
+  ME-S1 (signature 6): PEM sees 4 reporters (V0, V1, phantom V2, phantom V3) under
+                        undirected link key > effectiveRhoMax → fires
+  ME-S3 (signature 8): RSU position is checked against link endpoints
+
+TGN HeuristicScore sees 3 reporters under directed key "v0_v1".
+  V0's legitimate report: physical=V0 (vehicle, not RSU) → physical_is_rsu=false
+    → tracks reporter_id = RSU_0 → {RSU_0}, count=1
+  RSU echo claimed=V2: physical=RSU_0 → physical_is_rsu=true
+    → tracks claimed_sender_id = V2 → {RSU_0, V2}, count=2 > rhoMax=1.5 → fires
+  RSU echo claimed=V3: physical=RSU_0 → physical_is_rsu=true
+    → tracks claimed_sender_id = V3 → {RSU_0, V2, V3}, count=3
+  V1's legitimate report uses reversed key "v1_v0" → does NOT count toward "v0_v1".
+  Final count=3: score = min(2.0, (3-1)×0.8) = 1.6.
+
+NOTE: A naive count of all nodes involved (V0, V1, phantom V2, phantom V3) gives 4,
+but the TGN's directed-key accounting gives 3. The count=4/score=2.0 figure is wrong.
+This is the same accounting logic as ME-S1: {RSU_0} fills the "legitimate reporter slot"
+because reporter_id=RSU_0 is what the code tracks for V0's event (physical_is_rsu=false
+→ reporter_id, not claimed_sender_id), then the two phantom injections bring it to 3.
 ```
 
 Log file: `me_s2_attack_log.txt`
@@ -1549,7 +1576,12 @@ if (reporters.size() > effectiveRhoMax) triggered[6] = true;
 **Why this works for ME scenarios:** In ME-S1, V2 and V3 (the echo attackers) are placed
 at (700,0) and (850,0) — more than 300m from the real link at (0,0)↔(100,0). Their
 beacons do NOT appear in `vehiclesNearLink`. Only V0 and V1 do. So `vehiclesNearLink = 2`,
-`effectiveRhoMax = 2.6`, and 4 reporters fires the signature.
+`effectiveRhoMax = 2.6`, and the PEM's undirected reporter set of 4 (V0+V1+V2+V3) fires
+the signature (4 > 2.6).
+
+Note: The TGN layer uses directed link keys ("v0_v1" vs "v1_v0") and its own flat
+rhoMax=1.5. TGN counts only 3 reporters for key "v0_v1" (V0 + echo V2 + echo V3);
+V1's legitimate report goes to the reversed key "v1_v0". TGN fires at count=2 > 1.5.
 
 ---
 

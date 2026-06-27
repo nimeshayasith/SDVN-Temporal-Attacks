@@ -8,8 +8,8 @@
 //
 // Equations implemented (paper numbering):
 //   Eq 3.18  Graph snapshot  G_t = (V_t, E_t, X_t, A_t)
-//   Eq 3.19  Node feature vector  x_v = [id_v | tau_s | c_v^W | delta_s_v | rho_v]
-//   Eq 3.20  Edge freshness weight  A_uv = exp(-age / gamma*T_b)
+//   Eq 3.19  Node feature vector  x_v = [tau_dev | c_v^W | delta_s_v | rho_v | iota_v]  (Table 4.7 current default; id_v excluded)
+//   Eq 3.20  Edge freshness weight  A_uv = exp(-max(0, age - T_b) / (gamma * T_b))
 //   Eq 3.21  GRU temporal memory  m_v(t) = GRU(h_v(t-), x_v(t), phi(delta_t_v))
 //   Eq 3.22  Message passing  h_v^(l+1) = sigma(W^(l) * MEAN{h_u*A_uv} + b^(l))
 //   Eq 3.23  Anomaly score  y_hat_v(t) = sigmoid(w^T * h_v^(L))
@@ -50,6 +50,17 @@
 #define ROUTING_CC_AS_HEADER
 #include "../routing.cc"
 
+// routing.cc defines min/max as C-style function-like macros (line ~118) which
+// conflict with std::max / std::min inside the tgn:: template/namespace code
+// below ("expected unqualified-id before numeric constant").  Undefine them
+// immediately so the rest of this file can use std::max / std::min normally.
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
+
 // ── Standard headers not already pulled in by routing.cc ─────────────────────
 #include <algorithm>
 #include <cassert>
@@ -72,13 +83,17 @@
 static const double TGN_BEACON_INTERVAL = 0.1;    // T_b (s) — IEEE 802.11p beacon = 100 ms
 static const int    TGN_DIM             = 32;     // embedding dimensionality d
 static const int    TGN_LAYERS          = 2;      // message-passing rounds L
-// γ default for urban (L_link ≈ 43 s): γ = (L_link/2) / (T_b · ln2)  — Eq. 9.3
+static const int    TGN_NP_OBU          = 8;      // np — max OBU peers selected in Tier 2 (no-RSU)
+// γ (edge freshness decay) — separate from W_max, different formula:
+//   γ = (L_link/2) / (T_b · ln2)  — Eq. 9.3 (urban L_link≈43s → γ≈310)
 // Override at runtime with --tgn_l_link=<seconds> to recalibrate for highway (9 s).
-static const double TGN_GAMMA_DEFAULT   = 310.0;  // urban default: (43/2)/(0.1*0.693)
+static const double TGN_GAMMA_DEFAULT   = 310.0;  // urban: (43/2)/(0.1*ln2)
 static       double TGN_GAMMA           = TGN_GAMMA_DEFAULT;
 static const double TGN_THETA_FS        = 0.40;   // initial threshold; tgn_train.py optimises by MCC
-// W_max = ⌈L_link / T_b⌉  — Eq. 9.2; 50 = ⌈5s / 0.1s⌉, recalibrated via --tgn_l_link
-static       int    TGN_WMAX            = 50;     // mobility-adaptive sliding-window capacity
+// W_max (beacon sliding-window capacity) — separate from γ, different formula:
+//   W_max = ⌈L_link / T_b⌉  — Eq. 9.2 (urban L_link≈43s → W_max=430)
+// Must match tgn_train.py WMAX=430 so beacon_count is comparable at train/infer.
+static       int    TGN_WMAX            = 430;    // urban default: ceil(43/0.1); recalibrated via --tgn_l_link
 
 // =============================================================================
 //  SECTION 2  Minimal linear-algebra helpers (no external BLAS)
@@ -184,18 +199,17 @@ struct TGNParams {
     int    wmax       = TGN_WMAX;
 };
 
-// --- Node feature vector  x_v  (Eq 3.19) ------------------------------------
-// x_v = [ id_v | tau_s^(v) | c_v^W | delta_s_v | rho_v | identity_mismatch ]
-// id_v: normalized node ID (node_id % 1000 / 1000) — scalar approximation of
-//       the learnable node-ID embedding specified in the paper.
+// --- Node feature vector  x_v  (Eq 3.20, Table 4.7 "current default") --------
+// x_v = [tau_dev, c_v^W, delta_s_v, rho_v, iota_v] in R^5
+// GRU input: gs = dim + 6 = dim + 5(x_v) + 1(phi)  — matches tgn_train.py gs = dim + 6
+// Legacy gs = dim + 7 (id_v_norm + raw tau_s) is REMOVED per Table 4.7 action item.
 struct NodeFeatures {
     uint32_t node_id;
-    double   id_v_norm;       // id_v  — normalised node identity  (Eq 3.19)
-    double   tau_s;           // tau_s^(v) — sender timestamp of most recent event
-    double   beacon_count;    // c_v^W  — events in sliding window
-    double   seq_gap;         // delta_s_v — timestamp regression amount (TTW-S2)
-    double   reporter_count;  // rho_v — distinct reporters for adjacent links (ME-S1)
-    double   identity_mismatch; // 1.0 if physical != claimed (BSHH signal)
+    double   tau_s;            // raw sender timestamp — used to compute tau_deviation in UpdateNodeMemory
+    double   beacon_count;     // c_v^W  — events in sliding window
+    double   seq_gap;          // delta_s_v — timestamp regression (TTW-S2 signal)
+    double   reporter_count;   // rho_v — distinct reporters for adjacent links (ME-S1)
+    double   identity_mismatch; // iota_v: 1.0 if physical != claimed (BSHH signal)
 };
 
 // --- Per-node GRU state (Eq 3.21, 3.34) -------------------------------------
@@ -215,9 +229,9 @@ using AlertSet = std::vector<TGNAlert>;
 
 // --- Learnable weights -------------------------------------------------------
 struct TGNWeights {
-    // GRU input size = dim (prior h) + 7 raw features (id_v, tau_s, c_vW, seq_gap,
-    //                                                    rho_v, id_mis, phi)
-    //                = gs = dim + 7  — matches tgn_train.py gs = dim + 7
+    // GRU input size = dim (prior h) + 6 = dim + 5(x_v) + 1(phi)
+    //   x_v = [tau_dev, c_vW, seq_gap, rho_v, id_mis]  (Eq 3.20, Table 4.7)
+    //   gs = dim + 6  — matches tgn_train.py gs = dim + 6
     int gru_input_size  = 0;
     int gru_hidden_size = 0;
 
@@ -231,7 +245,8 @@ struct TGNWeights {
     std::vector<Vec> b_layers;   // layers × dim
 
     // Scoring readout  — Eq 3.23
-    Vec w_score;   // dim-dimensional
+    Vec    w_score;    // dim-dimensional
+    double b_score = 0.0;  // scalar bias; written after w_score in binary file
 
     // Variant classification head  — Section 4.7
     // α̂_v = softmax(Wcls · h_v^(L) + b_cls),  α = argmax ∈ {TTW=0, BSHH=1, ME=2}
@@ -299,6 +314,7 @@ public:
             read_vec(weights_.b_layers[l], dim);
         }
         read_vec(weights_.w_score, dim);
+        f.read(reinterpret_cast<char*>(&weights_.b_score), sizeof(double));
         read_mat(weights_.Wcls,    3,   dim);
         read_vec(weights_.b_cls,   3);
 
@@ -387,8 +403,8 @@ public:
         // Step 4 — Anomaly score  (Eq 3.23 / heuristic)
         double score;
         if (weights_.loaded) {
-            // Neural readout: ŷ_v(t) = sigmoid(w^T · h_v^(L))
-            score = sigmoid(dot(weights_.w_score, states_[feat.node_id].embedding));
+            // Neural readout: ŷ_v(t) = sigmoid(w^T · h_v^(L) + b_score)
+            score = sigmoid(dot(weights_.w_score, states_[feat.node_id].embedding) + weights_.b_score);
         } else {
             // Heuristic readout — explicit anomaly feature combination
             score = HeuristicScore(feat, edge_fresh);
@@ -404,7 +420,7 @@ private:
     void InitWeightsRandom()
     {
         int d  = params_.dim;
-        int gs = d + 7;           // hidden (d) + [id_v, tau_s, c_vW, seq_gap, rho_v, id_mis, phi]
+        int gs = d + 6;           // hidden (d) + [tau_dev, c_vW, seq_gap, rho_v, id_mis, phi]  (Eq 3.20, Table 4.7)
         weights_.gru_input_size  = gs;
         weights_.gru_hidden_size = d;
 
@@ -430,8 +446,8 @@ private:
     // ── 4.2  GRU temporal memory update  (Eq 3.21) ──────────────────────────
     //
     //   phi(delta_t) = log(1 + delta_t / T_b)
-    //   gru_input    = concat( h_v(t-), [id_v, tau_s, c_vW, seq_gap, rho_v, id_mis, phi] )
-    //                = dim + 7 elements  →  gs = dim + 7  (matches tgn_train.py gs=dim+7)
+    //   gru_input    = concat( h_v(t-), [tau_dev, c_vW, seq_gap, rho_v, id_mis, phi] )
+    //                = dim + 6 elements  →  gs = dim + 6  (Eq 3.20, Table 4.7 current default)
     //   z = sigmoid( Wz * gru_input + Uz * h + bz )    (update gate)
     //   r = sigmoid( Wr * gru_input + Ur * h + br )    (reset gate)
     //   n = tanh(    Wn * gru_input + Un * (r⊙h) + bn ) (candidate)
@@ -442,21 +458,23 @@ private:
         NodeState& ns = states_[feat.node_id];
         const Vec& h  = ns.memory;
 
-        double delta_t = std::max(0.0, recv_time - ns.last_event_time);
-        double phi     = std::log(1.0 + delta_t / params_.T_b);
+        double delta_t     = std::max(0.0, recv_time - ns.last_event_time);
+        double phi         = std::log(1.0 + delta_t / params_.T_b);
+        double tau_deviation = (feat.tau_s > 0.0)
+            ? std::min(50.0, std::max(-50.0, (recv_time - feat.tau_s) / params_.T_b))
+            : 0.0;
 
-        // 6 raw features + phi  (Eq 3.19 elements fed into GRU: id_v, tau_s, c_vW, Δs_v, ρ_v, id_mis)
-        Vec raw = { feat.id_v_norm,
-                    feat.tau_s,
+        // 5-element x_v + phi  (Eq 3.20: tau_dev, c_vW, delta_s_v, rho_v, iota_v, phi)
+        Vec raw = { tau_deviation,
                     feat.beacon_count,
                     feat.seq_gap,
                     feat.reporter_count,
                     feat.identity_mismatch,
                     phi };
 
-        // GRU input: [h || raw]  — dim + 7 elements total (gs = dim + 7)
+        // GRU input: [h || raw]  — dim + 6 elements total (gs = dim + 6)
         Vec gru_in;
-        gru_in.reserve(params_.dim + 7);
+        gru_in.reserve(params_.dim + 6);
         gru_in.insert(gru_in.end(), h.begin(), h.end());
         gru_in.insert(gru_in.end(), raw.begin(), raw.end());
 
@@ -536,14 +554,9 @@ private:
     {
         double s = 0.0;
 
-        // Staleness beyond one beacon interval (TTW primary)
-        double staleness    = feat.tau_s > 0 ?
-                              (states_.count(feat.node_id)
-                               ? states_.at(feat.node_id).last_event_time - feat.tau_s
-                               : 0.0)
-                              : 0.0;
-        double stale_excess = std::max(0.0, staleness - params_.T_b);
-        s += std::min(2.0, stale_excess / params_.T_b);
+        // Staleness beyond one beacon interval (TTW primary — via edge freshness)
+        // edge_freshness is already computed by caller; low value = stale link.
+        s += 2.0 * (1.0 - edge_freshness);
 
         // Sequence regression (TTW-S2)
         s += std::min(1.0, feat.seq_gap / 5.0);
@@ -551,13 +564,19 @@ private:
         // Identity mismatch (BSHH-S1, S2)
         s += feat.identity_mismatch * 1.5;
 
-        // Reporter density excess (ME-S1)
-        double rhoMax = std::max(2.0, static_cast<double>(N_Vehicles) / 4.0) * 1.5;
+        // Reporter density excess (ME-S1 / ME-S2)
+        // Without RSU: the expected count for a single honest link is 2 (both
+        //   endpoints report it).  Threshold = max(2, N/4) * 1.5.
+        // With RSU: the RSU aggregates, so a single honest link has count=1
+        //   (one vehicle's claimed_sender per link in the RSU-path set).
+        //   Use a lower threshold (1.5) so a single injected false witness
+        //   (ME-S2) already crosses the detection boundary.
+        const bool in_rsu_path = (N_RSUs > 0);
+        double rhoMax = in_rsu_path
+            ? 1.5
+            : std::max(2.0, static_cast<double>(N_Vehicles) / 4.0) * 1.5;
         if (feat.reporter_count > rhoMax)
-            s += std::min(2.0, (feat.reporter_count - 2.0) * 0.8);
-
-        // Edge freshness penalty: stale edge contributes high anomaly signal
-        s += 2.0 * (1.0 - edge_freshness);
+            s += std::min(2.0, (feat.reporter_count - (in_rsu_path ? 1.0 : 2.0)) * 0.8);
 
         // Sigmoid centred at 2.0 — tuned for theta_fs = 0.40
         return sigmoid(s - 2.0);
@@ -608,7 +627,11 @@ static std::vector<std::pair<PemEvent, double>> g_tgn_scored_events;
 //
 //  Conditions applied (matching lw_mitigate() in hmac_filter.cc):
 //    ① Freshness   (Eq. 3.15): |τr − τs| ≤ T_b + ε = 110 ms
-//       Drops BSHH replays (old stored heartbeat; τs << τr).
+//       Drops BSHH-S5 (malicious vehicle) and BSHH-S6 (malicious RSU):
+//       the stored heartbeat carries an old τs so |τr-τs| >> 110 ms.
+//       BSHH-S7 and BSHH-S8 (malicious controller, physical_sender==9999)
+//       are NOT dropped here — they bypass to the controller path below
+//       and are detected by the TGN instead.
 //       TTW passes because it forges τs to be current — HMAC then fails in
 //       the real system, but here the nonce proxy catches intra-session dupes.
 //    ② Nonce novelty (Eq. 3.16): (reporter_id, claimed_sender_id, τs) not seen before
@@ -756,9 +779,8 @@ static double TGN_EdgeFreshness(double recv_time, double sender_ts)
 static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
 {
     tgn::NodeFeatures f;
-    f.node_id    = e.claimed_sender_id;
-    f.id_v_norm  = static_cast<double>(e.claimed_sender_id % 1000) / 1000.0;  // Eq 3.19: id_v
-    f.tau_s      = e.sender_timestamp;
+    f.node_id = e.claimed_sender_id;
+    f.tau_s   = e.sender_timestamp;   // raw ts — tau_deviation computed in UpdateNodeMemory
 
     // --- beacon_count: events from this node in window wmax ──────────────
     auto& win = g_beacon_windows[e.claimed_sender_id];
@@ -780,15 +802,52 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
         g_last_sender_ts[e.claimed_sender_id] = e.sender_timestamp;
     }
 
-    // --- reporter_count (rho_v): distinct reporters for this link (ME-S1) ─
+    // --- RSU-path detection ───────────────────────────────────────────────
+    // Vehicle NS-3 node IDs are 0 … N_Vehicles-1.
+    // RSU nodes are created after all vehicles, so their IDs are >= N_Vehicles.
+    // When N_RSUs > 0 and physical_sender_id >= N_Vehicles, the event arrived
+    // via the RSU aggregation path (Vehicle → RSU → Controller).
+    // This is NORMAL behaviour — RSU is a legitimate forwarder, not an attacker.
+    const bool physical_is_rsu = (N_RSUs > 0) &&
+                                  (e.physical_sender_id >= N_Vehicles);
+
+    // --- reporter_count (rho_v): distinct reporters for this link ────────
+    //
+    // WITHOUT RSU (S1/S3/S5/S7/S9/S11 scenarios):
+    //   Each vehicle that physically observes and reports a link increments the
+    //   count.  ME-S1 is detected because V3/V4 echo V1↔V2 → count rises above
+    //   the expected density bound.
+    //
+    // WITH RSU (S2/S4/S6/S8/S10/S12 scenarios):
+    //   The physical reporter is always the RSU (one node), so tracking
+    //   reporter_id would always give count=1 and miss ME-S2.
+    //   Instead we track the *claimed_sender_id*: a malicious RSU injecting
+    //   V3/V4 as false witnesses for link V1↔V2 produces claimed_sender=V3 then
+    //   V4, raising the count to 2 and triggering the ME density signal.
+    //   Legitimate RSU forwarding adds exactly one distinct claimed_sender per
+    //   vehicle that actually sent a beacon (count stays ≤ 1 per honest report).
     std::string link_key =
         std::to_string(e.link_src_id) + "_" + std::to_string(e.link_dst_id);
-    g_link_reporters[link_key].insert(e.reporter_id);
+    if (physical_is_rsu) {
+        g_link_reporters[link_key].insert(e.claimed_sender_id);
+    } else {
+        g_link_reporters[link_key].insert(e.reporter_id);
+    }
     f.reporter_count = static_cast<double>(g_link_reporters[link_key].size());
 
     // --- identity_mismatch: physical != claimed (BSHH signal) ───────────
+    //
+    // WITHOUT RSU: fire whenever the physical transmitter differs from the
+    //   node whose identity the packet claims (BSHH V2-impersonates-V1 case).
+    //
+    // WITH RSU: the physical sender is the RSU node, which legitimately carries
+    //   topology data from vehicles under their own vehicle IDs.  This is NOT
+    //   impersonation.  We therefore suppress the mismatch flag for RSU-path
+    //   events.  BSHH-S2 (malicious RSU replaying a stale heartbeat) is still
+    //   caught by the seq_gap and staleness signals, which are RSU-agnostic.
     f.identity_mismatch =
-        (e.physical_sender_id != e.claimed_sender_id) ? 1.0 : 0.0;
+        (!physical_is_rsu && e.physical_sender_id != e.claimed_sender_id)
+        ? 1.0 : 0.0;
 
     return f;
 }

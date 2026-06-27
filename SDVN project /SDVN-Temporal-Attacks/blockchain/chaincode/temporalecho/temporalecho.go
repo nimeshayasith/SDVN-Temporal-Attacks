@@ -7,7 +7,6 @@ import (
 	"math"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -242,7 +241,7 @@ func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
 		}
 	}
 
-	now := time.Now().UnixMilli()
+	now := txTimestampMs(ctx)
 	var intervalTS int64
 	fmt.Sscanf(intervalTSStr, "%d", &intervalTS)
 
@@ -343,7 +342,7 @@ func (t *TemporalEchoMitigator) Mitigate(
 					VehicleID:     ctrlClaim.ControllerID,
 					AttackVariant: "CTRL_ORIGIN",
 					AnomalyScore:  float32(delta),
-					AlertTS:       time.Now().UnixMilli(),
+					AlertTS:       txTimestampMs(ctx),
 				})
 			}
 		}
@@ -688,7 +687,7 @@ func (t *TemporalEchoMitigator) ClearReauth(
 	// FM-01: write a DELETE FlowMod to remove the DROP rule from the OpenFlow switch
 	mac := lookupVehicleMAC(ctx, vehicleID)
 	deleteFM := PendingFlowMod{
-		EntryID:  fmt.Sprintf("FLOWMOD_DELETE_DROP_%s_%d", vehicleID, time.Now().UnixMilli()),
+		EntryID:  fmt.Sprintf("FLOWMOD_DELETE_DROP_%s_%d", vehicleID, txTimestampMs(ctx)),
 		VehicleID: vehicleID,
 		Action:   "DELETE",
 		Priority: 65000,
@@ -796,7 +795,7 @@ func (t *TemporalEchoMitigator) AcknowledgeFlowMod(
 		return err
 	}
 	fm.Executed = true
-	fm.ExecutedAtMs = time.Now().UnixMilli()
+	fm.ExecutedAtMs = txTimestampMs(ctx)
 	updated, _ := json.Marshal(fm)
 	return ctx.GetStub().PutState(entryID, updated)
 }
@@ -996,7 +995,7 @@ func (t *TemporalEchoMitigator) SubmitIndividualSigEvidence(
 	}
 	e.DocType = "SIG_EVIDENCE"
 	if e.TS == 0 {
-		e.TS = time.Now().UnixMilli()
+		e.TS = txTimestampMs(ctx)
 	}
 	if !verifyFalcon1024Sig(e.Signature, e.Message, e.PubKey) {
 		return fmt.Errorf("SubmitIndividualSigEvidence: invalid Falcon-1024 signature from signer %s", e.SignerID)
@@ -1026,7 +1025,7 @@ func (t *TemporalEchoMitigator) SubmitWitnessRecord(
     	}
 	}
 	if w.TS == 0 {
-		w.TS = time.Now().UnixMilli()
+		w.TS = txTimestampMs(ctx)
 	}
 	key := fmt.Sprintf("WITNESS:%s:%d:%s", w.VehicleID, w.TS, w.ReporterID)
 	data, _ := json.Marshal(w)
@@ -1184,7 +1183,7 @@ func invalidateFalsePaths(ctx contractapi.TransactionContextInterface, vehicleID
 	marker := map[string]interface{}{
 		"vehicle_id":     vehicleID,
 		"invalidated":    true,
-		"invalidated_at": time.Now().UnixMilli(),
+		"invalidated_at": txTimestampMs(ctx),
 	}
 	data, _ := json.Marshal(marker)
 	return ctx.GetStub().PutState(key, data)
@@ -1193,7 +1192,7 @@ func invalidateFalsePaths(ctx contractapi.TransactionContextInterface, vehicleID
 func flagReauth(ctx contractapi.TransactionContextInterface, vehicleID, reason string) {
 	flag := ReauthFlag{
 		VehicleID: vehicleID,
-		FlaggedTS: time.Now().UnixMilli(),
+		FlaggedTS: txTimestampMs(ctx),
 		Reason:    reason,
 		Cleared:   false,
 		DocType:   "REAUTH_FLAG",
@@ -1215,7 +1214,7 @@ func revokeSessionKey(ctx contractapi.TransactionContextInterface, vehicleID str
 // The cert fingerprint is derived from the vehicle's VehicleKeyRecord on ledger.
 // V2V propagation via DSRC is a deployment-time concern (future work).
 func publishBlacklistBeacon(ctx contractapi.TransactionContextInterface, vehicleID string) error {
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 
 	// Derive cert fingerprint from stored key bytes (or use TxID as simulation placeholder).
 	fingerprint := "SIM_FINGERPRINT:" + vehicleID
@@ -1269,7 +1268,7 @@ func publishControllerRevokedBeacon(
 	controllerID string,
 	backupCtrlID string,
 ) error {
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 
 	// Compute ⌈Llink/Tb⌉ — the interim degraded-routing window (no-RSU path only).
 	// Llink = 2·r_comm / v_max (ms);  Tb = 100 ms beacon interval.
@@ -1313,7 +1312,7 @@ func publishControllerRevokedBeacon(
 // Mirrors the peer (CertRevocationRequested) and controller
 // (ControllerCredentialRevocationRequested) revocation patterns.
 func revokeVehicleCert(ctx contractapi.TransactionContextInterface, vehicleID string) error {
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 	record := map[string]interface{}{
 		"vehicle_id":    vehicleID,
 		"action":        "REVOKE_VEHICLE_CERTIFICATE",
@@ -1376,7 +1375,7 @@ func triggerRSUZoneReassignment(
 		return fmt.Errorf("triggerRSUZoneReassignment: no eligible controller above τCmin for zone %q", zoneID)
 	}
 
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 	reassignment := RSUZoneReassignment{
 		CompromisedRSUID: compromisedRSUID,
 		ZoneID:           zoneID,

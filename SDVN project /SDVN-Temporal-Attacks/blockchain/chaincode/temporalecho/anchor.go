@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -87,7 +86,7 @@ func (t *TemporalEchoMitigator) CreateAnchorCheckpoint(
 	h.Write([]byte(fmt.Sprintf("%d", blockHeight)))
 	stateRoot := hex.EncodeToString(h.Sum(nil))
 
-	now := time.Now().UnixMilli() // metadata only — NOT part of hash or ledger key
+	now := txTimestampMs(ctx) // BC-12: tx-bound timestamp — deterministic across endorsers and written into ledger value
 
 	peerPubKey := getPeerPubKey(ctx, fromPeerID)
 	sigInput := fmt.Sprintf("%s:%d:%s", fromPeerID, blockHeight, stateRoot)
@@ -199,25 +198,19 @@ func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 			checkpointID, latest.CheckpointID, latest.BlockHeight)
 	}
 
-	// Locate the checkpoint by its CheckpointID field via rich query
-	qs := fmt.Sprintf(
-		`{"selector":{"doc_type":"ANCHOR_CHECKPOINT","checkpoint_id":"%s"}}`, checkpointID)
-	iter, err := ctx.GetStub().GetQueryResult(qs)
+	// BC-10 FIX: fetch checkpoint by deterministic key ANCHOR:<blockHeight> instead of
+	// CouchDB rich query. latest.BlockHeight is already known from GetLatestAnchorCheckpoint
+	// above, so the CouchDB snapshot dependency is eliminated entirely.
+	cpData, err := ctx.GetStub().GetState(fmt.Sprintf("ANCHOR:%d", latest.BlockHeight))
 	if err != nil {
-		return fmt.Errorf("SyncFromAnchorCheckpoint: query failed: %v", err)
+		return fmt.Errorf("SyncFromAnchorCheckpoint: state read failed: %v", err)
 	}
-	defer iter.Close()
-
-	if !iter.HasNext() {
+	if len(cpData) == 0 {
 		return fmt.Errorf("SyncFromAnchorCheckpoint: checkpoint %s not found", checkpointID)
-	}
-	qr, err := iter.Next()
-	if err != nil {
-		return fmt.Errorf("SyncFromAnchorCheckpoint: iterator error: %v", err)
 	}
 
 	var cp AnchorCheckpoint
-	if err := json.Unmarshal(qr.Value, &cp); err != nil {
+	if err := json.Unmarshal(cpData, &cp); err != nil {
 		return fmt.Errorf("SyncFromAnchorCheckpoint: unmarshal error: %v", err)
 	}
 

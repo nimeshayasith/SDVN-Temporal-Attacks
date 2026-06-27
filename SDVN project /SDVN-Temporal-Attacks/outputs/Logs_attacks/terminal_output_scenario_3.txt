@@ -1,13 +1,13 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 3686 exact position+velocity events
 [SUMO] Attack 3: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/03_TTW_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
 SCENARIO 03 - TTW-S3 ATTACK CONFIGURED
 Attacker      : 1 malicious controller(s) / 4 total
-Poisoned pairs: 1 / 3
+Poisoned pairs: 1 / 1
   V5 <-> V6
 Timeline:
   t=10s  : Legit updates -> controller, stores stale
@@ -16,48 +16,36 @@ Timeline:
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [TTW-S3][t=10.000]  V5 --topo update--> Controller  <V5 sees V6, t=10.000>  ACCEPTED
 [TTW-S3][t=10.000]  V6 --topo update--> Controller  <V6 sees V5, t=10.000>  ACCEPTED
 [TTW-S3][t=10.100]  Controller keeps stale copy  <V5 sees V6, t=10.000>  (internal replay at t=20.000)
 [TTW-S3][t=20.000]  Controller --TIMESTAMP FORGE + REINSERTION--> own table  <V5 sees V6, t=20.000>  (stored=10.000)  TABLE POISONED  *** ATTACK COMPLETE ***
+[Trust][t=20.050]  C_0 tau=0.900 >= tau_min^C — monitoring
+[TTW-S3][t=20.050]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=100.000 ms
+[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
+[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 0 1 ctrl 
+[TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 6 in → 6 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+               log: crypto_filter_log.txt
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
-[NPFADS] ====== Running NPFADS Detection Pipeline ======
-[NPFADS]  Attack scenario : 3
-[NPFADS]  BSM records     : 1735
-[NPFADS-SOL] Loaded 1735 BSM records
-[NPFADS-SOL] Eigenvalues computed for 6 senders
-[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
-  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
-  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
-  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
-  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
-
-╔═══════════════════════════════════════════════════════════════════╗
-║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
-║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
-╠═════════╪═════════════════╪═════════════════╪════════════════════╣
-║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Detection latency estimate: 800 ms  (= 8 × 100 ms beacon interval)                    ║
-╚═══════════════════════════════════════════════════════════════════╝
-
-  Paper reference values (Table 6, MDS at fog node):
-    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
-    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
-    Type 16:  F1 = 0.98
-
-  NADM paper values: UC_known=0.09617  NASEA=0.99944
-
-[NPFADS] ====== NPFADS Detection Complete ======
-[NPFADS] Expected result for TTW/BSHH/ME scenarios:
-[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
-[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
-[NPFADS]   Novel det  = NO   (no AE reconstruction error)
-[NPFADS] --> These attacks evade position-based detection.
-[NPFADS] --> PEM detected them via temporal signature analysis.
-[NPFADS] --> The two detectors are COMPLEMENTARY.
-
+========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
+  Scenario  : 3 — TTW-S3: Malicious Controller, No RSU
+  RSU mode  : NO RSU
+  TP/TN/FP/FN : 0 / 4 / 0 / 1
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 1
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 1.000
+  ACR         : 80.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 5
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 4
+============================================================

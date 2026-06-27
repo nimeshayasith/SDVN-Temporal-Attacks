@@ -22,48 +22,34 @@ Timeline:
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [BSHH-S1][t=5.037]  V5 captured heartbeat for replay  Heartbeat(Sender=V8, t=4.998)
 [BSHH-S1][t=9.991]  V5 --REPLAY old heartbeat--> V8  Heartbeat(Sender=V5, t=4.998)  [MALICIOUS â€” replayed attacker old heartbeat]
 [BSHH-S1][t=9.993]  V8 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V5, t=4.998)  Controller liveness POISONED
 [BSHH-S1][t=10.025]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V8, t=4.998)  IMPERSONATION  *** ATTACK COMPLETE ***
+[TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
+[TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
+[TGN] Trusted nodes (Tier 2 OBU): ctrl 
+[TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 2 in → 2 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+               log: crypto_filter_log.txt
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
-[NPFADS] ====== Running NPFADS Detection Pipeline ======
-[NPFADS]  Attack scenario : 5
-[NPFADS]  BSM records     : 1134
-[NPFADS-SOL] Loaded 1134 BSM records
-[NPFADS-SOL] Eigenvalues computed for 6 senders
-[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
-  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
-  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
-  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
-  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
-
-╔═══════════════════════════════════════════════════════════════════╗
-║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
-║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
-╠═════════╪═════════════════╪═════════════════╪════════════════════╣
-║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Detection latency estimate: 800 ms  (= 8 × 100 ms beacon interval)                    ║
-╚═══════════════════════════════════════════════════════════════════╝
-
-  Paper reference values (Table 6, MDS at fog node):
-    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
-    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
-    Type 16:  F1 = 0.98
-
-  NADM paper values: UC_known=0.09617  NASEA=0.99944
-
-[NPFADS] ====== NPFADS Detection Complete ======
-[NPFADS] Expected result for TTW/BSHH/ME scenarios:
-[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
-[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
-[NPFADS]   Novel det  = NO   (no AE reconstruction error)
-[NPFADS] --> These attacks evade position-based detection.
-[NPFADS] --> PEM detected them via temporal signature analysis.
-[NPFADS] --> The two detectors are COMPLEMENTARY.
-
+========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
+  Scenario  : 5 — BSHH-S1: Malicious Vehicle, No RSU
+  RSU mode  : NO RSU
+  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 0.500
+  ACR         : 100.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 2
+  Stage-0 blocked (attacks): 2
+  |E_t^trusted|  : 2
+============================================================

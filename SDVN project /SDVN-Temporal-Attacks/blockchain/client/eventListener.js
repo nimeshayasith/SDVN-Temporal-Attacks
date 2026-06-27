@@ -347,7 +347,7 @@ async function startEventListener(nodeID = PEER_ID, noRSU = false, intervalMs = 
                     const prRes   = await c.submitTransaction(
                         'PeriodicPeerReSelection', JSON.stringify(SELECT_PEERS_POOL));
                     const selected = JSON.parse(prRes.toString());
-                    console.log(`[TrustRound #${trustRoundIndex}] Active set (${noRSU ? 'OBU-only' : 'all'} pool, np=${3*1+1}) → [${selected.join(', ')}]`);
+                    console.log(`[TrustRound #${trustRoundIndex}] Active set (${noRSU ? 'OBU-only' : 'all'} pool, np=8 (3f+1, f=2)) → [${selected.join(', ')}]`);
                     appendLog(`TrustRound #${trustRoundIndex}  active=${JSON.stringify(selected)}`);
                 } catch (prErr) {
                     console.warn(`[TrustRound #${trustRoundIndex}] PeriodicPeerReSelection failed: ${prErr.message}`);

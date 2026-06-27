@@ -45,6 +45,11 @@
 
 #ifdef HAVE_LIBOQS
 #  include <oqs/oqs.h>
+/* liboqs >= 0.10 standardized to ML-DSA-87 (FIPS 204); older builds used
+ * OQS_SIG_alg_dilithium_5.  Provide a compat alias so code compiles on both. */
+#  ifndef OQS_SIG_alg_dilithium_5
+#    define OQS_SIG_alg_dilithium_5 OQS_SIG_alg_ml_dsa_87
+#  endif
 #endif
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -156,6 +161,31 @@ bool dilithium5_verify(const uint8_t *msg,      size_t msg_len,
         return rc == OQS_SUCCESS;
     }
 #endif
+    /* Issue-8 fix: fail the build loudly when stub mode is active.
+     *
+     * A build without HAVE_LIBOQS only checks 32 of 4595 sig bytes.
+     * This is not a safe production configuration and must not be used in any
+     * deployment that touches real vehicle identities or revocation state.
+     *
+     * To permit stub mode explicitly (simulation / CI without liboqs installed):
+     *   g++ ... -DALLOW_DILITHIUM_STUB ...
+     * Without that flag, the build fails so stub mode can never ship silently.  */
+#if !defined(HAVE_LIBOQS) && !defined(ALLOW_DILITHIUM_STUB)
+#  error "dilithium5_verify: HAVE_LIBOQS is not defined and ALLOW_DILITHIUM_STUB \
+is not set. Stub mode (32/4595 bytes checked) must NOT be used in production. \
+Pass -DALLOW_DILITHIUM_STUB to build deliberately in stub mode for simulation only."
+#endif
+    {
+        static bool stub_warned = false;
+        if (!stub_warned) {
+            stub_warned = true;
+            fprintf(stderr,
+                "[DILITHIUM] STUB MODE: dilithium5_verify checks only 32/%d sig bytes. "
+                "Build with -DHAVE_LIBOQS and link liboqs for production.\n",
+                DILITHIUM5_SIG_LEN);
+        }
+    }
+
     /* Stub: invert the keygen XOR mapping (pk[i] = sk[i%SK_LEN]^0xA5)
      * to recover sk[0..31], then re-sign and compare the first 32 bytes. */
     uint8_t sk_derived[DILITHIUM5_SK_LEN];
@@ -169,6 +199,250 @@ bool dilithium5_verify(const uint8_t *msg,      size_t msg_len,
     for (int i = 0; i < 32; i++) diff |= sig[i] ^ expected[i];
     (void)sig_len;
     return diff == 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Fix-7 — Domain-separated sign / verify (Section 3.3 extension)
+ *
+ * Each wrapper prepends its ASCII domain tag before signing so that a
+ * threshold sig over message M cannot be passed as a location-binding sig
+ * over the same M, and vice-versa.  All three use-cases (THRESH, LOCBIND,
+ * KEM_AUTH) call the canonical dilithium5_sign/verify underneath; only the
+ * effective message differs.
+ *
+ * Heap allocation is avoided by splitting the HMAC over two calls
+ * (domain || msg) using a scratch buffer capped at 4 KB + domain len.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* Internal helper: prepend domain tag, sign the concatenation */
+static void dilithium5_sign_ds(const char *domain,
+                                const uint8_t *msg, size_t msg_len,
+                                const uint8_t  sk[DILITHIUM5_SK_LEN],
+                                uint8_t sig[DILITHIUM5_SIG_LEN],
+                                size_t *sig_len) {
+    size_t dlen = strlen(domain);
+    /* Stack buffer for domain || msg.  Max combined size: ~4 KB + 14 B domain. */
+    static uint8_t buf[4096 + 16];
+    size_t total = dlen + msg_len;
+    uint8_t *p = (total <= sizeof(buf)) ? buf : (uint8_t *)malloc(total);
+    if (!p) { memset(sig, 0, DILITHIUM5_SIG_LEN); if (sig_len) *sig_len = 0; return; }
+    memcpy(p,         domain, dlen);
+    memcpy(p + dlen,  msg,    msg_len);
+    dilithium5_sign(p, total, sk, sig, sig_len);
+    if (p != buf) free(p);
+}
+
+static bool dilithium5_verify_ds(const char *domain,
+                                   const uint8_t *msg, size_t msg_len,
+                                   const uint8_t  sig[DILITHIUM5_SIG_LEN],
+                                   size_t sig_len,
+                                   const uint8_t  pk[DILITHIUM5_PK_LEN]) {
+    size_t dlen = strlen(domain);
+    static uint8_t buf[4096 + 16];
+    size_t total = dlen + msg_len;
+    uint8_t *p = (total <= sizeof(buf)) ? buf : (uint8_t *)malloc(total);
+    if (!p) return false;
+    memcpy(p,        domain, dlen);
+    memcpy(p + dlen, msg,    msg_len);
+    bool ok = dilithium5_verify(p, total, sig, sig_len, pk);
+    if (p != buf) free(p);
+    return ok;
+}
+
+void dilithium5_sign_thresh(const uint8_t *msg, size_t msg_len,
+                              const uint8_t  sk[DILITHIUM5_SK_LEN],
+                              uint8_t sig[DILITHIUM5_SIG_LEN], size_t *sig_len) {
+    dilithium5_sign_ds(TETA_DS_THRESH, msg, msg_len, sk, sig, sig_len);
+}
+
+bool dilithium5_verify_thresh(const uint8_t *msg, size_t msg_len,
+                               const uint8_t  sig[DILITHIUM5_SIG_LEN], size_t sig_len,
+                               const uint8_t  pk[DILITHIUM5_PK_LEN]) {
+    return dilithium5_verify_ds(TETA_DS_THRESH, msg, msg_len, sig, sig_len, pk);
+}
+
+void dilithium5_sign_locbind(const uint8_t *msg, size_t msg_len,
+                               const uint8_t  sk[DILITHIUM5_SK_LEN],
+                               uint8_t sig[DILITHIUM5_SIG_LEN], size_t *sig_len) {
+    dilithium5_sign_ds(TETA_DS_LOCBIND, msg, msg_len, sk, sig, sig_len);
+}
+
+bool dilithium5_verify_locbind(const uint8_t *msg, size_t msg_len,
+                                const uint8_t  sig[DILITHIUM5_SIG_LEN], size_t sig_len,
+                                const uint8_t  pk[DILITHIUM5_PK_LEN]) {
+    return dilithium5_verify_ds(TETA_DS_LOCBIND, msg, msg_len, sig, sig_len, pk);
+}
+
+void dilithium5_sign_kem_auth(const uint8_t *msg, size_t msg_len,
+                               const uint8_t  sk[DILITHIUM5_SK_LEN],
+                               uint8_t sig[DILITHIUM5_SIG_LEN], size_t *sig_len) {
+    dilithium5_sign_ds(TETA_DS_KEM_AUTH, msg, msg_len, sk, sig, sig_len);
+}
+
+bool dilithium5_verify_kem_auth(const uint8_t *msg, size_t msg_len,
+                                 const uint8_t  sig[DILITHIUM5_SIG_LEN], size_t sig_len,
+                                 const uint8_t  pk[DILITHIUM5_PK_LEN]) {
+    return dilithium5_verify_ds(TETA_DS_KEM_AUTH, msg, msg_len, sig, sig_len, pk);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Fix-2 — Consortium CA for Dilithium5 public key binding
+ *
+ * CertificateRecord binds vehicle_id → PK_Vi under a CA signature so no
+ * vehicle can substitute a different public key and impersonate another.
+ *
+ * CA keypair: static, generated once via teta_ca_init().
+ * In simulation: teta_ca_init() is called at RSU startup and the keypair
+ * lives in process memory.  In production the CA would run out-of-band at
+ * vehicle enrolment and only ca_pk would be distributed to RSUs.
+ *
+ * Signed message = TETA_DS_CA_CERT || vehicle_id(16) || pk_vi || issued_at_ms(8)
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+static uint8_t g_ca_pk[DILITHIUM5_PK_LEN];
+static uint8_t g_ca_sk[DILITHIUM5_SK_LEN];
+static bool    g_ca_initialized = false;
+
+/* Issue-2 fix — Certificate Revocation List.
+ * Module-static; populated by cert_revoke_vehicle(), checked by
+ * dilithium5_verify_cert() before evaluating the CA signature.
+ * A revoked vehicle_id is rejected even if its CA sig is valid — prevents
+ * a compromised vehicle from continuing to authenticate after lkh_revoke_vehicle
+ * has wiped its session key.  mark_key_revoked() calls cert_revoke_vehicle()
+ * so a single revocation event atomically invalidates both layers.
+ *
+ * DEPLOYMENT SIZING — CRITICAL (Issue-1 fix):
+ * The CRL uses MAX_CRL_ENTRIES (currently 4096), not MAX_VEHICLES.
+ * These are different numbers for any long-lived deployment:
+ *   MAX_VEHICLES  = active concurrent fleet / keystore size (256)
+ *   MAX_CRL_ENTRIES = total lifetime revocations, monotonically growing (4096)
+ * The fail-closed policy in cert_is_revoked() means that once
+ * g_crl_count == MAX_CRL_ENTRIES every vehicle_id not explicitly in the CRL
+ * is treated as revoked — including long-standing, never-compromised vehicles.
+ * MAX_CRL_ENTRIES MUST be sized as:
+ *   expected_total_revocations_over_lifetime × safety_margin (≥ 2×)
+ * For a long-lived deployment (> 5 years) with high compromise rates, increase
+ * MAX_CRL_ENTRIES in teta_guard_types.h before production build.            */
+static uint8_t g_crl[MAX_CRL_ENTRIES][16];
+static uint32_t g_crl_count = 0;
+
+void cert_revoke_vehicle(const uint8_t vehicle_id[16]) {
+    /* Idempotent: skip if already revoked */
+    for (uint32_t i = 0; i < g_crl_count; i++) {
+        if (memcmp(g_crl[i], vehicle_id, 16) == 0) return;
+    }
+    if (g_crl_count >= MAX_CRL_ENTRIES) {
+        /* Fail-closed: CRL is full.  cert_is_revoked returns true for any
+         * vehicle_id not explicitly found in the CRL when the table is full,
+         * so this vehicle is effectively blocked even without an explicit entry.
+         * Log the overflow so it is visible in audit output.                   */
+        fprintf(stderr, "[CRL] cert_revoke_vehicle: CRL full (MAX_CRL_ENTRIES=%u)"
+                " — %.16s not added; fail-closed policy applies\n",
+                MAX_CRL_ENTRIES, (const char *)vehicle_id);
+        return;
+    }
+    memcpy(g_crl[g_crl_count++], vehicle_id, 16);
+    printf("[CRL] cert_revoke_vehicle: %.16s\n", (const char *)vehicle_id);
+}
+
+bool cert_is_revoked(const uint8_t vehicle_id[16]) {
+    for (uint32_t i = 0; i < g_crl_count; i++) {
+        if (memcmp(g_crl[i], vehicle_id, 16) == 0) return true;
+    }
+    /* Fail-closed: if the CRL is full, any vehicle_id NOT found in the table
+     * is treated as revoked.  This prevents the overflow from becoming an
+     * "allowlist bypass" where a new attacker can't be blocked because the
+     * table is full of earlier revocations.                                   */
+    if (g_crl_count >= MAX_CRL_ENTRIES) return true;
+    return false;
+}
+
+void teta_ca_init(void) {
+    if (g_ca_initialized) return;
+    dilithium5_keygen(g_ca_pk, g_ca_sk);
+    g_ca_initialized = true;
+}
+
+void teta_ca_get_pk(uint8_t ca_pk[DILITHIUM5_PK_LEN]) {
+    if (!g_ca_initialized) teta_ca_init();
+    memcpy(ca_pk, g_ca_pk, DILITHIUM5_PK_LEN);
+}
+
+/* Build the raw cert payload (no domain prefix): vehicle_id || pk_vi || issued_at_ms.
+ * The domain prefix TETA_DS_CA_CERT is added by the sign/verify wrappers below,
+ * keeping the same pattern as dilithium5_sign_ds for all other signing paths.   */
+static void build_cert_payload(const uint8_t vehicle_id[16],
+                                const uint8_t pk_vi[DILITHIUM5_PK_LEN],
+                                uint64_t      issued_at_ms,
+                                uint8_t      *out_payload,   /* caller allocates */
+                                size_t       *out_len) {
+    uint8_t *p = out_payload;
+    memcpy(p, vehicle_id,    16);                p += 16;
+    memcpy(p, pk_vi,         DILITHIUM5_PK_LEN); p += DILITHIUM5_PK_LEN;
+    memcpy(p, &issued_at_ms, 8);                 p += 8;
+    *out_len = (size_t)(p - out_payload);
+}
+
+/* Issue-4 fix — domain-separated CA cert wrappers.
+ * Use dilithium5_sign_ds(TETA_DS_CA_CERT, ...) so cert signing has the same
+ * domain separation as THRESH, LOCBIND, and KEM-AUTH paths.                   */
+void dilithium5_sign_ca_cert(const uint8_t *payload, size_t payload_len,
+                              const uint8_t sk[DILITHIUM5_SK_LEN],
+                              uint8_t sig_out[DILITHIUM5_SIG_LEN]) {
+    size_t sig_len;
+    dilithium5_sign_ds(TETA_DS_CA_CERT, payload, payload_len, sk, sig_out, &sig_len);
+}
+
+bool dilithium5_verify_ca_cert(const uint8_t *payload, size_t payload_len,
+                                const uint8_t sig[DILITHIUM5_SIG_LEN],
+                                const uint8_t pk[DILITHIUM5_PK_LEN]) {
+    /* Reuse dilithium5_sign_ds path: prepend domain and verify with provided pk */
+    size_t dlen = strlen(TETA_DS_CA_CERT);
+    /* Max payload: id(16) + pk(2592) + ts(8) = 2616; with domain(13) = 2629 */
+    uint8_t msg[14 + 16 + DILITHIUM5_PK_LEN + 8];
+    if (dlen + payload_len > sizeof(msg)) return false;
+    memcpy(msg,         TETA_DS_CA_CERT, dlen);
+    memcpy(msg + dlen,  payload,          payload_len);
+    return dilithium5_verify(msg, dlen + payload_len, sig, DILITHIUM5_SIG_LEN, pk);
+}
+
+void dilithium5_issue_cert(const uint8_t vehicle_id[16],
+                            const uint8_t pk_vi[DILITHIUM5_PK_LEN],
+                            uint64_t      issued_at_ms,
+                            CertificateRecord *cert_out) {
+    if (!g_ca_initialized) teta_ca_init();
+    memcpy(cert_out->vehicle_id, vehicle_id, 16);
+    memcpy(cert_out->pk_vi,      pk_vi,       DILITHIUM5_PK_LEN);
+    cert_out->issued_at_ms = issued_at_ms;
+
+    /* Raw payload: id(16) + pk(2592) + ts(8) = 2616 bytes */
+    uint8_t payload[16 + DILITHIUM5_PK_LEN + 8];
+    size_t  payload_len;
+    build_cert_payload(vehicle_id, pk_vi, issued_at_ms, payload, &payload_len);
+
+    dilithium5_sign_ca_cert(payload, payload_len, g_ca_sk, cert_out->ca_sig);
+}
+
+bool dilithium5_verify_cert(const CertificateRecord *cert) {
+    if (!g_ca_initialized) return false;
+    /* Trust-anchor note: the verification key here is g_ca_pk — a module-static
+     * buffer populated once by teta_ca_init() and NEVER updated from any network
+     * message.  It is NOT taken from the CertificateRecord being verified, nor
+     * from any field in the KemExchangeState or BeaconMessage.  There is no path
+     * by which an attacker-supplied value reaches g_ca_pk; the circularity that
+     * Fix-1/2 was designed to close is not re-introduced here.
+     *
+     * In production this would be a compile-time constant or HSM-provisioned key;
+     * for simulation it is generated once at RSU startup via teta_ca_init().    */
+
+    /* Issue-2 fix — CRL check: reject revoked vehicles before evaluating CA sig */
+    if (cert_is_revoked(cert->vehicle_id)) return false;
+
+    uint8_t payload[16 + DILITHIUM5_PK_LEN + 8];
+    size_t  payload_len;
+    build_cert_payload(cert->vehicle_id, cert->pk_vi, cert->issued_at_ms,
+                       payload, &payload_len);
+    return dilithium5_verify_ca_cert(payload, payload_len, cert->ca_sig, g_ca_pk);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

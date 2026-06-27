@@ -59,25 +59,22 @@ void generate_nonce(uint8_t nonce_out[NONCE_LEN]) {
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Authenticated payload construction  (Section 4.3, Eq. 3.49)
- *   m' = m || τ_s || nonce
+ *   m' = m || nonce
+ * sender_timestamp_ms (τ_s) is already in the 48-byte m prefix at bytes
+ * 16–23, so there is no separate τ_s append.  HMAC input = 64 bytes.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 void build_authenticated_payload(const BeaconMessage *msg,
                                   uint8_t *m_prime,
                                   size_t  *m_prime_len) {
-    /* Everything before the nonce field is the raw payload m */
+    /* Everything before the nonce field is the raw payload m (48 bytes) */
     size_t payload_len = offsetof(BeaconMessage, nonce);
     memcpy(m_prime, msg, payload_len);
 
-    /* Append τ_s as 8-byte little-endian uint64 */
-    memcpy(m_prime + payload_len,
-           &msg->sender_timestamp_ms,
-           sizeof(uint64_t));
+    /* Append nonce (16 bytes) — total 64 bytes, matching build_payload() */
+    memcpy(m_prime + payload_len, msg->nonce, NONCE_LEN);
 
-    /* Append nonce (16 bytes) */
-    memcpy(m_prime + payload_len + 8, msg->nonce, NONCE_LEN);
-
-    *m_prime_len = payload_len + 8 + NONCE_LEN;
+    *m_prime_len = payload_len + NONCE_LEN;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -199,6 +196,8 @@ static const char *result_str(CryptoVerifyResult r) {
     return "UNKNOWN";
 }
 
+#if !defined(PIPELINE_INCLUDE) && !defined(PEM_HELPERS_DEFINED)
+#define PEM_HELPERS_DEFINED
 typedef struct {
     double  sim_time_s;
     int     physical_sender_id;
@@ -230,9 +229,11 @@ static int load_pem(const char *file, PemRow *rows, int max_rows) {
     fclose(f);
     return n;
 }
+#endif /* PIPELINE_INCLUDE && PEM_HELPERS_DEFINED */
 
 /* ── main ─────────────────────────────────────────────────────────────────── */
 
+#ifndef HMAC_FILTER_NO_MAIN
 int main(int argc, char *argv[]) {
     const char *input  = (argc > 1) ? argv[1] : "pem_event_log.csv";
     const char *output = (argc > 2) ? argv[2] : "hmac_filter_result.csv";
@@ -352,3 +353,4 @@ int main(int argc, char *argv[]) {
     printf("[HMAC] Wrote %s\n", output);
     return 0;
 }
+#endif /* HMAC_FILTER_NO_MAIN */

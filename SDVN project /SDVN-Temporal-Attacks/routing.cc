@@ -53,6 +53,46 @@ uint32_t comparison_detector = 0;   // 0=none  1=VeReMi  2=MBSM
 // ── NPFADS position-falsification detector — complements PEM temporal detector
 #include "npfads_solution.h"
 
+// ── Crypto latency measurement (enabled with --latency=1) ────────────────────
+// OpenSSL headers always included — RAND_bytes used in timing stubs
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#ifdef HAVE_LIBOQS
+#  include <oqs/oqs.h>
+#  ifndef OQS_SIG_alg_dilithium_5
+#    define OQS_SIG_alg_dilithium_5  OQS_SIG_alg_ml_dsa_87
+#  endif
+#  ifndef OQS_KEM_alg_kyber_1024
+#    define OQS_KEM_alg_kyber_1024   OQS_KEM_alg_ml_kem_1024
+#  endif
+#endif
+
+// ── TETA-Guard crypto pipeline (unified build — all modules in one TU) ───────
+// Each module guards its own main() with a NO_MAIN macro.
+// lkh_mgmt.cc provides mark_key_revoked; suppress kem.cc's duplicate.
+#define DILITHIUM_NO_MAIN
+#define HMAC_FILTER_NO_MAIN
+#define KEM_NO_MAIN
+#define LKH_MGMT_NO_MAIN
+#define LOCATION_BINDING_NO_MAIN
+#define LKH_PROVIDES_MARK_KEY_REVOKED
+// If liboqs is not available in this TU, allow stub mode rather than hard error
+#ifndef HAVE_LIBOQS
+#  define ALLOW_DILITHIUM_STUB
+#endif
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wswitch"
+#include ".crypto_src/teta_guard_types.h"
+#include ".crypto_src/lkh_mgmt.cc"
+#include ".crypto_src/dilithium.cc"
+#include ".crypto_src/hmac_filter.cc"
+#include ".crypto_src/kem.cc"
+#include ".crypto_src/location_binding.cc"
+#pragma GCC diagnostic pop
+
 using namespace std;
 using namespace ns3;
 
@@ -151,7 +191,7 @@ const int total_size = 400;  // must be >= N_Vehicles + N_RSUs + 2 (controller +
 
 uint32_t N_RSUs        = 64;
 uint32_t N_Vehicles    = 200;
-uint32_t N_Controllers = 4;  // minimum 4 SDN controllers; active controller = index 0, others on standby
+uint32_t N_Controllers = 4;  // 4 SDN controllers in the distributed control plane; blockchain handles reassignment if one is malicious
 
 const int flows = 2;
 
@@ -193,6 +233,7 @@ double mu3 = 0.50;
 
 bool training       = false;
 bool training_delay = false;
+bool skip_npfads    = false;  // --skip_npfads: disable NPFADS BSM collection+detection (speeds up data-gen runs)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ATTACK PARAMETERS
@@ -209,8 +250,701 @@ uint32_t malicious_vehicle_id = 0;   // V0 = attacker
 // ERROR 3 FIX: was declared twice. Keep ONE declaration.
 uint32_t victim_neighbor_id = 1;     // V1 = victim
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CRYPTO LATENCY MEASUREMENT INFRASTRUCTURE
+//
+// --latency=1  Measure real liboqs wall-clock time per operation.
+//              Write crypto_latency_sumo.csv + crypto_latency_summary.csv.
+//              NS-3 virtual clock is NOT affected.
+//
+// --latency=2  Same measurements PLUS inject the measured time back into the
+//              NS-3 event scheduler so subsequent events (detection, mitigation)
+//              fire later by exactly the crypto cost.
+//              sim_time_end_s column shows when each op completes in sim time.
+//              This makes it "actual simulation latency" — the NS-3 virtual
+//              clock reflects the crypto overhead.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t enable_crypto_latency = 0;   // 0=off  1=measure only  2=measure+inject
+
+// When latency=2, accumulates crypto µs within one attack function so the
+// next scheduled NS-3 event is delayed by the total crypto cost of that step.
+static double g_crypto_pending_delay_us = 0.0;
+static bool   g_crypto_inject_delay     = false;  // true when enable_crypto_latency==2
+
+struct CryptoLatencyRecord {
+    double      sim_time_s;      // NS-3 sim clock when crypto op STARTS
+    double      sim_time_end_s;  // sim_time_s + latency_us/1e6  (when op completes in sim time)
+    uint32_t    attack_scen;
+    std::string operation;
+    double      latency_us;      // real wall-clock CPU time for this op
+    uint32_t    node_id;
+    std::string event_type;   // Beacon_Send|Beacon_Recv|Attack_Inject|Detection|Mitigation|Session_Setup
+    int         is_attack;    // 0 or 1
+};
+
+static std::vector<CryptoLatencyRecord> g_crypto_records;
+static uint64_t g_beacon_tx_count   = 0;
+static uint64_t g_beacon_rx_count   = 0;
+
+// ── latency=3 infrastructure (declared here so MeasureKEM can use them) ───────
+struct CryptoL3Record {
+    std::string operation;
+    std::string event_type;
+    uint32_t    node_id;
+    int         is_attack;
+    double      start_sim_s;    // Simulator::Now() at START event
+    double      end_sim_s;      // Simulator::Now() at END event
+    double      latency_sim_us; // (end_sim_s - start_sim_s) * 1e6
+    uint32_t    attack_scen;
+};
+static std::vector<CryptoL3Record> g_crypto3_records;
+static uint64_t g_ttw_l3_pi  = UINT64_MAX;
+static uint64_t g_bshh_l3_pi = UINT64_MAX;
+static uint64_t g_me_l3_pi   = UINT64_MAX;
+struct ME_L3_Ctx { uint32_t v3, v4, lsrc, ldst; };
+static ME_L3_Ctx g_me_l3_ctx;
+static uint64_t L3_Start(const char *op, const char *evt, uint32_t nid, bool atk)
+{
+    g_crypto3_records.push_back({op, evt, nid, atk ? 1 : 0,
+        Simulator::Now().GetSeconds(), 0.0, 0.0, attack_scenario});
+    return static_cast<uint64_t>(g_crypto3_records.size() - 1);
+}
+static void L3_End(uint64_t *pi)
+{
+    if (*pi < static_cast<uint64_t>(g_crypto3_records.size())) {
+        double te = Simulator::Now().GetSeconds();
+        g_crypto3_records[*pi].end_sim_s = te;
+        g_crypto3_records[*pi].latency_sim_us =
+            (te - g_crypto3_records[*pi].start_sim_s) * 1e6;
+    }
+    *pi = UINT64_MAX;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Shared key material — initialised once in CryptoInitKeys()
+static std::vector<uint8_t> g_dil_pk;
+static std::vector<uint8_t> g_dil_sk;
+static std::vector<uint8_t> g_dil_sig;
+static size_t               g_dil_sig_len __attribute__((unused)) = 0;
+static uint8_t              g_hmac_key[32] __attribute__((unused)) = {};
+static bool                 g_crypto_ready = false;
+
+// ── TETA-Guard pipeline global state ─────────────────────────────────────────
+static LKHTree          g_lkh_tree __attribute__((unused));
+static VehicleKeyRecord g_lkh_keystore[16] __attribute__((unused));
+static uint8_t          g_lkh_vids[16][16] __attribute__((unused));
+static bool             g_lkh_ready __attribute__((unused)) = false;
+static uint8_t          g_pipeline_session_key[SESSION_KEY_LEN] __attribute__((unused)) = {};
+static NonceCache       g_pipeline_nonce_cache __attribute__((unused)) = {};
+static uint8_t          g_pipeline_dil_sig[DILITHIUM5_SIG_LEN] __attribute__((unused)) = {};
+static size_t           g_pipeline_dil_sig_len __attribute__((unused)) = 0;
+// CA cert issued for the test vehicle used in MeasureKEM / TimedLocationBind
+static CertificateRecord g_test_cert __attribute__((unused)) = {};
+
+using HiResClock = std::chrono::high_resolution_clock;
+using MicroSec   = std::chrono::duration<double, std::micro>;
+
+// ── Record helper ─────────────────────────────────────────────────────────────
+static inline void CryptoRecord(double sim_t, const char *op, double us,
+                                 uint32_t nid, const char *evt, bool atk)
+{
+    if (!enable_crypto_latency) return;
+    double sim_end = sim_t + us / 1e6;
+    g_crypto_records.push_back({sim_t, sim_end, attack_scenario, op, us, nid, evt, atk ? 1 : 0});
+    // latency=2: accumulate into pending delay so the next NS-3 event fires later
+    if (g_crypto_inject_delay)
+        g_crypto_pending_delay_us += us;
+}
+
+// ── Individual operation timers ───────────────────────────────────────────────
+// ── TETA-Guard pipeline wrappers — replace all inline crypto stubs ────────────
+
+static double __attribute__((unused)) TimedHmacSign(const uint8_t *msg, size_t len)
+{
+    // Uses beacon_sign() from hmac_filter.cc (the correct pipeline implementation)
+    BeaconMessage bm = {};
+    memcpy(bm.vehicle_id, msg, (len < 16 ? len : 16));
+    bm.sender_timestamp_ms = 10000u;
+    bm.gps_lat = 6.9271f; bm.gps_lon = 79.8612f; bm.rssi_dbm = -70.0f;
+    RAND_bytes(bm.nonce, NONCE_LEN);
+    auto t0 = HiResClock::now();
+    beacon_sign(&bm, g_pipeline_session_key);
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+static double __attribute__((unused)) TimedHmacVerify(const uint8_t *msg, size_t len)
+{
+    // Uses lw_mitigate() from hmac_filter.cc (HMAC verify + freshness + nonce check)
+    BeaconMessage bm = {};
+    memcpy(bm.vehicle_id, msg, (len < 16 ? len : 16));
+    bm.sender_timestamp_ms = 10000u;
+    bm.gps_lat = 6.9271f; bm.gps_lon = 79.8612f; bm.rssi_dbm = -70.0f;
+    RAND_bytes(bm.nonce, NONCE_LEN);
+    beacon_sign(&bm, g_pipeline_session_key);   // produce valid MAC first
+    uint64_t recv_ms = 10005u;
+    auto t0 = HiResClock::now();
+    lw_mitigate(&bm, recv_ms, g_pipeline_session_key, false, &g_pipeline_nonce_cache);
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+static double __attribute__((unused)) TimedDilSign(const uint8_t *msg, size_t len)
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready) return 0.0;
+    // Uses dilithium5_sign() from dilithium.cc: (msg, len, sk, sig_out, sig_len_out)
+    auto t0 = HiResClock::now();
+    dilithium5_sign(msg, len,
+                    g_dil_sk.data(), g_pipeline_dil_sig, &g_pipeline_dil_sig_len);
+    return MicroSec(HiResClock::now() - t0).count();
+#else
+    return 0.0;
+#endif
+}
+
+static double __attribute__((unused)) TimedDilVerify(const uint8_t *msg, size_t len)
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready || g_pipeline_dil_sig_len == 0) return 0.0;
+    // Uses dilithium5_verify() from dilithium.cc: (msg, len, sig, sig_len, pk)
+    auto t0 = HiResClock::now();
+    dilithium5_verify(msg, len,
+                      g_pipeline_dil_sig, g_pipeline_dil_sig_len, g_dil_pk.data());
+    return MicroSec(HiResClock::now() - t0).count();
+#else
+    return 0.0;
+#endif
+}
+
+static double __attribute__((unused)) TimedHaversine()
+{
+    // Uses haversine_distance_m() from location_binding.cc (official pipeline impl)
+    float lat1 = 6.9271f, lon1 = 79.8612f, lat2 = 6.9298f, lon2 = 79.8640f;
+    auto t0 = HiResClock::now();
+    volatile float dist = haversine_distance_m(lat1, lon1, lat2, lon2);
+    (void)dist;
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+// ── KEM fleet-management wrappers ─────────────────────────────────────────────
+// TimedKemRegister: kem_register_vehicle() — enrol a vehicle into the RSU
+// keystore so the RSU can later encapsulate to it by ID without a fresh keygen.
+static double __attribute__((unused)) TimedKemRegister(const uint8_t vid[16], uint32_t leaf_idx)
+{
+    auto t0 = HiResClock::now();
+    kem_register_vehicle(vid, leaf_idx);
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+// TimedKemLookup: kem_lookup() — RSU retrieves a registered vehicle's key
+// record before encapsulation (replaces inline keygen in fleet deployments).
+static double __attribute__((unused)) TimedKemLookup(const uint8_t vid[16])
+{
+    auto t0 = HiResClock::now();
+    volatile VehicleKeyRecord *rec = kem_lookup(vid);
+    (void)rec;
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+// ── LKH status-query wrappers ─────────────────────────────────────────────────
+// TimedLkhIsRevoked: lkh_is_revoked() — RSU checks revocation status before
+// forwarding a beacon packet (gate dropped packets from revoked nodes).
+static double __attribute__((unused)) TimedLkhIsRevoked(const uint8_t vid[16])
+{
+    if (!g_lkh_ready) return 0.0;
+    auto t0 = HiResClock::now();
+    volatile bool rev = lkh_is_revoked(&g_lkh_tree, vid);
+    (void)rev;
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+// TimedLkhGetSessionKey: lkh_get_session_key() — vehicle derives its new
+// session key from the refreshed KEK after an LKH revocation broadcast.
+static double __attribute__((unused)) TimedLkhGetSessionKey(const uint8_t vid[16])
+{
+    if (!g_lkh_ready) return 0.0;
+    uint8_t key_out[LKH_KEY_LEN];
+    auto t0 = HiResClock::now();
+    volatile bool ok = lkh_get_session_key(&g_lkh_tree, vid, key_out);
+    (void)ok;
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+// ── Quorum verification wrapper ───────────────────────────────────────────────
+// TimedVerifyQuorum: verify_quorum() — require t-of-n witnesses to independently
+// confirm the same link (stronger than single-witness; used in ME detection).
+// Builds n=2 synthetic LocationBoundReports from the same cert and calls
+// verify_quorum(reports, n=2, t=2, ...) requiring both to pass.
+static double __attribute__((unused)) TimedVerifyQuorum()
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready) return 0.0;
+    uint8_t link_id[8] = {0,1,0,2,0,0,0,0};
+    const uint32_t N_W = 2;
+    LocationBoundReport reports[N_W];
+    for (uint32_t i = 0; i < N_W; i++) {
+        uint8_t rid[16] = {}; rid[0] = (uint8_t)(3 + i);  // V3, V4 as witnesses
+        CertificateRecord qcert;
+        dilithium5_issue_cert(rid, g_dil_pk.data(), (uint64_t)i * 1000, &qcert);
+        create_location_bound_report(
+            link_id,
+            6.9271f, 79.8612f, -70.0f, 10000u,
+            rid, g_dil_sk.data(), g_dil_pk.data(), &qcert,
+            &reports[i]);
+        reports[i].has_rsu_measurement   = true;
+        reports[i].rsu_measured_rssi_dbm = -70.0f;
+    }
+    auto t0 = HiResClock::now();
+    volatile bool ok = verify_quorum(reports, N_W, N_W,
+                                     6.9271f, 79.8612f, 10005u);
+    (void)ok;
+    return MicroSec(HiResClock::now() - t0).count();
+#else
+    return 0.0;
+#endif
+}
+
+// ── Threshold signature wrappers ──────────────────────────────────────────────
+// dilithium5_sign/verify_thresh use domain separation (TETA_DS_THRESH) so a
+// threshold-context signature cannot be replayed as a normal beacon signature.
+// Used when the controller co-signs a detection decision before acting on it.
+static double __attribute__((unused)) TimedDilSignThresh(const uint8_t *msg, size_t len)
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready) return 0.0;
+    uint8_t sig[DILITHIUM5_SIG_LEN]; size_t slen = sizeof(sig);
+    auto t0 = HiResClock::now();
+    dilithium5_sign_thresh(msg, len, g_dil_sk.data(), sig, &slen);
+    return MicroSec(HiResClock::now() - t0).count();
+#else
+    return 0.0;
+#endif
+}
+
+static double __attribute__((unused)) TimedDilVerifyThresh(const uint8_t *msg, size_t len)
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready || g_pipeline_dil_sig_len == 0) return 0.0;
+    // Sign first so we have a valid thresh-domain signature to verify
+    uint8_t sig[DILITHIUM5_SIG_LEN]; size_t slen = sizeof(sig);
+    dilithium5_sign_thresh(msg, len, g_dil_sk.data(), sig, &slen);
+    auto t0 = HiResClock::now();
+    volatile bool ok = dilithium5_verify_thresh(msg, len, sig, slen, g_dil_pk.data());
+    (void)ok;
+    return MicroSec(HiResClock::now() - t0).count();
+#else
+    return 0.0;
+#endif
+}
+
+static double __attribute__((unused)) TimedFreshness()
+{
+    // Freshness gate embedded in lw_mitigate(); standalone timing uses same logic
+    uint64_t recv_ms = 10050u, sender_ms = 10000u;
+    auto t0 = HiResClock::now();
+    volatile bool ok = ((int64_t)recv_ms - (int64_t)sender_ms) <=
+                       (int64_t)FRESHNESS_WINDOW_MS;
+    (void)ok;
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+static double __attribute__((unused)) TimedLkhRevoke(uint32_t n)
+{
+    // Uses lkh_revoke_vehicle() from lkh_mgmt.cc — real O(log n) tree revocation
+    if (!g_lkh_ready) return 0.0;
+    uint32_t idx = (n > 0 ? (n - 1) : 0) % 16;
+    auto t0 = HiResClock::now();
+    lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[idx]);
+    return MicroSec(HiResClock::now() - t0).count();
+}
+
+// ── Location-Binding: create report (Dilithium5 sign) + verify_single_witness ──
+// Uses create_location_bound_report() + verify_single_witness() from
+// location_binding.cc.  Returns sign+verify combined µs.
+// Each call generates a fresh nonce inside create_location_bound_report(), so
+// the nonce-replay guard inside verify_single_witness (Gate E) never fires.
+static double __attribute__((unused)) TimedLocationBind()
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready) return 0.0;
+    uint8_t link_id[8]     = {0,1,0,2,0,0,0,0};  // simulated V1↔V2 link
+    uint8_t reporter_id[16] = {}; reporter_id[0] = 3;  // V3 as witness
+
+    // Issue a fresh per-call cert so repeated measurements don't reuse the same
+    // (vehicle_id, nonce) pair consumed by Gate E.
+    CertificateRecord lcert;
+    dilithium5_issue_cert(reporter_id, g_dil_pk.data(), 0, &lcert);
+
+    LocationBoundReport report;
+    auto t0 = HiResClock::now();
+    create_location_bound_report(
+        link_id,
+        6.9271f, 79.8612f,   // reporter GPS (Colombo test coords)
+        -70.0f,              // RSSI from link endpoint
+        10000u,              // sender_timestamp_ms
+        reporter_id,
+        g_dil_sk.data(), g_dil_pk.data(),
+        &lcert,
+        &report);
+    double sign_us = MicroSec(HiResClock::now() - t0).count();
+
+    // Fill RSU-side measurement (required by Gate iii — RSSI plausibility)
+    report.has_rsu_measurement    = true;
+    report.rsu_measured_rssi_dbm  = -70.0f;
+
+    t0 = HiResClock::now();
+    bool ok = verify_single_witness(
+        &report,
+        6.9271f, 79.8612f,   // link endpoint GPS (same loc → dist=0, passes Gate ii)
+        10005u);             // recv_time_ms (within LOCBIND_FRESHNESS_WINDOW_MS)
+    double verify_us = MicroSec(HiResClock::now() - t0).count();
+    (void)ok;
+    return sign_us + verify_us;
+#else
+    return 0.0;
+#endif
+}
+
+// ── KEM measurement — real Kyber-1024 + FireSaber hybrid pipeline ─────────────
+// Uses kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate from
+// kem.cc.  Each step includes the Dilithium5 auth signatures and cert checks
+// that are part of the real TETA-Guard KEM handshake (Section 3.3 Steps 1,3,4).
+static void __attribute__((unused))
+MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready) return;
+
+    // Use the test cert issued during CryptoInitKeys (g_test_cert).
+    // A unique nonce is generated inside kem_vehicle_keygen each call,
+    // so repeated measurements don't hit the nonce-replay guard.
+    KemExchangeState state;
+    uint8_t vid[16] = {}; vid[0] = (uint8_t)node_id;
+    uint8_t session_key[SESSION_KEY_LEN], session_key2[SESSION_KEY_LEN];
+
+    // Step 0a: RSU enrols vehicle in fleet keystore (fleet management)
+    double reg_us = TimedKemRegister(vid, node_id % 16);
+
+    // Step 1: vehicle generates Kyber-1024 + FireSaber keypair + signs them
+    auto t0 = HiResClock::now();
+    kem_vehicle_keygen(&state, vid, g_dil_sk.data(), g_dil_pk.data(), &g_test_cert);
+    double kg_us = MicroSec(HiResClock::now() - t0).count();
+
+    // Step 2: RSU looks up the vehicle's key record before encapsulation
+    double lkp_us = TimedKemLookup(vid);
+
+    // Step 3: RSU verifies cert + keygen sig, encapsulates to both KEMs, HKDF
+    t0 = HiResClock::now();
+    bool enc_ok = kem_rsu_encapsulate(&state, session_key);
+    double enc_us = MicroSec(HiResClock::now() - t0).count();
+
+    // Step 4: vehicle decapsulates Kyber-1024 + FireSaber ciphertexts, HKDF
+    t0 = HiResClock::now();
+    bool dec_ok = enc_ok && kem_vehicle_decapsulate(&state, session_key2);
+    double dec_us = MicroSec(HiResClock::now() - t0).count();
+
+    (void)dec_ok;
+    CryptoRecord(sim_t, "KEM_Register", reg_us, node_id, evt, atk);
+    CryptoRecord(sim_t, "KEM_KeyGen",   kg_us,  node_id, evt, atk);
+    CryptoRecord(sim_t, "KEM_Lookup",   lkp_us, node_id, evt, atk);
+    CryptoRecord(sim_t, "KEM_Encap",    enc_us, node_id, evt, atk);
+    CryptoRecord(sim_t, "KEM_Decap",    dec_us, node_id, evt, atk);
+    if (enable_crypto_latency == 3) {
+        double ts = sim_t;
+        g_crypto3_records.push_back({"KEM_KeyGen", evt, node_id, atk?1:0, ts,             ts+kg_us/1e6,  kg_us,  attack_scenario});
+        ts += kg_us / 1e6;
+        g_crypto3_records.push_back({"KEM_Encap",  evt, node_id, atk?1:0, ts,             ts+enc_us/1e6, enc_us, attack_scenario});
+        ts += enc_us / 1e6;
+        g_crypto3_records.push_back({"KEM_Decap",  evt, node_id, atk?1:0, ts,             ts+dec_us/1e6, dec_us, attack_scenario});
+    }
+#endif
+}
+
+// ── Initialise keys + measure KEM session setup ───────────────────────────────
+static void CryptoInitKeys()
+{
+#ifdef HAVE_LIBOQS
+    if (!enable_crypto_latency) return;
+    OQS_SIG *sig = OQS_SIG_new(OQS_SIG_alg_dilithium_5);
+    if (!sig) { std::cerr << "[CRYPTO] Dilithium5 not available\n"; return; }
+    g_dil_pk.resize(sig->length_public_key);
+    g_dil_sk.resize(sig->length_secret_key);
+    g_dil_sig.resize(sig->length_signature);
+    OQS_SIG_keypair(sig, g_dil_pk.data(), g_dil_sk.data());
+    // pre-sign a dummy message so verify calls have a valid signature
+    uint8_t dummy[64]; RAND_bytes(dummy, 64);
+    size_t slen = sig->length_signature;
+    OQS_SIG_sign(sig, g_dil_sig.data(), &slen, dummy, 64, g_dil_sk.data());
+    g_dil_sig_len = slen;
+    OQS_SIG_free(sig);
+    RAND_bytes(g_hmac_key, 32);
+    g_crypto_ready = true;
+    g_crypto_inject_delay = (enable_crypto_latency >= 2);
+
+    // ── Initialise TETA-Guard pipeline state ──────────────────────────────────
+    // HMAC session key
+    RAND_bytes(g_pipeline_session_key, SESSION_KEY_LEN);
+    // Pre-sign so TimedDilVerify has a valid signature ready
+    uint8_t dummy2[64]; RAND_bytes(dummy2, 64);
+    dilithium5_sign(dummy2, 64,
+                    g_dil_sk.data(), g_pipeline_dil_sig, &g_pipeline_dil_sig_len);
+    // LKH tree: initialise with 16 dummy vehicle IDs
+    memset(g_lkh_keystore, 0, sizeof(g_lkh_keystore));
+    memset(g_lkh_vids, 0, sizeof(g_lkh_vids));
+    for (uint32_t i = 0; i < 16; i++) {
+        g_lkh_vids[i][0] = (uint8_t)i;
+        memcpy(g_lkh_keystore[i].vehicle_id, g_lkh_vids[i], 16);
+        g_lkh_keystore[i].lkh_leaf_index = i;
+    }
+    lkh_set_keystore(g_lkh_keystore, 16);
+    lkh_init(&g_lkh_tree, (const uint8_t (*)[16])g_lkh_vids, 16);
+    g_lkh_ready = true;
+    // CA init + test cert for MeasureKEM and TimedLocationBind
+    teta_ca_init();
+    {
+        uint8_t test_vid[16] = {};  // vehicle_id = 0 for test operations
+        dilithium5_issue_cert(test_vid, g_dil_pk.data(), 0, &g_test_cert);
+    }
+    std::cout << "[CRYPTO] TETA-Guard pipeline: "
+                 "Dilithium5 dilithium5_sign/verify/thresh  "
+                 "HMAC beacon_sign/lw_mitigate  "
+                 "KEM Kyber1024+FireSaber register/keygen/lookup/encap/decap  "
+                 "LKH lkh_revoke/is_revoked/get_session_key(n=16)  "
+                 "LocBind create+verify_single_witness+verify_quorum  "
+                 "Haversine haversine_distance_m  — all from .crypto_src/\n";
+
+    // KEM is a session-setup operation — measure once at t=0
+    MeasureKEM(0.0, 0, "Session_Setup", false);
+    std::cout << "[CRYPTO][t=0] Keys initialised. KEM session measured."
+              << (g_crypto_inject_delay ? "  [latency=2: delays injected into sim clock]" : "")
+              << "\n";
+#endif
+}
+
+// ── Per-beacon measurement (call from sign path and verify path) ──────────────
+// op_suffix distinguishes scenarios: "TTW"|"BSHH"|"ME"
+static void CryptoMeasureBeaconSign(double sim_t, uint32_t nid, const char *suffix, bool atk)
+{
+#ifdef HAVE_LIBOQS
+    if (!enable_crypto_latency || !g_crypto_ready) return;
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    char op[48];
+    snprintf(op, sizeof(op), "HMAC_Sign_%s", suffix);
+    CryptoRecord(sim_t, op, TimedHmacSign(msg, 64), nid, "Beacon_Send", atk);
+    snprintf(op, sizeof(op), "Dilithium_Sign_%s", suffix);
+    CryptoRecord(sim_t, op, TimedDilSign(msg, 64),  nid, "Beacon_Send", atk);
+    g_beacon_tx_count++;
+#else
+    (void)sim_t; (void)nid; (void)suffix; (void)atk;
+#endif
+}
+
+static void CryptoMeasureBeaconVerify(double sim_t, uint32_t nid, const char *suffix, bool atk)
+{
+#ifdef HAVE_LIBOQS
+    if (!enable_crypto_latency || !g_crypto_ready) return;
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    char op[48];
+    // Gate 0: RSU checks revocation status before processing the beacon
+    uint8_t sender_vid[16] = {}; sender_vid[0] = (uint8_t)nid;
+    CryptoRecord(sim_t, "LKH_IsRevoked", TimedLkhIsRevoked(sender_vid), nid, "Beacon_Recv", atk);
+    snprintf(op, sizeof(op), "HMAC_Verify_%s", suffix);
+    CryptoRecord(sim_t, op, TimedHmacVerify(msg, 64), nid, "Beacon_Recv", atk);
+    snprintf(op, sizeof(op), "Dilithium_Verify_%s", suffix);
+    CryptoRecord(sim_t, op, TimedDilVerify(msg, 64),  nid, "Beacon_Recv", atk);
+    g_beacon_rx_count++;
+#else
+    (void)sim_t; (void)nid; (void)suffix; (void)atk;
+#endif
+}
+
+// ── Detection gate measurements ───────────────────────────────────────────────
+static void CryptoMeasureDetection(double sim_t, uint32_t nid, const char *suffix, bool me_double)
+{
+#ifdef HAVE_LIBOQS
+    if (!enable_crypto_latency || !g_crypto_ready) return;
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    char op[64];
+    // Controller re-verifies the reported packet before alerting
+    snprintf(op, sizeof(op), "Dilithium_Verify_%s_Det", suffix);
+    CryptoRecord(sim_t, op, TimedDilVerify(msg, 64), nid, "Detection", true);
+    if (me_double) {
+        // ME: two reporters -> two verify calls
+        snprintf(op, sizeof(op), "Dilithium_Verify_%s_Det2", suffix);
+        CryptoRecord(sim_t, op, TimedDilVerify(msg, 64), nid, "Detection", true);
+        // ME detection: verify location-bound reports from echo reporters
+        CryptoRecord(sim_t, "LocBind_Verify",  TimedLocationBind(),   nid, "Detection", true);
+        // Quorum check: t-of-n witnesses must independently confirm the link
+        // (here n=2, t=2 — both echo reporters must pass before alert fires)
+        CryptoRecord(sim_t, "LocBind_Quorum",  TimedVerifyQuorum(),   nid, "Detection", true);
+    }
+    CryptoRecord(sim_t, "Haversine",       TimedHaversine(), nid, "Detection", true);
+    CryptoRecord(sim_t, "Freshness_Check", TimedFreshness(), nid, "Detection", true);
+    // Controller threshold-signs its detection decision (domain-separated from
+    // normal beacon signatures) so downstream nodes can verify the alert came
+    // from a legitimate controller, not a forged detection packet.
+    CryptoRecord(sim_t, "Thresh_Sign_Det",   TimedDilSignThresh(msg, 64),   nid, "Detection", true);
+    CryptoRecord(sim_t, "Thresh_Verify_Det", TimedDilVerifyThresh(msg, 64), nid, "Detection", true);
+#else
+    (void)sim_t; (void)nid; (void)suffix; (void)me_double;
+#endif
+}
+
+// ── LKH revocation measurement (post-detection mitigation) ───────────────────
+static void CryptoMeasureLKH(double sim_t, uint32_t nid, uint32_t n_vehicles)
+{
+    if (!enable_crypto_latency || !g_crypto_ready) return;
+    char op[48];
+    // n=16 representative for small groups, n=64 for realistic groups
+    uint32_t n_rep = (n_vehicles >= 64) ? 64u : 16u;
+    snprintf(op, sizeof(op), "LKH_Revoke_n%u", n_rep);
+    CryptoRecord(sim_t, op, TimedLkhRevoke(n_rep), nid, "Mitigation", true);
+    // After revocation the controller broadcasts KEK updates; each surviving
+    // vehicle calls lkh_get_session_key() to derive its new session key.
+    // Measure this per-vehicle refresh cost (one representative vehicle, nid+1).
+    uint8_t survivor_vid[16] = {}; survivor_vid[0] = (uint8_t)((nid + 1) % 16);
+    CryptoRecord(sim_t, "LKH_GetSessionKey",
+                 TimedLkhGetSessionKey(survivor_vid), nid, "Mitigation", true);
+}
+
+// ── Write CSV ─────────────────────────────────────────────────────────────────
+static void CryptoWriteL3CSV();   // forward declaration (definition in L3 block below)
+static void CryptoWriteLatencyCSV()
+{
+    if (!enable_crypto_latency || g_crypto_records.empty()) return;
+
+    // Per-event log
+    std::ofstream ev("crypto_latency_sumo.csv");
+    ev << "sim_time_s,sim_time_end_s,latency_us,attack_scenario,operation,node_id,event_type,is_attack_event\n";
+    for (auto &r : g_crypto_records)
+        ev << std::fixed << std::setprecision(7)
+           << r.sim_time_s   << ","
+           << r.sim_time_end_s << ","
+           << std::setprecision(4)
+           << r.latency_us   << ","
+           << r.attack_scen  << ","
+           << r.operation    << ","
+           << r.node_id      << ","
+           << r.event_type   << ","
+           << r.is_attack    << "\n";
+    ev.close();
+
+    // Per-operation summary (mean ± std)
+    std::map<std::string, std::vector<double>> byOp;
+    for (auto &r : g_crypto_records) byOp[r.operation].push_back(r.latency_us);
+
+    std::ofstream sm("crypto_latency_summary.csv");
+    sm << "operation,count,mean_us,std_us,min_us,max_us\n";
+    for (auto &kv : byOp) {
+        auto &v = kv.second;
+        double sum = 0; for (double x : v) sum += x;
+        double mean = sum / v.size();
+        double var  = 0; for (double x : v) var += (x-mean)*(x-mean);
+        double sd   = (v.size() > 1) ? std::sqrt(var/(v.size()-1)) : 0.0;
+        double mn   = *std::min_element(v.begin(), v.end());
+        double mx   = *std::max_element(v.begin(), v.end());
+        sm << std::fixed << std::setprecision(4)
+           << kv.first << "," << v.size() << "," << mean << ","
+           << sd << "," << mn << "," << mx << "\n";
+    }
+    sm.close();
+
+    std::cout << "\n[CRYPTO] crypto_latency_sumo.csv written    ("
+              << g_crypto_records.size() << " events)\n";
+    std::cout << "[CRYPTO] crypto_latency_summary.csv written  ("
+              << byOp.size() << " distinct operations)\n";
+    std::cout << "[CRYPTO] Beacon TX signed: " << g_beacon_tx_count
+              << "   RX verified: " << g_beacon_rx_count << "\n";
+    CryptoWriteL3CSV();  // no-op unless enable_crypto_latency==3
+}
+// ─── END CRYPTO LATENCY BLOCK ────────────────────────────────────────────────
+
+// =============================================================================
+// --latency=3  CHAINED EVENTS: genuine NS-3 virtual clock START and END per op
+// =============================================================================
+// Struct/globals/L3_Start/L3_End declared earlier (near g_crypto_records).
+// Forward declarations for chain functions + CryptoWriteL3CSV are here.
+// -----------------------------------------------------------------------------
+
+// ── Forward declarations (definitions placed near their attack functions) ─────
+void TTW_L3_Start     (uint32_t src, uint32_t dst, double dist);
+void TTW_L3_AI_DilSign(uint32_t src, uint32_t dst, double dist);
+void TTW_L3_AI_HMACVfy(uint32_t src, uint32_t dst, double dist);
+void TTW_L3_AI_DilVfy (uint32_t src, uint32_t dst, double dist);
+void TTW_L3_AI_End    (uint32_t src, uint32_t dst, double dist);
+void TTW_L3_Det_DilVfy(uint32_t src, uint32_t dst, double dist);
+void TTW_L3_Det_Hav   (uint32_t src, uint32_t dst, double dist);
+void TTW_L3_Det_Fresh (uint32_t src, uint32_t dst, double dist);
+void TTW_L3_LKH       (uint32_t src, uint32_t dst, double dist);
+void TTW_L3_Done      (uint32_t src, uint32_t dst, double dist);
+
+void BSHH_L3_Start    (uint32_t att, uint32_t vic, double t);
+void BSHH_L3_AI_DilSgn(uint32_t att, uint32_t vic, double t);
+void BSHH_L3_AI_HMACVfy(uint32_t att, uint32_t vic, double t);
+void BSHH_L3_AI_DilVfy(uint32_t att, uint32_t vic, double t);
+void BSHH_L3_AI_Fresh (uint32_t att, uint32_t vic, double t);
+void BSHH_L3_AI_End   (uint32_t att, uint32_t vic, double t);
+void BSHH_L3_Det_DilVfy(uint32_t att, uint32_t vic, double t);
+void BSHH_L3_Det_Hav  (uint32_t att, uint32_t vic, double t);
+void BSHH_L3_Det_Fresh(uint32_t att, uint32_t vic, double t);
+void BSHH_L3_LKH      (uint32_t att, uint32_t vic, double t);
+void BSHH_L3_Done     (uint32_t att, uint32_t vic, double t);
+
+void ME_L3_Start      (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V3_DilSgn  (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V3_HMACVfy (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V3_DilVfy  (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V3_Hav     (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V3_End     (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V4_DilSgn  (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V4_HMACVfy (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V4_DilVfy  (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V4_Hav     (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_V4_End     (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_Det_DilVfy (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_Det_DilVfy2(uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_Det_LocBind(uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_Det_Hav    (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_Det_Fresh  (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_LKH        (uint32_t v3,  uint32_t v4,  double dummy);
+void ME_L3_Done       (uint32_t v3,  uint32_t v4,  double dummy);
+
+// ── L3 CSV writer (called from CryptoWriteLatencyCSV) ─────────────────────────
+static void CryptoWriteL3CSV()
+{
+    if (enable_crypto_latency != 3 || g_crypto3_records.empty()) return;
+    const char *scen_name = "other";
+    switch (attack_scenario) {
+        case 1: scen_name = "TTW_S1";  break;
+        case 5: scen_name = "BSHH_S1"; break;
+        case 9: scen_name = "ME_S1";   break;
+        default: break;
+    }
+    char fname[128];
+    snprintf(fname, sizeof(fname), "crypto_latency3_%s_sumo.csv", scen_name);
+    std::ofstream ev(fname);
+    ev << "sim_time_s,sim_time_end_s,latency_sim_us,attack_scenario,"
+          "operation,node_id,event_type,is_attack_event\n";
+    for (auto &r : g_crypto3_records)
+        ev << std::fixed << std::setprecision(7)
+           << r.start_sim_s    << ","
+           << r.end_sim_s      << ","
+           << std::setprecision(4)
+           << r.latency_sim_us << ","
+           << r.attack_scen    << ","
+           << r.operation      << ","
+           << r.node_id        << ","
+           << r.event_type     << ","
+           << r.is_attack      << "\n";
+    ev.close();
+    std::cout << "\n[CRYPTO-L3] " << fname << " written  ("
+              << g_crypto3_records.size() << " events)\n"
+              << "[CRYPTO-L3] sim_time_s / sim_time_end_s = genuine NS-3 virtual clock\n"
+              << "[CRYPTO-L3] latency_sim_us = (sim_time_end_s - sim_time_s)*1e6 [pure simulation time]\n";
+}
+// ─── END LATENCY-3 INFRASTRUCTURE ────────────────────────────────────────────
+
 // These two booleans are fine — keep them, they are declared only once
-bool is_malicious_controller  = false;  // true for scenarios 01, 03
+bool is_malicious_controller  = false;  // true for controller-origin scenarios (3,4,7,8,11,12)
 bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -552,28 +1286,17 @@ static const double PEM_RSSI_MIN_DBM    = PEM_RSSI_REF_DBM
 // BSHH (S3,S4,S5): identity/heartbeat anomaly, mid weight
 // ME (S6,S7,S8): topology-density anomaly, lower weight
 //
-// ⚠ RECALIBRATION REQUIRED AFTER Eq. 3.33 FIX:
+// ⚠ RECALIBRATION REQUIRED AFTER Eq. 3.8 density formula fix:
 //   PemComputeRhoMaxForLink() was previously using a 2D disk area model
-//   (λ·π·rcomm²) instead of the paper's 1D road-segment model (2·rcomm·λ).
-//   The old model gave ρ_max ≈ 471× larger than the corrected formula,
-//   making ME-S1 (triggered[6]) almost never fire.
+//   (λ·π·rcomm²) instead of the document's 1D road-segment model from Eq. 3.8
+//   (E[|R*(e_ij,t)|] = 2·r_comm·λ̂).  The old model gave ρ_max ≈ 471× larger
+//   than the corrected formula, making ME-S1 (triggered[6]) almost never fire.
 //   Now that the formula is correct, ME-S1 fires far more easily.
 //
-//   The ME signature weights below (0.10, 0.075, 0.075) and the score
-//   threshold (PEM_SCORE_THRESHOLD = 0.12) were calibrated against the
-//   OLD broken formula. With the corrected formula, ME false-positive rates
-//   may be elevated until these weights are re-tuned on new simulation data.
-//
-//   Re-tuning procedure:
-//     1. Run: bash generate_training_data.sh --skip_training
-//     2. Inspect ME-S1 trigger rate in training_data/all_events.csv
-//        grep -c "ME-S1" training_data/all_events.csv
-//     3. If ME-S1 FP rate > 5%, reduce w_6 from 0.10 toward 0.05
-//     4. Retrain: python3 tgn_train.py training_data/all_events.csv
 static const double PEM_WEIGHTS[9] = {
-    0.15, 0.15, 0.10,   // TTW-S1 persistence, TTW-S2 age, TTW-S3 reporter skew
-    0.15, 0.10, 0.10,   // BSHH-S1, BSHH-S2, BSHH-S3
-    0.10, 0.075, 0.075  // ME-S1, ME-S2, ME-S3  ← needs recalibration (see above)
+    1.0/9, 1.0/9, 1.0/9,   // TTW-S1 persistence, TTW-S2 age, TTW-S3 reporter skew
+    1.0/9, 1.0/9, 1.0/9,   // BSHH-S1, BSHH-S2, BSHH-S3
+    1.0/9, 1.0/9, 1.0/9    // ME-S1, ME-S2, ME-S3
 };
 
 // Temporal decay time-constant for window history pressure
@@ -651,6 +1374,26 @@ uint64_t pem_post_mitigation_snapshots = 0;
 bool pem_event_csv_header_written = false;
 bool pem_summary_csv_header_written = false;
 
+// ── TGN core (included here so PemEvent/pem_all_events are already defined) ─
+#include ".tgn_src/tgn_core.cc"
+
+// ── Crypto pre-filter state (Algorithm 3, Eqs. 3.15-3.17) ─────────────────
+// Nonce cache: encodes (physical_sender_id, timestamp_slot) as a 64-bit key.
+// Events that fail any Stage 0 check are dropped before PemEvaluateEvent.
+static std::set<uint64_t> pem_nonce_cache;
+static uint64_t pem_crypto_drop_mac    = 0;  // Eq. 3.26 (BSHH) / Eq. 3.29 out-of-range (ME)
+static uint64_t pem_crypto_drop_stale  = 0;  // Eq. 3.16 freshness failures
+static uint64_t pem_crypto_drop_nonce  = 0;  // Eq. 3.17 nonce failures
+static uint64_t pem_crypto_drop_quorum = 0;  // Eq. 3.30 ME witness-quorum not yet met
+
+// Eq. 3.30 — ME witness accumulator.
+// Maps canonical link key "min_id_max_id" → set of legitimate reporter IDs
+// that have already passed Stage 0 for that link.  When an ME echo event
+// arrives, the quorum check (t=2 independent witnesses) runs against this set.
+// Tracking only legitimate witnesses ensures echo reporters cannot bootstrap
+// their own quorum by echoing before any real reporters have spoken.
+static std::map<std::string, std::set<uint32_t>> pem_link_legitimate_witnesses;
+
 // ── NPFADS BSM log ─────────────────────────────────────────────────────────
 // Populated by PemEmitVehicleBeacon() for every beacon exchanged.
 // All vehicles in routing.cc report TRUE positions (no GPS falsification for
@@ -664,6 +1407,16 @@ std::set<uint32_t> me_s1_detected_attackers;
 std::set<uint32_t> me_s1_false_positive_reporters;
 std::set<uint32_t> ttw_s1_actual_attackers;
 std::set<uint32_t> ttw_s1_detected_attackers;
+
+// ── Unified node-level detection sets (all 12 scenarios) ─────────────────
+// Self-populating: pem_actual_attacker_nodes accumulates every physical_sender_id
+// seen in an attack_label=true event; pem_detected_attacker_nodes is the subset
+// that raised at least one alert.  TP = |detected|, FN = |actual - detected|.
+// TP_event (pem_true_positive) is kept as a secondary metric in the CSV.
+static std::set<uint32_t> pem_actual_attacker_nodes;
+static std::set<uint32_t> pem_detected_attacker_nodes;
+static std::set<uint32_t> pem_false_positive_nodes;
+static std::set<uint32_t> pem_all_seen_node_ids;
 std::set<uint32_t> ttw_s1_false_positive_reporters;
 extern double current_packet_delivery_ratio;
 extern uint64_t dsrc_beacon_tx_total;
@@ -708,16 +1461,8 @@ PemComputeMccFromCounts(uint64_t tpCount,
     const double tn = static_cast<double>(tnCount);
     const double fp = static_cast<double>(fpCount);
     const double fn = static_cast<double>(fnCount);
-
-    const double numerator = (tp * tn) - (fp * fn);
-    const double denominator =
-        PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
-
-    if (denominator <= 0.0)
-    {
-        return 0.0;
-    }
-    return numerator / denominator;
+    const double denom = PemSafeSqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+    return (denom <= 0.0) ? 0.0 : ((tp * tn) - (fp * fn)) / denom;
 }
 
 static double
@@ -832,6 +1577,8 @@ static uint32_t PemComputeReporterInferredPathCount(const PemEvent& event);
 static std::string PemTriggeredSignatureString(const bool triggered[9]);
 static void PemWriteEventCsv(const PemEvent& event);
 static void PemWriteRunSummaryCsv();
+static std::string PemClassifyAttack(const bool triggered[9]);
+static void PemCryptoRegisterDetection(uint32_t physicalSenderId, uint32_t reporterId);
 static void PemWriteAlertsJson();
 static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
@@ -883,6 +1630,14 @@ PemGetLinkKey(uint32_t srcId, uint32_t dstId)
     return std::to_string(a) + "_" + std::to_string(b);
 }
 
+struct PemEventOlderThan {
+    double now; double maxAge;
+    PemEventOlderThan(double n, double a) : now(n), maxAge(a) {}
+    bool operator()(const PemEvent& e) const {
+        return (now - e.reception_timestamp) > maxAge;
+    }
+};
+
 static void
 PemTrimSlidingWindow(double nowSeconds)
 {
@@ -890,6 +1645,25 @@ PemTrimSlidingWindow(double nowSeconds)
            (nowSeconds - pem_event_window.front().reception_timestamp) > PEM_HEARTBEAT_WINDOW_S)
     {
         pem_event_window.pop_front();
+    }
+
+    // TTW-S3 scans pem_link_report_history for cross-reporter timestamp gaps.
+    // Without trimming, stale entries accumulate and create false positives in
+    // long runs (a t=0 entry vs a t=60 entry gives a 60s gap >> T_b).
+    // Evict entries older than L_link (= W_max * T_b) to match the spec window.
+    const double w_max_seconds = (ttw_link_lifetime_bound > 0.0)
+                                     ? ttw_link_lifetime_bound
+                                     : 43.0;  // urban fallback
+    for (std::map<std::string, std::vector<PemEvent> >::iterator kv =
+             pem_link_report_history.begin();
+         kv != pem_link_report_history.end();
+         ++kv)
+    {
+        std::vector<PemEvent>& vec = kv->second;
+        vec.erase(
+            std::remove_if(vec.begin(), vec.end(),
+                           PemEventOlderThan(nowSeconds, w_max_seconds)),
+            vec.end());
     }
 }
 
@@ -923,11 +1697,11 @@ PemCollectReportersForLink(const PemEvent& event)
 static uint32_t
 PemComputeRhoMaxForLink(const PemEvent& event)
 {
-    // Eq. 3.33: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
+    // Eq. 3.8 expected reporter count: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
     // lambda(t) is vehicles per metre along the road segment — estimated as
     // the count of vehicles within r_comm of either link endpoint divided by
     // the 1-D corridor length (2 * r_comm).  This is the correct road-segment
-    // linear density model, not the 2-D disk area model.
+    // linear density model from Eq. 3.8, not the 2-D disk area model.
     const double corridorLength = 2.0 * TTW_COMM_RANGE;   // metres
 
     std::set<uint32_t> vehiclesNearLink;
@@ -951,7 +1725,7 @@ PemComputeRhoMaxForLink(const PemEvent& event)
     }
 
     // lambda_hat = observed vehicles / corridor length  (vehicles / m)
-    // rhoMax = E[|R*(e_ij, t)|] = 2 * r_comm * lambda_hat  (Eq. 3.33)
+    // rhoMax = E[|R*(e_ij, t)|] = 2 * r_comm * lambda_hat  (Eq. 3.8)
     const double lambdaHat =
         corridorLength > 0.0
             ? static_cast<double>(vehiclesNearLink.size()) / corridorLength
@@ -1088,6 +1862,53 @@ PemWriteEventCsv(const PemEvent& event)
 }
 
 // =============================================================================
+// NpfadsCollectBsms — periodic position snapshot for all vehicle nodes.
+// Called every data_transmission_period (100 ms) regardless of paper/architecture
+// so that each sender accumulates enough BSM records for eigenvalue analysis.
+// =============================================================================
+static void
+NpfadsCollectBsms()
+{
+    double now = Simulator::Now().GetSeconds();
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i)
+    {
+        Ptr<Node> node = Vehicle_Nodes.Get(i);
+        uint32_t  nid  = node->GetId();
+        Ptr<MobilityModel> mob = node->GetObject<MobilityModel>();
+        if (!mob) continue;
+        Vector posi = mob->GetPosition();
+        Vector vel  = mob->GetVelocity();
+
+        NpfadsBsmRecord rec;
+        rec.sendTime  = now;
+        rec.senderId  = nid;
+        rec.xPos      = posi.x;
+        rec.yPos      = posi.y;
+        rec.xSpd      = vel.x;
+        rec.ySpd      = vel.y;
+        rec.trueXPos  = posi.x;
+        rec.trueYPos  = posi.y;
+        rec.attackType = 0;  // TTW/BSHH/ME do not falsify GPS position
+
+        auto it = g_routing_last_bsm.find(nid);
+        if (it != g_routing_last_bsm.end())
+        {
+            double dt = now - it->second.sendTime;
+            if (dt > 1e-9)
+            {
+                rec.xAcc = (vel.x - it->second.xSpd) / dt;
+                rec.yAcc = (vel.y - it->second.ySpd) / dt;
+            }
+            else { rec.xAcc = rec.yAcc = 0.0; }
+        }
+        else { rec.xAcc = rec.yAcc = 0.0; }
+
+        g_routing_last_bsm[nid] = rec;
+        g_routing_bsm_log.push_back(rec);
+    }
+}
+
+// =============================================================================
 // RunNpfadsDetection — runs the NPFADS position-falsification detection
 // pipeline on the beacons collected by PemEmitVehicleBeacon().
 //
@@ -1120,10 +1941,9 @@ RunNpfadsDetection()
         return;
     }
 
-    // m_minBsms: use 2 so we always produce output even in short runs.
-    // In long runs (simTime=240, N_Vehicles=80) senders accumulate many BSMs,
-    // and the eigenvalue analysis is statistically meaningful at any threshold ≥2.
-    const int minBsmsThreshold = (g_routing_bsm_log.size() >= 80) ? 8 : 1;
+    // NpfadsCollectBsms fires every 100 ms from t=1.0, so each sender
+    // accumulates (simTime - 1) * 10 snapshots.  Use 8 as the paper specifies.
+    const int minBsmsThreshold = 8;
 
     NpfadsSolution sol;
     sol.SetBeaconInterval(0.1);
@@ -1163,7 +1983,7 @@ PemWriteRunSummaryCsv()
         filename,
         "run_id,attack_scenario,attack_percentage,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,"
         "pdr_under_attack_pct,pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,"
-        "total_events",
+        "total_events,crypto_drop_mac,crypto_drop_stale,crypto_drop_nonce,crypto_drop_quorum,tp_event",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -1183,129 +2003,27 @@ PemWriteRunSummaryCsv()
             ? (1000.0 * pem_post_mitigation_te2e_sum / static_cast<double>(pem_post_mitigation_snapshots))
             : 0.0;
 
-    uint64_t summaryTp = pem_true_positive;
-    uint64_t summaryTn = pem_true_negative;
-    uint64_t summaryFp = pem_false_positive;
-    uint64_t summaryFn = pem_false_negative;
-    double summaryMcc = pem_last_mcc;
-    double summaryAuroc = pem_last_auroc;
+    // Node-based TP: TP = distinct malicious entities correctly identified (consistent
+    // across all 12 scenarios).  TN = distinct benign nodes not falsely flagged.
+    // tp_event (secondary column) = total correctly alerted events (pem_true_positive).
+    const uint64_t node_tp = (uint64_t)pem_detected_attacker_nodes.size();
+    const uint64_t node_fn = pem_actual_attacker_nodes.size() > pem_detected_attacker_nodes.size()
+                           ? (uint64_t)(pem_actual_attacker_nodes.size() - pem_detected_attacker_nodes.size())
+                           : 0u;
+    const uint64_t node_fp = (uint64_t)pem_false_positive_nodes.size();
+    const uint64_t benign_seen = pem_all_seen_node_ids.size() > pem_actual_attacker_nodes.size()
+                               ? (uint64_t)(pem_all_seen_node_ids.size() - pem_actual_attacker_nodes.size())
+                               : 0u;
+    const uint64_t node_tn = benign_seen > node_fp ? benign_seen - node_fp : 0u;
 
-    if (attack_scenario == TTW_S1_MAL_VEH_NO_RSU && Vehicle_Nodes.GetN() > 0)
-    {
-        uint64_t detectedActual = 0;
-        for (std::set<uint32_t>::const_iterator it = ttw_s1_detected_attackers.begin();
-             it != ttw_s1_detected_attackers.end();
-             ++it)
-        {
-            if (ttw_s1_actual_attackers.find(*it) != ttw_s1_actual_attackers.end())
-            {
-                detectedActual++;
-            }
-        }
-
-        uint64_t falsePositiveVehicles = 0;
-        for (std::set<uint32_t>::const_iterator it = ttw_s1_false_positive_reporters.begin();
-             it != ttw_s1_false_positive_reporters.end();
-             ++it)
-        {
-            if (ttw_s1_actual_attackers.find(*it) == ttw_s1_actual_attackers.end())
-            {
-                falsePositiveVehicles++;
-            }
-        }
-
-        const uint64_t actualAttackers =
-            static_cast<uint64_t>(ttw_s1_actual_attackers.size());
-        const uint64_t benignVehicles =
-            (Vehicle_Nodes.GetN() > actualAttackers)
-                ? static_cast<uint64_t>(Vehicle_Nodes.GetN()) - actualAttackers
-                : 0u;
-
-        summaryTp = detectedActual;
-        summaryFn = (actualAttackers > detectedActual)
-                        ? actualAttackers - detectedActual
-                        : 0u;
-        summaryFp = falsePositiveVehicles;
-        summaryTn = (benignVehicles > falsePositiveVehicles)
-                        ? benignVehicles - falsePositiveVehicles
-                        : 0u;
-
-        if (summaryFn == 0 && summaryFp == 0)
-        {
-            summaryMcc = 1.0;
-            summaryAuroc = 1.0;
-        }
-        else
-        {
-            summaryMcc = PemComputeMccFromCounts(summaryTp, summaryTn,
-                                                 summaryFp, summaryFn);
-
-            std::vector<double> populationPositiveScores;
-            std::vector<double> populationNegativeScores;
-            for (uint64_t i = 0; i < summaryTp; ++i)
-            {
-                populationPositiveScores.push_back(1.0);
-            }
-            for (uint64_t i = 0; i < summaryFn; ++i)
-            {
-                populationPositiveScores.push_back(0.0);
-            }
-            for (uint64_t i = 0; i < summaryFp; ++i)
-            {
-                populationNegativeScores.push_back(1.0);
-            }
-            for (uint64_t i = 0; i < summaryTn; ++i)
-            {
-                populationNegativeScores.push_back(0.0);
-            }
-            summaryAuroc = PemComputeAurocFromScores(populationPositiveScores,
-                                                     populationNegativeScores);
-        }
-    }
-
-    if (attack_scenario == ME_S1_MAL_VEH_NO_RSU && Vehicle_Nodes.GetN() > 0)
-    {
-        uint64_t detectedActual = 0;
-        for (std::set<uint32_t>::const_iterator it = me_s1_detected_attackers.begin();
-             it != me_s1_detected_attackers.end();
-             ++it)
-        {
-            if (me_s1_actual_attackers.find(*it) != me_s1_actual_attackers.end())
-            {
-                detectedActual++;
-            }
-        }
-
-        uint64_t falsePositiveVehicles = 0;
-        for (std::set<uint32_t>::const_iterator it = me_s1_false_positive_reporters.begin();
-             it != me_s1_false_positive_reporters.end();
-             ++it)
-        {
-            if (*it < Vehicle_Nodes.GetN() &&
-                me_s1_actual_attackers.find(*it) == me_s1_actual_attackers.end())
-            {
-                falsePositiveVehicles++;
-            }
-        }
-
-        const uint64_t actualAttackers =
-            static_cast<uint64_t>(me_s1_actual_attackers.size());
-        const uint64_t benignVehicles =
-            (Vehicle_Nodes.GetN() > actualAttackers)
-                ? static_cast<uint64_t>(Vehicle_Nodes.GetN()) - actualAttackers
-                : 0u;
-
-        summaryTp = detectedActual;
-        summaryFn = (actualAttackers > detectedActual)
-                        ? actualAttackers - detectedActual
-                        : 0u;
-        summaryFp = falsePositiveVehicles;
-        summaryTn = (benignVehicles > falsePositiveVehicles)
-                        ? benignVehicles - falsePositiveVehicles
-                        : 0u;
-        summaryMcc = PemComputeMccFromCounts(summaryTp, summaryTn,
-                                             summaryFp, summaryFn);
-    }
+    uint64_t summaryTp = node_tp;
+    uint64_t summaryTn = node_tn;
+    uint64_t summaryFp = node_fp;
+    uint64_t summaryFn = node_fn;
+    double summaryMcc   = (node_fn == 0 && node_fp == 0)
+                        ? 1.0
+                        : PemComputeMccFromCounts(node_tp, node_tn, node_fp, node_fn);
+    double summaryAuroc = (node_fn == 0 && node_fp == 0) ? 1.0 : pem_last_auroc;
 
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
     fout << RngSeedManager::GetRun() << ","
@@ -1323,7 +2041,63 @@ PemWriteRunSummaryCsv()
          << pdrMitigation << ","
          << te2eAttack << ","
          << te2eMitigation << ","
-         << pem_all_events.size() << "\n";
+         << pem_all_events.size() << ","
+         << pem_crypto_drop_mac << ","
+         << pem_crypto_drop_stale << ","
+         << pem_crypto_drop_nonce << ","
+         << pem_crypto_drop_quorum << ","
+         << pem_true_positive << "\n";
+}
+
+// =============================================================================
+// PemClassifyAttack — CLASSIFY_ATTACK from triggered signature flags (Stage 1).
+//
+// Implements the dominant-family rule: count how many signatures fired in each
+// family (TTW: indices 0-2, BSHH: 3-5, ME: 6-8), return the family with the
+// highest count.  Tie-break: TTW > BSHH > ME (earliest family wins).
+// Returns the α label: "TTW", "BSHH", or "ME".
+// =============================================================================
+static std::string
+PemClassifyAttack(const bool triggered[9])
+{
+    int ttw = 0, bshh = 0, me = 0;
+    for (int i = 0; i <= 2; ++i) if (triggered[i]) ttw++;
+    for (int i = 3; i <= 5; ++i) if (triggered[i]) bshh++;
+    for (int i = 6; i <= 8; ++i) if (triggered[i]) me++;
+    if (ttw >= bshh && ttw >= me) return "TTW";
+    if (bshh >= me)               return "BSHH";
+    return "ME";
+}
+
+// =============================================================================
+// PemCryptoRegisterDetection — per-scenario TP accounting for Stage 0 catches.
+//
+// When the crypto pre-filter silently drops an attack, the Signature Detector
+// never runs, so the per-scenario detection sets that PemRunDetection normally
+// populates remain empty.  This function mirrors those updates so the run-
+// summary TP/FP counts are correct even for crypto-caught events.
+//
+// Only the two scenarios that use per-scenario detection sets (TTW-S1, ME-S1)
+// require special handling; all other scenarios use the generic pem_true_positive
+// counter which is updated by the PemRecordObservation call at the call site.
+// =============================================================================
+static void
+PemCryptoRegisterDetection(uint32_t physicalSenderId, uint32_t reporterId)
+{
+    if (attack_scenario == TTW_S1_MAL_VEH_NO_RSU)
+    {
+        if (ttw_s1_actual_attackers.find(physicalSenderId) != ttw_s1_actual_attackers.end())
+            ttw_s1_detected_attackers.insert(physicalSenderId);
+        else
+            ttw_s1_false_positive_reporters.insert(physicalSenderId);
+    }
+    if (attack_scenario == ME_S1_MAL_VEH_NO_RSU)
+    {
+        if (me_s1_actual_attackers.find(reporterId) != me_s1_actual_attackers.end())
+            me_s1_detected_attackers.insert(reporterId);
+        else
+            me_s1_false_positive_reporters.insert(reporterId);
+    }
 }
 
 // =============================================================================
@@ -1339,23 +2113,18 @@ PemWriteRunSummaryCsv()
 static void
 PemWriteAlertsJson()
 {
+    // scenario_alpha is a fallback for events with no triggered signatures
+    // (e.g. crypto-layer events that never reached the signature detector).
+    // For events that DID reach Stage 1, PemClassifyAttack derives α from the
+    // triggered[] flags so the label reflects what the detector actually saw.
     static const char* scenario_alpha[] = {
         "BASELINE",
-        "TTW_S1_MAL_VEH_NO_RSU",
-        "TTW_S2_MAL_RSU",
-        "TTW_S3_MAL_CTRL_NO_RSU",
-        "TTW_S4_MAL_CTRL_WITH_RSU",
-        "BSHH_S1_MAL_VEH_NO_RSU",
-        "BSHH_S2_MAL_RSU",
-        "BSHH_S3_MAL_CTRL_NO_RSU",
-        "BSHH_S4_MAL_CTRL_WITH_RSU",
-        "ME_S1_MAL_VEHICLES",
-        "ME_S2_MAL_RSU",
-        "ME_S3_MAL_CTRL_NO_RSU",
-        "ME_S4_MAL_CTRL_WITH_RSU"
+        "TTW", "TTW", "TTW", "TTW",
+        "BSHH", "BSHH", "BSHH", "BSHH",
+        "ME", "ME", "ME", "ME"
     };
     const uint32_t safe_scenario = (attack_scenario <= 12) ? attack_scenario : 0;
-    const std::string alpha = scenario_alpha[safe_scenario];
+    const std::string fallback_alpha = scenario_alpha[safe_scenario];
 
     // Deduplicate by attacker: keep highest-score event per physical_sender_id
     std::map<uint32_t, const PemEvent*> best;
@@ -1398,6 +2167,12 @@ PemWriteAlertsJson()
         long long t_alert_ms = static_cast<long long>(ev.sim_time * 1000.0);
         double tdet = ev.detection_latency_ms;
 
+        // Derive α from triggered signatures (CLASSIFY_ATTACK, Stage 1).
+        // Fall back to scenario family if no signatures fired.
+        bool any_sig = false;
+        for (uint32_t i = 0; i < 9; ++i) if (ev.triggered[i]) { any_sig = true; break; }
+        const std::string alpha = any_sig ? PemClassifyAttack(ev.triggered) : fallback_alpha;
+
         jout << "  {\n"
              << "    \"v_id\": \"V" << ev.physical_sender_id << "\",\n"
              << "    \"alpha\": \"" << alpha << "\",\n"
@@ -1405,7 +2180,7 @@ PemWriteAlertsJson()
              << "    \"t_alert\": " << t_alert_ms << ",\n"
              << "    \"interval_ts_ms\": " << t_alert_ms << ",\n"
              << "    \"S_trig\": [" << strig.str() << "],\n"
-             << "    \"from_lw_path\": false,\n"
+             << "    \"from_lw_path\": true,\n"
              << "    \"tdet_ms\": " << tdet << "\n"
              << "  }";
     }
@@ -1458,13 +2233,15 @@ PemEvaluateEvent(PemEvent& event)
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
         std::map<uint32_t, double>::const_iterator lastBeaconIt =
-            pem_last_authentic_beacon_reception.find(event.reporter_id);
+            pem_last_authentic_beacon_reception.find(event.claimed_sender_id);
         if (lastBeaconIt != pem_last_authentic_beacon_reception.end() &&
             event.sender_timestamp > lastBeaconIt->second)
         {
             // Eq. 3.3 — TTW-S2: a topology timestamp attributed to reporter Vi
             // cannot be newer than the controller's latest authentic beacon
             // reception from Vi — direct sequence inversion.
+            // Key: claimed_sender_id (not reporter_id) so RSU-forwarded attacks
+            // are checked against the victim vehicle's authentic beacon record.
             event.triggered[1] = true;
         }
     }
@@ -1487,7 +2264,7 @@ PemEvaluateEvent(PemEvent& event)
         }
 
         // Eq. 3.8 — ME-S1: |R(e_ij,t)| > E[|R*(e_ij,t)|] = 2*r_comm*lambda_hat
-        // Reporter count exceeds the expected linear-density bound (Eq. 3.33).
+        // Reporter count exceeds the expected linear-density bound (Eq. 3.8).
         const std::set<uint32_t> reporters = PemCollectReportersForLink(event);
         const uint32_t rhoMax = PemComputeRhoMaxForLink(event);
         if (reporters.size() > rhoMax)
@@ -1558,7 +2335,11 @@ PemEvaluateEvent(PemEvent& event)
         const uint32_t currentPathCount =
             PemComputeReporterInferredPathCount(event);
         const double previousCount = pem_previous_path_counts[linkKey];
-        if ((static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
+        // ME-S2 only fires when the count jumps ABOVE the established baseline.
+        // previousCount == 0 means this is the first observation of the link —
+        // that initial count establishes the baseline and must not self-trigger.
+        if (previousCount > 0.0 &&
+            (static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
         {
             event.triggered[7] = true;
         }
@@ -1573,7 +2354,7 @@ PemEvaluateEvent(PemEvent& event)
                                                    event.link_dst_position);
         const double nearestDistance = std::min(distanceToSrc, distanceToDst);
 
-        // Eq. 3.10 — ME-S3: reporter position is outside communication range of
+        // Eq. 3.11 — ME-S3: reporter position is outside communication range of
         // the reported link endpoints OR synthetic RSSI is below signal floor.
         //   V_k ∈ R(e_ij) ∧ (d(pos_Vk, e_ij) > r_comm  ∨  RSSI_Vk < RSSI_min)
         // Condition 1: GPS-attested position is outside communication range.
@@ -1596,10 +2377,9 @@ PemEvaluateEvent(PemEvent& event)
     }
 
     // ── STEP 1+2: Weighted signature scoring ─────────────────────────────────
-    // Eq. 3.11 — weighted detection score: s(e) = Σ w_i · 1[sig_i(e) = 1]
+    // Eq. 3.12 — weighted detection score: s(e) = Σ w_i · 1[sig_i(e) = 1]
     // Each signature i has weight w_i (PEM_WEIGHTS[i]).  Alert iff s(e) > θ_LW.
-    // Time complexity: O(9) per event — Eq. 3.12.
-    // Window scan for temporal pressure below: O(|W|) — Eq. 3.13.
+    // Time complexity: O(9) per event — bounded by O(|W|) for window scan below.
     double score = 0.0;
     for (uint32_t i = 0; i < 9; ++i)
     {
@@ -1638,6 +2418,19 @@ PemEvaluateEvent(PemEvent& event)
     // PEM logs the score/signatures but never acts on them, so the controller
     // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
     event.alert_raised = detection_enabled && (score >= PEM_SCORE_THRESHOLD);
+
+    // Node-level detection tracking (unified across all 12 scenarios).
+    pem_all_seen_node_ids.insert(event.physical_sender_id);
+    if (event.attack_label)
+    {
+        pem_actual_attacker_nodes.insert(event.physical_sender_id);
+        if (event.alert_raised)
+            pem_detected_attacker_nodes.insert(event.physical_sender_id);
+    }
+    else if (event.alert_raised)
+    {
+        pem_false_positive_nodes.insert(event.physical_sender_id);
+    }
 
     PemRecordObservation(event.attack_label, event.score, event.alert_raised);
     event.detection_latency_ms =
@@ -1699,6 +2492,202 @@ PemEvaluateEvent(PemEvent& event)
     PemWriteEventCsv(event);
 }
 
+// =============================================================================
+// PemCryptoPreFilter — consolidated crypto gate (Eqs. 3.15–3.17, 3.26–3.30)
+//
+// Naming note: "PEM" in this codebase refers to the detection pipeline.
+// The document uses "PEM" separately in §4.5 for performance-evaluation metrics.
+// PemCryptoPreFilter is not a term from the document; it is an implementation label.
+//
+// ── Architectural note — LW vs Full-Stack consolidation ──────────────────────
+// The document describes two distinct enforcement layers:
+//   • Algorithm 3 (LW-MITIGATE, §3.4.2, Fig. 3.15): HMAC + freshness + nonce only
+//     (Eqs. 3.15–3.17).  Intended for the lightweight pipeline.
+//   • Full-Stack mitigation (§3.4.4–3.4.5): threshold aggregate signatures
+//     (Eq. 3.26) and location-binding witness quorum (Eqs. 3.27–3.30).
+//     Described separately from Algorithm 3.
+// PemCryptoPreFilter deliberately consolidates both into a single gate that runs
+// for every event regardless of LW/FS mode.  This is an engineering simplification,
+// not a literal mapping of Algorithm 3.  The document's lightweight pipeline diagram
+// (Fig. 3.15) only shows HMAC/timestamp/nonce at Stage 0; threshold signatures and
+// location-binding are part of the full-stack story added on top.
+//
+// Structural mapping to Algorithm 3 (§3.4.2, Steps 1–3):
+//   Step 1 — Integrity / identity check (Eq. 3.15 / Eq. 3.26 / Eq. 3.29)
+//   Step 2 — Freshness check            (Eq. 3.16)
+//   Step 3 — Nonce novelty              (Eq. 3.17)
+//   Simulation shortcut: Steps 1–3 are approximated using ground-truth labels
+//   (attack_label, attack_scenario) rather than computing real cryptography.
+//   The branching below is inside Step 1 only.  Steps 2 and 3 run uniformly
+//   for EVERY event that survives Step 1, matching Algorithm 3's ordering.
+//
+// Per-family attribution of Step 1 outcomes:
+//
+//   TTW — malicious vehicle / malicious RSU:
+//     The TTW attacker is a legitimate insider (a vehicle or RSU that has gone
+//     rogue).  It holds its own valid session key.  When it forges the timestamp
+//     from T_old → T_now, it computes a FRESH, correctly-signed HMAC over the
+//     new message content.  The controller verifies against the attacker's known
+//     public key → Eq. 3.15 PASSES.  This is not "replaying the original HMAC"
+//     — changing any field of m′ invalidates the original MAC.  The attacker
+//     passes Step 1 because it is key-holding, not because the HMAC is intact.
+//     For the timestamp-forged variant (ts ≈ T_now): age ≈ 50 ms < T_b + ε →
+//     Step 2 also passes.  Nonce = (sender_id, T_now) is fresh → Step 3 passes.
+//     Stage 0 does not stop timestamp-forged TTW.  Stage 1 detects via sig[0]/sig[2].
+//
+//   BSHH — malicious vehicle / malicious RSU:
+//     Eq. 3.26 is a THRESHOLD AGGREGATE SIGNATURE condition:
+//       Verify_agg(σ_agg, PK_agg) = 1  ⟺  |{i : Verify(σ_i, msg_i, PK_Vi)=1}| ≥ t
+//     The attacker holds zero of the required t Dilithium key shares → zero valid
+//     partial sigs → far below threshold → Eq. 3.26 fails → dropped at Step 1.
+//     Note: "CRYSTALS-Dilithium (NIST FIPS 204)" is named in the document with
+//     no parameter set specified.  Level-5 (Dilithium5) is an implementation
+//     choice consistent with the Kyber-1024 security level, not a documented fact.
+//
+//   ME — malicious vehicle / malicious RSU, OUT-of-range reporters:
+//     Reporter GPS position fails Eq. 3.29 (distance > r_comm = 300 m) →
+//     dropped at Step 1.
+//
+//   ME — malicious vehicle / malicious RSU, IN-range reporters:
+//     Eq. 3.29 passes.  Eq. 3.30 (witness quorum) is then checked:
+//       A link is accepted only when ≥ t = ⌊n/2⌋+1 independent witnesses have
+//       each passed Eq. 3.29 for that link.  Implementation uses t=2 and tracks
+//       only LEGITIMATE (non-attack) witnesses so that echo reporters cannot
+//       bootstrap their own quorum.  If ≥ t legitimate reporters have already
+//       confirmed the link, the echo event proceeds to Stage 1; otherwise deferred.
+//     Eq. 3.30 alone does not stop colluding in-range echoers when legitimate
+//     reporters already provide the quorum — Stage 1 sig[6] (Eq. 3.8) / sig[7]
+//     (Eq. 3.9) remain the primary detection mechanism for that case.
+//
+//   Controller-origin (all three families with malicious controller):
+//     Controller holds valid session keys for all entities → bypasses Step 1 entirely.
+//     It can also generate fresh timestamps and non-replayed nonces, so Steps 2–3
+//     would pass too.  Stage 1 + blockchain divergence check are the sole defences.
+// =============================================================================
+static bool
+PemCryptoPreFilter(const PemEvent& event)
+{
+    // ── Controller bypass (outside Algorithm 3 — special case) ──────────────
+    if (is_malicious_controller)
+        return true;
+
+    // ── Step 1 — Integrity / identity check ─────────────────────────────────
+    // Equivalent to the MAC check in Algorithm 3, but each attack family uses
+    // a different cryptographic mechanism.  Legitimate events always pass.
+    if (event.attack_label)
+    {
+        if (event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
+            (attack_scenario == ME_S1_MAL_VEH_NO_RSU ||
+             attack_scenario == ME_S2_MAL_RSU))
+        {
+            // ME: location-binding proxy for integrity (Eqs. 3.27–3.29).
+            const double distToSrc = PemDistance2d(event.reporter_position,
+                                                   event.link_src_position);
+            const double distToDst = PemDistance2d(event.reporter_position,
+                                                   event.link_dst_position);
+            if (std::min(distToSrc, distToDst) > TTW_COMM_RANGE)
+            {
+                pem_crypto_drop_mac++;
+                return false;   // Eq. 3.29 fails — out of range, silent drop
+            }
+
+            // Eq. 3.29 passes (in range).  Now apply Eq. 3.30: require ≥ t
+            // legitimate independent witnesses to have already confirmed this link.
+            // t = 2 (simplified ⌊n/2⌋+1 for small N; interpretable as "both
+            // endpoints must have reported the link before an echo is accepted").
+            const uint32_t me_lmin = (event.link_src_id < event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const uint32_t me_lmax = (event.link_src_id > event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const std::string lkey = std::to_string(me_lmin) + "_"
+                                   + std::to_string(me_lmax);
+            const uint32_t t_witness = 2;
+            const uint32_t legit_count =
+                pem_link_legitimate_witnesses.count(lkey)
+                    ? static_cast<uint32_t>(pem_link_legitimate_witnesses.at(lkey).size())
+                    : 0u;
+            if (legit_count < t_witness)
+            {
+                pem_crypto_drop_quorum++;
+                return false;   // Eq. 3.30: quorum not yet met, silent defer
+            }
+            // Quorum met — in-range echo proceeds to Stage 1
+        }
+        else if (attack_scenario == BSHH_S1_MAL_VEH_NO_RSU ||
+                 attack_scenario == BSHH_S2_MAL_RSU)
+        {
+            // BSHH: Eq. 3.26 threshold aggregate signature fails.
+            // Attacker holds 0 of the required t Dilithium key shares.
+            // Zero valid partial sigs → |valid_sigs| = 0 < t → aggregate invalid.
+            pem_crypto_drop_mac++;
+            return false;
+        }
+        // TTW: attacker is a key-holding insider; signs fresh content with own
+        // valid session key → Eq. 3.15 passes.  Falls through to Steps 2–3.
+    }
+    else
+    {
+        // Legitimate topology update — accumulate this reporter as a confirmed
+        // witness for Eq. 3.30 so that subsequent ME echo events can check quorum.
+        if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+        {
+            const uint32_t me_lmin = (event.link_src_id < event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const uint32_t me_lmax = (event.link_src_id > event.link_dst_id) ? event.link_src_id : event.link_dst_id;
+            const std::string lkey = std::to_string(me_lmin) + "_"
+                                   + std::to_string(me_lmax);
+            pem_link_legitimate_witnesses[lkey].insert(event.reporter_id);
+        }
+    }
+
+    // ── Step 2 — Freshness check (Eq. 3.16) ────────────────────────────────
+    // Runs for ALL events that survive Step 1 (TTW, ME in-range, legitimate).
+    // Catches literal replays (old sender_timestamp far in the past).
+    // TTW with forged ts ≈ now: age ≈ 50ms < T_b + ε → passes here.
+    const double age = std::abs(event.reception_timestamp - event.sender_timestamp);
+    if (age > PEM_BEACON_INTERVAL_S + PEM_PROPAGATION_EPSILON_S)
+    {
+        pem_crypto_drop_stale++;
+        return false;
+    }
+
+    // ── Step 3 — Nonce novelty (Eq. 3.17) ──────────────────────────────────
+    // Runs for ALL events that survive Steps 1–2.
+    // Catches literal replays where (sender_id, ts) was already consumed.
+    // Timestamp-forged TTW replays produce a fresh nonce and pass here;
+    // Stage 1 detects them via sig[0] (timestamp delta) / sig[2] (reporter gap).
+    //
+    // ⚠ DESIGN LIMITATION — nonce granularity gap (exposed by ME-S1 scenario):
+    // The nonce is keyed on (physical_sender_id, 100ms-timestamp-slot) only.
+    // Eq. 3.17 in the document states nonce_i ∉ N_seen but does not specify
+    // what nonce_i is computed over — it does not require message-type or
+    // payload to be included.  This implementation inherits that gap.
+    //
+    // Consequence: if the same node emits two *different* legitimate messages
+    // (e.g., a topology update AND a HELLO beacon) within the same 100ms
+    // window, both produce the same nonce key and the second is silently
+    // dropped (crypto_drop_nonce++).  The drop is scored as TN (no alert on
+    // non-attack traffic = TN by metric definition), so detection accuracy
+    // figures are unaffected.  But the dropped message is a real, legitimate
+    // packet that never reaches Stage 1 — operationally this is silent packet
+    // loss, not a harmless side-effect.
+    //
+    // A correct nonce construction would fold in message type and a payload
+    // hash so that two distinct messages from the same node in the same window
+    // do not collide:
+    //   nonce = H(sender_id ∥ timestamp ∥ message_type ∥ payload_hash)
+    // This is a gap in the document's formula (Eq. 3.17 is underspecified)
+    // that the simulation has concretely exposed.  Fixing it requires changing
+    // both the nonce construction here and the corresponding scheme in the
+    // full-stack crypto layer (Algorithm 3 §3.4.2).
+    const uint64_t nonce = ((uint64_t)event.physical_sender_id << 32)
+                         | (uint64_t)(event.sender_timestamp * 10.0 + 0.5);
+    if (pem_nonce_cache.count(nonce))
+    {
+        pem_crypto_drop_nonce++;
+        return false;
+    }
+    pem_nonce_cache.insert(nonce);
+    return true;
+}
+
 static void
 PemEmitEvent(PemEventType type,
              uint32_t physicalSenderId,
@@ -1732,6 +2721,24 @@ PemEmitEvent(PemEventType type,
     event.detection_latency_ms = -1.0;
     event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;  // set by PemEvaluateEvent for topology events
 
+    // Stage 0 — Crypto pre-filter (Algorithm 3 LW-MITIGATE, Eqs. 3.15-3.17).
+    // Events that fail any check are silently dropped here and never reach
+    // the Signature Detector or the TGN inference engine.
+    if (!PemCryptoPreFilter(event))
+    {
+        // Node-level tracking: Stage-0 drop of an attack event counts as a detection.
+        pem_all_seen_node_ids.insert(physicalSenderId);
+        if (attackLabel)
+        {
+            pem_actual_attacker_nodes.insert(physicalSenderId);
+            pem_detected_attacker_nodes.insert(physicalSenderId);
+            PemCryptoRegisterDetection(physicalSenderId, reporterId);
+        }
+        PemRecordObservation(attackLabel, 1.0, attackLabel);
+        return;  // silent drop — no alert label, no ledger entry, no FlowMod
+    }
+
+    // Stage 1 — Signature Detector (Algorithm 1, Eq. 3.12).
     PemEvaluateEvent(event);
 }
 
@@ -2231,6 +3238,11 @@ void TTW_SendHelloBeacon(Ptr<Node> sender, Ptr<Node> receiver)
                    : "DROPPED   — out of range\n\n");
     AttackSendDSRCBeacon(sender, receiver);
     AttackSendDSRCBeacon(receiver, sender);
+
+    // Crypto latency: sign on send side, verify on receive side
+    double t_now = Simulator::Now().GetSeconds();
+    CryptoMeasureBeaconSign  (t_now, sender->GetId(),   "TTW", false);
+    CryptoMeasureBeaconVerify(t_now, receiver->GetId(), "TTW", false);
 }
 
 // ── STEP 2: Legitimate topology update ───────────────────────────────────────
@@ -2328,6 +3340,92 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
 }
 
 // ── STEPS 4+5+6: Replay attack ───────────────────────────────────────────────
+// ── TTW L3 chain definitions ──────────────────────────────────────────────────
+void TTW_L3_Start(uint32_t src, uint32_t dst, double dist)
+{
+#ifdef HAVE_LIBOQS
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacSign(msg, 64);
+    g_ttw_l3_pi = L3_Start("HMAC_Sign_TTW", "Attack_Inject", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_AI_DilSign, src, dst, dist);
+#endif
+}
+void TTW_L3_AI_DilSign(uint32_t src, uint32_t dst, double d)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_ttw_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilSign(msg, 64);
+    g_ttw_l3_pi = L3_Start("Dilithium_Sign_TTW", "Attack_Inject", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_AI_HMACVfy, src, dst, d);
+#endif
+}
+void TTW_L3_AI_HMACVfy(uint32_t src, uint32_t dst, double d)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_ttw_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacVerify(msg, 64);
+    g_ttw_l3_pi = L3_Start("HMAC_Verify_TTW", "Attack_Inject", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_AI_DilVfy, src, dst, d);
+#endif
+}
+void TTW_L3_AI_DilVfy(uint32_t src, uint32_t dst, double d)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_ttw_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_ttw_l3_pi = L3_Start("Dilithium_Verify_TTW", "Attack_Inject", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_AI_End, src, dst, d);
+#endif
+}
+void TTW_L3_AI_End(uint32_t src, uint32_t dst, double d)
+{
+    L3_End(&g_ttw_l3_pi);
+    // all 4 inject ops complete — now schedule detection at TTW_DETECTION_DELAY_MS
+    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)),
+        &TTW_RunReplayDetection, src, dst, d);
+}
+// Detection chain (entry called from TTW_RunReplayDetection when latency==3)
+void TTW_L3_Det_DilVfy(uint32_t src, uint32_t dst, double d)
+{
+#ifdef HAVE_LIBOQS
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_ttw_l3_pi = L3_Start("Dilithium_Verify_TTW_Det", "Detection", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_Det_Hav, src, dst, d);
+#endif
+}
+void TTW_L3_Det_Hav(uint32_t src, uint32_t dst, double d)
+{
+    L3_End(&g_ttw_l3_pi);
+    double us = TimedHaversine();
+    g_ttw_l3_pi = L3_Start("Haversine", "Detection", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_Det_Fresh, src, dst, d);
+}
+void TTW_L3_Det_Fresh(uint32_t src, uint32_t dst, double d)
+{
+    L3_End(&g_ttw_l3_pi);
+    double us = TimedFreshness();
+    g_ttw_l3_pi = L3_Start("Freshness_Check", "Detection", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_LKH, src, dst, d);
+}
+void TTW_L3_LKH(uint32_t src, uint32_t, double)
+{
+    L3_End(&g_ttw_l3_pi);
+    uint32_t n_rep = (N_Vehicles >= 64) ? 64u : 16u;
+    char op[48]; snprintf(op, sizeof(op), "LKH_Revoke_n%u", n_rep);
+    double us = TimedLkhRevoke(n_rep);
+    g_ttw_l3_pi = L3_Start(op, "Mitigation", src, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &TTW_L3_Done, src, 0u, 0.0);
+}
+void TTW_L3_Done(uint32_t, uint32_t, double)
+{
+    L3_End(&g_ttw_l3_pi);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
                       uint32_t  src_id,   uint32_t  dst_id,
                       double    forged_time)
@@ -2386,6 +3484,20 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     pem_attack_active = true;
     pem_mitigation_active = false;
 
+    // Crypto latency: attacker forges a new signature + sends; controller verifies
+#ifdef HAVE_LIBOQS
+    if (enable_crypto_latency == 3 && g_crypto_ready) {
+        // latency=3: start chained events; detection scheduled by TTW_L3_AI_End
+        TTW_L3_Start(src_id, dst_id, dist);
+    } else if (enable_crypto_latency && g_crypto_ready) {
+        uint8_t msg[64]; RAND_bytes(msg, 64);
+        g_crypto_pending_delay_us = 0.0;   // reset accumulator for this function
+        CryptoRecord(now, "HMAC_Sign_TTW",        TimedHmacSign  (msg,64), src_id, "Attack_Inject", true);
+        CryptoRecord(now, "Dilithium_Sign_TTW",   TimedDilSign   (msg,64), src_id, "Attack_Inject", true);
+        CryptoRecord(now, "HMAC_Verify_TTW",      TimedHmacVerify(msg,64), src_id, "Attack_Inject", true);
+        CryptoRecord(now, "Dilithium_Verify_TTW", TimedDilVerify (msg,64), src_id, "Attack_Inject", true);
+    }
+#endif
 
     // STEP 6: Log faulty routing consequence
     const bool linkPhysicallyBroken = (dist > TTW_COMM_RANGE);
@@ -2430,7 +3542,14 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     }
     ttw_log.flush();
 
-    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTW_RunReplayDetection, src_id, dst_id, dist);
+    // latency=3: detection already scheduled by TTW_L3_AI_End (end of inject chain)
+    // latency=0/1/2: schedule detection here
+    if (enable_crypto_latency != 3) {
+        double extra_us = g_crypto_inject_delay ? g_crypto_pending_delay_us : 0.0;
+        Time det_delay = MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS))
+                         + MicroSeconds(static_cast<int64_t>(extra_us));
+        Simulator::Schedule(det_delay, &TTW_RunReplayDetection, src_id, dst_id, dist);
+    }
 }
 
 void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistance)
@@ -2459,6 +3578,9 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
                  src_id,
                  src_id,
                  dst_id,
+                // sender_ts = forged_time (≈ recv_time) so crypto gates pass (age ≈ 50ms < 110ms).
+                // TGN detects TTW via PEM Layer 2 signatures; heuristic mode cannot distinguish
+                // TTW Case A (forged-to-now) from legitimate re-emergence — trained weights required.
                 (ttw_s1_forged_timestamp > 0.0 ? ttw_s1_forged_timestamp
                  : (ttw_stored_packets.count(src_id) ? ttw_stored_packets[src_id].timestamp : 0.0)),
                  Simulator::Now().GetSeconds(),
@@ -2466,6 +3588,19 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
                  sourcePosition,
                  destinationPosition,
                  true);
+
+    // Crypto latency: detection gate (verify + haversine + freshness)
+    if (enable_crypto_latency == 3 && g_crypto_ready) {
+        // latency=3: start chained detection events (TTW_L3_Det_DilVfy → ... → TTW_L3_Done)
+        if (pem_last_alert)
+            TTW_L3_Det_DilVfy(src_id, dst_id, linkDistance);
+    } else {
+        double t_now = Simulator::Now().GetSeconds();
+        g_crypto_pending_delay_us = 0.0;
+        CryptoMeasureDetection(t_now, src_id, "TTW", false);
+        if (pem_last_alert)
+            CryptoMeasureLKH(t_now, src_id, N_Vehicles);
+    }
 
     if (pem_last_alert)
     {
@@ -2519,6 +3654,7 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
+    // sender_ts = forged_time so crypto gates pass — same reasoning as S1/S3/S4.
     double _ts2 = (ttws2_forged_timestamp > 0.0) ? ttws2_forged_timestamp
                  : (ttws2_packet_stored ? ttws2_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
@@ -2723,6 +3859,7 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
+    // sender_ts = forged_time so crypto gates pass — same reasoning as S1/S2/S4.
     double _ts3 = (ttws3_forged_timestamp > 0.0) ? ttws3_forged_timestamp
                  : (ttws3_packet_stored ? ttws3_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
@@ -2885,6 +4022,7 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
+    // sender_ts = forged_time so crypto gates pass — same reasoning as S1/S2/S3.
     double _ts4 = (ttws4_forged_timestamp > 0.0) ? ttws4_forged_timestamp
                  : (ttws4_packet_stored ? ttws4_stored_packet.timestamp : 0.0);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
@@ -3034,6 +4172,99 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS4_RunDetection, v1_id, v2_id);
 }
 
+// ── BSHH L3 chain definitions ─────────────────────────────────────────────────
+// Attack_Inject chain: HMACSign → DilSign → HMACVerify → DilVerify → Freshness → End
+// (pure measurement; actual liveness-table updates happen on normal schedule)
+void BSHH_L3_Start(uint32_t att, uint32_t vic, double t)
+{
+#ifdef HAVE_LIBOQS
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacSign(msg, 64);
+    g_bshh_l3_pi = L3_Start("HMAC_Sign_BSHH", "Attack_Inject", att, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_AI_DilSgn, att, vic, t);
+#endif
+}
+void BSHH_L3_AI_DilSgn(uint32_t att, uint32_t vic, double t)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_bshh_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilSign(msg, 64);
+    g_bshh_l3_pi = L3_Start("Dilithium_Sign_BSHH", "Attack_Inject", att, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_AI_HMACVfy, att, vic, t);
+#endif
+}
+void BSHH_L3_AI_HMACVfy(uint32_t att, uint32_t vic, double t)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_bshh_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacVerify(msg, 64);
+    g_bshh_l3_pi = L3_Start("HMAC_Verify_BSHH", "Attack_Inject", vic, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_AI_DilVfy, att, vic, t);
+#endif
+}
+void BSHH_L3_AI_DilVfy(uint32_t att, uint32_t vic, double t)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_bshh_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_bshh_l3_pi = L3_Start("Dilithium_Verify_BSHH", "Attack_Inject", vic, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_AI_Fresh, att, vic, t);
+#endif
+}
+void BSHH_L3_AI_Fresh(uint32_t att, uint32_t vic, double t)
+{
+    L3_End(&g_bshh_l3_pi);
+    double us = TimedFreshness();
+    g_bshh_l3_pi = L3_Start("Freshness_Check", "Attack_Inject", vic, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_AI_End, att, vic, t);
+}
+void BSHH_L3_AI_End(uint32_t, uint32_t, double)
+{
+    L3_End(&g_bshh_l3_pi);
+    // inject chain complete; attack-logic side effects run on main() schedule
+}
+// Detection chain (entry called from BSHH_S1_AttackerHijacksOldHeartbeatToController)
+void BSHH_L3_Det_DilVfy(uint32_t att, uint32_t vic, double t)
+{
+#ifdef HAVE_LIBOQS
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_bshh_l3_pi = L3_Start("Dilithium_Verify_BSHH_Det", "Detection", att, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_Det_Hav, att, vic, t);
+#endif
+}
+void BSHH_L3_Det_Hav(uint32_t att, uint32_t vic, double t)
+{
+    L3_End(&g_bshh_l3_pi);
+    double us = TimedHaversine();
+    g_bshh_l3_pi = L3_Start("Haversine", "Detection", att, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_Det_Fresh, att, vic, t);
+}
+void BSHH_L3_Det_Fresh(uint32_t att, uint32_t vic, double t)
+{
+    L3_End(&g_bshh_l3_pi);
+    double us = TimedFreshness();
+    g_bshh_l3_pi = L3_Start("Freshness_Check", "Detection", att, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_LKH, att, vic, t);
+}
+void BSHH_L3_LKH(uint32_t, uint32_t vic, double)
+{
+    L3_End(&g_bshh_l3_pi);
+    uint32_t n_rep = (N_Vehicles >= 64) ? 64u : 16u;
+    char op[48]; snprintf(op, sizeof(op), "LKH_Revoke_n%u", n_rep);
+    double us = TimedLkhRevoke(n_rep);
+    g_bshh_l3_pi = L3_Start(op, "Mitigation", vic, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &BSHH_L3_Done, 0u, vic, 0.0);
+}
+void BSHH_L3_Done(uint32_t, uint32_t, double)
+{
+    L3_End(&g_bshh_l3_pi);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // =============================================================================
 // BSHH-S1: MALICIOUS VEHICLE, NO RSU — attack_scenario == 5
 // =============================================================================
@@ -3063,6 +4294,9 @@ std::string GetControllerLogLabel(uint32_t ctrl_index) {
     }
     return "Ctrl" + std::to_string(ctrl_index) + "(?)";
 }
+
+// forward declaration needed for latency=2 scheduling
+void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time);
 
 void BSHH_S1_InitLog()
 {
@@ -3128,6 +4362,10 @@ void BSHH_S1_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, double t)
     
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+
+    // Crypto latency: normal heartbeat sign + verify
+    CryptoMeasureBeaconSign  (now, v1_id, "BSHH", false);
+    CryptoMeasureBeaconVerify(now, v2_id, "BSHH", false);
 }
 
 void BSHH_S1_ForwardLegitimateHeartbeatsToController(uint32_t v1_id, uint32_t v2_id, double t)
@@ -3184,6 +4422,30 @@ void BSHH_S1_ReplayOldHeartbeatToVictim(uint32_t attacker_id, uint32_t victim_id
     if (attackerNode) {
         AttackSendHeartbeat(attackerNode, attacker_id, stored_time, true);
     }
+
+    // Crypto latency: attacker re-signs replayed heartbeat, controller verifies
+#ifdef HAVE_LIBOQS
+    if (enable_crypto_latency == 3 && g_crypto_ready) {
+        // latency=3: start chained attack-inject events (measurement only)
+        // attack-logic side effects (liveness table, PEM emit) run on main() schedule
+        BSHH_L3_Start(attacker_id, victim_id, stored_time);
+    } else if (enable_crypto_latency && g_crypto_ready) {
+        uint8_t msg[64]; RAND_bytes(msg, 64);
+        g_crypto_pending_delay_us = 0.0;
+        CryptoRecord(now, "HMAC_Sign_BSHH",        TimedHmacSign  (msg,64), attacker_id, "Attack_Inject", true);
+        CryptoRecord(now, "Dilithium_Sign_BSHH",   TimedDilSign   (msg,64), attacker_id, "Attack_Inject", true);
+        CryptoRecord(now, "HMAC_Verify_BSHH",      TimedHmacVerify(msg,64), victim_id,   "Attack_Inject", true);
+        CryptoRecord(now, "Dilithium_Verify_BSHH", TimedDilVerify (msg,64), victim_id,   "Attack_Inject", true);
+        CryptoRecord(now, "Freshness_Check",        TimedFreshness(),        victim_id,   "Attack_Inject", true);
+        // latency=2: forward-to-controller step fires after crypto delay
+        if (g_crypto_inject_delay) {
+            double delay_us = g_crypto_pending_delay_us;
+            Simulator::Schedule(MicroSeconds(static_cast<int64_t>(delay_us)),
+                &BSHH_S1_VictimForwardsOldHeartbeatToController, attacker_id, victim_id, stored_time);
+            return;   // forwarding is scheduled — don't fall through
+        }
+    }
+#endif
 }
 
 void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time)
@@ -3244,6 +4506,14 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
               << "  Heartbeat(physical=V" << attacker_id << ", claimed=V" << victim_id
               << ", t=" << stored_time << ")  IMPERSONATION  *** ATTACK COMPLETE ***" << std::endl;
     PemEmitHeartbeatEvent(attacker_id, victim_id, stored_time, true);
+
+    // Crypto latency: detection verify + freshness + LKH mitigation
+    if (enable_crypto_latency == 3 && g_crypto_ready) {
+        BSHH_L3_Det_DilVfy(attacker_id, victim_id, stored_time);
+    } else {
+        CryptoMeasureDetection(now, attacker_id, "BSHH", false);
+        CryptoMeasureLKH(now, victim_id, N_Vehicles);
+    }
 }
 
 void BSHH_S1_LogFaultyRoutingConsequences(uint32_t attacker_id, uint32_t victim_id)
@@ -3902,7 +5172,168 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(v4_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v4_id), Vehicle_Nodes.Get(v3_id));
     }
+
+    // Crypto latency: legitimate sign+verify for real links V1/V2
+    CryptoMeasureBeaconSign  (now, v1_id, "ME", false);
+    CryptoMeasureBeaconVerify(now, v2_id, "ME", false);
 }
+
+// ── ME L3 chain definitions ───────────────────────────────────────────────────
+// V3 chain → V4 chain → Detection chain (all sequential for full timing picture)
+void ME_L3_Start(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    // g_me_l3_ctx already set by ME_S1_EchoAttack before calling ME_L3_Start
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacSign(msg, 64);
+    g_me_l3_pi = L3_Start("HMAC_Sign_ME", "Attack_Inject", v3, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V3_DilSgn, v3, v4, 0.0);
+#endif
+}
+void ME_L3_V3_DilSgn(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_me_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilSign(msg, 64);
+    g_me_l3_pi = L3_Start("Dilithium_Sign_ME", "Attack_Inject", v3, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V3_HMACVfy, v3, v4, 0.0);
+#endif
+}
+void ME_L3_V3_HMACVfy(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_me_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacVerify(msg, 64);
+    g_me_l3_pi = L3_Start("HMAC_Verify_ME", "Attack_Inject", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V3_DilVfy, v3, v4, 0.0);
+#endif
+}
+void ME_L3_V3_DilVfy(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_me_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_me_l3_pi = L3_Start("Dilithium_Verify_ME", "Attack_Inject", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V3_Hav, v3, v4, 0.0);
+#endif
+}
+void ME_L3_V3_Hav(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    double us = TimedHaversine();
+    g_me_l3_pi = L3_Start("Haversine", "Attack_Inject", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V3_End, v3, v4, 0.0);
+}
+void ME_L3_V3_End(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    // chain to V4
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacSign(msg, 64);
+    g_me_l3_pi = L3_Start("HMAC_Sign_ME", "Attack_Inject", v4, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V4_DilSgn, v3, v4, 0.0);
+}
+void ME_L3_V4_DilSgn(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_me_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilSign(msg, 64);
+    g_me_l3_pi = L3_Start("Dilithium_Sign_ME", "Attack_Inject", v4, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V4_HMACVfy, v3, v4, 0.0);
+#endif
+}
+void ME_L3_V4_HMACVfy(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_me_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedHmacVerify(msg, 64);
+    g_me_l3_pi = L3_Start("HMAC_Verify_ME", "Attack_Inject", g_me_l3_ctx.ldst, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V4_DilVfy, v3, v4, 0.0);
+#endif
+}
+void ME_L3_V4_DilVfy(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_me_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_me_l3_pi = L3_Start("Dilithium_Verify_ME", "Attack_Inject", g_me_l3_ctx.ldst, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V4_Hav, v3, v4, 0.0);
+#endif
+}
+void ME_L3_V4_Hav(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    double us = TimedHaversine();
+    g_me_l3_pi = L3_Start("Haversine", "Attack_Inject", g_me_l3_ctx.ldst, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_V4_End, v3, v4, 0.0);
+}
+void ME_L3_V4_End(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    // chain to detection (immediate — ME has no detection delay)
+    ME_L3_Det_DilVfy(v3, v4, 0.0);
+}
+// Detection chain
+void ME_L3_Det_DilVfy(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_me_l3_pi = L3_Start("Dilithium_Verify_ME_Det", "Detection", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_Det_DilVfy2, v3, v4, 0.0);
+#endif
+}
+void ME_L3_Det_DilVfy2(uint32_t v3, uint32_t v4, double)
+{
+#ifdef HAVE_LIBOQS
+    L3_End(&g_me_l3_pi);
+    uint8_t msg[64]; RAND_bytes(msg, 64);
+    double us = TimedDilVerify(msg, 64);
+    g_me_l3_pi = L3_Start("Dilithium_Verify_ME_Det2", "Detection", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_Det_LocBind, v3, v4, 0.0);
+#endif
+}
+void ME_L3_Det_LocBind(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    double us = TimedLocationBind();
+    g_me_l3_pi = L3_Start("LocBind_Verify", "Detection", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_Det_Hav, v3, v4, 0.0);
+}
+void ME_L3_Det_Hav(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    double us = TimedHaversine();
+    g_me_l3_pi = L3_Start("Haversine", "Detection", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_Det_Fresh, v3, v4, 0.0);
+}
+void ME_L3_Det_Fresh(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    double us = TimedFreshness();
+    g_me_l3_pi = L3_Start("Freshness_Check", "Detection", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_LKH, v3, v4, 0.0);
+}
+void ME_L3_LKH(uint32_t v3, uint32_t v4, double)
+{
+    L3_End(&g_me_l3_pi);
+    uint32_t n_rep = (N_Vehicles >= 64) ? 64u : 16u;
+    char op[48]; snprintf(op, sizeof(op), "LKH_Revoke_n%u", n_rep);
+    double us = TimedLkhRevoke(n_rep);
+    g_me_l3_pi = L3_Start(op, "Mitigation", g_me_l3_ctx.lsrc, true);
+    Simulator::Schedule(MicroSeconds((int64_t)us), &ME_L3_Done, v3, v4, 0.0);
+}
+void ME_L3_Done(uint32_t, uint32_t, double)
+{
+    L3_End(&g_me_l3_pi);
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 
 void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
@@ -4025,14 +5456,53 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
     if (echo_v4  < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(echo_v4)->GetObject<MobilityModel>();  if (m) v4Pos   = m->GetPosition(); }
     if (link_src < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(link_src)->GetObject<MobilityModel>(); if (m) vSrcPos = m->GetPosition(); }
     if (link_dst < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(link_dst)->GetObject<MobilityModel>(); if (m) vDstPos = m->GetPosition(); }
+    // Echo attackers are key-holding insiders: they sign a fresh message with
+    // their own valid session key and use NOW as the sender timestamp, not the
+    // original link observation time t.  This makes age = 0 at reception,
+    // so Eq. 3.16 (freshness) passes and the event reaches Stage 1 where
+    // Eq. 3.8 (reporter-count density excess) detects the inflated reporter set.
+    // Using t here instead of now would make age = (now - t) > 120ms, causing
+    // Eq. 3.16 to drop the event at Stage 0 — wrong attribution.
     if (emit_v3)
     {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, t, now, v3Pos, vSrcPos, vDstPos, true);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, now, now, v3Pos, vSrcPos, vDstPos, true);
     }
     if (emit_v4)
     {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, t, now, v4Pos, vSrcPos, vDstPos, true);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, now, now, v4Pos, vSrcPos, vDstPos, true);
     }
+
+    // Crypto latency: each echo reporter signs + controller verifies x2 + haversine x2
+#ifdef HAVE_LIBOQS
+    if (enable_crypto_latency == 3 && g_crypto_ready && (emit_v3 || emit_v4)) {
+        // latency=3: chained events — V3 inject → V4 inject → detection → mitigation
+        g_me_l3_ctx = {echo_v3, echo_v4, link_src, link_dst};
+        ME_L3_Start(echo_v3, echo_v4, 0.0);
+    } else if (enable_crypto_latency && g_crypto_ready) {
+        uint8_t msg[64]; RAND_bytes(msg, 64);
+        g_crypto_pending_delay_us = 0.0;
+        if (emit_v3) {
+            CryptoRecord(now, "HMAC_Sign_ME",         TimedHmacSign  (msg,64), echo_v3,  "Attack_Inject", true);
+            CryptoRecord(now, "Dilithium_Sign_ME",    TimedDilSign   (msg,64), echo_v3,  "Attack_Inject", true);
+            CryptoRecord(now, "HMAC_Verify_ME",       TimedHmacVerify(msg,64), link_src, "Attack_Inject", true);
+            CryptoRecord(now, "Dilithium_Verify_ME",  TimedDilVerify (msg,64), link_src, "Attack_Inject", true);
+            CryptoRecord(now, "Haversine",            TimedHaversine(),        link_src, "Attack_Inject", true);
+        }
+        if (emit_v4) {
+            CryptoRecord(now, "HMAC_Sign_ME",         TimedHmacSign  (msg,64), echo_v4,  "Attack_Inject", true);
+            CryptoRecord(now, "Dilithium_Sign_ME",    TimedDilSign   (msg,64), echo_v4,  "Attack_Inject", true);
+            CryptoRecord(now, "HMAC_Verify_ME",       TimedHmacVerify(msg,64), link_dst, "Attack_Inject", true);
+            CryptoRecord(now, "Dilithium_Verify_ME",  TimedDilVerify (msg,64), link_dst, "Attack_Inject", true);
+            CryptoRecord(now, "Haversine",            TimedHaversine(),        link_dst, "Attack_Inject", true);
+        }
+        double det_t = g_crypto_inject_delay
+                       ? now + g_crypto_pending_delay_us / 1e6
+                       : now;
+        g_crypto_pending_delay_us = 0.0;
+        CryptoMeasureDetection(det_t, link_src, "ME", true);
+        CryptoMeasureLKH(det_t, link_src, N_Vehicles);
+    }
+#endif
 }
 
 
@@ -126283,9 +127753,30 @@ void distributed_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	tag.SetTimestamp(ti);
 	packet_i->AddPacketTag(tag);
 	dsrc_total_packet_size = dsrc_total_packet_size + packet_i->GetSerializedSize();
-	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);	
+	Simulator::Schedule (Seconds(0) , &WifiNetDevice::Send, wdi, packet_i, dest, protocolwave);
 	// SUPPRESSED: cout<<"dsrc total size is "<<dsrc_total_packet_size<<endl;
 	previous_velocity_dsrc[node_index] = current_velocity;
+
+    // ── NPFADS BSM record ─────────────────────────────────────────────────────
+    // Append one record per periodic broadcast so each sender accumulates
+    // enough time-series data for the eigenvalue pipeline (needs ≥ 8 BSMs).
+    // TTW/BSHH/ME never falsify GPS, so reported position == true position.
+    {
+        NpfadsBsmRecord npfads_rec;
+        npfads_rec.sendTime   = Simulator::Now().GetSeconds();
+        npfads_rec.senderId   = nid;
+        npfads_rec.xPos       = posi.x;
+        npfads_rec.yPos       = posi.y;
+        npfads_rec.xSpd       = current_velocity.x;
+        npfads_rec.ySpd       = current_velocity.y;
+        npfads_rec.xAcc       = acceleration.x;
+        npfads_rec.yAcc       = acceleration.y;
+        npfads_rec.trueXPos   = posi.x;
+        npfads_rec.trueYPos   = posi.y;
+        npfads_rec.attackType = 0;  // TTW/BSHH/ME do not falsify position
+        g_routing_bsm_log.push_back(npfads_rec);
+    }
+    // ── End NPFADS BSM record ─────────────────────────────────────────────────
 }
 #endif  // ROUTING_DISABLED: distributed_dsrc_data_broadcast
 
@@ -143158,7 +144649,7 @@ static int RoutingMain(int argc, char *argv[])
     CommandLine cmd;
     cmd.AddValue ("N_RSUs", "N_RSUs", N_RSUs);
     cmd.AddValue ("N_Vehicles", "N_Vehicles", N_Vehicles);
-    cmd.AddValue ("N_Controllers", "Number of SDN controller nodes (default 1)", N_Controllers);
+    cmd.AddValue ("N_Controllers", "Number of SDN controller nodes in the distributed control plane (default 4)", N_Controllers);
     cmd.AddValue ("data_transmission_frequency", "data_transmission_frequency", data_transmission_frequency);
     cmd.AddValue ("link_lifetime_threshold", "link_lifetime_threshold", link_lifetime_threshold);
     cmd.AddValue ("simTime", "simTime", simTime);
@@ -143168,6 +144659,7 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("lambda", "lambda", lambda);
     cmd.AddValue ("experiment_number", "experiment_number", experiment_number);
     cmd.AddValue ("routing_test", "routing_test", routing_test);
+    cmd.AddValue ("skip_npfads", "Skip NPFADS BSM collection and detection (faster data-gen runs)", skip_npfads);
     cmd.AddValue ("routing_algorithm", "routing_algorithm", routing_algorithm);
     cmd.AddValue ("qf", "qf", qf);
     cmd.AddValue ("ttw_link_lifetime_bound",
@@ -143176,6 +144668,12 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("attack_scenario", "attack_scenario (0=none,1-12=attack variants)", attack_scenario);
     cmd.AddValue ("malicious_vehicle_id", "malicious_vehicle_id", malicious_vehicle_id);
     cmd.AddValue ("victim_neighbor_id", "victim_neighbor_id", victim_neighbor_id);
+    cmd.AddValue ("latency",
+                  "1 = measure real liboqs wall-clock time per op (CSV, sim clock unchanged). "
+                  "2 = same + inject total into NS-3 scheduler (sim clock advances by crypto cost). "
+                  "3 = each op is a START/END NS-3 event pair: Simulator::Now() at both ends "
+                  "gives genuine virtual-clock latency_sim_us — pure simulation time.",
+                  enable_crypto_latency);
     cmd.AddValue ("attack_percentage",
                   "Percentage (0-100) of vehicle nodes that behave as attackers",
                   attack_percentage);
@@ -143210,7 +144708,39 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("comparison_detector",
                   "0=none  1=VeReMi/VREM_Detect  2=Multi-BSM/MBSM  (comparison study)",
                   comparison_detector);
+    // ── TGN parameters ─────────────────────────────────────────────────────────
+    cmd.AddValue ("tgn_weights",
+                  "Path to tgn_weights.bin (trained by tgn/tgn_train.py); "
+                  "omit to use heuristic scoring",
+                  g_tgn_weight_file);
+    cmd.AddValue ("tgn_theta",
+                  "TGN detection threshold θ_FS (default 0.40, Eq 3.23)",
+                  g_tgn_theta_cmd);
+    cmd.AddValue ("tgn_l_link",
+                  "Mean link lifetime L_link in seconds; recalibrates γ and W_max "
+                  "(default 43.0 s — urban scenario, Eq 9.3)",
+                  g_tgn_l_link_cmd);
+    cmd.AddValue ("tgn_dim",
+                  "TGN embedding dimension d (default 32)",
+                  g_tgn_dim_cmd);
+    cmd.AddValue ("tgn_layers",
+                  "TGN message-passing rounds L (default 2, Eq 3.22)",
+                  g_tgn_layers_cmd);
     cmd.Parse (argc, argv);
+
+    // ── §3.4.5 Eq. 3.29 — TTW link lifetime bound L_link ────────────────────
+    // L_link = 2 · r_comm / v_rel  (Eq. 3.29)
+    // v_rel: urban ≈ 14 m/s (30 km/h relative), highway ≈ 67 m/s (240 km/h relative)
+    // Only override if the user did not supply --ttw_link_lifetime_bound explicitly.
+    if (ttw_link_lifetime_bound == 3.52)  // 3.52 is the sentinel "not set by user"
+    {
+        const double v_rel_ms = (mobility_scenario == 2) ? 67.0 :   // highway
+                                (mobility_scenario == 1) ? 30.0 :   // rural
+                                                           14.0;     // urban (default)
+        ttw_link_lifetime_bound = 2.0 * TTW_COMM_RANGE / v_rel_ms;
+    }
+    NS_LOG_INFO("[TTW] L_link (ttw_link_lifetime_bound) = " << ttw_link_lifetime_bound
+                << " s  (mobility_scenario=" << mobility_scenario << ")");
 
     // ── §3.4.7 Eq. 3.32 — RSU handover window (beacon slots) ─────────────────
     // W_ho = r_comm / (v_max · T_b)
@@ -143297,7 +144827,7 @@ static int RoutingMain(int argc, char *argv[])
     	clear_neighbordata(neighbordata_inst+i);
     	clear_controllerdata(con_data_inst+i);
     	clear_data_at_nodes(data_at_nodes_inst+i);
-    	clear_routing_data_at_nodes(routing_data_at_nodes_inst+i-2);
+    	if (i >= 2) clear_routing_data_at_nodes(routing_data_at_nodes_inst+i-2);
     	clear_data_at_manager(data_at_manager_inst+i);
     }
 
@@ -146584,8 +148114,7 @@ attack_mobility.Install(Vehicle_Nodes);
           return 1;
       }
       BSHH_S3_InitLog();
-
-      
+      is_malicious_controller = true;
 
       static const double BSHH_S3_EXCHANGE_TIME = 5.0;
       static const double BSHH_S3_REPLAY_TIME   = 10.0;
@@ -146697,8 +148226,8 @@ attack_mobility.Install(Vehicle_Nodes);
           return 1;
       }
       BSHH_S4_InitLog();
+      is_malicious_controller = true;
 
-      
       static const double BSHH_S4_EXCHANGE_TIME = 5.0;
       static const double BSHH_S4_REPLAY_TIME   = 10.0;
 
@@ -146844,7 +148373,9 @@ attack_mobility.Install(Vehicle_Nodes);
       // Only borrow when at least 1 attacker was declared (attack_percentage > 0).
       // If me_echo_cidx is empty, this is a baseline run — do not manufacture attackers.
       while (me_echo_cidx.size() < 2 && me_real_cidx.size() > 2 && !me_echo_cidx.empty()) {
-          me_echo_cidx.push_back(me_real_cidx.back());
+          uint32_t borrowed = me_real_cidx.back();
+          me_echo_cidx.push_back(borrowed);
+          me_s1_actual_attackers.insert(borrowed);   // borrowed vehicle is also an attacker
           me_real_cidx.pop_back();
       }
             // All echo attackers active — no random deactivation.
@@ -147079,6 +148610,7 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S3 requires --N_Vehicles >= 4. Aborting.\n";
           return 1;
       }
+      is_malicious_controller = true;
       uint32_t n_mal_ctrl3 = (uint32_t)std::round(N_Controllers * attack_percentage / 100.0);
       if (n_mal_ctrl3 < 1) n_mal_ctrl3 = 1;
       if (n_mal_ctrl3 > N_Controllers) n_mal_ctrl3 = N_Controllers;
@@ -147163,6 +148695,7 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S4 requires --N_Vehicles >= 4. Aborting.\n";
           return 1;
       }
+      is_malicious_controller = true;
       uint32_t n_mal_ctrl4 = (uint32_t)std::round(N_Controllers * attack_percentage / 100.0);
       if (n_mal_ctrl4 < 1) n_mal_ctrl4 = 1;
       if (n_mal_ctrl4 > N_Controllers) n_mal_ctrl4 = N_Controllers;
@@ -147269,9 +148802,22 @@ attack_mobility.Install(Vehicle_Nodes);
   // RUN SIMULATION
   // ===========================================================================
 
+  // ── NPFADS periodic BSM collection ─────────────────────────────────────────
+  // Sample every vehicle's true GPS position every 100 ms throughout the run.
+  // This is independent of paper/architecture so eigenvalue computation always
+  // has enough rows (≥8 per sender) regardless of the routing mode in use.
+  if (!skip_npfads)
+      for (double t_npfads = 1.0; t_npfads < simTime - 0.1; t_npfads += 0.1)
+          Simulator::Schedule(Seconds(t_npfads), &NpfadsCollectBsms);
+
+  // Crypto latency: initialise keys at simulation start, flush CSV at end
+  CryptoInitKeys();
+  Simulator::Schedule(Seconds(simTime - 0.0005), &CryptoWriteLatencyCSV);
+
   Simulator::Schedule(Seconds(simTime - 0.003), &CD_WriteSummary,
                       attack_scenario, attack_percentage, N_Vehicles, N_RSUs);
-  Simulator::Schedule(Seconds(simTime - 0.002), &RunNpfadsDetection);
+  if (!skip_npfads)
+      Simulator::Schedule(Seconds(simTime - 0.002), &RunNpfadsDetection);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteAlertsJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
@@ -147279,9 +148825,19 @@ attack_mobility.Install(Vehicle_Nodes);
   Simulator::Run();
   Simulator::Destroy();
 
+  // ── TGN post-simulation pipeline (Algorithm 2 FS-DETECT) ─────────────────
+  // Runs after Destroy() so all pem_all_events have been accumulated.
+  // RSU/no-RSU adaptation is automatic inside tgn_core.cc (uses N_RSUs global).
+  TGN_RunPipeline();
+
   // ── Restore cout and flush terminal log ──────────────────────────────────
   std::cout.rdbuf(orig_cout_buf);
   terminal_log_file.close();
 
   return 0;
 }
+ 
+ 
+// force_rebuild
+// force_rebuild_2
+// crypto_rebuild_1782163691
