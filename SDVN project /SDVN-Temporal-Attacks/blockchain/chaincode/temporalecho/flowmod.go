@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -49,7 +48,7 @@ type RyuFlowMod struct {
 func pushFlowModDrop(ctx contractapi.TransactionContextInterface, vehicleID string) error {
 	mac := lookupVehicleMAC(ctx, vehicleID)
 	fm := PendingFlowMod{
-		EntryID:     fmt.Sprintf("FLOWMOD_DROP_%s_%d", vehicleID, time.Now().UnixMilli()), // FM-02
+		EntryID:     fmt.Sprintf("FLOWMOD_DROP_%s_%d", vehicleID, txTimestampMs(ctx)), // FM-02: tx-bound timestamp — deterministic across endorsers, unique per tx
 		VehicleID:   vehicleID,
 		Action:      "DROP",
 		Priority:    65000,
@@ -63,7 +62,7 @@ func pushFlowModDrop(ctx contractapi.TransactionContextInterface, vehicleID stri
 // FM-02: timestamped EntryID to avoid key collisions.
 func pushRerouteFlowMod(ctx contractapi.TransactionContextInterface, vehicleID string) error {
 	fm := PendingFlowMod{
-		EntryID:     fmt.Sprintf("FLOWMOD_REROUTE_%s_%d", vehicleID, time.Now().UnixMilli()), // FM-02
+		EntryID:     fmt.Sprintf("FLOWMOD_REROUTE_%s_%d", vehicleID, txTimestampMs(ctx)), // FM-02: tx-bound timestamp — deterministic across endorsers, unique per tx
 		VehicleID:   vehicleID,
 		Action:      "REROUTE",
 		Priority:    50000,

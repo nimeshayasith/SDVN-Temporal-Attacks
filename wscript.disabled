@@ -1,0 +1,37 @@
+## -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+# scratch/wscript — builds routing.cc with liboqs for crypto latency measurement.
+# All other .cc files in scratch build normally without liboqs.
+
+import os
+
+def build(bld):
+    home = os.path.expanduser('~')
+    liboqs_inc = os.path.join(home, 'liboqs-local', 'include')
+    liboqs_lib = os.path.join(home, 'liboqs-local', 'lib')
+
+    ns3_modules = [
+        'wave', 'wifi', 'lte', 'aodv', 'internet', 'applications',
+        'mobility', 'netanim', 'csma', 'point-to-point', 'network', 'core',
+    ]
+
+    # routing.cc — linked with liboqs so --latency=1 calls real PQC
+    routing = bld.create_ns3_program('routing', ns3_modules)
+    routing.source = 'routing.cc'
+    routing.includes = [liboqs_inc]
+    routing.env.append_value('CXXFLAGS',  ['-DHAVE_LIBOQS'])
+    routing.env.append_value('LINKFLAGS',
+        ['-L' + liboqs_lib, '-loqs', '-lssl', '-lcrypto', '-lm'])
+
+    # tgn_detector.cc includes routing.cc directly — needs ssl/crypto for openssl headers
+    tgn_src = bld.path.abspath() + '/tgn_detector.cc'
+    if os.path.exists(tgn_src):
+        tgn = bld.create_ns3_program('tgn_detector', ns3_modules)
+        tgn.source = 'tgn_detector.cc'
+        tgn.env.append_value('LINKFLAGS', ['-lssl', '-lcrypto', '-lm'])
+
+    # Other scratch programs without extra deps
+    for name in ['temporal_mbsm_compare', 'temporal_veremi_compare']:
+        src = bld.path.abspath() + '/' + name + '.cc'
+        if os.path.exists(src):
+            obj = bld.create_ns3_program(name, ns3_modules)
+            obj.source = name + '.cc'

@@ -50,6 +50,6 @@
 ========================================================
 [t=20.050]  DETECTION + MITIGATION
   Ghost link V5<->V6 removed
-  Score: 0.350
+  Score: 1.000
   Latency: 50.000 ms
 

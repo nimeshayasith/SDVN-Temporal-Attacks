@@ -1,67 +1,53 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [SUMO] Attack 9: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/09_ME_S1_Malicious_Vehicles.xml
 
 ========================================
 SCENARIO 09 - ME-S1 ATTACK CONFIGURED
-  Total vehicles        : 6
+  Total vehicles        : 4
   Attack percentage     : 20%
   Echo attackers        : 2
-  Benign (real link) veh: 4
+  Benign (real link) veh: 2
   Active attack groups  : 1
-  Real link pair        : V8<->V6
-  Echo attackers (NS-3 IDs): V5 V10 
-  Active groups (all echo V8<->V6):
-    Group 1: V5+V10 echo V8<->V6
+  Real link pair        : V7<->V8
+  Echo attackers (NS-3 IDs): V5 V6 
+  Active groups (all echo V7<->V8):
+    Group 1: V5+V6 echo V7<->V8
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
-[ME-S1][t=9.998]  STEP①  V8 <-> V6 HELLO exchange (real link)
-[ME-S1][t=9.998]  STEP②  V8, V6 report real link to controller
-[ME-S1][t=9.998]  STEP③  V5, V10 overhear HELLO — stored for echo
-[ME-S1][t=10.128]  STEP④  V5 --ECHO--> Controller  <V8 sees V6>  FALSE REPORTER
-[ME-S1][t=10.128]  STEP④  V10 --ECHO--> Controller  <V8 sees V6>  FALSE REPORTER
-[ME-S1][t=10.128]  STEP⑤  Controller infers phantom paths for V8->V6  *** ATTACK COMPLETE ***
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[ME-S1][t=10.003]  STEP①  V7 <-> V8 HELLO exchange (real link)
+[ME-S1][t=10.003]  STEP②  V7, V8 report real link to controller
+[ME-S1][t=10.003]  STEP③  V5, V6 overhear HELLO — stored for echo
+[ME-S1][t=10.136]  STEP④  V5 --ECHO--> Controller  <V7 sees V8>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP④  V6 --ECHO--> Controller  <V7 sees V8>  FALSE REPORTER
+[ME-S1][t=10.136]  STEP⑤  Controller infers phantom paths for V7->V8  *** ATTACK COMPLETE ***
+[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
+[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 2 3 ctrl 
+[TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 4 in → 4 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+               log: crypto_filter_log.txt
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
-[NPFADS] ====== Running NPFADS Detection Pipeline ======
-[NPFADS]  Attack scenario : 9
-[NPFADS]  BSM records     : 1136
-[NPFADS-SOL] Loaded 1136 BSM records
-[NPFADS-SOL] Eigenvalues computed for 6 senders
-[NPFADS-SOL] Output CSVs written to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../existing_methods/results/npfads/
-  npfads_NPFADS_Eigenvalues.csv    — eigenvalue features per sender
-  npfads_NPFADS_Sender_Results.csv — per-sender detection labels (A+B+C)
-  npfads_NPFADS_Metrics.csv        — per-attack-type detection metrics
-  npfads_NPFADS_PEM_Run_Summary.csv — PEM-format summary
-
-╔═══════════════════════════════════════════════════════════════════╗
-║             NPFADS DETECTION SOLUTION — RESULTS SUMMARY          ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Based on: Ilango, Ma & Su (2022), Eng. App. AI 116, 105380      ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Attack │ Mode A (posVar) │ Mode B (RF-sim) │ NADM Novel Det.    ║
-║  Type   │  Prec  Rec  F1  │  Prec  Rec  F1  │ UCknown  UCfn Novel ║
-╠═════════╪═════════════════╪═════════════════╪════════════════════╣
-║  Type  0 │ 0.000 0.000 0.000 │ 0.000 0.000 0.000 │   0.096  0.000  NO    ║
-╠═══════════════════════════════════════════════════════════════════╣
-║  Detection latency estimate: 800 ms  (= 8 × 100 ms beacon interval)                    ║
-╚═══════════════════════════════════════════════════════════════════╝
-
-  Paper reference values (Table 6, MDS at fog node):
-    Type  1:  F1 = 1.00   Type  2:  F1 = 0.73
-    Type  4:  F1 = 1.00   Type  8:  F1 = 1.00
-    Type 16:  F1 = 0.98
-
-  NADM paper values: UC_known=0.09617  NASEA=0.99944
-
-[NPFADS] ====== NPFADS Detection Complete ======
-[NPFADS] Expected result for TTW/BSHH/ME scenarios:
-[NPFADS]   posVar F1  ~0.0  (all vehicles report true position)
-[NPFADS]   RF-sim F1  ~0.0  (no position anomaly rules fire)
-[NPFADS]   Novel det  = NO   (no AE reconstruction error)
-[NPFADS] --> These attacks evade position-based detection.
-[NPFADS] --> PEM detected them via temporal signature analysis.
-[NPFADS] --> The two detectors are COMPLEMENTARY.
-
+========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
+  Scenario  : 9 — ME-S1: Malicious Vehicles, No RSU
+  RSU mode  : NO RSU
+  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 0.500
+  ACR         : 100.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 4
+  Stage-0 blocked (attacks): 2
+  |E_t^trusted|  : 4
+============================================================

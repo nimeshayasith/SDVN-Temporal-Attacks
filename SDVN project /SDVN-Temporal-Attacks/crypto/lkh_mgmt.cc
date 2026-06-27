@@ -34,6 +34,17 @@
 #  include <openssl/sha.h>
 #endif
 
+/* ─── Fix-3: unified revocation keystore ────────────────────────────────── */
+/* lkh_revoke_vehicle atomically calls mark_key_revoked via this pointer so
+ * the LKH tree flag and the RSU HMAC keystore flag are always in sync.     */
+static VehicleKeyRecord *g_ks      = NULL;
+static uint32_t          g_ks_size = 0;
+
+void lkh_set_keystore(VehicleKeyRecord *ks, uint32_t ks_size) {
+    g_ks      = ks;
+    g_ks_size = ks_size;
+}
+
 /* ─── Random key generation ──────────────────────────────────────────────── */
 
 static void gen_random_key(uint8_t key[LKH_KEY_LEN]) {
@@ -177,9 +188,11 @@ void lkh_revoke_vehicle(LKHTree *tree, const uint8_t vehicle_id[16]) {
         return;
     }
 
-    /* 1. Mark leaf as revoked */
+    /* 1. Mark leaf as revoked — Fix-3: atomically sync the HMAC keystore too */
     tree->nodes[leaf_idx].revoked = true;
     memset(tree->nodes[leaf_idx].session_key, 0, LKH_KEY_LEN); /* invalidate */
+    if (g_ks != NULL)
+        mark_key_revoked(g_ks, vehicle_id);   /* keeps VehicleKeyRecord.revoked in sync */
     printf("[LKH] Revoking %s (leaf=%u)\n", (const char *)vehicle_id, leaf_idx);
 
     /* 2. Walk up from leaf to root, regenerating KEKs on the path */
@@ -214,6 +227,12 @@ void mark_key_revoked(VehicleKeyRecord *keystore, const uint8_t vehicle_id[16]) 
         if (memcmp(keystore[i].vehicle_id, vehicle_id, 16) == 0) {
             keystore[i].revoked = true;
             memset(keystore[i].session_key,  0, SESSION_KEY_LEN);
+            /* Issue-2 fix: also revoke the CA identity cert so the vehicle
+             * cannot produce validly-signed threshold/location-binding reports
+             * after its session key has been wiped.  cert_revoke_vehicle adds
+             * the id to the CRL in dilithium.cc; dilithium5_verify_cert then
+             * rejects this vehicle even if its CA sig is cryptographically valid. */
+            cert_revoke_vehicle(vehicle_id);
             printf("[LKH] mark_key_revoked: %s\n", (const char *)vehicle_id);
             return;
         }
@@ -234,10 +253,13 @@ bool lkh_get_session_key(const LKHTree *tree,
 
 bool lkh_is_revoked(const LKHTree *tree, const uint8_t vehicle_id[16]) {
     uint32_t leaf = find_leaf_by_vehicle_id(tree, vehicle_id);
-    /* find_leaf skips revoked, so if not found assume not registered = not active */
+    /* find_leaf_by_vehicle_id skips revoked nodes, so UINT32_MAX means either
+     * "not in tree" or "in tree but revoked."  Scan the populated portion
+     * (tree->n_leaves * 2 nodes, not the full LKH_MAX_LEAVES * 2 capacity)
+     * to distinguish the two cases.  This is O(n) over n_leaves; a vehicle_id
+     * → leaf_index hash map would give O(1) if needed. */
     if (leaf == UINT32_MAX) {
-        /* Check if it's in the tree but revoked */
-        for (uint32_t i = 0; i < LKH_MAX_LEAVES * 2; i++) {
+        for (uint32_t i = 0; i < tree->n_leaves * 2; i++) {
             if (tree->nodes[i].is_leaf &&
                 memcmp(tree->nodes[i].vehicle_id, vehicle_id, 16) == 0)
                 return tree->nodes[i].revoked;
@@ -248,6 +270,7 @@ bool lkh_is_revoked(const LKHTree *tree, const uint8_t vehicle_id[16]) {
 
 /* ── main ─────────────────────────────────────────────────────────────────── */
 
+#ifndef LKH_MGMT_NO_MAIN
 int main(void) {
     printf("=== lkh_mgmt.cc — LKH Key Revocation (Eq. 3.18, O(log n)) ===\n");
     printf("[LKH] sizeof(LKHNode)  = %zu bytes\n", sizeof(LKHNode));
@@ -313,3 +336,4 @@ int main(void) {
     printf("[LKH] Wrote lkh_revocation_log.csv\n");
     return 0;
 }
+#endif /* LKH_MGMT_NO_MAIN */

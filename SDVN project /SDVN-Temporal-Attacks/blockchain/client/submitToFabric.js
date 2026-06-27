@@ -4,16 +4,25 @@
  * Implements SUBMIT_TO_FABRIC(nk, A, B_nk(t)) from Algorithm 2 Step 22 (§10.1).
  *
  * Pipeline position:
- *   tgn_detector.cc  →  tgn_alerts.json
+ *   tgn_detector.cc  →  tgn_alerts.json  (raw alerts, all events)
+ *   crypto_pipeline  →  tgn_alerts_crypto.json  (verified subset — 4-gate filter)
  *   submit_alerts.py →  peer chaincode invoke SubmitAlert   (simple path)
  *   submitToFabric.js→  Fabric Gateway SDK SubmitAlert       (full SDK path)
+ *
+ * BC-1: submitToFabric reads tgn_alerts_crypto.json (crypto-verified alerts only),
+ * NOT tgn_alerts.json. Only alerts that passed revocation, HMAC, timestamp-freshness,
+ * and nonce-novelty gates reach the blockchain. Alerts that failed any gate are in
+ * crypto_drop_log.csv and are NOT submitted. Run the crypto pipeline first.
  *
  * The full SDK path (this file) also submits beacon evidence (Flow 1) and
  * triggers the divergence check (Flow 3) in addition to SubmitAlert.
  *
  * Usage:
- *   node submitToFabric.js --alerts tgn_alerts.json [--evidence beacon_evidence.json]
- *   node submitToFabric.js --alerts tgn_alerts.json --ctrl_topo ctrl_topo.json
+ *   node submitToFabric.js [--alerts tgn_alerts_crypto.json] [--evidence beacon_evidence.csv]
+ *   node submitToFabric.js --alerts tgn_alerts_crypto.json --ctrl_topo ctrl_topo.json
+ *
+ * BC-4: --evidence accepts beacon_evidence.csv (crypto pipeline output) directly.
+ *   CSV columns: rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,gps_lat,gps_lon,rssi_dbm
  *
  * Prerequisites:
  *   - Fabric network running (docker-compose -f ../network/docker-compose-teta.yaml up -d)
@@ -335,11 +344,81 @@ function sTrigsToMask(strig) {
     return mask;
 }
 
+// ─── BC-4: beacon_evidence.csv → BeaconEvidenceRecord ────────────────────────
+//
+// crypto_pipeline writes beacon_evidence.csv (CSV format) not JSON.
+// CSV columns: rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,gps_lat,gps_lon,rssi_dbm
+// This function parses the CSV and returns { observations: [...] } matching the
+// BeaconEvidenceRecord.Observations field expected by SubmitBeaconEvidence (Flow 1).
+// Rows are grouped by (rsu_id, interval_ts_ms); the first group's observations are
+// returned (one submission per run — RSU aggregates one interval's worth of beacons).
+
+function loadBeaconEvidence(evidencePath) {
+    if (!evidencePath || !fs.existsSync(evidencePath)) {
+        return { observations: [] };
+    }
+
+    const ext = path.extname(evidencePath).toLowerCase();
+
+    // JSON path — accept pre-converted files or legacy beacon_evidence.json
+    if (ext === '.json') {
+        try {
+            return JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+        } catch (e) {
+            console.error(`[WARN] Could not parse evidence JSON ${evidencePath}: ${e.message}`);
+            return { observations: [] };
+        }
+    }
+
+    // CSV path — beacon_evidence.csv from crypto_pipeline
+    if (ext !== '.csv') {
+        console.error(`[WARN] Unsupported evidence file format: ${ext} (expected .csv or .json)`);
+        return { observations: [] };
+    }
+
+    const raw = fs.readFileSync(evidencePath, 'utf8');
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    if (lines.length === 0) {
+        return { observations: [] };
+    }
+
+    // Skip header line if present (starts with non-numeric rsu_id)
+    const dataLines = lines[0].startsWith('rsu_id') ? lines.slice(1) : lines;
+
+    // Group by (rsu_id, interval_ts_ms) — use the first group encountered
+    const groups = new Map();
+    for (const line of dataLines) {
+        const parts = line.split(',');
+        if (parts.length < 7) continue;
+        const [rsu_id, interval_ts_ms, vehicle_id, sender_ts_ms, gps_lat, gps_lon, rssi_dbm] = parts;
+        const groupKey = `${rsu_id.trim()}|${interval_ts_ms.trim()}`;
+        if (!groups.has(groupKey)) groups.set(groupKey, []);
+        groups.get(groupKey).push({
+            vehicle_id:        vehicle_id.trim(),
+            sender_ts_ms:      parseInt(sender_ts_ms.trim(), 10),
+            gps_lat:           parseFloat(gps_lat.trim()),
+            gps_lon:           parseFloat(gps_lon.trim()),
+            rssi_dbm:          parseFloat(rssi_dbm.trim()),
+            neighbour_vehicles: []
+        });
+    }
+
+    if (groups.size === 0) {
+        return { observations: [] };
+    }
+
+    // Take the first (earliest) interval group
+    const firstGroup = groups.values().next().value;
+    console.log(`[Bridge] Parsed beacon_evidence.csv: ${firstGroup.length} observation(s)`);
+    return { observations: firstGroup };
+}
+
 // ─── CLI entry point ─────────────────────────────────────────────────────────
 
 async function main() {
     const args = process.argv.slice(2);
-    let alertsPath   = 'tgn_alerts.json';
+    let alertsPath   = 'tgn_alerts_crypto.json';  // BC-1: crypto-verified alerts only
     let evidencePath = null;
     let ctrlTopoPath = null;
     let nodeID       = PEER_ID;
@@ -355,16 +434,19 @@ async function main() {
 
     if (!fs.existsSync(alertsPath)) {
         console.error(`[ERROR] Alerts file not found: ${alertsPath}`);
-        console.error('  Run tgn_detector first: ./waf --run "scratch/tgn_detector ..."');
+        if (alertsPath.includes('crypto')) {
+            console.error('  Run the crypto pipeline first: cd crypto && make && ./crypto_pipeline');
+            console.error('  It reads pem_event_log.csv and writes tgn_alerts_crypto.json');
+        } else {
+            console.error('  Run tgn_detector first: ./waf --run "scratch/routing ..."');
+        }
         process.exit(1);
     }
 
     const alerts = JSON.parse(fs.readFileSync(alertsPath, 'utf8'));
     console.log(`[Bridge] Loaded ${alerts.length} alert(s) from '${alertsPath}'`);
 
-    const beaconEvidence = evidencePath && fs.existsSync(evidencePath)
-        ? JSON.parse(fs.readFileSync(evidencePath, 'utf8'))
-        : { observations: [] };
+    const beaconEvidence = loadBeaconEvidence(evidencePath);  // BC-4: handles .csv and .json
 
     const ctrlTopo = ctrlTopoPath && fs.existsSync(ctrlTopoPath)
         ? JSON.parse(fs.readFileSync(ctrlTopoPath, 'utf8'))

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"time"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -57,7 +56,7 @@ func loadTrust(ctx contractapi.TransactionContextInterface, peerID string) Trust
 
 func saveTrust(ctx contractapi.TransactionContextInterface, r TrustRecord) error {
 	r.DocType = "TRUST_RECORD"
-	r.UpdatedAt = time.Now().UnixMilli()
+	r.UpdatedAt = txTimestampMs(ctx)
 	data, _ := json.Marshal(r)
 	return ctx.GetStub().PutState("TRUST:"+r.PeerID, data)
 }
@@ -78,7 +77,7 @@ func loadCtrlTrust(ctx contractapi.TransactionContextInterface, ctrlID string) C
 
 func saveCtrlTrust(ctx contractapi.TransactionContextInterface, r ControllerTrustRecord) error {
 	r.DocType = "CTRL_TRUST_RECORD"
-	r.UpdatedAt = time.Now().UnixMilli()
+	r.UpdatedAt = txTimestampMs(ctx)
 	data, _ := json.Marshal(r)
 	return ctx.GetStub().PutState("CTRL_TRUST:"+r.ControllerID, data)
 }
@@ -120,7 +119,7 @@ func updateTrust(ctx contractapi.TransactionContextInterface, peerID string, cor
 			return 0.0, demotePeerToClient(ctx, peerID)
 		}
 		r.Score = 0.0
-		r.FlaggedAt = time.Now().UnixMilli()
+		r.FlaggedAt = txTimestampMs(ctx)
 		r.Flagged = true
 	} else if correct {
 		r.Score = r.Score + TrustDeltaPlus
@@ -186,7 +185,7 @@ func (t *TemporalEchoMitigator) RegisterOBUPeer(
 		PeerID:      peerID,
 		Score:       TrustInitTier2,
 		IsRSUPeer:   false,
-		JoinedAtMs:  time.Now().UnixMilli(),
+		JoinedAtMs:  txTimestampMs(ctx),
 		HWCapacity:  hwCap,
 		HWStorageGB: hwStorage,
 		DocType:     "TRUST_RECORD",
@@ -305,7 +304,7 @@ func (t *TemporalEchoMitigator) ZeroTrust(
 // but remains on the ledger for continued monitoring.
 func demotePeerToClient(ctx contractapi.TransactionContextInterface, peerID string) error {
 	r := loadTrust(ctx, peerID)
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 	r.Score = 0.0
 	r.Flagged = true
 	r.FlaggedAt = nowMs
@@ -334,7 +333,7 @@ func monitorAndRemovePeer(ctx contractapi.TransactionContextInterface, peerID st
 	if r.State != PeerStateQuarantined {
 		return nil
 	}
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 	if nowMs-r.DemotedAt < QuarantineMonitorMs {
 		// Still within quarantine window — keep monitoring
 		return nil
@@ -449,7 +448,7 @@ func (t *TemporalEchoMitigator) PeriodicPeerReSelection(
 		newSet[p] = true
 	}
 
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 
 	// Emit PeerPromoted for any OBU that entered the active set this round.
 	// RSU peers starting at τ=1.0 are not logged as "promotions" — they are
@@ -575,7 +574,7 @@ func computeTMinMs(ctx contractapi.TransactionContextInterface) int64 {
 
 func selectPeers(ctx contractapi.TransactionContextInterface, allPeers []string) []string {
 	np := NpConsensus // 8 active peers (np ≥ 3f+1=7 for f=2, +1 for redundancy)
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 	tMinMs := computeTMinMs(ctx)
 
 	// Detect no-RSU scenario from the ledger flag set by SetSimParams.
@@ -643,25 +642,25 @@ func selectPeers(ctx contractapi.TransactionContextInterface, allPeers []string)
 }
 
 // obuHasSyncedFromRecentCheckpoint verifies an OBU synced from the latest checkpoint.
-// TR-05: sorts by block_height DESC (monotonic, spoof-proof) not created_at_ms
-// (wall-clock, susceptible to clock manipulation and test collisions).
+// BC-11 FIX: replaced CouchDB sort query (snapshot-isolation risk across endorsers)
+// with deterministic ANCHOR_CTR counter → GetState("ANCHOR:<n>") path, matching
+// the same pattern used by GetLatestAnchorCheckpoint in anchor.go.
 func obuHasSyncedFromRecentCheckpoint(ctx contractapi.TransactionContextInterface, obuPeerID string) bool {
-	// TR-05: sort by block_height (deterministic) not created_at_ms (wall-clock)
-	qs := `{"selector":{"doc_type":"ANCHOR_CHECKPOINT"},"sort":[{"block_height":"desc"}],"limit":1}`
-	iter, err := ctx.GetStub().GetQueryResult(qs)
-	if err != nil || iter == nil {
+	data, err := ctx.GetStub().GetState(AnchorBlockCtrKey)
+	if err != nil || len(data) == 0 {
 		return true // no checkpoint yet — bootstrap phase
 	}
-	defer iter.Close()
-	if !iter.HasNext() {
+	var current uint64
+	fmt.Sscanf(string(data), "%d", &current)
+	if current == 0 {
 		return true // bootstrap phase
 	}
-	qr, err := iter.Next()
-	if err != nil {
-		return false
+	cpData, err := ctx.GetStub().GetState(fmt.Sprintf("ANCHOR:%d", current))
+	if err != nil || len(cpData) == 0 {
+		return true // checkpoint counter exists but record missing — treat as bootstrap
 	}
 	var cp AnchorCheckpoint
-	if json.Unmarshal(qr.Value, &cp) != nil {
+	if json.Unmarshal(cpData, &cp) != nil {
 		return false
 	}
 	for _, pid := range cp.SyncedPeers {
@@ -784,7 +783,7 @@ func (t *TemporalEchoMitigator) CheckControllerTrustAndReassign(
 			"type":         "NO_BACKUP_CONTROLLER",
 			"failed_ctrl":  controllerID,
 			"trust_score":  newScore,
-			"timestamp_ms": time.Now().UnixMilli(),
+			"timestamp_ms": txTimestampMs(ctx),
 		})
 		ctx.GetStub().SetEvent("ControllerRemovalFailed", payload)
 		return nil
@@ -798,7 +797,7 @@ func (t *TemporalEchoMitigator) CheckControllerTrustAndReassign(
 		BackupCtrlID:    backupID,
 		BackupScore:     backupScore,
 		RemovedScore:    newScore,
-		AssignedAt:      time.Now().UnixMilli(),
+		AssignedAt:      txTimestampMs(ctx),
 		ZoneID:          ctrlRecord.ZoneID,
 		DocType:         "CTRL_REASSIGNMENT",
 		EmergencyBypass: true,
@@ -809,7 +808,7 @@ func (t *TemporalEchoMitigator) CheckControllerTrustAndReassign(
 		return err
 	}
 
-	nowMs := time.Now().UnixMilli()
+	nowMs := txTimestampMs(ctx)
 
 	credRevoke := map[string]interface{}{
 		"controller_id": controllerID,
