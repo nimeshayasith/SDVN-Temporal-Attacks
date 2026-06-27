@@ -1,6 +1,6 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [SUMO] Attack 6: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/06_BSHH_S2_Malicious_RSU.xml
 
@@ -13,12 +13,13 @@ Stored HB time : t=5 (from legitimate exchange)
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 5.000s with delay 1ms
-[BSHH-S2][t=5.100]  RSU0(ns3=11) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
-[BSHH-S2][t=10.000]  RSU0(ns3=11) --REPLAY old heartbeat--> Controller  Heartbeat(physical=RSU0(ns3=11), claimed=V0(ns3=5), t=5.000)  *** ATTACK COMPLETE ***
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.000s with delay 1ms
+[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
+[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 5.000s with delay 1ms
+[BSHH-S2][t=5.100]  RSU0(ns3=9) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
+[BSHH-S2][t=10.000]  RSU0(ns3=9) --REPLAY old heartbeat--> Controller  Heartbeat(physical=RSU0(ns3=9), claimed=V0(ns3=5), t=5.000)  *** ATTACK COMPLETE ***
+[BSHH-S2][t=10.000]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V9
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.000s with delay 1ms
 [TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
 [CryptoFilter] 2 in → 2 out  (dropped: 0 MAC, 0 stale, 0 nonce)

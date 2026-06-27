@@ -693,6 +693,19 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
 //    ML-DSA-87 → asymmetric identity proofs (PKI signatures)
 static void CryptoInitKeys()
 {
+    // LKH tree is always initialised regardless of enable_crypto_latency — it is
+    // needed by the live revocation path in PemEvaluateEvent (Eq. 3.18).
+    memset(g_lkh_keystore, 0, sizeof(g_lkh_keystore));
+    memset(g_lkh_vids, 0, sizeof(g_lkh_vids));
+    for (uint32_t i = 0; i < 16; i++) {
+        g_lkh_vids[i][0] = (uint8_t)i;
+        memcpy(g_lkh_keystore[i].vehicle_id, g_lkh_vids[i], 16);
+        g_lkh_keystore[i].lkh_leaf_index = i;
+    }
+    lkh_set_keystore(g_lkh_keystore, 16);
+    lkh_init(&g_lkh_tree, (const uint8_t (*)[16])g_lkh_vids, 16);
+    g_lkh_ready = true;
+
 #ifdef HAVE_LIBOQS
     if (!enable_crypto_latency) return;
     OQS_SIG *sig = OQS_SIG_new(OQS_SIG_alg_dilithium_5);
@@ -718,17 +731,6 @@ static void CryptoInitKeys()
     uint8_t dummy2[64]; RAND_bytes(dummy2, 64);
     dilithium5_sign(dummy2, 64,
                     g_dil_sk.data(), g_pipeline_dil_sig, &g_pipeline_dil_sig_len);
-    // LKH tree: initialise with 16 dummy vehicle IDs
-    memset(g_lkh_keystore, 0, sizeof(g_lkh_keystore));
-    memset(g_lkh_vids, 0, sizeof(g_lkh_vids));
-    for (uint32_t i = 0; i < 16; i++) {
-        g_lkh_vids[i][0] = (uint8_t)i;
-        memcpy(g_lkh_keystore[i].vehicle_id, g_lkh_vids[i], 16);
-        g_lkh_keystore[i].lkh_leaf_index = i;
-    }
-    lkh_set_keystore(g_lkh_keystore, 16);
-    lkh_init(&g_lkh_tree, (const uint8_t (*)[16])g_lkh_vids, 16);
-    g_lkh_ready = true;
     // CA init + test cert for MeasureKEM and TimedLocationBind
     teta_ca_init();
     {
@@ -1516,6 +1518,9 @@ std::set<uint32_t> ttw_s1_detected_attackers;
 static std::set<uint32_t> pem_actual_attacker_nodes;
 static std::set<uint32_t> pem_detected_attacker_nodes;
 static std::set<uint32_t> pem_false_positive_nodes;
+// Tracks which physical_sender_ids have already had LKH revocation issued
+// so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
+static std::set<uint32_t> g_lkh_already_revoked;
 static std::set<uint32_t> pem_all_seen_node_ids;
 std::set<uint32_t> ttw_s1_false_positive_reporters;
 extern double current_packet_delivery_ratio;
@@ -2801,12 +2806,17 @@ PemEvaluateEvent(PemEvent& event)
     }
 
     // ── STEP 3: Temporal pressure from window history ─────────────────────────
-    // "Temporal echo" means recent, repeated suspicious events matter more.
-    // We accumulate exponentially-decayed scores of past events in the sliding
-    // window — events close in time contribute fully, older ones fade.
-    // This is NOT applied as a multiplier on the current score (which would
-    // suppress isolated attack events). Instead it is added as a separate
-    // "pressure" term, capped so it cannot dominate the weighted score.
+    // Engineering extension of Eq. 3.12: recent bursty suspicious activity
+    // raises confidence.  Computed separately from the Eq. 3.12 weighted sum
+    // so s(e) stays in [0,1] — temporal pressure lowers the effective threshold
+    // rather than inflating the score above 1.0.
+    //
+    //   s(e)        = Σ w_k · 1[Sig_k]        (Eq. 3.12, always ∈ [0,1])
+    //   s_pressure  = exponential decay sum of recent window scores (capped 0.30)
+    //   effective θ = max(PEM_SCORE_THRESHOLD − s_pressure, 0)
+    //
+    // Alert fires if s(e) ≥ effective_θ, meaning sustained suspicious activity
+    // lowers the bar for the current event — without pushing s(e) outside [0,1].
     double temporalPressure = 0.0;
     const double now = event.reception_timestamp;
     for (std::deque<PemEvent>::const_iterator it = ns.event_window.begin();
@@ -2819,16 +2829,18 @@ PemEvaluateEvent(PemEvent& event)
             temporalPressure += it->score * std::exp(-age / PEM_DECAY_TAU_S);
         }
     }
-    // Scale and cap: max contribution from history = 30% of full weighted score
     const double PEM_PRESSURE_CAP = 0.30;
     temporalPressure = std::min(temporalPressure * 0.05, PEM_PRESSURE_CAP);
-    score += temporalPressure;
-
-    event.score = score;
+    // s(e) is now strictly the Eq. 3.12 weighted sum — clamped to [0,1].
+    // (Avoid std::min/std::max: routing.cc defines max=60 which poisons them.)
+    event.score = (score < 1.0) ? score : 1.0;
+    // Effective threshold is lowered by temporal pressure (floor at 0).
+    const double th_adj = PEM_SCORE_THRESHOLD - temporalPressure;
+    const double effective_threshold = (th_adj > 0.0) ? th_adj : 0.0;
     // Alert only fires when detection is enabled. When detection_enabled=false,
     // PEM logs the score/signatures but never acts on them, so the controller
     // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
-    event.alert_raised = detection_enabled && (score >= PEM_SCORE_THRESHOLD);
+    event.alert_raised = detection_enabled && (event.score >= effective_threshold);
 
     // Node-level detection tracking (unified across all 12 scenarios).
     pem_all_seen_node_ids.insert(event.physical_sender_id);
@@ -2836,7 +2848,24 @@ PemEvaluateEvent(PemEvent& event)
     {
         pem_actual_attacker_nodes.insert(event.physical_sender_id);
         if (event.alert_raised)
+        {
             pem_detected_attacker_nodes.insert(event.physical_sender_id);
+            // Eq. 3.18 — live LKH revocation: O(log n) KEK-path update for
+            // the detected attacker's leaf node.  Called once per unique
+            // physical_sender_id to avoid redundant tree walks.
+            if (g_lkh_ready &&
+                g_lkh_already_revoked.find(event.physical_sender_id) ==
+                    g_lkh_already_revoked.end())
+            {
+                uint32_t leaf_idx = event.physical_sender_id % 16;
+                lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+                g_lkh_already_revoked.insert(event.physical_sender_id);
+                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log 16)=4 KEK updates"
+                       " (Eq. 3.18)\n",
+                       Simulator::Now().GetSeconds(),
+                       event.physical_sender_id, leaf_idx);
+            }
+        }
     }
     else if (event.alert_raised)
     {
@@ -3060,6 +3089,18 @@ PemEmitEvent(PemEventType type,
             PemCryptoRegisterDetection(physicalSenderId, reporterId);
             g_tgn_stage0_blocked_attacks++;
             g_tgn_flagged_nodes.insert(physicalSenderId);
+            // Eq. 3.18 — live LKH revocation at Stage 0 (crypto gate detected attacker).
+            if (g_lkh_ready &&
+                g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
+            {
+                uint32_t leaf_idx = physicalSenderId % 16;
+                lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+                g_lkh_already_revoked.insert(physicalSenderId);
+                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log 16)=4 KEK updates"
+                       " (Eq. 3.18, Stage-0 detection)\n",
+                       Simulator::Now().GetSeconds(),
+                       physicalSenderId, leaf_idx);
+            }
         }
         PemRecordObservation(attackLabel, 1.0, attackLabel);
         return;  // silent drop — no alert label, no ledger entry, no FlowMod
@@ -6020,54 +6061,63 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
                                 uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
+    const bool s2_ld_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
     uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
-    uint32_t v4_ns3  = (false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
-    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)]       = {v1_id,    v2_id,    t, false};
-    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)]       = {v2_id,    v1_id,    t, false};
-    ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
-    ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
+    uint32_t v4_ns3  = (s2_ld_have_v4 && false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
+    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    if (s2_ld_have_v4) {
+        ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
+        ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
+    }
 
     // STEP ①: V1↔V2 HELLO
     me_log << "[t=" << now << "]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)\n"
            << "  V" << v1_ns3 << " -> V" << v2_ns3 << " : HELLO(t=" << t << ")\n"
            << "  V" << v2_ns3 << " -> V" << v1_ns3 << " : HELLO(t=" << t << ")\n"
-           << "  [V" << v3_ns3 << " and V" << v4_ns3 << " in overhearing range — no direct link to V"
-           << v1_ns3 << " or V" << v2_ns3 << "]\n\n";
+           << "  [V" << v3_ns3 << (s2_ld_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)")
+           << " in overhearing range — no direct link to V" << v1_ns3 << " or V" << v2_ns3 << "]\n\n";
     // STEP ②: Vehicles report to RSU
     me_log << "[t=" << now << "]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_" << rsu_id << "\n"
            << "  V" << v1_ns3 << " -> RSU_" << rsu_id << " : <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t << ">\n"
            << "  V" << v2_ns3 << " -> RSU_" << rsu_id << " : <V" << v2_ns3 << " sees V" << v1_ns3 << ", t=" << t << ">\n"
-           << "  V" << v3_ns3 << " -> RSU_" << rsu_id << " : <V" << v3_ns3 << " sees V" << v4_ns3 << ", t=" << t << ">\n"
-           << "  V" << v4_ns3 << " -> RSU_" << rsu_id << " : <V" << v4_ns3 << " sees V" << v3_ns3 << ", t=" << t << ">\n\n";
+           << (s2_ld_have_v4 ? ("  V" + std::to_string(v3_ns3) + " -> RSU_" + std::to_string(rsu_id)
+                                + " : <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3)
+                                + ", t=" + std::to_string(t) + ">\n"
+                                "  V" + std::to_string(v4_ns3) + " -> RSU_" + std::to_string(rsu_id)
+                                + " : <V" + std::to_string(v4_ns3) + " sees V" + std::to_string(v3_ns3)
+                                + ", t=" + std::to_string(t) + ">\n\n")
+                             : ("  V" + std::to_string(v3_ns3) + " -> RSU_" + std::to_string(rsu_id)
+                                + " : <own, t=" + std::to_string(t) + "> (single)\n\n"));
     // STEP ③: RSU aggregates
     me_log << "[t=" << now << "]  STEP ③  RSU_" << rsu_id << " AGGREGATES LEGITIMATE TOPOLOGY\n"
            << "  <V" << v1_ns3 << " sees V" << v2_ns3 << ">  AGGREGATED\n"
            << "  <V" << v2_ns3 << " sees V" << v1_ns3 << ">  AGGREGATED\n"
-           << "  <V" << v3_ns3 << " sees V" << v4_ns3 << ">  AGGREGATED\n"
-           << "  <V" << v4_ns3 << " sees V" << v3_ns3 << ">  AGGREGATED\n"
+           << (s2_ld_have_v4 ? ("  <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3) + ">  AGGREGATED\n"
+                                "  <V" + std::to_string(v4_ns3) + " sees V" + std::to_string(v3_ns3) + ">  AGGREGATED\n") : "")
            << "  RSU -> Controller: forwarding aggregated report\n\n";
 
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S2][t=" << now << "]  STEP①②③  V" << v1_ns3 << "<->V" << v2_ns3
-              << " HELLO; all four vehicles report to RSU_" << rsu_id
+              << " HELLO; vehicles report to RSU_" << rsu_id
               << "; RSU aggregates" << std::endl;
 
     Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
     if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) pos1 = m->GetPosition(); }
     if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
     if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
-    if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    if (s2_ld_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, s2_ld_have_v4 ? false_v4 : v2_id, t, now, pos3, pos3, pos4, false);
+    if (s2_ld_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
     }
-    if (false_v3 < Vehicle_Nodes.GetN() && false_v4 < Vehicle_Nodes.GetN()) {
+    if (s2_ld_have_v4 && false_v3 < Vehicle_Nodes.GetN() && false_v4 < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v3), Vehicle_Nodes.Get(false_v4));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v4), Vehicle_Nodes.Get(false_v3));
     }
@@ -6082,20 +6132,25 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
+    const bool s2_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
-    me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
+    if (s2_have_v4) me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
     std::string k3 = std::to_string(false_v3) + "_echo_"
                    + std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    std::string k4 = std::to_string(false_v4) + "_echo_"
-                   + std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[k3] = {false_v3, v2_id, t, true};
-    ttw_controller_table[k4] = {false_v4, v2_id, t, true};
-    attack_E_matrix.insert(k3); attack_E_matrix.insert(k4);
-    topology_divergence_delta += 2;
+    attack_E_matrix.insert(k3);
+    topology_divergence_delta += 1;
+    if (s2_have_v4) {
+        std::string k4 = std::to_string(false_v4) + "_echo_"
+                       + std::to_string(v1_id) + "_" + std::to_string(v2_id);
+        ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+        attack_E_matrix.insert(k4);
+        topology_divergence_delta += 1;
+    }
     uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
-    uint32_t v4_ns3  = (false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
+    uint32_t v4_ns3  = (s2_have_v4 && false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
 
     // Check V3↔V4 physical distance — Path 4 exists only when they are in DSRC range.
     // The RSU injects reports for V3 and V4 as false reporters; if V3 and V4 happen to
@@ -6120,23 +6175,28 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
            << "  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:\n"
            << "  RSU_" << rsu_id << " -> Controller : <V" << v1_ns3 << " sees V" << v2_ns3
            << ", t=" << t << "> reported by V" << v3_ns3 << "  (INJECTED — forged)\n"
-           << "  RSU_" << rsu_id << " -> Controller : <V" << v1_ns3 << " sees V" << v2_ns3
-           << ", t=" << t << "> reported by V" << v4_ns3 << "  (INJECTED — forged)\n"
-           << "  V3↔V4 link: dist=" << std::fixed << std::setprecision(1) << s2_v3v4_dist
-           << "m  " << (s2_v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4") << "\n"
+           << (s2_have_v4 ? ("  RSU_" + std::to_string(rsu_id) + " -> Controller : <V" +
+                             std::to_string(v1_ns3) + " sees V" + std::to_string(v2_ns3) +
+                             ", t=" + std::to_string(t) + "> reported by V" + std::to_string(v4_ns3) +
+                             "  (INJECTED — forged)\n") : "  Single false reporter — only Path 2 inferred\n")
+           << (s2_have_v4 ? ("  V3↔V4 link: dist=" + [&]{ std::ostringstream os; os << std::fixed << std::setprecision(1) << s2_v3v4_dist; return os.str(); }() +
+                             "m  " + (s2_v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4") + "\n") : "")
            << "  Note: These do NOT fabricate new physical links — they duplicate V"
            << v1_ns3 << "↔V" << v2_ns3 << " across multiple paths\n\n";
     // STEP ⑤: Forwarded aggregated + injected to controller
     me_log << "[t=" << now << "]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER\n"
            << "  RSU_" << rsu_id << " -> Controller: legitimate + injected echo observations:\n"
            << "    V" << v3_ns3 << " reports observing V" << v1_ns3 << "↔V" << v2_ns3 << "  [INJECTED]\n"
-           << "    V" << v4_ns3 << " reports observing V" << v1_ns3 << "↔V" << v2_ns3 << "  [INJECTED]\n\n";
-    // STEP ⑥: Phantom path inference — Path 4 only when V3↔V4 in range
+           << (s2_have_v4 ? ("    V" + std::to_string(v4_ns3) + " reports observing V" +
+                             std::to_string(v1_ns3) + "↔V" + std::to_string(v2_ns3) + "  [INJECTED]\n") : "")
+           << "\n";
+    // STEP ⑥: Phantom path inference — Path 3 only with V4, Path 4 only when V3↔V4 in range
     me_log << "[t=" << now << "]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER\n"
            << "  Controller incorrectly infers:\n"
            << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3 << "  (REAL)\n"
            << "    Path 2: V" << v1_ns3 << " → V" << v3_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
-           << "    Path 3: V" << v1_ns3 << " → V" << v4_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
+           << (s2_have_v4 ? ("    Path 3: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v4_ns3) +
+                             " → V" + std::to_string(v2_ns3) + "  (PHANTOM)\n") : "")
            << (s2_v3v4_linked
                ? ("    Path 4: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v3_ns3) +
                   " → V" + std::to_string(v4_ns3) + " → V" + std::to_string(v2_ns3) +
@@ -6144,19 +6204,21 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
                : "\n");
     // STEP ⑦: Faulty routing
     me_log << "[t=" << now << "]  STEP ⑦  FAULTY ROUTING DECISIONS\n"
-           << "  Controller installs routes using phantom V" << v3_ns3 << " and V" << v4_ns3 << " paths\n"
+           << "  Controller installs routes using phantom V" << v3_ns3
+           << (s2_have_v4 ? " and V" + std::to_string(v4_ns3) : "") << " paths\n"
            << "  Expected impact: packet loss, increased delay, routing instability\n"
            << "  <- ATTACK SUCCESS\n\n";
     me_log.flush();
     NS_LOG_INFO("[ME-S2] t=" << now << "s  RSU_" << rsu_id
-                << " injected echo reports for V" << v3_ns3 << " and V" << v4_ns3);
+                << " injected echo for V" << v3_ns3 << (s2_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)"));
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S2][t=" << now << "]  STEP④  RSU_" << rsu_id
               << " INJECTS echo <V" << v1_ns3 << " sees V" << v2_ns3
-              << "> as-if-by V" << v3_ns3 << " and V" << v4_ns3 << std::endl;
-    std::cout << "[ME-S2][t=" << now << "]  STEP⑥  Phantom paths: V" << v1_ns3
-              << "->V" << v3_ns3 << "->V" << v2_ns3 << ", V" << v1_ns3
-              << "->V" << v4_ns3 << "->V" << v2_ns3 << "  *** ATTACK COMPLETE ***" << std::endl;
+              << "> as-if-by V" << v3_ns3 << (s2_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)") << std::endl;
+    std::cout << "[ME-S2][t=" << now << "]  STEP⑥  Phantom: V" << v1_ns3
+              << "->V" << v3_ns3 << "->V" << v2_ns3
+              << (s2_have_v4 ? (", V" + std::to_string(v1_ns3) + "->V" + std::to_string(v4_ns3) + "->V" + std::to_string(v2_ns3)) : "")
+              << "  *** ATTACK COMPLETE ***" << std::endl;
     Vector rsuPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     for (uint32_t ri = 0; ri < RSU_Nodes.GetN(); ri++) {
         if (RSU_Nodes.Get(ri)->GetId() == rsu_id) {
@@ -6175,8 +6237,9 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v3, rsu_id,
                  v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v4, rsu_id,
-                 v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
+    if (s2_have_v4)
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v4, rsu_id,
+                     v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
     AttackSendRSUToController(rsu_id);
 
     if (pem_last_alert) {
@@ -6223,54 +6286,61 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
                                 uint32_t v3_id, uint32_t v4_id, double t)
 {
     double now = Simulator::Now().GetSeconds();
+    const bool s3_ld_have_v4 = (v4_id != UINT32_MAX) && (v4_id != v3_id);
     // V1↔V2 real link
     ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
     ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
-    // V3↔V4 real link (phantom reporters' own legitimate link)
-    ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
-    ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
-        uint32_t v1_ns3 = (v1_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId() : v1_id;
+    // V3↔V4 real link (phantom reporters' own legitimate link) — only if V4 exists
+    if (s3_ld_have_v4) {
+        ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
+        ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
+    }
+    uint32_t v1_ns3 = (v1_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId() : v1_id;
     uint32_t v2_ns3 = (v2_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId() : v2_id;
     uint32_t v3_ns3 = (v3_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v3_id)->GetId() : v3_id;
-    uint32_t v4_ns3 = (v4_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v4_id)->GetId() : v4_id;
+    uint32_t v4_ns3 = (s3_ld_have_v4 && v4_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v4_id)->GetId() : v4_id;
 
     me_log << "[t=" << now << "]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY\n"
            << "  V" << v1_ns3 << " <-> V" << v2_ns3 << " : HELLO exchange (real V2V link)\n"
-           << "  V" << v3_ns3 << " <-> V" << v4_ns3 << " : HELLO exchange (own legitimate link)\n"
-           << "  V" << v3_ns3 << " and V" << v4_ns3 << " in overhearing range of V"
-           << v1_ns3 << "↔V" << v2_ns3 << " but NO direct link\n\n";
+           << (s3_ld_have_v4 ? ("  V" + std::to_string(v3_ns3) + " <-> V" + std::to_string(v4_ns3) + " : HELLO exchange (own legitimate link)\n"
+                                "  V" + std::to_string(v3_ns3) + " and V" + std::to_string(v4_ns3) + " in overhearing range of V"
+                                + std::to_string(v1_ns3) + "↔V" + std::to_string(v2_ns3) + " but NO direct link\n\n")
+                             : ("  V" + std::to_string(v3_ns3) + " in overhearing range (single phantom, no own link pair)\n\n"));
     me_log << "[t=" << now << "]  STEP ②  LEGITIMATE TOPOLOGY UPDATES TO CONTROLLER\n"
            << "  V" << v1_ns3 << " -> Controller : <V" << v1_ns3
            << " sees V" << v2_ns3 << ", t=" << t << ">  ACCEPTED\n"
            << "  V" << v2_ns3 << " -> Controller : <V" << v2_ns3
            << " sees V" << v1_ns3 << ", t=" << t << ">  ACCEPTED\n"
-           << "  V" << v3_ns3 << " -> Controller : <V" << v3_ns3
-           << " sees V" << v4_ns3 << ", t=" << t << ">  ACCEPTED\n"
-           << "  V" << v4_ns3 << " -> Controller : <V" << v4_ns3
-           << " sees V" << v3_ns3 << ", t=" << t << ">  ACCEPTED\n\n";
+           << (s3_ld_have_v4 ? ("  V" + std::to_string(v3_ns3) + " -> Controller : <V" + std::to_string(v3_ns3)
+                                + " sees V" + std::to_string(v4_ns3) + ", t=" + std::to_string(t) + ">  ACCEPTED\n"
+                                "  V" + std::to_string(v4_ns3) + " -> Controller : <V" + std::to_string(v4_ns3)
+                                + " sees V" + std::to_string(v3_ns3) + ", t=" + std::to_string(t) + ">  ACCEPTED\n\n")
+                             : ("  V" + std::to_string(v3_ns3) + " -> Controller : <own position, t=" + std::to_string(t) + ">  ACCEPTED\n\n"));
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S3][t=" << now << "]  V" << v1_id << " --topo--> Controller"
               << "  <V" << v1_id << " sees V" << v2_id << ">  ACCEPTED (real link)" << std::endl;
     std::cout << "[ME-S3][t=" << now << "]  V" << v2_id << " --topo--> Controller"
               << "  <V" << v2_id << " sees V" << v1_id << ">  ACCEPTED (real link)" << std::endl;
-    std::cout << "[ME-S3][t=" << now << "]  V" << v3_id << " --topo--> Controller"
-              << "  <V" << v3_id << " sees V" << v4_id << ">  ACCEPTED (real link)" << std::endl;
-    std::cout << "[ME-S3][t=" << now << "]  V" << v4_id << " --topo--> Controller"
-              << "  <V" << v4_id << " sees V" << v3_id << ">  ACCEPTED (real link)" << std::endl;
+    if (s3_ld_have_v4) {
+        std::cout << "[ME-S3][t=" << now << "]  V" << v3_id << " --topo--> Controller"
+                  << "  <V" << v3_id << " sees V" << v4_id << ">  ACCEPTED (real link)" << std::endl;
+        std::cout << "[ME-S3][t=" << now << "]  V" << v4_id << " --topo--> Controller"
+                  << "  <V" << v4_id << " sees V" << v3_id << ">  ACCEPTED (real link)" << std::endl;
+    }
     Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
     if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); }
     if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); }
     if (v3_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
-    if (v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    if (s3_ld_have_v4 && v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id, v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id, v2_id, v1_id, t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, v4_id, t, now, pos3, pos3, pos4, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, s3_ld_have_v4 ? v4_id : v2_id, t, now, pos3, pos3, pos4, false);
+    if (s3_ld_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
     }
-    if (v3_id < Vehicle_Nodes.GetN() && v4_id < Vehicle_Nodes.GetN()) {
+    if (s3_ld_have_v4 && v3_id < Vehicle_Nodes.GetN() && v4_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(v4_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v4_id), Vehicle_Nodes.Get(v3_id));
     }
@@ -6283,20 +6353,25 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
+    const bool s3_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
-    me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
+    if (s3_have_v4) me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
     std::string k3 = std::to_string(false_v3) + "_phantom_"
                    + std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    std::string k4 = std::to_string(false_v4) + "_phantom_"
-                   + std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[k3] = {false_v3, v2_id, t, true};
-    ttw_controller_table[k4] = {false_v4, v2_id, t, true};
-    attack_E_matrix.insert(k3); attack_E_matrix.insert(k4);
-    topology_divergence_delta += 2;
+    attack_E_matrix.insert(k3);
+    topology_divergence_delta += 1;
+    if (s3_have_v4) {
+        std::string k4 = std::to_string(false_v4) + "_phantom_"
+                       + std::to_string(v1_id) + "_" + std::to_string(v2_id);
+        ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+        attack_E_matrix.insert(k4);
+        topology_divergence_delta += 1;
+    }
     uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
-    uint32_t v4_ns3  = (false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
+    uint32_t v4_ns3  = (s3_have_v4 && false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
 
     // Path 4 gated on actual V3↔V4 distance (same rule as ME-S1/S2).
     bool s3_v3v4_linked = false;
@@ -6319,15 +6394,16 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
            << "  <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t
            << "> as-relayed-via V" << v3_ns3 << "  (FORGED internally)\n"
            << "  <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t
-           << "> as-relayed-via V" << v4_ns3 << "  (FORGED internally)\n"
-           << "  V3↔V4 link: dist=" << std::fixed << std::setprecision(1) << s3_v3v4_dist
-           << "m  " << (s3_v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4") << "\n"
+           << (s3_have_v4 ? ("> as-relayed-via V" + std::to_string(v4_ns3) + "  (FORGED internally)\n") : "  Single false reporter — only Path 2 inferred\n")
+           << (s3_have_v4 ? ("  V3↔V4 link: dist=" + [&]{ std::ostringstream os; os << std::fixed << std::setprecision(1) << s3_v3v4_dist; return os.str(); }() +
+                             "m  " + (s3_v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4") + "\n") : "")
            << "  Note: No external packet sent — manipulation is purely internal\n\n";
     me_log << "[t=" << now << "]  STEP ④  FALSE MULTIPATH INFERENCE\n"
            << "  Controller incorrectly infers:\n"
            << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3 << "  (REAL)\n"
            << "    Path 2: V" << v1_ns3 << " → V" << v3_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
-           << "    Path 3: V" << v1_ns3 << " → V" << v4_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
+           << (s3_have_v4 ? ("    Path 3: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v4_ns3) +
+                             " → V" + std::to_string(v2_ns3) + "  (PHANTOM)\n") : "")
            << (s3_v3v4_linked
                ? ("    Path 4: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v3_ns3) +
                   " → V" + std::to_string(v4_ns3) + " → V" + std::to_string(v2_ns3) +
@@ -6335,18 +6411,21 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                : "\n");
     me_log << "[t=" << now << "]  STEP ⑤  FAULTY ROUTING DECISIONS\n"
            << "  Controller installs routing policies based on falsely inferred multipath topology\n"
-           << "  Packets forwarded via phantom V" << v3_ns3 << " or V" << v4_ns3 << " paths will be dropped\n"
+           << "  Packets forwarded via phantom V" << v3_ns3
+           << (s3_have_v4 ? " or V" + std::to_string(v4_ns3) : "") << " paths will be dropped\n"
            << "  Expected impact: packet loss, increased delay, routing instability\n"
            << "  <- ATTACK SUCCESS (no external packet required)\n\n";
     me_log.flush();
-    NS_LOG_INFO("[ME-S3] t=" << now << "s  Controller fabricated phantom paths via V"
-                << v3_ns3 << " and V" << v4_ns3);
+    NS_LOG_INFO("[ME-S3] t=" << now << "s  Controller fabricated phantom via V"
+                << v3_ns3 << (s3_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)"));
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S3][t=" << now << "]  STEP③  Controller FORGES: <V" << v1_ns3
-              << " sees V" << v2_ns3 << "> via V" << v3_ns3 << " and V" << v4_ns3 << std::endl;
-    std::cout << "[ME-S3][t=" << now << "]  STEP④  Phantom paths: V" << v1_ns3
-              << "->V" << v3_ns3 << "->V" << v2_ns3 << ", V" << v1_ns3
-              << "->V" << v4_ns3 << "->V" << v2_ns3 << "  *** ATTACK COMPLETE (no external packet) ***" << std::endl;
+              << " sees V" << v2_ns3 << "> via V" << v3_ns3
+              << (s3_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)") << std::endl;
+    std::cout << "[ME-S3][t=" << now << "]  STEP④  Phantom: V" << v1_ns3
+              << "->V" << v3_ns3 << "->V" << v2_ns3
+              << (s3_have_v4 ? (", V" + std::to_string(v1_ns3) + "->V" + std::to_string(v4_ns3) + "->V" + std::to_string(v2_ns3)) : "")
+              << "  *** ATTACK COMPLETE (no external packet) ***" << std::endl;
     Vector ctrlPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     if (controller_Node.GetN() > 0) {
         Ptr<MobilityModel> mc = controller_Node.Get(0)->GetObject<MobilityModel>();
@@ -6362,8 +6441,9 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, 9999u,
                  v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+    if (s3_have_v4)
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
+                     v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
 
     if (pem_last_alert) {
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
@@ -6415,49 +6495,58 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
                            uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
+    const bool s4_vr_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
     // V1↔V2 real link
     ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
     ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
-    // V3↔V4 real link (phantom reporters' own legitimate link via RSU)
-    ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
-    ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
-        uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
+    // V3↔V4 real link — only if V4 exists
+    if (s4_vr_have_v4) {
+        ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
+        ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
+    }
+    uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
-    uint32_t v4_ns3  = (false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
+    uint32_t v4_ns3  = (s4_vr_have_v4 && false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
 
     me_log << "[t=" << now << "]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)\n"
            << "  V" << v1_ns3 << " <-> V" << v2_ns3 << " : HELLO exchange (real link)\n"
-           << "  V" << v3_ns3 << " and V" << v4_ns3 << " in overhearing range — no direct link to V"
-           << v1_ns3 << " or V" << v2_ns3 << "\n\n";
+           << "  V" << v3_ns3 << (s4_vr_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)")
+           << " in overhearing range — no direct link to V" << v1_ns3 << " or V" << v2_ns3 << "\n\n";
     me_log << "[t=" << now << "]  STEP ②  TOPOLOGY REPORTING TO RSU_" << rsu_id << "\n"
            << "  V" << v1_ns3 << " -> RSU_" << rsu_id << " : <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t << ">\n"
            << "  V" << v2_ns3 << " -> RSU_" << rsu_id << " : <V" << v2_ns3 << " sees V" << v1_ns3 << ", t=" << t << ">\n"
-           << "  V" << v3_ns3 << " -> RSU_" << rsu_id << " : <V" << v3_ns3 << " sees V" << v4_ns3 << ", t=" << t << ">\n"
-           << "  V" << v4_ns3 << " -> RSU_" << rsu_id << " : <V" << v4_ns3 << " sees V" << v3_ns3 << ", t=" << t << ">\n\n";
+           << (s4_vr_have_v4 ? ("  V" + std::to_string(v3_ns3) + " -> RSU_" + std::to_string(rsu_id)
+                                + " : <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3)
+                                + ", t=" + std::to_string(t) + ">\n"
+                                "  V" + std::to_string(v4_ns3) + " -> RSU_" + std::to_string(rsu_id)
+                                + " : <V" + std::to_string(v4_ns3) + " sees V" + std::to_string(v3_ns3)
+                                + ", t=" + std::to_string(t) + ">\n\n")
+                             : ("  V" + std::to_string(v3_ns3) + " -> RSU_" + std::to_string(rsu_id)
+                                + " : <own, t=" + std::to_string(t) + "> (single)\n\n"));
     me_log << "[t=" << now << "]  STEP ③  RSU_" << rsu_id << " AGGREGATES AND FORWARDS TO CONTROLLER\n"
            << "  <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t << ">  FORWARDED\n"
            << "  <V" << v2_ns3 << " sees V" << v1_ns3 << ", t=" << t << ">  FORWARDED\n"
-           << "  <V" << v3_ns3 << " sees V" << v4_ns3 << ", t=" << t << ">  FORWARDED\n"
-           << "  <V" << v4_ns3 << " sees V" << v3_ns3 << ", t=" << t << ">  FORWARDED\n"
+           << (s4_vr_have_v4 ? ("  <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3) + ", t=" + std::to_string(t) + ">  FORWARDED\n"
+                                "  <V" + std::to_string(v4_ns3) + " sees V" + std::to_string(v3_ns3) + ", t=" + std::to_string(t) + ">  FORWARDED\n") : "")
            << "  [RSU is legitimate; malicious action occurs at controller]\n\n";
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S4][t=" << now << "]  STEP①②③  V" << v1_ns3 << "<->V" << v2_ns3
-              << " HELLO; all report via RSU_" << rsu_id << " to Controller" << std::endl;
+              << " HELLO; report via RSU_" << rsu_id << " to Controller" << std::endl;
     Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
     if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) pos1 = m->GetPosition(); }
     if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
     if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
-    if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    if (s4_vr_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, s4_vr_have_v4 ? false_v4 : v2_id, t, now, pos3, pos3, pos4, false);
+    if (s4_vr_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
     }
-    if (false_v3 < Vehicle_Nodes.GetN() && false_v4 < Vehicle_Nodes.GetN()) {
+    if (s4_vr_have_v4 && false_v3 < Vehicle_Nodes.GetN() && false_v4 < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v3), Vehicle_Nodes.Get(false_v4));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(false_v4), Vehicle_Nodes.Get(false_v3));
     }
@@ -6471,50 +6560,82 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
+    const bool have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
-    me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
+    if (have_v4) me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
     std::string k3 = std::to_string(false_v3) + "_phantom4_"
                    + std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    std::string k4 = std::to_string(false_v4) + "_phantom4_"
-                   + std::to_string(v1_id) + "_" + std::to_string(v2_id);
     ttw_controller_table[k3] = {false_v3, v2_id, t, true};
-    ttw_controller_table[k4] = {false_v4, v2_id, t, true};
-    attack_E_matrix.insert(k3); attack_E_matrix.insert(k4);
-    topology_divergence_delta += 2;
+    attack_E_matrix.insert(k3);
+    topology_divergence_delta += 1;
+    if (have_v4) {
+        std::string k4 = std::to_string(false_v4) + "_phantom4_"
+                       + std::to_string(v1_id) + "_" + std::to_string(v2_id);
+        ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+        attack_E_matrix.insert(k4);
+        topology_divergence_delta += 1;
+    }
     uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
-    uint32_t v4_ns3  = (false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
+    uint32_t v4_ns3  = (have_v4 && false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
+
+    // Path 4 only when two attackers AND V3↔V4 within DSRC range.
+    bool s4_v3v4_linked = false;
+    double s4_v3v4_dist = 0.0;
+    if (have_v4) {
+        Vector pV3(0,0,0), pV4(0,0,0);
+        if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pV3 = m->GetPosition(); }
+        if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pV4 = m->GetPosition(); }
+        double dx = pV3.x - pV4.x, dy = pV3.y - pV4.y;
+        s4_v3v4_dist = std::sqrt(dx*dx + dy*dy);
+        s4_v3v4_linked = (s4_v3v4_dist <= TTW_COMM_RANGE);
+        if (s4_v3v4_linked) {
+            std::string k34 = std::to_string(false_v3)+"_real_"+std::to_string(false_v4);
+            ttw_controller_table[k34] = {false_v3, false_v4, t, false};
+        }
+    }
 
     me_log << "[t=" << now << "]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)\n"
            << "  Controller injects forged echo observations into its topology database:\n"
            << "  <V" << v1_ns3 << " sees V" << v2_ns3 << "> as-relayed-via V" << v3_ns3 << "  (FORGED internally)\n"
-           << "  <V" << v1_ns3 << " sees V" << v2_ns3 << "> as-relayed-via V" << v4_ns3 << "  (FORGED internally)\n"
+           << (have_v4 ? ("  <V" + std::to_string(v1_ns3) + " sees V" + std::to_string(v2_ns3) +
+                          "> as-relayed-via V" + std::to_string(v4_ns3) + "  (FORGED internally)\n") : "")
+           << (have_v4 ? ("  V3↔V4 link: dist=" + [&]{ std::ostringstream os; os << std::fixed << std::setprecision(1) << s4_v3v4_dist; return os.str(); }() +
+                          "m  " + (s4_v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4") + "\n") : "  Single false reporter: only Path 2 inferred\n")
            << "  No external packet required — purely internal manipulation\n\n";
     me_log << "[t=" << now << "]  STEP ⑤  FALSE MULTIPATH INFERENCE\n"
            << "  Controller incorrectly infers:\n"
            << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3 << "  (REAL)\n"
            << "    Path 2: V" << v1_ns3 << " → V" << v3_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
-           << "    Path 3: V" << v1_ns3 << " → V" << v4_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
-           << "    Path 4: V" << v1_ns3 << " → V" << v3_ns3 << " → V" << v4_ns3
-           << " → V" << v2_ns3 << "  (PHANTOM)\n\n";
+           << (have_v4 ? ("    Path 3: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v4_ns3) +
+                          " → V" + std::to_string(v2_ns3) + "  (PHANTOM)\n") : "")
+           << (s4_v3v4_linked
+               ? ("    Path 4: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v3_ns3) +
+                  " → V" + std::to_string(v4_ns3) + " → V" + std::to_string(v2_ns3) +
+                  "  (PHANTOM — V3↔V4 in range)\n\n")
+               : "\n");
     me_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISIONS\n"
            << "  Controller installs routing policies based on falsely inferred multipath topology\n"
-           << "  Packets forwarded via phantom V" << v3_ns3 << " or V" << v4_ns3 << " paths will be dropped\n"
+           << "  Packets forwarded via phantom V" << v3_ns3
+           << (have_v4 ? " or V" + std::to_string(v4_ns3) : "") << " paths will be dropped\n"
            << "  Expected impact: packet loss, increased delay, routing instability\n"
            << "  <- ATTACK SUCCESS (no external packet required)\n\n";
 
     me_log.flush();
     NS_LOG_INFO("[ME-S4] t=" << now << "s  Controller fabricated phantom paths via V"
-                << false_v3 << " and V" << false_v4);
+                << false_v3 << (have_v4 ? " and V" + std::to_string(false_v4) : " (single)"));
     std::cout << std::fixed << std::setprecision(3)
-              << "[ME-S4][t=" << now << "]  Controller --FABRICATED echo entry (RSU path)--> own table"
-              << "  <V" << v1_id << " sees V" << v2_id << "> as-if-by V" << false_v3
-              << "  PHANTOM V" << v1_id << "->V" << false_v3 << "->V" << v2_id << std::endl;
-    std::cout << "[ME-S4][t=" << now << "]  Controller --FABRICATED echo entry (RSU path)--> own table"
-              << "  <V" << v1_id << " sees V" << v2_id << "> as-if-by V" << false_v4
-              << "  PHANTOM V" << v1_id << "->V" << false_v4 << "->V" << v2_id
-              << "  *** ATTACK COMPLETE ***" << std::endl;
+              << "[ME-S4][t=" << now << "]  Controller --FABRICATED echo (RSU path)--> own table"
+              << "  V" << v1_id << "->V" << v3_ns3 << "->V" << v2_id << "  PHANTOM" << std::endl;
+    if (have_v4) {
+        std::cout << "[ME-S4][t=" << now << "]  Controller --FABRICATED echo (RSU path)--> own table"
+                  << "  V" << v1_id << "->V" << v4_ns3 << "->V" << v2_id
+                  << "  PHANTOM  *** ATTACK COMPLETE ***" << std::endl;
+    } else {
+        std::cout << "[ME-S4][t=" << now << "]  Single false reporter only — Path 2 only"
+                  << "  *** ATTACK COMPLETE ***" << std::endl;
+    }
     Vector ctrlPos(0.0,0.0,0.0), v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     if (controller_Node.GetN() > 0) {
         Ptr<MobilityModel> mc = controller_Node.Get(0)->GetObject<MobilityModel>();
@@ -6530,8 +6651,9 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, 9999u,
                  v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+    if (have_v4)
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, 9999u,
+                     v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
 
     if (pem_last_alert) {
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
@@ -148942,8 +149064,8 @@ attack_mobility.Install(Vehicle_Nodes);
 
     if (attack_scenario == 9)
   {
-      if (N_Vehicles < 4) {
-          std::cout << "[ERROR] ME-S1 requires --N_Vehicles >= 4 (at least 2 real-link + 2 echo attackers). Aborting.\n";
+      if (N_Vehicles < 3) {
+          std::cout << "[ERROR] ME-S1 requires --N_Vehicles >= 3 (at least 2 real-link + 1 echo attacker). Aborting.\n";
           return 1;
       }
       // Build echo attacker and real-link vehicle lists from me_malicious_nodes[]
@@ -149091,7 +149213,7 @@ attack_mobility.Install(Vehicle_Nodes);
               &send_LTE_routing_data_alone, app_e4,
               Vehicle_Nodes.Get(echo_v4_cidx), controller_Node.Get(0), echo_v4_cidx);
       }
-      // If odd number of echo attackers, schedule the last one alone
+      // If odd number of echo attackers, schedule the last one alone (single-attacker or leftover)
       if (!me_echo_cidx.empty() && me_echo_cidx.size() % 2 == 1) {
           uint32_t last_cidx = me_echo_cidx.back();
           const double echoAttackTime =
@@ -149100,6 +149222,21 @@ attack_mobility.Install(Vehicle_Nodes);
               + n_me_groups * 0.001;
           Ptr<ConstantVelocityMobilityModel> m_last = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(last_cidx)->GetObject<MobilityModel>());
           if (m_last) { m_last->SetPosition(Vector(150.0, 50.0 + n_me_groups * 30.0, 0.0)); m_last->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+          // If this is the only attacker (n_me_groups==0), real-pair setup was skipped — do it now
+          if (n_me_groups == 0) {
+              Ptr<ConstantVelocityMobilityModel> m_r1 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v1_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_r2 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v2_cidx)->GetObject<MobilityModel>());
+              if (m_r1) { m_r1->SetPosition(Vector(100.0, 0.0, 0.0)); m_r1->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+              if (m_r2) { m_r2->SetPosition(Vector(200.0, 0.0, 0.0)); m_r2->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+              // Legitimate discovery with single echo attacker (v3=last_cidx, v4=last_cidx sentinel)
+              Simulator::Schedule(Seconds(discoveryObservedTime),
+                  &ME_S1_LegitimateDiscovery, v1_cidx, v2_cidx,
+                  last_cidx, last_cidx, discoveryObservedTime);
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_cidx), 0, 150, 255);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_cidx), "V-Real");
+              anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_cidx), 0, 150, 255);
+              anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_cidx), "V-Real");
+          }
           Simulator::Schedule(Seconds(echoAttackTime),
               &ME_S1_EchoAttack, last_cidx, last_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x1u);
@@ -149136,12 +149273,20 @@ attack_mobility.Install(Vehicle_Nodes);
           if (me_malicious_nodes[k]) s2_phantom_cidx.push_back(k);
           else                       s2_real_cidx.push_back(k);
       }
-      if (s2_real_cidx.size() < 2) {
+      if (s2_real_cidx.size() < 2) {  // ME-S2 real pair check
           std::cout << "[ERROR] ME-S2 needs at least 2 non-malicious vehicles for real link pair.\n";
           return 1;
       }
-      if (s2_phantom_cidx.size() < 2) {
+      // Ensure at least 1 phantom reporter; borrow from real only if real has surplus (>= 3)
+      if (s2_phantom_cidx.empty() && s2_real_cidx.size() >= 3) {
           s2_phantom_cidx.push_back(s2_real_cidx.back()); s2_real_cidx.pop_back();
+      }
+      if (s2_phantom_cidx.empty()) {
+          std::cout << "[ERROR] ME-S2 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
+          return 1;
+      }
+      // Second phantom (for pair): borrow only if real has surplus (>= 3)
+      if (s2_phantom_cidx.size() < 2 && s2_real_cidx.size() >= 3) {
           s2_phantom_cidx.push_back(s2_real_cidx.back()); s2_real_cidx.pop_back();
       }
       uint32_t v1_id = s2_real_cidx[0];
@@ -149165,9 +149310,10 @@ attack_mobility.Install(Vehicle_Nodes);
       for (uint32_t r = 0; r < n_mal_rsus2; r++) {
           uint32_t rsu_id = RSU_Nodes.Get(r)->GetId();
           const double dt = r * 0.001;
+          const uint32_t s2_v4_arg = (s2_phantom_cidx.size() >= 2) ? s2_phantom_cidx[1] : UINT32_MAX;
           Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + dt),
               &ME_S2_LegitimateDiscovery, v1_id, v2_id, rsu_id,
-              s2_phantom_cidx[0], s2_phantom_cidx[1], ME_S2_DISCOVERY_TIME);
+              s2_phantom_cidx[0], s2_v4_arg, ME_S2_DISCOVERY_TIME);
           // All phantom reporters inject echo reports in pairs
           for (uint32_t p = 0; p + 1 < s2_phantom_cidx.size(); p += 2) {
               Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1 + dt + p * 0.001),
@@ -149225,8 +149371,16 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S3 needs at least 2 non-malicious vehicles for real link pair.\n";
           return 1;
       }
-      if (s3_phantom_cidx.size() < 2) {
+      // Ensure at least 1 phantom reporter; borrow from real only if real has surplus (>= 3)
+      if (s3_phantom_cidx.empty() && s3_real_cidx.size() >= 3) {
           s3_phantom_cidx.push_back(s3_real_cidx.back()); s3_real_cidx.pop_back();
+      }
+      if (s3_phantom_cidx.empty()) {
+          std::cout << "[ERROR] ME-S3 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
+          return 1;
+      }
+      // Second phantom (for pair): borrow only if real has surplus (>= 3)
+      if (s3_phantom_cidx.size() < 2 && s3_real_cidx.size() >= 3) {
           s3_phantom_cidx.push_back(s3_real_cidx.back()); s3_real_cidx.pop_back();
       }
       uint32_t v1_id = s3_real_cidx[0];
@@ -149249,9 +149403,10 @@ attack_mobility.Install(Vehicle_Nodes);
 
       for (uint32_t c = 0; c < n_mal_ctrl3; c++) {
           const double dt = c * 0.001;
+          const uint32_t s3_v4_arg = (s3_phantom_cidx.size() >= 2) ? s3_phantom_cidx[1] : UINT32_MAX;
           Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + dt),
               &ME_S3_LegitimateDiscovery, v1_id, v2_id,
-              s3_phantom_cidx[0], s3_phantom_cidx[1], ME_S3_DISCOVERY_TIME);
+              s3_phantom_cidx[0], s3_v4_arg, ME_S3_DISCOVERY_TIME);
           // All phantom reporters inject in pairs
           for (uint32_t p = 0; p + 1 < s3_phantom_cidx.size(); p += 2) {
               Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt + p * 0.001),
@@ -149310,8 +149465,16 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S4 needs at least 2 non-malicious vehicles for real link pair.\n";
           return 1;
       }
-      if (s4_phantom_cidx.size() < 2) {
+      // Ensure at least 1 phantom reporter; borrow from real only if real has surplus (>= 3)
+      if (s4_phantom_cidx.empty() && s4_real_cidx.size() >= 3) {
           s4_phantom_cidx.push_back(s4_real_cidx.back()); s4_real_cidx.pop_back();
+      }
+      if (s4_phantom_cidx.empty()) {
+          std::cout << "[ERROR] ME-S4 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
+          return 1;
+      }
+      // Second phantom (for pair): borrow only if real has surplus (>= 3)
+      if (s4_phantom_cidx.size() < 2 && s4_real_cidx.size() >= 3) {
           s4_phantom_cidx.push_back(s4_real_cidx.back()); s4_real_cidx.pop_back();
       }
       uint32_t v1_id = s4_real_cidx[0];
@@ -149337,9 +149500,10 @@ attack_mobility.Install(Vehicle_Nodes);
 
       for (uint32_t c = 0; c < n_mal_ctrl4; c++) {
           const double dt = c * 0.001;
+          const uint32_t s4_v4_arg = (s4_phantom_cidx.size() >= 2) ? s4_phantom_cidx[1] : UINT32_MAX;
           Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + dt),
               &ME_S4_VehiclesViaRSU, v1_id, v2_id, rsu_id,
-              s4_phantom_cidx[0], s4_phantom_cidx[1], ME_S4_DISCOVERY_TIME);
+              s4_phantom_cidx[0], s4_v4_arg, ME_S4_DISCOVERY_TIME);
           // All phantom reporters inject in pairs
           for (uint32_t p = 0; p + 1 < s4_phantom_cidx.size(); p += 2) {
               Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt + p * 0.001),
