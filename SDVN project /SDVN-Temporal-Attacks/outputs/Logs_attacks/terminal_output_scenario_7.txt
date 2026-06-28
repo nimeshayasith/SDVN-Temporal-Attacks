@@ -1,7 +1,4 @@
 Solution at controller cleared
-[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 3686 exact position+velocity events
-[SUMO] Attack 7: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/07_BSHH_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
@@ -19,12 +16,12 @@ Stored HB time        : t=5
 [BSHH-S3][t=10.000]  Ctrl0(ns3=0) --INTERNAL REPLAY--> own liveness table  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [Trust][t=10.000]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 [Trust][t=10.000]  C_0 tau=0.900 >= tau_min^C — monitoring
-[BSHH-S3][t=10.000]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=100.000 ms
+[BSHH-S3][t=10.000]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=800.000 ms
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
-[TGN] Trusted nodes (Tier 2 OBU): ctrl 
+[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 5 6 ctrl 
 [TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 4 in → 4 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+[CryptoFilter] 5 in → 5 out  (dropped: 0 MAC, 0 stale, 0 nonce)
                log: crypto_filter_log.txt
 [TGN] tgn_alerts.json written: 2 alert(s) → tgn_alerts.json
 [TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2

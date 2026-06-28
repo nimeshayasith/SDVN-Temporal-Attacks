@@ -136,7 +136,14 @@ void distribute_kek_updates(LKHTree *tree) {
     printf("[LKH] Distributing KEK updates to non-revoked vehicles:\n");
     int update_count = 0;
 
-    for (uint32_t i = 0; i < LKH_MAX_LEAVES * 2; i++) {
+    /* Compute the actual number of initialized nodes (same formula as lkh_init) */
+    int depth = 0;
+    while ((1u << depth) < tree->n_leaves) depth++;
+    uint32_t total_leaves = 1u << depth;
+    uint32_t total_nodes  = 2 * total_leaves;
+    if (total_nodes > LKH_MAX_LEAVES * 2) total_nodes = LKH_MAX_LEAVES * 2;
+
+    for (uint32_t i = 0; i < total_nodes; i++) {
         LKHNode *nd = &tree->nodes[i];
         if (nd->is_leaf) continue;
         if (nd->kek[0] == 0 && nd->kek[1] == 0) continue; /* uninitialised */
@@ -144,7 +151,7 @@ void distribute_kek_updates(LKHTree *tree) {
         /* Collect non-revoked leaves in this subtree */
         char recipients[256]; recipients[0] = '\0';
         int  n_rcpt = 0;
-        for (uint32_t j = 0; j < LKH_MAX_LEAVES * 2; j++) {
+        for (uint32_t j = 0; j < total_nodes; j++) {
             LKHNode *leaf = &tree->nodes[j];
             if (!leaf->is_leaf || leaf->revoked) continue;
             if (leaf->vehicle_id[0] == '\0') continue;
@@ -222,7 +229,8 @@ void lkh_revoke_vehicle(LKHTree *tree, const uint8_t vehicle_id[16]) {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 void mark_key_revoked(VehicleKeyRecord *keystore, const uint8_t vehicle_id[16]) {
-    for (uint32_t i = 0; i < MAX_VEHICLES; i++) {
+    uint32_t ks_limit = (g_ks_size > 0) ? g_ks_size : MAX_VEHICLES;
+    for (uint32_t i = 0; i < ks_limit; i++) {
         if (keystore[i].vehicle_id[0] == '\0') continue;
         if (memcmp(keystore[i].vehicle_id, vehicle_id, 16) == 0) {
             keystore[i].revoked = true;

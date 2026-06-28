@@ -7,7 +7,7 @@ Solution at controller cleared
 ========================================
 SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED
 Attackers (1): V0 
-Victim pool (5): V3 V1 V4 V2 V5 
+Victim pool (5): V4 V5 V3 V1 V2 
 Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count
 Replay jitter window   : +/-0.04 s
 Support evidence prob. : 1
@@ -22,16 +22,36 @@ Timeline:
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.26-3.28).
+[CRYPTO] TETA-Guard pipeline initialised:
+  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28, Eq. 3.26)
+      dilithium5_sign / dilithium5_verify / dilithium5_thresh
+  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)
+      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]
+  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
+      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
+  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=16)
+  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
+      create_location_bound_report / verify_single_witness / verify_quorum
+  [6] Haversine distance (GPS consistency gate, Eq. 3.29)
+  All modules from .crypto_src/
+[CRYPTO][t=0] Keys initialised. KEM session measured.
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S1][t=5.037]  V5 captured heartbeat for replay  Heartbeat(Sender=V8, t=4.998)
-[BSHH-S1][t=9.991]  V5 --REPLAY old heartbeat--> V8  Heartbeat(Sender=V5, t=4.998)  [MALICIOUS â€” replayed attacker old heartbeat]
-[BSHH-S1][t=9.993]  V8 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V5, t=4.998)  Controller liveness POISONED
-[BSHH-S1][t=10.025]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V8, t=4.998)  IMPERSONATION  *** ATTACK COMPLETE ***
+[BSHH-S1][t=5.043]  V5 captured heartbeat for replay  Heartbeat(Sender=V9, t=5.015)
+[BSHH-S1][t=9.975]  V5 --REPLAY old heartbeat--> V9  Heartbeat(Sender=V5, t=5.015)  [MALICIOUS â€” replayed attacker old heartbeat]
+[BSHH-S1][t=10.017]  V9 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V5, t=5.015)  Controller liveness POISONED
+[BSHH-S1][t=10.033]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V9, claimed=V9, t=10.033)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.033]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=300.000 ms
+
+[CRYPTO] crypto_latency_sumo.csv written    (22 events)
+[CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
+[CRYPTO] Beacon TX signed: 1   RX verified: 1
 [TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
-[TGN] Trusted nodes (Tier 2 OBU): ctrl 
+[TGN] Tier2: admitted 1/1 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 5 ctrl 
 [TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 2 in → 2 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+[CryptoFilter] 3 in → 3 out  (dropped: 0 MAC, 0 stale, 0 nonce)
                log: crypto_filter_log.txt
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
@@ -50,6 +70,6 @@ Timeline:
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 2
-  Stage-0 blocked (attacks): 2
+  Stage-0 blocked (attacks): 1
   |E_t^trusted|  : 2
 ============================================================
