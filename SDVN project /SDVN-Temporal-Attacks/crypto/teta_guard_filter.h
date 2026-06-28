@@ -136,15 +136,18 @@ TetaGuardLocBindVerify(const PemEvent& event, double link_ep_x, double link_ep_y
     ns3_to_gps(event.reporter_position.x, event.reporter_position.y,
                &rep_lat, &rep_lon);
 
-    // Synthetic RSSI from log-distance path-loss: same model as Stage-1 sig[8].
+    // Synthetic RSSI from Cost231-boundary model (Table 4.7, same as Stage-1 sig[8]).
+    // RSSI(d) = g_rssi_min + 10·PEM_RSSI_N_COST231·log10(g_rcomm / d)
+    // At d = g_rcomm: RSSI = g_rssi_min (boundary).  d > g_rcomm → RSSI < g_rssi_min.
     // This becomes the RSU's own physical-layer measurement (has_rsu_measurement=true)
     // so the vehicle cannot forge it by modifying the self-reported rssi_from_vi_dbm
     // field — verify_single_witness checks rsu_measured_rssi_dbm first.
     const double distToSrc = PemDistance2d(event.reporter_position, event.link_src_position);
     const double distToDst = PemDistance2d(event.reporter_position, event.link_dst_position);
     const double nearestDist = std::min(distToSrc, distToDst);
-    const float syntheticRSSI = (float)(PEM_RSSI_REF_DBM
-        - 10.0 * PEM_PATH_LOSS_EXP * std::log10(std::fmax(nearestDist, 1.0)));
+    const double safeNearestDist = (nearestDist > 0.001) ? nearestDist : 0.001;
+    const float syntheticRSSI = (float)(g_rssi_min
+        + 10.0 * PEM_RSSI_N_COST231 * std::log10(g_rcomm / safeNearestDist));
 
     // Reporter identity bytes
     uint8_t rid_bytes[16];

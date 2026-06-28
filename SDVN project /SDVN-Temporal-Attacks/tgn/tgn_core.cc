@@ -156,6 +156,11 @@ static int         g_tgn_layers_cmd  = TGN_LAYERS;
 // runs the secondary crypto filter and writes output files.
 static bool                    g_tgn_online_mode = false;
 static std::map<uint32_t, int> g_tgn_online_round_count; // per trusted_node_id
+// A3 (--static_gcn=1): freeze GRU memory (φ=0, no Eq. 3.22 gate update).
+// Message-passing still runs so spatial aggregation is preserved; only the
+// temporal recurrence that gives TGN its "T" is removed.
+// Set by routing.cc main() after cmd-line parsing via TGN_SetStaticGCN().
+static bool g_tgn_static_gcn = false;
 
 // ── F_flagged set (§3.4.11, Eq. 3.40 Cond 5) ────────────────────────────────
 // Nodes previously identified as attackers by Stage-0 or a TGN alert.
@@ -517,6 +522,17 @@ private:
     {
         NodeState& ns = states_[feat.node_id];
         const Vec& h  = ns.memory;
+
+        // A3 (--static_gcn=1): freeze temporal memory — skip GRU gate update
+        // and set phi=0 so no time-elapsed encoding enters the feature vector.
+        // The node's memory vector stays at its current value (zero for new nodes).
+        // Message-passing in ProcessEvent still runs so spatial aggregation works;
+        // only the recurrence that gives TGN its "T" (Eq. 3.22) is removed.
+        if (g_tgn_static_gcn) {
+            ns.last_event_time = recv_time;  // still advance clock for edge freshness
+            return;
+        }
+
         double delta_t = (std::max)(0.0, recv_time - ns.last_event_time);
         double phi     = std::log(1.0 + delta_t / params_.T_b);
 
@@ -1824,6 +1840,15 @@ static void TGN_WriteAlertsJson()
 //  TGN_RunPipeline() detects that g_tgn_online_mode is true and skips
 //  re-processing; it only runs the secondary crypto filter and writes output.
 // =============================================================================
+
+// A3 ablation setter — called from routing.cc main() after cmd-line parsing.
+static void TGN_SetStaticGCN(bool enable)
+{
+    g_tgn_static_gcn = enable;
+    if (enable)
+        std::cout << "[TGN] A3 static-GCN mode: GRU temporal memory frozen"
+                     " (phi=0, Eq. 3.22 disabled)\n";
+}
 
 static void TGN_Init()
 {

@@ -1,13 +1,10 @@
 Solution at controller cleared
-[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 3686 exact position+velocity events
-[SUMO] Attack 4: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/04_TTW_S4_Malicious_Controller_With_RSU.xml
 
 ========================================
 SCENARIO 04 - TTW-S4 ATTACK CONFIGURED
 Attacker      : 1 malicious controller(s) / 4 total (RSU in path)
-Poisoned pairs: 1 / 1
+Poisoned pairs: 1 / 100
   V5 <-> V6
 Timeline:
   t=10s  : V pairs -> RSU -> Controller, ctrl stores stale
@@ -17,10 +14,11 @@ Timeline:
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TTW-S4][t=10.000]  V5/V6 --DSRC--> RSU_7 --CSMA--> Controller  <V5 sees V6, t=10.000>  ACCEPTED
-Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.000s with delay 1ms
+[TTW-S4][t=10.000]  V5/V6 --DSRC--> RSU_205 --CSMA--> Controller  <V5 sees V6, t=10.000>  ACCEPTED
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.000s with delay 1ms
 [TTW-S4][t=10.100]  Controller stores stale copy (from RSU aggregate)  <V5 sees V6, t=10.000>  (internal replay at t=20.000)
 [TTW-S4][t=20.000]  Controller --TIMESTAMP FORGE + REINSERTION (RSU path)--> own table  <V5 sees V6, t=20.000>  (stored=10.000)  TABLE POISONED  *** ATTACK COMPLETE ***
+[Trust][t=20.050]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 [Trust][t=20.050]  C_0 tau=0.900 >= tau_min^C — monitoring
 [TTW-S4][t=20.050]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V5
 [TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...

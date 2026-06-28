@@ -10,7 +10,7 @@
 
 ========================================================
 
-[t=10.000]  STEP ①  V5/V6 -> RSU_7 -> Controller (legitimate aggregate)
+[t=10.000]  STEP ①  V5/V6 -> RSU_205 -> Controller (legitimate aggregate)
   <V5 sees V6, t=10.000>  ACCEPTED
   <V6 sees V5, t=10.000>  ACCEPTED
 
@@ -45,7 +45,7 @@
   Latency: 50.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
-  [LKH] Revoke-Session-Key(V5): O(log 2) = 1 KEK updates on path to LKH root
+  [LKH] Revoke-Session-Key(V5): O(log 200) = 8 KEK updates on path to LKH root
   [CA]  Certificate revocation: V5 excluded until re-admission via consortium CA
   [Trust] Controller C_0 tau=0.900 after Eq.3.39 (Delta_C=0.100)
   [Trust] tau=0.900 >= tau_min^C=0.500 — monitoring, no reassignment yet

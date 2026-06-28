@@ -77,8 +77,16 @@ uint32_t comparison_detector = 0;   // 0=none  1=VeReMi  2=MBSM
 #define LKH_MGMT_NO_MAIN
 #define LOCATION_BINDING_NO_MAIN
 #define LKH_PROVIDES_MARK_KEY_REVOKED
-// If liboqs is not available in this TU, allow stub mode rather than hard error
+// If liboqs is not available in this TU, allow stub mode rather than hard error.
+// ⚠ SECURITY DEGRADATION: Without liboqs the entire PQC layer (ML-KEM-1024 key
+// encapsulation, ML-DSA-87/Dilithium5 signatures, HQC-5 hybrid KEM) silently
+// degrades to non-cryptographic stubs (Eqs. 3.15–3.17, 3.26–3.28 are SIMULATED).
+// Real HMAC-SHA256 and threshold aggregate signatures are not computed in the
+// NS-3 simulation path regardless; see teta_guard_filter.h lines ~249-254.
+// Build with -DHAVE_LIBOQS and link -loqs to enable real PQC operations.
 #ifndef HAVE_LIBOQS
+#  pragma message("WARNING: HAVE_LIBOQS not defined — PQC (Kyber/Dilithium/HQC-5) " \
+                  "running as non-cryptographic stubs. Eqs. 3.15-3.17, 3.26-3.28 SIMULATED.")
 #  define ALLOW_DILITHIUM_STUB
 #endif
 #pragma GCC diagnostic push
@@ -264,7 +272,7 @@ uint32_t victim_neighbor_id = 1;     // V1 = victim
 //              This makes it "actual simulation latency" — the NS-3 virtual
 //              clock reflects the crypto overhead.
 // ─────────────────────────────────────────────────────────────────────────────
-uint32_t enable_crypto_latency = 0;   // 0=off  1=measure only  2=measure+inject
+uint32_t enable_crypto_latency = 1;   // 0=off  1=measure only (default)  2=measure+inject
 
 // When latency=2, accumulates crypto µs within one attack function so the
 // next scheduled NS-3 event is delayed by the total crypto cost of that step.
@@ -609,7 +617,7 @@ static double __attribute__((unused)) TimedLocationBind()
 #endif
 }
 
-// ── KEM measurement — ML-KEM-1024 (Kyber-1024) + Saber hybrid pipeline ────────
+// ── KEM measurement — ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid pipeline ─────────
 // Role (§3.4.2, Eq. 3.15): establishes shared session key K_Vi,nk used for
 //   HMAC-SHA256(K_Vi,nk, m') authentication.  This is a KEY ENCAPSULATION
 //   MECHANISM — it produces session secrets, NOT signing keys.
@@ -634,7 +642,7 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
     // Step 0a: RSU enrols vehicle in fleet keystore (fleet management)
     double reg_us = TimedKemRegister(vid, node_id % 16);
 
-    // Step 1: vehicle generates Kyber-1024 + FireSaber keypair + signs them
+    // Step 1: vehicle generates Kyber-1024 + HQC-5 keypair + signs them
     auto t0 = HiResClock::now();
     kem_vehicle_keygen(&state, vid, g_dil_sk.data(), g_dil_pk.data(), &g_test_cert);
     double kg_us = MicroSec(HiResClock::now() - t0).count();
@@ -647,7 +655,7 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
     bool enc_ok = kem_rsu_encapsulate(&state, session_key);
     double enc_us = MicroSec(HiResClock::now() - t0).count();
 
-    // Step 4: vehicle decapsulates Kyber-1024 + FireSaber ciphertexts, HKDF
+    // Step 4: vehicle decapsulates Kyber-1024 + HQC-5 ciphertexts, HKDF
     t0 = HiResClock::now();
     bool dec_ok = enc_ok && kem_vehicle_decapsulate(&state, session_key2);
     double dec_us = MicroSec(HiResClock::now() - t0).count();
@@ -672,7 +680,7 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
 // ── Initialise keys + measure KEM session setup ───────────────────────────────
 // §3.4.2, §3.4.4, §3.4.5 — TWO DISTINCT PRIMITIVE ROLES (not interchangeable):
 //
-//  ① ML-KEM-1024 (Kyber-1024) + Saber hybrid  →  session key K_Vi,nk  (Eq. 3.15)
+//  ① ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid  →  session key K_Vi,nk  (Eq. 3.15)
 //     • Key Encapsulation Mechanism (KEM) — not a signature scheme
 //     • Purpose: establish shared secret K_Vi,nk between vehicle Vi and trusted node nk
 //     • That secret is then used as the HMAC-SHA256 key for beacon authentication
@@ -742,7 +750,7 @@ static void CryptoInitKeys()
                  "      dilithium5_sign / dilithium5_verify / dilithium5_thresh\n"
                  "  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)\n"
                  "      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]\n"
-                 "  [3] ML-KEM-1024 (Kyber-1024) + Saber hybrid — K_Vi,nk session key (Eq. 3.15)\n"
+                 "  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)\n"
                  "      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate\n"
                  "  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)\n"
                  "      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=16)\n"
@@ -1305,17 +1313,78 @@ static const double PEM_ME_TOLERANCE_MU = 0.20;   // µ = 0.20 per Eq. 3.8
 static const double PEM_ME_DELTA_MAX = 1.0;
 static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
 
-// ── ME-S3 RSSI path-loss model constants ─────────────────────────────────────
-// DSRC 5.9 GHz, suburban/highway environment (ITU-R P.1411 short-range model)
-// RSSI(d) = PEM_RSSI_REF_DBM − 10·n·log10(d)  where d is in metres
-// PEM_RSSI_MIN_DBM is derived at d = TTW_COMM_RANGE (300 m):
-//   = -40 − 10 × 2.75 × log10(300) ≈ -40 − 27.5 × 2.477 ≈ -108.1 dBm
-// Any reporter whose computed RSSI falls below this value could not have
-// legitimately received the signal from the link endpoints at that range.
-static const double PEM_RSSI_REF_DBM    = -40.0;  // reference RSSI at 1 m (dBm)
-static const double PEM_PATH_LOSS_EXP   =  2.75;  // path-loss exponent (DSRC highway)
-static const double PEM_RSSI_MIN_DBM    = PEM_RSSI_REF_DBM
-    - 10.0 * PEM_PATH_LOSS_EXP * 2.4771;  // log10(300) ≈ 2.4771
+// ── BSHH-S3 liveness window (Eq. 3.7) ───────────────────────────────────────
+// W > 2·W_ho, where W_ho = r_comm / v_max (RSU handover duration in seconds).
+// Calibrated at runtime in main() once maxspeed is parsed:
+//   g_pem_bshh3_liveness_window_s = 2 × (TTW_COMM_RANGE / v_max_m_s)
+// Default (80 km/h → v_max = 22.22 m/s): W = 2 × (300/22.22) ≈ 27.0 s.
+// PemTrimSlidingWindow uses max(PEM_HEARTBEAT_WINDOW_S, g_pem_bshh3_liveness_window_s)
+// so beacons stay in the event_window long enough for BSHH-S3's lookback.
+static double g_pem_bshh3_liveness_window_s = 27.0;
+
+// ── ME-S3 RSSI threshold (Table 4.7) ─────────────────────────────────────────
+// -85 dBm: documented default in Table 4.7, "derived from the NS-3
+// Cost231PropagationLossModel" at r_comm = 300 m, CCH TX power (Ch178, 44 dBm).
+// The previous hand-rolled log-distance formula (ref -40 dBm@1m, n=2.75) gave
+// -108.1 dBm — a 23 dB gap that caused ME-S3 to miss reporters who were
+// legitimately too far away (syntheticRSSI > -108 dBm even at 350m).
+// PEM_RSSI_MIN_DBM may be overridden at runtime via --rssi_min command-line arg
+// (NS-3 equivalent of the blockchain chaincode's SIM_RSSI_MIN env var, Table 4.7).
+// The synthetic RSSI is now computed using the Cost231 boundary model:
+//   RSSI(d) = PEM_RSSI_MIN_DBM + 10·n_cost231·log10(g_rcomm/d)
+//   where n_cost231 ≈ 3.75 (empirical from Cost231-Hata at 5.9 GHz, hb=50 m)
+//   and g_rcomm is the runtime-overridable communication range.
+static double PEM_RSSI_MIN_DBM    = -85.0;
+static const double PEM_RSSI_N_COST231 =  3.75;  // Cost231-Hata effective path-loss exponent
+
+// ── Runtime-overridable spatial thresholds (Table 4.7 / SIM_RCOMM, SIM_RSSI_MIN) ──
+// NS-3 equivalent of the blockchain chaincode's loadSimParams() / SIM_RCOMM / SIM_RSSI_MIN.
+// Set from --rcomm and --rssi_min command-line args (see main()).
+// Default values match compile-time constants. Code that was previously using
+// the compile-time TTW_COMM_RANGE for PEM detection now reads g_rcomm so that
+// a single --rcomm override propagates to all spatial checks without recompiling.
+static double g_rcomm    = 300.0;   // metres; overridden by --rcomm
+static double g_rssi_min = -85.0;   // dBm;    overridden by --rssi_min
+
+// ── Table 4.2 Internal Ablation Baseline flags ────────────────────────────────
+// Each flag disables exactly one layer of the full detection pipeline.
+// Default (0) = full stack enabled.  Set to 1 on the command line to ablate.
+//
+//  --no_crypto=1      A6: bypass Stage-0 TetaGuardCryptoFilter (Eqs. 3.15-3.17)
+//  --no_tgn=1         A1/A2: skip TGN_ProcessEventInline + TGN_RunPipeline
+//  --no_blockchain=1  A1/A2: suppress blockchain smart-contract mitigation
+//  --static_gcn=1     A3: freeze GRU memory (φ=0, no temporal encoding); edge
+//                         freshness stays but Eq. 3.22 GRU gate update is skipped
+//  --no_mobility_adapt=1  A4: fix ρ_max to a static density and fix W to
+//                             PEM_HEARTBEAT_WINDOW_S; skip mobility calibration
+//  --no_lbs=1         A5: suppress ME-S3 sig[8] location-binding verification (Eq. 3.28)
+//
+// These flags are mutually independent; combine to create compound baselines.
+struct AblationFlags {
+    bool no_crypto        = false;   // A6
+    bool no_tgn           = false;   // A1 / A2
+    bool no_blockchain    = false;   // A1 / A2
+    bool static_gcn       = false;   // A3
+    bool no_mobility_adapt= false;   // A4
+    bool no_lbs           = false;   // A5
+};
+static AblationFlags g_abl;
+
+// ── Attacker sophistication model (S1/S2 scenarios) ───────────────────────────
+// Each attack-injection event independently rolls this probability.
+// Sophisticated (p < prob): attacker also forges nonce/key/position so the
+//   crypto pre-filter passes; the attack reaches Stage-1 (LW) + Stage-2 (TGN).
+// Basic (p >= prob): attacker only replays the payload; caught at Stage-0.
+// Per-scenario mapping:
+//   TTW-S1  basic  = stale sender_timestamp  → Step 2 (staleness, Eq. 3.16) drops
+//   TTW-S1  soph.  = fresh sender_timestamp  → Steps 1-3 pass
+//   TTW-S2  basic  = physical ≠ claimed      → Step 1 (MAC, Eq. 3.15) drops
+//   TTW-S2  soph.  = physical=claimed=V1     → Steps 1-3 pass (key compromise)
+//   BSHH-S1/S2 same pattern as TTW-S2
+//   ME-S1/S2 basic = reporter out of range   → Step 1b (locbind, Eqs.3.27-3.29) drops
+//   ME-S1/S2 soph. = reporter pos forged near link midpoint → Step 1b passes
+static double g_attacker_sophistication_prob = 0.5;
+static Ptr<UniformRandomVariable> g_attacker_rng;   // initialised in main() before simulation
 
 // Signature weights — sum = 1.0.  The alert threshold is intentionally equal
 // to the smallest single-signature weight: each formal signature below is a
@@ -1697,6 +1766,11 @@ PemIsBootstrapComplete(double sim_time_s)
 static std::string
 PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenario_tag)
 {
+    // A1/A2 (--no_blockchain=1): suppress all smart-contract mitigation actions.
+    // Detection metrics (TP/FP/MCC) still accumulate; only enforcement is skipped.
+    if (g_abl.no_blockchain)
+        return "[A1/A2: blockchain mitigation suppressed (--no_blockchain=1)]\n";
+
     // ⌈log₂(N)⌉ approximates both the network hop-diameter for a well-connected
     // mesh and the LKH tree depth for O(log n) KEK updates.
     // Note: avoid std::max here — routing.cc defines 'max' as a numeric macro.
@@ -1805,6 +1879,9 @@ static void TrustStage2ArmMonitor();
 // Eq. 3.38: per-round node trust update.
 static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool flagged)
 {
+    // A1/A2 (--no_blockchain=1): suppress trust demotion — detection still fires
+    // but the blockchain-layer enforcement (QUARANTINE / reassign) does not apply.
+    if (g_abl.no_blockchain) return;
     if (!g_trust_table.count(ns3_id)) return;
     TrustRecord& r = g_trust_table[ns3_id];
     if (r.state == TRUST_REMOVED) return;
@@ -2116,8 +2193,12 @@ static void
 PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds)
 {
     // §3.1.3: trim runs at each trusted node nk on its local event_window.
+    // Keep events within the larger of the two windows so BSHH-S3 (Eq. 3.7, W≈27s)
+    // can look back further than the BSHH-S1/S2 window (PEM_HEARTBEAT_WINDOW_S=0.4s).
+    const double trim_window = (g_pem_bshh3_liveness_window_s > PEM_HEARTBEAT_WINDOW_S)
+                             ? g_pem_bshh3_liveness_window_s : PEM_HEARTBEAT_WINDOW_S;
     while (!ns.event_window.empty() &&
-           (nowSeconds - ns.event_window.front().reception_timestamp) > PEM_HEARTBEAT_WINDOW_S)
+           (nowSeconds - ns.event_window.front().reception_timestamp) > trim_window)
     {
         ns.event_window.pop_front();
     }
@@ -2175,6 +2256,11 @@ PemCollectReportersForLink(const PemEvent& event, const PemNodeLWState& ns)
 static uint32_t
 PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
 {
+    // A4 (--no_mobility_adapt): return a fixed ρ_max of 4 reporters (two legitimate
+    // endpoints plus one RSU forwarder plus one margin).  Mobility-derived λ̂(t) is
+    // not computed so the threshold does not adapt to vehicle density.
+    if (g_abl.no_mobility_adapt) return 4u;
+
     // Eq. 3.8 expected reporter count: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
     // lambda(t) is vehicles per metre along the road segment — estimated as
     // the count of vehicles within r_comm of either link endpoint divided by
@@ -2797,7 +2883,7 @@ PemEvaluateEvent(PemEvent& event)
         {
             if (it->type == PEM_EVENT_BEACON &&
                 it->claimed_sender_id == event.claimed_sender_id &&
-                (event.reception_timestamp - it->reception_timestamp) <= PEM_HEARTBEAT_WINDOW_S)
+                (event.reception_timestamp - it->reception_timestamp) <= g_pem_bshh3_liveness_window_s)
             {
                 beaconSeen = true;
                 break;
@@ -2847,19 +2933,24 @@ PemEvaluateEvent(PemEvent& event)
         // the reported link endpoints OR synthetic RSSI is below signal floor.
         //   V_k ∈ R(e_ij) ∧ (d(pos_Vk, e_ij) > r_comm  ∨  RSSI_Vk < RSSI_min)
         // Condition 1: GPS-attested position is outside communication range.
-        const bool positionOutOfRange = (nearestDistance > TTW_COMM_RANGE);
+        // Uses g_rcomm (runtime-overridable via --rcomm; default = TTW_COMM_RANGE = 300m).
+        const bool positionOutOfRange = (nearestDistance > g_rcomm);
 
-        // Condition 2: Synthetic RSSI from log-distance path-loss model.
-        //   RSSI(d) = PEM_RSSI_REF_DBM − 10·n·log10(d)
-        //   If RSSI at the reporter's distance < RSSI_min(r_comm), the reporter
-        //   could not have received the signal even if its GPS were just inside range.
-        const double safeDistance = std::fmax(nearestDistance, 1.0);  // avoid log(0)
-        const double syntheticRSSI = PEM_RSSI_REF_DBM
-            - 10.0 * PEM_PATH_LOSS_EXP * std::log10(safeDistance);
+        // Condition 2: Synthetic RSSI from Cost231-boundary model (Table 4.7).
+        //   RSSI(d) = g_rssi_min + 10·n_cost231·log10(g_rcomm / d)
+        //   At d = g_rcomm: RSSI = g_rssi_min (exactly at the delivery boundary).
+        //   At d < g_rcomm: RSSI > g_rssi_min (stronger, legitimate).
+        //   At d > g_rcomm: RSSI < g_rssi_min (too weak, would not deliver).
+        // Consistent with the same Cost231PropagationLossModel used by the NS-3 PHY.
+        // g_rssi_min is runtime-overridable via --rssi_min (default = -85 dBm, Table 4.7).
+        const double safeDistance = (nearestDistance > 0.001) ? nearestDistance : 0.001;
+        const double syntheticRSSI = g_rssi_min
+            + 10.0 * PEM_RSSI_N_COST231 * std::log10(g_rcomm / safeDistance);
         event.rssi_reporter_dbm = syntheticRSSI;
-        const bool rssiTooWeak = (syntheticRSSI < PEM_RSSI_MIN_DBM);
+        const bool rssiTooWeak = (syntheticRSSI < g_rssi_min);
 
-        if (positionOutOfRange || rssiTooWeak)
+        // A5 (--no_lbs=1): suppress location-binding verification (Eq. 3.28 / sig[8]).
+        if (!g_abl.no_lbs && (positionOutOfRange || rssiTooWeak))
         {
             event.triggered[8] = true;
         }
@@ -2920,18 +3011,19 @@ PemEvaluateEvent(PemEvent& event)
     if (event.attack_label)
     {
         pem_actual_attacker_nodes.insert(event.physical_sender_id);
-        if (event.alert_raised)
+            if (event.alert_raised)
         {
             pem_detected_attacker_nodes.insert(event.physical_sender_id);
-            // Eq. 3.18 — live LKH revocation: O(log n) KEK-path update for
+                    // Eq. 3.18 — live LKH revocation: O(log n) KEK-path update for
             // the detected attacker's leaf node.  Called once per unique
             // physical_sender_id to avoid redundant tree walks.
             if (g_lkh_ready &&
+                g_lkh_already_revoked.size() < 16u &&
                 g_lkh_already_revoked.find(event.physical_sender_id) ==
                     g_lkh_already_revoked.end())
             {
                 uint32_t leaf_idx = event.physical_sender_id % 16;
-                lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+                            lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
                 g_lkh_already_revoked.insert(event.physical_sender_id);
                 printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log 16)=4 KEK updates"
                        " (Eq. 3.18)\n",
@@ -3007,9 +3099,8 @@ PemEvaluateEvent(PemEvent& event)
     pem_all_events.push_back(event);
 
     // Issue 8.1 (online mode): process the event through the TGN immediately.
-    // TGN_ProcessEventInline is a no-op when g_tgn == nullptr (online mode not
-    // initialised) so batch mode (TGN_Init not called) is unaffected.
-    TGN_ProcessEventInline(event);
+    // A1/A2 (--no_tgn=1): skip — LW signatures are still scored; TGN score = 0.
+    if (!g_abl.no_tgn) TGN_ProcessEventInline(event);
 
     PemWriteEventCsv(event);
 }
@@ -3149,9 +3240,10 @@ PemEmitEvent(PemEventType type,
     event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;  // set by PemEvaluateEvent for topology events
 
     // Stage 0 — Crypto pre-filter (Algorithm 3 LW-MITIGATE, Eqs. 3.15-3.17).
+    // A6 (--no_crypto=1): bypass entirely — all events pass through to Stage-1.
     // Events that fail any check are silently dropped here and never reach
     // the Signature Detector or the TGN inference engine.
-    if (!PemCryptoPreFilter(event))
+    if (!g_abl.no_crypto && !PemCryptoPreFilter(event))
     {
         // Node-level tracking: Stage-0 drop of an attack event counts as a detection.
         pem_all_seen_node_ids.insert(physicalSenderId);
@@ -3164,6 +3256,7 @@ PemEmitEvent(PemEventType type,
             g_tgn_flagged_nodes.insert(physicalSenderId);
             // Eq. 3.18 — live LKH revocation at Stage 0 (crypto gate detected attacker).
             if (g_lkh_ready &&
+                g_lkh_already_revoked.size() < 16u &&
                 g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
             {
                 uint32_t leaf_idx = physicalSenderId % 16;
@@ -4023,20 +4116,29 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
         }
     }
 
+    // Sophistication roll — TTW-S1.
+    // Sophisticated attacker: also forges a fresh sender_timestamp (=now) + novel nonce.
+    //   age = |now − now| = 0 ≤ T_b + ε → Step 2 (Eq. 3.16) passes.
+    //   nonce_key uses ts_slot(now) ≠ ts_slot(stored_ts) → Step 3 (Eq. 3.17) passes.
+    //   Packet reaches Stage-1 (LW sig[0] timestamp-gap) + Stage-2 (TGN).
+    // Basic attacker: keeps stale stored_timestamp.
+    //   age = |now − stored_ts| >> T_b → Step 2 drops at Stage-0.
+    const double ttw_s1_stored_ts = ttw_stored_packets.count(src_id)
+                                  ? ttw_stored_packets[src_id].timestamp : 0.0;
+    const bool ttw_s1_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const double ttw_s1_sender_ts   = ttw_s1_sophisticated ? Simulator::Now().GetSeconds() : ttw_s1_stored_ts;
+    ttw_log << "[t=" << Simulator::Now().GetSeconds() << "]  TTW-S1 attacker V" << src_id
+            << " sophistication: "
+            << (ttw_s1_sophisticated
+                ? "SOPHISTICATED — fresh ts=" + std::to_string(ttw_s1_sender_ts)
+                  + " → Stage-0 BYPASSED → reaches LW+TGN\n"
+                : "BASIC — stale ts=" + std::to_string(ttw_s1_stored_ts)
+                  + " → DROPPED at Stage-0 (Eq. 3.16 age=" + std::to_string(Simulator::Now().GetSeconds() - ttw_s1_stored_ts) + "s)\n");
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
-                 src_id,
-                 src_id,
-                 src_id,
-                 src_id,
-                 dst_id,
-                // sender_ts = STORED (original) timestamp, not the forged one.
-                // The attacker replays a packet whose nonce was consumed at t_store (Eq. 3.17).
-                // Using stored_ts: age = recv_time − t_store >> T_b → Eq. 3.16 fires at Stage 0.
-                (ttw_stored_packets.count(src_id) ? ttw_stored_packets[src_id].timestamp : 0.0),
+                 src_id, src_id, src_id, src_id, dst_id,
+                 ttw_s1_sender_ts,
                  Simulator::Now().GetSeconds(),
-                 reporterPosition,
-                 sourcePosition,
-                 destinationPosition,
+                 reporterPosition, sourcePosition, destinationPosition,
                  true);
 
     // Crypto latency: detection gate (verify + haversine + freshness)
@@ -4106,11 +4208,21 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    // sender_ts = STORED (original) timestamp — nonce already consumed at t_store (Eq. 3.17);
-    // also physical_sender_id=rsu_id ≠ claimed_sender_id=v1_id triggers Eq. 3.15 at Step 1.
-    double _ts2 = (ttws2_packet_stored ? ttws2_stored_packet.timestamp : 0.0);
+    // Sophistication roll — TTW-S2.
+    // Sophisticated RSU: compromises V1's session key → presents as V1 (physical=claimed=v1_id)
+    //   + fresh sender_timestamp → Step 1 (MAC) passes, Steps 2&3 pass → LW+TGN.
+    // Basic RSU: sends with its own identity (physical=rsu_id ≠ claimed=v1_id)
+    //   → Step 1 (Eq. 3.15 MAC mismatch) drops at Stage-0.
+    const bool ttw_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const uint32_t ttw_s2_phys = ttw_s2_sophisticated ? v1_id : rsu_id;
+    double _ts2 = ttw_s2_sophisticated ? now2
+                : (ttws2_packet_stored ? ttws2_stored_packet.timestamp : 0.0);
+    ttws2_log << "[t=" << now2 << "]  TTW-S2 RSU attacker sophistication: "
+              << (ttw_s2_sophisticated
+                  ? "SOPHISTICATED — forges V1 identity + fresh ts → Stage-0 BYPASSED → LW+TGN\n"
+                  : "BASIC — identity mismatch (RSU≠V1) → DROPPED at Stage-0 (Eq. 3.15 MAC)\n");
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
-                 rsu_id, v1_id, rsu_id,
+                 ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,
                  _ts2,
                  now2, v1Pos, v1Pos, v2Pos, true);
@@ -4972,12 +5084,25 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
        << "  Different physical sender -> impersonation evidence\n\n";
     bshh_s1_pair_logs[attacker_id] += ss.str();
     
+    // Sophistication roll — BSHH-S1.
+    // Sophisticated attacker: has compromised victim's HMAC session key → presents
+    //   as victim (physical=claimed=victim_id) + fresh timestamp → Steps 1,2,3 pass → LW+TGN.
+    // Basic attacker: identity mismatch (physical=attacker ≠ claimed=victim)
+    //   → Step 1 (Eq. 3.15 MAC) drops at Stage-0.
+    const bool bshh_s1_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const uint32_t bshh_s1_phys = bshh_s1_sophisticated ? victim_id : attacker_id;
+    const double bshh_s1_ts     = bshh_s1_sophisticated ? now : stored_time;
+    bshh_s1_pair_logs[attacker_id] += (bshh_s1_sophisticated
+        ? "  Sophistication: SOPHISTICATED — compromised victim key + fresh ts → Stage-0 BYPASSED → LW+TGN\n"
+        : "  Sophistication: BASIC — identity mismatch → DROPPED at Stage-0 (Eq. 3.15 MAC)\n");
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S1][t=" << now << "]  V" << attacker_id
               << " --HIJACK old heartbeat--> Controller"
-              << "  Heartbeat(physical=V" << attacker_id << ", claimed=V" << victim_id
-              << ", t=" << stored_time << ")  IMPERSONATION  *** ATTACK COMPLETE ***" << std::endl;
-    PemEmitHeartbeatEvent(attacker_id, victim_id, stored_time, true);
+              << "  Heartbeat(physical=V" << bshh_s1_phys << ", claimed=V" << victim_id
+              << ", t=" << bshh_s1_ts << ")  IMPERSONATION"
+              << (bshh_s1_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
+              << "  *** ATTACK COMPLETE ***" << std::endl;
+    PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true);
 
     // Crypto latency: detection verify + freshness + LKH mitigation
     if (enable_crypto_latency == 3 && g_crypto_ready) {
@@ -5175,12 +5300,25 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
 
     NS_LOG_INFO("[BSHH-S2] t=" << now << "s  " << rsuLabel
                 << " replayed old HB claiming " << victimLabel);
+    // Sophistication roll — BSHH-S2.
+    // Sophisticated RSU: compromises victim's HMAC session key → presents as victim
+    //   (physical=claimed=victim_id) + fresh timestamp → Steps 1,2,3 pass → LW+TGN.
+    // Basic RSU: identity mismatch (physical=rsu ≠ claimed=victim)
+    //   → Step 1 (Eq. 3.15 MAC) drops at Stage-0.
+    const bool bshh_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const uint32_t bshh_s2_phys = bshh_s2_sophisticated ? victim_id : rsu_id;
+    const double bshh_s2_ts     = bshh_s2_sophisticated ? now : stored_time;
+    bshh_s2_pair_logs[rsu_id] += (bshh_s2_sophisticated
+        ? "  Sophistication: SOPHISTICATED — RSU forges victim identity + fresh ts → Stage-0 BYPASSED → LW+TGN\n"
+        : "  Sophistication: BASIC — RSU identity mismatch → DROPPED at Stage-0 (Eq. 3.15 MAC)\n");
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S2][t=" << now << "]  " << rsuLabel
               << " --REPLAY old heartbeat--> Controller"
-              << "  Heartbeat(physical=" << rsuLabel << ", claimed=" << victimLabel
-              << ", t=" << stored_time << ")  *** ATTACK COMPLETE ***" << std::endl;
-    PemEmitHeartbeatEvent(rsu_id, victim_id, stored_time, true);
+              << "  Heartbeat(physical=V" << bshh_s2_phys << ", claimed=" << victimLabel
+              << ", t=" << bshh_s2_ts << ")"
+              << (bshh_s2_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
+              << "  *** ATTACK COMPLETE ***" << std::endl;
+    PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true);
     AttackSendRSUToController(rsu_id);
     {
         Ptr<Node> rsuNode = nullptr;
@@ -6024,21 +6162,33 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
               << " path(s) for V" << src_ns3 << "->V" << dst_ns3
               << (v3v4_linked ? "  (Path4: V3↔V4 in range)" : "")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    // Echo attackers are key-holding insiders: they sign a fresh message with
-    // their own valid session key and use NOW as the sender timestamp, not the
-    // original link observation time t.  This makes age = 0 at reception,
-    // so Eq. 3.16 (freshness) passes and the event reaches Stage 1 where
-    // Eq. 3.8 (reporter-count density excess) detects the inflated reporter set.
-    // Using t here instead of now would make age = (now - t) > 120ms, causing
-    // Eq. 3.16 to drop the event at Stage 0 — wrong attribution.
+    // Sophistication roll — ME-S1 (per echo reporter independently).
+    // Both reporters use own identity (physical=claimed) so Step 1 always passes.
+    // Step 1b location-binding (TetaGuardLocBindVerify, Eqs. 3.27-3.29):
+    //   Basic: reporter_position = actual NS-3 position (may be out of range → DROPPED).
+    //   Sophisticated: reporter_position = link midpoint (within range) → Step 1b passes → LW+TGN.
+    //     At LW+TGN the reporter-count density excess (sig[6], Eq. 3.8) detects the surplus.
+    // sender_timestamp=now in both cases so Step 2 (Eq. 3.16 age) always passes.
+    const Vector me_s1_midpoint((vSrcPos.x + vDstPos.x) / 2.0,
+                                 (vSrcPos.y + vDstPos.y) / 2.0, 0.0);
     if (emit_v3)
     {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, now, now, v3Pos, vSrcPos, vDstPos, true);
-    }
+            const bool me_s1_v3_soph = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+            const Vector v3ReportPos = me_s1_v3_soph ? me_s1_midpoint : v3Pos;
+                std::cout << "[ME-S1][t=" << now << "]  V" << echo_v3 << " sophistication: "
+                  << (me_s1_v3_soph ? "SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN"
+                                    : "BASIC — actual pos, may be dropped at Stage-0 locbind") << "\n";
+                PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, now, now, v3ReportPos, vSrcPos, vDstPos, true);
+        }
     if (emit_v4)
     {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, now, now, v4Pos, vSrcPos, vDstPos, true);
-    }
+            const bool me_s1_v4_soph = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+            const Vector v4ReportPos = me_s1_v4_soph ? me_s1_midpoint : v4Pos;
+        std::cout << "[ME-S1][t=" << now << "]  V" << echo_v4 << " sophistication: "
+                  << (me_s1_v4_soph ? "SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN"
+                                    : "BASIC — actual pos, may be dropped at Stage-0 locbind") << "\n";
+            PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, now, now, v4ReportPos, vSrcPos, vDstPos, true);
+        }
 
     // Crypto latency: each echo reporter signs + controller verifies x2 + haversine x2
 #ifdef HAVE_LIBOQS
@@ -6308,11 +6458,27 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
         if (m) v2Pos = m->GetPosition();
     }
+    // Sophistication roll — ME-S2.
+    // Sophisticated RSU: forges the claimed-reporter's position to the link midpoint
+    //   so TetaGuardLocBindVerify haversine ≤ R_comm (Step 1b) passes → LW+TGN.
+    //   The RSU already holds all legitimate signed reports, so Step 1c threshold
+    //   aggregate (Eq. 3.26) also passes with the stored real partial sigs.
+    // Basic RSU: uses its own actual position as the reporter position.
+    //   If RSU is out of range of the link → Step 1b locbind drops at Stage-0.
+    const bool me_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const Vector me_s2_midpoint((v1Pos.x + v2Pos.x) / 2.0, (v1Pos.y + v2Pos.y) / 2.0, 0.0);
+    const Vector me_s2_reportPos = me_s2_sophisticated ? me_s2_midpoint : rsuPos;
+    me_log << "[t=" << now << "]  ME-S2 RSU attacker sophistication: "
+           << (me_s2_sophisticated
+               ? "SOPHISTICATED — forged near-link reporter position → Stage-0 locbind BYPASSED → LW+TGN\n"
+               : "BASIC — actual RSU position used → may be DROPPED at Stage-0 locbind (Eqs. 3.27-3.29)\n");
+    std::cout << "[ME-S2][t=" << now << "]  Sophistication: "
+              << (me_s2_sophisticated ? "SOPHISTICATED→LW+TGN" : "BASIC→Stage-0 drop") << "\n";
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v3, rsu_id,
-                 v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, me_s2_reportPos, v1Pos, v2Pos, true);
     if (s2_have_v4)
         PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v4, rsu_id,
-                     v1_id, v2_id, t, now, rsuPos, v1Pos, v2Pos, true);
+                     v1_id, v2_id, t, now, me_s2_reportPos, v1Pos, v2Pos, true);
     AttackSendRSUToController(rsu_id);
 
     if (pem_last_alert) {
@@ -145435,11 +145601,17 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("malicious_vehicle_id", "malicious_vehicle_id", malicious_vehicle_id);
     cmd.AddValue ("victim_neighbor_id", "victim_neighbor_id", victim_neighbor_id);
     cmd.AddValue ("latency",
-                  "1 = measure real liboqs wall-clock time per op (CSV, sim clock unchanged). "
+                  "1 = measure real liboqs wall-clock time per op (CSV, sim clock unchanged) [DEFAULT]. "
                   "2 = same + inject total into NS-3 scheduler (sim clock advances by crypto cost). "
                   "3 = each op is a START/END NS-3 event pair: Simulator::Now() at both ends "
-                  "gives genuine virtual-clock latency_sim_us — pure simulation time.",
+                  "gives genuine virtual-clock latency_sim_us — pure simulation time. "
+                  "0 = disable KEM keygen/encap/decap entirely (use --no_kem=1 instead).",
                   enable_crypto_latency);
+    bool no_kem_flag = false;
+    cmd.AddValue ("no_kem",
+                  "1 = disable Kyber-1024 + HQC-256 keygen/encap/decap (sets latency=0). "
+                  "Default 0 = KEM enabled (real OQS operations run at every attack event).",
+                  no_kem_flag);
     cmd.AddValue ("attack_percentage",
                   "Percentage (0-100) of vehicle nodes that behave as attackers",
                   attack_percentage);
@@ -145492,7 +145664,52 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("tgn_layers",
                   "TGN message-passing rounds L (default 2, Eq 3.22)",
                   g_tgn_layers_cmd);
+    // ── Table 4.7 spatial threshold overrides ────────────────────────────────
+    // NS-3 equivalent of blockchain chaincode loadSimParams() / SIM_RCOMM / SIM_RSSI_MIN.
+    // Overriding --rcomm also updates g_pem_bshh3_liveness_window_s (W = 2·r/v_max).
+    cmd.AddValue ("rcomm",
+                  "DSRC communication range r_comm in metres (default 300, Table 4.7 SIM_RCOMM)",
+                  g_rcomm);
+    cmd.AddValue ("rssi_min",
+                  "Minimum RSSI threshold in dBm for ME-S3 (default -85, Table 4.7 SIM_RSSI_MIN)",
+                  g_rssi_min);
+    // ── Table 4.2 Ablation baseline flags (default 0 = full stack) ───────────
+    cmd.AddValue ("no_crypto",
+                  "1 = A6: bypass Stage-0 HMAC/nonce crypto pre-filter (Eqs. 3.15-3.17)",
+                  g_abl.no_crypto);
+    cmd.AddValue ("no_tgn",
+                  "1 = A1/A2: disable TGN inference (LW rule-based signatures only)",
+                  g_abl.no_tgn);
+    cmd.AddValue ("no_blockchain",
+                  "1 = A1/A2: suppress blockchain smart-contract mitigation actions",
+                  g_abl.no_blockchain);
+    cmd.AddValue ("static_gcn",
+                  "1 = A3: freeze GRU memory (phi=0); static GCN, no temporal encoding (Eq. 3.22)",
+                  g_abl.static_gcn);
+    cmd.AddValue ("no_mobility_adapt",
+                  "1 = A4: fix rho_max and W to compile-time constants; disable mobility calibration",
+                  g_abl.no_mobility_adapt);
+    cmd.AddValue ("no_lbs",
+                  "1 = A5: suppress ME-S3 location-binding verification sig[8] (Eq. 3.28)",
+                  g_abl.no_lbs);
+    cmd.AddValue ("attacker_sophistication",
+                  "Probability [0,1] that each S1/S2 attack injection is SOPHISTICATED: "
+                  "attacker also forges nonce/key/position so Stage-0 crypto is bypassed "
+                  "and the attack reaches LW+TGN layers. "
+                  "Default 0.5 = half sophisticated (reach LW+TGN), half basic (dropped at Stage-0).",
+                  g_attacker_sophistication_prob);
     cmd.Parse (argc, argv);
+
+    // Apply --no_kem after parsing (overrides --latency if both are given).
+    if (no_kem_flag) enable_crypto_latency = 0;
+
+    // Attacker sophistication RNG — seeded by NS-3 RngSeedManager so --RngRun gives
+    // reproducible but independent rolls across all 6 S1/S2 attack scenarios.
+    g_attacker_rng = CreateObject<UniformRandomVariable>();
+    g_attacker_rng->SetAttribute("Min", DoubleValue(0.0));
+    g_attacker_rng->SetAttribute("Max", DoubleValue(1.0));
+    std::cout << "[AttackerModel] Sophistication probability: " << g_attacker_sophistication_prob
+              << " (each S1/S2 injection independently rolls — 0=all basic, 1=all sophisticated)\n";
 
     // ── §3.4.5 Eq. 3.29 — TTW link lifetime bound L_link ────────────────────
     // L_link = 2 · r_comm / v_rel  (Eq. 3.29)
@@ -145520,6 +145737,40 @@ static int RoutingMain(int argc, char *argv[])
     NS_LOG_INFO("[Mobility] W_ho = " << w_ho_handover_window
                 << " beacon slots  (r_comm=" << TTW_COMM_RANGE
                 << "m, v_max=" << v_max_ms << "m/s, T_b=" << PEM_BEACON_INTERVAL_S << "s)");
+
+    // ── BSHH-S3 liveness window calibration (Eq. 3.7) ────────────────────────
+    // A4 (--no_mobility_adapt): skip — g_pem_bshh3_liveness_window_s stays at its
+    // default (27.0 s) and ρ_max will use a fixed density in PemComputeRhoMaxForLink.
+    if (!g_abl.no_mobility_adapt) {
+        // W = 2·W_ho (seconds): W_ho = g_rcomm / v_max_m_s.
+        g_pem_bshh3_liveness_window_s = (v_max_ms > 0.0)
+            ? 2.0 * g_rcomm / v_max_ms
+            : 27.0;
+    }
+    // Synchronise g_rssi_min with the --rssi_min override (if any).
+    PEM_RSSI_MIN_DBM = g_rssi_min;
+    std::cout << "[PEM] BSHH-S3 liveness W=" << g_pem_bshh3_liveness_window_s
+              << "s  RSSI_min=" << PEM_RSSI_MIN_DBM << " dBm"
+              << (g_abl.no_mobility_adapt ? "  [A4: mobility-adapt OFF — fixed W]" : "")
+              << "\n";
+
+    // ── Ablation: propagate flags that cross the routing.cc / tgn_core.cc boundary ─
+    if (g_abl.static_gcn)   TGN_SetStaticGCN(true);
+
+    // Print active ablation summary so it appears in every run's stdout.
+    if (g_abl.no_crypto || g_abl.no_tgn || g_abl.no_blockchain ||
+        g_abl.static_gcn  || g_abl.no_mobility_adapt || g_abl.no_lbs) {
+        std::cout << "[Ablation] Active flags:";
+        if (g_abl.no_crypto)         std::cout << "  A6:no_crypto";
+        if (g_abl.no_tgn)            std::cout << "  A1/A2:no_tgn";
+        if (g_abl.no_blockchain)     std::cout << "  A1/A2:no_blockchain";
+        if (g_abl.static_gcn)        std::cout << "  A3:static_gcn";
+        if (g_abl.no_mobility_adapt) std::cout << "  A4:no_mobility_adapt";
+        if (g_abl.no_lbs)            std::cout << "  A5:no_lbs";
+        std::cout << "\n";
+    } else {
+        std::cout << "[Ablation] Full stack enabled (no ablation flags set)\n";
+    }
 
     // ── TTW mobility derived from cmd params — computed once after Parse ─────
     // Constraint: at TTW_HELLO_TIME the pair must be IN range (<TTW_COMM_RANGE)
@@ -149647,6 +149898,20 @@ attack_mobility.Install(Vehicle_Nodes);
       for (double t_npfads = 1.0; t_npfads < simTime - 0.1; t_npfads += 0.1)
           Simulator::Schedule(Seconds(t_npfads), &NpfadsCollectBsms);
 
+  // ── Issue 7 runtime PQC degradation notice ──────────────────────────────────
+  // Emitted once per run alongside the build-time #pragma message above so the
+  // user knows the crypto layer status without reading the build log.
+#ifndef HAVE_LIBOQS
+  std::cout << "[PQC] WARNING: liboqs NOT linked. ML-KEM-1024, ML-DSA-87, HQC-5"
+               " are running as NON-CRYPTOGRAPHIC STUBS.\n"
+               "       Eqs. 3.15 (HMAC), 3.16 (freshness), 3.17 (nonce), 3.26-3.28"
+               " (threshold/aggregate signatures) are SIMULATED pass/fail logic,\n"
+               "       not real cryptographic operations. Build with -DHAVE_LIBOQS"
+               " and link -loqs to enable real PQC.\n";
+#else
+  std::cout << "[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active"
+               " (Eqs. 3.15-3.17, 3.26-3.28).\n";
+#endif
   // Crypto latency: initialise keys at simulation start, flush CSV at end
   CryptoInitKeys();
   Simulator::Schedule(Seconds(simTime - 0.0005), &CryptoWriteLatencyCSV);
@@ -149662,8 +149927,9 @@ attack_mobility.Install(Vehicle_Nodes);
 
   // Issue 8.1: Initialise TGN before the simulation so events are processed
   // online (at each PemRecordObservation call via TGN_ProcessEventInline).
-  // This matches the thesis §3.4.3 requirement: "TGN invoked at each Rx callback."
-  TGN_Init();
+  // A1/A2 (--no_tgn=1): skip init so g_tgn stays nullptr; ProcessEventInline
+  // is already gated above and TGN_RunPipeline will output zero-event summary.
+  if (!g_abl.no_tgn) TGN_Init();
 
   Simulator::Run();
   Simulator::Destroy();
