@@ -1,20 +1,21 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 12635 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
 [SUMO] Attack 9: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/09_ME_S1_Malicious_Vehicles.xml
 
 ========================================
 SCENARIO 09 - ME-S1 ATTACK CONFIGURED
-  Total vehicles        : 8
+  Total vehicles        : 20
   Attack percentage     : 20%
-  Echo attackers        : 2
-  Benign (real link) veh: 6
-  Active attack groups  : 1
-  Real link pair        : V7<->V12
-  Echo attackers (NS-3 IDs): V5 V6 
-  Active groups (all echo V7<->V12):
-    Group 1: V5+V6 echo V7<->V12
+  Echo attackers        : 4
+  Benign (real link) veh: 16
+  Active attack groups  : 2
+  Real link pair        : V21<->V20
+  Echo attackers (NS-3 IDs): V5 V7 V6 V8 
+  Active groups (all echo V21<->V20):
+    Group 1: V5+V7 echo V21<->V20
+    Group 2: V6+V8 echo V21<->V20
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -27,50 +28,57 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=16)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Derived real per-vehicle session keys for 20/20 vehicles (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S1][t=10.018]  STEP①  V7 <-> V12 HELLO exchange (real link)
-[ME-S1][t=10.018]  STEP②  V7, V12 report real link to controller
-[ME-S1][t=10.018]  STEP③  V5, V6 overhear HELLO — stored for echo
-[ME-S1][t=10.135]  STEP④  V5 --ECHO--> Controller  <V7 sees V12>  FALSE REPORTER
-[ME-S1][t=10.135]  STEP④  V6 --ECHO--> Controller  <V7 sees V12>  FALSE REPORTER
-[ME-S1][t=10.135]  STEP⑤  Controller infers 4 path(s) for V7->V12  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.135]  V0 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.135]  V1 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.135]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V0  propagation=300.000 ms
+[ME-S1][t=9.990]  STEP①  V21 <-> V20 HELLO exchange (real link)
+[ME-S1][t=9.990]  STEP②  V21, V20 report real link to controller
+[ME-S1][t=9.990]  STEP③  V5, V7 overhear HELLO — stored for echo
+[ME-S1][t=10.052]  STEP④  V6 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.052]  STEP④  V8 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.052]  STEP⑤  Controller infers 4 path(s) for V21->V20  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
+[ME-S1][t=10.052]  V1 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
+[ME-S1][t=10.052]  V3 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
+[ME-S1][t=10.052]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V1  propagation=500.000 ms
+[ME-S1][t=10.081]  STEP④  V5 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.081]  STEP④  V7 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.081]  STEP⑤  Controller infers 4 path(s) for V21->V20  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
+[ME-S1][t=10.081]  V0 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
+[ME-S1][t=10.081]  V2 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
+[ME-S1][t=10.081]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V0  propagation=500.000 ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (30 events)
+[CRYPTO] crypto_latency_sumo.csv written    (50 events)
 [CRYPTO] crypto_latency_summary.csv written  (20 distinct operations)
 [CRYPTO] Beacon TX signed: 1   RX verified: 1
-[TGN] Online mode — 6 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 3/3 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 0 2 7 ctrl 
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=3  reject=0
+[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
+[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 15 16 ctrl 
 [TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 7 in → 7 out  (dropped: 0 MAC, 0 stale, 0 nonce)
+[CryptoFilter] 6 in → 6 out  (dropped: 0 MAC, 0 stale, 0 nonce)
                log: crypto_filter_log.txt
-[TGN] tgn_alerts.json written: 1 alert(s) → tgn_alerts.json
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 9 — ME-S1: Malicious Vehicles, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 1 / 4 / 0 / 1
+  TP/TN/FP/FN : 0 / 4 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 1 / 4 / 0 / 1
-  MCC         : 0.632
-  AUROC       : 1.000
-  ACR         : 83.333 %
-  Tdet        : 0.000 ms
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 0.500
+  ACR         : 100.000 %
+  Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
-  θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 6
-  Stage-0 blocked (attacks): 0
+  Events      : 4
+  Stage-0 blocked (attacks): 4
   |E_t^trusted|  : 4
 ============================================================

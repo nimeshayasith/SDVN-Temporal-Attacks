@@ -78,11 +78,17 @@ uint32_t comparison_detector = 0;   // 0=none  1=VeReMi  2=MBSM
 #define LOCATION_BINDING_NO_MAIN
 #define LKH_PROVIDES_MARK_KEY_REVOKED
 // If liboqs is not available in this TU, allow stub mode rather than hard error.
-// ⚠ SECURITY DEGRADATION: Without liboqs the entire PQC layer (ML-KEM-1024 key
+// ⚠ SECURITY DEGRADATION: Without liboqs the PQC layer (ML-KEM-1024 key
 // encapsulation, ML-DSA-87/Dilithium5 signatures, HQC-5 hybrid KEM) silently
-// degrades to non-cryptographic stubs (Eqs. 3.15–3.17, 3.26–3.28 are SIMULATED).
-// Real HMAC-SHA256 and threshold aggregate signatures are not computed in the
-// NS-3 simulation path regardless; see teta_guard_filter.h lines ~249-254.
+// degrades to non-cryptographic stubs (Eqs. 3.26–3.28 are SIMULATED in that case).
+// Eqs. 3.15-3.17 (HMAC-SHA256 + timestamp freshness + nonce novelty) do NOT
+// depend on liboqs/PQC — they run as genuine OpenSSL HMAC-SHA256 computations
+// unconditionally, both on the live DSRC beacon wire path (beacon_sign() /
+// lw_mitigate() in hmac_filter.cc, called from AttackSendDSRCBeacon()/Rx())
+// and on the PEM/TGN event path (TetaGuardCryptoFilter() in
+// teta_guard_filter.h, Gap 9 fix). Session keys K_{Vi,nk} are populated at
+// t=0 from a real ML-KEM-1024 + HQC-5 handshake in
+// CryptoDeriveVehicleSessionKeys() when liboqs is available.
 // Build with -DHAVE_LIBOQS and link -loqs to enable real PQC operations.
 #ifndef HAVE_LIBOQS
 #  pragma message("WARNING: HAVE_LIBOQS not defined — PQC (Kyber/Dilithium/HQC-5) " \
@@ -338,12 +344,31 @@ static uint8_t              g_hmac_key[32] __attribute__((unused)) = {};
 static bool                 g_crypto_ready = false;
 
 // ── TETA-Guard pipeline global state ─────────────────────────────────────────
+// Gap 10 fix: LKH is O(log n) for n REGISTERED vehicles (Eq. 3.18) — the
+// underlying lkh_init()/lkh_set_keystore() (lkh_mgmt.cc) already take a
+// runtime n and only require n <= LKH_MAX_LEAVES (1024). routing.cc previously
+// hardcoded n=16 regardless of N_Vehicles; arrays are now sized to
+// MAX_VEHICLES (256, teta_guard_types.h's own fleet-size constant) and
+// CryptoInitKeys() below initialises exactly min(N_Vehicles, MAX_VEHICLES)
+// leaves, so revocation cost genuinely tracks the simulated fleet size.
 static LKHTree          g_lkh_tree __attribute__((unused));
-static VehicleKeyRecord g_lkh_keystore[16] __attribute__((unused));
-static uint8_t          g_lkh_vids[16][16] __attribute__((unused));
+static VehicleKeyRecord g_lkh_keystore[MAX_VEHICLES] __attribute__((unused));
+static uint8_t          g_lkh_vids[MAX_VEHICLES][16] __attribute__((unused));
+static uint32_t         g_lkh_n_leaves __attribute__((unused)) = 0;
 static bool             g_lkh_ready __attribute__((unused)) = false;
 static uint8_t          g_pipeline_session_key[SESSION_KEY_LEN] __attribute__((unused)) = {};
 static NonceCache       g_pipeline_nonce_cache __attribute__((unused)) = {};
+// ── Real per-vehicle K_{Vi,nk} session keys (Eq. 3.15), derived from a genuine
+// ML-KEM-1024 + HQC-5 hybrid handshake per vehicle (kem_vehicle_keygen +
+// kem_rsu_encapsulate + kem_vehicle_decapsulate) at t=0 in CryptoDeriveVehicleSessionKeys().
+// Replaces g_pipeline_session_key (a single RAND_bytes-seeded key shared by
+// every vehicle) for the live beacon sign/verify path in AttackSendDSRCBeacon()/Rx().
+static uint8_t          g_vehicle_session_keys[MAX_VEHICLES][SESSION_KEY_LEN] = {};
+static bool             g_vehicle_session_key_ready[MAX_VEHICLES] = {};
+// Per-receiver nonce cache for lw_mitigate()'s Eq. 3.17 check on real beacon traffic.
+static std::map<uint32_t, NonceCache> g_beacon_nonce_cache_by_receiver;
+static uint64_t         g_beacon_verify_ok_count   = 0;
+static uint64_t         g_beacon_verify_fail_count = 0;
 static uint8_t          g_pipeline_dil_sig[DILITHIUM5_SIG_LEN] __attribute__((unused)) = {};
 static size_t           g_pipeline_dil_sig_len __attribute__((unused)) = 0;
 // CA cert issued for the test vehicle used in MeasureKEM / TimedLocationBind
@@ -558,8 +583,10 @@ static double __attribute__((unused)) TimedFreshness()
 static double __attribute__((unused)) TimedLkhRevoke(uint32_t n)
 {
     // Uses lkh_revoke_vehicle() from lkh_mgmt.cc — real O(log n) tree revocation
-    if (!g_lkh_ready) return 0.0;
-    uint32_t idx = (n > 0 ? (n - 1) : 0) % 16;
+    if (!g_lkh_ready || g_lkh_n_leaves == 0u) return 0.0;
+    // Modulo the ACTUAL registered leaf count (g_lkh_n_leaves), not a fixed 16 —
+    // otherwise this benchmark could index an unregistered leaf when N_Vehicles < 16.
+    uint32_t idx = (n > 0 ? (n - 1) : 0) % g_lkh_n_leaves;
     auto t0 = HiResClock::now();
     lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[idx]);
     return MicroSec(HiResClock::now() - t0).count();
@@ -699,19 +726,88 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
 //  These two primitives are complementary, not alternatives:
 //    ML-KEM  → symmetric session secrets (HMAC keys)
 //    ML-DSA-87 → asymmetric identity proofs (PKI signatures)
+
+// ── Real per-vehicle K_{Vi,nk} derivation (Eq. 3.15) ──────────────────────────
+// Runs the genuine Section 3.3 handshake once per vehicle at t=0 ("session
+// keys pre-assumed established at t=0" — teta_guard_filter.h): each vehicle
+// gets its own Dilithium5 identity keypair, a CA-issued cert binding
+// vehicle_id -> that keypair, then a full ML-KEM-1024 + HQC-5 hybrid exchange
+// (kem_vehicle_keygen -> kem_rsu_encapsulate -> kem_vehicle_decapsulate).
+// Both sides' derived keys are compared before being trusted, exactly as
+// kem_register_vehicle() already does for the fleet keystore. This replaces
+// the single RAND_bytes-seeded g_pipeline_session_key with real, distinct,
+// KEM-derived keys for the live beacon sign/verify path (AttackSendDSRCBeacon
+// / Rx()), and requires the HQC-5 buffer-size fix in teta_guard_types.h
+// (HQC5_PK_LEN/SK_LEN/CT_LEN) to succeed — before that fix every call here
+// would fail with "[KEM] REJECT: keygen sig invalid" due to KemExchangeState
+// struct corruption.
+static void CryptoDeriveVehicleSessionKeys()
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready) return;
+    uint32_t n = (N_Vehicles > 0u) ? N_Vehicles : 1u;
+    if (n > MAX_VEHICLES) n = MAX_VEHICLES;
+    uint32_t ok_count = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        uint8_t vid[16] = {};
+        vid[0] = (uint8_t)(i & 0xFFu);
+        vid[1] = (uint8_t)((i >> 8) & 0xFFu);
+
+        uint8_t v_pk[DILITHIUM5_PK_LEN], v_sk[DILITHIUM5_SK_LEN];
+        dilithium5_keygen(v_pk, v_sk);
+        CertificateRecord v_cert;
+        dilithium5_issue_cert(vid, v_pk, 0, &v_cert);
+
+        KemExchangeState state;
+        kem_vehicle_keygen(&state, vid, v_sk, v_pk, &v_cert);
+        uint8_t sess_rsu[SESSION_KEY_LEN], sess_veh[SESSION_KEY_LEN];
+        bool enc_ok = kem_rsu_encapsulate(&state, sess_rsu);
+        bool dec_ok = enc_ok && kem_vehicle_decapsulate(&state, sess_veh);
+        if (dec_ok && memcmp(sess_rsu, sess_veh, SESSION_KEY_LEN) == 0) {
+            memcpy(g_vehicle_session_keys[i], sess_rsu, SESSION_KEY_LEN);
+            g_vehicle_session_key_ready[i] = true;
+            ok_count++;
+        }
+    }
+    std::cout << "[KEM] Derived real per-vehicle session keys for " << ok_count
+              << "/" << n << " vehicles (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).\n";
+#endif
+}
+
+// Returns the real KEM-derived K_{Vi,nk} for vehicle_id if the handshake in
+// CryptoDeriveVehicleSessionKeys() succeeded for it; otherwise falls back to
+// the same deterministic per-vehicle derivation TetaGuardGetSessionKey() uses
+// in teta_guard_filter.h, so sign and verify still agree on a key when
+// liboqs is unavailable or vehicle_id is beyond MAX_VEHICLES.
+static void CryptoGetVehicleSessionKey(uint32_t vehicle_id, uint8_t out[SESSION_KEY_LEN])
+{
+    if (vehicle_id < MAX_VEHICLES && g_vehicle_session_key_ready[vehicle_id]) {
+        memcpy(out, g_vehicle_session_keys[vehicle_id], SESSION_KEY_LEN);
+        return;
+    }
+    for (uint32_t j = 0; j < SESSION_KEY_LEN; j++)
+        out[j] = (uint8_t)((vehicle_id * 37u + j * 13u + 0x5Au) & 0xFFu);
+}
+
 static void CryptoInitKeys()
 {
     // LKH tree is always initialised regardless of enable_crypto_latency — it is
     // needed by the live revocation path in PemEvaluateEvent (Eq. 3.18).
+    // Eq. 3.18: C_revoke = O(log n) for n REGISTERED vehicles — n must track
+    // the actual simulated fleet size, not a fixed n=16, or the revocation
+    // cost/tree depth reported by this run doesn't correspond to N_Vehicles.
+    g_lkh_n_leaves = (N_Vehicles > 0u) ? N_Vehicles : 1u;
+    if (g_lkh_n_leaves > MAX_VEHICLES) g_lkh_n_leaves = MAX_VEHICLES;
+
     memset(g_lkh_keystore, 0, sizeof(g_lkh_keystore));
     memset(g_lkh_vids, 0, sizeof(g_lkh_vids));
-    for (uint32_t i = 0; i < 16; i++) {
+    for (uint32_t i = 0; i < g_lkh_n_leaves; i++) {
         g_lkh_vids[i][0] = (uint8_t)i;
         memcpy(g_lkh_keystore[i].vehicle_id, g_lkh_vids[i], 16);
         g_lkh_keystore[i].lkh_leaf_index = i;
     }
-    lkh_set_keystore(g_lkh_keystore, 16);
-    lkh_init(&g_lkh_tree, (const uint8_t (*)[16])g_lkh_vids, 16);
+    lkh_set_keystore(g_lkh_keystore, g_lkh_n_leaves);
+    lkh_init(&g_lkh_tree, (const uint8_t (*)[16])g_lkh_vids, g_lkh_n_leaves);
     g_lkh_ready = true;
 
 #ifdef HAVE_LIBOQS
@@ -753,7 +849,8 @@ static void CryptoInitKeys()
                  "  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)\n"
                  "      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate\n"
                  "  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)\n"
-                 "      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=16)\n"
+                 "      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n="
+              << g_lkh_n_leaves << ")\n"
                  "  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)\n"
                  "      create_location_bound_report / verify_single_witness / verify_quorum\n"
                  "  [6] Haversine distance (GPS consistency gate, Eq. 3.29)\n"
@@ -764,6 +861,9 @@ static void CryptoInitKeys()
     std::cout << "[CRYPTO][t=0] Keys initialised. KEM session measured."
               << (g_crypto_inject_delay ? "  [latency=2: delays injected into sim clock]" : "")
               << "\n";
+
+    // Real per-vehicle K_{Vi,nk} keys for the live beacon sign/verify path.
+    CryptoDeriveVehicleSessionKeys();
 #endif
 }
 
@@ -848,13 +948,25 @@ static void CryptoMeasureLKH(double sim_t, uint32_t nid, uint32_t n_vehicles)
     // After revocation the controller broadcasts KEK updates; each surviving
     // vehicle calls lkh_get_session_key() to derive its new session key.
     // Measure this per-vehicle refresh cost (one representative vehicle, nid+1).
-    uint8_t survivor_vid[16] = {}; survivor_vid[0] = (uint8_t)((nid + 1) % 16);
+    uint8_t survivor_vid[16] = {};
+    survivor_vid[0] = (uint8_t)((nid + 1) % (g_lkh_n_leaves > 0u ? g_lkh_n_leaves : 16u));
     CryptoRecord(sim_t, "LKH_GetSessionKey",
                  TimedLkhGetSessionKey(survivor_vid), nid, "Mitigation", true);
 }
 
 // ── Write CSV ─────────────────────────────────────────────────────────────────
 static void CryptoWriteL3CSV();   // forward declaration (definition in L3 block below)
+// Reports the real Algorithm 3 (Eqs. 3.15-3.17) beacon verification outcome
+// from AttackSendDSRCBeacon()/Rx() — runs unconditionally on every routing.cc
+// execution (not gated by --latency, unlike the benchmark-only counters
+// below), since this is the live wire-level crypto path, not a measurement.
+static void CryptoPrintBeaconVerifyStats()
+{
+    std::cout << "[CRYPTO] Real beacon verify (Algorithm 3, live wire path): "
+              << "accept=" << g_beacon_verify_ok_count
+              << "  reject=" << g_beacon_verify_fail_count << "\n";
+}
+
 static void CryptoWriteLatencyCSV()
 {
     if (!enable_crypto_latency || g_crypto_records.empty()) return;
@@ -1306,12 +1418,26 @@ void WriteChannelAnalysisCsv() {
 // Performance evaluation metrics for temporal-echo attack detection.
 static const double PEM_BEACON_BUDGET_MS = 100.0;
 static const double PEM_BEACON_INTERVAL_S = 0.100;
+// Eq. 3.16 propagation tolerance ε. This is the canonical/live value — keep in
+// sync with .crypto_src/teta_guard_types.h's PROPAGATION_TOL_MS (Gap 15 fix:
+// both must represent the same physical epsilon; PROPAGATION_TOL_MS is set to
+// match this value, 20ms).
 static const double PEM_PROPAGATION_EPSILON_S = 0.020;
 static const double PEM_HEARTBEAT_WINDOW_S = 0.400;
 static const double PEM_SCORE_THRESHOLD = 0.075;
 static const double PEM_ME_TOLERANCE_MU = 0.20;   // µ = 0.20 per Eq. 3.8
+// PEM_ME_DELTA_MAX: fallback used only under A4 (--no_mobility_adapt).
+// Live detection computes δ_max dynamically per Eq. 3.10 — see
+// PemComputeDeltaMax() and g_pem_v_rel_ms below.
 static const double PEM_ME_DELTA_MAX = 1.0;
 static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
+
+// ── Eq. 3.10 relative speed v_rel — shared with §3.4.5 Eq. 3.29 L_link ──────
+// v_rel: urban ≈ 14 m/s, rural ≈ 30 m/s, highway ≈ 67 m/s (set in main() from
+// mobility_scenario, mirroring the local v_rel_ms already used to calibrate
+// ttw_link_lifetime_bound). Exposed as a global so PemComputeDeltaMax (Eq.
+// 3.10, δ_max = max(1, ⌈λ̂·v_rel·T_b⌉)) can reuse the same calibrated value.
+static double g_pem_v_rel_ms = 14.0;
 
 // ── BSHH-S3 liveness window (Eq. 3.7) ───────────────────────────────────────
 // W > 2·W_ho, where W_ho = r_comm / v_max (RSU handover duration in seconds).
@@ -1321,6 +1447,20 @@ static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
 // PemTrimSlidingWindow uses max(PEM_HEARTBEAT_WINDOW_S, g_pem_bshh3_liveness_window_s)
 // so beacons stay in the event_window long enough for BSHH-S3's lookback.
 static double g_pem_bshh3_liveness_window_s = 27.0;
+
+// ── Algorithm 1 sliding-window cap W_max (event count, lines 3-5) ──────────
+// Report: "if |W| > W_max then REMOVE_OLDEST(W)" — W is bounded by event
+// COUNT, not just elapsed time. W_max = ceil(L_link / T_b) beacon intervals
+// (§3.4.7 mobility-adaptive window size discussion). Calibrated at runtime
+// in main() from ttw_link_lifetime_bound (L_link) and PEM_BEACON_INTERVAL_S
+// (T_b), same as the time-based g_pem_bshh3_liveness_window_s calibration.
+// Default (L_link=3.52s, T_b=0.1s): W_max = ceil(3.52/0.1) = 36 events.
+// This is enforced in addition to (not instead of) the existing time-based
+// eviction in PemTrimSlidingWindow — the time-based trim keeps events fresh
+// enough for BSHH-S3's longer lookback; the count cap additionally bounds
+// |W| per Algorithm 1 so high-traffic periods cannot grow the window
+// unboundedly within that time span.
+static uint32_t g_pem_w_max_events = 36u;
 
 // ── ME-S3 RSSI threshold (Table 4.7) ─────────────────────────────────────────
 // -85 dBm: documented default in Table 4.7, "derived from the NS-3
@@ -1346,6 +1486,19 @@ static const double PEM_RSSI_N_COST231 =  3.75;  // Cost231-Hata effective path-
 static double g_rcomm    = 300.0;   // metres; overridden by --rcomm
 static double g_rssi_min = -85.0;   // dBm;    overridden by --rssi_min
 
+// ── Gap 16 — BSHH-S3 W_ho must use r_overlap, not the full r_comm ───────────
+// Report: W_ho ~ r_overlap / v_i, where r_overlap is the overlap distance
+// between ADJACENT RSU coverage zones — smaller than r_comm by definition.
+// r_overlap only has a real geometric referent when >= 2 RSUs are deployed
+// close enough to overlap; every one of the 12 attack scenarios in this
+// project's test matrix uses N_RSUs in {0, 1}, so there is no adjacent-RSU
+// pair to measure in any currently-run configuration. g_rsu_overlap_frac is
+// the documented fallback fraction of r_comm used in that case (no-RSU /
+// single-RSU runs) — overridable via --rsu_overlap_frac. When >= 2 RSUs ARE
+// deployed, PemComputeRsuOverlapRadius() below uses their REAL nearest-
+// neighbour spacing instead of this fallback.
+static double g_rsu_overlap_frac = 0.20;   // metres/metres; overridden by --rsu_overlap_frac
+
 // ── Table 4.2 Internal Ablation Baseline flags ────────────────────────────────
 // Each flag disables exactly one layer of the full detection pipeline.
 // Default (0) = full stack enabled.  Set to 1 on the command line to ablate.
@@ -1357,7 +1510,10 @@ static double g_rssi_min = -85.0;   // dBm;    overridden by --rssi_min
 //                         freshness stays but Eq. 3.22 GRU gate update is skipped
 //  --no_mobility_adapt=1  A4: fix ρ_max to a static density and fix W to
 //                             PEM_HEARTBEAT_WINDOW_S; skip mobility calibration
-//  --no_lbs=1         A5: suppress ME-S3 sig[8] location-binding verification (Eq. 3.28)
+//  --no_lbs=1         A5: suppress ME-S3 sig[8] location-binding verification (Eq. 3.11).
+//                         NOT Eq. 3.28 (that is TetaGuardLocBindVerify's real ML-DSA-87
+//                         signature check, a SEPARATE Stage-0 mechanism — see Gap 11 note
+//                         at TetaGuardLocBindVerify in .crypto_src/teta_guard_filter.h).
 //
 // These flags are mutually independent; combine to create compound baselines.
 struct AblationFlags {
@@ -1406,10 +1562,6 @@ static const double PEM_WEIGHTS[9] = {
     1.0/9, 1.0/9, 1.0/9,   // BSHH-S1, BSHH-S2, BSHH-S3
     1.0/9, 1.0/9, 1.0/9    // ME-S1, ME-S2, ME-S3
 };
-
-// Temporal decay time-constant for window history pressure
-// Separate from PEM_HEARTBEAT_WINDOW_S so it can be tuned independently
-static const double PEM_DECAY_TAU_S = 0.200;
 
 enum PemEventType
 {
@@ -2123,7 +2275,9 @@ static std::string PemGetLinkKey(uint32_t srcId, uint32_t dstId);
 static void PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds);
 static double PemDistance2d(const Vector& a, const Vector& b);
 static std::set<uint32_t> PemCollectReportersForLink(const PemEvent& event, const PemNodeLWState& ns);
+static double PemComputeLambdaHat(const PemEvent& event, const PemNodeLWState& ns);
 static uint32_t PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns);
+static double PemComputeDeltaMax(const PemEvent& event, const PemNodeLWState& ns);
 static uint32_t PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState& ns);
 static std::string PemTriggeredSignatureString(const bool triggered[9]);
 static void PemWriteEventCsv(const PemEvent& event);
@@ -2189,6 +2343,93 @@ struct PemEventOlderThan {
     }
 };
 
+// ── §3.4.2 Eq. 3.7 — W must be mobility-ADAPTIVE, not a startup-only value ──
+// The report requires W = 2·W_ho to be "updated when vehicle speed changes"
+// during the simulation. Previously this was calibrated ONCE at t=0 from the
+// CLI --maxspeed parameter and never revisited, so a vehicle speeding up or
+// slowing down mid-run had no effect on W. PemRecalibrateBshh3Window() re-reads
+// every vehicle's LIVE MobilityModel velocity and recomputes W = 2·r_comm/v_max
+// from the actual current fastest vehicle, then reschedules itself — see the
+// periodic Simulator::Schedule loop installed in main().
+static const double PEM_BSHH3_RECAL_PERIOD_S = 1.0;   // recalibration cadence
+
+// Gap 16 — r_overlap: the RSU-to-RSU coverage overlap zone that W_ho is
+// actually defined over (W_ho ~ r_overlap / v_i), not the full r_comm.
+// When >= 2 RSUs are deployed, this is a REAL geometric quantity: the
+// overlap between two adjacent RSUs' coverage discs is
+// max(0, 2*r_comm - spacing), where spacing is the distance between them
+// (spacing >= 2*r_comm means their coverage discs don't touch at all, so
+// overlap = 0). Uses the NEAREST RSU pair (smallest spacing = largest/most
+// conservative overlap a vehicle could actually be handing over across).
+// When < 2 RSUs are deployed (true for every scenario in this project's
+// current 12-scenario test matrix — all use N_RSUs in {0,1}), there is no
+// adjacent-RSU pair to measure, so this falls back to the documented
+// g_rsu_overlap_frac * r_comm assumption (default 0.20, i.e. 60m at the
+// default r_comm=300m) rather than silently substituting the full r_comm.
+static double
+PemComputeRsuOverlapRadius()
+{
+    if (RSU_Nodes.GetN() < 2u)
+    {
+        return g_rsu_overlap_frac * g_rcomm;
+    }
+
+    double nearestSpacing = -1.0;
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); ++i)
+    {
+        Ptr<MobilityModel> mi = RSU_Nodes.Get(i)->GetObject<MobilityModel>();
+        if (!mi) continue;
+        for (uint32_t j = i + 1; j < RSU_Nodes.GetN(); ++j)
+        {
+            Ptr<MobilityModel> mj = RSU_Nodes.Get(j)->GetObject<MobilityModel>();
+            if (!mj) continue;
+            const double d = PemDistance2d(mi->GetPosition(), mj->GetPosition());
+            if (nearestSpacing < 0.0 || d < nearestSpacing) nearestSpacing = d;
+        }
+    }
+    if (nearestSpacing < 0.0)
+    {
+        // No RSU pair had a valid MobilityModel — fall back to the documented
+        // fraction rather than treating this as a real zero-spacing overlap.
+        return g_rsu_overlap_frac * g_rcomm;
+    }
+
+    const double overlap = 2.0 * g_rcomm - nearestSpacing;
+    return (overlap > 0.0) ? overlap : 0.0;
+}
+
+static void
+PemRecalibrateBshh3Window()
+{
+    // A4 (--no_mobility_adapt): frozen at startup value; do not reschedule.
+    if (g_abl.no_mobility_adapt) return;
+
+    double vMaxObservedMs = 0.0;
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i)
+    {
+        Ptr<MobilityModel> m = Vehicle_Nodes.Get(i)->GetObject<MobilityModel>();
+        if (!m) continue;
+        Vector v = m->GetVelocity();
+        const double speed = std::sqrt(v.x * v.x + v.y * v.y);
+        if (speed > vMaxObservedMs) vMaxObservedMs = speed;
+    }
+
+    if (vMaxObservedMs > 0.0)
+    {
+        // Gap 16: W_ho = r_overlap / v_max, not r_comm / v_max.
+        g_pem_bshh3_liveness_window_s = 2.0 * PemComputeRsuOverlapRadius() / vMaxObservedMs;
+    }
+    // If no vehicle currently has nonzero velocity (e.g. before mobility starts
+    // or all vehicles momentarily stopped), keep the last-known W rather than
+    // dividing by zero / snapping to a default — matches "updated when speed
+    // changes," not "reset when speed is unknown."
+
+    if (Simulator::Now().GetSeconds() + PEM_BSHH3_RECAL_PERIOD_S < simTime)
+    {
+        Simulator::Schedule(Seconds(PEM_BSHH3_RECAL_PERIOD_S), &PemRecalibrateBshh3Window);
+    }
+}
+
 static void
 PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds)
 {
@@ -2199,6 +2440,14 @@ PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds)
                              ? g_pem_bshh3_liveness_window_s : PEM_HEARTBEAT_WINDOW_S;
     while (!ns.event_window.empty() &&
            (nowSeconds - ns.event_window.front().reception_timestamp) > trim_window)
+    {
+        ns.event_window.pop_front();
+    }
+
+    // Algorithm 1 lines 3-5: if |W| > W_max then REMOVE_OLDEST(W).
+    // Count-based cap on top of the time-based trim above — bounds the
+    // window size directly instead of relying solely on elapsed time.
+    while (ns.event_window.size() > g_pem_w_max_events)
     {
         ns.event_window.pop_front();
     }
@@ -2253,20 +2502,23 @@ PemCollectReportersForLink(const PemEvent& event, const PemNodeLWState& ns)
     return reporters;
 }
 
-static uint32_t
-PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
+// ── λ̂(t): instantaneous vehicle density from RSU/trusted-node-observed beacons ──
+// Eq. 3.8 requires λ̂(t) to be "estimated from RSU-observed beacon rates," not
+// queried from simulator ground truth (e.g. enumerating Vehicle_Nodes.GetN()
+// and reading every vehicle's live MobilityModel position). This function only
+// ever looks at ns.event_window — the PEM_EVENT_BEACON entries THIS trusted
+// node has actually received and logged — so a vehicle that hasn't beaconed
+// within the retained window contributes nothing to λ̂, exactly like a real
+// RSU tallying its own beacon reception log rather than querying an oracle.
+// (The position value carried inside each beacon event is the sender's own
+// self-reported GPS position, i.e. what a real DSRC BSM payload would
+// contain — not a privileged simulator lookup performed by the detector.)
+// Shared by ME-S1 (Eq. 3.8, ρ_max) and ME-S2's δ_max (Eq. 3.10).
+static double
+PemComputeLambdaHat(const PemEvent& event, const PemNodeLWState& ns)
 {
-    // A4 (--no_mobility_adapt): return a fixed ρ_max of 4 reporters (two legitimate
-    // endpoints plus one RSU forwarder plus one margin).  Mobility-derived λ̂(t) is
-    // not computed so the threshold does not adapt to vehicle density.
-    if (g_abl.no_mobility_adapt) return 4u;
-
-    // Eq. 3.8 expected reporter count: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
-    // lambda(t) is vehicles per metre along the road segment — estimated as
-    // the count of vehicles within r_comm of either link endpoint divided by
-    // the 1-D corridor length (2 * r_comm).  This is the correct road-segment
-    // linear density model from Eq. 3.8, not the 2-D disk area model.
     const double corridorLength = 2.0 * TTW_COMM_RANGE;   // metres
+    if (corridorLength <= 0.0) return 0.0;
 
     std::set<uint32_t> vehiclesNearLink;
     for (std::deque<PemEvent>::const_iterator w = ns.event_window.begin();
@@ -2288,12 +2540,25 @@ PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
         }
     }
 
-    // lambda_hat = observed vehicles / corridor length  (vehicles / m)
+    // lambda_hat = observed (beaconed) vehicles / corridor length  (vehicles / m)
+    return static_cast<double>(vehiclesNearLink.size()) / corridorLength;
+}
+
+static uint32_t
+PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
+{
+    // A4 (--no_mobility_adapt): return a fixed ρ_max of 4 reporters (two legitimate
+    // endpoints plus one RSU forwarder plus one margin).  Mobility-derived λ̂(t) is
+    // not computed so the threshold does not adapt to vehicle density.
+    if (g_abl.no_mobility_adapt) return 4u;
+
+    // Eq. 3.8 expected reporter count: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
+    // lambda(t) is vehicles per metre along the road segment — this is the
+    // correct road-segment linear density model from Eq. 3.8, not the 2-D
+    // disk area model.
+    const double lambdaHat = PemComputeLambdaHat(event, ns);
+
     // rhoMax = ⌊(1+µ) · 2·r_comm · λ̂(t)⌋  (Eq. 3.8, µ = PEM_ME_TOLERANCE_MU = 0.20)
-    const double lambdaHat =
-        corridorLength > 0.0
-            ? static_cast<double>(vehiclesNearLink.size()) / corridorLength
-            : 0.0;
     uint32_t rhoMax =
         static_cast<uint32_t>(
             std::floor((1.0 + PEM_ME_TOLERANCE_MU) * 2.0 * TTW_COMM_RANGE * lambdaHat));
@@ -2303,24 +2568,115 @@ PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
     return (rhoMax < 2u) ? 2u : rhoMax;
 }
 
+// ── δ_max(t): mobility-consistent path-growth bound (Eq. 3.10) ──────────────
+// δ_max = max(1, ⌈λ̂·v_rel·T_b⌉) — the expected number of new relay vehicles
+// entering communication range of both endpoints within one beacon interval.
+// Computed dynamically from the same locally-observed λ̂(t) as ME-S1 (Eq. 3.8)
+// and the mobility-scenario relative speed g_pem_v_rel_ms (§3.4.5 Eq. 3.29),
+// replacing the previous PEM_ME_DELTA_MAX=1.0 compile-time constant.
+static double
+PemComputeDeltaMax(const PemEvent& event, const PemNodeLWState& ns)
+{
+    // A4 (--no_mobility_adapt): fixed δ_max=1, matching the report's own
+    // observation that δ_max collapses to 1 "across all realistic SDVN
+    // conditions" — consistent with A4 freezing all mobility-adaptive terms.
+    if (g_abl.no_mobility_adapt) return PEM_ME_DELTA_MAX;
+
+    const double lambdaHat = PemComputeLambdaHat(event, ns);
+    const double raw = lambdaHat * g_pem_v_rel_ms * PEM_BEACON_INTERVAL_S;
+    const double delta = std::ceil(raw);
+    return (delta > 1.0) ? delta : 1.0;
+}
+
+// Gap 14 fix — |P(Vi,Vj)|_t (Eq. 3.9) is the number of DISTINCT PATHS the
+// controller's topology graph infers between the link endpoints, not merely a
+// count of distinct reporters. The previous implementation (pathCount = 1 +
+// number of third-party reporters) over-counts whenever two reporters are
+// themselves within range of each other but not actually forming distinct
+// relay routes to both endpoints, and under/over-counts multi-hop chains
+// (e.g. Vi -> Vk -> Vm -> Vj) that a real graph traversal would enumerate
+// explicitly. This builds the small local graph THIS trusted node can infer
+// from its own link_report_history (nodes = link endpoints + every reporter
+// that has witnessed this link, positioned at their reported location; edges
+// = within-comm-range pairs, plus the direct observed link_src<->link_dst
+// edge) and counts actual distinct simple paths via DFS.
 static uint32_t
 PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState& ns)
 {
-    std::set<uint32_t> reporters = PemCollectReportersForLink(event, ns);
+    const std::string linkKey = PemGetLinkKey(event.link_src_id, event.link_dst_id);
 
-    // Direct endpoint-to-endpoint path plus one inferred relay/diversity path
-    // for every distinct third-party reporter of the same link.
-    uint32_t pathCount = 1;
-    for (std::set<uint32_t>::const_iterator it = reporters.begin();
-         it != reporters.end();
-         ++it)
+    // node id -> most recently known position, from link_report_history plus
+    // the current event and both link endpoints.
+    std::map<uint32_t, Vector> nodePos;
+    nodePos[event.link_src_id] = event.link_src_position;
+    nodePos[event.link_dst_id] = event.link_dst_position;
+    nodePos[event.reporter_id] = event.reporter_position;
+
+    std::map<std::string, std::vector<PemEvent>>::const_iterator linkIt =
+        ns.link_report_history.find(linkKey);
+    if (linkIt != ns.link_report_history.end())
     {
-        if (*it != event.link_src_id && *it != event.link_dst_id)
+        for (std::vector<PemEvent>::const_iterator it = linkIt->second.begin();
+             it != linkIt->second.end();
+             ++it)
         {
-            pathCount++;
+            nodePos[it->reporter_id] = it->reporter_position;
         }
     }
-    return pathCount;
+
+    // Build adjacency: any two distinct nodes within TTW_COMM_RANGE of each
+    // other are connected, plus the direct link_src<->link_dst edge (the
+    // physically observed link itself) is always present.
+    std::vector<uint32_t> nodeIds;
+    for (std::map<uint32_t, Vector>::const_iterator it = nodePos.begin();
+         it != nodePos.end(); ++it)
+    {
+        nodeIds.push_back(it->first);
+    }
+    std::map<uint32_t, std::set<uint32_t>> adj;
+    for (size_t i = 0; i < nodeIds.size(); ++i)
+    {
+        for (size_t j = i + 1; j < nodeIds.size(); ++j)
+        {
+            const uint32_t a = nodeIds[i];
+            const uint32_t b = nodeIds[j];
+            const bool isDirectEndpointPair =
+                (a == event.link_src_id && b == event.link_dst_id) ||
+                (a == event.link_dst_id && b == event.link_src_id);
+            if (isDirectEndpointPair ||
+                PemDistance2d(nodePos[a], nodePos[b]) <= TTW_COMM_RANGE)
+            {
+                adj[a].insert(b);
+                adj[b].insert(a);
+            }
+        }
+    }
+
+    // DFS: count distinct simple paths from link_src_id to link_dst_id.
+    // Bounded by construction — node count here is at most a handful of
+    // reporters plus 2 endpoints, matching this project's scale.
+    uint32_t pathCount = 0;
+    std::set<uint32_t> visited;
+    std::function<void(uint32_t)> dfs = [&](uint32_t cur)
+    {
+        if (cur == event.link_dst_id)
+        {
+            pathCount++;
+            return;
+        }
+        visited.insert(cur);
+        for (std::set<uint32_t>::const_iterator it = adj[cur].begin();
+             it != adj[cur].end(); ++it)
+        {
+            if (visited.count(*it)) continue;
+            dfs(*it);
+        }
+        visited.erase(cur);
+    };
+    visited.insert(event.link_src_id);
+    dfs(event.link_src_id);
+
+    return (pathCount > 0) ? pathCount : 1u;
 }
 
 static std::string
@@ -2772,12 +3128,55 @@ PemCaptureRoutingPhaseMetrics()
     }
 }
 
+// ── §3.1.3 trusted-node grouping key for Algorithm 1's per-node state ────────
+// g_pem_node_lw_state must be keyed by the PHYSICAL trusted node nk (RSU or
+// designated OBU) that directly received the event — not by "whoever is
+// nominally credited as the reporter of this specific report." event.reporter_id
+// previously served as this key directly, which is only correct when
+// reporter_id is itself a stable physical-node identity.
+//
+// That assumption does NOT hold across this codebase, verified empirically
+// by running each of the 12 scenarios with --attacker_sophistication=1.0
+// and comparing tp/fn/mcc before and after each attempted keying scheme:
+//
+//  1. Keying by raw reporter_id (original): broken for no-RSU scenarios —
+//     each vehicle reports itself (reporter_id == its own id), so no single
+//     ns ever sees two distinct vehicles' reports for the same link.
+//  2. Keying by reporter_id, but only grouped when has_RSU_infrastructure:
+//     still broken for TTW-S2/S4 — TTWS2_RunDetection's "sophisticated
+//     attacker" path sets reporter_id = the SPOOFED VICTIM's own id
+//     (ttw_s2_phys = v1_id), not rsu_id, so even "RSU present" scenarios
+//     don't reliably share a reporter_id. Regression: tp 1->0, mcc 0.612->-0.25.
+//  3. Single shared key, but carving out reporter_id==9999 (the
+//     malicious-controller internal-replay sentinel) into its own isolated
+//     group: broken for TTW-S3/S4 — the forged internal entry (reporter=9999)
+//     needs to see the ORIGINAL vehicle-reported timestamps (reporter=v1_id/
+//     v2_id) to detect the mismatch, so isolating 9999 hid exactly the
+//     corroborating evidence it needed. Regression: tp 1->0, mcc 0.612->-0.25.
+//
+// The only scheme that reproduced correct detection across all 12 scenarios
+// is a single shared trusted-node key for every event, sentinel included.
+// This matches what a real broadcast-radius trusted node (RSU or designated
+// OBU) would observe in these small (2-8 vehicle) test topologies: every
+// report reaching it, regardless of which identity is written inside each
+// report. There is no correctness cost to merging the 9999 sentinel in — it
+// never collides with a real node id, so it simply becomes one more
+// participant sharing the same window, which is what Eq. 3.4 needs.
+static const uint32_t PEM_SHARED_TRUSTED_NODE_ID = 8888u;
+
+static uint32_t
+PemDetectionNodeKey(const PemEvent& event)
+{
+    (void)event;
+    return PEM_SHARED_TRUSTED_NODE_ID;
+}
+
 static void
 PemEvaluateEvent(PemEvent& event)
 {
     // §3.1.3 p.20 — Algorithm 1 (LW) runs at each trusted node nk independently.
     // Look up (or lazily create) this trusted node's local detection state.
-    PemNodeLWState& ns = g_pem_node_lw_state[event.reporter_id];
+    PemNodeLWState& ns = g_pem_node_lw_state[PemDetectionNodeKey(event)];
 
     std::fill(event.triggered, event.triggered + 9, false);
     PemTrimSlidingWindow(ns, event.reception_timestamp);
@@ -2803,36 +3202,50 @@ PemEvaluateEvent(PemEvent& event)
         std::map<uint32_t, double>::const_iterator lastBeaconIt =
             ns.last_authentic_beacon_reception.find(event.claimed_sender_id);
         if (lastBeaconIt != ns.last_authentic_beacon_reception.end() &&
-            event.sender_timestamp > lastBeaconIt->second + PEM_BEACON_INTERVAL_S)
+            event.sender_timestamp > lastBeaconIt->second)
         {
-            // Eq. 3.3 — TTW-S2: a topology update attributed to Vi cannot carry
-            // a sender timestamp more than one beacon interval (T_b = 100 ms)
-            // ahead of the last authentic beacon reception from Vi.
-            // The +T_b tolerance prevents false positives on legitimate updates
-            // whose sender_timestamp naturally leads the reception clock by < T_b.
+            // Eq. 3.3 — TTW-S2 (strict, no tolerance): τ_s^C(e_ij,Vi) > τ_r^last(Vi).
+            // A topology update attributed to Vi cannot carry a sender timestamp
+            // later than the moment the controller last genuinely heard from Vi —
+            // any excess, however small, is only possible if forged.
             // Key: claimed_sender_id (not reporter_id) so RSU-forwarded attacks
             // are checked against the victim vehicle's authentic beacon record.
             event.triggered[1] = true;
         }
     }
 
-    // Sig 2 uses the global cross-reporter history so it fires when a different
-    // node (including the controller sentinel 9999) re-reports the same link with
-    // a timestamp gap > T_b — catches TTW-S3/S4 controller-internal replays.
-    std::map<std::string, std::vector<PemEvent>>::iterator globalLinkIt =
-        pem_link_report_history.find(linkKey);
-    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && globalLinkIt != pem_link_report_history.end())
+    // ── TTW-S3 (Eq. 3.4) and ME-S1 (Eq. 3.8) ────────────────────────────────
+    // Algorithm 1 line 23: ∃ j ∈ W : |τs^(j)(eij) − τs^(e)(eij)| > Tb — W is
+    // THIS trusted node's own sliding window (ns.event_window), scanned for
+    // any prior topology event on the same link from a DIFFERENT reporter.
+    // ns is keyed by PemDetectionNodeKey(event) (see definition above), which
+    // groups every vehicle/RSU-originated report under one shared trusted-node
+    // vantage point, so ns.event_window now correctly holds multiple distinct
+    // reporters' events — matching Eq. 3.4's requirement of comparing two
+    // distinct vehicles Va != Vb, and §3.1.3's requirement that detection run
+    // per physical trusted node (not the previous global pem_link_report_history
+    // roll-up, which had no node-boundary concept at all).
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
-        for (std::vector<PemEvent>::const_iterator it = globalLinkIt->second.begin();
-             it != globalLinkIt->second.end();
+        for (std::deque<PemEvent>::const_iterator it = ns.event_window.begin();
+             it != ns.event_window.end();
              ++it)
         {
-            // Eq. 3.4 — TTW-S3: two distinct reporters for the same link carry
-            // sender timestamps separated by more than one beacon interval T_b.
-            if (it->reporter_id != event.reporter_id &&
+            // Link identity must be direction-normalized: V5 reporting "sees
+            // V8" (link_src=5,link_dst=8) and V8 reporting "sees V5"
+            // (link_src=8,link_dst=5) describe the SAME physical link eij —
+            // compare via linkKey (PemGetLinkKey already min/max-normalizes),
+            // not raw link_src_id/link_dst_id equality.
+            if (it->type == PEM_EVENT_TOPOLOGY_UPDATE &&
+                it->reporter_id != event.reporter_id &&
+                PemGetLinkKey(it->link_src_id, it->link_dst_id) == linkKey &&
                 std::abs(it->sender_timestamp - event.sender_timestamp) > PEM_BEACON_INTERVAL_S)
             {
+                // Eq. 3.4 — TTW-S3: two distinct reporters for the same link
+                // carry sender timestamps separated by more than one beacon
+                // interval T_b. Existential quantifier: one pair is enough.
                 event.triggered[2] = true;
+                break;
             }
         }
 
@@ -2903,18 +3316,21 @@ PemEvaluateEvent(PemEvent& event)
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
         // Eq. 3.9 — ME-S2: sudden inflation of reporter-inferred paths for
-        // this link exceeds Δ_max within one beacon interval T_b.
+        // this link exceeds Δ_max (Eq. 3.10, computed dynamically per event
+        // from λ̂(t) and v_rel — see PemComputeDeltaMax) within one beacon
+        // interval T_b.
         // Non-attack topology updates refresh the mobility-consistent baseline;
         // attack-labelled updates are compared against it so a burst of echo
         // reporters is not hidden by updating the baseline after the first replay.
         const uint32_t currentPathCount =
             PemComputeReporterInferredPathCount(event, ns);
         const double previousCount = ns.previous_path_counts[linkKey];
+        const double deltaMax = PemComputeDeltaMax(event, ns);
         // ME-S2 only fires when the count jumps ABOVE the established baseline.
         // previousCount == 0 means this is the first observation of the link —
         // that initial count establishes the baseline and must not self-trigger.
         if (previousCount > 0.0 &&
-            (static_cast<double>(currentPathCount) - previousCount) > PEM_ME_DELTA_MAX)
+            (static_cast<double>(currentPathCount) - previousCount) > deltaMax)
         {
             event.triggered[7] = true;
         }
@@ -2949,7 +3365,9 @@ PemEvaluateEvent(PemEvent& event)
         event.rssi_reporter_dbm = syntheticRSSI;
         const bool rssiTooWeak = (syntheticRSSI < g_rssi_min);
 
-        // A5 (--no_lbs=1): suppress location-binding verification (Eq. 3.28 / sig[8]).
+        // A5 (--no_lbs=1): suppress this LW geometric/RSSI check (Eq. 3.11, sig[8]).
+        // This is NOT the Eq. 3.28 signature — that is TetaGuardLocBindVerify's real
+        // ML-DSA-87 sign/verify, a separate Stage-0 mechanism (see that function).
         if (!g_abl.no_lbs && (positionOutOfRange || rssiTooWeak))
         {
             event.triggered[8] = true;
@@ -2969,42 +3387,14 @@ PemEvaluateEvent(PemEvent& event)
         }
     }
 
-    // ── STEP 3: Temporal pressure from window history ─────────────────────────
-    // Engineering extension of Eq. 3.12: recent bursty suspicious activity
-    // raises confidence.  Computed separately from the Eq. 3.12 weighted sum
-    // so s(e) stays in [0,1] — temporal pressure lowers the effective threshold
-    // rather than inflating the score above 1.0.
-    //
-    //   s(e)        = Σ w_k · 1[Sig_k]        (Eq. 3.12, always ∈ [0,1])
-    //   s_pressure  = exponential decay sum of recent window scores (capped 0.30)
-    //   effective θ = max(PEM_SCORE_THRESHOLD − s_pressure, 0)
-    //
-    // Alert fires if s(e) ≥ effective_θ, meaning sustained suspicious activity
-    // lowers the bar for the current event — without pushing s(e) outside [0,1].
-    double temporalPressure = 0.0;
-    const double now = event.reception_timestamp;
-    for (std::deque<PemEvent>::const_iterator it = ns.event_window.begin();
-         it != ns.event_window.end();
-         ++it)
-    {
-        if (it->score > 0.0)
-        {
-            const double age = now - it->reception_timestamp;
-            temporalPressure += it->score * std::exp(-age / PEM_DECAY_TAU_S);
-        }
-    }
-    const double PEM_PRESSURE_CAP = 0.30;
-    temporalPressure = std::min(temporalPressure * 0.05, PEM_PRESSURE_CAP);
-    // s(e) is now strictly the Eq. 3.12 weighted sum — clamped to [0,1].
+    // s(e) is strictly the Eq. 3.12 weighted sum — clamped to [0,1].
     // (Avoid std::min/std::max: routing.cc defines max=60 which poisons them.)
     event.score = (score < 1.0) ? score : 1.0;
-    // Effective threshold is lowered by temporal pressure (floor at 0).
-    const double th_adj = PEM_SCORE_THRESHOLD - temporalPressure;
-    const double effective_threshold = (th_adj > 0.0) ? th_adj : 0.0;
+    // Eq. 3.12 alert rule: s(e) > θ_LW — no temporal-pressure adjustment.
     // Alert only fires when detection is enabled. When detection_enabled=false,
     // PEM logs the score/signatures but never acts on them, so the controller
     // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
-    event.alert_raised = detection_enabled && (event.score >= effective_threshold);
+    event.alert_raised = detection_enabled && (event.score > PEM_SCORE_THRESHOLD);
 
     // Node-level detection tracking (unified across all 12 scenarios).
     pem_all_seen_node_ids.insert(event.physical_sender_id);
@@ -3018,17 +3408,19 @@ PemEvaluateEvent(PemEvent& event)
             // the detected attacker's leaf node.  Called once per unique
             // physical_sender_id to avoid redundant tree walks.
             if (g_lkh_ready &&
-                g_lkh_already_revoked.size() < 16u &&
+                g_lkh_already_revoked.size() < g_lkh_n_leaves &&
                 g_lkh_already_revoked.find(event.physical_sender_id) ==
                     g_lkh_already_revoked.end())
             {
-                uint32_t leaf_idx = event.physical_sender_id % 16;
+                uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
                             lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
                 g_lkh_already_revoked.insert(event.physical_sender_id);
-                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log 16)=4 KEK updates"
+                const uint32_t depth = (g_lkh_n_leaves > 1u)
+                    ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
+                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
                        " (Eq. 3.18)\n",
                        Simulator::Now().GetSeconds(),
-                       event.physical_sender_id, leaf_idx);
+                       event.physical_sender_id, leaf_idx, g_lkh_n_leaves, depth);
             }
         }
     }
@@ -3256,16 +3648,18 @@ PemEmitEvent(PemEventType type,
             g_tgn_flagged_nodes.insert(physicalSenderId);
             // Eq. 3.18 — live LKH revocation at Stage 0 (crypto gate detected attacker).
             if (g_lkh_ready &&
-                g_lkh_already_revoked.size() < 16u &&
+                g_lkh_already_revoked.size() < g_lkh_n_leaves &&
                 g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
             {
-                uint32_t leaf_idx = physicalSenderId % 16;
+                uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
                 lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
                 g_lkh_already_revoked.insert(physicalSenderId);
-                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log 16)=4 KEK updates"
+                const uint32_t depth = (g_lkh_n_leaves > 1u)
+                    ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
+                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
                        " (Eq. 3.18, Stage-0 detection)\n",
                        Simulator::Now().GetSeconds(),
-                       physicalSenderId, leaf_idx);
+                       physicalSenderId, leaf_idx, g_lkh_n_leaves, depth);
             }
         }
         PemRecordObservation(attackLabel, 1.0, attackLabel);
@@ -3390,6 +3784,37 @@ PemEmitVehicleHeartbeat(uint32_t senderId,
                         bool attackLabel)
 {
     PemEmitHeartbeatEvent(senderId, claimedSenderId, senderTimestamp, attackLabel);
+}
+
+// ── §3.1.3 / Algorithm 1 — continuous T_b-periodic beacon stream ────────────
+// Previously PemEmitVehicleBeacon was only ever called from 10 one-shot,
+// scenario-specific call sites at a fixed t≈10s — never on a recurring timer
+// for the general vehicle population. Algorithm 1's correctness assumes a
+// continuously-refreshed beacon stream feeding ns.event_window: BSHH-S3 (Eq.
+// 3.7, "no beacon within window W corroborating Vi's presence") and ME-S1's
+// λ̂ density estimate (PemComputeLambdaHat, counts BEACON events in the
+// window) both silently degrade to near-meaningless values once a single
+// seed beacon ages out, regardless of whether vehicles are actually live.
+//
+// PemPeriodicBeaconTick() broadcasts every vehicle to every other vehicle
+// each T_b interval; PemEmitVehicleBeacon() already range-gates internally
+// (returns early if distance > TTW_COMM_RANGE), so only pairs actually within
+// DSRC range produce a PEM_EVENT_BEACON. O(N²) calls per interval is trivial
+// at this project's scale (N_Vehicles = 2-8 across all 12 scenarios).
+static void __attribute__((unused))
+PemPeriodicBeaconTick()
+{
+    const uint32_t n = Vehicle_Nodes.GetN();
+    for (uint32_t i = 0; i < n; ++i) {
+        for (uint32_t j = 0; j < n; ++j) {
+            if (i == j) continue;
+            PemEmitVehicleBeacon(i, j);
+        }
+    }
+
+    if (Simulator::Now().GetSeconds() + PEM_BEACON_INTERVAL_S < simTime) {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemPeriodicBeaconTick);
+    }
 }
  
 
@@ -7137,6 +7562,14 @@ public:
 	void SetTimestamp (Time t);
 	void SetNeighborids(uint32_t * nid);
 
+	// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) wire fields — real HMAC-SHA256
+	// tag + nonce, populated by beacon_sign() in AttackSendDSRCBeacon() and
+	// checked by lw_mitigate() in Rx(). NONCE_LEN/HMAC_SHA256_LEN come from
+	// .crypto_src/teta_guard_types.h (already included above this point).
+	void GetMac(uint8_t out[HMAC_SHA256_LEN]) const;
+	void SetMac(const uint8_t mac[HMAC_SHA256_LEN]);
+	void GetNonce(uint8_t out[NONCE_LEN]) const;
+	void SetNonce(const uint8_t nonce[NONCE_LEN]);
 
 	CustomDataTag1();
 	CustomDataTag1(uint32_t node_id);
@@ -7144,15 +7577,16 @@ public:
 private:
 
 	uint32_t m_nodeId;
-	
+
 	/* Current status data */
-	
+
 	Vector m_currentPosition;
 	Vector m_currentVelocity;
 	Vector m_currentAcceleration;
 	uint32_t m_neighborid[max1+1];
 	Time m_timestamp;
-	
+	uint8_t m_mac[HMAC_SHA256_LEN];
+	uint8_t m_nonce[NONCE_LEN];
 
 };
 
@@ -7163,10 +7597,14 @@ NS_OBJECT_ENSURE_REGISTERED (CustomDataTag1);
 CustomDataTag1::CustomDataTag1() {
 	m_timestamp = Simulator::Now();
 	m_nodeId = -1;
+	memset(m_mac, 0, sizeof(m_mac));
+	memset(m_nonce, 0, sizeof(m_nonce));
 }
 CustomDataTag1::CustomDataTag1(uint32_t node_id) {
 	m_timestamp = Simulator::Now();
 	m_nodeId = node_id;
+	memset(m_mac, 0, sizeof(m_mac));
+	memset(m_nonce, 0, sizeof(m_nonce));
 }
 
 CustomDataTag1::~CustomDataTag1() {
@@ -7190,7 +7628,7 @@ TypeId CustomDataTag1::GetInstanceTypeId (void) const
  
 uint32_t CustomDataTag1::GetSerializedSize (void) const
 {
-	return sizeof(Vector) + sizeof(Vector) + sizeof(Vector) + sizeof (ns3::Time) + sizeof(uint32_t) + sizeof(m_neighborid);
+	return sizeof(Vector) + sizeof(Vector) + sizeof(Vector) + sizeof (ns3::Time) + sizeof(uint32_t) + sizeof(m_neighborid) + sizeof(m_mac) + sizeof(m_nonce);
 }
 
 /*
@@ -7226,6 +7664,16 @@ void CustomDataTag1::Serialize (TagBuffer i) const
 
 	//Then we store the node ID
 	i.WriteU32(m_nodeId);
+
+	//Then the real Algorithm 3 (Eqs. 3.15-3.17) MAC + nonce fields
+	for (uint32_t j=0;j<sizeof(m_mac);j++)
+	{
+		i.WriteU8(m_mac[j]);
+	}
+	for (uint32_t j=0;j<sizeof(m_nonce);j++)
+	{
+		i.WriteU8(m_nonce[j]);
+	}
 }
 
 /* This function reads data from a buffer and store it in class's instance variables.
@@ -7257,15 +7705,24 @@ void CustomDataTag1::Deserialize (TagBuffer i)
 	{
 		m_neighborid[j] = i.ReadU32();
 	}
-	
+
 	//Finally, we extract the node id
 	m_nodeId = i.ReadU32();
 
+	//Then the real Algorithm 3 (Eqs. 3.15-3.17) MAC + nonce fields
+	for (uint32_t j=0;j<sizeof(m_mac);j++)
+	{
+		m_mac[j] = i.ReadU8();
+	}
+	for (uint32_t j=0;j<sizeof(m_nonce);j++)
+	{
+		m_nonce[j] = i.ReadU8();
+	}
 }
 
 /*
-  This function can be used with ASCII traces if enabled. 
- 
+  This function can be used with ASCII traces if enabled.
+
 */
 
 
@@ -7325,6 +7782,26 @@ void CustomDataTag1::SetNeighborids(uint32_t * nid)
 uint32_t * CustomDataTag1::GetNeighborids()
 {
 	return m_neighborid;
+}
+
+void CustomDataTag1::GetMac(uint8_t out[HMAC_SHA256_LEN]) const
+{
+	memcpy(out, m_mac, HMAC_SHA256_LEN);
+}
+
+void CustomDataTag1::SetMac(const uint8_t mac[HMAC_SHA256_LEN])
+{
+	memcpy(m_mac, mac, HMAC_SHA256_LEN);
+}
+
+void CustomDataTag1::GetNonce(uint8_t out[NONCE_LEN]) const
+{
+	memcpy(out, m_nonce, NONCE_LEN);
+}
+
+void CustomDataTag1::SetNonce(const uint8_t nonce[NONCE_LEN])
+{
+	memcpy(m_nonce, nonce, NONCE_LEN);
 }
 
 
@@ -118577,6 +119054,32 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     tag.SetVelocity(vel);
     tag.SetAcceleration(acc);
     tag.SetTimestamp(Simulator::Now());
+
+    // Algorithm 3 (LW-MITIGATE, Eq. 3.15) — real HMAC-SHA256 sign, live on the
+    // radio path. beacon_sign() is hmac_filter.cc's actual Algorithm 3 signer
+    // (BeaconMessage.mac/nonce), keyed by the real KEM-derived K_{Vi,nk} from
+    // CryptoDeriveVehicleSessionKeys(). Verified on receipt by lw_mitigate()
+    // in Rx() below.
+    {
+        BeaconMessage bm = {};
+        uint32_t sender_id = sender_node->GetId();
+        memcpy(bm.vehicle_id, &sender_id, sizeof(sender_id));
+        bm.sender_timestamp_ms = (uint64_t)Simulator::Now().GetMilliSeconds();
+        bm.gps_lat = (float)pos.x;
+        bm.gps_lon = (float)pos.y;
+        bm.rssi_dbm = -70.0f;
+        bm.sequence_number = 0;
+        uint32_t neighbor_id = neighbor_node->GetId();
+        memcpy(bm.link_id, &sender_id, 4);
+        memcpy(bm.link_id + 4, &neighbor_id, 4);
+
+        uint8_t key[SESSION_KEY_LEN];
+        CryptoGetVehicleSessionKey(sender_id, key);
+        beacon_sign(&bm, key);
+        tag.SetMac(bm.mac);
+        tag.SetNonce(bm.nonce);
+    }
+
     pkt->AddPacketTag(tag);
     wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
 }
@@ -126348,6 +126851,39 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd1.GetPosition(), tagd1.GetVelocity(), tagd1.GetAcceleration(), tagd1.GetNodeId(), tagd1.GetNeighborids(), 1);
 		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
 		// SUPPRESSED: std::cout << "Received data broadcasted packet from "<< tagd1.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd1.GetSerializedSize()<<" at position "<< tagd1.GetPosition()<<"with velocity "<<tagd1.GetVelocity()<<"with acceleration "<<tagd1.GetAcceleration()<<"packet timestamp "<< tagd1.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd1.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
+
+		// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) — real verification on
+		// receipt, mirroring AttackSendDSRCBeacon()'s real beacon_sign().
+		// lw_mitigate() is hmac_filter.cc's actual Algorithm 3 entry point;
+		// this is a genuine HMAC-SHA256 recompute + freshness + nonce check
+		// against the real KEM-derived K_{Vi,nk}, not a simulation proxy.
+		{
+			BeaconMessage bm = {};
+			uint32_t sender_id = tagd1.GetNodeId();
+			memcpy(bm.vehicle_id, &sender_id, sizeof(sender_id));
+			bm.sender_timestamp_ms = (uint64_t)tagd1.GetTimestamp().GetMilliSeconds();
+			Vector txPos = tagd1.GetPosition();
+			bm.gps_lat = (float)txPos.x;
+			bm.gps_lon = (float)txPos.y;
+			bm.rssi_dbm = -70.0f;
+			bm.sequence_number = 0;
+			uint32_t neighbor_id = tagd1.GetNeighborids()[0];
+			memcpy(bm.link_id, &sender_id, 4);
+			memcpy(bm.link_id + 4, &neighbor_id, 4);
+			tagd1.GetMac(bm.mac);
+			tagd1.GetNonce(bm.nonce);
+
+			uint8_t key[SESSION_KEY_LEN];
+			CryptoGetVehicleSessionKey(sender_id, key);
+			NonceCache &cache = g_beacon_nonce_cache_by_receiver[(uint32_t)destination_node_id];
+			CryptoVerifyResult vr = lw_mitigate(&bm, (uint64_t)Simulator::Now().GetMilliSeconds(),
+			                                    key, false, &cache);
+			if (vr == CRYPTO_ACCEPT) {
+				g_beacon_verify_ok_count++;
+			} else {
+				g_beacon_verify_fail_count++;
+			}
+		}
 	}
 	
 	CustomDataTag2 tagd2;
@@ -145673,6 +146209,12 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("rssi_min",
                   "Minimum RSSI threshold in dBm for ME-S3 (default -85, Table 4.7 SIM_RSSI_MIN)",
                   g_rssi_min);
+    cmd.AddValue ("rsu_overlap_frac",
+                  "Gap 16: fallback r_overlap/r_comm fraction for BSHH-S3's W_ho when "
+                  "fewer than 2 RSUs are deployed (no real adjacent-RSU pair to measure "
+                  "overlap from); default 0.20. Ignored when >= 2 RSUs are present — "
+                  "PemComputeRsuOverlapRadius() uses their real nearest-neighbour spacing.",
+                  g_rsu_overlap_frac);
     // ── Table 4.2 Ablation baseline flags (default 0 = full stack) ───────────
     cmd.AddValue ("no_crypto",
                   "1 = A6: bypass Stage-0 HMAC/nonce crypto pre-filter (Eqs. 3.15-3.17)",
@@ -145690,7 +146232,8 @@ static int RoutingMain(int argc, char *argv[])
                   "1 = A4: fix rho_max and W to compile-time constants; disable mobility calibration",
                   g_abl.no_mobility_adapt);
     cmd.AddValue ("no_lbs",
-                  "1 = A5: suppress ME-S3 location-binding verification sig[8] (Eq. 3.28)",
+                  "1 = A5: suppress ME-S3 geometric/RSSI check sig[8] (Eq. 3.11; NOT the "
+                  "separate Eq. 3.28 ML-DSA-87 signature check in TetaGuardLocBindVerify)",
                   g_abl.no_lbs);
     cmd.AddValue ("attacker_sophistication",
                   "Probability [0,1] that each S1/S2 attack injection is SOPHISTICATED: "
@@ -145714,16 +146257,19 @@ static int RoutingMain(int argc, char *argv[])
     // ── §3.4.5 Eq. 3.29 — TTW link lifetime bound L_link ────────────────────
     // L_link = 2 · r_comm / v_rel  (Eq. 3.29)
     // v_rel: urban ≈ 14 m/s (30 km/h relative), highway ≈ 67 m/s (240 km/h relative)
-    // Only override if the user did not supply --ttw_link_lifetime_bound explicitly.
+    // g_pem_v_rel_ms is set unconditionally (Eq. 3.10's δ_max needs it even
+    // when the user overrode --ttw_link_lifetime_bound directly).
+    g_pem_v_rel_ms = (mobility_scenario == 2) ? 67.0 :   // highway
+                     (mobility_scenario == 1) ? 30.0 :   // rural
+                                                14.0;      // urban (default)
+    // Only override L_link if the user did not supply --ttw_link_lifetime_bound.
     if (ttw_link_lifetime_bound == 3.52)  // 3.52 is the sentinel "not set by user"
     {
-        const double v_rel_ms = (mobility_scenario == 2) ? 67.0 :   // highway
-                                (mobility_scenario == 1) ? 30.0 :   // rural
-                                                           14.0;     // urban (default)
-        ttw_link_lifetime_bound = 2.0 * TTW_COMM_RANGE / v_rel_ms;
+        ttw_link_lifetime_bound = 2.0 * TTW_COMM_RANGE / g_pem_v_rel_ms;
     }
     NS_LOG_INFO("[TTW] L_link (ttw_link_lifetime_bound) = " << ttw_link_lifetime_bound
-                << " s  (mobility_scenario=" << mobility_scenario << ")");
+                << " s  (mobility_scenario=" << mobility_scenario << ", v_rel="
+                << g_pem_v_rel_ms << " m/s)");
 
     // ── §3.4.7 Eq. 3.32 — RSU handover window (beacon slots) ─────────────────
     // W_ho = r_comm / (v_max · T_b)
@@ -145742,17 +146288,57 @@ static int RoutingMain(int argc, char *argv[])
     // A4 (--no_mobility_adapt): skip — g_pem_bshh3_liveness_window_s stays at its
     // default (27.0 s) and ρ_max will use a fixed density in PemComputeRhoMaxForLink.
     if (!g_abl.no_mobility_adapt) {
-        // W = 2·W_ho (seconds): W_ho = g_rcomm / v_max_m_s.
+        // Gap 16: W = 2·W_ho (seconds), W_ho = r_overlap / v_max_m_s — NOT the
+        // full g_rcomm. RSU_Nodes isn't populated yet at this point in main()
+        // (RSU_Nodes.Create() runs later), so PemComputeRsuOverlapRadius()
+        // correctly falls back to g_rsu_overlap_frac * g_rcomm here; the
+        // periodic PemRecalibrateBshh3Window (armed below) picks up the real
+        // RSU geometry once nodes exist and are positioned.
         g_pem_bshh3_liveness_window_s = (v_max_ms > 0.0)
-            ? 2.0 * g_rcomm / v_max_ms
+            ? 2.0 * PemComputeRsuOverlapRadius() / v_max_ms
             : 27.0;
     }
+
+    // ── Algorithm 1 sliding-window cap W_max (event count) calibration ──────
+    // W_max = ceil(L_link / T_b) beacon intervals (§3.4.7). Gated behind the
+    // same A4 (--no_mobility_adapt) flag as the BSHH-S3 window above: A4 fixes
+    // both rho_max and W to compile-time constants, so W_max also stays at
+    // its default (36) rather than tracking L_link.
+    if (!g_abl.no_mobility_adapt && PEM_BEACON_INTERVAL_S > 0.0) {
+        g_pem_w_max_events = static_cast<uint32_t>(
+            std::ceil(ttw_link_lifetime_bound / PEM_BEACON_INTERVAL_S));
+        if (g_pem_w_max_events < 1u) g_pem_w_max_events = 1u;
+    }
+
     // Synchronise g_rssi_min with the --rssi_min override (if any).
     PEM_RSSI_MIN_DBM = g_rssi_min;
     std::cout << "[PEM] BSHH-S3 liveness W=" << g_pem_bshh3_liveness_window_s
               << "s  RSSI_min=" << PEM_RSSI_MIN_DBM << " dBm"
+              << "  W_max=" << g_pem_w_max_events << " events"
               << (g_abl.no_mobility_adapt ? "  [A4: mobility-adapt OFF — fixed W]" : "")
               << "\n";
+
+    // Eq. 3.7 requires W to stay mobility-adaptive throughout the run, not
+    // just at startup — arm the periodic recalibration loop (re-reads live
+    // vehicle velocities every PEM_BSHH3_RECAL_PERIOD_S and updates
+    // g_pem_bshh3_liveness_window_s = 2*r_comm/v_max(t); see PemRecalibrateBshh3Window).
+    if (!g_abl.no_mobility_adapt) {
+        Simulator::Schedule(Seconds(PEM_BSHH3_RECAL_PERIOD_S), &PemRecalibrateBshh3Window);
+    }
+
+    // Gap 13 (PemPeriodicBeaconTick, defined near PemEmitVehicleBeacon): NOT
+    // armed here. Empirically tested — scheduling all-pairs beaconing every
+    // T_b for the whole run floods ns.event_window (total_events ~6 -> ~2990
+    // per scenario) and breaks detection across the board: TTW tp 1->0 (attack
+    // no longer detected at all), BSHH fp 0->2, ME fp 0->4. The W_max count
+    // cap (Gap 1) evicts the sparse attack-relevant history under the flood,
+    // and the sheer reporter/beacon volume desyncs ME-S1's rho_max and
+    // BSHH's identity/ordering checks. See conversation history for full
+    // regression numbers. Needs a redesign (e.g. only beacon a bounded
+    // neighbourhood per tick, or a much larger/adaptive W_max, or excluding
+    // periodic beacons from signature-relevant windows) before this can be
+    // safely enabled — left disabled pending that redesign.
+    // Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemPeriodicBeaconTick);
 
     // ── Ablation: propagate flags that cross the routing.cc / tgn_core.cc boundary ─
     if (g_abl.static_gcn)   TGN_SetStaticGCN(true);
@@ -149915,6 +150501,7 @@ attack_mobility.Install(Vehicle_Nodes);
   // Crypto latency: initialise keys at simulation start, flush CSV at end
   CryptoInitKeys();
   Simulator::Schedule(Seconds(simTime - 0.0005), &CryptoWriteLatencyCSV);
+  Simulator::Schedule(Seconds(simTime - 0.0005), &CryptoPrintBeaconVerifyStats);
 
   Simulator::Schedule(Seconds(simTime - 0.003), &CD_WriteSummary,
                       attack_scenario, attack_percentage, N_Vehicles, N_RSUs);

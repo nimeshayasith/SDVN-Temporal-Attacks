@@ -7,7 +7,7 @@
  * NIST Security Level 5 primitives:
  *   Dilithium5  (ML-DSA-87,   FIPS 204)  — long-term identity signatures
  *   Kyber-1024  (ML-KEM-1024, FIPS 203)  — KEM component 1
- *   FireSaber                             — KEM component 2 (hybrid partner)
+ *   HQC-5       (code-based, NIST Level 5) — KEM component 2 (hybrid partner)
  *
  * Three canonical interface structs (from the implementation guide):
  *   BeaconMessage       — vehicle wire format  (crypto input)
@@ -15,7 +15,7 @@
  *   DetectionAlert      — TGN  → Blockchain boundary (Section 9.1, Eq. 3.36)
  *
  * Security fixes applied (see CRYPTO_LAYER.md §Security):
- *   Fix-1  KEM handshake authenticated: kem_vehicle_keygen signs (pk_kyber||pk_saber||vid||nonce)
+ *   Fix-1  KEM handshake authenticated: kem_vehicle_keygen signs (pk_kyber||pk_hqc||vid||nonce)
  *   Fix-2  PKI trust-root: CA issues CertificateRecord binding vehicle_id → PK_Vi
  *   Fix-3  Revocation unified: lkh_revoke_vehicle atomically calls mark_key_revoked
  *   Fix-4  Threshold floor: THRESHOLD_T_FLOOR=3 prevents t<3 under report suppression
@@ -40,7 +40,13 @@ extern "C" {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 #define BEACON_INTERVAL_MS      100u        /* T_b = 100 ms (IEEE 802.11p)   */
-#define PROPAGATION_TOL_MS       10u        /* ε = 10 ms propagation budget  */
+// Gap 15 fix: was 10ms, disagreeing with routing.cc's live-path PEM_PROPAGATION_EPSILON_S
+// (0.020s = 20ms, the epsilon actually enforced by TetaGuardCryptoFilter's Step 2 /
+// Eq. 3.16 in the running simulation). Both represent the SAME physical constant
+// epsilon and must agree; standardised on 20ms (the live value) so hmac_filter.cc's
+// lw_mitigate() would compute the identical freshness bound if/when it is wired
+// into the live path.
+#define PROPAGATION_TOL_MS       20u        /* ε = 20 ms propagation budget  */
 #define FRESHNESS_WINDOW_MS     (BEACON_INTERVAL_MS + PROPAGATION_TOL_MS)
 
 #define NONCE_LEN                16u        /* 128-bit nonce                 */
@@ -116,14 +122,26 @@ extern "C" {
 #define KYBER1024_CT_LEN  1568u  /* OQS_KEM_kyber_1024_length_ciphertext    */
 #define KYBER1024_SS_LEN    32u  /* OQS_KEM_kyber_1024_length_shared_secret */
 
-/* FireSaber wire sizes.
- * NOTE: liboqs >= 0.10 does not ship FireSaber.  The kem.cc compatibility shim
- * maps OQS_KEM_alg_saber_firesaber → OQS_KEM_alg_ml_kem_1024 (FIPS 203) which
- * has the same sizes as Kyber-1024.  Use ML-KEM-1024 sizes to avoid overflows. */
-#define FIRESABER_PK_LEN  1568u  /* == KYBER1024_PK_LEN (ML-KEM-1024 fallback) */
-#define FIRESABER_SK_LEN  3168u  /* == KYBER1024_SK_LEN (ML-KEM-1024 fallback) */
-#define FIRESABER_CT_LEN  1568u  /* == KYBER1024_CT_LEN (ML-KEM-1024 fallback) */
-#define FIRESABER_SS_LEN    32u  /* shared-secret length (unchanged)            */
+/* HQC-5 wire sizes (liboqs OQS_KEM_alg_hqc_5, code-based, NIST Security Level 5).
+ * This is the second KEM in the Kyber-1024 + HQC-5 hybrid — kem.cc has never
+ * used FireSaber/Saber; every OQS_KEM_new() call in kem.cc requests
+ * OQS_KEM_alg_hqc_5 directly. There is no fallback path.
+ *
+ * BUG FIX: these constants previously held stale ML-KEM-1024-sized values
+ * (1568/3168/1568), copied from a since-abandoned "FireSaber unavailable ->
+ * fall back to ML-KEM-1024" plan that kem.cc never implements. Because kem.cc
+ * unconditionally calls the real OQS_KEM_alg_hqc_5, every OQS_KEM_keypair/
+ * encaps/decaps call on the pk_hqc/sk_hqc/ct_hqc fields below was overflowing
+ * these undersized fixed buffers by 5.6-13 KB, corrupting the KemExchangeState
+ * fields declared right after them (identity_pk, keygen_cert, keygen_sig).
+ * That corruption is what caused kem_rsu_encapsulate() to reject every
+ * keygen signature as invalid ("[KEM] REJECT: keygen sig invalid ..."): the
+ * corrupted cert/sig bytes never matched what was actually signed. Sizes
+ * below are liboqs's real OQS_KEM_hqc_5_length_* constants (kem_hqc.h). */
+#define HQC5_PK_LEN   7237u  /* OQS_KEM_hqc_5_length_public_key    */
+#define HQC5_SK_LEN   7333u  /* OQS_KEM_hqc_5_length_secret_key    */
+#define HQC5_CT_LEN  14421u  /* OQS_KEM_hqc_5_length_ciphertext    */
+#define HQC5_SS_LEN     32u  /* OQS_KEM_hqc_5_length_shared_secret */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * 2. CERTIFICATE RECORD  (Fix-2 — PKI trust-root for Dilithium public keys)
@@ -153,7 +171,7 @@ typedef struct {
  * KemExchangeState — held by vehicle during Section 3.3 handshake.
  *
  * Step 1: kem_vehicle_keygen()  fills KEM keypairs, auth fields, AND keygen_cert.
- * Step 2: Vehicle transmits (pk_kyber, pk_saber, keygen_nonce, keygen_sig,
+ * Step 2: Vehicle transmits (pk_kyber, pk_hqc, keygen_nonce, keygen_sig,
  *         identity_pk, keygen_cert) to RSU.
  *         Note: identity_pk is the Dilithium5 identity public key (PK_Vi), NOT a KEM key.
  * Step 3: kem_rsu_encapsulate() FIRST verifies keygen_cert (CA trust-root),
@@ -161,8 +179,8 @@ typedef struct {
  * Step 4: kem_vehicle_decapsulate() consumes ct_* + sk_* → session key.
  *
  * Fix-1 (authenticated KEM):
- *   keygen_sig is over (TETA:KEM-AUTH: || vehicle_id || pk_kyber || pk_saber || nonce).
- *   Without this, a MITM can substitute (pk_kyber, pk_saber) freely.
+ *   keygen_sig is over (TETA:KEM-AUTH: || vehicle_id || pk_kyber || pk_hqc || nonce).
+ *   Without this, a MITM can substitute (pk_kyber, pk_hqc) freely.
  *
  * Fix-2 (CA trust-root) repair:
  *   keygen_cert embeds the CA-issued certificate binding (vehicle_id → identity_pk).
@@ -174,16 +192,16 @@ typedef struct {
  *
  * Issue-7 fix: renamed keygen_pk → identity_pk throughout to make clear that this
  *   field is the Dilithium5 identity key (PK_Vi), not a KEM public key. The KEM
- *   public keys are pk_kyber and pk_saber.
+ *   public keys are pk_kyber and pk_hqc.
  */
 typedef struct {
     /* KEM keypairs */
     uint8_t pk_kyber[KYBER1024_PK_LEN]; /* Vehicle Kyber-1024 public key (sent to RSU)  */
     uint8_t sk_kyber[KYBER1024_SK_LEN]; /* Vehicle Kyber-1024 secret key (stays local)  */
-    uint8_t pk_saber[FIRESABER_PK_LEN]; /* Vehicle FireSaber public key (sent to RSU)   */
-    uint8_t sk_saber[FIRESABER_SK_LEN]; /* Vehicle FireSaber secret key (stays local)   */
+    uint8_t pk_hqc[HQC5_PK_LEN]; /* Vehicle HQC-5 public key (sent to RSU)   */
+    uint8_t sk_hqc[HQC5_SK_LEN]; /* Vehicle HQC-5 secret key (stays local)   */
     uint8_t ct_kyber[KYBER1024_CT_LEN]; /* Ciphertext from RSU (Kyber-1024 component)  */
-    uint8_t ct_saber[FIRESABER_CT_LEN]; /* Ciphertext from RSU (FireSaber component)   */
+    uint8_t ct_hqc[HQC5_CT_LEN]; /* Ciphertext from RSU (HQC-5 component)         */
     bool    has_ciphertext;             /* Set true after RSU calls kem_rsu_encapsulate */
     /* Authentication of KEM public keys — Fix-1 + Fix-2 repair */
     uint8_t          vehicle_id[16];                  /* identity bound into signed msg */

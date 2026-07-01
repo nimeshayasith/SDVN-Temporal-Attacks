@@ -20,7 +20,7 @@
  * Role in TETA-Guard:
  *   Long-term identity keypair SKVk/PKVk — generated once at registration.
  *   SKVk stays at vehicle; PKVk stored in RSU key store (VehicleKeyRecord).
- *   Distinct from the Kyber+Saber session keys used for HMAC (kem.cc).
+ *   Distinct from the Kyber-1024+HQC-5 session keys used for HMAC (kem.cc).
  *
  * Build:
  *   g++ -std=c++17 -O2 dilithium.cc -lssl -lcrypto -o dilithium_test
