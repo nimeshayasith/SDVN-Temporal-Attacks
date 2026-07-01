@@ -418,6 +418,33 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         }
     }
 
+    // ── Pre-registration — benign witnesses register BEFORE Step 1b's quorum ──
+    // check (Eq. 3.30 follow-up fix). Moved out of the old post-Step-1b block
+    // below (which only ran the plain registration, never the quorum gate,
+    // because it was reached only after Step 1b already returned/passed).
+    // Root cause this fixes: since Step 1b now also evaluates benign ME-S1/S2
+    // reports (issue 5.2/5.3), a benign event that only registered itself
+    // AFTER passing Step 1b's quorum check could never pass that same check
+    // in the first place — link_witnesses for a brand-new link starts empty,
+    // so legit_count(0) < quorum_t(>=1) always failed, even for the very
+    // first honest report of a link. Registering the reporter here — before
+    // Step 1b runs — means a benign report counts toward its OWN quorum
+    // check (matching Eq. 3.30's set builder semantics: Vk is a member of
+    // {Vk : Accept_Vk(eij)=1} the moment it individually passes Eq. 3.29,
+    // not only on some later event). Attack-labelled reports are unaffected
+    // — they are never added to link_witnesses (only to link_all_reporters,
+    // still done inside Step 1b itself), so an attacker still cannot inflate
+    // its own quorum count.
+    if (!event.attack_label && event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+    {
+        const uint32_t me_lmin_pre = std::min(event.link_src_id, event.link_dst_id);
+        const uint32_t me_lmax_pre = std::max(event.link_src_id, event.link_dst_id);
+        const std::string lkey_pre =
+            std::to_string(me_lmin_pre) + "_" + std::to_string(me_lmax_pre);
+        state.link_witnesses[lkey_pre].insert(event.reporter_id);
+        state.link_all_reporters[lkey_pre].insert(event.reporter_id);
+    }
+
     // ── Step 1b — ME location-binding + quorum (Eqs. 3.27-3.30) ────────────────
     // ME echo reporters claim their own identity (physical == claimed — Step 1
     // passes) but report a link they cannot physically observe.
@@ -444,8 +471,17 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // Eq. 3.30: link eij accepted only when ≥ t = ⌊n/2⌋ + 1 reporters individually
     // pass Eq. 3.29, where n is the total number of reporters for this link seen so
     // far (legitimate + in-range attackers that passed the crypto+spatial+RSSI check).
-    if (event.attack_label &&
-        event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
+    //
+    // Issue 5.2/5.3 fix: previously gated on event.attack_label==true as well, so
+    // benign witness reports in ME-S1/S2 never went through Eq. 3.29 location-binding
+    // or fed the Eq. 3.30 quorum reporter set — only attack-labeled echoes did. Eq.
+    // 3.29 in the report is unconditional ("every topology observation report... is
+    // accepted iff..."), so benign reports in these two scenarios must run the same
+    // gate as attack reports. Scope is intentionally still limited to ME-S1/S2 (see
+    // TetaGuardLocBindVerify's header comment — location-binding is only meaningful
+    // where an external attacker must convince an honest verifier); the other 10
+    // scenarios are untouched.
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
         (attack_scenario == ME_S1_MAL_VEH_NO_RSU ||
          attack_scenario == ME_S2_MAL_RSU))
     {
@@ -492,20 +528,17 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         }
     }
 
-    // Accumulate legitimate witnesses for Eq. 3.30 at THIS trusted node.
-    // Both sets are updated: link_witnesses (legit only) and link_all_reporters
-    // (all reporters including legit), so n_total for future quorum computations
-    // reflects every reporter that has been seen for this link.
-    // For Eq. 3.26 (Step 1c): also call vehicle_sign_report() and store the
-    // IndividualSignedReport so that verify_threshold_sig() has real signature
-    // material to check when an attack event arrives for the same link.
+    // Eq. 3.26 (Step 1c) signed-report accumulation for THIS trusted node.
+    // link_witnesses/link_all_reporters registration for this event already
+    // happened in the pre-registration block above (before Step 1b), so it is
+    // NOT repeated here — this block now only builds the IndividualSignedReport
+    // material that verify_threshold_sig() consumes in Step 1c when an attack
+    // event arrives for the same link.
     if (!event.attack_label && event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
         const uint32_t me_lmin = std::min(event.link_src_id, event.link_dst_id);
         const uint32_t me_lmax = std::max(event.link_src_id, event.link_dst_id);
         const std::string lkey = std::to_string(me_lmin) + "_" + std::to_string(me_lmax);
-        state.link_witnesses[lkey].insert(event.reporter_id);
-        state.link_all_reporters[lkey].insert(event.reporter_id);
 
         // Eq. 3.26 real crypto: sign this legitimate report so the aggregate can
         // be verified via verify_threshold_sig() in Step 1c when needed.

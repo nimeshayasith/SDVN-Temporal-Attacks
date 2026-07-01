@@ -728,16 +728,20 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
 //    ML-DSA-87 → asymmetric identity proofs (PKI signatures)
 
 // ── Real per-vehicle K_{Vi,nk} derivation (Eq. 3.15) ──────────────────────────
-// Runs the genuine Section 3.3 handshake once per vehicle at t=0 ("session
-// keys pre-assumed established at t=0" — teta_guard_filter.h): each vehicle
-// gets its own Dilithium5 identity keypair, a CA-issued cert binding
-// vehicle_id -> that keypair, then a full ML-KEM-1024 + HQC-5 hybrid exchange
-// (kem_vehicle_keygen -> kem_rsu_encapsulate -> kem_vehicle_decapsulate).
-// Both sides' derived keys are compared before being trusted, exactly as
-// kem_register_vehicle() already does for the fleet keystore. This replaces
-// the single RAND_bytes-seeded g_pipeline_session_key with real, distinct,
-// KEM-derived keys for the live beacon sign/verify path (AttackSendDSRCBeacon
-// / Rx()), and requires the HQC-5 buffer-size fix in teta_guard_types.h
+// Runs the genuine Section 3.3/3.4.2 bootstrapping once per vehicle at t=0
+// ("session keys pre-assumed established at t=0" — teta_guard_filter.h).
+// Gap 2.1 fix: this now calls kem_register_vehicle() — the same RSU
+// enrolment API TimedKemRegister() uses for latency measurement — for every
+// simulated vehicle, instead of reimplementing the handshake steps inline and
+// only writing into routing.cc's own g_vehicle_session_keys[] array.
+// kem_register_vehicle() performs the full Section 3.4.2 handshake (Dilithium5
+// identity keypair -> CA cert -> kem_vehicle_keygen -> kem_rsu_encapsulate ->
+// kem_vehicle_decapsulate, comparing both sides' derived keys) AND stores the
+// VehicleKeyRecord in the RSU key store (kem.cc's g_keystore), so kem_lookup()
+// and revocation now see the real fleet, not just the single test vehicle
+// registered inside MeasureKEM(0.0, 0, ...) above. kem_lookup() is checked
+// first so that pre-existing slot (vehicle_id==0) is reused rather than
+// double-registered. Requires the HQC-5 buffer-size fix in teta_guard_types.h
 // (HQC5_PK_LEN/SK_LEN/CT_LEN) to succeed — before that fix every call here
 // would fail with "[KEM] REJECT: keygen sig invalid" due to KemExchangeState
 // struct corruption.
@@ -753,24 +757,16 @@ static void CryptoDeriveVehicleSessionKeys()
         vid[0] = (uint8_t)(i & 0xFFu);
         vid[1] = (uint8_t)((i >> 8) & 0xFFu);
 
-        uint8_t v_pk[DILITHIUM5_PK_LEN], v_sk[DILITHIUM5_SK_LEN];
-        dilithium5_keygen(v_pk, v_sk);
-        CertificateRecord v_cert;
-        dilithium5_issue_cert(vid, v_pk, 0, &v_cert);
-
-        KemExchangeState state;
-        kem_vehicle_keygen(&state, vid, v_sk, v_pk, &v_cert);
-        uint8_t sess_rsu[SESSION_KEY_LEN], sess_veh[SESSION_KEY_LEN];
-        bool enc_ok = kem_rsu_encapsulate(&state, sess_rsu);
-        bool dec_ok = enc_ok && kem_vehicle_decapsulate(&state, sess_veh);
-        if (dec_ok && memcmp(sess_rsu, sess_veh, SESSION_KEY_LEN) == 0) {
-            memcpy(g_vehicle_session_keys[i], sess_rsu, SESSION_KEY_LEN);
+        VehicleKeyRecord *rec = kem_lookup(vid);
+        if (!rec) rec = kem_register_vehicle(vid, i);
+        if (rec) {
+            memcpy(g_vehicle_session_keys[i], rec->session_key, SESSION_KEY_LEN);
             g_vehicle_session_key_ready[i] = true;
             ok_count++;
         }
     }
-    std::cout << "[KEM] Derived real per-vehicle session keys for " << ok_count
-              << "/" << n << " vehicles (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).\n";
+    std::cout << "[KEM] Registered " << ok_count << "/" << n
+              << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).\n";
 #endif
 }
 
