@@ -7,7 +7,7 @@
  *
  * Construction:
  *   Individual sig: dilithium5_sign_thresh(TETA:THRESH: || msg || ts || nonce)
- *                   4595-byte Dilithium5 signature per signer
+ *                   DILITHIUM5_SIG_LEN-byte Dilithium5 signature per signer
  *   Aggregate sig:  HMAC-SHA256(agg_pk, σ_1[0..31] ∥ ... ∥ σ_n[0..31])
  *                   32-byte HMAC — integrity binding over signer set only,
  *                   NOT a cryptographic aggregate signature (not verifiable
@@ -22,7 +22,7 @@
  * Uses Dilithium5 (NIST ML-DSA, FIPS 204) per liboqs.
  *
  * Exact sizes (liboqs Dilithium5):
- *   Signature : DILITHIUM5_SIG_LEN = 4595 bytes  (OQS dilithium5 / ML-DSA-87)
+ *   Signature : DILITHIUM5_SIG_LEN  = 4627 bytes  (OQS ML-DSA-87 / Dilithium5, liboqs >= 0.10)
  *   Public key: DILITHIUM5_PK_LEN  = 2592 bytes
  *   Secret key: DILITHIUM5_SK_LEN  = 4864 bytes
  *
@@ -223,9 +223,9 @@ ThresholdSigResult verify_threshold_sig(const AggregateReport *report) {
      * Issue-4 clarification: this step uses only the first 32 bytes of each
      * individual_sig (a prefix integrity check via HMAC-SHA256 over those 32-byte
      * prefixes).  It is NOT a full Dilithium5 aggregate — DILITHIUM5_SIG_LEN is
-     * 4595 bytes per sig and those are stored individually, not combined into a
+     * DILITHIUM5_SIG_LEN (4627) bytes per sig and those are stored individually, not combined into a
      * single mathematical aggregate.  AGG_SIG_LEN=32 is the HMAC binding over
-     * sig[0..31] for each report, chosen to be fast and avoid a 4595×64-byte stack.
+     * sig[0..31] for each report, chosen to be fast and avoid a 4627×64-byte stack.
      * The actual per-sig Dilithium5 cryptographic verification happens in Step 2
      * (Gate C) where dilithium5_verify_thresh is called on each full signature.
      * Step 1 is a tamper-detection fast path; Step 2 is the real security gate.
@@ -247,7 +247,7 @@ ThresholdSigResult verify_threshold_sig(const AggregateReport *report) {
      * C as a backstop), replace the prefix binding with SHA-256(σ_i) per report:
      *   memcpy(all_sigs_concat + i*32, SHA256(report->reports[i].individual_sig,
      *          DILITHIUM5_SIG_LEN), 32);
-     * That hashes all 4595 bytes into a 32-byte digest before the HMAC, making
+     * That hashes all DILITHIUM5_SIG_LEN (4627) bytes into a 32-byte digest before the HMAC, making
      * any single-byte tampering detectable in Step 1.  Not done here because
      * Step 2 Gate C already performs full per-sig Dilithium5 verification.     */
     uint8_t all_sigs_concat[MAX_REPORTS_PER_RSU * 32];
@@ -385,7 +385,7 @@ void rsu_aggregate_reports(AggregateReport *agg_out,
 
     /* Build aggregate signature: HMAC-SHA256(agg_pk[0..31], σ_1[0..31] ∥ ... ∥ σ_n[0..31]).
      * Issue-3 fix: agg_sig is now AGG_SIG_LEN (32) bytes — exactly HMAC-SHA256 output.
-     * The previous version wrote 4595 bytes using a padding scheme, then verify only
+     * The previous version wrote DILITHIUM5_SIG_LEN (4627) bytes using a padding scheme, then verify only
      * compared 32 — 4563 bytes were always zero-padded garbage.  Now the field and
      * computation match: 32 bytes in, 32 bytes out, 32 bytes compared.            */
     uint8_t all_sigs[MAX_REPORTS_PER_RSU * 32];

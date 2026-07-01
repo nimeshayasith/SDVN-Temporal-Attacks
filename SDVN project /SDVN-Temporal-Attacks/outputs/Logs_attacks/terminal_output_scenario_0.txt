@@ -1,6 +1,6 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 3686 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/00_Baseline_No_Attack.xml
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.26-3.28).
@@ -12,15 +12,910 @@ Solution at controller cleared
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=2)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=4)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Registered 4/4 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 average_latency 0 ms
 [PDR] Channel-wise: Ch172(133.305m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
 average packet delivery ratio is 100.00
 average jitter is 0.00
 average load balance is 100.00
@@ -509,6 +1404,7 @@ written to file successfully
 [CRYPTO] crypto_latency_sumo.csv written    (5 events)
 [CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] No PEM events — all attacks blocked at Stage 0 (0 blocked). Writing summary.
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
