@@ -1884,6 +1884,39 @@ std::vector<PemEvent> pem_all_events;
 // signature check (TTW-S1..S3, BSHH-S1..S3) completely untouched.
 static std::deque<PemEvent> g_rsu_beacon_log;
 
+// ── Issue 12 fix — PemBeaconEvidenceRecord / B_nk(t) store for Algorithm 4's
+// getTrustedEvidence(τ_min^gt) (Eq. 3.44) and the controller-divergence check
+// δ_t = |E_C(t) △ E_trusted(t)| (Eq. 3.45), gated by δ_thresh (Eq. 3.46).
+// Previously nothing populated a per-trusted-peer beacon evidence log a
+// getTrustedEvidence()-equivalent could read from, so TrustReassignController()
+// was invoked unconditionally by every controller-origin attack function
+// (TTWS3/S4, BSHH-S3/S4) with no actual divergence evidence behind it.
+//
+// B_nk(t): ground-truth (vehicle_id, timestamp, position) tuples attributed
+// to whichever trusted peer(s) would have witnessed that beacon in a real
+// deployment — every RSU when RSUs are present (Tier 1, all RSUs authority-
+// vetted at τ=1.00 per TrustInit, so they always qualify at τ_min^gt=0.50),
+// or the synthetic TRUST_OBU_PEER_ID bucket representing the Tier-2 trusted-
+// OBU peer pool when no RSU exists (this simulation doesn't model distinct
+// per-OBU reception ranges for the aggregate topology feed, matching the
+// existing simplification RSU_dataunicast_agent/send_LTE_data_agent already
+// make for full-topology-snapshot delivery).
+//
+// Deliberately independent of g_pem_node_lw_state (whose reporter_id keying
+// varies per call site — sometimes the sender itself, sometimes 9999 for
+// controller-internal events — so it cannot serve as a clean per-trusted-peer
+// evidence log) and of g_rsu_beacon_log (Issue 11's flat, unattributed density
+// log). Populated only from PemEmitVehicleBeacon's real sender position/time,
+// never from attacker-controlled data, so it cannot be poisoned by the very
+// attacks it is meant to cross-check.
+struct PemBeaconEvidenceRecord {
+    uint32_t vehicle_id;
+    double   timestamp;
+    Vector   position;
+};
+static const uint32_t TRUST_OBU_PEER_ID = 8888u;   // synthetic Tier-2 evidence bucket
+static std::map<uint32_t, std::deque<PemBeaconEvidenceRecord> > g_peer_beacon_evidence;
+
 double pem_under_attack_pdr_sum = 0.0;
 double pem_under_attack_te2e_sum = 0.0;
 double pem_post_mitigation_pdr_sum = 0.0;
@@ -1923,6 +1956,17 @@ std::set<uint32_t> ttw_s1_detected_attackers;
 static std::set<uint32_t> pem_actual_attacker_nodes;
 static std::set<uint32_t> pem_detected_attacker_nodes;
 static std::set<uint32_t> pem_false_positive_nodes;
+
+// ── BSHH-S3 presence tracker (Eq. 3.7) — decoupled from ns.event_window ────
+// Every real vehicle transmits DSRC beacons at 10 Hz for the whole run
+// (Table 4.6), independent of whether any specific receiver is in range or
+// whether that beacon is signature-relevant to TTW/ME. Feeding that volume
+// through the shared PemEvaluateEvent()/ns.event_window pipeline (as the
+// disabled PemPeriodicBeaconTick did) previously regressed TTW/ME detection
+// (see the comment above the disabled Simulator::Schedule call). This tracker
+// gives BSHH-S3 the genuine periodic presence signal Eq. 3.7 requires without
+// touching the window TTW/ME's own signatures depend on.
+static std::map<uint32_t, double> g_pem_last_beacon_time;
 // Tracks which physical_sender_ids have already had LKH revocation issued
 // so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
 static std::set<uint32_t> g_lkh_already_revoked;
@@ -1936,6 +1980,39 @@ extern NodeContainer Vehicle_Nodes;
 extern NodeContainer RSU_Nodes;
 extern NodeContainer controller_Node;
 extern NodeContainer management_Node;
+
+// Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.44). Called
+// unconditionally from PemEmitVehicleBeacon for every real vehicle beacon
+// broadcast, regardless of receiver range (broadcast medium), mirroring how
+// g_pem_last_beacon_time is stamped for BSHH-S3 presence above. Only ever
+// fed the sender's own true position/time (never attacker-controlled forged
+// fields), so it cannot be poisoned by the TTW/BSHH/ME replay attacks it is
+// used to cross-check the controller's topology table against.
+static void
+PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double now)
+{
+    static const double kEvidenceWindowS = 5.0;   // retain last 5s of evidence per peer
+    PemBeaconEvidenceRecord rec{senderId, now, senderPosition};
+
+    if (RSU_Nodes.GetN() > 0)
+    {
+        for (uint32_t i = 0; i < RSU_Nodes.GetN(); ++i)
+        {
+            std::deque<PemBeaconEvidenceRecord>& log =
+                g_peer_beacon_evidence[RSU_Nodes.Get(i)->GetId()];
+            log.push_back(rec);
+            while (!log.empty() && (now - log.front().timestamp) > kEvidenceWindowS)
+                log.pop_front();
+        }
+    }
+    else
+    {
+        std::deque<PemBeaconEvidenceRecord>& log = g_peer_beacon_evidence[TRUST_OBU_PEER_ID];
+        log.push_back(rec);
+        while (!log.empty() && (now - log.front().timestamp) > kEvidenceWindowS)
+            log.pop_front();
+    }
+}
 
 static double
 PemSafeSqrt(double value)
@@ -2351,6 +2428,181 @@ static std::vector<uint32_t> TrustSelectActivePeers()
     for (uint32_t i = 0; i < TRUST_NP && i < (uint32_t)cands.size(); i++)
         peers.push_back(cands[i].second);
     return peers;
+}
+
+// ── Issue 12 fix — getTrustedEvidence(τ_min^gt) and the δ-divergence gate ───
+// (Algorithm 4 lines 2-7, Eqs. 3.44-3.46). See the PemBeaconEvidenceRecord /
+// g_peer_beacon_evidence comment above for what populates B_nk(t).
+
+// Eq. 3.44: E_t^trusted's peer set — P_active members whose τ_k ≥ τ_min^gt.
+// RSU peers are always τ=1.00 (Tier 1, authority-vetted at registration), so
+// every present RSU in P_active qualifies. The Tier-2 (no-RSU) synthetic
+// evidence bucket (TRUST_OBU_PEER_ID) qualifies once at least one real
+// vehicle peer in P_active has itself crossed τ_min^gt.
+static std::vector<uint32_t> TrustGetTrustedPeers()
+{
+    std::vector<uint32_t> peers;
+    bool obu_trusted = false;
+    for (uint32_t id : TrustSelectActivePeers()) {
+        std::map<uint32_t, TrustRecord>::const_iterator it = g_trust_table.find(id);
+        if (it == g_trust_table.end() || it->second.tau < TRUST_TAU_GT_MIN) continue;
+        bool is_rsu = false;
+        for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
+            if (RSU_Nodes.Get(i)->GetId() == id) { is_rsu = true; break; }
+        if (is_rsu) peers.push_back(id);
+        else         obu_trusted = true;
+    }
+    if (RSU_Nodes.GetN() == 0 && obu_trusted)
+        peers.push_back(TRUST_OBU_PEER_ID);
+    return peers;
+}
+
+// Eq. 3.44: E_t^trusted = ⋃_{n_k trusted} B_{n_k}(t).
+static std::vector<PemBeaconEvidenceRecord> PemGetTrustedEvidence()
+{
+    std::vector<PemBeaconEvidenceRecord> evidence;
+    for (uint32_t peerId : TrustGetTrustedPeers()) {
+        std::map<uint32_t, std::deque<PemBeaconEvidenceRecord> >::const_iterator it =
+            g_peer_beacon_evidence.find(peerId);
+        if (it == g_peer_beacon_evidence.end()) continue;
+        for (const PemBeaconEvidenceRecord& rec : it->second)
+            evidence.push_back(rec);
+    }
+    return evidence;
+}
+
+// Eq. 3.45: δ_t = |E_C(t) △ E_trusted(t)|. An edge is "trusted-corroborated"
+// when the trusted evidence shows both endpoints beaconing within r_comm of
+// each other inside the same beacon interval (genuinely close together, not
+// merely both present somewhere). E_C(t) is the controller's currently-fresh
+// claimed edges (within one beacon interval's slack of `now`) — a stale
+// entry the controller hasn't refreshed isn't a live claim to check.
+// claim_a/claim_b (+ claim_timestamp): the specific vehicle pair the calling
+// controller-origin attack function just (re)asserted as live, folded into
+// E_C(t) explicitly. Needed for two reasons: (1) TTW-S3/S4's mitigation
+// cleanup erases the poisoned ttw_controller_table entry before this gate
+// runs, so a table-only scan would always see delta=0 for the very edge that
+// triggered detection; (2) BSHH-S3/S4 poison bshh_controller_liveness_table
+// (not ttw_controller_table) and ME-S3/S4 poison phantom paths rather than a
+// src/seen edge, so neither ever appears in ttw_controller_table at all. In
+// every case the controller's just-detected claim about (claim_a, claim_b)
+// IS the controller-claimed state Eq. 3.45 compares against evidence,
+// regardless of which in-memory table happens to hold it. Pass
+// UINT32_MAX/UINT32_MAX to omit (falls back to a pure table scan).
+static uint32_t PemComputeControllerDivergenceDelta(double now,
+                                                      uint32_t claim_a = UINT32_MAX,
+                                                      uint32_t claim_b = UINT32_MAX,
+                                                      double claim_timestamp = 0.0)
+{
+    const std::vector<PemBeaconEvidenceRecord> evidence = PemGetTrustedEvidence();
+
+    std::set<std::string> trustedEdges;
+    for (size_t i = 0; i < evidence.size(); ++i) {
+        for (size_t j = i + 1; j < evidence.size(); ++j) {
+            const PemBeaconEvidenceRecord& a = evidence[i];
+            const PemBeaconEvidenceRecord& b = evidence[j];
+            if (a.vehicle_id == b.vehicle_id) continue;
+            if (std::fabs(a.timestamp - b.timestamp) > PEM_BEACON_INTERVAL_S) continue;
+            if (PemDistance2d(a.position, b.position) > TTW_COMM_RANGE) continue;
+            uint32_t lo = (a.vehicle_id < b.vehicle_id) ? a.vehicle_id : b.vehicle_id;
+            uint32_t hi = (a.vehicle_id < b.vehicle_id) ? b.vehicle_id : a.vehicle_id;
+            trustedEdges.insert(std::to_string(lo) + "_" + std::to_string(hi));
+        }
+    }
+
+    std::set<std::string> controllerEdges;
+    for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
+         it != ttw_controller_table.end(); ++it)
+    {
+        if ((now - it->second.timestamp) > (2.0 * PEM_BEACON_INTERVAL_S)) continue;
+        uint32_t a = it->second.src_id, b = it->second.seen_id;
+        uint32_t lo = (a < b) ? a : b, hi = (a < b) ? b : a;
+        controllerEdges.insert(std::to_string(lo) + "_" + std::to_string(hi));
+    }
+    if (claim_a != UINT32_MAX && claim_b != UINT32_MAX &&
+        (now - claim_timestamp) <= (2.0 * PEM_BEACON_INTERVAL_S))
+    {
+        uint32_t lo = (claim_a < claim_b) ? claim_a : claim_b;
+        uint32_t hi = (claim_a < claim_b) ? claim_b : claim_a;
+        controllerEdges.insert(std::to_string(lo) + "_" + std::to_string(hi));
+    }
+
+    uint32_t delta = 0;
+    for (const std::string& k : controllerEdges)
+        if (trustedEdges.find(k) == trustedEdges.end()) delta++;
+    for (const std::string& k : trustedEdges)
+        if (controllerEdges.find(k) == controllerEdges.end()) delta++;
+    return delta;
+}
+
+// Eq. 3.46: δ_thresh = ⌈(1 + τ_prop/T_b) · λ̂ · 2·r_comm⌉ + 1. τ_prop reuses
+// the same hop-diameter propagation-delay estimate PemApplyMitigation already
+// computes (⌈log2(N)⌉ hops × T_b). λ̂ here is a network-wide density estimate
+// from the Issue-11-fixed g_rsu_beacon_log, distinct from ME-S1's per-link
+// λ̂ (PemComputeLambdaHat) since this check spans the whole controller
+// topology, not one link.
+static uint32_t PemComputeDeltaThreshold()
+{
+    const uint32_t n_eff    = (N_Vehicles > 2u ? N_Vehicles : 2u);
+    const uint32_t lkh_raw  = (uint32_t)std::ceil(std::log2((double)n_eff));
+    const uint32_t est_diam = (lkh_raw > 1u ? lkh_raw : 1u);
+    const double   tau_prop_s = est_diam * PEM_BEACON_INTERVAL_S;
+
+    std::set<uint32_t> distinctVehicles;
+    for (std::deque<PemEvent>::const_iterator it = g_rsu_beacon_log.begin();
+         it != g_rsu_beacon_log.end(); ++it)
+        distinctVehicles.insert(it->claimed_sender_id);
+    const double corridorLength = 2.0 * TTW_COMM_RANGE;
+    const double lambdaHat = (corridorLength > 0.0)
+        ? (double)distinctVehicles.size() / corridorLength : 0.0;
+
+    const double raw = (1.0 + tau_prop_s / PEM_BEACON_INTERVAL_S)
+                        * lambdaHat * 2.0 * TTW_COMM_RANGE;
+    const uint32_t computed = (uint32_t)std::ceil(raw) + 1u;
+    // Hard floor of 2 (report line 6778) — overrides the "+1" margin's own
+    // floor of 1 (report line 4311) for sparse/low-density conditions where
+    // raw collapses to ~0, so a single stray divergent edge is never enough
+    // to confirm on its own.
+    return (computed > 2u) ? computed : 2u;
+}
+
+// Algorithm 4 lines 2-7 — the δ-divergence gate deciding whether a
+// controller-origin event is confirmed enough to flag the controller
+// (A ← A ∪ {(controller, α_origin, δ)}), penalise it (Eq. 3.39), and proceed
+// to TrustReassignController()'s zone reassignment (Eqs. 3.42-3.43). This
+// only gates the trust/mitigation-side consequence — PEM's own TP/FP/MCC/
+// AUROC scoring (PemRecordObservation, already run earlier at each caller's
+// PemEmitEvent site) is unaffected either way.
+static bool
+PemControllerDivergenceGate(double now, const std::string& scenario_tag,
+                             std::string& log_out,
+                             uint32_t claim_a = UINT32_MAX, uint32_t claim_b = UINT32_MAX,
+                             double claim_timestamp = 0.0)
+{
+    const uint32_t delta  = PemComputeControllerDivergenceDelta(now, claim_a, claim_b,
+                                                                  claim_timestamp);
+    const uint32_t thresh = PemComputeDeltaThreshold();
+    const bool confirmed = delta > thresh;
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "[" << scenario_tag << "][t=" << now
+              << "]  FS-MITIGATE gate: delta_t=" << delta
+              << " (Eq.3.45)  delta_thresh=" << thresh << " (Eq.3.46)  -> "
+              << (confirmed ? "CONFIRMED DIVERGENCE" : "WITHIN PROPAGATION NOISE") << "\n";
+
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(3);
+    if (!confirmed) {
+        out << "  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***\n"
+            << "  delta_t=" << delta << "  delta_thresh=" << thresh
+            << "  — trusted-peer evidence does not exceed the normal propagation-delay"
+               " margin; controller NOT flagged, zone reassignment skipped this event.\n";
+    } else {
+        out << "  [Trust] Controller-divergence CONFIRMED (Eq. 3.45): delta_t=" << delta
+            << " > delta_thresh=" << thresh << " (Eq. 3.46)\n";
+    }
+    log_out = out.str();
+    return confirmed;
 }
 
 // Three-stage demotion pipeline (§3.4.11).
@@ -3576,18 +3828,18 @@ PemEvaluateEvent(PemEvent& event)
             }
         }
 
+        // Presence check via g_pem_last_beacon_time (see comment at its
+        // declaration) rather than scanning ns.event_window — decouples
+        // BSHH-S3 from the shared TTW/ME sliding window while still matching
+        // Eq. 3.7's semantics: ∃ Beacon(Vi, [t-W, t]).
         bool beaconSeen = false;
-        for (std::deque<PemEvent>::const_iterator it = ns.event_window.begin();
-             it != ns.event_window.end();
-             ++it)
+        std::map<uint32_t, double>::const_iterator beaconIt =
+            g_pem_last_beacon_time.find(event.claimed_sender_id);
+        if (beaconIt != g_pem_last_beacon_time.end() &&
+            beaconIt->second <= event.reception_timestamp &&
+            (event.reception_timestamp - beaconIt->second) <= g_pem_bshh3_liveness_window_s)
         {
-            if (it->type == PEM_EVENT_BEACON &&
-                it->claimed_sender_id == event.claimed_sender_id &&
-                (event.reception_timestamp - it->reception_timestamp) <= g_pem_bshh3_liveness_window_s)
-            {
-                beaconSeen = true;
-                break;
-            }
+            beaconSeen = true;
         }
         // Eq. 3.7 — BSHH-S3: heartbeat arrived but no matching beacon observed
         // for the claimed identity within the liveness window W.
@@ -4047,6 +4299,14 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
     }
     // ── End NPFADS BSM record ───────────────────────────────────────────────
 
+    // BSHH-S3 presence stamp: senderId physically broadcasts this beacon
+    // regardless of whether receiverId is in range (broadcast medium), so
+    // this must happen before the range-gated early return below.
+    g_pem_last_beacon_time[senderId] = Simulator::Now().GetSeconds();
+    // Issue 12 fix: same broadcast-medium reasoning — trusted-peer beacon
+    // evidence (B_nk(t)) is recorded regardless of receiverId's range.
+    PemRecordBeaconEvidence(senderId, senderPosition, Simulator::Now().GetSeconds());
+
     const double distance =
         std::sqrt(std::pow(senderPosition.x - receiverPosition.x, 2.0) +
                   std::pow(senderPosition.y - receiverPosition.y, 2.0));
@@ -4108,7 +4368,37 @@ PemPeriodicBeaconTick()
         Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemPeriodicBeaconTick);
     }
 }
- 
+
+// ── BSHH-S3 presence tick (Eq. 3.7) — lightweight, decoupled alternative to
+// PemPeriodicBeaconTick() above. Only stamps g_pem_last_beacon_time[i] for
+// every vehicle each T_b interval; does NOT call PemEmitEvent/PemEvaluateEvent,
+// so it never touches ns.event_window (the shared sliding window TTW/ME
+// signatures also scan) and carries none of the O(N^2) PemEmitVehicleBeacon
+// overhead (NPFADS BSM logging, crypto pre-filter, scoring) that caused the
+// earlier regression. This models the real-world fact that every vehicle
+// broadcasts a DSRC beacon every T_b regardless of whether any particular
+// receiver is in range or whether that beacon is signature-relevant.
+static void
+PemBshh3PresenceTick()
+{
+    const double now = Simulator::Now().GetSeconds();
+    const uint32_t n = Vehicle_Nodes.GetN();
+    for (uint32_t i = 0; i < n; ++i) {
+        // Stamp both ID conventions in use across attack functions: some
+        // (e.g. TTW_*) address vehicles by container index i directly;
+        // others (e.g. BSHH_S1, which uses Vehicle_Nodes.Get(idx)->GetId())
+        // address them by the global ns-3 node ID, which is offset by
+        // whatever non-vehicle nodes (controller/management) were created
+        // first. Stamping both is cheap and avoids silently missing one
+        // convention's identity space.
+        g_pem_last_beacon_time[i] = now;
+        g_pem_last_beacon_time[Vehicle_Nodes.Get(i)->GetId()] = now;
+    }
+
+    if (now + PEM_BEACON_INTERVAL_S < simTime) {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemBshh3PresenceTick);
+    }
+}
 
 // =============================================================================
 // DSRC PACKET HELPERS — shared by all attack scenario "legitimate exchange" steps
@@ -4741,7 +5031,11 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
         ttw_log << "[t=" << now << "]  STEP ⑤  FORGED PACKET → CONTROLLER\n"
             << "  Controller ACCEPTED forged packet (no timestamp-integrity protection)\n\n";
 
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    // Bug 1 fix (see project memory): guard on injection_time itself, not
+    // pem_attack_active — PemRecordObservation resets pem_attack_active on
+    // the first alert, so a second attacker firing after that would otherwise
+    // overwrite injection_time with a later value and make tdet negative.
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -5086,7 +5380,8 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
     ttw_controller_table[key] = forged;
     attack_T_matrix[key] = forged_time;
     topology_divergence_delta++;
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    // Bug 1 fix — see comment in TTW_ReplayAttack.
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -5163,11 +5458,16 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
         attack_T_matrix.erase(k);
         if (topology_divergence_delta > 0) topology_divergence_delta--;
         CryptoMeasureLKH(now2, v1_id, N_Vehicles);
-        // Controller-origin: reassign zone to backup controller (Eqs. 3.42-3.43)
+        // Controller-origin: reassign zone to backup controller (Eqs. 3.42-3.43),
+        // gated by Algorithm 4's δ-divergence check (lines 2-7, Eqs. 3.44-3.46).
         uint32_t ctrl_ns3 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
-        TrustUpdateNode(ctrl_ns3, false, true);
-        std::string trust_log = TrustReassignController(ctrl_ns3, now2);
+        std::string trust_log, ctrl_div_log;
+        if (PemControllerDivergenceGate(now2, "TTW-S3", ctrl_div_log, v1_id, v2_id, now2)) {
+            TrustUpdateNode(ctrl_ns3, false, true);
+            trust_log = TrustReassignController(ctrl_ns3, now2);
+        }
+        trust_log = ctrl_div_log + trust_log;
         TrustRunDemotionPipeline(now2);
         ttws3_log << "[t=" << now2 << "]  DETECTION + MITIGATION\n"
                   << "  Internal replay detected and removed\n"
@@ -5268,7 +5568,8 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 
     TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    // Bug 1 fix — see comment in TTW_ReplayAttack.
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -5339,8 +5640,12 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
         CryptoMeasureLKH(now2, v1_id, N_Vehicles);
         uint32_t ctrl_ns3_s4 = (controller_Node.GetN() > 0)
                                ? controller_Node.Get(0)->GetId() : 9999u;
-        TrustUpdateNode(ctrl_ns3_s4, false, true);
-        std::string trust_log_s4 = TrustReassignController(ctrl_ns3_s4, now2);
+        std::string trust_log_s4, ctrl_div_log_s4;
+        if (PemControllerDivergenceGate(now2, "TTW-S4", ctrl_div_log_s4, v1_id, v2_id, now2)) {
+            TrustUpdateNode(ctrl_ns3_s4, false, true);
+            trust_log_s4 = TrustReassignController(ctrl_ns3_s4, now2);
+        }
+        trust_log_s4 = ctrl_div_log_s4 + trust_log_s4;
         TrustRunDemotionPipeline(now2);
         ttws4_log << "[t=" << now2 << "]  DETECTION + MITIGATION\n"
                   << "  Internal replay (RSU variant) detected and removed\n"
@@ -5437,7 +5742,8 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 
     TTWApplyGhostLinkToController(v1_id, v2_id, forged_time);
 
-    if (!pem_attack_active) pem_attack_injection_time = now;
+    // Bug 1 fix — see comment in TTW_ReplayAttack.
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
 
@@ -5765,7 +6071,12 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32
     
     HeartbeatPacket forwarded = {attacker_id, victim_id, stored_time, true};
     bshh_controller_liveness_table[attacker_id] = forwarded;
-    pem_attack_injection_time = now;
+    // Bug 1 fix (see project memory): this function runs once per
+    // attacker/victim pair. With multiple attacker pairs scheduled at
+    // different times, an unconditional overwrite here could set
+    // injection_time later than an earlier pair's already-recorded
+    // first_alert_time, producing a negative detection latency.
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
     
@@ -6241,8 +6552,12 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s7 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
-        TrustUpdateNode(ctrl_s7, false, true);
-        std::string trust_s7 = TrustReassignController(ctrl_s7, now);
+        std::string trust_s7, ctrl_div_log_s7;
+        if (PemControllerDivergenceGate(now, "BSHH-S3", ctrl_div_log_s7, v1_id, v2_id, now)) {
+            TrustUpdateNode(ctrl_s7, false, true);
+            trust_s7 = TrustReassignController(ctrl_s7, now);
+        }
+        trust_s7 = ctrl_div_log_s7 + trust_s7;
         TrustRunDemotionPipeline(now);
         std::string mit = PemApplyMitigation(v1_id, now, "BSHH-S3");
         for (auto& p : bshh_s3_pair_logs) {
@@ -6429,8 +6744,12 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s8 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
-        TrustUpdateNode(ctrl_s8, false, true);
-        std::string trust_s8 = TrustReassignController(ctrl_s8, now);
+        std::string trust_s8, ctrl_div_log_s8;
+        if (PemControllerDivergenceGate(now, "BSHH-S4", ctrl_div_log_s8, v1_id, v2_id, now)) {
+            TrustUpdateNode(ctrl_s8, false, true);
+            trust_s8 = TrustReassignController(ctrl_s8, now);
+        }
+        trust_s8 = ctrl_div_log_s8 + trust_s8;
         TrustRunDemotionPipeline(now);
         std::string mit = PemApplyMitigation(v1_id, now, "BSHH-S4");
         for (auto& p : bshh_s4_pair_logs) {
@@ -7421,8 +7740,12 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s11 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
-        TrustUpdateNode(ctrl_s11, false, true);
-        std::string trust_s11 = TrustReassignController(ctrl_s11, now);
+        std::string trust_s11, ctrl_div_log_s11;
+        if (PemControllerDivergenceGate(now, "ME-S3", ctrl_div_log_s11, v1_id, v2_id, now)) {
+            TrustUpdateNode(ctrl_s11, false, true);
+            trust_s11 = TrustReassignController(ctrl_s11, now);
+        }
+        trust_s11 = ctrl_div_log_s11 + trust_s11;
         TrustRunDemotionPipeline(now);
         const PemQuorumEvidence me_s3_ev{ctrlPos, v1Pos, v2Pos};
         std::string mit = PemApplyMitigation(false_v3, now, "ME-S3", &me_s3_ev);
@@ -7634,8 +7957,12 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s12 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
-        TrustUpdateNode(ctrl_s12, false, true);
-        std::string trust_s12 = TrustReassignController(ctrl_s12, now);
+        std::string trust_s12, ctrl_div_log_s12;
+        if (PemControllerDivergenceGate(now, "ME-S4", ctrl_div_log_s12, v1_id, v2_id, now)) {
+            TrustUpdateNode(ctrl_s12, false, true);
+            trust_s12 = TrustReassignController(ctrl_s12, now);
+        }
+        trust_s12 = ctrl_div_log_s12 + trust_s12;
         TrustRunDemotionPipeline(now);
         const PemQuorumEvidence me_s4_ev{ctrlPos, v1Pos, v2Pos};
         std::string mit = PemApplyMitigation(false_v3, now, "ME-S4", &me_s4_ev);
@@ -150795,6 +151122,13 @@ attack_mobility.Install(Vehicle_Nodes);
   if (!skip_npfads)
       for (double t_npfads = 1.0; t_npfads < simTime - 0.1; t_npfads += 0.1)
           Simulator::Schedule(Seconds(t_npfads), &NpfadsCollectBsms);
+
+  // ── BSHH-S3 presence tick (Eq. 3.7) ─────────────────────────────────────────
+  // Lightweight per-vehicle beacon-presence stamping, decoupled from the
+  // shared TTW/ME event_window — see g_pem_last_beacon_time and
+  // PemBshh3PresenceTick() for why. Started early (t=0.1) and at the paper's
+  // 10 Hz so it's warm well before any scenario's first heartbeat (t=10.0).
+  Simulator::Schedule(Seconds(0.1), &PemBshh3PresenceTick);
 
   // ── Issue 7 runtime PQC degradation notice ──────────────────────────────────
   // Emitted once per run alongside the build-time #pragma message above so the

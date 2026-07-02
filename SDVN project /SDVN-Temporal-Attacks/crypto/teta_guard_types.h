@@ -603,7 +603,16 @@ bool cert_is_revoked(const uint8_t vehicle_id[16]);
  * 12. FORWARD DECLARATIONS — cross-module function interfaces
  * ══════════════════════════════════════════════════════════════════════════ */
 
-/* Called from crypto_pipeline.cc after CRYPTO_ACCEPT — TGN already implements this */
+/* Legacy stub, unreachable in the routing.cc build: defined and called only
+ * inside crypto_pipeline.cc, a fully standalone tool (own main(), separate
+ * Makefile target) that is never #included by routing.cc. routing.cc pulls
+ * in this header directly but never calls tgn_ingest_event(), so the extern
+ * below resolves to nothing in that build — harmless as long as it stays
+ * unreferenced there. (The "Section 8, Eq. 3.19" citation attached to this
+ * boundary elsewhere in crypto_pipeline.cc does not correspond to anything
+ * in the current thesis: this paper has no Section 8, and Eq. 3.19 is the
+ * TGN graph-snapshot definition G_t = (V_t, E_t, X_t, A_t), not a crypto→TGN
+ * handoff — treat that citation as stale, not as a spec reference.) */
 extern void tgn_ingest_event(const CryptoVerifiedEvent *event);
 
 /* Called from crypto_pipeline.cc / lkh_mgmt.cc after blockchain alert */

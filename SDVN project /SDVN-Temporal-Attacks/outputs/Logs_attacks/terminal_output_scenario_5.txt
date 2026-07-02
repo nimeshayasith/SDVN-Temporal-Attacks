@@ -59,11 +59,7 @@ Timeline:
 [BSHH-S1][t=10.018]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
 [BSHH-S1][t=10.018]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V6  propagation=500.000 ms
 [BSHH-S1][t=10.021]  V7 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V20, claimed=V20, t=10.021)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.021]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[BSHH-S1][t=10.021]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V7  propagation=500.000 ms
 [BSHH-S1][t=10.032]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V21, claimed=V21, t=10.032)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.032]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[BSHH-S1][t=10.032]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=500.000 ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (73 events)
 [CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)

@@ -45,6 +45,42 @@ const PEER_ID          = 'peer0.rsu4.tetaguard.net';  // submitting peer identit
 const WALLET_PATH      = path.join(__dirname, 'wallet');
 const CONN_PROFILE     = path.join(__dirname, '..', 'config', 'connection-profile.json');
 
+// Review finding #7: back-to-back scenario runs each launch their own
+// submitToFabric.js process concurrently endorsing/committing against the
+// same channel, which produces MVCC_READ_CONFLICT at commit (see the
+// discovery/eventHandlerOptions comments below for the root cause). Retry
+// with jittered exponential backoff on that specific, transient error class
+// only — other errors (missing wallet identity, bad connection profile,
+// chaincode-level rejects) should still fail fast rather than retry.
+const MVCC_RETRY_MAX_ATTEMPTS = 4;
+const MVCC_RETRY_BASE_MS      = 300;
+
+function isRetryableMvccError(err) {
+    const msg = (err && err.message) || '';
+    return /MVCC_READ_CONFLICT|ENDORSEMENT_POLICY_FAILURE|PHANTOM_READ_CONFLICT/i.test(msg);
+}
+
+async function submitTransactionWithRetry(contract, txName, ...args) {
+    let lastErr;
+    for (let attempt = 1; attempt <= MVCC_RETRY_MAX_ATTEMPTS; attempt++) {
+        try {
+            return await contract.submitTransaction(txName, ...args);
+        } catch (err) {
+            lastErr = err;
+            if (!isRetryableMvccError(err) || attempt === MVCC_RETRY_MAX_ATTEMPTS) {
+                throw err;
+            }
+            const backoffMs = MVCC_RETRY_BASE_MS * Math.pow(2, attempt - 1)
+                             + Math.floor(Math.random() * 100);
+            console.warn(`[Fabric] ${txName} hit a transient conflict `
+                + `(attempt ${attempt}/${MVCC_RETRY_MAX_ATTEMPTS}): ${err.message}`
+                + ` — retrying in ${backoffMs}ms`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+        }
+    }
+    throw lastErr;
+}
+
 // Anomaly threshold θ_FS (Eq. 3.23) — set to 0.05 so all PEM scores pass (min observed: 0.10).
 // TGN_THETA_FS = 0.40 is the production threshold; PEM scores are lower by design.
 const THETA_FS = '0.05';
@@ -83,6 +119,25 @@ async function submitToFabric(
 
         // Check that the admin cert and private key referenced in the profile exist
         const connProfileRaw = JSON.parse(fs.readFileSync(CONN_PROFILE, 'utf8'));
+        // connection-profile.json's "path" fields (adminPrivateKey, signedCert,
+        // tlsCACerts, ...) are written relative to the config/ directory, e.g.
+        // "../network/crypto-config/...". The fabric-network SDK resolves these
+        // relative to the Node process's CWD, not the JSON file's own location --
+        // so invoking this script from a different CWD (e.g. routing.cc's
+        // system() call, which runs from the ns-3.35 simulation directory, not
+        // blockchain/client/) fails deep inside the SDK with a raw ENOENT.
+        // Rewrite every "path" field to an absolute path up front.
+        (function resolveConnProfilePaths(node) {
+            if (!node || typeof node !== 'object') return;
+            for (const key of Object.keys(node)) {
+                const val = node[key];
+                if (key === 'path' && typeof val === 'string' && !path.isAbsolute(val)) {
+                    node[key] = path.resolve(path.dirname(CONN_PROFILE), val);
+                } else if (val && typeof val === 'object') {
+                    resolveConnProfilePaths(val);
+                }
+            }
+        })(connProfileRaw);
         const org = connProfileRaw.organizations && connProfileRaw.organizations['TetaGuardMSP'];
         if (org && org.adminPrivateKey && org.adminPrivateKey.path) {
             if (!fs.existsSync(org.adminPrivateKey.path)) {
@@ -175,7 +230,7 @@ async function submitToFabric(
                 is_rsu_peer:   true,
                 doc_type:      'BEACON_EVIDENCE'
             };
-            await contract.submitTransaction(
+            await submitTransactionWithRetry(contract,
                 'SubmitBeaconEvidence',
                 JSON.stringify(evidenceRecord)
             );
@@ -192,7 +247,7 @@ async function submitToFabric(
                 ctrl_sig:      [],
                 doc_type:      'CTRL_TOPOLOGY'
             };
-            await contract.submitTransaction(
+            await submitTransactionWithRetry(contract,
                 'SubmitControllerTopology',
                 JSON.stringify(claim)
             );
@@ -261,7 +316,7 @@ async function submitToFabric(
             const nPeers     = channelPeers.length || 5; // fallback to 5 (fixed TETA-Guard network)
             const thresholdT = String(Math.floor(nPeers / 2) + 1);
 
-            await contract.submitTransaction(
+            await submitTransactionWithRetry(contract,
                 'Mitigate',
                 JSON.stringify(detEvents),
                 JSON.stringify(beaconEvidence || { observations: [] }),
@@ -285,7 +340,7 @@ async function submitToFabric(
                    : ['peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
                       'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
                       'peer0.rsu5.tetaguard.net']);
-            const activePeers = await contract.submitTransaction(
+            const activePeers = await submitTransactionWithRetry(contract,
                 'PeriodicPeerReSelection',
                 JSON.stringify(allPeerIDs)
             );

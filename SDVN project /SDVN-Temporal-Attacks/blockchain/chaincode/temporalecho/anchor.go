@@ -166,7 +166,7 @@ func (t *TemporalEchoMitigator) GetLatestAnchorCheckpoint(
 
 // SyncFromAnchorCheckpoint records that an OBU peer has synced from a checkpoint.
 //
-// A-2 (from previous audit): verifies the checkpoint's Dilithium2 signature.
+// A-2 (from previous audit): verifies the checkpoint's ML-DSA-87 (Dilithium5) signature.
 // AN-02 FIX: enforces that the OBU must sync from the LATEST checkpoint, not
 // any arbitrary old one. An OBU that synced from a 215-block-old checkpoint
 // could participate in consensus with a stale ledger view.
@@ -214,11 +214,11 @@ func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 		return fmt.Errorf("SyncFromAnchorCheckpoint: unmarshal error: %v", err)
 	}
 
-	// A-2: verify Falcon-1024 signature over the checkpoint data
+	// A-2: verify ML-DSA-87 (Dilithium5) signature over the checkpoint data
 	sigInput := fmt.Sprintf("%s:%d:%s", cp.CreatedByPeer, cp.BlockHeight, cp.StateRootHash)
 	if !verifyMLDSA87Sig(cp.PeerSig, sigInput, cp.PeerPubKey) {
 		return fmt.Errorf(
-			"SyncFromAnchorCheckpoint: invalid Falcon-1024 signature on checkpoint %s from peer %s",
+			"SyncFromAnchorCheckpoint: invalid ML-DSA-87 (Dilithium5) signature on checkpoint %s from peer %s",
 			checkpointID, cp.CreatedByPeer)
 	}
 
