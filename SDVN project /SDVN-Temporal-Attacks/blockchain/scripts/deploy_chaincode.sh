@@ -22,11 +22,21 @@ export PATH="$PATH:/home/sdvn_echo_topology/Group_33/teta-guard/fabric-samples/b
 
 CHANNEL="teta-channel"
 CHAINCODE="temporalecho"
+# Upgrade to 2.0/2: real ML-DSA-87 (Dilithium5) chaincode replacing the
+# Falcon-1024/HMAC-stub verifiers, plus the self-referential signature
+# payload fix (SubmitBeaconEvidence/SubmitDetectionEvent). 1.0/1 is already
+# committed on this channel; Fabric requires sequence to increment by
+# exactly 1 per upgrade.
 CC_VERSION="2.0"
-CC_SEQUENCE=4
+CC_SEQUENCE=2
 CC_LABEL="${CHAINCODE}_${CC_VERSION}"
-ORDERER="orderer.tetaguard.net:7050"
-ORDERER_CA="$NETWORK_DIR/crypto-config/ordererOrganizations/orderer.tetaguard.net/tlsca/tlsca.orderer.tetaguard.net-cert.pem"
+# orderer1.tetaguard.net (not the old singular "orderer.tetaguard.net" — leftover
+# from the pre-migration single-orderer topology; its cert CN doesn't match any of
+# the 4 SmartBFT orderer containers, so TLS hostname verification would fail).
+# Matches create_channel.sh's convention: target address = orderer's own hostname,
+# so no --ordererTLSHostnameOverride is needed.
+ORDERER="orderer1.tetaguard.net:7050"
+ORDERER_CA="$NETWORK_DIR/crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer1.tetaguard.net/tls/ca.crt"
 PEER_MSP_DIR="$NETWORK_DIR/crypto-config/peerOrganizations/tetaguard.net"
 ADMIN_MSP="$PEER_MSP_DIR/users/Admin@tetaguard.net/msp"
 MSPID="TetaGuardMSP"
@@ -76,15 +86,30 @@ log "Step 1 — Validating Go chaincode (stub build — matches fabric-ccenv)"
 cd "$CHAINCODE_DIR"
 go mod tidy || err "go mod tidy failed — is Go installed?"
 
-# Step 1a: stub build (no CGO, no liboqs) — this is what the standard ccenv peer builds
-go build ./... || err "go build (stub mode) failed — fix compile errors before packaging"
+# Step 1a: stub build (no CGO, no liboqs) — this is what the standard ccenv peer builds.
+# -o /tmp/... : without an explicit output path, `go build ./...` writes a
+# binary named after the module (temporalecho) directly into CHAINCODE_DIR —
+# which then gets bundled into the chaincode package by Step 2, corrupting
+# it (peer lifecycle chaincode install then fails on every peer with
+# "failed to marshal response: string field contains invalid UTF-8", since
+# the ELF binary's raw bytes aren't valid UTF-8 wherever Fabric processes
+# package contents as strings).
+go build -o /tmp/cc_stub_validate ./... || err "go build (stub mode) failed — fix compile errors before packaging"
 log "  Stub build OK (this matches what fabric-ccenv will compile)"
 
 # Step 1b: optional liboqs validation (only if custom ccenv image is available)
 if docker image inspect teta-ccenv:latest >/dev/null 2>&1; then
     log "  teta-ccenv image found — validating liboqs build inside container"
+    # -o /tmp/... : writing the test binary back into the bind-mounted
+    # source dir fails with "permission denied" (container user can't write
+    # to the host-owned directory) even when the build itself succeeds —
+    # that's a false-negative on this validation step, not a real build
+    # failure. verification_liboqs.go's build tag was also flipped to be
+    # the default (no tag needed) since Fabric's own install path can't be
+    # told to pass -tags liboqs — see that file's header — but -tags liboqs
+    # here is still harmless (unused tag name, doesn't select anything).
     docker run --rm -v "$CHAINCODE_DIR:/chaincode" teta-ccenv:latest \
-        sh -c "cd /chaincode && CGO_ENABLED=1 go build -tags liboqs ./..." \
+        sh -c "cd /chaincode && CGO_ENABLED=1 go build -o /tmp/cc_validate ./..." \
         && log "  liboqs build OK (teta-ccenv)" \
         || log "  WARNING: liboqs build failed in teta-ccenv — check Dockerfile.ccenv"
 else
@@ -115,21 +140,31 @@ for peer_hp in "${RSU_PEERS[@]}"; do
     set_peer_env "$peer_hp"
     peer lifecycle chaincode install "$CC_PKG" \
         || log "  $peer_host: install returned non-zero (may already be installed)"
-
-    # Capture package ID from first peer
-    if [ -z "$PACKAGE_ID" ]; then
-        PACKAGE_ID=$(peer lifecycle chaincode queryinstalled 2>/dev/null \
-            | grep "$CC_LABEL" | awk '{print $3}' | tr -d ',')
-        log "  Package ID: $PACKAGE_ID"
-    fi
 done
 
+# Capture package ID from SYNCED_PEER specifically — some peers (rsu1) are
+# in an inconsistent gossip/ledger state (see SYNCED_PEER note below) and
+# their `queryinstalled` can itself fail; under `set -o pipefail` a failure
+# anywhere in the query|grep|awk pipe aborts the whole script, silently,
+# with no further steps run. Querying only the known-good peer avoids that.
+set_peer_env "peer0.rsu3.tetaguard.net:7053"
+PACKAGE_ID=$(peer lifecycle chaincode queryinstalled 2>/dev/null \
+    | grep "$CC_LABEL" | awk '{print $3}' | tr -d ',' || true)
+log "  Package ID: $PACKAGE_ID"
+
 [ -z "$PACKAGE_ID" ] && err "Could not determine package ID"
+
+# RSU_PEERS[0] (peer0.rsu1) is not reliably reachable for network operations
+# in this environment — gossip leader election among the 5 RSU peers doesn't
+# always converge, leaving some peers stuck (never receiving new blocks).
+# peer0.rsu3 is confirmed to sync correctly (verified during the initial
+# 1.0/1 deployment); use it for every step that needs a live, synced peer.
+SYNCED_PEER="peer0.rsu3.tetaguard.net:7053"
 
 # ─── Step 4: Approve for org ─────────────────────────────────────────────────
 
 log "Step 4 — Approving chaincode for TetaGuardOrg"
-set_peer_env "${RSU_PEERS[0]}"
+set_peer_env "$SYNCED_PEER"
 peer lifecycle chaincode approveformyorg \
     -o "$ORDERER" \
     --tls --cafile "$ORDERER_CA" \
@@ -144,7 +179,7 @@ log "  Approved"
 # ─── Step 5: Check commit readiness ─────────────────────────────────────────
 
 log "Step 5 — Checking commit readiness"
-set_peer_env "${RSU_PEERS[0]}"
+set_peer_env "$SYNCED_PEER"
 peer lifecycle chaincode checkcommitreadiness \
     --channelID "$CHANNEL" \
     --name "$CHAINCODE" \
@@ -155,15 +190,15 @@ peer lifecycle chaincode checkcommitreadiness \
 # ─── Step 6: Commit chaincode ────────────────────────────────────────────────
 
 log "Step 6 — Committing chaincode to '$CHANNEL'"
-# Build peer address args as a bash array to preserve paths with spaces
-PEER_ARGS_ARRAY=()
-for peer_hp in "${RSU_PEERS[@]}"; do
-    peer_host="${peer_hp%%:*}"
-    peer_tls="$PEER_MSP_DIR/peers/$peer_host/tls/ca.crt"
-    PEER_ARGS_ARRAY+=(--peerAddresses "$peer_hp" --tlsRootCertFiles "$peer_tls")
-done
+# Endorsement policy only needs one org member; target the confirmed-synced
+# peer rather than looping over all 5 (some of which time out waiting for
+# gossip delivery — see SYNCED_PEER note above).
+PEER_ARGS_ARRAY=(
+    --peerAddresses "$SYNCED_PEER"
+    --tlsRootCertFiles "$PEER_MSP_DIR/peers/${SYNCED_PEER%%:*}/tls/ca.crt"
+)
 
-set_peer_env "${RSU_PEERS[0]}"
+set_peer_env "$SYNCED_PEER"
 peer lifecycle chaincode commit \
     -o "$ORDERER" \
     --tls --cafile "$ORDERER_CA" \

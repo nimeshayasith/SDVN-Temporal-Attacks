@@ -33,8 +33,9 @@
 'use strict';
 
 const { Gateway, Wallets } = require('fabric-network');
-const fs   = require('fs');
-const path = require('path');
+const fs            = require('fs');
+const path          = require('path');
+const { execFileSync } = require('child_process');
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -155,11 +156,21 @@ async function submitToFabric(
         // ── Flow 1: Submit beacon evidence B_nk(t) ───────────────────────────
         if (beaconEvidence && beaconEvidence.observations &&
                 beaconEvidence.observations.length > 0) {
+            // Must exactly match SubmitBeaconEvidence's sigInput construction
+            // (temporalecho.go) — fixed-precision field concatenation, not
+            // JSON, so both languages' serializers don't need to agree
+            // byte-for-byte on key order/null-handling/float formatting.
+            const obsStr = beaconEvidence.observations.map(o =>
+                `${o.vehicle_id}|${o.sender_ts_ms}|${Number(o.gps_lat).toFixed(6)}|` +
+                `${Number(o.gps_lon).toFixed(6)}|${Number(o.rssi_dbm).toFixed(2)};`
+            ).join('');
+            const beaconSigInput = `${trustedNodeID}:${beaconInterval}:${obsStr}`;
+
             const evidenceRecord = {
                 peer_id:       trustedNodeID,
                 interval_ts:   beaconInterval,
                 observations:  beaconEvidence.observations,
-                peer_sig:      signWithDilithium2(trustedNodeID, JSON.stringify(beaconEvidence)),
+                peer_sig:      signWithMLDSA87(trustedNodeID, beaconSigInput),
                 peer_pub_key:  getPeerPubKey(trustedNodeID),
                 is_rsu_peer:   true,
                 doc_type:      'BEACON_EVIDENCE'
@@ -313,26 +324,68 @@ async function ensureRSUPeerRegistered(contract, trustedNodeID) {
     }
 }
 
-// ─── Crypto stubs ─────────────────────────────────────────────────────────────
+// ─── Real ML-DSA-87 (Dilithium5, NIST Category 5) signing ────────────────────
+//
+// Per the report's notation table, the PQC signing algorithm used everywhere
+// (location-binding Eq. 3.28, threshold aggregate sigs Eq. 3.26) is
+// ML-DSA-87 = CRYSTALS-Dilithium5. Falcon-1024 and Dilithium2 (Category 2)
+// are not in the report and are not used here.
+//
+// liboqs-node (the npm binding) failed to build in this environment (its
+// bundled node-gyp/liboqs submodule build errored out). Rather than debug a
+// third-party package's native build, this shells out to mldsa_tool — a
+// small Go CLI (mldsa_tool.go) wrapping the already-verified-working
+// liboqs-go binding, the same one the chaincode's verification_liboqs.go
+// uses. Keys are generated once per trustedNodeID and cached in keys/.
 
-/**
- * signWithDilithium2 produces a Dilithium2 signature σ_nk over message.
- * In production: call liboqs Node.js binding OQS.sign(msg, sk).
- * Simulation: returns a deterministic placeholder so the chaincode's
- * verifyDilithium2Sig (simulation mode) accepts it.
- */
-function signWithDilithium2(trustedNodeID, message) {
-    // Placeholder — replace with liboqs-node OQS.sign() call in production.
-    const placeholder = Buffer.from(`SIM_SIG:${trustedNodeID}:${message.length}`);
-    return Array.from(placeholder);
+const MLDSA_TOOL   = path.join(__dirname, 'mldsa_tool');
+const KEYSTORE_DIR = path.join(__dirname, 'keys');
+
+/** Runs mldsa_tool with the host's liboqs.so on LD_LIBRARY_PATH. */
+function runMldsaTool(args) {
+    return execFileSync(MLDSA_TOOL, args, {
+        encoding: 'utf8',
+        env: {
+            ...process.env,
+            LD_LIBRARY_PATH: `${process.env.HOME}/liboqs-local/lib:${process.env.LD_LIBRARY_PATH || ''}`
+        }
+    }).trim();
 }
 
 /**
- * getPeerPubKey returns the peer's Dilithium2 public key bytes.
- * In production: load from the wallet identity certificate.
+ * loadOrCreateKeyPair returns {pubKeyHex, secretKeyHex} for trustedNodeID,
+ * generating and persisting a fresh ML-DSA-87 keypair on first use.
+ */
+function loadOrCreateKeyPair(trustedNodeID) {
+    if (!fs.existsSync(KEYSTORE_DIR)) fs.mkdirSync(KEYSTORE_DIR, { recursive: true });
+    const keyFile = path.join(KEYSTORE_DIR, `${trustedNodeID}.json`);
+    if (fs.existsSync(keyFile)) {
+        return JSON.parse(fs.readFileSync(keyFile, 'utf8'));
+    }
+    const [pubKeyHex, secretKeyHex] = runMldsaTool(['keygen']).split(' ');
+    const keyPair = { pubKeyHex, secretKeyHex };
+    fs.writeFileSync(keyFile, JSON.stringify(keyPair));
+    console.log(`[Crypto] Generated new ML-DSA-87 keypair for ${trustedNodeID} -> ${keyFile}`);
+    return keyPair;
+}
+
+/**
+ * signWithMLDSA87 produces a real ML-DSA-87 signature σ_nk over message,
+ * using this peer's persisted keypair (generated on first use).
+ */
+function signWithMLDSA87(trustedNodeID, message) {
+    const { secretKeyHex } = loadOrCreateKeyPair(trustedNodeID);
+    const sigHex = runMldsaTool(['sign', secretKeyHex, message]);
+    return Array.from(Buffer.from(sigHex, 'hex'));
+}
+
+/**
+ * getPeerPubKey returns the peer's real ML-DSA-87 public key bytes (2592
+ * bytes), generating a keypair on first use if none exists yet.
  */
 function getPeerPubKey(trustedNodeID) {
-    return Array.from(Buffer.from(`SIMKEY:${trustedNodeID}`));
+    const { pubKeyHex } = loadOrCreateKeyPair(trustedNodeID);
+    return Array.from(Buffer.from(pubKeyHex, 'hex'));
 }
 
 /** Convert S_trig index array to a 9-bit bitmask. */

@@ -1,0 +1,67 @@
+# Dockerfile.ccenv — custom golang chaincode builder image with liboqs baked
+# in, for real ML-DSA-87 (Dilithium5) chaincode signature verification.
+#
+# The standard hyperledger/fabric-ccenv image has no liboqs installed, so a
+# plain `go build ./...` for this chaincode (which imports liboqs-go by
+# default — see verification_liboqs.go) fails to link. This image copies in
+# the same pre-built liboqs.so + headers that routing.cc already links
+# against (~/liboqs-local on the host), and sets the CGO/pkg-config env so
+# the Fabric peer's legacy golang chaincode build (which just runs
+# `go build ./...` inside this image, with no way to pass custom flags)
+# links successfully.
+#
+# Build:  docker build -t teta-ccenv:latest -f Dockerfile.ccenv .
+# Use:    set CORE_CHAINCODE_BUILDER=teta-ccenv:latest in the peer environment
+#         (docker-compose-teta.yaml) so the peer spins up this image instead
+#         of the stock fabric-ccenv for "golang" chaincode installs.
+
+FROM hyperledger/fabric-ccenv:3.1
+
+# Base image has no pkg-config binary (needed by liboqs-go's cgo pragma to
+# resolve CFLAGS/LDFLAGS). Base image's default user ("chaincode") can't
+# write to /etc/apt, so install as root explicitly.
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+USER chaincode
+
+# liboqs.so + headers, pre-built on the host at ~/liboqs-local (same install
+# routing.cc's wscript already links against via -I/-L ~/liboqs-local).
+COPY liboqs-local/lib /opt/liboqs/lib
+COPY liboqs-local/include /opt/liboqs/include
+
+# liboqs.so was built against OpenSSL 3.5.3 (host) and references symbols
+# (e.g. EVP_DigestSqueeze) not present in the base image's OpenSSL 3.0.13.
+# Bundle the matching host libssl/libcrypto so the link (and later runtime)
+# resolve against a compatible version instead of the older system one.
+COPY host-openssl/libssl.so.3 /opt/liboqs/lib/libssl.so.3
+COPY host-openssl/libcrypto.so.3 /opt/liboqs/lib/libcrypto.so.3
+
+# Fabric's legacy golang chaincode build (core/chaincode/platforms/golang,
+# baked into the peer binary — not something teta-ccenv can override) always
+# links with `-linkmode external -extldflags '-static'`, i.e. a fully
+# static binary. CGO code can't statically link against a .so, so the
+# static archives (.a) must be present for the linker to pick instead:
+# liboqs.a (already built alongside liboqs.so on the host) and static
+# OpenSSL (host's /usr/lib/x86_64-linux-gnu/lib{ssl,crypto}.a, matching the
+# 3.5.3 the dynamic .so.3 above also uses). glibc's own static archives
+# (libc.a etc.) are already present in the base image.
+COPY liboqs-local/lib/liboqs.a /opt/liboqs/lib/liboqs.a
+COPY static-libs/libssl.a /opt/liboqs/lib/libssl.a
+COPY static-libs/libcrypto.a /opt/liboqs/lib/libcrypto.a
+# This OpenSSL build has zstd compression support compiled in, so its
+# static archive needs libzstd.a too.
+COPY static-libs/libzstd.a /opt/liboqs/lib/libzstd.a
+
+# liboqs-go's cgo pragma expects a pkg-config file named exactly "liboqs-go"
+# (not "liboqs") — see oqs.go: `#cgo pkg-config: liboqs-go`.
+COPY liboqs-go.pc /opt/liboqs/pkgconfig/liboqs-go.pc
+
+ENV CGO_ENABLED=1
+ENV PKG_CONFIG_PATH=/opt/liboqs/pkgconfig
+# LD_LIBRARY_PATH covers runtime linking for the built chaincode binary too
+# (base image runs as a non-root user, so /etc/ld.so.conf.d isn't writable
+# here — this env var achieves the same result without needing ldconfig).
+# Also makes the bundled newer libssl/libcrypto take priority over the
+# system ones at both link and run time.
+ENV LD_LIBRARY_PATH=/opt/liboqs/lib

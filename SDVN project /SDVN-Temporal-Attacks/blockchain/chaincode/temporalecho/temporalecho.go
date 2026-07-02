@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
@@ -64,7 +65,25 @@ func (t *TemporalEchoMitigator) SubmitBeaconEvidence(
 		}
 	}
 
-	if !verifyFalcon1024Sig(record.PeerSig, evidenceJSON, record.PeerPubKey) {
+	// Canonical signed payload: PeerID, IntervalTS, Observations only —
+	// mirrors anchor.go's sigInput pattern (SyncFromAnchorCheckpoint) and
+	// SubmitLWDetectionResult's. Verifying against the raw evidenceJSON
+	// (the full submitted string, which itself contains PeerSig) was
+	// self-referential and could never validate: a signature cannot cover
+	// a message that includes that same signature.
+	//
+	// Fixed-precision field concatenation (not json.Marshal) so the JS
+	// client can reproduce this exact string without depending on two
+	// different languages' JSON serializers agreeing byte-for-byte (key
+	// order, null-handling for fields the JS side never sets, float
+	// formatting) — see signWithMLDSA87's call site in submitToFabric.js.
+	var obsBuf strings.Builder
+	for _, o := range record.Observations {
+		fmt.Fprintf(&obsBuf, "%s|%d|%.6f|%.6f|%.2f;",
+			o.VehicleID, o.SenderTSMs, o.GPSLat, o.GPSLon, o.RSSIdBm)
+	}
+	sigInput := fmt.Sprintf("%s:%d:%s", record.PeerID, record.IntervalTS, obsBuf.String())
+	if !verifyMLDSA87Sig(record.PeerSig, sigInput, record.PeerPubKey) {
 		return fmt.Errorf("SubmitBeaconEvidence: invalid peer signature from %s", record.PeerID)
 	}
 
@@ -88,7 +107,16 @@ func (t *TemporalEchoMitigator) SubmitDetectionEvent(
 	}
 	event.DocType = "DETECTION_EVENT"
 
-	if !verifyFalcon1024Sig(event.PeerSig, eventJSON, getPeerPubKey(ctx, event.PeerID)) {
+	// Canonical signed payload excludes PeerSig itself — same fix as
+	// SubmitBeaconEvidence, matching anchor.go/SubmitLWDetectionResult's
+	// pattern. Note: this function is not currently invoked by
+	// submitToFabric.js (detection events go through Mitigate instead,
+	// which does not verify a per-event signature), so this fix is for
+	// correctness/future callers rather than the currently exercised path.
+	sigInput := fmt.Sprintf("%s:%s:%s:%f:%d:%d",
+		event.PeerID, event.VehicleID, event.AttackVariant,
+		event.AnomalyScore, event.TriggeredSigs, event.AlertTS)
+	if !verifyMLDSA87Sig(event.PeerSig, sigInput, getPeerPubKey(ctx, event.PeerID)) {
 		return fmt.Errorf("SubmitDetectionEvent: invalid signature from peer %s", event.PeerID)
 	}
 
@@ -225,7 +253,7 @@ func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
     }
     sigInput := fmt.Sprintf("%s:%s:%s:%s:%s", callerPeerID, vehicleID, anomalyScoreStr, alphaVariant, intervalTSStr)
     pubKey := getPeerPubKey(ctx, callerPeerID)
-    if !verifyFalcon1024Sig(sigBytes, sigInput, pubKey) {
+    if !verifyMLDSA87Sig(sigBytes, sigInput, pubKey) {
         return fmt.Errorf("SubmitLWDetectionResult: invalid Falcon-1024 sig from %s", callerPeerID)
     }
 
@@ -997,7 +1025,7 @@ func (t *TemporalEchoMitigator) SubmitIndividualSigEvidence(
 	if e.TS == 0 {
 		e.TS = txTimestampMs(ctx)
 	}
-	if !verifyFalcon1024Sig(e.Signature, e.Message, e.PubKey) {
+	if !verifyMLDSA87Sig(e.Signature, e.Message, e.PubKey) {
 		return fmt.Errorf("SubmitIndividualSigEvidence: invalid Falcon-1024 signature from signer %s", e.SignerID)
 	}
 	key := fmt.Sprintf("SIG_EVIDENCE:%s:%d:%s", e.VehicleID, e.TS, e.SignerID)
@@ -1020,7 +1048,7 @@ func (t *TemporalEchoMitigator) SubmitWitnessRecord(
 	// Verify Falcon-1024 signature at submission to prevent forged records
 	// polluting the immutable ledger (Eq. 3.28).
 	if len(w.Signature) > 0 || len(w.PubKey) > 0 {
-    	if !verifyFalcon1024Sig(w.Signature, w.Message, w.PubKey) {
+    	if !verifyMLDSA87Sig(w.Signature, w.Message, w.PubKey) {
         	return fmt.Errorf("SubmitWitnessRecord: invalid Falcon-1024 signature from reporter %s", w.ReporterID)
     	}
 	}

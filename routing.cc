@@ -1869,6 +1869,21 @@ std::map<std::string, double> pem_link_first_recorded_time;
 std::map<uint32_t, double> pem_last_authentic_beacon_reception;
 std::map<std::string, double> pem_previous_path_counts;
 std::vector<PemEvent> pem_all_events;
+
+// ── Issue 11 fix — dedicated RSU-observed beacon-rate log for Eq. 3.8's λ̂(t) ──
+// Eq. 3.8 specifies λ̂(t) as "estimated from RSU-observed beacon rates,"
+// distinct from the per-node LW signature detector's g_pem_node_lw_state
+// event_window (a mixed-type — beacon/topology/heartbeat — window that is
+// also used and trimmed for TTW/BSHH signature lookback, e.g. BSHH-S3's 27s
+// liveness window). Previously PemComputeLambdaHat read directly from
+// ns.event_window, coupling the density estimate to that unrelated window's
+// contents and eviction policy. g_rsu_beacon_log is a separate, beacon-only,
+// independently-trimmed log so ME-S1 (rho_max)/ME-S2 (delta_max) density
+// estimates are architecturally decoupled from the LW/BSHH-signature window,
+// while leaving g_pem_node_lw_state/ns.event_window and every existing
+// signature check (TTW-S1..S3, BSHH-S1..S3) completely untouched.
+static std::deque<PemEvent> g_rsu_beacon_log;
+
 double pem_under_attack_pdr_sum = 0.0;
 double pem_under_attack_te2e_sum = 0.0;
 double pem_post_mitigation_pdr_sum = 0.0;
@@ -2514,6 +2529,7 @@ PemGetPhaseLabel()
 static std::string PemEventTypeToString(PemEventType type);
 static std::string PemGetLinkKey(uint32_t srcId, uint32_t dstId);
 static void PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds);
+static void PemTrimRsuBeaconLog(double nowSeconds);
 static double PemDistance2d(const Vector& a, const Vector& b);
 static std::set<uint32_t> PemCollectReportersForLink(const PemEvent& event, const PemNodeLWState& ns);
 static double PemComputeLambdaHat(const PemEvent& event, const PemNodeLWState& ns);
@@ -2711,6 +2727,26 @@ PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds)
     }
 }
 
+// Trims g_rsu_beacon_log (Issue 11 fix) using the SAME time window as
+// PemTrimSlidingWindow's event_window trim, for consistency with the
+// codebase's existing choice of "how far back counts as current" — this
+// intentionally reuses that constant rather than introducing a new tunable.
+// This is the only place g_rsu_beacon_log is trimmed; it is never subject to
+// event_window's count cap (g_pem_w_max_events) or link_report_history's
+// L_link eviction, since those bound signature-detector state, not this
+// density estimator's independent log.
+static void
+PemTrimRsuBeaconLog(double nowSeconds)
+{
+    const double trim_window = (g_pem_bshh3_liveness_window_s > PEM_HEARTBEAT_WINDOW_S)
+                             ? g_pem_bshh3_liveness_window_s : PEM_HEARTBEAT_WINDOW_S;
+    while (!g_rsu_beacon_log.empty() &&
+           (nowSeconds - g_rsu_beacon_log.front().reception_timestamp) > trim_window)
+    {
+        g_rsu_beacon_log.pop_front();
+    }
+}
+
 static double
 PemDistance2d(const Vector& a, const Vector& b)
 {
@@ -2758,14 +2794,24 @@ PemCollectReportersForLink(const PemEvent& event, const PemNodeLWState& ns)
 static double
 PemComputeLambdaHat(const PemEvent& event, const PemNodeLWState& ns)
 {
+    // Issue 11 fix: source from g_rsu_beacon_log (dedicated, beacon-only,
+    // independently-trimmed) instead of ns.event_window (shared, mixed-type,
+    // trimmed for the LW signature detector's own lookback needs — e.g.
+    // BSHH-S3). `ns` is retained in the signature only because both callers
+    // (PemComputeRhoMaxForLink, PemComputeDeltaMax) already receive it and
+    // pass it through; it is otherwise unused here now.
+    (void)ns;
     const double corridorLength = 2.0 * TTW_COMM_RANGE;   // metres
     if (corridorLength <= 0.0) return 0.0;
 
     std::set<uint32_t> vehiclesNearLink;
-    for (std::deque<PemEvent>::const_iterator w = ns.event_window.begin();
-         w != ns.event_window.end();
+    for (std::deque<PemEvent>::const_iterator w = g_rsu_beacon_log.begin();
+         w != g_rsu_beacon_log.end();
          ++w)
     {
+        // g_rsu_beacon_log only ever holds PEM_EVENT_BEACON entries by
+        // construction (see population site in PemEvaluateEvent), but this
+        // guard is kept for defensive clarity.
         if (w->type != PEM_EVENT_BEACON)
         {
             continue;
@@ -3712,6 +3758,11 @@ PemEvaluateEvent(PemEvent& event)
     {
         ns.last_authentic_beacon_reception[event.claimed_sender_id] =
             event.reception_timestamp;
+        // Issue 11 fix: dedicated RSU-observed beacon-rate log for Eq. 3.8's
+        // lambda_hat(t) — independent of ns.event_window (see g_rsu_beacon_log
+        // declaration and PemTrimRsuBeaconLog for rationale).
+        g_rsu_beacon_log.push_back(event);
+        PemTrimRsuBeaconLog(event.reception_timestamp);
     }
     if (event.type == PEM_EVENT_HEARTBEAT)
     {

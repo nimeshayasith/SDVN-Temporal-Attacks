@@ -49,6 +49,8 @@ Stored HB time        : t=5
 [CryptoFilter] 4 in → 4 out  (dropped: 0 MAC, 0 stale, 0 nonce)
                log: crypto_filter_log.txt
 [TGN] tgn_alerts.json written: 2 alert(s) → tgn_alerts.json
+[TGN] beacon_evidence.csv written: 0 observation(s)
+[TGN] ctrl_topo.json written: 0 link(s)
 [TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========

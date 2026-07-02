@@ -100,11 +100,11 @@ Orderer: &OrdererDefaults
   # 4 orderer nodes satisfy 3f+1 = 4 for f=1 Byzantine fault tolerance.
   # This replaces the etcdraft (crash-fault-tolerant) orderer used in Fabric 2.x.
   OrdererType: BFT
-  Addresses:
-    - orderer1.tetaguard.net:7050
-    - orderer2.tetaguard.net:7150
-    - orderer3.tetaguard.net:7250
-    - orderer4.tetaguard.net:7350
+  # Global Addresses removed: Fabric 3.0's V3_0 channel capability (enabled
+  # below) rejects a global Orderer.Addresses list — orderer endpoints must
+  # be declared per-organization only, via OrdererEndpoints under &OrdererOrg
+  # (already present above, lines 39-43). Configtxgen error without this fix:
+  # "global orderer endpoints exist, but can not be used with V3_0 capability".
   # C-1: BatchTimeout 20ms — worst-case commit path (BFT latency + block delivery)
   # still fits within the 100ms beacon budget. See §3.4.10 latency analysis.
   BatchTimeout: 20ms
@@ -206,7 +206,9 @@ Profiles:
         - *TetaGuardOrg
       Capabilities:
         <<: *ApplicationCapabilities
-    Consortiums:
-      TetaConsortium:
-        Organizations:
-          - *TetaGuardOrg
+    # Consortiums block removed: Fabric 3.x has no system channel, so an
+    # application channel profile must not declare Consortiums — orderers
+    # reject the join with "invalid config: contains consortiums: system
+    # channel not supported" if it's present. configtxgen already warned
+    # about this ("'Consortiums' should be nil") when the block generated
+    # successfully but silently included it anyway.

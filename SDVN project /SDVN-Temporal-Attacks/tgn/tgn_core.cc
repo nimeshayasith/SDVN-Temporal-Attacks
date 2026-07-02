@@ -1707,6 +1707,121 @@ static void TGN_WriteSummary()
     if (g_tgn_summary_txt.is_open()) { g_tgn_summary_txt << out.str(); g_tgn_summary_txt.flush(); }
 }
 
+// ns3_to_gps() is defined in .crypto_src/teta_guard_filter.h, which routing.cc
+// #includes AFTER .tgn_src/tgn_core.cc — forward-declare it here so this
+// translation unit (they are spliced into one TU by routing.cc's #includes)
+// can call it before that later #include point is reached.
+static void ns3_to_gps(double x_m, double y_m, float *lat, float *lon);
+
+// Write BeaconEvidenceRecord B_nk(t) observations (Algorithm 2/4, Eq. 3.44
+// {B_nk(t)}) as beacon_evidence.csv, columns matching what submitToFabric.js's
+// loadBeaconEvidence() parses: rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,
+// gps_lat,gps_lon,rssi_dbm.
+//
+// Source: pem_all_events (already the connected, live, cross-node accumulator
+// populated by PemEvaluateEvent for every event this run) filtered to genuine
+// PEM_EVENT_BEACON self-reports (attack_label == false) — i.e., exactly the
+// raw beacon receptions a real trusted node (RSU or designated OBU) would
+// have observed and be attesting to. No dependency on crypto_pipeline.cc,
+// which is not connected to routing.cc (confirmed: its own separate main()
+// is never #included).
+//
+// rssi_dbm: PemEvent::rssi_reporter_dbm is only computed for
+// PEM_EVENT_TOPOLOGY_UPDATE events (ME-S3 signature, Eq. 3.11); it is left at
+// its PEM_SIGNAL_PLACEHOLDER (-9999.0) sentinel for beacon events, since no
+// trusted-node receiver position exists in this implementation to compute a
+// distance-based synthetic RSSI for a beacon reception. Carried through as-is
+// rather than fabricated.
+static void TGN_WriteBeaconEvidenceCsv()
+{
+    std::ofstream f("beacon_evidence.csv");
+    if (!f.is_open()) return;
+    f << "rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,gps_lat,gps_lon,rssi_dbm\n";
+
+    // All observations from this run are batched under one (rsu_id,
+    // interval_ts_ms) group — loadBeaconEvidence() takes the first group it
+    // finds, so a single consistent group covering the whole run is correct
+    // for a one-shot per-run submission (matches how tgn_alerts.json is also
+    // written once, at end of run, not per-beacon-interval).
+    const std::string rsu_id = (N_RSUs > 0) ? "RSU_LIVE" : "OBU_LIVE";
+
+    // This function runs after Simulator::Destroy() (routing.cc calls
+    // TGN_RunPipeline() post-Destroy), so Simulator::Now() no longer reflects
+    // the run's sim time — it reads back 0. Use the latest recorded event
+    // timestamp from this run instead, matching how the rest of this function
+    // (and TGN_WriteAlertsJson()) already source time from stored PemEvent
+    // fields rather than a live clock read.
+    double last_reception_s = 0.0;
+    for (const PemEvent& e : pem_all_events) {
+        if (e.reception_timestamp > last_reception_s) last_reception_s = e.reception_timestamp;
+    }
+    const int64_t interval_ts_ms = (int64_t)(last_reception_s * 1000.0);
+
+    f << std::fixed << std::setprecision(6);
+    size_t n = 0;
+    for (const PemEvent& e : pem_all_events) {
+        if (e.type != PEM_EVENT_BEACON) continue;
+        if (e.attack_label) continue;   // evidence = genuine observations only
+
+        float lat = 0.0f, lon = 0.0f;
+        ns3_to_gps(e.reporter_position.x, e.reporter_position.y, &lat, &lon);
+
+        f << rsu_id << ","
+          << interval_ts_ms << ","
+          << e.claimed_sender_id << ","
+          << (int64_t)(e.sender_timestamp * 1000.0) << ","
+          << lat << ","
+          << lon << ","
+          << e.rssi_reporter_dbm << "\n";
+        ++n;
+    }
+    f.close();
+    std::cout << "[TGN] beacon_evidence.csv written: " << n << " observation(s)\n";
+}
+
+// Write ControllerTopologyClaim G_t^C (Eq. 3.45's E_t^C side, Flow 3) as
+// ctrl_topo.json, matching submitToFabric.js's --ctrl_topo shape and the
+// chaincode's ControllerTopologyClaim/TopologyLink structs (structs.go:67-81):
+//   { "controller_id", "interval_ts", "links": [{"node_a","node_b","ts_ms"}] }
+//
+// Source: ttw_controller_table — the controller's own live in-memory topology
+// database (routing.cc, defined well before tgn_core.cc's #include point, so
+// already visible here — same table TGN_CheckControllerDivergence's E_t^C
+// proxy conceptually mirrors, though that function reads attack_T_matrix
+// specifically for forged entries; this writer reports the controller's full
+// claimed topology, forged and legitimate alike, matching what a real
+// ControllerTopologyClaim submission would contain).
+static void TGN_WriteCtrlTopoJson()
+{
+    std::ofstream f("ctrl_topo.json");
+    if (!f.is_open()) return;
+
+    double last_ts_s = 0.0;
+    for (const auto& kv : ttw_controller_table) {
+        if (kv.second.timestamp > last_ts_s) last_ts_s = kv.second.timestamp;
+    }
+
+    f << std::fixed << std::setprecision(3);
+    f << "{\n"
+      << "  \"controller_id\": \"sdn-controller\",\n"
+      << "  \"interval_ts\": " << (int64_t)(last_ts_s * 1000.0) << ",\n"
+      << "  \"links\": [\n";
+
+    bool first = true;
+    size_t n = 0;
+    for (const auto& kv : ttw_controller_table) {
+        const TopologyPacket& p = kv.second;
+        if (!first) f << ",\n";
+        first = false;
+        f << "    {\"node_a\": \"" << p.src_id << "\", \"node_b\": \"" << p.seen_id
+          << "\", \"ts_ms\": " << (int64_t)(p.timestamp * 1000.0) << "}";
+        ++n;
+    }
+    f << "\n  ]\n}\n";
+    f.close();
+    std::cout << "[TGN] ctrl_topo.json written: " << n << " link(s)\n";
+}
+
 // Write AlertObject array (Eq 3.36) for TemporalEchoMitigator::SubmitAlert.
 // alpha is sourced from Eq 3.25 classification (stored in alert_variants_ via
 // GetAlertVariant) when weights are loaded; falls back to scenario heuristic.
@@ -1807,11 +1922,29 @@ static void TGN_WriteAlertsJson()
         // Resolve absolute path of the JSON output (written to CWD by waf --run)
         char cwd_buf[512] = {};
         const char* cwd = getcwd(cwd_buf, sizeof(cwd_buf)) ? cwd_buf : ".";
-        const std::string alerts_path = std::string(cwd) + "/tgn_alerts.json";
+        const std::string alerts_path    = std::string(cwd) + "/tgn_alerts.json";
+        const std::string evidence_path  = std::string(cwd) + "/beacon_evidence.csv";
+        const std::string ctrl_topo_path = std::string(cwd) + "/ctrl_topo.json";
 
-        // node <script> <alerts_json> [--tier <1|2>] &
+        // Beacon evidence B_nk(t) and the controller's topology claim G_t^C
+        // must exist before dispatch so --evidence/--ctrl_topo point at real,
+        // freshly-written data from THIS run.
+        TGN_WriteBeaconEvidenceCsv();
+        TGN_WriteCtrlTopoJson();
+
+        // node <script> --alerts <alerts_json> --evidence <beacon_evidence.csv>
+        //               --ctrl_topo <ctrl_topo.json> [--tier <1|2>] &
+        // submitToFabric.js's main() only parses "--flag value" pairs (it never
+        // reads a bare positional argument) — a bare path here was silently
+        // ignored every run, leaving alertsPath at the hardcoded default
+        // 'tgn_alerts_crypto.json', which nothing connected to routing.cc
+        // produces, so the submission failed on every single run (silently,
+        // since output is redirected to /dev/null and system() with a
+        // backgrounded '&' command returns 0 regardless of the job's outcome).
         std::string cmd = "node \"" + js_path + "\""
-                        + " \"" + alerts_path + "\""
+                        + " --alerts \"" + alerts_path + "\""
+                        + " --evidence \"" + evidence_path + "\""
+                        + " --ctrl_topo \"" + ctrl_topo_path + "\""
                         + " --tier " + std::to_string(N_RSUs > 0 ? 1 : 2)
                         + " > /dev/null 2>&1 &";
 

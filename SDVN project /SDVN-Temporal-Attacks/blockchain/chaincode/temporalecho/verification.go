@@ -9,7 +9,7 @@ import (
 
 // Cryptographic and spatial verification helpers for Algorithm 4.
 //
-// verifyFalcon1024Sig is defined in one of two build-tag files:
+// verifyMLDSA87Sig is defined in one of two build-tag files:
 //   verification_stub.go   — default build (no liboqs; requires TETA_SIMULATION_MODE=1)
 //   verification_liboqs.go — build with: go build -tags liboqs
 
@@ -19,7 +19,7 @@ import (
 func verifyThresholdSig(evidence []IndividualSigEvidence, thresholdT int) bool {
 	valid := 0
 	for _, e := range evidence {
-		if verifyFalcon1024Sig(e.Signature, e.Message, e.PubKey) {
+		if verifyMLDSA87Sig(e.Signature, e.Message, e.PubKey) {
 			valid++
 		}
 	}
@@ -74,7 +74,7 @@ func verifyQuorum(
 
 	accepted := 0
 	for _, w := range witnesses {
-		if !verifyFalcon1024Sig(w.Signature, w.Message, w.PubKey) {
+		if !verifyMLDSA87Sig(w.Signature, w.Message, w.PubKey) {
 			continue
 		}
 		dist := haversineDistanceM(w.ReporterLat, w.ReporterLon,
