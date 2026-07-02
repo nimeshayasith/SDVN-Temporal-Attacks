@@ -33,7 +33,7 @@ Stored HB time        : t=5
 Current neighbor size is 0Received packet from 7 of size 12packet timestamp 5.000s with delay 1ms
 [BSHH-S4][t=5.100]  Ctrl0(ns3=0) stores stale copies (from RSU aggregate)  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  (internal replay at t=10)
 [BSHH-S4][t=10.000]  Ctrl0(ns3=0) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
-[BSHH-S4][t=10.000]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=1 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=10.000]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=3 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
 [BSHH-S4][t=10.000]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> PASS  |  VERIFY_THRESHOLD_SIG 2/2 >= t=2 -> PASS
 [BSHH-S4][t=10.000]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V5
 
@@ -43,10 +43,9 @@ Current neighbor size is 0Received packet from 7 of size 12packet timestamp 5.00
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 4 in → 4 out  (dropped: 0 MAC, 0 stale, 0 nonce)
-               log: crypto_filter_log.txt
+[CryptoFilter] 5 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 2 alert(s) → tgn_alerts.json
-[TGN] beacon_evidence.csv written: 0 observation(s)
+[TGN] beacon_evidence.csv written: 1 observation(s)
 [TGN] ctrl_topo.json written: 0 link(s)
 [TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
 

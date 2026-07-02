@@ -45,7 +45,7 @@ Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.0
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 2 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 3 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========

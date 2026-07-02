@@ -38,9 +38,7 @@ SCENARIO 12 - ME-S4 ATTACK CONFIGURED
 Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.000s with delay 1ms
 [ME-S4][t=10.100]  Controller --FABRICATED echo (RSU path)--> own table  V1->V5->V2  PHANTOM
 [ME-S4][t=10.100]  Controller --FABRICATED echo (RSU path)--> own table  V1->V8->V2  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.100]  FS-MITIGATE gate: delta_t=4 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.100]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[Trust][t=10.100]  C_0 tau=0.900 >= tau_min^C — monitoring
+[ME-S4][t=10.100]  FS-MITIGATE gate: delta_t=3 (Eq.3.45)  delta_thresh=7 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
 [ME-S4][t=10.100]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> PASS  |  VERIFY_QUORUM 0/4 >= t=3 -> FAIL
 [ME-S4][t=10.100]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
 
@@ -50,22 +48,19 @@ Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.0
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 6 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=4 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 1 alert(s) → tgn_alerts.json
-[TGN] beacon_evidence.csv written: 0 observation(s)
-[TGN] ctrl_topo.json written: 7 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
+[CryptoFilter] 8 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 12 — ME-S4: Malicious Controller, With RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 1 / 4 / 0 / 1
-  [ctrl] TP/TN/FP/FN : 1 / 0 / 0 / 1
+  TP/TN/FP/FN : 0 / 4 / 0 / 2
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 2
   [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
-  MCC         : 0.632
+  MCC         : 0.000
   AUROC       : 1.000
-  ACR         : 83.333 %
-  Tdet        : 0.000 ms
+  ACR         : 66.667 %
+  Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
