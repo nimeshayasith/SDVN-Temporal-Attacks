@@ -1304,10 +1304,13 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
 {
     if (!g_tgn || node_events.empty()) return;
 
-    // Per-node feature extraction state — independent local view
-    g_tgn_last_sender_ts.clear();
-    g_tgn_link_reporters.clear();
-    g_tgn_beacon_windows.clear();
+    // Per-node feature extraction state — independent local view.
+    // Now keyed by trusted_node_id (see g_tgn_* declarations); clearing this
+    // node's own slot is defensive (each node is only ever processed once
+    // per run) but keeps the "independent view per node" guarantee explicit.
+    g_tgn_last_sender_ts[trusted_node_id].clear();
+    g_tgn_link_reporters[trusted_node_id].clear();
+    g_tgn_beacon_windows[trusted_node_id].clear();
 
     const char* tier_label = (tier == 1) ? "Tier1-RSU" : "Tier2-OBU";
     const char* mitig_mode = (tier == 1) ? "FlowMod"   : "BlacklistBeacon";
@@ -1319,14 +1322,14 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
 
     for (const PemEvent& e : node_events) {
         if (e.type == PEM_EVENT_BEACON) {
-            auto& win = g_tgn_beacon_windows[e.claimed_sender_id];
+            auto& win = g_tgn_beacon_windows[trusted_node_id][e.claimed_sender_id];
             win.push_back(e.reception_timestamp);
             while ((int)win.size() > TGN_WMAX) win.erase(win.begin());
             continue;
         }
 
         ++round_count;   // each non-BEACON event = one detection round
-        tgn::NodeFeatures feat = TGN_ExtractFeatures(e);
+        tgn::NodeFeatures feat = TGN_ExtractFeatures(e, trusted_node_id);
         double ef = TGN_EdgeFreshness(e.reception_timestamp, e.sender_timestamp);
         double tgn_score = g_tgn->ProcessEvent(feat, e.link_src_id, e.link_dst_id,
                                                 e.reception_timestamp);
@@ -1946,8 +1949,9 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     }
 
     // Beacon events: update sliding window only (no detection round).
+    // Scoped to trusted_node_id — see g_tgn_beacon_windows declaration.
     if (e.type == PEM_EVENT_BEACON) {
-        auto& win = g_tgn_beacon_windows[e.claimed_sender_id];
+        auto& win = g_tgn_beacon_windows[trusted_node_id][e.claimed_sender_id];
         win.push_back(e.reception_timestamp);
         while ((int)win.size() > TGN_WMAX) win.erase(win.begin());
         return;
@@ -1992,7 +1996,7 @@ static void TGN_ProcessEventInline(const PemEvent& e)
         g_tgn_E_was_ever_nonempty = true;
     }
 
-    tgn::NodeFeatures feat = TGN_ExtractFeatures(e);
+    tgn::NodeFeatures feat = TGN_ExtractFeatures(e, trusted_node_id);
     double ef       = TGN_EdgeFreshness(e.reception_timestamp, e.sender_timestamp);
     double tgn_score = g_tgn->ProcessEvent(feat, e.link_src_id, e.link_dst_id,
                                             e.reception_timestamp);

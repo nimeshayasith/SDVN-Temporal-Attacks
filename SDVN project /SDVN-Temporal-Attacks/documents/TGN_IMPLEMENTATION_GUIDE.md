@@ -62,6 +62,22 @@ This combination — temporal memory + fresh-weighted graph structure — is wha
 
 ## 2. Where TGN Fits in the 5-Layer Pipeline
 
+> **⚠ This section (and §5, §6, §14 below) describe the batch-replay path
+> (`TGN_ProcessAllEvents`), which runs post-simulation after
+> `Simulator::Destroy()`. That is NOT the path that actually executes.**
+> `routing.cc` calls `TGN_Init()` before `Simulator::Run()`, which sets
+> `g_tgn_online_mode = true`. From that point on, every PEM event is scored
+> immediately by `TGN_ProcessEventInline()` (tgn_core.cc §11a) as it's
+> recorded — during the simulation, not after it. `TGN_RunPipeline()` still
+> runs after `Simulator::Destroy()`, but when `g_tgn_online_mode` is true it
+> detects that events were already processed inline and skips
+> re-initialisation/re-processing — it only runs the (now-passthrough, see
+> §4 note below) secondary crypto audit and writes the output files. The
+> diagram and step sequence below are still useful as a description of the
+> algorithm's *logic* (feature extraction → GRU → message passing → score),
+> but read "runs once per event as it arrives" wherever this section says
+> "runs once, post-simulation, over the full batch."
+
 ```
 LAYER 1 — CRYPTO PRE-FILTER  (routing.cc::PemCryptoPreFilter)
            Runs DURING simulation for every event.
@@ -92,7 +108,7 @@ LAYER 5 — BLOCKCHAIN  (Hyperledger Fabric — SEPARATE process)
            Not compiled into routing.cc.
 ```
 
-**Key architectural fact:** Layers 3 and 4 are both inside `.tgn_src/tgn_core.cc`, which is `#include`d into `routing.cc` at line 1389. They run **after** `Simulator::Destroy()`, not during simulation. Layer 1 runs during simulation.
+**Key architectural fact:** Layers 3 and 4 are both inside `.tgn_src/tgn_core.cc`, which is `#include`d into `routing.cc` at line 1389. Layer 1 runs during simulation. **Layer 4 (TGN inference) also runs during simulation now**, via the online/inline path described in the warning above — only Layer 3 (the crypto audit) and output-file writing still happen after `Simulator::Destroy()`.
 
 ---
 
@@ -124,6 +140,20 @@ LAYER 5 — BLOCKCHAIN  (Hyperledger Fabric — SEPARATE process)
 ---
 
 ## 4. Layer 3: Secondary Crypto Gate (TGN_ApplyCryptoFilter)
+
+> **⚠ Also stale:** `TGN_ApplyCryptoFilter()` no longer re-derives or drops
+> anything (Finding-14 fix in tgn_core.cc §6). The primary gate
+> (`routing.cc::PemCryptoPreFilter` → `TetaGuardCryptoFilter()`) already
+> performs the real Eq. 3.15/3.16/3.17 checks (genuine HMAC-SHA256, not the
+> `physical==claimed` proxy described below) plus the Eq. 3.26–3.30
+> threshold-sig/location-binding checks before an event ever reaches
+> `pem_all_events`. `TGN_ApplyCryptoFilter()` is now a thin passthrough that
+> returns its input unchanged and just writes an explanatory
+> `crypto_filter_log.txt` — it does not, and cannot, drop `DROP-MAC` /
+> `DROP-STALE` / `DROP-NONCE` events the way the rest of this section
+> describes. The "why a second gate" rationale, the three-check walkthrough,
+> and the example `crypto_filter_log.txt` output below all describe the
+> **old** secondary-pass design and no longer reflect what the code does.
 
 ### Why a second crypto gate?
 
@@ -236,21 +266,36 @@ Event e (topology update or heartbeat)
 
 ## 6. Global State Maps — The Memory Outside the GRU
 
-Three global maps accumulate state across the entire event sequence within one TGN pipeline run. They are cleared at the start of `TGN_ProcessAllEvents()` and never shared across simulation runs.
+> **⚠ Correction:** this section previously said these maps are "cleared at
+> the start of `TGN_ProcessAllEvents()` and never shared across simulation
+> runs" — true only of the batch path. The live online/inline path
+> (`TGN_ProcessEventInline`, see §2 warning) used to share one flat instance
+> of these maps across *every* trusted node processed in the same run, since
+> inline events from different observers (e.g. an RSU and the controller
+> sentinel in S4/S8/S12) interleave in real time rather than being processed
+> one node's slice at a time. That was a real cross-contamination bug — one
+> trusted node's `seq_gap`/`reporter_count`/beacon-window state leaked into
+> another's. **Fixed:** all three maps now carry an outer
+> `trusted_node_id` key, so each observer gets an isolated local view in
+> both the batch and online paths, matching §3.1.3's requirement that
+> detection run independently per trusted node.
+
+Three global maps accumulate state across the event sequence, scoped per trusted node:
 
 ```cpp
-// Updated by every event processed (clocked by reception_timestamp)
-static std::map<uint32_t, double>                g_tgn_last_sender_ts;
-// key = claimed_sender_id → most recent sender_timestamp seen
+// Outer key = trusted_node_id (the observer running FS-DETECT: an RSU,
+// an OBU peer, or the controller sentinel 9999). Inner key as before.
+static std::map<uint32_t, std::map<uint32_t, double>>                g_tgn_last_sender_ts;
+// [trusted_node_id][claimed_sender_id] → most recent sender_timestamp seen
 // Purpose: detect seq_gap (backward timestamp regression for TTW-S2)
 
-static std::map<std::string, std::set<uint32_t>> g_tgn_link_reporters;
-// key = "link_src_id_link_dst_id"  (DIRECTED)
+static std::map<uint32_t, std::map<std::string, std::set<uint32_t>>> g_tgn_link_reporters;
+// [trusted_node_id]["link_src_id_link_dst_id"]  (DIRECTED)
 // value = set of reporter IDs (vehicle or claimed sender, depends on RSU mode)
 // Purpose: reporter_count (ρ_v) for ME detection
 
-static std::map<uint32_t, std::vector<double>>   g_tgn_beacon_windows;
-// key = claimed_sender_id
+static std::map<uint32_t, std::map<uint32_t, std::vector<double>>>   g_tgn_beacon_windows;
+// [trusted_node_id][claimed_sender_id]
 // value = sliding window of reception timestamps, max size W_max
 // Purpose: beacon_count (c_v^W, Eq 3.32) for silent-vehicle BSHH detection
 ```
@@ -267,20 +312,21 @@ If the key were undirected (`"1_2"` and `"2_1"` merged), V1's benign report and 
 
 ## 7. Feature Extraction (Eq 3.20 + identity_mismatch)
 
-The thesis Eq 3.20 defines 5 formal components:  
-`x_v = [id_v | τ_s^(v) | c_v^W | Δs_v | ρ_v]`
+**Current implementation — updated, this section used to describe a stale 7-feature/`id_v_norm` scheme that no longer exists in the code.** The thesis Eq 3.20 defines 5 formal components, and `TGN_ExtractFeatures()` now matches exactly — `id_v` is deliberately excluded (identity-overfitting risk):
+`x_v = [τ_dev^(v) | c_v^W | Δs_v | ρ_v | ι_v]`
 
-The implementation uses 6 components (adding `identity_mismatch`) plus a 7th (`φ`) appended inside the GRU:
+φ is not part of x_v — it's appended inside the GRU cell (Eq 3.22), for a `dim+6` GRU input:
 
 | Index | Name | Paper symbol | Source | Purpose |
 |-------|------|-------------|--------|---------|
-| 0 | `id_v_norm` | id_v | `claimed_sender_id % 1000 / 1000.0` | Node identity (scalar proxy) |
-| 1 | `tau_s` | τ_s^(v) | `e.sender_timestamp` | When the sender says it observed the event |
-| 2 | `beacon_count` | c_v^W | `g_tgn_beacon_windows[node].size()` | Activity level in W_max window (Eq 3.32) |
-| 3 | `seq_gap` | Δs_v | `prev_tau_s - e.sender_timestamp` if regressive | Backward timestamp jump (TTW-S2 signal) |
-| 4 | `reporter_count` | ρ_v | `g_tgn_link_reporters[lkey].size()` | Distinct reporters for this link (ME signal) |
-| 5 | `identity_mismatch` | — | `(physical ≠ claimed) ? 1.0 : 0.0` | BSHH signal (engineering extension) |
-| 6 | `φ` (inside GRU) | φ | `log(1 + Δt / T_b)` | Time elapsed since last event for this node |
+| 0 | `tau_dev` | τ_dev^(v) | `clip((recv_time − sender_ts) / T_b, −50, 50)` | Normalised reception/sender timestamp deviation (Eq 3.20) — fresh≈0, BSHH replay→large positive |
+| 1 | `beacon_count` | c_v^W | `g_tgn_beacon_windows[trusted_node_id][node].size()` | Activity level in W_max window (Eq 3.32) |
+| 2 | `seq_gap` | Δs_v | `prev_sender_ts - e.sender_timestamp` if regressive | Backward timestamp jump (TTW-S2 signal) |
+| 3 | `reporter_count` | ρ_v | `g_tgn_link_reporters[trusted_node_id][lkey].size()` | Distinct reporters for this link (ME signal) |
+| 4 | `identity_mismatch` | ι_v | `(physical ≠ claimed) ? 1.0 : 0.0` | BSHH signal (engineering extension) |
+| — | `φ` (GRU-internal, not in x_v) | φ | `log(1 + Δt / T_b)` | Time elapsed since last event for this node |
+
+**Note the `[trusted_node_id]` outer key on `g_tgn_beacon_windows`/`g_tgn_link_reporters`** — these maps are scoped per trusted node (the observer running FS-DETECT) so that concurrent trusted nodes (e.g. an RSU and the controller sentinel, interleaved during the live online/inline path — see §2 warning above) don't share state. See §6 below.
 
 ### identity_mismatch — the exact condition
 
@@ -305,9 +351,9 @@ The GRU maintains a per-node memory vector `m_v(t) ∈ ℝ^d` (dimension d=32). 
 
 **Input:**
 ```
-gru_in = [m_v(t⁻) ‖ id_v, τ_s, c_v^W, Δs_v, ρ_v, id_mis, φ]
-       = concat(memory_vector_dim32, feature_vector_dim7)
-       → total input size = 39
+gru_in = [m_v(t⁻) ‖ τ_dev, c_v^W, Δs_v, ρ_v, id_mis, φ]     — no id_v (Eq 3.20 excludes it)
+       = concat(memory_vector_dim32, feature_vector_dim5, phi_dim1)
+       → total input size = 38   (gru_input_size = dim + 6, TGNWeights::gru_input_size)
 ```
 
 **Three gates:**
@@ -325,7 +371,7 @@ m_v(t) = (1 - z) ⊙ m_v(t⁻) + z ⊙ n
 Where `⊙` is element-wise (Hadamard) product.
 
 **Weight matrix dimensions (d=32):**
-- `Wz`, `Wr`, `Wn`: (32 × 39) — input projection
+- `Wz`, `Wr`, `Wn`: (32 × 38) — input projection
 - `Uz`, `Ur`, `Un`: (32 × 32) — recurrent projection
 - `bz`, `br`, `bn`: (32,) — biases
 
@@ -525,6 +571,18 @@ When `alpha_source = "scenario_id_fallback"`:
 ---
 
 ## 14. TGN_RunPipeline() — The Complete Sequence
+
+> **⚠ Stale — describes the pre-online-mode sequence.** `TGN_RunPipeline()`
+> is still called once after `Simulator::Destroy()`, but steps ①–④ and ⑥–⑦
+> below (calibration, weight loading, crypto filter, `TGN_ProcessAllEvents`)
+> now only execute when `g_tgn_online_mode` is **false** — i.e. when
+> `TGN_Init()` was never called before `Simulator::Run()`. The current
+> `routing.cc` always calls `TGN_Init()` up front, so in practice
+> `TGN_RunPipeline()` takes the online branch: it skips straight to building
+> `E_t^trusted` from the events already scored by `TGN_ProcessEventInline()`
+> during the simulation, runs the (passthrough — see §4 note) crypto audit,
+> and writes the output files (⑧–⑩ below still apply). See §2's warning for
+> the live pipeline.
 
 Called once at routing.cc line 148799, after `Simulator::Destroy()`.
 
@@ -811,7 +869,7 @@ RSU legitimately forwards V1's data with `claimed_sender_id=V1` and `physical_se
 
 ```python
 class TGNModel(nn.Module):
-    # GRU gates (Eq 3.22): gs = dim + 7
+    # GRU gates (Eq 3.22): gs = dim + 6   (5 features per Eq 3.20, no id_v, + phi)
     Wz, Wr, Wn  — shape (dim, gs)  input projections
     Uz, Ur, Un  — shape (dim, dim) recurrent projections
     bz, br, bn  — shape (dim,)     biases
@@ -830,7 +888,7 @@ class TGNModel(nn.Module):
 
 ### Why features are read from CSV, not recomputed
 
-Four of the seven features are pre-computed by C++ and read directly from `tgn_events.csv`:
+Four of the five Eq. 3.20 features are pre-computed by C++ and read directly from `tgn_events.csv`:
 
 | Feature | Why not recomputed in Python |
 |---------|------------------------------|
@@ -886,7 +944,7 @@ Bytes  Content
 4      int32  layers     (e.g., 2)
 
 Then for each GRU gate (z, r, n) in order:
-  dim*gs*8  W (dim×gs)  float64 row-major   gs = dim + 7
+  dim*gs*8  W (dim×gs)  float64 row-major   gs = dim + 6
   dim*dim*8 U (dim×dim) float64 row-major
   dim*8     b (dim,)    float64
 
