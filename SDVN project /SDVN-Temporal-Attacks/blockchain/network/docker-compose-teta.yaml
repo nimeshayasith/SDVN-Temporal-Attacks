@@ -75,6 +75,11 @@ x-peer-env: &peer-env
   CORE_LEDGER_STATE_STATEDATABASE: CouchDB
   TETA_SIMULATION_MODE: "1"
   CORE_CHAINCODE_ENV_WHITELIST: "TETA_SIMULATION_MODE"
+  # teta-ccenv bundles liboqs so the chaincode's real ML-DSA-87 verifier
+  # (verification_liboqs.go, the default build) links successfully — the
+  # stock fabric-ccenv image has no liboqs installed. See
+  # chaincode/temporalecho/Dockerfile.ccenv.
+  CORE_CHAINCODE_BUILDER: teta-ccenv:latest
 
 services:
   # ─── Fabric CA ──────────────────────────────────────────────────────────────

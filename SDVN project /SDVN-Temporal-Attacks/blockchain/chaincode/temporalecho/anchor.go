@@ -216,7 +216,7 @@ func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 
 	// A-2: verify Falcon-1024 signature over the checkpoint data
 	sigInput := fmt.Sprintf("%s:%d:%s", cp.CreatedByPeer, cp.BlockHeight, cp.StateRootHash)
-	if !verifyFalcon1024Sig(cp.PeerSig, sigInput, cp.PeerPubKey) {
+	if !verifyMLDSA87Sig(cp.PeerSig, sigInput, cp.PeerPubKey) {
 		return fmt.Errorf(
 			"SyncFromAnchorCheckpoint: invalid Falcon-1024 signature on checkpoint %s from peer %s",
 			checkpointID, cp.CreatedByPeer)

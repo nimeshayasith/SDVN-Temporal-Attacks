@@ -1,0 +1,9 @@
+prefix=/opt/liboqs
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: liboqs-go
+Description: liboqs-go cgo binding (points at the in-image liboqs install)
+Version: 0.15.0
+Cflags: -I${includedir}
+Libs: -L${libdir} -loqs -lssl -lcrypto -lzstd -lpthread -lm -ldl
