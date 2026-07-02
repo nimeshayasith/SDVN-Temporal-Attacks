@@ -1913,6 +1913,14 @@ struct PemBeaconEvidenceRecord {
     uint32_t vehicle_id;
     double   timestamp;
     Vector   position;
+    // Issue 4 fix — reporter's own position (distinct from the vehicle's
+    // position above) + Cost231-derived RSSI, needed to emit witness_records.json
+    // (SubmitWitnessRecord's WitnessRecord schema). has_reporter_position is
+    // false for the synthetic no-RSU bucket (TRUST_OBU_PEER_ID), where there is
+    // no real reporter node to derive a position/RSSI from.
+    Vector   reporter_position;
+    bool     has_reporter_position;
+    float    rssi_dbm;
 };
 static const uint32_t TRUST_OBU_PEER_ID = 8888u;   // synthetic Tier-2 evidence bucket
 static std::map<uint32_t, std::deque<PemBeaconEvidenceRecord> > g_peer_beacon_evidence;
@@ -2000,12 +2008,24 @@ static void
 PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double now)
 {
     static const double kEvidenceWindowS = 5.0;   // retain last 5s of evidence per peer
-    PemBeaconEvidenceRecord rec{senderId, now, senderPosition};
 
     if (RSU_Nodes.GetN() > 0)
     {
         for (uint32_t i = 0; i < RSU_Nodes.GetN(); ++i)
         {
+            // Issue 4 fix: position/RSSI vary per reporter, so each RSU gets
+            // its own record built inside the loop (same Cost231 model
+            // PemVerifyQuorum already uses, so mitigation and this witness
+            // evidence agree).
+            Ptr<MobilityModel> rsuMobility = RSU_Nodes.Get(i)->GetObject<MobilityModel>();
+            Vector reporterPos = rsuMobility ? rsuMobility->GetPosition() : senderPosition;
+            const double d = PemDistance2d(reporterPos, senderPosition);
+            const double safeD = (d > 0.001) ? d : 0.001;
+            const float rssi = (float)(PemGetRssiMin() + 10.0 * PEM_RSSI_N_COST231
+                                        * std::log10(PemGetRcomm() / safeD));
+            PemBeaconEvidenceRecord rec{senderId, now, senderPosition,
+                                         reporterPos, /*has_reporter_position=*/true, rssi};
+
             std::deque<PemBeaconEvidenceRecord>& log =
                 g_peer_beacon_evidence[RSU_Nodes.Get(i)->GetId()];
             log.push_back(rec);
@@ -2015,11 +2035,70 @@ PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double 
     }
     else
     {
+        PemBeaconEvidenceRecord rec{senderId, now, senderPosition,
+                                     senderPosition, /*has_reporter_position=*/false, 0.0f};
         std::deque<PemBeaconEvidenceRecord>& log = g_peer_beacon_evidence[TRUST_OBU_PEER_ID];
         log.push_back(rec);
         while (!log.empty() && (now - log.front().timestamp) > kEvidenceWindowS)
             log.pop_front();
     }
+}
+
+// =============================================================================
+// PemWriteWitnessRecordsJson — Issue 4 fix, routing.cc-testable half only.
+//
+// Emits one JSON object per real witness record (vehicle_id, reporter_id,
+// reporter_lat/lon via PemSimToGps, rssi_from_vi_dbm, ts_ms) from
+// g_peer_beacon_evidence, in the exact WitnessRecord schema
+// blockchain/chaincode/temporalecho/structs.go expects and SubmitWitnessRecord
+// consumes. Only real, non-attacker-controlled sender positions feed this
+// (see PemRecordBeaconEvidence's comment), so the output is genuine witness
+// data — but nothing here calls SubmitWitnessRecord itself; that requires
+// running the chaincode, out of scope for this session.
+// =============================================================================
+static void
+PemWriteWitnessRecordsJson()
+{
+    const std::string out_path =
+        std::string(OUTPUT_ROOT_DIR) + "/../witness_records.json";
+
+    std::ofstream jout(out_path.c_str());
+    jout << "[\n";
+    bool first = true;
+    uint32_t written = 0, skipped_no_position = 0;
+
+    for (std::map<uint32_t, std::deque<PemBeaconEvidenceRecord> >::const_iterator
+             peer_it = g_peer_beacon_evidence.begin();
+         peer_it != g_peer_beacon_evidence.end(); ++peer_it)
+    {
+        const uint32_t reporter_id = peer_it->first;
+        for (const PemBeaconEvidenceRecord& rec : peer_it->second)
+        {
+            if (!rec.has_reporter_position) { ++skipped_no_position; continue; }
+
+            float reporter_lat, reporter_lon;
+            PemSimToGps(rec.reporter_position, reporter_lat, reporter_lon);
+            const long long ts_ms = static_cast<long long>(rec.timestamp * 1000.0);
+
+            if (!first) jout << ",\n";
+            first = false;
+            jout << "  {\n"
+                 << "    \"vehicle_id\": \"V" << rec.vehicle_id << "\",\n"
+                 << "    \"reporter_id\": \"RSU" << reporter_id << "\",\n"
+                 << "    \"reporter_lat\": " << reporter_lat << ",\n"
+                 << "    \"reporter_lon\": " << reporter_lon << ",\n"
+                 << "    \"rssi_from_vi_dbm\": " << rec.rssi_dbm << ",\n"
+                 << "    \"ts_ms\": " << ts_ms << "\n"
+                 << "  }";
+            ++written;
+        }
+    }
+    jout << "\n]\n";
+    jout.close();
+
+    NS_LOG_UNCOND("[PEM] witness_records.json written: " << written
+                  << " entries (" << skipped_no_position
+                  << " skipped, no-RSU synthetic bucket) -> " << out_path);
 }
 
 static double
@@ -2809,6 +2888,7 @@ static std::string PemResolvePeerLabel(uint32_t nodeId);
 static std::string PemGetConfirmedNeighbours(uint32_t vehicleId);
 static void PemWriteVehicleMacsJson();
 static void PemWriteScenarioConfig();
+static void PemWriteWitnessRecordsJson();
 static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
 static void PemEmitEvent(PemEventType type,
@@ -5916,6 +5996,11 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
                  v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
+    // Issue 4/3 fix — real vehicle beacons for downstream beacon_evidence.csv /
+    // witness_records.json (this RSU-present scenario previously never emitted
+    // any, unlike TTW-S2). Mirrors TTW-S2's exact call pattern.
+    PemEmitVehicleBeacon(v1_id, v2_id);
+    PemEmitVehicleBeacon(v2_id, v1_id);
     {
         Ptr<Node> n1 = GetVehicleByNs3Id(v1_id);
         Ptr<Node> n2 = GetVehicleByNs3Id(v2_id);
@@ -6468,6 +6553,25 @@ void BSHH_S2_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
 
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+    // Issue 4/3 fix — real vehicle beacon for downstream beacon_evidence.csv /
+    // witness_records.json (this RSU-present scenario previously never emitted
+    // any). Mirrors BSHH-S3's single-direction call pattern. v1_id/v2_id here
+    // are real ns-3 GLOBAL node IDs (vA_ns3/vB_ns3 = Vehicle_Nodes.Get(cidx)
+    // ->GetId() at the call site), but PemEmitVehicleBeacon expects
+    // Vehicle_Nodes CONTAINER indices — resolve via linear scan before
+    // calling, since the pre-existing AttackSendDSRCBeacon guard just below
+    // already silently no-ops for the same global-id/index mismatch (left
+    // untouched, out of scope).
+    {
+        uint32_t v1_cidx = UINT32_MAX, v2_cidx = UINT32_MAX;
+        for (uint32_t k = 0; k < Vehicle_Nodes.GetN(); ++k) {
+            if (Vehicle_Nodes.Get(k)->GetId() == v1_id) v1_cidx = k;
+            if (Vehicle_Nodes.Get(k)->GetId() == v2_id) v2_cidx = k;
+        }
+        if (v1_cidx != UINT32_MAX && v2_cidx != UINT32_MAX) {
+            PemEmitVehicleBeacon(v1_cidx, v2_cidx);
+        }
+    }
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -6857,6 +6961,22 @@ void BSHH_S4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, uint
 
     PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+    // Issue 4/3 fix — real vehicle beacon for downstream beacon_evidence.csv /
+    // witness_records.json (this RSU-present scenario previously never emitted
+    // any). Mirrors BSHH-S3's single-direction call pattern. v1_id/v2_id here
+    // are real ns-3 GLOBAL node IDs, but PemEmitVehicleBeacon expects
+    // Vehicle_Nodes CONTAINER indices — resolve via linear scan first (same
+    // fix as BSHH_S2_LegitimateExchange above, same root cause).
+    {
+        uint32_t v1_cidx = UINT32_MAX, v2_cidx = UINT32_MAX;
+        for (uint32_t k = 0; k < Vehicle_Nodes.GetN(); ++k) {
+            if (Vehicle_Nodes.Get(k)->GetId() == v1_id) v1_cidx = k;
+            if (Vehicle_Nodes.Get(k)->GetId() == v2_id) v2_cidx = k;
+        }
+        if (v1_cidx != UINT32_MAX && v2_cidx != UINT32_MAX) {
+            PemEmitVehicleBeacon(v1_cidx, v2_cidx);
+        }
+    }
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -7598,6 +7718,11 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, s2_ld_have_v4 ? false_v4 : v2_id, t, now, pos3, pos3, pos4, false);
     if (s2_ld_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    // Issue 4/3 fix — real vehicle beacons for downstream beacon_evidence.csv /
+    // witness_records.json (this RSU-present scenario previously never emitted
+    // any). Only the real V1<->V2 link, not the false_v3/v4 echo reporters.
+    PemEmitVehicleBeacon(v1_id, v2_id);
+    PemEmitVehicleBeacon(v2_id, v1_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -8055,6 +8180,11 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, s4_vr_have_v4 ? false_v4 : v2_id, t, now, pos3, pos3, pos4, false);
     if (s4_vr_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    // Issue 4/3 fix — real vehicle beacons for downstream beacon_evidence.csv /
+    // witness_records.json (this RSU-present scenario previously never emitted
+    // any). Only the real V1<->V2 link, not the false_v3/v4 echo reporters.
+    PemEmitVehicleBeacon(v1_id, v2_id);
+    PemEmitVehicleBeacon(v2_id, v1_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -151484,6 +151614,7 @@ attack_mobility.Install(Vehicle_Nodes);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteCtrlTopoJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteVehicleMacsJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteScenarioConfig);
+  Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteWitnessRecordsJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Schedule(Seconds(0.5), &PemReadBlacklistFile);
   Simulator::Stop(Seconds(simTime));

@@ -1,0 +1,10 @@
+[
+  {
+    "vehicle_id": "V0",
+    "reporter_id": "RSU7",
+    "reporter_lat": 6.92782,
+    "reporter_lon": 79.8662,
+    "rssi_from_vi_dbm": -87.1806,
+    "ts_ms": 5000
+  }
+]
