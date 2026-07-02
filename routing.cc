@@ -2794,6 +2794,8 @@ static void PemWriteRunSummaryCsv();
 static std::string PemClassifyAttack(const bool triggered[9]);
 static void PemCryptoRegisterDetection(uint32_t physicalSenderId, uint32_t reporterId);
 static void PemWriteAlertsJson();
+static void PemWriteBeaconEvidenceCsv();
+static void PemWriteCtrlTopoJson();
 static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
 static void PemEmitEvent(PemEventType type,
@@ -3632,6 +3634,10 @@ PemWriteAlertsJson()
         for (uint32_t i = 0; i < 9; ++i) if (ev.triggered[i]) { any_sig = true; break; }
         const std::string alpha = any_sig ? PemClassifyAttack(ev.triggered) : fallback_alpha;
 
+        // interval_ts_ms is nominally the beacon-interval timestamp (AlertObject
+        // spec, structs.go). routing.cc's PEM path has no separate beacon-interval
+        // clock distinct from the alert time, so it is set equal to t_alert here —
+        // this is a simplification, not a bug, but kept explicit rather than implied.
         jout << "  {\n"
              << "    \"v_id\": \"V" << ev.physical_sender_id << "\",\n"
              << "    \"alpha\": \"" << alpha << "\",\n"
@@ -3640,6 +3646,7 @@ PemWriteAlertsJson()
              << "    \"interval_ts_ms\": " << t_alert_ms << ",\n"
              << "    \"S_trig\": [" << strig.str() << "],\n"
              << "    \"from_lw_path\": true,\n"
+             << "    \"from_fs_path\": false,\n"
              << "    \"tdet_ms\": " << tdet << "\n"
              << "  }";
     }
@@ -3648,6 +3655,118 @@ PemWriteAlertsJson()
 
     NS_LOG_UNCOND("[PEM] tgn_alerts.json written: "
                   << best.size() << " attacker(s) → " << out_path);
+}
+
+// =============================================================================
+// PemWriteBeaconEvidenceCsv — write beacon_evidence.csv from PEM beacon events.
+//
+// Schema matches blockchain/client/submitToFabric.js loadBeaconEvidence():
+//   rsu_id, interval_ts_ms, vehicle_id, sender_ts_ms, gps_lat, gps_lon, rssi_dbm
+// One row per PEM_EVENT_BEACON event in pem_all_events. Called at end of
+// simulation alongside PemWriteAlertsJson — this is a pure routing.cc-local
+// writer, it does not invoke or depend on any other file/process.
+// =============================================================================
+static void
+PemWriteBeaconEvidenceCsv()
+{
+    const std::string out_path =
+        std::string(OUTPUT_ROOT_DIR) + "/../beacon_evidence.csv";
+
+    std::ofstream csv(out_path.c_str());
+    csv << "rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,gps_lat,gps_lon,rssi_dbm\n";
+
+    uint32_t row_count = 0;
+    for (const PemEvent& ev : pem_all_events)
+    {
+        if (ev.type != PEM_EVENT_BEACON)
+            continue;
+
+        // reporter_id is whichever node (RSU or OBU) observed this beacon.
+        // Kept per-reporter here (not a single hardcoded "RSU0") so evidence
+        // is attributable to distinct reporters.
+        long long interval_ts_ms =
+            static_cast<long long>(ev.reception_timestamp * 1000.0);
+        long long sender_ts_ms =
+            static_cast<long long>(ev.sender_timestamp * 1000.0);
+
+        // reporter_position is Cartesian (x,y) from the NS-3 mobility model,
+        // passed through as gps_lat/gps_lon. Consistent units are what the
+        // chaincode's haversine distance check needs, not real-world GPS.
+        csv << "RSU" << ev.reporter_id << ","
+            << interval_ts_ms << ","
+            << "V" << ev.physical_sender_id << ","
+            << sender_ts_ms << ","
+            << ev.reporter_position.x << ","
+            << ev.reporter_position.y << ","
+            << ev.rssi_reporter_dbm << "\n";
+        ++row_count;
+    }
+
+    csv.close();
+    NS_LOG_UNCOND("[PEM] beacon_evidence.csv written: "
+                  << row_count << " row(s) → " << out_path);
+}
+
+// =============================================================================
+// PemWriteCtrlTopoJson — write ctrl_topo.json reflecting the SDN controller's
+// current perceived link set (G_t^C), sourced from the two real controller-side
+// tables (ttw_controller_table, bshh_controller_liveness_table) that
+// topology_divergence_delta is tied to (see line ~1334). Format matches
+// submitToFabric.js's --ctrl_topo argument.
+//
+// Note: this is a snapshot writer for the LINKS the controller currently
+// believes are active (including any forged/poisoned entries an attack has
+// injected) — it intentionally reflects the controller's belief, not ground
+// truth, since that is what the divergence check needs to compare against.
+// =============================================================================
+static void
+PemWriteCtrlTopoJson()
+{
+    const std::string out_path =
+        std::string(OUTPUT_ROOT_DIR) + "/../ctrl_topo.json";
+
+    long long interval_ts_ms =
+        static_cast<long long>(Simulator::Now().GetSeconds() * 1000.0);
+
+    std::ofstream jout(out_path.c_str());
+    jout << "{\n"
+         << "  \"controller_id\": \"sdn-controller\",\n"
+         << "  \"interval_ts\": " << interval_ts_ms << ",\n"
+         << "  \"links\": [\n";
+
+    bool first = true;
+
+    // TTW topology links: ttw_controller_table key = "srcId_seenId"
+    for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
+         it != ttw_controller_table.end(); ++it)
+    {
+        const TopologyPacket& pkt = it->second;
+        if (!first) jout << ",\n";
+        first = false;
+        jout << "    {\"node_a\": \"V" << pkt.src_id
+             << "\", \"node_b\": \"V" << pkt.seen_id
+             << "\", \"ts\": " << static_cast<long long>(pkt.timestamp * 1000.0) << "}";
+    }
+
+    // BSHH liveness table: each entry is a claimed-alive vehicle, not itself
+    // a link — represented as a self-referential node presence entry so the
+    // controller's liveness belief is captured alongside its link belief.
+    for (std::map<uint32_t, HeartbeatPacket>::const_iterator it = bshh_controller_liveness_table.begin();
+         it != bshh_controller_liveness_table.end(); ++it)
+    {
+        const HeartbeatPacket& hb = it->second;
+        if (!first) jout << ",\n";
+        first = false;
+        jout << "    {\"node_a\": \"V" << hb.claimed_sender_id
+             << "\", \"node_b\": \"V" << hb.claimed_sender_id
+             << "\", \"ts\": " << static_cast<long long>(hb.timestamp * 1000.0) << "}";
+    }
+
+    jout << "\n  ]\n"
+         << "}\n";
+    jout.close();
+
+    NS_LOG_UNCOND("[PEM] ctrl_topo.json written -> " << out_path);
 }
 
 static void
@@ -151155,6 +151274,8 @@ attack_mobility.Install(Vehicle_Nodes);
       Simulator::Schedule(Seconds(simTime - 0.002), &RunNpfadsDetection);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteRunSummaryCsv);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteAlertsJson);
+  Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteBeaconEvidenceCsv);
+  Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteCtrlTopoJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Stop(Seconds(simTime));
 
