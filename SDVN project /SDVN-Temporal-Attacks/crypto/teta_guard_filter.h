@@ -136,18 +136,35 @@ TetaGuardLocBindVerify(const PemEvent& event, double link_ep_x, double link_ep_y
     ns3_to_gps(event.reporter_position.x, event.reporter_position.y,
                &rep_lat, &rep_lon);
 
-    // Synthetic RSSI from Cost231-boundary model (Table 4.7, same as Stage-1 sig[8]).
-    // RSSI(d) = g_rssi_min + 10·PEM_RSSI_N_COST231·log10(g_rcomm / d)
-    // At d = g_rcomm: RSSI = g_rssi_min (boundary).  d > g_rcomm → RSSI < g_rssi_min.
-    // This becomes the RSU's own physical-layer measurement (has_rsu_measurement=true)
-    // so the vehicle cannot forge it by modifying the self-reported rssi_from_vi_dbm
-    // field — verify_single_witness checks rsu_measured_rssi_dbm first.
-    const double distToSrc = PemDistance2d(event.reporter_position, event.link_src_position);
-    const double distToDst = PemDistance2d(event.reporter_position, event.link_dst_position);
-    const double nearestDist = std::min(distToSrc, distToDst);
-    const double safeNearestDist = (nearestDist > 0.001) ? nearestDist : 0.001;
-    const float syntheticRSSI = (float)(g_rssi_min
-        + 10.0 * PEM_RSSI_N_COST231 * std::log10(g_rcomm / safeNearestDist));
+    // Fix 5.1 (Eq. 3.29 RSSI_Vk<-Vi — "measured at Vk from endpoint Vi"): use the
+    // REAL PHY-measured RSSI (event.rssi_reporter_dbm, populated in PemEmitEvent()
+    // from Rx()'s MonitorSnifferRx signalNoise.signal via g_phy_rssi_dbm) when the
+    // reporter actually received a beacon from one of the link endpoints. This is
+    // what makes the Eq. 3.27-3.29 cryptographic binding meaningful: an attacker
+    // who never physically received a signal from the link cannot produce this
+    // value merely by knowing positions. Only when no real measurement exists
+    // (event.rssi_reporter_dbm == PEM_SIGNAL_PLACEHOLDER — e.g. an ME echo
+    // reporter that never received a beacon from the link it claims to witness)
+    // does this fall back to the same Cost231-boundary estimate used by Stage-1
+    // sig[8], so out-of-range/never-heard reporters are still rejected via the
+    // RSSI-floor path rather than silently passing.
+    const bool hasRealRssi = (event.rssi_reporter_dbm != PEM_SIGNAL_PLACEHOLDER);
+    float syntheticRSSI;
+    if (hasRealRssi)
+    {
+        syntheticRSSI = (float)event.rssi_reporter_dbm;
+    }
+    else
+    {
+        // RSSI(d) = g_rssi_min + 10·PEM_RSSI_N_COST231·log10(g_rcomm / d)
+        // At d = g_rcomm: RSSI = g_rssi_min (boundary).  d > g_rcomm → RSSI < g_rssi_min.
+        const double distToSrc = PemDistance2d(event.reporter_position, event.link_src_position);
+        const double distToDst = PemDistance2d(event.reporter_position, event.link_dst_position);
+        const double nearestDist = std::min(distToSrc, distToDst);
+        const double safeNearestDist = (nearestDist > 0.001) ? nearestDist : 0.001;
+        syntheticRSSI = (float)(g_rssi_min
+            + 10.0 * PEM_RSSI_N_COST231 * std::log10(g_rcomm / safeNearestDist));
+    }
 
     // Reporter identity bytes
     uint8_t rid_bytes[16];
