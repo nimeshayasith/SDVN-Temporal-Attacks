@@ -1970,6 +1970,14 @@ static std::map<uint32_t, double> g_pem_last_beacon_time;
 // Tracks which physical_sender_ids have already had LKH revocation issued
 // so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
 static std::set<uint32_t> g_lkh_already_revoked;
+// Issue 6 fix — no-RSU BlacklistBeacon propagation. Populated by
+// PemReadBlacklistFile() polling /tmp/teta_guard_blacklist.txt (written by
+// blockchain/client/eventListener.js's handleBlacklistBeaconPublished on a
+// real BlacklistBeaconPublished chaincode event). Checked in PemEmitEvent so
+// a blacklisted sender's beacons/topology updates are rejected before any
+// further processing — this is the file-polling side only; nothing in this
+// session writes that file (that requires running the blockchain layer).
+static std::set<uint32_t> g_blacklisted_nodes;
 static std::set<uint32_t> pem_all_seen_node_ids;
 std::set<uint32_t> ttw_s1_false_positive_reporters;
 extern double current_packet_delivery_ratio;
@@ -2796,6 +2804,9 @@ static void PemCryptoRegisterDetection(uint32_t physicalSenderId, uint32_t repor
 static void PemWriteAlertsJson();
 static void PemWriteBeaconEvidenceCsv();
 static void PemWriteCtrlTopoJson();
+static void PemReadBlacklistFile();
+static std::string PemResolvePeerLabel(uint32_t nodeId);
+static std::string PemGetConfirmedNeighbours(uint32_t vehicleId);
 static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
 static void PemEmitEvent(PemEventType type,
@@ -3658,10 +3669,44 @@ PemWriteAlertsJson()
 }
 
 // =============================================================================
+// PemResolvePeerLabel — Issue 8 fix. Report's trust model treats Tier-1 (RSU,
+// tau0=1.00) and Tier-2 (OBU, tau0=0.10) as distinct classes; beacon evidence
+// should not blanket-label every reporter "RSU" when a no-RSU scenario's
+// reporters are actually OBUs. Follows the same linear-scan-by-global-id
+// pattern as the existing GetVehicleByNs3Id helper.
+// =============================================================================
+static std::string
+PemResolvePeerLabel(uint32_t nodeId)
+{
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); ++i)
+    {
+        if (RSU_Nodes.Get(i)->GetId() == nodeId)
+        {
+            std::ostringstream oss; oss << "RSU" << nodeId; return oss.str();
+        }
+    }
+    for (uint32_t i = 0; i < controller_Node.GetN(); ++i)
+    {
+        if (controller_Node.Get(i)->GetId() == nodeId)
+        {
+            std::ostringstream oss; oss << "CTRL" << nodeId; return oss.str();
+        }
+    }
+    // Default: OBU (vehicle acting as reporter, Tier 2). Covers both actual
+    // Vehicle_Nodes membership and any unmatched id, since an OBU-tier
+    // fallback is the safer default per the report's trust model than
+    // silently mislabeling an unknown reporter as Tier-1/RSU.
+    std::ostringstream oss; oss << "OBU" << nodeId; return oss.str();
+}
+
+// =============================================================================
 // PemWriteBeaconEvidenceCsv — write beacon_evidence.csv from PEM beacon events.
 //
 // Schema matches blockchain/client/submitToFabric.js loadBeaconEvidence():
-//   rsu_id, interval_ts_ms, vehicle_id, sender_ts_ms, gps_lat, gps_lon, rssi_dbm
+//   rsu_id, interval_ts_ms, vehicle_id, sender_ts_ms, gps_lat, gps_lon, rssi_dbm, neighbour_vehicles
+// (neighbour_vehicles is an Issue-3-fix 8th column, semicolon-joined vehicle
+// IDs — submitToFabric.js's loadBeaconEvidence still needs a matching parse
+// change to actually consume it; not made here per agreed scope.)
 // One row per PEM_EVENT_BEACON event in pem_all_events. Called at end of
 // simulation alongside PemWriteAlertsJson — this is a pure routing.cc-local
 // writer, it does not invoke or depend on any other file/process.
@@ -3673,7 +3718,7 @@ PemWriteBeaconEvidenceCsv()
         std::string(OUTPUT_ROOT_DIR) + "/../beacon_evidence.csv";
 
     std::ofstream csv(out_path.c_str());
-    csv << "rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,gps_lat,gps_lon,rssi_dbm\n";
+    csv << "rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,gps_lat,gps_lon,rssi_dbm,neighbour_vehicles\n";
 
     uint32_t row_count = 0;
     for (const PemEvent& ev : pem_all_events)
@@ -3681,24 +3726,31 @@ PemWriteBeaconEvidenceCsv()
         if (ev.type != PEM_EVENT_BEACON)
             continue;
 
-        // reporter_id is whichever node (RSU or OBU) observed this beacon.
-        // Kept per-reporter here (not a single hardcoded "RSU0") so evidence
-        // is attributable to distinct reporters.
         long long interval_ts_ms =
             static_cast<long long>(ev.reception_timestamp * 1000.0);
         long long sender_ts_ms =
             static_cast<long long>(ev.sender_timestamp * 1000.0);
 
-        // reporter_position is Cartesian (x,y) from the NS-3 mobility model,
-        // passed through as gps_lat/gps_lon. Consistent units are what the
-        // chaincode's haversine distance check needs, not real-world GPS.
-        csv << "RSU" << ev.reporter_id << ","
+        // Issue 7 fix: real flat-earth Cartesian->GPS conversion (was a raw
+        // x/y passthrough) so gps_lat/gps_lon are consistent with the
+        // chaincode's haversine distance check, same conversion already used
+        // by the local PemVerifyQuorum path.
+        float gps_lat, gps_lon;
+        PemSimToGps(ev.reporter_position, gps_lat, gps_lon);
+
+        // Issue 3 fix: real D-1 HELLO-confirmed neighbour list from the live
+        // neighbordata_inst[] table (populated by add_neighbor_info() on
+        // every DSRC receive), not a hardcoded empty list.
+        std::string neighbours = PemGetConfirmedNeighbours(ev.reporter_id);
+
+        csv << PemResolvePeerLabel(ev.reporter_id) << ","
             << interval_ts_ms << ","
             << "V" << ev.physical_sender_id << ","
             << sender_ts_ms << ","
-            << ev.reporter_position.x << ","
-            << ev.reporter_position.y << ","
-            << ev.rssi_reporter_dbm << "\n";
+            << gps_lat << ","
+            << gps_lon << ","
+            << ev.rssi_reporter_dbm << ","
+            << neighbours << "\n";
         ++row_count;
     }
 
@@ -3767,6 +3819,41 @@ PemWriteCtrlTopoJson()
     jout.close();
 
     NS_LOG_UNCOND("[PEM] ctrl_topo.json written -> " << out_path);
+}
+
+// =============================================================================
+// PemReadBlacklistFile — no-RSU BlacklistBeacon consumption (report's Node
+// Removal Mechanism, Tier-2 path): "the exclusion propagates across the OBU
+// network ... vehicles exclude the blacklisted node from their local routing
+// tables and reject its beacons."
+//
+// Polls /tmp/teta_guard_blacklist.txt (one decimal vehicle ns-3 node ID per
+// line), the file blockchain/client/eventListener.js's
+// handleBlacklistBeaconPublished() is expected to write on a real
+// BlacklistBeaconPublished chaincode event. Re-reads the whole file each tick
+// (idempotent — IDs already in g_blacklisted_nodes are simply re-inserted)
+// rather than tailing, since the file is small and rewritten wholesale by
+// its producer. Self-reschedules every 0.5s for the remainder of the run;
+// a no-op if the file doesn't exist (nothing in this session writes it —
+// that requires running the blockchain layer).
+// =============================================================================
+static void
+PemReadBlacklistFile()
+{
+    std::ifstream f("/tmp/teta_guard_blacklist.txt");
+    if (f.is_open())
+    {
+        uint32_t id;
+        while (f >> id)
+        {
+            g_blacklisted_nodes.insert(id);
+        }
+    }
+
+    if (Simulator::Now().GetSeconds() + 0.5 < simTime)
+    {
+        Simulator::Schedule(Seconds(0.5), &PemReadBlacklistFile);
+    }
 }
 
 static void
@@ -4275,6 +4362,15 @@ PemEmitEvent(PemEventType type,
              const Vector& linkDstPosition,
              bool attackLabel)
 {
+    // Issue 6 fix — reject beacons/topology updates from a blacklisted sender
+    // outright (report: "reject its beacons"), before they reach Stage-0 or
+    // any detector. g_blacklisted_nodes is populated by PemReadBlacklistFile()
+    // polling /tmp/teta_guard_blacklist.txt.
+    if (g_blacklisted_nodes.count(physicalSenderId))
+    {
+        return;
+    }
+
     PemEvent event;
     event.sim_time = Simulator::Now().GetSeconds();
     event.type = type;
@@ -102440,6 +102536,38 @@ uint32_t getNeighborsize(struct neighbor_data * nd1)
 	return neighborsize;
 }
 
+// =============================================================================
+// PemGetConfirmedNeighbours — Issue 3 fix. Real D-1 HELLO-confirmed neighbour
+// list for a given vehicle's ns-3 global node id, sourced from the live
+// neighbordata_inst[] table (kept fresh by add_neighbor_info()/refresh_neighbors()
+// on every DSRC receive — see Rx()). Semicolon-joined "V<id>" list, matching
+// the format submitToFabric.js would need to split on for
+// VehicleObservation.NeighbourVehicles. Forward-declared near the other Pem*
+// helpers and defined here (after neighbordata_inst exists) since it's a
+// genuine global array, not something worth extern-declaring earlier.
+// =============================================================================
+static std::string
+PemGetConfirmedNeighbours(uint32_t vehicleId)
+{
+    std::ostringstream oss;
+    bool first = true;
+    if (vehicleId < (uint32_t)(total_size + 2))
+    {
+        struct neighbor_data* nd1 = &neighbordata_inst[vehicleId];
+        for (uint32_t i = 0; i < max; ++i)
+        {
+            uint32_t nb = nd1->neighborid[i];
+            if ((nb != large) && (nb > 1) && (nb < (uint32_t)(total_size + 2)))
+            {
+                if (!first) oss << ";";
+                oss << "V" << nb;
+                first = false;
+            }
+        }
+    }
+    return oss.str();
+}
+
 uint32_t getcontrollerNeighborsize(struct controller_data * nd1)
 {
 	uint32_t  neighborsize = 0;
@@ -151277,6 +151405,7 @@ attack_mobility.Install(Vehicle_Nodes);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteBeaconEvidenceCsv);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteCtrlTopoJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
+  Simulator::Schedule(Seconds(0.5), &PemReadBlacklistFile);
   Simulator::Stop(Seconds(simTime));
 
   // Issue 8.1: Initialise TGN before the simulation so events are processed
