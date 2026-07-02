@@ -15,10 +15,10 @@
   "channels": {
     "teta-channel": {
       "orderers": [
-        "orderer.tetaguard.net"
+        "orderer1.tetaguard.net"
       ],
       "peers": {
-        "peer0.rsu4.tetaguard.net": {
+        "peer0.rsu3.tetaguard.net": {
           "endorsingPeer": true,
           "chaincodeQuery": true,
           "ledgerQuery": true,
@@ -49,25 +49,25 @@
     }
   },
   "orderers": {
-    "orderer.tetaguard.net": {
-      "url": "grpcs://orderer.tetaguard.net:7050",
+    "orderer1.tetaguard.net": {
+      "url": "grpcs://orderer1.tetaguard.net:7050",
       "tlsCACerts": {
-        "path": "../network/crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer.tetaguard.net/tls/ca.crt"
+        "path": "../network/crypto-config/ordererOrganizations/orderer.tetaguard.net/orderers/orderer1.tetaguard.net/tls/ca.crt"
       },
       "grpcOptions": {
-        "ssl-target-name-override": "orderer.tetaguard.net",
-        "hostnameOverride": "orderer.tetaguard.net"
+        "ssl-target-name-override": "orderer1.tetaguard.net",
+        "hostnameOverride": "orderer1.tetaguard.net"
       }
     }
   },
   "peers": {
-    "peer0.rsu4.tetaguard.net": {
-      "url": "grpcs://peer0.rsu4.tetaguard.net:7055",
+    "peer0.rsu3.tetaguard.net": {
+      "url": "grpcs://peer0.rsu3.tetaguard.net:7053",
       "tlsCACerts": {
-        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu4.tetaguard.net/tls/ca.crt"
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu3.tetaguard.net/tls/ca.crt"
       },
       "grpcOptions": {
-        "ssl-target-name-override": "peer0.rsu4.tetaguard.net"
+        "ssl-target-name-override": "peer0.rsu3.tetaguard.net"
       }
     }
   },

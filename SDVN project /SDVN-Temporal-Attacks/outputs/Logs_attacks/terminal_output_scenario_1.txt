@@ -1,13 +1,14 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 3686 exact position+velocity events
 [SUMO] Attack 1: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/01_TTW_S1_Malicious_Vehicle.xml
+[TTW-S1] attack_percentage=0 selected 0 attackers; running baseline only
 
 ========================================
 SCENARIO 01 - TTW-S1 ATTACK CONFIGURED
-Active attackers (4): V0 V2 V1 V3 
-Victim pool (16): V16 V15 V7 V14 V10 V11 V6 V13 V17 V9 V19 V8 V5 V4 V18 V12 
+Active attackers (0): 
+Victim pool (2): V1 V0 
 Activation probability : 0.75
 Replay jitter window   : +/-0.04 s
 Support evidence prob. : 1
@@ -29,84 +30,36 @@ Timeline:
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=2)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 2/2 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TTW-S1][t=10.000]  V21 --HELLO beacon--> V5  dist=543.152m  OUT-OF-RANGE
-[TTW-S1][t=10.000]  V20 --HELLO beacon--> V7  dist=562.549m  OUT-OF-RANGE
-[TTW-S1][t=10.000]  V12 --HELLO beacon--> V6  dist=768.713m  OUT-OF-RANGE
-[TTW-S1][t=10.000]  V19 --HELLO beacon--> V8  dist=1031.781m  OUT-OF-RANGE
-[TTW-S1][t=10.001]  V5 --HELLO beacon--> V21  dist=543.169m  OUT-OF-RANGE
-[TTW-S1][t=10.001]  V7 --HELLO beacon--> V20  dist=562.566m  OUT-OF-RANGE
-[TTW-S1][t=10.001]  V6 --HELLO beacon--> V12  dist=768.726m  OUT-OF-RANGE
-[TTW-S1][t=10.001]  V8 --HELLO beacon--> V19  dist=1031.757m  OUT-OF-RANGE
-[TTW-S1][t=10.100]  V5 --topology update--> Controller  <V5 sees V21, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V7 --topology update--> Controller  <V7 sees V20, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V6 --topology update--> Controller  <V6 sees V12, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V8 --topology update--> Controller  <V8 sees V19, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V21 --topology update--> Controller  <V21 sees V5, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V20 --topology update--> Controller  <V20 sees V7, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V12 --topology update--> Controller  <V12 sees V6, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V19 --topology update--> Controller  <V19 sees V8, t=10.000>  ACCEPTED
-[TTW-S1][t=10.185]  V8 stored old packet <V8 sees V19, t=10.000>  (will replay at t=20.000)
-[TTW-S1][t=10.188]  V5 stored old packet <V5 sees V21, t=10.000>  (will replay at t=20.000)
-[TTW-S1][t=10.203]  V6 stored old packet <V6 sees V12, t=10.000>  (will replay at t=20.000)
-[TTW-S1][t=10.213]  V7 stored old packet <V7 sees V20, t=10.000>  (will replay at t=20.000)
-[TTW-S1][t=19.959]  Pipeline armed: 4 attacker(s)
-    attacker NS3-ID=5 -> victim NS3-ID=21
-    attacker NS3-ID=6 -> victim NS3-ID=12
-    attacker NS3-ID=7 -> victim NS3-ID=20
-    attacker NS3-ID=8 -> victim NS3-ID=19
-[TTW-S1][t=19.988]  V6 --FORGED replay--> Controller  <V6 sees V12, t=19.988>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=1385.748m)
-[TTW-S1][t=19.988]  *** ATTACK COMPLETE ***  ghost link V6<->V12 injected into controller table
-[TTW-S1][t=20.001]  V8 --FORGED replay--> Controller  <V8 sees V19, t=20.001>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=1106.117m)
-[TTW-S1][t=20.001]  *** ATTACK COMPLETE ***  ghost link V8<->V19 injected into controller table
-[TTW-S1][t=20.020]  V7 --FORGED replay--> Controller  <V7 sees V20, t=20.020>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=736.190m)
-[TTW-S1][t=20.020]  *** ATTACK COMPLETE ***  ghost link V7<->V20 injected into controller table
-[TTW-S1][t=20.025]  V5 --FORGED replay--> Controller  <V5 sees V21, t=20.025>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=745.881m)
-[TTW-S1][t=20.025]  *** ATTACK COMPLETE ***  ghost link V5<->V21 injected into controller table
-[TTW-S1][t=20.038]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[TTW-S1][t=20.038]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V6  propagation=500.000 ms
-[Trust][t=20.038]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[TTW-S1][t=20.051]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[TTW-S1][t=20.051]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V8  propagation=500.000 ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (85 events)
-[CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
-[CRYPTO] Beacon TX signed: 8   RX verified: 8
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=2  reject=0
-[TGN] Online mode — 18 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 8/11 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 0 1 2 3 5 7 12 14 ctrl 
-[TGN] |E_t^trusted|=16 (Tier 2: 16 events from OBU peers with tau_k >= 0.50)
-[TGN] DIVERGENCE(stale): controller claims V5<->V21 at t=20 but latest trusted evidence is t=10 (gap=9.9s > 0.2s)
-[TGN] DIVERGENCE(stale): controller claims V7<->V20 at t=20 but latest trusted evidence is t=10 (gap=9.9s > 0.2s)
-[TGN] Eq.3.45 δ=12 (phantom=0 stale=2 missed=10)  Eq.3.46 δ_thresh=15 (raw=13.20)
-[TGN] 0 < δ ≤ δ_thresh → within propagation-delay tolerance; no controller-origin alert
-[CryptoFilter] 18 in → 18 out  (dropped: 0 MAC, 0 stale, 0 nonce)
-               log: crypto_filter_log.txt
-[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
+[CRYPTO] crypto_latency_sumo.csv written    (5 events)
+[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] No PEM events — all attacks blocked at Stage 0 (0 blocked). Writing summary.
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 1 — TTW-S1: Malicious Vehicle, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 16 / 0 / 2
+  TP/TN/FP/FN : 0 / 0 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 16 / 0 / 2
+  [beh]  TP/TN/FP/FN : 0 / 0 / 0 / 0
   MCC         : 0.000
-  AUROC       : 0.250
-  ACR         : 88.889 %
+  AUROC       : 0.500
+  ACR         : 0.000 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
-  θ_MCC_opt   : 0.121  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 18
-  Stage-0 blocked (attacks): 2
-  |E_t^trusted|  : 16
+  Events      : 0
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
 ============================================================

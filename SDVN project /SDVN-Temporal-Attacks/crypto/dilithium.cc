@@ -10,10 +10,13 @@
  *   location_binding.cc — location-bound report signing
  *   kem.cc              — keypair generation at vehicle registration
  *
- * Key sizes (liboqs OQS_SIG_alg_dilithium_5 / ML-DSA-44, FIPS 204):
- *   Signature : DILITHIUM5_SIG_LEN = 2420 bytes
- *   Public key: DILITHIUM5_PK_LEN  = 1312 bytes
- *   Secret key: DILITHIUM5_SK_LEN  = 2528 bytes
+ * Key sizes (liboqs >= 0.10 OQS_SIG_alg_ml_dsa_87 / ML-DSA-87, FIPS 204):
+ *   Signature : DILITHIUM5_SIG_LEN = 4627 bytes
+ *   Public key: DILITHIUM5_PK_LEN  = 2592 bytes
+ *   Secret key: DILITHIUM5_SK_LEN  = 4896 bytes
+ * (These are #defined in teta_guard_types.h; this comment previously showed
+ * stale pre-FIPS Dilithium5 sizes (sig=2420/pk=1312/sk=2528) — see the note
+ * there on why ML-DSA-87 sizes, not the older Dilithium5 ones, are correct.)
  *
  * Per-signature verification latency: ~1.6 ms (well within 100 ms SDVN budget).
  *
@@ -163,7 +166,7 @@ bool dilithium5_verify(const uint8_t *msg,      size_t msg_len,
 #endif
     /* Issue-8 fix: fail the build loudly when stub mode is active.
      *
-     * A build without HAVE_LIBOQS only checks 32 of 4595 sig bytes.
+     * A build without HAVE_LIBOQS only checks 32 of 4627 sig bytes.
      * This is not a safe production configuration and must not be used in any
      * deployment that touches real vehicle identities or revocation state.
      *
@@ -172,7 +175,7 @@ bool dilithium5_verify(const uint8_t *msg,      size_t msg_len,
      * Without that flag, the build fails so stub mode can never ship silently.  */
 #if !defined(HAVE_LIBOQS) && !defined(ALLOW_DILITHIUM_STUB)
 #  error "dilithium5_verify: HAVE_LIBOQS is not defined and ALLOW_DILITHIUM_STUB \
-is not set. Stub mode (32/4595 bytes checked) must NOT be used in production. \
+is not set. Stub mode (32/4627 bytes checked) must NOT be used in production. \
 Pass -DALLOW_DILITHIUM_STUB to build deliberately in stub mode for simulation only."
 #endif
     {

@@ -43,9 +43,9 @@
   Score: 0.111
   Latency: 50.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V5 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 5 hop(s) x 100.000 ms/hop = 500.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V5): O(log 20) = 5 KEK updates on path to LKH root
+  Propagation: ceil(diam(G_t)) ~= 1 hop(s) x 100.000 ms/hop = 100.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V5): O(log 2) = 1 KEK updates on path to LKH root
   [CA]  Certificate revocation: V5 excluded until re-admission via consortium CA
-  [Trust] Controller C_0 tau=0.900 after Eq.3.39 (Delta_C=0.100)
-  [Trust] tau=0.900 >= tau_min^C=0.500 — monitoring, no reassignment yet
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=3  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 

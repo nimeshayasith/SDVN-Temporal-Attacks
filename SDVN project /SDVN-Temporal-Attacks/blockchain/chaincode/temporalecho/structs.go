@@ -19,7 +19,7 @@ package main
 //   CTRL_TRUST:<controller_id>                  ControllerTrustRecord
 //   CTRL_REASSIGN:<removed_ctrl_id>:<ts_ms>     ControllerReassignment
 //   CTRL_REVOKED:<controller_id>                revocation marker (map[string]interface{})
-//   PEERKEY:<peer_id>                           raw Falcon-1024 public key bytes
+//   PEERKEY:<peer_id>                           raw ML-DSA-87 (Dilithium5) public key bytes
 
 // ─── Flow 1 structs ─────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ type BeaconEvidenceRecord struct {
 	PeerID       string               `json:"peer_id"`
 	IntervalTS   int64                `json:"interval_ts"`
 	Observations []VehicleObservation `json:"observations"`
-	PeerSig      []byte               `json:"peer_sig"`      // σ_nk Falcon-1024
+	PeerSig      []byte               `json:"peer_sig"`      // σ_nk ML-DSA-87 (Dilithium5)
 	PeerPubKey   []byte               `json:"peer_pub_key"`
 	IsRSUPeer    bool                 `json:"is_rsu_peer"`
 	DocType      string               `json:"doc_type"`
@@ -131,7 +131,7 @@ type AlertObject struct {
 
 // ─── Verification helper structs ─────────────────────────────────────────────
 
-// IndividualSigEvidence carries one Falcon-1024 signature for threshold checks (§6.3).
+// IndividualSigEvidence carries one ML-DSA-87 (Dilithium5) signature for threshold checks (§6.3).
 //
 // Ledger key: SIG_EVIDENCE:<vehicle_id>:<ts_ms>:<signer_id>
 // doc_type: "SIG_EVIDENCE"
@@ -332,7 +332,7 @@ type AnchorCheckpoint struct {
 	BlockHeight    uint64   `json:"block_height"`     // monotonic block counter (ANCHOR_CTR)
 	StateRootHash  string   `json:"state_root_hash"`  // SHA-256(TxID||channelID||blockHeight)
 	CreatedByPeer  string   `json:"created_by_peer"`  // Tier 1 RSU peer ID
-	PeerSig        []byte   `json:"peer_sig"`          // σ_nk Falcon-1024 over checkpoint data
+	PeerSig        []byte   `json:"peer_sig"`          // σ_nk ML-DSA-87 (Dilithium5) over checkpoint data
 	PeerPubKey     []byte   `json:"peer_pub_key"`
 	CreatedAtMs    int64    `json:"created_at_ms"`
 	IntervalBlocks int      `json:"interval_blocks"`  // ⌊Tmin/Tb⌋

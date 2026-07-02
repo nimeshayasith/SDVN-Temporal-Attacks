@@ -238,7 +238,7 @@ func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
 	triggeredSigsStr string, // comma-separated indices e.g. "0,1,2"
 	alphaVariant string,     // "TTW" | "BSHH" | "ME"
 	intervalTSStr string,
-	peerSigHex string, // Falcon-1024 signature over (callerPeerID:vehicleID:score:variant:intervalTS)
+	peerSigHex string, // ML-DSA-87 (Dilithium5) signature over (callerPeerID:vehicleID:score:variant:intervalTS)
 ) error {
 	// Verify caller is a Tier 1 RSU peer
 	callerTrust := loadTrust(ctx, callerPeerID)
@@ -254,7 +254,7 @@ func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
     sigInput := fmt.Sprintf("%s:%s:%s:%s:%s", callerPeerID, vehicleID, anomalyScoreStr, alphaVariant, intervalTSStr)
     pubKey := getPeerPubKey(ctx, callerPeerID)
     if !verifyMLDSA87Sig(sigBytes, sigInput, pubKey) {
-        return fmt.Errorf("SubmitLWDetectionResult: invalid Falcon-1024 sig from %s", callerPeerID)
+        return fmt.Errorf("SubmitLWDetectionResult: invalid ML-DSA-87 (Dilithium5) sig from %s", callerPeerID)
     }
 
 	var score float64
@@ -920,7 +920,7 @@ func (t *TemporalEchoMitigator) RegisterController(
 	return saveCtrlTrust(ctx, r)
 }
 
-// RegisterPeerKey stores a peer's Falcon-1024 public key (T-4).
+// RegisterPeerKey stores a peer's ML-DSA-87 (Dilithium5) public key (T-4).
 func (t *TemporalEchoMitigator) RegisterPeerKey(
 	ctx contractapi.TransactionContextInterface,
 	peerID string,
@@ -1026,7 +1026,7 @@ func (t *TemporalEchoMitigator) SubmitIndividualSigEvidence(
 		e.TS = txTimestampMs(ctx)
 	}
 	if !verifyMLDSA87Sig(e.Signature, e.Message, e.PubKey) {
-		return fmt.Errorf("SubmitIndividualSigEvidence: invalid Falcon-1024 signature from signer %s", e.SignerID)
+		return fmt.Errorf("SubmitIndividualSigEvidence: invalid ML-DSA-87 (Dilithium5) signature from signer %s", e.SignerID)
 	}
 	key := fmt.Sprintf("SIG_EVIDENCE:%s:%d:%s", e.VehicleID, e.TS, e.SignerID)
 	data, _ := json.Marshal(e)
@@ -1045,11 +1045,11 @@ func (t *TemporalEchoMitigator) SubmitWitnessRecord(
 		return fmt.Errorf("SubmitWitnessRecord: vehicle_id and reporter_id are required")
 	}
 	w.DocType = "WITNESS"
-	// Verify Falcon-1024 signature at submission to prevent forged records
+	// Verify ML-DSA-87 (Dilithium5) signature at submission to prevent forged records
 	// polluting the immutable ledger (Eq. 3.28).
 	if len(w.Signature) > 0 || len(w.PubKey) > 0 {
     	if !verifyMLDSA87Sig(w.Signature, w.Message, w.PubKey) {
-        	return fmt.Errorf("SubmitWitnessRecord: invalid Falcon-1024 signature from reporter %s", w.ReporterID)
+        	return fmt.Errorf("SubmitWitnessRecord: invalid ML-DSA-87 (Dilithium5) signature from reporter %s", w.ReporterID)
     	}
 	}
 	if w.TS == 0 {

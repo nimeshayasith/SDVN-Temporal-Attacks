@@ -49,9 +49,10 @@ COPY host-openssl/libcrypto.so.3 /opt/liboqs/lib/libcrypto.so.3
 COPY liboqs-local/lib/liboqs.a /opt/liboqs/lib/liboqs.a
 COPY static-libs/libssl.a /opt/liboqs/lib/libssl.a
 COPY static-libs/libcrypto.a /opt/liboqs/lib/libcrypto.a
-# This OpenSSL build has zstd compression support compiled in, so its
-# static archive needs libzstd.a too.
+# This OpenSSL build has zstd + zlib compression support compiled in, so
+# its static archive needs both compression libs' .a too.
 COPY static-libs/libzstd.a /opt/liboqs/lib/libzstd.a
+COPY static-libs/libz.a /opt/liboqs/lib/libz.a
 
 # liboqs-go's cgo pragma expects a pkg-config file named exactly "liboqs-go"
 # (not "liboqs") — see oqs.go: `#cgo pkg-config: liboqs-go`.

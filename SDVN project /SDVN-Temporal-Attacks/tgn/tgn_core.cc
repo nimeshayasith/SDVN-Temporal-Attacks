@@ -21,12 +21,20 @@
 //
 // Architectural placement note:
 //   Algorithm 3 (LW-MITIGATE) runs DURING simulation inside
-//   routing.cc::PemCryptoPreFilter() — that is the primary enforcement
-//   gate.  TGN_ApplyCryptoFilter() here is a post-simulation secondary
-//   pass on pem_all_events (events that already survived PemCryptoPreFilter).
-//   Its purpose is to apply the three Algorithm 3 checks in a way that is
-//   consistent with what the TGN would see in a real online deployment.
-//   It does NOT replace the primary gate.
+//   routing.cc::PemCryptoPreFilter() (→ TetaGuardCryptoFilter(), the real
+//   HMAC-SHA256/Eq.3.15 + freshness/Eq.3.16 + nonce/Eq.3.17 gate) — that is
+//   the ONLY enforcement gate. The thesis's own HMAC-Timestamp-Nonce section
+//   describes a single filter pass upstream of the signature detector and
+//   TGN ("messages failing any condition are silently dropped before
+//   reaching ... the TGN inference engine"), not two independent passes.
+//   TGN_ApplyCryptoFilter() below used to be a second, independent
+//   re-derivation of those three checks from raw PemEvent fields — notably a
+//   proxy MAC check (physical_id==claimed_id) rather than real HMAC, and no
+//   equivalent of the primary gate's Eq. 3.26-3.30 threshold-sig/location-
+//   binding checks — so it could in principle disagree with the primary
+//   gate's real verdict. It is now a thin passthrough: every element of
+//   pem_all_events already survived the real TetaGuardCryptoFilter gate
+//   before being appended there, so there is nothing left to re-check.
 //
 // Integration in routing.cc:
 //   #include ".tgn_src/tgn_core.cc"   ← after pem_all_events declared (line ~1388)
@@ -662,9 +670,15 @@ private:
 static tgn::TGNDetector* g_tgn        = nullptr;
 static tgn::TGNParams    g_tgn_params;
 
-static std::map<uint32_t, double>                g_tgn_last_sender_ts;
-static std::map<std::string, std::set<uint32_t>> g_tgn_link_reporters;
-static std::map<uint32_t, std::vector<double>>   g_tgn_beacon_windows;
+// Issue: per-trusted-node isolation (§3.1.3, Algorithm 2's nk parameter).
+// Outer key = trusted_node_id (the reporter/observer running FS-DETECT), so each
+// trusted node accumulates seq_gap/reporter_count/beacon-window state only from
+// events IT received — matching the batch path (TGN_ProcessEventsForNode, which
+// clears these before each node's slice) instead of sharing one flat view across
+// every trusted node, which is what the online inline path used to do.
+static std::map<uint32_t, std::map<uint32_t, double>>                g_tgn_last_sender_ts;
+static std::map<uint32_t, std::map<std::string, std::set<uint32_t>>> g_tgn_link_reporters;
+static std::map<uint32_t, std::map<uint32_t, std::vector<double>>>   g_tgn_beacon_windows;
 
 static uint64_t g_tgn_tp = 0, g_tgn_tn = 0, g_tgn_fp = 0, g_tgn_fn = 0;
 // Attack events caught at Stage 0 (crypto pre-filter) — never reached TGN.
@@ -698,157 +712,48 @@ static uint64_t                     g_tgn_E_trusted_n  = 0;  // count at run end
 static bool                         g_tgn_E_was_ever_nonempty = false;
 
 // =============================================================================
-//  SECTION 6  Algorithm 3 secondary pass — TGN_ApplyCryptoFilter
+//  SECTION 6  Algorithm 3 passthrough — TGN_ApplyCryptoFilter
 //
-//  This is a post-simulation re-application of the three Algorithm 3
-//  (LW-MITIGATE) checks.  The PRIMARY enforcement runs during simulation
-//  inside routing.cc::PemCryptoPreFilter().  This secondary pass operates
-//  on pem_all_events (events that already survived PemCryptoPreFilter) and
-//  implements the same three checks as Algorithm 3 (§3.4.2):
+//  Finding-14 fix: this used to be a second, independent re-application of
+//  the three Algorithm 3 (LW-MITIGATE) checks, re-derived from raw PemEvent
+//  fields with a weaker MAC proxy (physical_id==claimed_id instead of real
+//  HMAC-SHA256) and no equivalent of the primary gate's Eq. 3.26-3.30
+//  threshold-sig/location-binding checks — so it could in principle disagree
+//  with the real gate. The thesis's HMAC-Timestamp-Nonce section describes a
+//  single filter pass upstream of the signature detector and TGN, not two
+//  independent ones, so the second pass was never faithful to begin with.
 //
-//   Step 1 — HMAC/MAC integrity check (Eq 3.15)
-//   Step 2 — Timestamp freshness check (Eq 3.16)
-//   Step 3 — Nonce novelty check (Eq 3.17)
-//
-//  Key observations on what each check catches in each attack family:
-//
-//   TTW (key-holding insider, forges timestamp to T_now):
-//     Step 1: PASSES — attacker re-signs with own valid key, HMAC over new content is valid.
-//     Step 2: PASSES — forged T_now is within 110 ms of recv_time.
-//     Step 3: PASSES — new timestamp creates a fresh nonce.
-//     → Stage 0 does NOT stop timestamp-forged TTW.  TGN detects via temporal
-//       memory patterns (link appearing past its expected lifetime).
-//
-//   BSHH (non-key-holder replays V1's identity):
-//     Step 1: FAILS  — attacker V2 has its own key, not V1's.  Verifying the
-//       message against V1's public key fails.  Exception: RSU-forwarded BSHH
-//       where the RSU legitimately holds V1's session key (RSU path is trusted).
-//     Step 2: may pass or fail depending on replay age.
-//     Step 3: may pass if nonce is not yet in cache.
-//     → BSHH non-RSU-path caught at Step 1.
-//
-//   ME (echo reporter sends under own identity):
-//     Step 1: PASSES — echo reporter signs with own key.
-//     Step 2: PASSES — fresh timestamp.
-//     Step 3: PASSES — fresh nonce.
-//     → ME not stopped by Stage 0.  TGN detects via reporter_count inflation.
-//
-//   Controller-origin (malicious controller, physical_sender == 9999):
-//     All three steps BYPASSED — controller holds all keys and can generate
-//     valid MACs, fresh timestamps, and novel nonces.  TGN is the sole defence.
-//
-//  NOTE: Revocation (LKH-based, Algorithm 4, post-detection blockchain response)
-//  does NOT belong here.  It is a consequence of a raised alert, not an input
-//  gate to the lightweight pre-filter.
+//  The PRIMARY (and now only) enforcement gate runs during simulation inside
+//  routing.cc::PemCryptoPreFilter() → TetaGuardCryptoFilter(), which performs
+//  the real Eq. 3.15 HMAC-SHA256 check (not a proxy), the real Eq. 3.16
+//  freshness check, and the real Eq. 3.17 nonce-novelty check, plus the
+//  Eq. 3.26-3.30 threshold-signature/location-binding checks this secondary
+//  pass never had. Every element already in pem_all_events survived that
+//  gate before being appended there — so there is nothing left to re-check,
+//  and TGN_ApplyCryptoFilter is now a thin passthrough that returns its
+//  input unchanged. Kept as a named function (rather than inlined at the two
+//  call sites) purely so both callers keep the same "apply the crypto gate,
+//  then run TGN" call shape; it does no filtering.
 // =============================================================================
 
 static std::vector<PemEvent> TGN_ApplyCryptoFilter(const std::vector<PemEvent>& events)
 {
-    // Step 2 threshold: T_b + ε = 110 ms (Eq 3.16)
-    static const double FRESHNESS_S = 0.110;
-
-    // Per-trusted-node nonce caches (Eq 3.17).
-    // Section 3.1.3: each trusted node (RSU or designated OBU) maintains its OWN
-    // nonce cache.  A single global set caused cross-node false positives: if RSU-A
-    // consumed nonce(V1, t) first, RSU-B's valid receipt of the same beacon from V1
-    // at the same timestamp was silently dropped.  Now each reporter_id has its own
-    // independent cache.
-    std::map<uint32_t, std::set<std::tuple<uint32_t, uint32_t, double>>> per_node_nonces;
-
     std::ofstream log("crypto_filter_log.txt");
     log << std::fixed << std::setprecision(4)
-        << "== TGN Secondary Crypto Filter (Algorithm 3, §3.4.2) ==\n"
-        << "  Step 1  Eq 3.15 — HMAC/MAC integrity check\n"
-        << "  Step 2  Eq 3.16 — timestamp freshness: |τr-τs| ≤ " << FRESHNESS_S*1000.0 << " ms\n"
-        << "  Step 3  Eq 3.17 — nonce novelty: per trusted node (reporter_id)\n"
-        << "  Controller bypass: physical_sender==9999 → all steps skipped\n"
-        << "  RSU path: physical_sender in [rsu_base, rsu_base+N_RSUs) → Step 1 skipped\n"
-        << "  Per-node: each reporter_id maintains an independent nonce cache\n"
-        << "=========================================================\n\n";
-
-    std::vector<PemEvent> filtered;
-    int n_mac=0, n_fresh=0, n_nonce=0, n_ctrl=0, n_pass=0;
-
-    for (const PemEvent& e : events) {
-        // Beacons are not signed data packets — pass through without checking
-        if (e.type == PEM_EVENT_BEACON) { filtered.push_back(e); n_pass++; continue; }
-
-        // ── Controller bypass — holds all keys, generates valid MACs and fresh nonces
-        if (e.physical_sender_id == 9999u) { filtered.push_back(e); n_ctrl++; continue; }
-
-        // ── Step 1 — HMAC/MAC integrity check (Eq 3.15) ──────────────────────────
-        // A packet has a valid MAC if the physical sender holds the key for the
-        // claimed sender identity.  This fails when:
-        //   • physical_sender ≠ claimed_sender (attacker signs with wrong key)
-        //   • NOT an RSU path (RSU legitimately holds vehicle session keys)
-        // In simulation: MAC validity is inferred from identity consistency.
-        //
-        // RSU ID range: N_Vehicles … N_Vehicles+N_RSUs-1.
-        // Upper bound is required — without it, the controller sentinel (9999)
-        // satisfies (9999 >= N_Vehicles) and is incorrectly classified as an RSU
-        // whenever N_RSUs > 0, which bypasses the MAC check for all "With RSU"
-        // controller variants (TTW-ctrl-RSU, BSHH-ctrl-RSU, ME-ctrl-RSU).
-        // RSU global NS3 IDs start at N_Controllers+1+N_Vehicles (after controller
-        // nodes and management node).  Using N_Vehicles as the base was wrong and
-        // caused all RSU-forwarded attack events to fail the MAC check (DROP-MAC),
-        // making S2/S4/S6/S8/S10/S12 invisible to the secondary filter.
-        const uint32_t rsu_id_base = N_Controllers + 1 + (uint32_t)N_Vehicles;
-        const bool physical_is_rsu =
-            (N_RSUs > 0)
-            && (e.physical_sender_id >= rsu_id_base)
-            && (e.physical_sender_id <  rsu_id_base + (uint32_t)N_RSUs);
-        const bool mac_valid =
-            physical_is_rsu                             // RSU forwarding is trusted
-            || (e.physical_sender_id == e.claimed_sender_id);  // own-key signing
-        if (!mac_valid) {
-            log << "[DROP-MAC]     t=" << e.reception_timestamp
-                << "  physical=" << e.physical_sender_id
-                << "  claimed=" << e.claimed_sender_id
-                << "  (Eq 3.15 — identity/MAC mismatch, BSHH)\n";
-            n_mac++; continue;
-        }
-
-        // ── Step 2 — Timestamp freshness (Eq 3.16) ───────────────────────────────
-        if (std::abs(e.reception_timestamp - e.sender_timestamp) > FRESHNESS_S) {
-            log << "[DROP-STALE]   t=" << e.reception_timestamp
-                << "  |τr-τs|=" << std::abs(e.reception_timestamp-e.sender_timestamp)*1000.0
-                << "ms  sender=" << e.claimed_sender_id
-                << "  (Eq 3.16 — stale timestamp, BSHH old-replay)\n";
-            n_fresh++; continue;
-        }
-
-        // ── Step 3 — Nonce novelty (Eq 3.17) per trusted node ───────────────────
-        // Each reporter_id has its own independent nonce cache so that two different
-        // RSUs (or OBU peers) receiving the same beacon do not falsely collide.
-        auto nonce = std::make_tuple(e.reporter_id, e.claimed_sender_id, e.sender_timestamp);
-        if (per_node_nonces[e.reporter_id].count(nonce)) {
-            log << "[DROP-NONCE]   t=" << e.reception_timestamp
-                << "  reporter=" << e.reporter_id
-                << "  sender=" << e.claimed_sender_id
-                << "  ts=" << e.sender_timestamp
-                << "  (Eq 3.17 — duplicate nonce in reporter " << e.reporter_id << " cache)\n";
-            n_nonce++; continue;
-        }
-        per_node_nonces[e.reporter_id].insert(nonce);
-
-        filtered.push_back(e); n_pass++;
-    }
-
-    log << "\n== Summary ==\n"
-        << "  In=" << events.size()
-        << "  Pass=" << n_pass
-        << "  Ctrl_bypass=" << n_ctrl
-        << "  MAC_fail=" << n_mac
-        << "  Stale=" << n_fresh
-        << "  Nonce=" << n_nonce
-        << "  Out=" << filtered.size() << "\n";
+        << "== TGN Crypto Gate (Algorithm 3, Eq. 3.15-3.17) ==\n"
+        << "  Passthrough: every event in this list already survived the real\n"
+        << "  HMAC-SHA256/freshness/nonce gate (routing.cc::PemCryptoPreFilter ->\n"
+        << "  TetaGuardCryptoFilter) before reaching pem_all_events. This function\n"
+        << "  no longer re-derives a second, weaker verdict (Finding 14 fix) — see\n"
+        << "  the SECTION 6 header comment in tgn_core.cc for why the old secondary\n"
+        << "  pass was removed rather than kept as an independent re-check.\n"
+        << "  In=" << events.size() << "  Out=" << events.size() << " (no drops)\n";
     log.close();
 
-    std::cout << "[CryptoFilter] " << events.size() << " in → " << filtered.size()
-              << " out  (dropped: " << n_mac << " MAC, " << n_fresh
-              << " stale, " << n_nonce << " nonce)\n"
-              << "               log: crypto_filter_log.txt\n";
-    return filtered;
+    std::cout << "[CryptoFilter] " << events.size()
+              << " events — passthrough (already verified by the primary"
+                 " HMAC/freshness/nonce gate; see crypto_filter_log.txt)\n";
+    return events;
 }
 
 // =============================================================================
@@ -872,7 +777,7 @@ static double TGN_EdgeFreshness(double recv_time, double sender_ts)
 
 // Feature extraction (Eq 3.20 + identity_mismatch engineering extension).
 // See NodeFeatures comment above for the distinction between spec fields and extension.
-static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
+static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted_node_id)
 {
     tgn::NodeFeatures f;
     f.node_id        = e.claimed_sender_id;
@@ -883,7 +788,8 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
 
     // c_v^W — beacon count in sliding window of size W_max (§3.4.3).
     // W_max = N_beacon = ⌊L_link/T_b⌋ (Eq. 3.32 value, §3.4.7 concept).
-    auto& win = g_tgn_beacon_windows[e.claimed_sender_id];
+    // Scoped to trusted_node_id so each observer's window reflects only what it saw.
+    auto& win = g_tgn_beacon_windows[trusted_node_id][e.claimed_sender_id];
     win.push_back(e.reception_timestamp);
     while ((int)win.size() > TGN_WMAX) win.erase(win.begin());
     f.beacon_count = (double)win.size();
@@ -891,10 +797,11 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
     // Δs_v — backward timestamp regression magnitude (TTW-S2 signal)
     f.seq_gap = 0.0;
     {
-        auto it = g_tgn_last_sender_ts.find(e.claimed_sender_id);
-        if (it != g_tgn_last_sender_ts.end() && e.sender_timestamp < it->second)
+        auto& last_ts = g_tgn_last_sender_ts[trusted_node_id];
+        auto it = last_ts.find(e.claimed_sender_id);
+        if (it != last_ts.end() && e.sender_timestamp < it->second)
             f.seq_gap = it->second - e.sender_timestamp;
-        g_tgn_last_sender_ts[e.claimed_sender_id] = e.sender_timestamp;
+        last_ts[e.claimed_sender_id] = e.sender_timestamp;
     }
 
     // ── RSU path detection ────────────────────────────────────────────────────
@@ -917,9 +824,9 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e)
     //   No RSU : track reporter_id (distinct physical vehicles that echoed the link)
     //   With RSU: track claimed_sender_id (RSU injects false claimed senders in ME-S2)
     std::string lkey = std::to_string(e.link_src_id) + "_" + std::to_string(e.link_dst_id);
-    g_tgn_link_reporters[lkey].insert(
-        physical_is_rsu ? e.claimed_sender_id : e.reporter_id);
-    f.reporter_count = (double)g_tgn_link_reporters[lkey].size();
+    auto& link_reporters = g_tgn_link_reporters[trusted_node_id][lkey];
+    link_reporters.insert(physical_is_rsu ? e.claimed_sender_id : e.reporter_id);
+    f.reporter_count = (double)link_reporters.size();
 
     // identity_mismatch (ι_v) — engineering extension for BSHH (not in Eq 3.20).
     //   No RSU : 1.0 when physical_sender ≠ claimed_sender (V2 impersonates V1)
@@ -1933,7 +1840,7 @@ static void TGN_WriteAlertsJson()
         TGN_WriteCtrlTopoJson();
 
         // node <script> --alerts <alerts_json> --evidence <beacon_evidence.csv>
-        //               --ctrl_topo <ctrl_topo.json> [--tier <1|2>] &
+        //               --ctrl_topo <ctrl_topo.json> [--tier <1|2>] [--no_rsu] &
         // submitToFabric.js's main() only parses "--flag value" pairs (it never
         // reads a bare positional argument) — a bare path here was silently
         // ignored every run, leaving alertsPath at the hardcoded default
@@ -1941,12 +1848,23 @@ static void TGN_WriteAlertsJson()
         // produces, so the submission failed on every single run (silently,
         // since output is redirected to /dev/null and system() with a
         // backgrounded '&' command returns 0 regardless of the job's outcome).
+        //
+        // Review finding #7 fix: output was previously discarded entirely
+        // (> /dev/null 2>&1), so a batch of 12 back-to-back scenario runs
+        // showed zero committed blocks with no diagnostic anywhere — the
+        // async node process's failures (MVCC conflicts under concurrent
+        // submission, missing wallet identity, etc.) were unobservable.
+        // Redirect to a per-run append log next to the alerts JSON instead,
+        // so failures are visible after the fact without blocking the ns-3
+        // event loop on the async Fabric submission.
+        const std::string dispatch_log = std::string(cwd) + "/submitToFabric_dispatch.log";
         std::string cmd = "node \"" + js_path + "\""
                         + " --alerts \"" + alerts_path + "\""
                         + " --evidence \"" + evidence_path + "\""
                         + " --ctrl_topo \"" + ctrl_topo_path + "\""
                         + " --tier " + std::to_string(N_RSUs > 0 ? 1 : 2)
-                        + " > /dev/null 2>&1 &";
+                        + (N_RSUs == 0 ? " --no_rsu" : "")
+                        + " >> \"" + dispatch_log + "\" 2>&1 &";
 
         int rc = std::system(cmd.c_str());
         if (rc != 0) {
@@ -1958,7 +1876,8 @@ static void TGN_WriteAlertsJson()
         } else {
             std::cout << "[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3,"
                          " Alg2 line 23) — Tier "
-                      << (N_RSUs > 0 ? 1 : 2) << "\n";
+                      << (N_RSUs > 0 ? 1 : 2)
+                      << "  (dispatch output: " << dispatch_log << ")\n";
         }
     }
 }
