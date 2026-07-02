@@ -2808,6 +2808,7 @@ static void PemReadBlacklistFile();
 static std::string PemResolvePeerLabel(uint32_t nodeId);
 static std::string PemGetConfirmedNeighbours(uint32_t vehicleId);
 static void PemWriteVehicleMacsJson();
+static void PemWriteScenarioConfig();
 static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
 static void PemEmitEvent(PemEventType type,
@@ -102748,6 +102749,37 @@ PemWriteVehicleMacsJson()
     NS_LOG_UNCOND("[PEM] vehicle_macs.json written -> " << out_path);
 }
 
+// =============================================================================
+// PemWriteScenarioConfig — write scenario_config.json recording this run's
+// actual N_RSUs / N_Vehicles, so bootstrap.sh can register only the Fabric
+// peers that correspond to a real simulation entity (report requirement:
+// RSU/OBU peer counts are configurable scenario parameters, not fixed).
+//
+// Issue #9 note: does NOT provision new peers. The Fabric network's
+// container/crypto-material pool (docker-compose-teta.yaml, crypto-config)
+// is fixed at 5 RSU + 3 OBU peers regardless of this file's contents — that
+// pool is deployment capacity, not a bug. This file only tells bootstrap.sh
+// which subset of that fixed pool to actually invoke RegisterRSUPeer /
+// RegisterOBUPeer for.
+// =============================================================================
+static void
+PemWriteScenarioConfig()
+{
+    const std::string out_path =
+        std::string(OUTPUT_ROOT_DIR) + "/../scenario_config.json";
+
+    std::ofstream jout(out_path.c_str());
+    jout << "{\n"
+         << "  \"n_rsus\": " << N_RSUs << ",\n"
+         << "  \"n_vehicles\": " << N_Vehicles << ",\n"
+         << "  \"attack_scenario\": " << attack_scenario << "\n"
+         << "}\n";
+    jout.close();
+
+    NS_LOG_UNCOND("[PEM] scenario_config.json written -> " << out_path
+                  << " (N_RSUs=" << N_RSUs << ", N_Vehicles=" << N_Vehicles << ")");
+}
+
 double data_gathering_cycle_number = 1.0;
 double M;
 uint32_t Y[total_size];
@@ -151451,6 +151483,7 @@ attack_mobility.Install(Vehicle_Nodes);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteBeaconEvidenceCsv);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteCtrlTopoJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteVehicleMacsJson);
+  Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteScenarioConfig);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Schedule(Seconds(0.5), &PemReadBlacklistFile);
   Simulator::Stop(Seconds(simTime));

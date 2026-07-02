@@ -47,6 +47,42 @@ RSU_PEERS=(
     "peer0.rsu5.tetaguard.net:7056"
 )
 
+# ─── Scenario-derived peer counts (Issue #9) ─────────────────────────────────
+# The 5 RSU / 3 OBU peers above are the FIXED deployment pool: their Docker
+# containers (docker-compose-teta.yaml) and MSP crypto material (crypto-config)
+# are pre-provisioned and cannot be changed here. What CAN be scenario-derived
+# is how many of that fixed pool actually get registered — a scenario with
+# fewer RSUs than the pool size should not register peers with no corresponding
+# NS-3 simulation entity (report: RSU/OBU counts are configurable scenario
+# parameters). Falls back to registering the full pool if the scenario config
+# is missing, so existing behaviour is preserved when routing.cc hasn't run yet
+# or predates this fix.
+SCENARIO_CONFIG="$SCRIPT_DIR/../../scenario_config.json"
+N_RSUS_SCENARIO="${#RSU_PEERS[@]}"
+# OBU registration is a MODE switch, not a per-vehicle headcount: the report
+# and this script's own Step 5c-2 comment treat "OBU peers active" as
+# synonymous with "N_RSUs=0" (Tier 2 / no-RSU deployment), not a formula
+# mapping vehicle count to OBU peer count. Registering a partial OBU_PEERS
+# subset derived from N_Vehicles would invent a mapping the report never
+# specifies, so this stays a boolean derived from N_RSUS_SCENARIO below,
+# not a scenario-derived headcount like N_RSUS_SCENARIO is.
+if [ -f "$SCENARIO_CONFIG" ]; then
+    parsed_rsus="$(grep -o '"n_rsus"[[:space:]]*:[[:space:]]*[0-9]*' "$SCENARIO_CONFIG" | grep -o '[0-9]*$' || true)"
+    if [ -n "$parsed_rsus" ]; then
+        N_RSUS_SCENARIO="$parsed_rsus"
+        log "  scenario_config.json found — scenario reports N_RSUs=$N_RSUS_SCENARIO"
+    else
+        log "  WARNING: scenario_config.json present but n_rsus unparsable — registering full RSU pool"
+    fi
+else
+    log "  WARNING: scenario_config.json not found at $SCENARIO_CONFIG — registering full RSU pool (run routing.cc first for scenario-derived registration)"
+fi
+# Clamp to pool capacity — never try to register more peers than exist.
+if [ "$N_RSUS_SCENARIO" -gt "${#RSU_PEERS[@]}" ]; then
+    log "  WARNING: scenario N_RSUs=$N_RSUS_SCENARIO exceeds provisioned pool (${#RSU_PEERS[@]}) — clamping to pool size"
+    N_RSUS_SCENARIO="${#RSU_PEERS[@]}"
+fi
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 log() { echo -e "\n\033[1;32m[bootstrap]\033[0m $*"; }
@@ -128,8 +164,9 @@ log "Step 5b — Skipping initial anchor checkpoint (bootstrap mode for OBU prom
 # B-1 FIX: RegisterRSUPeer must be called for every peer so their trust score
 # is set to 1.0 (Tier 1).  Without this, GetTrustScore returns 0.1 (TrustInitTier2)
 # and all beacon evidence submissions are rejected in production.
-log "Step 5c — Registering RSU peers (trust = 1.0)"
-for peer_hp in "${RSU_PEERS[@]}"; do
+log "Step 5c — Registering RSU peers (trust = 1.0), scenario N_RSUs=$N_RSUS_SCENARIO of pool size ${#RSU_PEERS[@]}"
+for ((rsu_idx=0; rsu_idx<N_RSUS_SCENARIO; rsu_idx++)); do
+    peer_hp="${RSU_PEERS[$rsu_idx]}"
     peer_host="${peer_hp%%:*}"
     peer_cmd "$FIRST_PEER" chaincode invoke \
         -o "$ORDERER" \
@@ -142,6 +179,9 @@ for peer_hp in "${RSU_PEERS[@]}"; do
         || log "  WARNING: RegisterRSUPeer failed for ${peer_host}"
     log "  Registered RSU peer: ${peer_host}"
 done
+if [ "$N_RSUS_SCENARIO" -lt "${#RSU_PEERS[@]}" ]; then
+    log "  Skipped ${#RSU_PEERS[@]}-minus-$N_RSUS_SCENARIO RSU peer(s) with no corresponding scenario entity"
+fi
 
 # ─── Step 5c-2: Register OBU peers (Tier 2 — used when N_RSUs=0) ────────────
 # When no physical RSUs exist in the NS-3 scenario, OBU peers act as the
@@ -152,20 +192,24 @@ OBU_PEERS=(
     "peer0.obu2.tetaguard.net:7062"
     "peer0.obu3.tetaguard.net:7063"
 )
-log "Step 5c-2 — Registering OBU peers (trust = 0.10, Tier 2)"
-for peer_hp in "${OBU_PEERS[@]}"; do
-    peer_host="${peer_hp%%:*}"
-    peer_cmd "$FIRST_PEER" chaincode invoke \
-        -o "$ORDERER" \
-        --ordererTLSHostnameOverride orderer1.tetaguard.net \
-        --tls --cafile "$ORDERER_CA" \
-        -C "$CHANNEL" -n "$CHAINCODE" \
-        --peerAddresses "$FIRST_PEER" \
-        --tlsRootCertFiles "$PEER_MSP_DIR/peers/${FIRST_PEER%%:*}/tls/ca.crt" \
-        -c "{\"function\":\"RegisterOBUPeer\",\"Args\":[\"${peer_host}\",\"4096\"]}" \
-        || log "  WARNING: RegisterOBUPeer failed for ${peer_host}"
-    log "  Registered OBU peer: ${peer_host} (hw=4096MB)"
-done
+if [ "$N_RSUS_SCENARIO" -eq 0 ]; then
+    log "Step 5c-2 — Registering OBU peers (trust = 0.10, Tier 2) — scenario N_RSUs=0, no-RSU mode"
+    for peer_hp in "${OBU_PEERS[@]}"; do
+        peer_host="${peer_hp%%:*}"
+        peer_cmd "$FIRST_PEER" chaincode invoke \
+            -o "$ORDERER" \
+            --ordererTLSHostnameOverride orderer1.tetaguard.net \
+            --tls --cafile "$ORDERER_CA" \
+            -C "$CHANNEL" -n "$CHAINCODE" \
+            --peerAddresses "$FIRST_PEER" \
+            --tlsRootCertFiles "$PEER_MSP_DIR/peers/${FIRST_PEER%%:*}/tls/ca.crt" \
+            -c "{\"function\":\"RegisterOBUPeer\",\"Args\":[\"${peer_host}\",\"4096\"]}" \
+            || log "  WARNING: RegisterOBUPeer failed for ${peer_host}"
+        log "  Registered OBU peer: ${peer_host} (hw=4096MB)"
+    done
+else
+    log "Step 5c-2 — Skipping OBU peer registration — scenario N_RSUs=$N_RSUS_SCENARIO (RSU-present mode, OBUs not needed as endorsing peers)"
+fi
 
 # ─── Step 5d: Register SDN controller(s) in the Fabric consortium ───────────
 # B-1 FIX: RegisterController must be called so loadControllerRegistry returns
@@ -218,7 +262,8 @@ declare -A RSU_PUBKEYS=(
     ["peer0.rsu5.tetaguard.net"]="5349474b45593a706565723072737535000000000000000000000000000000"
 )
 
-for peer_hp in "${RSU_PEERS[@]}"; do
+for ((rsu_idx=0; rsu_idx<N_RSUS_SCENARIO; rsu_idx++)); do
+    peer_hp="${RSU_PEERS[$rsu_idx]}"
     peer_host="${peer_hp%%:*}"
     pubkey_hex="${RSU_PUBKEYS[$peer_host]:-}"
     if [ -z "$pubkey_hex" ]; then

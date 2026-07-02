@@ -21,6 +21,8 @@ Solution at controller cleared
 [KEM] Registered 4/4 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 RSU total packet size is 228
+RSU total packet size is 456
+This is tag1. Serialized size is 172
 This is tag1. Serialized size is 172
 average_latency 0 ms
 [PDR] Channel-wise: Ch172(133.305m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
@@ -28,22 +30,8 @@ average packet delivery ratio is 100.00
 average jitter is 0.00
 average load balance is 100.00
 written to file successfully
-RSU total packet size is 456
-This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 684
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 912
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -54,12 +42,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 1140
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 1368
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -70,12 +52,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 1596
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 1824
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -86,12 +62,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 2052
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 2280
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -102,12 +72,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 2508
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 2736
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -118,12 +82,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 2964
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 3192
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -134,12 +92,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 3420
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 3648
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -150,12 +102,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 3876
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 4104
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -166,12 +112,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 4332
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 4560
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -182,12 +122,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 4788
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 5016
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -198,12 +132,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 5244
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 5472
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -214,12 +142,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 5700
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 5928
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -230,12 +152,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 6156
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 6384
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -246,12 +162,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 6612
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 6840
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -262,12 +172,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 7068
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 7296
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -278,12 +182,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 7524
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 7752
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -294,12 +192,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 7980
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 8208
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -310,12 +202,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 8436
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 8664
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -326,12 +212,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 8892
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 9120
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -342,12 +222,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 9348
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 9576
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -358,12 +232,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 9804
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 10032
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -374,12 +242,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 10260
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 10488
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -390,12 +252,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 10716
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 10944
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -406,12 +262,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 11172
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 11400
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -422,12 +272,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 11628
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 11856
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -438,12 +282,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 12084
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 12312
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -454,12 +292,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 12540
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 12768
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -470,12 +302,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 12996
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 13224
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -486,12 +312,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 13452
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 13680
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -502,12 +322,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 13908
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 14136
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -518,12 +332,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 14364
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 14592
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -534,12 +342,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 14820
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 15048
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -550,12 +352,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 15276
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 15504
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -566,12 +362,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 15732
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 15960
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -582,12 +372,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 16188
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 16416
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -598,12 +382,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 16644
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 16872
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -614,12 +392,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 17100
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 17328
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -630,12 +402,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 17556
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 17784
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -646,12 +412,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 18012
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 18240
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -662,12 +422,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 18468
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 18696
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -678,12 +432,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 18924
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 19152
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -694,12 +442,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 19380
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 19608
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -710,12 +452,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 19836
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 20064
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -726,12 +462,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 20292
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 20520
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -742,12 +472,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 20748
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 20976
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -758,12 +482,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 21204
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 21432
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -774,12 +492,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 21660
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 21888
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -790,12 +502,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 22116
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 22344
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -806,12 +512,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 22572
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 22800
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -822,12 +522,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 23028
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 23256
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -838,12 +532,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 23484
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 23712
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -854,12 +542,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 23940
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 24168
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -870,12 +552,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 24396
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 24624
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -886,12 +562,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 24852
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 25080
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -902,12 +572,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 25308
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 25536
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -918,12 +582,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 25764
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 25992
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -934,12 +592,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 26220
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 26448
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -950,12 +602,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 26676
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 26904
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -966,12 +612,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 27132
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 27360
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -982,12 +622,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 27588
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 27816
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -998,12 +632,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 28044
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 28272
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -1014,12 +642,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 28500
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 28728
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -1030,12 +652,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 28956
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 29184
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -1046,12 +662,6 @@ average load balance is 100.00
 written to file successfully
 RSU total packet size is 29412
 This is tag1. Serialized size is 172
-average_latency 0.00 ms
-[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
-average packet delivery ratio is 100.00
-average jitter is 0.00
-average load balance is 100.00
-written to file successfully
 RSU total packet size is 29640
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
@@ -1061,6 +671,658 @@ average jitter is 0.00
 average load balance is 100.00
 written to file successfully
 RSU total packet size is 29868
+This is tag1. Serialized size is 172
+RSU total packet size is 30096
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 30324
+This is tag1. Serialized size is 172
+RSU total packet size is 30552
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 30780
+This is tag1. Serialized size is 172
+RSU total packet size is 31008
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 31236
+This is tag1. Serialized size is 172
+RSU total packet size is 31464
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 31692
+This is tag1. Serialized size is 172
+RSU total packet size is 31920
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 32148
+This is tag1. Serialized size is 172
+RSU total packet size is 32376
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 32604
+This is tag1. Serialized size is 172
+RSU total packet size is 32832
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 33060
+This is tag1. Serialized size is 172
+RSU total packet size is 33288
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 33516
+This is tag1. Serialized size is 172
+RSU total packet size is 33744
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 33972
+This is tag1. Serialized size is 172
+RSU total packet size is 34200
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 34428
+This is tag1. Serialized size is 172
+RSU total packet size is 34656
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 34884
+This is tag1. Serialized size is 172
+RSU total packet size is 35112
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 35340
+This is tag1. Serialized size is 172
+RSU total packet size is 35568
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 35796
+This is tag1. Serialized size is 172
+RSU total packet size is 36024
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 36252
+This is tag1. Serialized size is 172
+RSU total packet size is 36480
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 36708
+This is tag1. Serialized size is 172
+RSU total packet size is 36936
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 37164
+This is tag1. Serialized size is 172
+RSU total packet size is 37392
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 37620
+This is tag1. Serialized size is 172
+RSU total packet size is 37848
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 38076
+This is tag1. Serialized size is 172
+RSU total packet size is 38304
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 38532
+This is tag1. Serialized size is 172
+RSU total packet size is 38760
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 38988
+This is tag1. Serialized size is 172
+RSU total packet size is 39216
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 39444
+This is tag1. Serialized size is 172
+RSU total packet size is 39672
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 39900
+This is tag1. Serialized size is 172
+RSU total packet size is 40128
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 40356
+This is tag1. Serialized size is 172
+RSU total packet size is 40584
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 40812
+This is tag1. Serialized size is 172
+RSU total packet size is 41040
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 41268
+This is tag1. Serialized size is 172
+RSU total packet size is 41496
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 41724
+This is tag1. Serialized size is 172
+RSU total packet size is 41952
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 42180
+This is tag1. Serialized size is 172
+RSU total packet size is 42408
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 42636
+This is tag1. Serialized size is 172
+RSU total packet size is 42864
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 43092
+This is tag1. Serialized size is 172
+RSU total packet size is 43320
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 43548
+This is tag1. Serialized size is 172
+RSU total packet size is 43776
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 44004
+This is tag1. Serialized size is 172
+RSU total packet size is 44232
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 44460
+This is tag1. Serialized size is 172
+RSU total packet size is 44688
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 44916
+This is tag1. Serialized size is 172
+RSU total packet size is 45144
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 45372
+This is tag1. Serialized size is 172
+RSU total packet size is 45600
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 45828
+This is tag1. Serialized size is 172
+RSU total packet size is 46056
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 46284
+This is tag1. Serialized size is 172
+RSU total packet size is 46512
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 46740
+This is tag1. Serialized size is 172
+RSU total packet size is 46968
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 47196
+This is tag1. Serialized size is 172
+RSU total packet size is 47424
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 47652
+This is tag1. Serialized size is 172
+RSU total packet size is 47880
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 48108
+This is tag1. Serialized size is 172
+RSU total packet size is 48336
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 48564
+This is tag1. Serialized size is 172
+RSU total packet size is 48792
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 49020
+This is tag1. Serialized size is 172
+RSU total packet size is 49248
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 49476
+This is tag1. Serialized size is 172
+RSU total packet size is 49704
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 49932
+This is tag1. Serialized size is 172
+RSU total packet size is 50160
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 50388
+This is tag1. Serialized size is 172
+RSU total packet size is 50616
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 50844
+This is tag1. Serialized size is 172
+RSU total packet size is 51072
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 51300
+This is tag1. Serialized size is 172
+RSU total packet size is 51528
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 51756
+This is tag1. Serialized size is 172
+RSU total packet size is 51984
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 52212
+This is tag1. Serialized size is 172
+RSU total packet size is 52440
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 52668
+This is tag1. Serialized size is 172
+RSU total packet size is 52896
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 53124
+This is tag1. Serialized size is 172
+RSU total packet size is 53352
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 53580
+This is tag1. Serialized size is 172
+RSU total packet size is 53808
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 54036
+This is tag1. Serialized size is 172
+RSU total packet size is 54264
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 54492
+This is tag1. Serialized size is 172
+RSU total packet size is 54720
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 54948
+This is tag1. Serialized size is 172
+RSU total packet size is 55176
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 55404
+This is tag1. Serialized size is 172
+RSU total packet size is 55632
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 55860
+This is tag1. Serialized size is 172
+RSU total packet size is 56088
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 56316
+This is tag1. Serialized size is 172
+RSU total packet size is 56544
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 56772
+This is tag1. Serialized size is 172
+RSU total packet size is 57000
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 57228
+This is tag1. Serialized size is 172
+RSU total packet size is 57456
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 57684
+This is tag1. Serialized size is 172
+RSU total packet size is 57912
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 58140
+This is tag1. Serialized size is 172
+RSU total packet size is 58368
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 58596
+This is tag1. Serialized size is 172
+RSU total packet size is 58824
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 59052
+This is tag1. Serialized size is 172
+RSU total packet size is 59280
+This is tag1. Serialized size is 172
+average_latency 0.00 ms
+[PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
+average packet delivery ratio is 100.00
+average jitter is 0.00
+average load balance is 100.00
+written to file successfully
+RSU total packet size is 59508
+This is tag1. Serialized size is 172
+RSU total packet size is 59736
 This is tag1. Serialized size is 172
 average_latency 0.00 ms
 [PDR] Channel-wise: Ch172(133.30m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
