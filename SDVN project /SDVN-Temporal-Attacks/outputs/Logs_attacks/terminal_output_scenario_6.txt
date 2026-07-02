@@ -27,7 +27,7 @@ Stored HB time : t=5 (from legitimate exchange)
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Derived real per-vehicle session keys for 20/20 vehicles (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
 [BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
@@ -38,9 +38,12 @@ Current neighbor size is 0Received packet from 25 of size 12packet timestamp 5.0
 [BSHH-S2][t=5.100]  RSU0(ns3=25) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
 [BSHH-S2][t=5.101]  RSU1(ns3=26) stored old heartbeat  Heartbeat(V2(ns3=7), t=5.000)  (replay at t=10)
 [BSHH-S2][t=10.000]  RSU0(ns3=25) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V25, claimed=V0(ns3=5), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
 [BSHH-S2][t=10.000]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V25
+[Trust][t=10.000]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.000s with delay 1ms
 [BSHH-S2][t=10.001]  RSU1(ns3=26) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V26, claimed=V2(ns3=7), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=10.001]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
 [BSHH-S2][t=10.001]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V26
 Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.001s with delay 1ms
 

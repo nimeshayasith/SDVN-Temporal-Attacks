@@ -12,12 +12,20 @@
 
 ========================================================
 
-[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_9
+[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_25
   V5 -> RSU : <V5 sees V6, t=10.000>
   V6 -> RSU : <V6 sees V5, t=10.000>
 
-[t=10.100]  STEP ②  RSU_9 aggregated forward to controller
+[t=10.001]  STEP ①  V2V HELLO + topology updates to RSU_26
+  V7 -> RSU : <V7 sees V8, t=10.000>
+  V8 -> RSU : <V8 sees V7, t=10.000>
+
+[t=10.100]  STEP ②  RSU_25 aggregated forward to controller
   [<V5 sees V6, t=10.000>, <V6 sees V5, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.101]  STEP ②  RSU_26 aggregated forward to controller
+  [<V7 sees V8, t=10.000>, <V8 sees V7, t=10.000>]
   Result : ACCEPTED (legitimate aggregate)
 
 [t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
@@ -26,12 +34,18 @@
   Link physically breaks at t≈12.5s (dist > 300.0m)
   Simulation declares it broken at t=15.0s — controller receives no link-down notification.
 
-[t=20.000]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_9)
+[t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V7 sees V8, t=10.000>
+  Awaiting replay at t=20.000
+  Link physically breaks at t≈12.5s (dist > 300.0m)
+  Simulation declares it broken at t=15.0s — controller receives no link-down notification.
+
+[t=20.000]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_25)
   Stored packet : <V5 sees V6, t=10.000>  (original RSU-aggregated observation at t=10.000)
   Forged packet : <V5 sees V6, t=20.000>  timestamp changed 10.000 -> 20.000
   Forge action  : RSU changes timestamp to appear current, injects to controller at t=20.000
 
-[t=20.000]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_9)
+[t=20.000]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_25)
   Controller ACCEPTED forged packet (no timestamp-integrity protection)
 
 [t=20.000]  STEP ⑥  FAULTY ROUTING DECISION
@@ -44,6 +58,28 @@
   ──────────────────────────────────
   V5  ->  V6    t=20.000    YES <- FORGED
   V6  ->  V5    t=10.000    No
+  V7  ->  V8    t=10.000    No
+  V8  ->  V7    t=10.000    No
+[t=20.000]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_26)
+  Stored packet : <V7 sees V8, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V7 sees V8, t=20.000>  timestamp changed 10.000 -> 20.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=20.000
+
+[t=20.000]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_26)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=20.000]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V7<->V8 was ACTIVE at t=20.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V5  ->  V6    t=20.000    YES <- FORGED
+  V6  ->  V5    t=10.000    No
+  V7  ->  V8    t=20.000    YES <- FORGED
+  V8  ->  V7    t=10.000    No
 
 ========================================================
   TTW ATTACK S2 COMPLETE
@@ -55,6 +91,18 @@
   Latency: 50.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
-  [LKH] Revoke-Session-Key(V9): O(log 4) = 2 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V9 excluded until re-admission via consortium CA
+  [LKH] Revoke-Session-Key(V25): O(log 20) = 5 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V25 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V25): blocked from re-admission until re-authenticated
+
+[t=20.050]  TTW-S2 RSU attacker sophistication: BASIC — identity mismatch (RSU≠V1) → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=20.050]  DETECTION + MITIGATION
+  Ghost link V7<->V8 removed
+  Score: 1.000
+  Latency: 50.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V26): O(log 20) = 5 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V26 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V26): blocked from re-admission until re-authenticated
 
