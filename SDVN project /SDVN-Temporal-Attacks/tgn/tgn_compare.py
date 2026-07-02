@@ -24,7 +24,9 @@ Four detectors evaluated on the same tgn_events.csv data:
 
 Usage:
     # Step 1 — Generate CSV (heuristic TGN mode, no trained weights needed yet):
-    #   ./waf --run "scratch/tgn_detector --simTime=60 --N_Vehicles=6 --attack_scenario=1"
+    #   ./waf --run "scratch/routing --simTime=60 --N_Vehicles=6 --attack_scenario=1"
+    #   (tgn_detector.cc is a disconnected standalone file — routing.cc is what
+    #    actually runs; it #includes tgn_core.cc via .tgn_src/tgn_core.cc)
     #   (repeat for all scenarios; cat tgn_events.csv files)
 
     # Step 2 — Train TGN weights:
@@ -841,8 +843,10 @@ def main():
         sys.exit(
             f"[ERROR] '{args.csv}' not found.\n"
             f"  Generate it with:\n"
-            f"    ./waf --run \"scratch/tgn_detector --simTime=60 "
+            f"    ./waf --run \"scratch/routing --simTime=60 "
             f"--N_Vehicles=6 --attack_scenario=1\"\n"
+            f"  (scratch/tgn_detector is a disconnected standalone file —\n"
+            f"   scratch/routing is the binary that's actually built and run.)\n"
             f"  Run for all 12 scenarios and concatenate."
         )
 

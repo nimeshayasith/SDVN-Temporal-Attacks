@@ -11,21 +11,42 @@ The Full-Stack (FS) detector models the SDVN topology as a sequence of graph sna
 
 ```
 routing.cc (RoutingMain)
-    │  fills pem_all_events in memory
+    │  TGN_Init() called BEFORE Simulator::Run()
+    │  → every PemRecordObservation() call feeds TGN_ProcessEventInline()
+    │    immediately, per trusted node, as events arrive (§11a in tgn_core.cc)
     ▼
-TGN_ApplyCryptoFilter()          ← Algorithm 3, Eqs. 3.14–3.17
-    │  drops stale/replay/revoked events
-    │  writes crypto_filter_log.txt
+TGN_ProcessEventInline()  [LIVE PATH]   ← Algorithm 2 FS-DETECT, Eqs. 3.18–3.23
+    │  runs per-event, per trusted node, during Simulator::Run()
+    │  each trusted node keeps an isolated local view (seq_gap, reporter_count,
+    │  beacon windows keyed by trusted_node_id — see "Per-trusted-node
+    │  isolation" note below)
     ▼
-TGN_ProcessAllEvents()           ← Algorithm 2 FS-DETECT, Eqs. 3.18–3.23
-    │  writes tgn_events.csv
-    │  writes tgn_detection_log_s{N}.txt
+TGN_RunPipeline()   [called after Simulator::Destroy()]
+    │  detects g_tgn_online_mode == true → skips re-processing
+    │  runs TGN_ApplyCryptoFilter() (now a passthrough — see Crypto
+    │    Pre-Filter Integration section below) and writes tgn_events.csv,
+    │  tgn_alerts.json, tgn_summary.txt
     ▼
-TGN_WriteAlertsJson()            ← Eq. 3.36 AlertObject
-    │  writes tgn_alerts.json
-    ▼
-submit_alerts.py → Hyperledger Fabric
+submitToFabric.js → Hyperledger Fabric
 ```
+
+**Batch path (`TGN_ProcessAllEvents` / `TGN_ProcessEventsForNode`) still exists**
+and is used only when `TGN_Init()` was *not* called before `Simulator::Run()`
+(not the case in the current `routing.cc`, which always calls `TGN_Init()`
+up front). The two paths share `TGN_ExtractFeatures()` and are meant to behave
+identically; see the isolation note below for a bug that used to make them
+diverge.
+
+**Per-trusted-node isolation (fixed):** `TGN_ExtractFeatures()`'s state —
+`g_tgn_last_sender_ts`, `g_tgn_link_reporters`, `g_tgn_beacon_windows` — is
+keyed by `trusted_node_id` (the observer running FS-DETECT), not flat. The
+batch path always got this right (it clears the state before each node's
+event slice). The online/inline path used to share one flat view across every
+trusted node processed in the same run — since inline events from different
+observers (e.g. an RSU and the controller sentinel in S4/S8/S12) interleave
+in real time, one observer's state was leaking into another's. Both paths now
+key these maps by `trusted_node_id`, so each trusted node gets its own
+`seq_gap`/`reporter_count`/beacon-window view in both modes, matching §3.1.3.
 
 ---
 
@@ -41,29 +62,33 @@ X_t  ∈ R^(|V_t|×d)  — node feature matrix  (d = 32)
 A_t  ∈ R^(|V_t|×|V_t|) — freshness-weighted adjacency matrix
 ```
 
-### Node Feature Vector — Implementation vs Paper
+### Node Feature Vector — Implementation matches Eq. 3.20
 
-The paper (Eq. 3.19) specifies a 5-element feature vector:
+Eq. 3.20 specifies a 5-element feature vector, and the current implementation
+(`tgn::NodeFeatures`, `TGN_ExtractFeatures()`) follows it exactly — `id_v` is
+deliberately excluded (identity-overfitting risk, per the thesis's own
+rationale for the exclusion):
 ```
-x_v = [id_v, τs(v), c^W_v, Δs_v, ρ_v] ∈ R^d
+x_v = [τ_dev(v), c^W_v, Δs_v, ρ_v, ι_v] ∈ R^5
+```
+φ(Δt_v) is not part of x_v itself — it's appended inside the GRU cell
+(Eq. 3.22), making the actual GRU input `dim + 6` (5 features + φ):
+```cpp
+int gs = params_.dim + 6;   // TGNWeights::gru_input_size
 ```
 
-The implementation extends this to 7 elements (dimension labelled `dim+7` in the GRU input):
-```
-x_v = [id_v_norm, τs(v), c^W_v, Δs_v, ρ_v, identity_mismatch, φ(Δt_v)]
-```
+| Feature | Meaning | Attack Signal |
+|---------|---------|---------------|
+| `τ_dev(v)` | `clip((τ_r − τ_s) / T_b, −50, 50)` — normalised reception/sender timestamp deviation | Large positive → BSHH replay (stale unforged τ_s); ≈0 under TTW (attacker forges τ_s) |
+| `c^W_v` | Beacon count in sliding window W_max | Low count → BSHH-S3 liveness anomaly |
+| `Δs_v` | Sequence-number/backward-timestamp gap | Non-zero → TTW-S2 replay inversion |
+| `ρ_v` | Reporter count for the link's directed key | Inflated → ME echo injection (ME-S1) |
+| `ι_v` | Identity mismatch: 1.0 when physical≠claimed sender | BSHH-S1 impersonation; forced to 0 for RSU-forwarded events and the controller sentinel (9999) — see `TGN_ExtractFeatures()` |
+| `φ(Δt_v)` | `log(1 + Δt_v/T_b)` — GRU-internal time-elapsed encoding, not part of x_v | Long silence amplifies memory update (BSHH-S3) |
 
-| Feature | Paper | Implementation | Attack Signal |
-|---------|-------|---------------|---------------|
-| `id_v` | Learnable embedding ∈ R^d | Scalar normalisation `node_id / (N+1)` | — |
-| `τs(v)` | Timestamp of last received beacon | Same | Recency |
-| `c^W_v` | Beacon count in window W | Same | Low count → BSHH-S3 liveness anomaly |
-| `Δs_v` | Sequence number gap | Same | Non-zero → TTW inversion |
-| `ρ_v` | Reporter count for adjacent links | Same (but per directed key — see below) | Inflated → ME echo injection |
-| `identity_mismatch` | Not in paper | Added: 1.0 when physical≠claimed sender (no RSU path only) | BSHH impersonation |
-| `φ(Δt_v)` | Not in paper | Added: log(1 + Δt_v/T_b) — time-elapsed encoding passed to GRU | Long silence → BSHH-S3 |
+**No id_v, no learnable embedding — this used to diverge from the paper but no longer does.** An earlier revision carried a 7th element (`id_v_norm = node_id/(N+1)`, giving `dim+7`); it was removed because including any node-identity signal — even a scalar — risks the GRU memorising "attacker node Vk → attack" instead of learning temporal behaviour, exactly the generalisation failure Eq. 3.20's own exclusion of `id_v` is meant to prevent. `tgn_weights.bin` and `tgn_train.py` must use this 5-feature (`dim+6` GRU input) format — see the Training section below.
 
-**id_v implementation note:** The paper specifies a learnable embedding matrix E ∈ R^(N×d) that projects integer node IDs into d-dimensional space. The implementation uses `id_v_norm = node_id / (N+1)` (a scalar) concatenated with the 6 other features, giving `dim+7` total GRU input dimensions. When `tgn_weights.bin` is trained, the training script must use the same 7-feature format — not a learnable embedding layer — or the weight tensor shapes will be incompatible.
+**Note — `tgn_compare.py` has NOT been updated to match.** The Python baseline-comparison script (`tgn_compare.py`) still implements the old 7-feature scheme with `id_v_norm` (see its `extract_features()` and `gs = dim + 7`). This means its "Proposed TGN" baseline is testing a stale spec, not the current `tgn_core.cc` model — worth fixing before citing RQ3 comparison numbers.
 
 ### Freshness-Aware Edge Weighting — Eq. 3.20
 ```
@@ -75,7 +100,12 @@ A_uv(t) = exp(−(τr(t) − τs(uv)) / (γ · T_b))
 - Urban default: γ = 310 (L_link = 43 s)
 - Highway: γ ≈ 32 (L_link = 4.5 s, recalibrate via `--tgn_l_link=4.5`)
 
-**T_b offset note:** The implementation adds a plateau region: events with `(τr − τs) < T_b` are capped to weight 1.0 before the exponential decay. This prevents very-fresh-but-non-zero age differences from producing sub-1.0 weights during the first beacon interval. The paper's Eq. 3.20 has no such offset. The engineering choice ensures ME-S1/S2 fresh echo events do not accidentally appear "slightly stale," so ME detection relies purely on reporter_count (ρ_v) rather than edge weight, matching the intended detection logic.
+**T_b offset — removed (Issue 8.6 fix), matches Eq. 3.21 exactly now:** An earlier revision added a plateau region (events with `(τr − τs) < T_b` capped to weight 1.0 before the exponential decay) that had no basis in Eq. 3.21. `TGN_EdgeFreshness()` now computes the equation as written, with no plateau:
+```cpp
+double age = std::max(0.0, recv_time - sender_ts);
+return std::exp(-age / (TGN_GAMMA * TGN_BEACON_INTERVAL));
+```
+ME-S1/S2 fresh echo events still don't read as "stale" — they simply have `age ≈ 0` since the echo is signed fresh — so this doesn't reintroduce the false-staleness risk the old plateau was guarding against. ME detection still relies primarily on `reporter_count` (ρ_v), not edge weight.
 
 ### Temporal Memory Update — Eq. 3.21
 ```
@@ -283,20 +313,21 @@ return sigmoid(s - 2.0);
 
 ---
 
-## Critical Gap: Training Pipeline Missing
+## Training Pipeline — `tgn_train.py` now exists (superseded gap)
 
-**`tgn_train.py` does not exist.** The system is permanently in heuristic mode until it is written. This is the most critical gap between the paper and the current implementation.
+**This section previously said `tgn_train.py` does not exist and the system is permanently in heuristic mode. That's no longer true** — `tgn_train.py` exists (a mature ~40KB script) and `tgn_weights.bin` has been produced from it. See the "Training (`tgn_train.py`)" section further below for the actual workflow (`generate_training_data.sh`, then `tgn_train.py`). Whether a given run *uses* the trained weights still depends on passing `--tgn_weights=tgn_weights.bin` — without it, `TGN_Init()` logs a warning and falls back to `HeuristicScore()` — but the training pipeline itself is implemented, not missing.
 
-When writing `tgn_train.py`, these constraints must be respected to match the inference code in `tgn_core.cc`:
+Constraints `tgn_train.py` must respect to match the inference code in `tgn_core.cc` (kept current with the 5-feature vector above, not the old 7-element one):
 
 | Constraint | Reason |
 |------------|--------|
-| 7-element feature vector `[id_v_norm, τs, c^W_v, Δs_v, ρ_v, identity_mismatch, φ]` | Matches `dim+7` GRU input dimensionality in TGN_ExtractFeatures |
-| Scalar `id_v_norm = node_id / (N+1)`, not a learnable embedding layer | Paper specifies learnable; implementation uses scalar. Train must match inference |
-| 3-node active set per event `{node_id, link_src, link_dst}` | Matches streaming subgraph in TGN_ProcessAllEvents |
-| T_b offset in edge freshness (plateau for age < T_b) | Matches `stale_excess = max(0, age - T_b)` in TGN_ExtractFeatures |
+| 5-element feature vector `[τ_dev, c^W_v, Δs_v, ρ_v, ι_v]` + φ appended inside GRU, giving `dim+6` GRU input — **no `id_v`** | Matches Eq. 3.20 and `TGN_ExtractFeatures()`/`gs = dim + 6` exactly |
+| 3-node active set per event `{node_id, link_src, link_dst}` | Matches streaming subgraph in `TGN_ProcessEventInline`/`TGN_ProcessEventsForNode` |
+| No T_b plateau in edge freshness — plain `exp(-age/(γ·T_b))` | Matches `TGN_EdgeFreshness()` after the Issue 8.6 fix (plateau removed) |
 | Variant head gated on `alert == true` | Eq. 3.25 classification only runs when Eq. 3.23 fires |
 | `d = 32`, `L = 2` defaults | Matches `TGN_DIM = 32`, `TGN_LAYERS = 2` constants |
+
+**Known divergence:** `tgn_compare.py` (the RQ3 baseline-comparison script) still targets the *old* 7-feature scheme with `id_v_norm` — it was not updated when `tgn_core.cc`/`tgn_train.py` moved to the 5-feature Eq. 3.20 format. See the feature-vector note above.
 
 ---
 
@@ -346,7 +377,7 @@ bash generate_training_data.sh --epochs 50 --output tgn_weights.bin
 # Manual — generate training data then train
 for SCENARIO in 0 1 2 3 4 5 6 7 8 9 10 11 12; do
     N_RSU=0; case $SCENARIO in 2|4|6|8|10|12) N_RSU=1;; esac
-    ./waf --run "scratch/tgn_detector --simTime=60 --N_Vehicles=6 \
+    ./waf --run "scratch/routing --simTime=60 --N_Vehicles=6 \
         --N_RSUs=${N_RSU} --attack_scenario=${SCENARIO} --RngRun=1"
     [ "$SCENARIO" -eq 0 ] && cp tgn_events.csv all_events.csv \
                           || tail -n +2 tgn_events.csv >> all_events.csv
@@ -362,7 +393,7 @@ Training setup:
 - Binary cross-entropy loss with class-weight balancing
 - MCC-optimised θ_FS threshold on validation set
 - L = 2 message-passing rounds
-- Feature vector must be 7-element (not paper's 5-element with learnable id embedding)
+- Feature vector is 5-element per Eq. 3.20 (`[τ_dev, c^W_v, Δs_v, ρ_v, ι_v]`, no `id_v`), `dim+6` GRU input with φ appended inside the GRU cell
 
 ---
 
@@ -383,6 +414,8 @@ python3 tgn_compare.py --scenario 1 --n_runs 5
 
 **Fair ablation design:** DMSTG-AD uses all 7 features, isolating the contribution of the TGN's GRU temporal memory and freshness-weighted aggregation from feature-count differences.
 
+**⚠ Stale relative to `tgn_core.cc`:** these "7 features" describe `tgn_compare.py`'s own Python reimplementation, which still includes `id_v_norm` and was not updated when `tgn_core.cc`/`tgn_train.py` moved to the 5-feature Eq. 3.20 format (see the feature-vector note earlier in this doc). The table above is accurate to what `tgn_compare.py` currently runs, but that means its "Proposed TGN" column is not exercising the same feature set as the production detector — fix `tgn_compare.py` before trusting RQ3 numbers against the current model.
+
 ---
 
 ## Output Files
@@ -400,25 +433,24 @@ python3 tgn_compare.py --scenario 1 --n_runs 5
 
 ## Build and Run
 
-```bash
-# Copy to NS-3 scratch directory (Ubuntu VMware)
-cp tgn_detector.cc ~/ns-allinone-3.35/ns-3.35/scratch/
+**`tgn_detector.cc` is a disconnected standalone file — it is not what gets built or run.** The live binary is `scratch/routing.cc`, which `#include`s `tgn_core.cc` (via a hardlinked `.tgn_src/tgn_core.cc`) and calls `TGN_Init()` before `Simulator::Run()`. Use `scratch/routing` for all of the commands below.
 
-# Build
+```bash
+# Build (tgn_core.cc is already wired into routing.cc — nothing to copy)
 cd ~/ns-allinone-3.35/ns-3.35
 ./waf build
 
-# Run TGN detector (scenario 1 — TTW Malicious Vehicle)
-./waf --run "scratch/tgn_detector --simTime=60 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=1"
+# Run (scenario 1 — TTW Malicious Vehicle)
+./waf --run "scratch/routing --simTime=60 --N_Vehicles=6 --N_RSUs=0 --attack_scenario=1"
 
 # Run with pre-trained weights
-./waf --run "scratch/tgn_detector --simTime=60 --N_Vehicles=6 --attack_scenario=1 --tgn_weights=tgn_weights.bin"
+./waf --run "scratch/routing --simTime=60 --N_Vehicles=6 --attack_scenario=1 --tgn_weights=tgn_weights.bin"
 
 # Recalibrate for highway mobility (L_link ≈ 4.5 s)
-./waf --run "scratch/tgn_detector --simTime=60 --N_Vehicles=6 --attack_scenario=1 --tgn_l_link=4.5"
+./waf --run "scratch/routing --simTime=60 --N_Vehicles=6 --attack_scenario=1 --tgn_l_link=4.5"
 
 # Baseline: no attack
-./waf --run "scratch/tgn_detector --simTime=60 --N_Vehicles=6 --attack_scenario=0"
+./waf --run "scratch/routing --simTime=60 --N_Vehicles=6 --attack_scenario=0"
 ```
 
 ### Runtime Parameters
@@ -441,17 +473,19 @@ Summary of all 14 issues reviewed against the paper:
 
 | # | Issue | Status | Action |
 |---|-------|--------|--------|
-| 1 | x_v has 7 elements (paper says 5); id_v is scalar norm not learnable embedding | Intentional extension | Document above; tgn_train.py must match |
+| 1 | x_v has 7 elements (paper says 5); id_v is scalar norm not learnable embedding | **RESOLVED** — `id_v` removed; `tgn_core.cc` now matches Eq. 3.20's 5-element vector exactly (`dim+6` GRU input with φ) | `tgn_compare.py` still has NOT been updated to match — see feature-vector note above |
 | 2 | h_v(0) initialisation wrong | **INCORRECT — user misread code.** H[v]=states_[v].memory at Step 3 uses mv(t) freshly computed by Step 1. No bug. | None |
 | 3 | 3-node active set vs full V_t | Streaming approximation, intentional | Document above; tgn_train.py must use same 3-node subgraph |
-| 4 | T_b offset plateau in edge freshness | Intentional engineering choice | Document above |
+| 4 | T_b offset plateau in edge freshness | **RESOLVED (Issue 8.6 fix)** — plateau removed; `TGN_EdgeFreshness()` now implements Eq. 3.21 exactly | None |
 | 5 | Variant head gated on alert | Intentional (heuristic scores unreliable for multi-class) | Document above |
 | 6 | θ_FS = 0.40 uncalibrated | Already noted in code comments | Requires tgn_train.py to calibrate |
 | 7 | d=32, L=2 pending validation | Already noted in code comments | Pending hyperparameter search |
 | 8 | rhoMax=1.5 flat vs density-dependent | Already noted in code comments | Heuristic approximation |
 | 9 | BEACON events skip without updating beacon_count | **REAL BUG — FIXED** | Beacon window now updated in skip block |
 | 10 | ρ_v per-directed-key vs node-level aggregation | Intentional, more sensitive | Document above |
-| 11 | tgn_train.py entirely missing | **CRITICAL GAP** | Future work; constraints documented above |
+| 11 | tgn_train.py entirely missing | **RESOLVED** — `tgn_train.py` exists and has produced `tgn_weights.bin`; heuristic mode is now opt-in-by-omission (`--tgn_weights` not passed), not permanent | See "Training Pipeline" section above |
 | 12 | SUBMIT_TO_FABRIC is file-mediated not inline | Simulation artifact | Document above |
 | 13 | Controller sentinel 9999 triggers identity_mismatch=1.0 for non-BSHH scenarios | **REAL BUG — FIXED** | 9999u guard added to identity_mismatch |
 | 14 | Location-binding Eqs. 3.27–3.30 not implemented | **INCORRECT — already implemented** in `routing.cc::PemCryptoPreFilter` (primary gate). Not in `tgn_core.cc` by design (secondary pass only re-checks 3.14–3.17). | TGN_DETECTOR.md corrected |
+| 15 | Online/inline path (`TGN_ProcessEventInline`, live since `TGN_Init()` runs before `Simulator::Run()`) shared flat feature-extraction state across all trusted nodes, unlike the batch path which resets it per node | **REAL BUG — FIXED** | `g_tgn_last_sender_ts`/`g_tgn_link_reporters`/`g_tgn_beacon_windows` now keyed by `trusted_node_id` in both paths — see pipeline diagram note above |
+| 16 | This doc (`TGN_DETECTOR.md`) documented the pre-Issue-15 batch-only pipeline and never mentioned the online/inline path, which is the one that actually runs | **DOC FIX** | Pipeline diagram at top of this file updated to describe the live inline path |
