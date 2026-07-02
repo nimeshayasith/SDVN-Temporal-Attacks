@@ -1,11 +1,7 @@
 {
   "controller_id": "sdn-controller",
-  "interval_ts": 19999,
+  "interval_ts": 14999,
   "links": [
-    {"node_a": "V0", "node_b": "V2", "ts": 10009},
-    {"node_a": "V0", "node_b": "V2", "ts": 10009},
-    {"node_a": "V2", "node_b": "V0", "ts": 10009},
-    {"node_a": "V3", "node_b": "V5", "ts": 10009},
-    {"node_a": "V5", "node_b": "V3", "ts": 10009}
+
   ]
 }

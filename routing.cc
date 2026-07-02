@@ -2807,6 +2807,7 @@ static void PemWriteCtrlTopoJson();
 static void PemReadBlacklistFile();
 static std::string PemResolvePeerLabel(uint32_t nodeId);
 static std::string PemGetConfirmedNeighbours(uint32_t vehicleId);
+static void PemWriteVehicleMacsJson();
 static void RunNpfadsDetection();
 static void PemCaptureRoutingPhaseMetrics();
 static void PemEmitEvent(PemEventType type,
@@ -102702,6 +102703,51 @@ NetDeviceContainer wifidevices_184;
 
 NodeContainer dsrc_Nodes;
 
+// =============================================================================
+// PemWriteVehicleMacsJson — Issue 5 fix, routing.cc-testable half only.
+//
+// flowmod.go's lookupVehicleMAC() falls back to a derived formula
+// (02:00:00:00:HH:LL from the vehicle's numeric ns-3 ID) because nothing
+// submits the real device MAC via SubmitVehicleMAC. This writes the real
+// address so a future bridge script has something genuine to submit; the
+// submission call itself is out of scope for this session (requires running
+// the chaincode) and is NOT made here.
+//
+// Vehicles occupy indices [0, Vehicle_Nodes.GetN()) in both wifidevices and
+// dsrc_Nodes (dsrc_Nodes.Add(Vehicle_Nodes) is called before
+// dsrc_Nodes.Add(RSU_Nodes) during setup), so no index offset is needed.
+// =============================================================================
+static void
+PemWriteVehicleMacsJson()
+{
+    const std::string out_path =
+        std::string(OUTPUT_ROOT_DIR) + "/../vehicle_macs.json";
+
+    std::ofstream jout(out_path.c_str());
+    jout << "[\n";
+    bool first = true;
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN() && i < wifidevices.GetN(); ++i)
+    {
+        Ptr<NetDevice> dev = wifidevices.Get(i);
+        if (!dev) continue;
+        Address addr = dev->GetAddress();
+        Mac48Address mac = Mac48Address::ConvertFrom(addr);
+        std::ostringstream mac_oss;
+        mac_oss << mac;
+
+        uint32_t vehicleId = Vehicle_Nodes.Get(i)->GetId();
+
+        if (!first) jout << ",\n";
+        first = false;
+        jout << "  {\"vehicle_id\": \"V" << vehicleId
+             << "\", \"mac\": \"" << mac_oss.str() << "\"}";
+    }
+    jout << "\n]\n";
+    jout.close();
+
+    NS_LOG_UNCOND("[PEM] vehicle_macs.json written -> " << out_path);
+}
+
 double data_gathering_cycle_number = 1.0;
 double M;
 uint32_t Y[total_size];
@@ -151404,6 +151450,7 @@ attack_mobility.Install(Vehicle_Nodes);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteAlertsJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteBeaconEvidenceCsv);
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteCtrlTopoJson);
+  Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteVehicleMacsJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Schedule(Seconds(0.5), &PemReadBlacklistFile);
   Simulator::Stop(Seconds(simTime));
