@@ -2065,7 +2065,39 @@ PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double 
 // (see PemRecordBeaconEvidence's comment), so the output is genuine witness
 // data — but nothing here calls SubmitWitnessRecord itself; that requires
 // running the chaincode, out of scope for this session.
+//
+// Eq. 3.27/3.28 signature (Issue 3 fix): each record is signed so the
+// chaincode's Eq. 3.29 Verify(sigma_Vk, PK_Vk)=1 gate can actually pass.
+// verifyMLDSA87Sig(sig, message, pubKey) on the Go side hashes the literal
+// bytes of the JSON "message" string — it does NOT re-derive that string
+// from reporter_lat/reporter_lon/rssi_from_vi_dbm/ts_ms, so the signed
+// message below is built from exactly those same four values (plus
+// vehicle_id/reporter_id/nonce for identity+freshness binding) to preserve
+// Eq. 3.27's physical-binding guarantee; do not let the two representations
+// drift apart in any future edit. The struct-based create_location_bound_report()
+// (used elsewhere for the local C++-only verify_single_witness/verify_quorum
+// gate) is NOT reused here — it signs raw LocationBindingPayload struct bytes,
+// which cannot round-trip through a JSON string field. Instead this uses the
+// base dilithium5_sign() (no LOCBIND domain-tag prefix) directly over a
+// deterministic colon-delimited ASCII string, matching the existing
+// cross-language signing pattern used for SubmitBeaconEvidence's sigInput
+// (temporalecho.go / submitToFabric.js): "<field>:<field>:...".
 // =============================================================================
+// Forward decl — full definition (Issue 8 fix) lives further down; needed here
+// so this writer can label reporters correctly instead of hardcoding "RSU".
+static std::string PemResolvePeerLabel(uint32_t nodeId);
+
+// Standard base64 (RFC 4648) via OpenSSL — matches Go encoding/json's default
+// []byte marshalling, which the chaincode's WitnessRecord.Signature/PubKey
+// fields rely on when unmarshalling this JSON.
+static std::string PemBase64Encode(const uint8_t *data, size_t len)
+{
+    std::vector<uint8_t> out(((len + 2) / 3) * 4 + 1);
+    int out_len = EVP_EncodeBlock(out.data(), data, static_cast<int>(len));
+    return std::string(reinterpret_cast<char *>(out.data()),
+                        out_len > 0 ? static_cast<size_t>(out_len) : 0);
+}
+
 static void
 PemWriteWitnessRecordsJson()
 {
@@ -2082,6 +2114,7 @@ PemWriteWitnessRecordsJson()
          peer_it != g_peer_beacon_evidence.end(); ++peer_it)
     {
         const uint32_t reporter_id = peer_it->first;
+        const std::string reporter_label = PemResolvePeerLabel(reporter_id);
         for (const PemBeaconEvidenceRecord& rec : peer_it->second)
         {
             if (!rec.has_reporter_position) { ++skipped_no_position; continue; }
@@ -2090,14 +2123,47 @@ PemWriteWitnessRecordsJson()
             PemSimToGps(rec.reporter_position, reporter_lat, reporter_lon);
             const long long ts_ms = static_cast<long long>(rec.timestamp * 1000.0);
 
+            // Eq. 3.27: m'_Vk = eij || pos_Vk || RSSI_Vk<-Vi || tau_s || nonce.
+            // eij is the (reporter, vehicle) observation edge; nonce is a
+            // fresh per-record random value for replay resistance.
+            uint8_t nonce[16];
+            RAND_bytes(nonce, sizeof(nonce));
+            std::ostringstream nonce_hex;
+            nonce_hex << std::hex << std::setfill('0');
+            for (uint8_t b : nonce) nonce_hex << std::setw(2) << (int)b;
+
+            std::ostringstream msg;
+            msg << std::fixed << std::setprecision(6)
+                << "V" << rec.vehicle_id << ":" << reporter_label << ":"
+                << reporter_lat << ":" << reporter_lon << ":"
+                << std::setprecision(2) << rec.rssi_dbm << ":"
+                << ts_ms << ":" << nonce_hex.str();
+            const std::string message = msg.str();
+
+            std::string sig_b64, pub_b64;
+#ifdef HAVE_LIBOQS
+            if (g_crypto_ready && !g_dil_sk.empty() && !g_dil_pk.empty())
+            {
+                uint8_t sig_out[DILITHIUM5_SIG_LEN];
+                size_t  sig_len = 0;
+                dilithium5_sign(reinterpret_cast<const uint8_t *>(message.data()),
+                                 message.size(), g_dil_sk.data(), sig_out, &sig_len);
+                sig_b64 = PemBase64Encode(sig_out, sig_len);
+                pub_b64 = PemBase64Encode(g_dil_pk.data(), g_dil_pk.size());
+            }
+#endif
+
             if (!first) jout << ",\n";
             first = false;
             jout << "  {\n"
                  << "    \"vehicle_id\": \"V" << rec.vehicle_id << "\",\n"
-                 << "    \"reporter_id\": \"RSU" << reporter_id << "\",\n"
+                 << "    \"reporter_id\": \"" << reporter_label << "\",\n"
                  << "    \"reporter_lat\": " << reporter_lat << ",\n"
                  << "    \"reporter_lon\": " << reporter_lon << ",\n"
                  << "    \"rssi_from_vi_dbm\": " << rec.rssi_dbm << ",\n"
+                 << "    \"signature\": \"" << sig_b64 << "\",\n"
+                 << "    \"message\": \"" << message << "\",\n"
+                 << "    \"pub_key\": \"" << pub_b64 << "\",\n"
                  << "    \"ts_ms\": " << ts_ms << "\n"
                  << "  }";
             ++written;
