@@ -703,7 +703,19 @@ static tgn::TGNParams    g_tgn_params;
 // events IT received — matching the batch path (TGN_ProcessEventsForNode, which
 // clears these before each node's slice) instead of sharing one flat view across
 // every trusted node, which is what the online inline path used to do.
-static std::map<uint32_t, std::map<uint32_t, double>>                g_tgn_last_sender_ts;
+//
+// Middle key = event type (PEM_EVENT_TOPOLOGY_UPDATE vs PEM_EVENT_HEARTBEAT).
+// Δs_v (Eq 3.20) is the TTW-S2 signal and is carried by topology-report
+// timestamps in this implementation (TTW forges sender_timestamp on topology
+// updates, not heartbeats — see §3.4.3's τ_dev/Δs_v discussion). Without this
+// split, a heartbeat's sender_timestamp and a topology-update's sender_timestamp
+// for the same node were compared against each other as if they were one
+// monotonic sequence; they aren't (topology observation time and heartbeat
+// send time are independent streams even under fully benign operation), so
+// this previously produced spurious "backward" seq_gap values with no replay
+// present. Scoping by event type means a topology report's timestamp is only
+// ever compared against a prior topology report's, and likewise for heartbeats.
+static std::map<uint32_t, std::map<PemEventType, std::map<uint32_t, double>>> g_tgn_last_sender_ts;
 static std::map<uint32_t, std::map<std::string, std::set<uint32_t>>> g_tgn_link_reporters;
 static std::map<uint32_t, std::map<uint32_t, std::vector<double>>>   g_tgn_beacon_windows;
 
@@ -816,15 +828,25 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     // c_v^W — beacon count in sliding window of size W_max (§3.4.3).
     // W_max = N_beacon = ⌊L_link/T_b⌋ (Eq. 3.32 value, §3.4.7 concept).
     // Scoped to trusted_node_id so each observer's window reflects only what it saw.
+    // READ-ONLY here: the window is appended to exclusively by the dedicated
+    // PEM_EVENT_BEACON branches (TGN_ProcessEventsForNode / TGN_ProcessEventInline),
+    // which run before this function is ever reached for a given event. This
+    // function is only called for TOPOLOGY_UPDATE/HEARTBEAT events, so it must
+    // not append here too — doing so previously mixed non-beacon events into a
+    // count that's supposed to answer "how many beacons have we heard from v,"
+    // inverting the BSHH-S3 liveness signal (a replayed heartbeat inflated the
+    // count instead of leaving it low).
     auto& win = g_tgn_beacon_windows[trusted_node_id][e.claimed_sender_id];
-    win.push_back(e.reception_timestamp);
-    while ((int)win.size() > TGN_WMAX) win.erase(win.begin());
     f.beacon_count = (double)win.size();
 
-    // Δs_v — backward timestamp regression magnitude (TTW-S2 signal)
+    // Δs_v — backward timestamp regression magnitude (TTW-S2 signal).
+    // Scoped by event type (see g_tgn_last_sender_ts declaration): a topology
+    // report's sender_timestamp is only ever compared against a prior topology
+    // report's, never against an interleaved heartbeat's, since those are
+    // independent streams even under benign operation.
     f.seq_gap = 0.0;
     {
-        auto& last_ts = g_tgn_last_sender_ts[trusted_node_id];
+        auto& last_ts = g_tgn_last_sender_ts[trusted_node_id][e.type];
         auto it = last_ts.find(e.claimed_sender_id);
         if (it != last_ts.end() && e.sender_timestamp < it->second)
             f.seq_gap = it->second - e.sender_timestamp;
