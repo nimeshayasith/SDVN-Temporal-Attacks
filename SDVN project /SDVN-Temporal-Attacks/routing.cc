@@ -3034,6 +3034,61 @@ PemRecalibrateBshh3Window()
     }
 }
 
+// ── §3.4.3 — TGN γ (Eq. 3.21) and W_max (§3.4.3 sliding window) must also be
+// mobility-ADAPTIVE, not startup-only values. TGN_Init() (.tgn_src/tgn_core.cc)
+// previously derived TGN_GAMMA and TGN_WMAX once from the CLI --tgn_l_link
+// value and never revisited them, so a vehicle speeding up or slowing down
+// mid-run had no effect on the TGN's decay rate or retention window — unlike
+// the BSHH-S3 liveness window above, which PemRecalibrateBshh3Window() already
+// keeps in sync with live vehicle velocity. This mirrors that same pattern for
+// the TGN side: re-read every vehicle's LIVE MobilityModel velocity, recompute
+// the live link-lifetime bound L_link = 2*r_comm/v_max (same relation TGN_Init
+// uses via --tgn_l_link, Eq. 3.29/3.31), re-derive γ and W_max from it
+// (Eq. 3.21's γ_init = L_link/(2*T_b*ln2); W_max = L_link/T_b), and reschedule.
+// TGN_GAMMA/TGN_WMAX are read directly (not through a per-instance copy) by
+// TGNDetector's edge-freshness and window-trim logic, so updating these
+// globals takes effect on the very next event processed.
+static const double TGN_RECAL_PERIOD_S = 1.0;
+
+static void
+TGN_RecalibrateMobility()
+{
+    // A4 (--no_mobility_adapt): frozen at TGN_Init() value; do not reschedule.
+    if (g_abl.no_mobility_adapt) return;
+    // Nothing to recalibrate if the TGN isn't running online (A1/A2 --no_tgn).
+    if (!g_tgn_online_mode) return;
+
+    double vMaxObservedMs = 0.0;
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i)
+    {
+        Ptr<MobilityModel> m = Vehicle_Nodes.Get(i)->GetObject<MobilityModel>();
+        if (!m) continue;
+        Vector v = m->GetVelocity();
+        const double speed = std::sqrt(v.x * v.x + v.y * v.y);
+        if (speed > vMaxObservedMs) vMaxObservedMs = speed;
+    }
+
+    if (vMaxObservedMs > 0.0)
+    {
+        const double lLinkLive = 2.0 * TTW_COMM_RANGE / vMaxObservedMs;
+        TGN_GAMMA = lLinkLive / (2.0 * TGN_BEACON_INTERVAL * std::log(2.0));
+        TGN_WMAX  = (int)(lLinkLive / TGN_BEACON_INTERVAL);
+        if (TGN_WMAX < 1) TGN_WMAX = 1;
+        // Keep g_tgn_params in sync too, since TGN_RunPipeline's summary/CSV
+        // output reports gamma/wmax from there.
+        g_tgn_params.gamma = TGN_GAMMA;
+        g_tgn_params.wmax  = TGN_WMAX;
+    }
+    // If no vehicle currently has nonzero velocity, keep the last-known
+    // gamma/W_max rather than dividing by zero — matches "updated when speed
+    // changes," not "reset when speed is unknown" (same as the BSHH-S3 case).
+
+    if (Simulator::Now().GetSeconds() + TGN_RECAL_PERIOD_S < simTime)
+    {
+        Simulator::Schedule(Seconds(TGN_RECAL_PERIOD_S), &TGN_RecalibrateMobility);
+    }
+}
+
 static void
 PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds)
 {
@@ -151636,6 +151691,12 @@ attack_mobility.Install(Vehicle_Nodes);
   // A1/A2 (--no_tgn=1): skip init so g_tgn stays nullptr; ProcessEventInline
   // is already gated above and TGN_RunPipeline will output zero-event summary.
   if (!g_abl.no_tgn) TGN_Init();
+
+  // §3.4.3 — keep TGN γ/W_max mobility-adaptive throughout the run, not just
+  // at startup (mirrors the PemRecalibrateBshh3Window arming above for BSHH).
+  if (!g_abl.no_tgn && !g_abl.no_mobility_adapt) {
+      Simulator::Schedule(Seconds(TGN_RECAL_PERIOD_S), &TGN_RecalibrateMobility);
+  }
 
   Simulator::Run();
   Simulator::Destroy();
