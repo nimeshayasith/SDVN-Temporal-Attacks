@@ -59,11 +59,30 @@ static void gen_random_key(uint8_t key[LKH_KEY_LEN]) {
 #endif
 }
 
+/* ─── Actual populated node count ────────────────────────────────────────── *
+ * lkh_init() rounds n_leaves UP to the next power of two to build a perfect
+ * binary tree (total_leaves = 1 << ceil(log2(n_leaves))), so the true
+ * populated node range is [0, 2*total_leaves), NOT [0, 2*n_leaves). For any
+ * n_leaves that isn't already a power of two (the common case — 6, 20, 200
+ * vehicles all round up), n_leaves*2 undercounts the tree and truncates the
+ * scan before reaching the trailing leaves. Every caller that needs the
+ * populated node bound must use this helper instead of "n_leaves * 2", or it
+ * silently misses vehicles whose leaf index falls in the rounded-up gap. */
+static uint32_t lkh_total_nodes(uint32_t n_leaves) {
+    int depth = 0;
+    while ((1u << depth) < n_leaves) depth++;
+    uint32_t total_leaves = 1u << depth;
+    uint32_t total_nodes  = 2 * total_leaves;
+    if (total_nodes > LKH_MAX_LEAVES * 2) total_nodes = LKH_MAX_LEAVES * 2;
+    return total_nodes;
+}
+
 /* ─── Find leaf by vehicle_id ────────────────────────────────────────────── */
 
 static uint32_t find_leaf_by_vehicle_id(const LKHTree *tree,
                                           const uint8_t vehicle_id[16]) {
-    for (uint32_t i = 0; i < tree->n_leaves * 2; i++) {
+    uint32_t bound = lkh_total_nodes(tree->n_leaves);
+    for (uint32_t i = 0; i < bound; i++) {
         if (tree->nodes[i].is_leaf &&
             !tree->nodes[i].revoked &&
             memcmp(tree->nodes[i].vehicle_id, vehicle_id, 16) == 0)
@@ -263,11 +282,13 @@ bool lkh_is_revoked(const LKHTree *tree, const uint8_t vehicle_id[16]) {
     uint32_t leaf = find_leaf_by_vehicle_id(tree, vehicle_id);
     /* find_leaf_by_vehicle_id skips revoked nodes, so UINT32_MAX means either
      * "not in tree" or "in tree but revoked."  Scan the populated portion
-     * (tree->n_leaves * 2 nodes, not the full LKH_MAX_LEAVES * 2 capacity)
-     * to distinguish the two cases.  This is O(n) over n_leaves; a vehicle_id
-     * → leaf_index hash map would give O(1) if needed. */
+     * (lkh_total_nodes(tree->n_leaves) nodes, not the full
+     * LKH_MAX_LEAVES * 2 capacity) to distinguish the two cases.  This is
+     * O(n) over n_leaves; a vehicle_id → leaf_index hash map would give O(1)
+     * if needed. */
     if (leaf == UINT32_MAX) {
-        for (uint32_t i = 0; i < tree->n_leaves * 2; i++) {
+        uint32_t bound = lkh_total_nodes(tree->n_leaves);
+        for (uint32_t i = 0; i < bound; i++) {
             if (tree->nodes[i].is_leaf &&
                 memcmp(tree->nodes[i].vehicle_id, vehicle_id, 16) == 0)
                 return tree->nodes[i].revoked;

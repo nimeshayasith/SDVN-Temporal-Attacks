@@ -1389,13 +1389,18 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
         if (tgn_alert && bootstrap_done) {
 
             // Gap 3 — §7.3, Eq. 3.18: O(log n) LKH key revocation.
-            // Vehicle IDs in g_lkh_vids: g_lkh_vids[i][0] = (uint8_t)i, rest 0.
+            // Vehicle IDs in g_lkh_vids: g_lkh_vids[i][0] = (uint8_t)i, rest 0,
+            // for i in [0, g_lkh_n_leaves) — the actual registered leaf count
+            // CryptoInitKeys() built the tree over (min(N_Vehicles, MAX_VEHICLES)),
+            // NOT a fixed 16. Bound against g_lkh_n_leaves, not a magic 16u, so
+            // revocation still fires for attacker IDs above 16 at realistic
+            // fleet sizes (N_Vehicles defaults to 200).
             // Revoke the physical attacker (not just the claimed identity) so
             // that the forged MAC key material is invalidated in the KEK tree.
             // In deployment this fires on tgn_alert alone; simulation ground-
             // truth is not used for the revocation decision.
             const uint32_t atk_vid = e.physical_sender_id;
-            if (atk_vid < 16u && atk_vid < (uint32_t)N_Vehicles) {
+            if (atk_vid < g_lkh_n_leaves && atk_vid < (uint32_t)N_Vehicles) {
                 uint8_t vid_bytes[16] = {};
                 vid_bytes[0] = (uint8_t)atk_vid;
                 lkh_revoke_vehicle(&g_lkh_tree, vid_bytes);
@@ -2026,7 +2031,10 @@ static void TGN_ProcessEventInline(const PemEvent& e)
 
     if (tgn_alert && bootstrap_done) {
         const uint32_t atk_vid = e.physical_sender_id;
-        if (atk_vid < 16u && atk_vid < (uint32_t)N_Vehicles) {
+        // Bound against g_lkh_n_leaves (the actual LKH tree leaf count set by
+        // CryptoInitKeys() = min(N_Vehicles, MAX_VEHICLES)), not a fixed 16u —
+        // see the matching Gap 3 block above for the full rationale.
+        if (atk_vid < g_lkh_n_leaves && atk_vid < (uint32_t)N_Vehicles) {
             uint8_t vid_bytes[16] = {};
             vid_bytes[0] = (uint8_t)atk_vid;
             lkh_revoke_vehicle(&g_lkh_tree, vid_bytes);

@@ -282,9 +282,16 @@ static uint64_t tg_crypto_drop_quorum = 0;
 // hmac_filter.cc's BeaconMessage/beacon_sign()/lw_mitigate() — that file's
 // functions remain wired only into the --latency=1 timing-benchmark path
 // (TimedHmacSign/TimedHmacVerify) and are not on this live detection path.
-// TetaGuardGetSessionKey() uses a deterministic per-vehicle-id derivation
-// rather than a live ML-KEM-1024+HQC-5 handshake result, matching the
-// "session keys pre-assumed established at t=0" simplification stated above.
+// TetaGuardGetSessionKey() delegates to routing.cc's
+// CryptoGetVehicleSessionKey() (defined ~line 935, before this header's
+// #include point), which returns the REAL K_{Vi,nk} derived by the
+// ML-KEM-1024 + HQC-5 handshake in CryptoDeriveVehicleSessionKeys() when it
+// succeeded for vehicle_id -- the same key material AttackSendDSRCBeacon()/
+// Rx()'s beacon_sign()/lw_mitigate() path already uses. For IDs outside that
+// handshake's coverage (RSU/controller sentinels such as 9999, or
+// vehicle_id >= MAX_VEHICLES), CryptoGetVehicleSessionKey() itself falls back
+// to the same deterministic per-vehicle-id derivation this function used to
+// compute inline, so those callers see identical behaviour to before.
 //
 // reporter_id : trusted node nk performing verification (RSU node ID, OBU
 //               vehicle ID, or 9999 for the controller).  Each nk has its OWN
@@ -297,18 +304,16 @@ static uint64_t tg_crypto_drop_quorum = 0;
 // routing.cc includes <openssl/hmac.h> directly and this build has liboqs/OpenSSL
 // linked, confirmed at runtime via "[PQC] liboqs linked").
 //
-// K_{Vi,nk} (Eq. 3.15): deterministic per-vehicle 256-bit session key. Real
-// deployment derives this via HKDF-SHA256(ss_Kyber XOR ss_HQC5, vehicle_id)
-// after the ML-KEM-1024 + HQC-5 handshake (§3.4.2) — this simulation already
-// documents that "all session keys are pre-assumed established at t=0" (no
-// in-simulation KEM handshake occurs), so a deterministic per-id derivation
-// reproduces that pre-established state without needing a live handshake.
+// K_{Vi,nk} (Eq. 3.15): real per-vehicle 256-bit session key when the t=0
+// ML-KEM-1024 + HQC-5 handshake (§3.4.2) succeeded for vehicle_id; falls back
+// to a deterministic per-id derivation otherwise (see
+// CryptoGetVehicleSessionKey() in routing.cc for the exact fallback rule).
+// This closes the gap where Eq. 3.15's live per-event HMAC filter verified
+// against a synthetic key instead of the KEM-established one.
 static void
 TetaGuardGetSessionKey(uint32_t vehicle_id, uint8_t out[SESSION_KEY_LEN])
 {
-    for (uint32_t j = 0; j < SESSION_KEY_LEN; j++) {
-        out[j] = (uint8_t)((vehicle_id * 37u + j * 13u + 0x5Au) & 0xFFu);
-    }
+    CryptoGetVehicleSessionKey(vehicle_id, out);
 }
 
 static void
