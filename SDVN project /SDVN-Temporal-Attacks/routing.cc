@@ -587,20 +587,23 @@ static double PemGetRssiMin();   // returns g_rssi_min (defined right after g_rs
 // the smart-contract *enforcement* action is allowed to proceed, matching the
 // abort semantics of Algorithm 4 lines 8-11 (PBFT) and 21-27 (VERIFY_*).
 
-// PBFT_CONSENSUS(A) — Algorithm 4 line 8. Tolerates f = floor((n_peers-1)/3)
-// Byzantine peers among n_peers consortium members; requires a 2f+1 quorum.
-// This simulation's threat model has a single external forger (vehicle/RSU/
-// controller) rather than colluding Byzantine consortium peers, so every
-// present peer is assumed to vote honestly — the formula is evaluated for
-// real against the actual peer count in this run (RSU count for Tier 1,
-// vehicle count for Tier 2) rather than being hard-coded to always pass.
-static bool PemPbftConsensusGate(uint32_t n_peers, uint32_t &f_out, uint32_t &q_needed_out)
+// PBFT_CONSENSUS(A) — Algorithm 4 line 8 / Eq. 3.47-3.48. Trust-weighted quorum:
+// each peer's vote is weighted by its ledger trust score tau_k rather than
+// counted equally, matching checkPBFTTrustWeight() in the Go chaincode
+// (trust.go) exactly:
+//   Accept <=> (sum_{k in P_approve} tau_k) / (sum_{k in P_active} tau_k) > 2/3
+// f/q_needed are still reported for diagnostics (classical node-count quorum,
+// f = floor((n_peers-1)/3)) but the accept/reject decision is the trust ratio,
+// not the raw count — this preserves the Eq. 3.48 safety property that
+// Byzantine peers accumulating trust cannot forge consensus on their own.
+static bool PemPbftConsensusGate(uint32_t n_peers, uint32_t &f_out, uint32_t &q_needed_out,
+                                  double sum_approve_tau, double sum_active_tau)
 {
     const uint32_t f = (n_peers >= 1u) ? (n_peers - 1u) / 3u : 0u;
     const uint32_t q_needed = 2u * f + 1u;
     f_out = f; q_needed_out = q_needed;
-    const uint32_t q_have = n_peers;   // all present peers vote (no dissent modelled)
-    return (n_peers >= 1u) && (q_have >= q_needed);
+    if (n_peers < 1u || sum_active_tau <= 0.0) return false;
+    return (sum_approve_tau / sum_active_tau) > (2.0 / 3.0);
 }
 
 // VERIFY_THRESHOLD_SIG(sigma_v) — Algorithm 4 lines 40-50 / Eq. 3.26.
@@ -1782,7 +1785,8 @@ double pem_blacklist_propagation_delay_ms = 0.0;
 static const double TRUST_DELTA_PLUS     = 0.05;   // Δ+ correct-participation increment
 static const double TRUST_DELTA_MINUS    = 0.10;   // Δ- failure / inconsistent evidence
 static const double TRUST_TAU_MIN        = 0.10;   // τ_min eligibility floor (Eq. 3.51)
-static const double TRUST_TAU_MIN_CTRL   = 0.50;   // τ_min^C controller reassignment threshold (Eq. 3.42)
+static const double TRUST_TAU_MIN_CTRL   = 0.30;   // τ_min^C controller reassignment threshold (Eq. 3.42)
+                                                    // matches chaincode TrustCtrlMin (trust.go) / Table 3.4
 // τ_min^gt — bootstrap qualification threshold (§3.4.11, Table 3.4).
 // An OBU must reach this trust level before its detections can trigger mitigation.
 // Distinct from TRUST_TAU_MIN_CTRL (which governs zone reassignment), even though
@@ -1796,15 +1800,17 @@ static const double TRUST_TAU_GT_MIN    = 0.50;   // τ_min^gt = 0.50 (Table 3.4
 static const uint32_t TRUST_R_MIN       = 8u;     // R_min = 8 rounds (Table 3.4 derivation)
 static const double TRUST_TAU_TIER1_INIT = 1.00;   // τ^Tier1_init — RSU authority-vetted
 static const double TRUST_TAU_TIER2_INIT = 0.10;   // τ^Tier2_init — OBU / vehicle
-static const double TRUST_DELTA_C        = 0.10;   // Δ_C controller trust decrement (Eq. 3.39)
+static const double TRUST_DELTA_C        = 0.20;   // Δ_C controller trust decrement (Eq. 3.39)
+                                                    // matches chaincode TrustDeltaCtrl (trust.go) / Table 3.4
 static const uint32_t TRUST_F            = 2u;     // f — Byzantine peers assumed (Table 3.4)
 static const uint32_t TRUST_NP           = 8u;     // n_p = 8 — active peer count (Table 3.4)
 static const double TRUST_TQUAR_S        = 30.0;   // T_quar quarantine window (s, Table 3.4)
 // T_min: minimum dwell time inside RSU coverage before an OBU is eligible (Eq. 3.40 cond.3).
-// The paper states the gate but gives no numeric value; 5 s matches one beacon-interval
-// cycle × 50 frames and is consistent with typical DSRC dwell-time assumptions.
-// TODO: replace with a command-line parameter if the paper specifies a value later.
-static const double TRUST_TMIN_DWELL_S   = 5.0;    // T_min (paper: unspecified; using 5 s)
+// Table 4.9 specifies 3000 ms; matches chaincode TrustMinDwellMs (trust.go).
+static const double TRUST_TMIN_DWELL_S   = 3.0;    // T_min = 3 s (Table 4.9)
+// C_min: hardware capacity floor an OBU must meet to be eligible (Eq. 3.40 cond.2).
+// ARM Cortex-A53 class, >=2GB RAM; matches chaincode HWCapacityMinMB (trust.go).
+static const double TRUST_HW_CAPACITY_MIN_MB = 2048.0;
 // Sentinel dwell_time_s for RSU / controller nodes (Tier 1) — exempt from dwell-time gate.
 static const double TRUST_DWELL_EXEMPT   = 1e9;    // effectively infinite dwell time
 
@@ -1817,6 +1823,10 @@ struct TrustRecord {
     bool           flagged;       // LW/FS detection flag (Eq. 3.51 ¬flaggedk)
     double         dwell_time_s;  // time inside RSU coverage (ϕ(k), Eq. 3.40 cond.3)
     double         demoted_at;    // sim time when TRUST_QUARANTINE was entered
+    bool           cert_valid;    // Cert(Vk) ∈ CA_consortium (Eq. 3.40 cond.1); cleared
+                                   // on LKH revocation (Eq. 3.18) — a revoked node no
+                                   // longer holds a valid consortium credential
+    double         hw_capacity_mb;// C_Vk hardware capacity, RAM MB (Eq. 3.40 cond.2)
 };
 std::map<uint32_t, TrustRecord> g_trust_table;
 
@@ -2292,8 +2302,40 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         const uint32_t n_peers = has_RSU_infrastructure
                                   ? (RSU_Nodes.GetN() > 0 ? (uint32_t)RSU_Nodes.GetN() : 1u)
                                   : n_eff;
+
+        // Eq. 3.47 trust-weighted quorum: gather the actual consortium peer
+        // set this round's PBFT vote is drawn from (RSU peers for Tier 1,
+        // vehicle peers for Tier 2), sized identically to n_peers above.
+        std::vector<uint32_t> peer_ids;
+        if (has_RSU_infrastructure) {
+            for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
+                peer_ids.push_back(RSU_Nodes.Get(i)->GetId());
+        } else {
+            for (uint32_t i = 0; i < Vehicle_Nodes.GetN() && i < n_peers; i++)
+                peer_ids.push_back(Vehicle_Nodes.Get(i)->GetId());
+        }
+        if (peer_ids.empty()) peer_ids.push_back(attacker_id);
+
+        double sum_active_tau = 0.0, sum_approve_tau = 0.0;
+        for (uint32_t pid : peer_ids) {
+            double tau = TRUST_TAU_TIER1_INIT;
+            bool   flagged = false;
+            if (g_trust_table.count(pid)) {
+                flagged = g_trust_table.at(pid).flagged;
+                tau     = g_trust_table.at(pid).tau;
+            }
+            // Flagged peers contribute no voting weight (Eq. 3.47).
+            if (flagged) continue;
+            sum_active_tau += tau;
+            // A Byzantine peer does not vote to approve detection of its own
+            // attack; every other present peer votes honestly (single
+            // external forger threat model per the doc comment above).
+            if (pid != attacker_id) sum_approve_tau += tau;
+        }
+
         uint32_t f = 0, q_needed = 0;
-        const bool pbft_ok = PemPbftConsensusGate(n_peers, f, q_needed);
+        const bool pbft_ok = PemPbftConsensusGate(n_peers, f, q_needed,
+                                                   sum_approve_tau, sum_active_tau);
 
         uint32_t c_or_q = 0, t_req = 0;
         const bool crypto_ok = (family == "ME")
@@ -2423,22 +2465,28 @@ static void TrustInit()
 
     for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
         uint32_t id = RSU_Nodes.Get(i)->GetId();
-        g_trust_table[id] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0};
+        g_trust_table[id] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
+                              true, TRUST_HW_CAPACITY_MIN_MB};
     }
     for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
         uint32_t id = Vehicle_Nodes.Get(i)->GetId();
-        g_trust_table[id] = {TRUST_TAU_TIER2_INIT, TRUST_ACTIVE, false, 0.0, -1.0};
+        // NS-3 does not model heterogeneous OBU hardware, so every vehicle is
+        // assumed to meet the Cmin floor (Eq. 3.40 cond.2) at registration.
+        g_trust_table[id] = {TRUST_TAU_TIER2_INIT, TRUST_ACTIVE, false, 0.0, -1.0,
+                              true, TRUST_HW_CAPACITY_MIN_MB};
     }
     // Primary controller
     if (controller_Node.GetN() > 0) {
         uint32_t cid = controller_Node.Get(0)->GetId();
-        g_trust_table[cid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0};
+        g_trust_table[cid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
+                               true, TRUST_HW_CAPACITY_MIN_MB};
         g_ctrl_table.push_back({cid, TRUST_TAU_TIER1_INIT, 0u});
     }
     // management_Node acts as backup controller (same CSMA LAN, distinct NS-3 node)
     if (management_Node.GetN() > 0) {
         uint32_t bid = management_Node.Get(0)->GetId();
-        g_trust_table[bid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0};
+        g_trust_table[bid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
+                               true, TRUST_HW_CAPACITY_MIN_MB};
         g_ctrl_table.push_back({bid, TRUST_TAU_TIER1_INIT, 1u});
         g_backup_ctrl_ns3_id = bid;
     }
@@ -2484,17 +2532,26 @@ static void TrustUpdateController(uint32_t ctrl_ns3_id)
     }
 }
 
-// Eq. 3.51: eligibility check.
-// RSU peers (Tier 1) are exempt from the ϕ(k) dwell-time gate (Eq. 3.40).
+// Eq. 3.51 / Eq. 3.40: eligibility check.
+// RSU peers (Tier 1) are exempt from the Cmin hardware and ϕ(k) dwell-time gates.
+// In pure no-RSU deployments, conditions 2 (Cmin) and 3 (Tmin dwell) are bypassed
+// for OBUs as well — there is no Tier-1 checkpoint infrastructure to benchmark
+// dwell-adequacy or hardware parity against (§3.4.11); cert validity (cond.1) and
+// the trust threshold (cond.4) remain mandatory in every mode.
 static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
 {
     if (!g_trust_table.count(ns3_id)) return false;
     const TrustRecord& r = g_trust_table.at(ns3_id);
     if (r.state != TRUST_ACTIVE) return false;
     if (r.flagged)               return false;
-    if (r.tau < TRUST_TAU_MIN)   return false;
-    // ϕ(k) gate — OBU/vehicle only (Eq. 3.40)
-    if (!is_rsu && r.dwell_time_s < TRUST_TMIN_DWELL_S) return false;
+    if (!r.cert_valid)           return false;   // Eq. 3.40 cond.1 — mandatory
+    if (r.tau < TRUST_TAU_MIN)   return false;   // Eq. 3.40 cond.4 — mandatory
+    if (!is_rsu && has_RSU_infrastructure) {
+        // Eq. 3.40 cond.2 — Cmin hardware floor
+        if (r.hw_capacity_mb < TRUST_HW_CAPACITY_MIN_MB) return false;
+        // Eq. 3.40 cond.3 — ϕ(k) minimum dwell time
+        if (r.dwell_time_s < TRUST_TMIN_DWELL_S) return false;
+    }
     return true;
 }
 
@@ -4297,6 +4354,10 @@ PemEvaluateEvent(PemEvent& event)
                 uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
                             lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
                 g_lkh_already_revoked.insert(event.physical_sender_id);
+                // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
+                // consortium certificate and is immediately peer-ineligible.
+                if (g_trust_table.count(event.physical_sender_id))
+                    g_trust_table[event.physical_sender_id].cert_valid = false;
                 const uint32_t depth = (g_lkh_n_leaves > 1u)
                     ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
                 printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
@@ -4550,6 +4611,10 @@ PemEmitEvent(PemEventType type,
                 uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
                 lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
                 g_lkh_already_revoked.insert(physicalSenderId);
+                // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
+                // consortium certificate and is immediately peer-ineligible.
+                if (g_trust_table.count(physicalSenderId))
+                    g_trust_table[physicalSenderId].cert_valid = false;
                 const uint32_t depth = (g_lkh_n_leaves > 1u)
                     ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
                 printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
