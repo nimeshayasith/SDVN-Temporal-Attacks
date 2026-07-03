@@ -127970,8 +127970,20 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 			uint8_t key[SESSION_KEY_LEN];
 			CryptoGetVehicleSessionKey(sender_id, key);
 			NonceCache &cache = g_beacon_nonce_cache_by_receiver[(uint32_t)destination_node_id];
+			// Eq. 3.18 enforcement: check the sender's LKH revocation status
+			// (set by lkh_revoke_vehicle() at PemEvaluateEvent()/Stage-0's
+			// detection sites, routing.cc ~line 4243/4496) before admitting
+			// this beacon. Same leaf-index convention as those revoke call
+			// sites (physical_sender_id % g_lkh_n_leaves indexes g_lkh_vids),
+			// so a revoked attacker's later beacons are actually dropped
+			// instead of being re-verified against a live, still-trusted key.
+			bool key_revoked = false;
+			if (g_lkh_ready && g_lkh_n_leaves > 0u) {
+				uint32_t leaf_idx = sender_id % g_lkh_n_leaves;
+				key_revoked = lkh_is_revoked(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+			}
 			CryptoVerifyResult vr = lw_mitigate(&bm, (uint64_t)Simulator::Now().GetMilliSeconds(),
-			                                    key, false, &cache);
+			                                    key, key_revoked, &cache);
 			if (vr == CRYPTO_ACCEPT) {
 				g_beacon_verify_ok_count++;
 			} else {
