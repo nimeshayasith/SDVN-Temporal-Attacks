@@ -600,7 +600,16 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
             isr.cert = kp.cert;
             snprintf((char *)isr.vehicle_id, sizeof(isr.vehicle_id), "V%u", rid);
             size_t sig_len_out = 0;
-            vehicle_sign_report(msg_payload, 4, ts_ms, nonce, kp.sk,
+            // Bug fix: sign the full zero-padded isr.msg_payload (256 bytes) —
+            // NOT the raw 4-byte local msg_payload — because verify_threshold_sig's
+            // Gate C (threshold_sig.cc) reconstructs the signed buffer using
+            // sizeof(r->msg_payload) = 256 unconditionally. Signing only 4 bytes
+            // here while Gate C verifies against 256 made every individual
+            // signature check fail by construction, for legitimate AND attack
+            // reports alike. isr.msg_payload is already the correctly zero-padded
+            // 256-byte buffer (set above via memset + memcpy of the real 4 bytes),
+            // so signing it directly matches Gate C's reconstruction exactly.
+            vehicle_sign_report(isr.msg_payload, sizeof(isr.msg_payload), ts_ms, nonce, kp.sk,
                                 isr.individual_sig, &sig_len_out);
             state.link_signed_reports[lkey].push_back(isr);
         }
