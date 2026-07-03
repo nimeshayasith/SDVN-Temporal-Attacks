@@ -1,0 +1,79 @@
+Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
+[SUMO] Attack 12: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/12_ME_S4_Malicious_Controller_With_RSU.xml
+
+========================================
+SCENARIO 12 - ME-S4 ATTACK CONFIGURED
+  Total vehicles       : 20
+  Total RSUs           : 2
+  Total controllers    : 4
+  Attack percentage    : 20%
+  Malicious controllers: 1
+  RSU in path          : RSU_25 (legitimate)
+  Real link            : V9<->V10
+  Phantom reporters (4): V5 V6 V7 V8 
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.26-3.28).
+[CRYPTO] TETA-Guard pipeline initialised:
+  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28, Eq. 3.26)
+      dilithium5_sign / dilithium5_verify / dilithium5_thresh
+  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)
+      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]
+  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
+      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
+  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
+  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
+      create_location_bound_report / verify_single_witness / verify_quorum
+  [6] Haversine distance (GPS consistency gate, Eq. 3.29)
+  All modules from .crypto_src/
+[CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[ME-S4][t=10.000]  STEP①②③  V9<->V10 HELLO; report via RSU_25 to Controller
+Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.000s with delay 1ms
+[ME-S4][t=10.100]  Controller --FABRICATED echo (RSU path)--> own table  V4->V5->V5  PHANTOM
+[ME-S4][t=10.100]  Controller --FABRICATED echo (RSU path)--> own table  V4->V6->V5  PHANTOM  *** ATTACK COMPLETE ***
+[ME-S4][t=10.100]  FS-MITIGATE gate: delta_t=4 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=10.100]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[Trust][t=10.100]  C_0 tau=0.900 >= tau_min^C — monitoring
+[ME-S4][t=10.100]  FS-MITIGATE gate: PBFT n=2 f=0 q_needed=1 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S4][t=10.100]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
+[ME-S4][t=10.102]  Controller --FABRICATED echo (RSU path)--> own table  V4->V7->V5  PHANTOM
+[ME-S4][t=10.102]  Controller --FABRICATED echo (RSU path)--> own table  V4->V8->V5  PHANTOM  *** ATTACK COMPLETE ***
+[ME-S4][t=10.102]  FS-MITIGATE gate: delta_t=7 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=10.102]  C_0 tau=0.800 >= tau_min^C — monitoring
+[ME-S4][t=10.102]  FS-MITIGATE gate: PBFT n=2 f=0 q_needed=1 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S4][t=10.102]  FS-MITIGATE ABORTED (gate failed)  attacker=V2
+
+[CRYPTO] crypto_latency_sumo.csv written    (9 events)
+[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=6  reject=0
+[TGN] Online mode — 8 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=4 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 8 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
+
+========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
+  Scenario  : 12 — ME-S4: Malicious Controller, With RSU
+  RSU mode  : WITH RSU
+  TP/TN/FP/FN : 0 / 4 / 0 / 4
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 4
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 1.000
+  ACR         : 50.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 8
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 4
+============================================================
