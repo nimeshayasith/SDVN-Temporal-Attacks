@@ -2151,6 +2151,29 @@ PemWriteWitnessRecordsJson()
                 sig_b64 = PemBase64Encode(sig_out, sig_len);
                 pub_b64 = PemBase64Encode(g_dil_pk.data(), g_dil_pk.size());
             }
+            else
+            {
+                // g_dil_sk/g_dil_pk are only populated by CryptoInitKeys(), which
+                // no-ops when --latency=0 (enable_crypto_latency=0) — warn once so
+                // an unsigned run (chaincode treats empty signature as "skip
+                // verification", not an error) doesn't go unnoticed.
+                static bool warned = false;
+                if (!warned) {
+                    NS_LOG_UNCOND("[PEM] witness_records.json: signing keys not ready "
+                                  "(--latency=0?) — records will be written "
+                                  "UNSIGNED (signature/pub_key empty).");
+                    warned = true;
+                }
+            }
+#else
+            {
+                static bool warned = false;
+                if (!warned) {
+                    NS_LOG_UNCOND("[PEM] witness_records.json: built without HAVE_LIBOQS — "
+                                  "records will be written UNSIGNED (signature/pub_key empty).");
+                    warned = true;
+                }
+            }
 #endif
 
             if (!first) jout << ",\n";
