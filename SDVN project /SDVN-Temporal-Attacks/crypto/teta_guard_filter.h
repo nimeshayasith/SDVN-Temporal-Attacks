@@ -625,7 +625,6 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // replay from threshold_sig.cc).  The attacker holds no key shares for the
     // legitimate reporters → zero valid partial signatures → below threshold → DROP.
     if (has_RSU_infrastructure &&
-        event.attack_label &&
         event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
         event.physical_sender_id != event.link_src_id &&
         event.physical_sender_id != event.link_dst_id &&
