@@ -1,17 +1,17 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
 [SUMO] Attack 11: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/11_ME_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
 SCENARIO 11 - ME-S3 ATTACK CONFIGURED
-  Total vehicles      : 4
+  Total vehicles      : 20
   Total controllers   : 4
   Attack percentage   : 20%
   Malicious controllers: 1
-  Real link           : V6<->V7
-  Phantom reporters (2): V5 V8 
+  Real link           : V9<->V10
+  Phantom reporters (4): V5 V6 V7 V8 
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -24,55 +24,58 @@ SCENARIO 11 - ME-S3 ATTACK CONFIGURED
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=4)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 4/4 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S3][t=10.000]  V1 --topo--> Controller  <V1 sees V2>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V2 --topo--> Controller  <V2 sees V1>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V0 --topo--> Controller  <V0 sees V3>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V3 --topo--> Controller  <V3 sees V0>  ACCEPTED (real link)
-[ME-S3][t=10.100]  STEP③  Controller FORGES: <V6 sees V7> via V5 and V8
-[ME-S3][t=10.100]  STEP④  Phantom: V6->V5->V7, V6->V8->V7  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=10.000]  V4 --topo--> Controller  <V4 sees V5>  ACCEPTED (real link)
+[ME-S3][t=10.000]  V5 --topo--> Controller  <V5 sees V4>  ACCEPTED (real link)
+[ME-S3][t=10.000]  V0 --topo--> Controller  <V0 sees V1>  ACCEPTED (real link)
+[ME-S3][t=10.000]  V1 --topo--> Controller  <V1 sees V0>  ACCEPTED (real link)
+[ME-S3][t=10.100]  STEP③  Controller FORGES: <V9 sees V10> via V5 and V6
+[ME-S3][t=10.100]  STEP④  Phantom: V9->V5->V10, V9->V6->V10  *** ATTACK COMPLETE (no external packet) ***
 [ME-S3][t=10.100]  FS-MITIGATE gate: delta_t=4 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
 [Trust][t=10.100]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 [Trust][t=10.100]  C_0 tau=0.900 >= tau_min^C — monitoring
-[ME-S3][t=10.100]  FS-MITIGATE gate: PBFT n=4 f=1 q_needed=3 -> PASS  |  VERIFY_QUORUM 0/4 >= t=3 -> FAIL
+[ME-S3][t=10.100]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
 [ME-S3][t=10.100]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
+[ME-S3][t=10.102]  STEP③  Controller FORGES: <V9 sees V10> via V7 and V8
+[ME-S3][t=10.102]  STEP④  Phantom: V9->V7->V10, V9->V8->V10  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=10.102]  FS-MITIGATE gate: delta_t=7 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=10.102]  C_0 tau=0.800 >= tau_min^C — monitoring
+[ME-S3][t=10.102]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S3][t=10.102]  FS-MITIGATE ABORTED (gate failed)  attacker=V2
 
-[CRYPTO] crypto_latency_sumo.csv written    (7 events)
+[CRYPTO] crypto_latency_sumo.csv written    (9 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
-[TGN] Online mode — 6 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 4/4 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 0 1 2 3 ctrl 
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=6  reject=0
+[TGN] Online mode — 8 events already processed inline. Running secondary crypto audit...
+[TGN] Tier2: admitted 6/6 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 0 1 2 3 4 5 ctrl 
 [TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 1 alert(s) → tgn_alerts.json
-[TGN] beacon_evidence.csv written: 0 observation(s)
-[TGN] ctrl_topo.json written: 7 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
+[CryptoFilter] 8 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 11 — ME-S3: Malicious Controller, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 1 / 4 / 0 / 1
-  [ctrl] TP/TN/FP/FN : 1 / 0 / 0 / 1
+  TP/TN/FP/FN : 0 / 4 / 0 / 4
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 4
   [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
-  MCC         : 0.632
+  MCC         : 0.000
   AUROC       : 1.000
-  ACR         : 83.333 %
-  Tdet        : 0.000 ms
+  ACR         : 50.000 %
+  Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 6
+  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 8
   Stage-0 blocked (attacks): 0
   |E_t^trusted|  : 4
 ============================================================

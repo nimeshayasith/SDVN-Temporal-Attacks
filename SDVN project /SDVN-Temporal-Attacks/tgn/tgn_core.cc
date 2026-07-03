@@ -268,14 +268,17 @@ struct TGNParams {
 
 // Node feature vector (Eq 3.20).
 // Thesis Eq 3.20 defines x_v with 5 formal components:
-//   x_v = [τ_dev^(v) | c_v^W | Δs_v | ρ_v | id_mis]
-// id_v is excluded: it causes the GRU to learn attacker identity rather than
-// temporal patterns, and the controller sentinel (id_v=0.999) is uniquely
-// discriminative without being a behavioral signal.
+//   x_v = [τ_dev^(v) | c_v^W | Δs_v | ρ_v | ι_v] ∈ R^5
+// ι_v (identity_mismatch) IS the 5th formal component of Eq 3.20 — not an
+// extension beyond it. The component excluded from x_v is id_v, the
+// node-IDENTIFIER embedding (a distinct symbol from ι_v, the identity-
+// MISMATCH indicator): including id_v would let the GRU memorise "attacker
+// node Vk → attack" rather than learning temporal behaviour patterns, and
+// the controller sentinel (id_v=0.999) would be uniquely discriminative
+// without being a behavioral signal. ι_v carries no such identity leakage —
+// it is a binary mismatch flag, not a per-node identifier — so it stays in.
 // τ_dev = clip((recv_time − τ_s) / T_b, −50, 50) replaces absolute τ_s:
 //   fresh packets → τ_dev≈0; TTW replay → large positive τ_dev.
-// identity_mismatch is an engineering extension beyond Eq 3.20 —
-// added to give the GRU a direct signal for BSHH identity hijacking.
 // φ = log(1 + Δt/T_b) is the temporal encoding appended inside GRU (not
 // stored here), making the actual GRU input 6-dimensional: [x_v(5) | φ].
 //
@@ -293,7 +296,7 @@ struct NodeFeatures {
     double   beacon_count;     // c_v^W — events in sliding window W_max (§3.4.3); window size = N_beacon (Eq. 3.32)
     double   seq_gap;          // Δs_v — backward timestamp regression (TTW-S2 signal)
     double   reporter_count;   // ρ_v   — distinct reporters for this link (ME signal)
-    double   identity_mismatch;// engineering extension: 1.0 if physical≠claimed (BSHH)
+    double   identity_mismatch;// ι_v (Eq 3.20, 5th formal component): 1.0 if physical≠claimed (BSHH)
 };
 
 // Per-node GRU state.
@@ -419,6 +422,25 @@ public:
         double edge_fresh = std::exp(-age_uv / (params_.gamma * params_.T_b));
         adj[feat.node_id][link_dst] = edge_fresh;
         adj[link_dst][feat.node_id] = edge_fresh;
+
+        // link_src↔link_dst — the actual reported link. §3.4.3's "Neighbourhood
+        // Implementation" describes {reporting_node, link_src, link_dst} as an
+        // INDUCED subgraph, which by definition wires all edges among the three
+        // vertices, not just reporter↔link_dst. Without this edge, link_src had
+        // zero adjacency entries whenever the reporter differs from link_src
+        // (e.g. every ME-echo event), leaving it a pure bystander — contradicting
+        // the report's own claim that "link_src maintains temporal memory state
+        // for graph consistency" (only true if it actually receives updates).
+        adj[link_src][link_dst] = edge_fresh;
+        adj[link_dst][link_src] = edge_fresh;
+
+        // reporter↔link_src — completes the induced subgraph's third edge.
+        // Skipped when the reporter IS link_src (the common non-echo case)
+        // since that would otherwise be a meaningless self-loop.
+        if (feat.node_id != link_src) {
+            adj[feat.node_id][link_src] = edge_fresh;
+            adj[link_src][feat.node_id] = edge_fresh;
+        }
 
         for (uint32_t ep : {link_src, link_dst}) {
             if (states_.find(ep) == states_.end()) {
@@ -573,9 +595,14 @@ private:
     //   It IS implemented here: scale(Auv, hu) applies A_uv element-wise to h_u,
     //   exactly matching Eq. 3.23's A_uv(t) ⊙ h_u^(l−1) term.
     // NOTE (paper departure): the paper describes N(v,t) as all topology neighbours of v.
-    // This implementation uses a fixed 3-node subgraph {reporting_node, link_src, link_dst}.
-    // This is a deliberate design choice for simulation efficiency and determinism; see
-    // paper Section 4.3 for the full neighbourhood description.
+    // This implementation uses a fixed 3-node INDUCED subgraph {reporting_node,
+    // link_src, link_dst} (§3.4.3 "Neighbourhood Implementation") — a deliberate
+    // design choice for simulation efficiency and determinism, not a substitute
+    // for full N(v,t). All 3 pairwise edges of that induced subgraph are wired
+    // in ProcessEvent's adjacency-construction step above (reporter↔link_dst,
+    // link_src↔link_dst, reporter↔link_src), so every one of the 3 vertices
+    // actually receives/propagates signal each round — see the comment there
+    // for why the link_src↔link_dst edge specifically was previously missing.
     std::unordered_map<uint32_t, Vec>
     MessagePassingRound(
         const std::unordered_map<uint32_t, Vec>& H_in,
@@ -775,8 +802,8 @@ static double TGN_EdgeFreshness(double recv_time, double sender_ts)
     return std::exp(-age / (TGN_GAMMA * TGN_BEACON_INTERVAL));
 }
 
-// Feature extraction (Eq 3.20 + identity_mismatch engineering extension).
-// See NodeFeatures comment above for the distinction between spec fields and extension.
+// Feature extraction (Eq 3.20 — all 5 formal components, including ι_v).
+// See NodeFeatures comment above for the id_v (excluded) vs. ι_v (included) distinction.
 static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted_node_id)
 {
     tgn::NodeFeatures f;
@@ -828,7 +855,7 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     link_reporters.insert(physical_is_rsu ? e.claimed_sender_id : e.reporter_id);
     f.reporter_count = (double)link_reporters.size();
 
-    // identity_mismatch (ι_v) — engineering extension for BSHH (not in Eq 3.20).
+    // identity_mismatch (ι_v) — Eq 3.20's 5th formal component (BSHH signal).
     //   No RSU : 1.0 when physical_sender ≠ claimed_sender (V2 impersonates V1)
     //   With RSU: 0.0 — RSU forwarding V1's data under V1's ID is legitimate;
     //             BSHH-S2/S4 is still caught via seq_gap and staleness signals.
