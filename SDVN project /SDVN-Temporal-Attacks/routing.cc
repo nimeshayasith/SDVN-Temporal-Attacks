@@ -1813,6 +1813,15 @@ static const double TRUST_TMIN_DWELL_S   = 3.0;    // T_min = 3 s (Table 4.9)
 static const double TRUST_HW_CAPACITY_MIN_MB = 2048.0;
 // Sentinel dwell_time_s for RSU / controller nodes (Tier 1) — exempt from dwell-time gate.
 static const double TRUST_DWELL_EXEMPT   = 1e9;    // effectively infinite dwell time
+// Anchor-checkpoint interval (§3.4.10): floor(Tmin/Tb) beacon intervals — matches
+// chaincode's obuHasSyncedFromRecentCheckpoint() precondition, enforced unconditionally
+// (not subject to the no-RSU bypass that relaxes Eq. 3.40 conditions 2/3). 1 "block" is
+// treated as 1 beacon interval, since routing.cc has no separate ledger block-height
+// concept to anchor this to.
+static const uint32_t TRUST_ANCHOR_INTERVAL_ROUNDS =
+    (uint32_t)(TRUST_TMIN_DWELL_S / PEM_BEACON_INTERVAL_S);   // floor(Tmin/Tb)
+static const double TRUST_ANCHOR_INTERVAL_S =
+    TRUST_ANCHOR_INTERVAL_ROUNDS * PEM_BEACON_INTERVAL_S;
 
 // Node trust state (maps NS-3 global node ID → state)
 enum TrustNodeState { TRUST_ACTIVE = 0, TRUST_QUARANTINE = 1, TRUST_REMOVED = 2 };
@@ -1827,6 +1836,10 @@ struct TrustRecord {
                                    // on LKH revocation (Eq. 3.18) — a revoked node no
                                    // longer holds a valid consortium credential
     double         hw_capacity_mb;// C_Vk hardware capacity, RAM MB (Eq. 3.40 cond.2)
+    double         registered_at; // sim time this peer entered g_trust_table (§3.4.10
+                                   // anchor-checkpoint sync gate: an OBU is considered
+                                   // synced once it has been registered past one full
+                                   // anchor interval)
 };
 std::map<uint32_t, TrustRecord> g_trust_table;
 
@@ -2552,30 +2565,32 @@ static void TrustInit()
     g_ctrl_reassigned = false;
     g_backup_ctrl_ns3_id = UINT32_MAX;
 
+    const double now = Simulator::Now().GetSeconds();
+
     for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
         uint32_t id = RSU_Nodes.Get(i)->GetId();
         g_trust_table[id] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                              true, TRUST_HW_CAPACITY_MIN_MB};
+                              true, TRUST_HW_CAPACITY_MIN_MB, now};
     }
     for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
         uint32_t id = Vehicle_Nodes.Get(i)->GetId();
         // NS-3 does not model heterogeneous OBU hardware, so every vehicle is
         // assumed to meet the Cmin floor (Eq. 3.40 cond.2) at registration.
         g_trust_table[id] = {TRUST_TAU_TIER2_INIT, TRUST_ACTIVE, false, 0.0, -1.0,
-                              true, TRUST_HW_CAPACITY_MIN_MB};
+                              true, TRUST_HW_CAPACITY_MIN_MB, now};
     }
     // Primary controller
     if (controller_Node.GetN() > 0) {
         uint32_t cid = controller_Node.Get(0)->GetId();
         g_trust_table[cid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                               true, TRUST_HW_CAPACITY_MIN_MB};
+                               true, TRUST_HW_CAPACITY_MIN_MB, now};
         g_ctrl_table.push_back({cid, TRUST_TAU_TIER1_INIT, 0u});
     }
     // management_Node acts as backup controller (same CSMA LAN, distinct NS-3 node)
     if (management_Node.GetN() > 0) {
         uint32_t bid = management_Node.Get(0)->GetId();
         g_trust_table[bid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                               true, TRUST_HW_CAPACITY_MIN_MB};
+                               true, TRUST_HW_CAPACITY_MIN_MB, now};
         g_ctrl_table.push_back({bid, TRUST_TAU_TIER1_INIT, 1u});
         g_backup_ctrl_ns3_id = bid;
     }
@@ -2621,12 +2636,32 @@ static void TrustUpdateController(uint32_t ctrl_ns3_id)
     }
 }
 
+// §3.4.10: anchor-checkpoint sync gate. Tier 1 (RSU) peers are always exempt —
+// they run full Fabric peer software with complete ledger replication, so there
+// is no separate checkpoint window to sync from. Tier 2 (OBU) peers must have
+// synced from the most recent anchor checkpoint before joining consensus; this
+// is enforced UNCONDITIONALLY (matches obuHasSyncedFromRecentCheckpoint() in
+// trust.go — unlike Eq. 3.40 conditions 2/3, it is NOT bypassed in no-RSU mode).
+// Proxied here as: exempt during bootstrap (no anchor has been published yet,
+// matching the chaincode's "no checkpoint on ledger yet -> true" default), and
+// otherwise synced once the peer has been registered past one full anchor
+// interval (floor(Tmin/Tb) beacon intervals) — i.e. it had a chance to catch up
+// to the first published checkpoint since it joined.
+static bool TrustCheckpointSynced(const TrustRecord& r, bool is_rsu, double now)
+{
+    if (is_rsu) return true;
+    if (now < TRUST_ANCHOR_INTERVAL_S) return true;   // bootstrap: no anchor published yet
+    return (now - r.registered_at) >= TRUST_ANCHOR_INTERVAL_S;
+}
+
 // Eq. 3.51 / Eq. 3.40: eligibility check.
 // RSU peers (Tier 1) are exempt from the Cmin hardware and ϕ(k) dwell-time gates.
 // In pure no-RSU deployments, conditions 2 (Cmin) and 3 (Tmin dwell) are bypassed
 // for OBUs as well — there is no Tier-1 checkpoint infrastructure to benchmark
 // dwell-adequacy or hardware parity against (§3.4.11); cert validity (cond.1) and
-// the trust threshold (cond.4) remain mandatory in every mode.
+// the trust threshold (cond.4) remain mandatory in every mode. The §3.4.10
+// anchor-checkpoint sync gate is a separate, unconditional precondition on top
+// of these five conditions — see TrustCheckpointSynced().
 static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
 {
     if (!g_trust_table.count(ns3_id)) return false;
@@ -2635,6 +2670,8 @@ static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
     if (r.flagged)               return false;
     if (!r.cert_valid)           return false;   // Eq. 3.40 cond.1 — mandatory
     if (r.tau < TRUST_TAU_MIN)   return false;   // Eq. 3.40 cond.4 — mandatory
+    if (!TrustCheckpointSynced(r, is_rsu, Simulator::Now().GetSeconds()))
+        return false;                            // §3.4.10 — unconditional
     if (!is_rsu && has_RSU_infrastructure) {
         // Eq. 3.40 cond.2 — Cmin hardware floor
         if (r.hw_capacity_mb < TRUST_HW_CAPACITY_MIN_MB) return false;
