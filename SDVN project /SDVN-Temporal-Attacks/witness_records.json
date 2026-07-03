@@ -1,82 +1,34 @@
 [
   {
-    "vehicle_id": "V4",
-    "reporter_id": "RSU25",
+    "vehicle_id": "V1",
+    "reporter_id": "RSU11",
     "reporter_lat": 6.92947,
     "reporter_lon": 79.8637,
-    "rssi_from_vi_dbm": -112.005,
+    "rssi_from_vi_dbm": -98.0365,
     "ts_ms": 10000
   },
   {
-    "vehicle_id": "V5",
-    "reporter_id": "RSU25",
+    "vehicle_id": "V2",
+    "reporter_id": "RSU11",
     "reporter_lat": 6.92947,
     "reporter_lon": 79.8637,
-    "rssi_from_vi_dbm": -96.998,
+    "rssi_from_vi_dbm": -97.2936,
     "ts_ms": 10000
   },
   {
-    "vehicle_id": "V4",
-    "reporter_id": "RSU26",
+    "vehicle_id": "V1",
+    "reporter_id": "RSU12",
     "reporter_lat": 6.92947,
     "reporter_lon": 79.8661,
-    "rssi_from_vi_dbm": -110.565,
+    "rssi_from_vi_dbm": -89.6418,
     "ts_ms": 10000
   },
   {
-    "vehicle_id": "V5",
-    "reporter_id": "RSU26",
+    "vehicle_id": "V2",
+    "reporter_id": "RSU12",
     "reporter_lat": 6.92947,
     "reporter_lon": 79.8661,
-    "rssi_from_vi_dbm": -88.0273,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V4",
-    "reporter_id": "RSU27",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8686,
-    "rssi_from_vi_dbm": -109.508,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V5",
-    "reporter_id": "RSU27",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8686,
-    "rssi_from_vi_dbm": -71.5903,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V4",
-    "reporter_id": "RSU28",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8711,
-    "rssi_from_vi_dbm": -109.031,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V5",
-    "reporter_id": "RSU28",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8711,
-    "rssi_from_vi_dbm": -80.7207,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V4",
-    "reporter_id": "RSU29",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8736,
-    "rssi_from_vi_dbm": -109.242,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V5",
-    "reporter_id": "RSU29",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8736,
-    "rssi_from_vi_dbm": -92.9237,
+    "rssi_from_vi_dbm": -88.459,
     "ts_ms": 10000
   }
 ]

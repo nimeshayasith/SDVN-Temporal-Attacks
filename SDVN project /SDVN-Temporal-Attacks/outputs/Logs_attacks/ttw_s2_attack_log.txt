@@ -12,11 +12,11 @@
 
 ========================================================
 
-[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_25
+[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_11
   V5 -> RSU : <V5 sees V6, t=10.000>
   V6 -> RSU : <V6 sees V5, t=10.000>
 
-[t=10.100]  STEP ②  RSU_25 aggregated forward to controller
+[t=10.100]  STEP ②  RSU_11 aggregated forward to controller
   [<V5 sees V6, t=10.000>, <V6 sees V5, t=10.000>]
   Result : ACCEPTED (legitimate aggregate)
 
@@ -26,12 +26,12 @@
   Link physically breaks at t≈12.5s (dist > 300.0m)
   Simulation declares it broken at t=15.0s — controller receives no link-down notification.
 
-[t=20.000]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_25)
+[t=20.000]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_11)
   Stored packet : <V5 sees V6, t=10.000>  (original RSU-aggregated observation at t=10.000)
   Forged packet : <V5 sees V6, t=20.000>  timestamp changed 10.000 -> 20.000
   Forge action  : RSU changes timestamp to appear current, injects to controller at t=20.000
 
-[t=20.000]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_25)
+[t=20.000]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_11)
   Controller ACCEPTED forged packet (no timestamp-integrity protection)
 
 [t=20.000]  STEP ⑥  FAULTY ROUTING DECISION
@@ -55,7 +55,7 @@
   Latency: 50.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
-  [LKH] Revoke-Session-Key(V25): O(log 20) = 5 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V25 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V25): blocked from re-admission until re-authenticated
+  [LKH] Revoke-Session-Key(V11): O(log 6) = 3 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V11 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V11): blocked from re-admission until re-authenticated
 

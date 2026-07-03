@@ -375,6 +375,20 @@ void rsu_aggregate_reports(AggregateReport *agg_out,
     for (uint32_t i = 0; i < n_reports; i++)
         agg_out->reports[i] = reports[i];
 
+    /* Bug fix: timestamp_ms was left at its memset default of 0 and never set
+     * anywhere in this function. verify_threshold_sig's Gate D compares each
+     * report's timestamp_ms against report->timestamp_ms and rejects anything
+     * more than THRESH_REPORT_WINDOW_MS (5s) away — with timestamp_ms stuck at
+     * 0, every report whose real timestamp is more than 5s past the epoch fails
+     * Gate D unconditionally, for legitimate AND attack reports alike. Use the
+     * most recent individual report's timestamp as the aggregate's timestamp —
+     * i.e. "when the RSU actually aggregated," which is what Gate D's freshness
+     * check is meant to measure against. */
+    agg_out->timestamp_ms = 0;
+    for (uint32_t i = 0; i < n_reports; i++)
+        if (reports[i].timestamp_ms > agg_out->timestamp_ms)
+            agg_out->timestamp_ms = reports[i].timestamp_ms;
+
     /* Build aggregate public key: XOR of all individual public keys.
      * This commits to the complete signer set — substituting any key changes
      * agg_pk, invalidating the aggregate sig and breaking Step 1 of verify. */

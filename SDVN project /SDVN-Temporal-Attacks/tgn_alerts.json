@@ -1,3 +1,13 @@
 [
-
+  {
+    "v_id": "V9999",
+    "alpha": "ME",
+    "y_hat": 0.222222,
+    "t_alert": 10100,
+    "interval_ts_ms": 10100,
+    "S_trig": [6, 8],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 0
+  }
 ]
