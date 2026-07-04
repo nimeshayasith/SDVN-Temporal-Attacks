@@ -1,0 +1,78 @@
+Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Attack 5: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/05_BSHH_S1_Malicious_Vehicle.xml
+
+========================================
+SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED
+Attackers (1): V0 
+Victim pool (5): V1 V5 V4 V3 V2 
+Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count
+Replay jitter window   : +/-0.04 s
+Support evidence prob. : 1
+Timeline:
+  t=5.000s  STEP 1 : V2V heartbeat exchange
+  t=5.010s  STEP 2 : Both send honest heartbeats to controller
+  t=5.050s  STEP 3 : Attacker stores captured heartbeat (t=5)
+  t=10.000s STEP 4 : Attacker sends old heartbeat to victim
+  t=10.010s STEP 5 : Victim forwards old heartbeat to controller
+  t=10.020s STEP 6 : Attacker hijacks same old heartbeat to controller
+  t=10.030s STEP 7 : Controller holds conflicting liveness
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.26-3.28).
+[CRYPTO] TETA-Guard pipeline initialised:
+  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28, Eq. 3.26)
+      dilithium5_sign / dilithium5_verify / dilithium5_thresh
+  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)
+      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]
+  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
+      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
+  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
+  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
+      create_location_bound_report / verify_single_witness / verify_quorum
+  [6] Haversine distance (GPS consistency gate, Eq. 3.29)
+  All modules from .crypto_src/
+[CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[BSHH-S1][t=5.041]  V5 captured heartbeat for replay  Heartbeat(Sender=V6, t=5.002)
+[BSHH-S1][t=10.008]  V5 --REPLAY old heartbeat--> V6  Heartbeat(Sender=V6, t=5.002)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=10.009]  V6 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V6, t=5.002)  Controller liveness POISONED
+[BSHH-S1][t=10.010]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V6, t=5.002)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.010]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_THRESHOLD_SIG 6/6 >= t=4 -> PASS
+[BSHH-S1][t=10.010]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=300.000 ms
+[Trust][t=10.010]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+
+[CRYPTO] crypto_latency_sumo.csv written    (22 events)
+[CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
+[CRYPTO] Beacon TX signed: 1   RX verified: 1
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
+[TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
+[TGN] Trusted nodes (Tier 2 OBU): ctrl 
+[TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 2 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
+
+========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
+  Scenario  : 5 — BSHH-S1: Malicious Vehicle, No RSU
+  RSU mode  : NO RSU
+  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 0.500
+  ACR         : 100.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 2
+  Stage-0 blocked (attacks): 2
+  |E_t^trusted|  : 2
+============================================================

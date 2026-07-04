@@ -227,8 +227,9 @@ func (t *TemporalEchoMitigator) SubmitAlert(
 }
 
 // SubmitLWDetectionResult is the Lightweight path chaincode entry point (MF-01).
-// Corresponds to Algorithm 1 (LW-DETECT) firing on RSU hardware.
-// The RSU evaluates the 9 signatures locally and submits the result here
+// Corresponds to Algorithm 1 (LW-DETECT) firing on a trusted node — RSU hardware
+// in Tier 1, or the highest-trust designated OBU in a no-RSU (Tier 2) deployment.
+// The trusted node evaluates the 9 signatures locally and submits the result here
 // for immutable logging and threshold verification.
 func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
 	ctx contractapi.TransactionContextInterface,
@@ -240,10 +241,34 @@ func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
 	intervalTSStr string,
 	peerSigHex string, // ML-DSA-87 (Dilithium5) signature over (callerPeerID:vehicleID:score:variant:intervalTS)
 ) error {
-	// Verify caller is a Tier 1 RSU peer
 	callerTrust := loadTrust(ctx, callerPeerID)
-	if !callerTrust.IsRSUPeer || callerTrust.Score < TrustInitTier1-1e-9 {
-		return fmt.Errorf("SubmitLWDetectionResult: caller %s is not Tier 1 RSU", callerPeerID)
+
+	// Bug fix: this function previously hard-required a Tier 1 RSU caller with
+	// no no-RSU exception, directly contradicting §3.1.3 ("Detection logic is
+	// embedded within each trusted node nk (RSU or designated OBU)") — the same
+	// principle already correctly implemented on the C++ simulation side
+	// (TetaGuardCryptoFilter runs identically per-trusted-node regardless of
+	// RSU/OBU). In a no-RSU deployment this made the LW path permanently
+	// uncallable by anyone. Mirrors the same SIM_NO_RSU_MODE-flag pattern used
+	// by CreateAnchorCheckpoint/SyncFromAnchorCheckpoint (anchor.go) and now
+	// ZeroTrust (trust.go).
+	noRSUFlag, _ := ctx.GetStub().GetState("SIM_NO_RSU_MODE")
+	noRSUMode := string(noRSUFlag) == "1"
+
+	if noRSUMode {
+		// Tier 2 / no-RSU mode: highest-trust eligible OBU may submit LW
+		// detection results, at the same ground-truth bar (τ ≥ τminGT) used
+		// elsewhere for evidence a mitigation decision gets built on.
+		if callerTrust.Score < TrustMinGT || callerTrust.Flagged {
+			return fmt.Errorf(
+				"SubmitLWDetectionResult (no-RSU): caller %s has insufficient trust (score=%.3f, need>=%.2f)",
+				callerPeerID, callerTrust.Score, TrustMinGT)
+		}
+	} else {
+		// Tier 1: verify caller is a Tier 1 RSU peer
+		if !callerTrust.IsRSUPeer || callerTrust.Score < TrustInitTier1-1e-9 {
+			return fmt.Errorf("SubmitLWDetectionResult: caller %s is not Tier 1 RSU", callerPeerID)
+		}
 	}
 
 	// ADD: verify signature

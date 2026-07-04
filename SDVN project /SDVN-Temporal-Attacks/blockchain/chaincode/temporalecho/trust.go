@@ -269,16 +269,44 @@ func (t *TemporalEchoMitigator) UpdateTrustRound(
 // For RSU peers: demotes to QUARANTINED_CLIENT (Stage 1 of 3-stage pipeline).
 // For OBU/vehicle peers: zeroes trust immediately.
 // TR-04: restricted to Tier 1 RSU callers with a backing detection event.
+//
+// Bug fix: in a no-RSU (Tier 2) deployment there are no Tier 1 RSU peers to
+// ever satisfy the check below, which made ZeroTrust permanently uncallable
+// by anyone — no peer could ever demote another. §3.1.3 of the thesis states
+// detection/enforcement logic runs on "each trusted node nk (RSU or
+// designated OBU)", the same principle already correctly implemented for
+// CreateAnchorCheckpoint/SyncFromAnchorCheckpoint (anchor.go). This mirrors
+// that same SIM_NO_RSU_MODE-flag pattern (the reliable one — see the comment
+// on selectPeers explaining why peer-existence scanning is not trustworthy
+// here) rather than introducing a third, different detection method.
 func (t *TemporalEchoMitigator) ZeroTrust(
 	ctx contractapi.TransactionContextInterface,
 	callerID string,
 	targetPeerID string,
 	detectionEventKey string,
 ) error {
-	// TR-04: only Tier 1 RSU may initiate demotion
 	caller := loadTrust(ctx, callerID)
-	if !caller.IsRSUPeer || caller.Score < TrustInitTier1-1e-9 {
-		return fmt.Errorf("ZeroTrust: unauthorised caller %s", callerID)
+	noRSUFlag, _ := ctx.GetStub().GetState("SIM_NO_RSU_MODE")
+	noRSUMode := string(noRSUFlag) == "1"
+
+	if noRSUMode {
+		// Tier 2 / no-RSU mode: highest-trust eligible OBU may initiate
+		// demotion. Uses the same τ ≥ τminGT bar as CreateAnchorCheckpoint's
+		// no-RSU path — ZeroTrust is a consequential ledger-writing action
+		// (it can zero another peer's trust) with comparable downstream
+		// trust-chain impact to anchor-checkpoint creation, so it gets the
+		// stricter ground-truth threshold rather than the bare participation
+		// floor UpdateTrustRound uses for ordinary per-round trust nudges.
+		if caller.Score < TrustMinGT || caller.Flagged {
+			return fmt.Errorf(
+				"ZeroTrust (no-RSU): caller %s has insufficient trust (score=%.3f, need>=%.2f)",
+				callerID, caller.Score, TrustMinGT)
+		}
+	} else {
+		// TR-04: only Tier 1 RSU may initiate demotion
+		if !caller.IsRSUPeer || caller.Score < TrustInitTier1-1e-9 {
+			return fmt.Errorf("ZeroTrust: unauthorised caller %s", callerID)
+		}
 	}
 	// TR-04: require a backing detection event
 	data, err := ctx.GetStub().GetState(detectionEventKey)
