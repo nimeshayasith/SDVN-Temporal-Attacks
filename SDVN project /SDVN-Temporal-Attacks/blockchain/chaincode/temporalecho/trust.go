@@ -216,12 +216,26 @@ func (t *TemporalEchoMitigator) SetRSUZone(
 // SubmitLWDetectionResult/CreateAnchorCheckpoint/SyncFromAnchorCheckpoint):
 // the previous hasRSU peer-scan is a deployment-wide check ("does any RSU
 // exist anywhere"), the same shape of bug as the SIM_NO_RSU_MODE flag used
-// (and since corrected) elsewhere — not a per-caller check. In a mixed
-// deployment (RSUs present), any of the legitimately-active, top-trust Tier 2
-// OBUs sitting in the same active set as the RSUs would still be rejected
-// here, since hasRSU is true whenever any RSU exists. Corrected to the same
-// single, unconditional per-caller check as the other five: RSU status
-// always qualifies; otherwise the caller's own trust must clear τ ≥ τminGT.
+// (and since corrected) elsewhere — not a per-caller check. Corrected to the
+// same unconditional per-caller structure as the other five: RSU status
+// always qualifies.
+//
+// Bar deliberately differs from the other five: TrustMin (0.10), not
+// TrustMinGT (0.50). Every OBU registers at exactly TrustMinGT-Init=0.10
+// (RegisterOBUPeer). In a no-RSU deployment, this function — called every
+// beacon round via UpdateTrustRound — is the ONLY mechanism that ever raises
+// a peer's trust above that floor during ordinary (attack-free) bootstrap
+// rounds; runMitigation's reward step is the other path that raises trust,
+// but the client only invokes Mitigate when alerts exist (submitToFabric.js:
+// `if (alertSet.length > 0)`), which by definition never happens during
+// bootstrap. Gating this function behind TrustMinGT — the very threshold
+// isBootstrapComplete() requires peers to reach — would mean no OBU could
+// ever call it, no OBU's trust could ever rise past 0.10, and bootstrap could
+// never complete: a permanent deadlock, not just a stricter bar. TrustMin
+// preserves the original design's bootstrap floor (its own comment: "This
+// allows trust to accumulate in OBU-only / no-RSU deployments") while still
+// fixing the real bug — the deployment-wide hasRSU scan wrongly blocking a
+// legitimately-active OBU in a mixed deployment.
 func (t *TemporalEchoMitigator) UpdateTrustRound(
 	ctx contractapi.TransactionContextInterface,
 	callerPeerID string,
@@ -229,10 +243,10 @@ func (t *TemporalEchoMitigator) UpdateTrustRound(
 	allPeersJSON string,
 ) error {
 	callerTrust := loadTrust(ctx, callerPeerID)
-	if !(callerTrust.IsRSUPeer || (callerTrust.Score >= TrustMinGT && !callerTrust.Flagged)) {
+	if !(callerTrust.IsRSUPeer || (callerTrust.Score >= TrustMin && !callerTrust.Flagged)) {
 		return fmt.Errorf(
 			"UpdateTrustRound: unauthorised caller %s (not RSU, trust=%.3f < %.2f or flagged=%v)",
-			callerPeerID, callerTrust.Score, TrustMinGT, callerTrust.Flagged)
+			callerPeerID, callerTrust.Score, TrustMin, callerTrust.Flagged)
 	}
 
 	var participating []string
