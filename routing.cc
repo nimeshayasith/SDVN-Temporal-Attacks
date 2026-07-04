@@ -5722,24 +5722,27 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
         }
     }
 
-    // Sophistication roll — TTW-S1.
-    // Sophisticated attacker: also forges a fresh sender_timestamp (=now) + novel nonce.
+    // TTW-S1 timestamp forgery — this IS the attack, not an optional upgrade.
+    // TTW (Temporal-Echo/Time-Warp) is defined as: replay a stored observation
+    // with its sender_timestamp forged to look current (routing.cc's own CLAUDE.md
+    // spec, §7/§9: "V0 forges timestamp: <V0 sees V1, t=20>"). An attacker who
+    // instead resends the stale original timestamp unchanged isn't performing a
+    // time-warp at all — it's a naive stale replay, trivially caught by the
+    // Eq. 3.16 age check, and was never the threat this attack models.
     //   age = |now − now| = 0 ≤ T_b + ε → Step 2 (Eq. 3.16) passes.
-    //   nonce_key uses ts_slot(now) ≠ ts_slot(stored_ts) → Step 3 (Eq. 3.17) passes.
-    //   Packet reaches Stage-1 (LW sig[0] timestamp-gap) + Stage-2 (TGN).
-    // Basic attacker: keeps stale stored_timestamp.
-    //   age = |now − stored_ts| >> T_b → Step 2 drops at Stage-0.
+    //   nonce_key uses ts_slot(now), never previously seen → Step 3 (Eq. 3.17) passes.
+    //   physical_sender_id == claimed_sender_id (self-report, no identity spoof
+    //   needed) → Step 1 (Eq. 3.15 MAC) passes trivially.
+    // Since the attacker validly holds its own signing key, no Stage-0 crypto
+    // check can distinguish a forged-fresh timestamp from a real one — this
+    // always reaches Stage-1 (LW signature) + Stage-2 (TGN) by construction.
     const double ttw_s1_stored_ts = ttw_stored_packets.count(src_id)
                                   ? ttw_stored_packets[src_id].timestamp : 0.0;
-    const bool ttw_s1_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
-    const double ttw_s1_sender_ts   = ttw_s1_sophisticated ? Simulator::Now().GetSeconds() : ttw_s1_stored_ts;
+    const double ttw_s1_sender_ts = Simulator::Now().GetSeconds();
     ttw_log << "[t=" << Simulator::Now().GetSeconds() << "]  TTW-S1 attacker V" << src_id
-            << " sophistication: "
-            << (ttw_s1_sophisticated
-                ? "SOPHISTICATED — fresh ts=" + std::to_string(ttw_s1_sender_ts)
-                  + " → Stage-0 BYPASSED → reaches LW+TGN\n"
-                : "BASIC — stale ts=" + std::to_string(ttw_s1_stored_ts)
-                  + " → DROPPED at Stage-0 (Eq. 3.16 age=" + std::to_string(Simulator::Now().GetSeconds() - ttw_s1_stored_ts) + "s)\n");
+            << "  forged fresh ts=" << ttw_s1_sender_ts
+            << " (stored original ts=" << ttw_s1_stored_ts
+            << ") → Stage-0 BYPASSED by construction → reaches LW+TGN\n";
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  src_id, src_id, src_id, src_id, dst_id,
                  ttw_s1_sender_ts,
@@ -5814,19 +5817,28 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    // Sophistication roll — TTW-S2.
-    // Sophisticated RSU: compromises V1's session key → presents as V1 (physical=claimed=v1_id)
-    //   + fresh sender_timestamp → Step 1 (MAC) passes, Steps 2&3 pass → LW+TGN.
-    // Basic RSU: sends with its own identity (physical=rsu_id ≠ claimed=v1_id)
-    //   → Step 1 (Eq. 3.15 MAC mismatch) drops at Stage-0.
+    // Timestamp forgery — always happens; this IS the TTW attack (see TTW-S1
+    // fix above). A stale-timestamp resend is a naive replay, not a time-warp,
+    // and was never the threat this scenario models.
+    //
+    // Identity spoofing remains a genuine, separate escalation dimension for a
+    // malicious RSU (unlike TTW-S1, which has no identity dimension at all):
+    // Sophisticated RSU: compromises V1's session key → presents as V1
+    //   (physical=claimed=v1_id) → Step 1 (MAC) passes trivially, same as a
+    //   real V1 self-report → reaches LW+TGN by construction.
+    // Basic RSU: relays under its own identity (physical=rsu_id, claimed=v1_id)
+    //   — structurally identical to a legitimate RSU aggregate relay, so Stage-0
+    //   routes it through the threshold-sig gate (Eq. 3.26) rather than the
+    //   simple identity check; it is caught there because the RSU holds no
+    //   valid signed report from V1 for this (forged-fresh) claim.
     const bool ttw_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
     const uint32_t ttw_s2_phys = ttw_s2_sophisticated ? v1_id : rsu_id;
-    double _ts2 = ttw_s2_sophisticated ? now2
-                : (ttws2_packet_stored ? ttws2_stored_packet.timestamp : 0.0);
-    ttws2_log << "[t=" << now2 << "]  TTW-S2 RSU attacker sophistication: "
+    double _ts2 = now2;
+    ttws2_log << "[t=" << now2 << "]  TTW-S2 RSU attacker  forged fresh ts=" << now2
+              << "  identity: "
               << (ttw_s2_sophisticated
-                  ? "SOPHISTICATED — forges V1 identity + fresh ts → Stage-0 BYPASSED → LW+TGN\n"
-                  : "BASIC — identity mismatch (RSU≠V1) → DROPPED at Stage-0 (Eq. 3.15 MAC)\n");
+                  ? "SOPHISTICATED — forges V1 identity → Stage-0 BYPASSED by construction → LW+TGN\n"
+                  : "BASIC — relays under own identity (RSU≠V1) → routed to threshold-sig gate (Eq. 3.26)\n");
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,

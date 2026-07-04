@@ -495,17 +495,31 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // far (legitimate + in-range attackers that passed the crypto+spatial+RSSI check).
     //
     // Issue 5.2/5.3 fix: previously gated on event.attack_label==true as well, so
-    // benign witness reports in ME-S1/S2 never went through Eq. 3.29 location-binding
-    // or fed the Eq. 3.30 quorum reporter set — only attack-labeled echoes did. Eq.
-    // 3.29 in the report is unconditional ("every topology observation report... is
-    // accepted iff..."), so benign reports in these two scenarios must run the same
-    // gate as attack reports. Scope is intentionally still limited to ME-S1/S2 (see
-    // TetaGuardLocBindVerify's header comment — location-binding is only meaningful
-    // where an external attacker must convince an honest verifier); the other 10
-    // scenarios are untouched.
+    // benign witness reports never went through Eq. 3.29 location-binding or fed
+    // the Eq. 3.30 quorum reporter set — only attack-labeled echoes did. Eq. 3.29
+    // in the report is unconditional ("every topology observation report... is
+    // accepted iff..."), so benign reports must run the same gate as attack reports.
+    //
+    // Gate scoping fix (post-review): previously conditioned on
+    // attack_scenario == ME_S1/ME_S2, a run-level CLI parameter that only exists
+    // in this scripted 12-scenario harness. A real/blind SUMO+NS-3 run has no such
+    // label, so that gate would never fire regardless of whether a genuine
+    // out-of-range echo occurred. Replaced with the structural per-report
+    // condition already used by the threshold-sig gate below (§Eq. 3.26): does the
+    // reporter differ from both link endpoints, and is it not the 9999 controller
+    // sentinel. This is exactly the paper's reporter-set definition (§3.4.6,
+    // Eq. 3.11 ME-S3 signature — "Vk asserts it witnessed link eij", i.e. a third
+    // party, not a self-report) and matches the Cryptographic Placement Analysis's
+    // vehicle/RSU-vs-controller scoping on structural grounds rather than on which
+    // canned scenario is configured. Controller-origin fabrications (ME-S3/S4) tag
+    // physical_sender_id = 9999u (see ME_S3_InjectPhantomPaths / ME_S4_InjectPhantomPaths
+    // in routing.cc), so they are still excluded here — per Eq. 3.29's own scope,
+    // external cryptographic validation does not apply when there is no external
+    // message to validate.
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
-        (attack_scenario == ME_S1_MAL_VEH_NO_RSU ||
-         attack_scenario == ME_S2_MAL_RSU))
+        event.physical_sender_id != event.link_src_id &&
+        event.physical_sender_id != event.link_dst_id &&
+        event.physical_sender_id != 9999u)
     {
         // Select the link endpoint nearest to the reporter as the spatial reference.
         // verify_single_witness uses this lat/lon as the link endpoint for gate (ii).
