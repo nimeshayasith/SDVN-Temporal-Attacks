@@ -22,13 +22,15 @@ export PATH="$PATH:/home/sdvn_echo_topology/Group_33/teta-guard/fabric-samples/b
 
 CHANNEL="teta-channel"
 CHAINCODE="temporalecho"
-# Upgrade to 2.0/2: real ML-DSA-87 (Dilithium5) chaincode replacing the
-# Falcon-1024/HMAC-stub verifiers, plus the self-referential signature
-# payload fix (SubmitBeaconEvidence/SubmitDetectionEvent). 1.0/1 is already
-# committed on this channel; Fabric requires sequence to increment by
-# exactly 1 per upgrade.
-CC_VERSION="2.0"
-CC_SEQUENCE=2
+# Upgrade to 2.1/3: unconditional per-caller RSU/OBU trust checks in
+# ZeroTrust, DemotePeerToClient, SubmitLWDetectionResult,
+# CreateAnchorCheckpoint, SyncFromAnchorCheckpoint, UpdateTrustRound —
+# replacing the SIM_NO_RSU_MODE global-flag / hasRSU deployment-wide scan
+# gates, which incorrectly blocked a legitimately-active, high-trust Tier 2
+# OBU peer in a mixed RSU+OBU deployment. 2.0/2 is already committed on this
+# channel; Fabric requires sequence to increment by exactly 1 per upgrade.
+CC_VERSION="2.1"
+CC_SEQUENCE=3
 CC_LABEL="${CHAINCODE}_${CC_VERSION}"
 # orderer1.tetaguard.net (not the old singular "orderer.tetaguard.net" — leftover
 # from the pre-migration single-orderer topology; its cert CN doesn't match any of
