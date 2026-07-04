@@ -6565,25 +6565,35 @@ void BSHH_S1_ReplayOldHeartbeatToVictim(uint32_t attacker_id, uint32_t victim_id
         return;
     }
 
+    // Bug fix (per thesis Fig. 3.7 narrative): STEP ④ must replay the VICTIM's
+    // own captured heartbeat back to the victim (Sender=victim_id) — the packet
+    // is physically transmitted by the attacker but claims the victim's own
+    // identity, exactly as BSHH_S1_StoreOldHeartbeat's own log text already
+    // says ("captured_packet: Heartbeat(Sender=Victim...)"; "stores Victim's
+    // old heartbeat for replay to victim"). The previous code sent
+    // Sender=attacker_id instead, which made STEP ⑤'s forward an identity
+    // mismatch (physical=victim != claimed=attacker) that Step 1 (HMAC) drops
+    // trivially — never exercising the freshness/nonce checks (Steps 2/3) this
+    // path is meant to test on a correctly-attributed-but-stale replay.
     std::stringstream ss;
-    ss << "[t=" << now << "]  STEP ④  ATTACKER SENDS OWN OLD HEARTBEAT TO VICTIM\n"
+    ss << "[t=" << now << "]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM\n"
        << "  Attacker        : " << attackerLabel << "\n"
        << "  Victim          : " << victimLabel << "\n"
        << "  " << attackerLabel << " -> " << victimLabel
-       << " : Heartbeat(Sender=" << attackerLabel
+       << " : Heartbeat(Sender=" << victimLabel
        << ", beacon_sending_time=" << stored_time << ")\n"
-       << "  Victim receives attacker`s own old heartbeat (stale timestamp beacon_sending_time=" << stored_time << ")\n\n";
+       << "  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=" << stored_time << ")\n\n";
     bshh_s1_pair_logs[attacker_id] += ss.str();
 
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S1][t=" << now << "]  V" << attacker_id
               << " --REPLAY old heartbeat--> V" << victim_id
-              << "  Heartbeat(Sender=V" << attacker_id << ", t=" << stored_time
-              << ")  [MALICIOUS â€” replayed attacker old heartbeat]" << std::endl;
+              << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time
+              << ")  [MALICIOUS â€” replayed victim's captured heartbeat]" << std::endl;
 
     Ptr<Node> attackerNode = GetVehicleByNs3Id(attacker_id);
     if (attackerNode) {
-        AttackSendHeartbeat(attackerNode, attacker_id, stored_time, true);
+        AttackSendHeartbeat(attackerNode, victim_id, stored_time, true);
     }
 
     // Crypto latency: attacker re-signs replayed heartbeat, controller verifies
@@ -6617,8 +6627,15 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32
     const std::string attackerLabel = GetVehicleLogLabel(attacker_id);
     const std::string victimLabel = GetVehicleLogLabel(victim_id);
     
-    HeartbeatPacket forwarded = {attacker_id, victim_id, stored_time, true};
-    bshh_controller_liveness_table[attacker_id] = forwarded;
+    // Bug fix (matches STEP ④'s correction): the packet the victim received
+    // and is forwarding claims Sender=victim_id (its own identity), not
+    // Sender=attacker_id — so both the claimed_sender field and the liveness
+    // table key must be victim_id. This produces physical=victim ==
+    // claimed=victim (a correctly-attributed but stale message), which is
+    // what lets Stage-0's freshness/nonce checks (Eqs. 3.16-3.17) — not an
+    // identity mismatch — be the thing that catches or misses this path.
+    HeartbeatPacket forwarded = {victim_id, victim_id, stored_time, true};
+    bshh_controller_liveness_table[victim_id] = forwarded;
     // Bug 1 fix (see project memory): this function runs once per
     // attacker/victim pair. With multiple attacker pairs scheduled at
     // different times, an unconditional overwrite here could set
@@ -6627,23 +6644,23 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
-    
+
     std::stringstream ss;
-    ss << "[t=" << now << "]  STEP ⑤  VICTIM FORWARDS ATTACKER`S OLD HEARTBEAT TO CONTROLLER\n"
-       << "  Original attacker : " << attackerLabel << "\n"
-       << "  Forwarder/physical: " << victimLabel << "\n"
+    ss << "[t=" << now << "]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER\n"
+       << "  Originally captured from : " << victimLabel << " (attacker=" << attackerLabel << " replayed it back)\n"
+       << "  Forwarder/physical       : " << victimLabel << "\n"
        << "  " << victimLabel << " -> Controller : Heartbeat(Sender="
-       << attackerLabel << ", beacon_sending_time=" << stored_time << ")\n"
-       << "  Controller refreshes " << attackerLabel
+       << victimLabel << ", beacon_sending_time=" << stored_time << ")\n"
+       << "  Controller refreshes " << victimLabel
        << " liveness using stale timestamp beacon_sending_time=" << stored_time << "\n\n";
     bshh_s1_pair_logs[attacker_id] += ss.str();
-    
+
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S1][t=" << now << "]  V" << victim_id
               << " --forwards stale heartbeat--> Controller"
-              << "  Heartbeat(Sender=V" << attacker_id << ", t=" << stored_time
+              << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time
               << ")  Controller liveness POISONED" << std::endl;
-    PemEmitHeartbeatEvent(victim_id, attacker_id, stored_time, true);
+    PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true);
 }
 
 void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time)
