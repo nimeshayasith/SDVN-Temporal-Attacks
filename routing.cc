@@ -7978,6 +7978,312 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
 
 
 // =============================================================================
+// ME single-attacker, 3-legitimate-vehicle case (V1,V2,V3 legit; one attacker)
+// Shared by ME-S1..S4 (attacker identity = malicious vehicle for S1, or the
+// impersonated vehicle identity used by the malicious RSU/controller for
+// S2-S4 — mirrors how false_v3/false_v4 are already used as impersonated
+// identities in the existing 2-attacker functions above).
+//
+// Which of the two topology cases applies is NOT hardcoded: it is measured
+// from the vehicles' actual simulated positions (same TTW_COMM_RANGE rule
+// already used for the existing v3v4_linked Path-4 check), exactly per the
+// two cases the attack spec calls out:
+//   CHAIN : V1<->V2 and V2<->V3 both real (V1,V2,V3 form a connected chain),
+//           attacker physically isolated from all three. The attacker echoes
+//           BOTH real hops, so the controller can insert it at any of the
+//           4 positions around the 3-node chain.
+//   SPLIT : only V1<->V2 real; V3 is a separate real pair with the attacker
+//           itself (attacker <-> V3 is a genuine physical link). The
+//           attacker echoes the V1<->V2 hop, letting the controller not only
+//           insert it between V1/V2 but also stitch the two real components
+//           together through its genuine V3 link.
+// =============================================================================
+
+struct MESingle3Topology {
+    bool   chain;   // V1<->V2<->V3 fully real chain, attacker isolated
+    bool   split;   // V1<->V2 real pair; attacker<->V3 real (attacker's own link)
+    double d12, d23, dA3;
+};
+
+static Vector MEGetVehiclePos(uint32_t vidx)
+{
+    if (vidx < Vehicle_Nodes.GetN()) {
+        Ptr<MobilityModel> m = Vehicle_Nodes.Get(vidx)->GetObject<MobilityModel>();
+        if (m) return m->GetPosition();
+    }
+    return Vector(0.0, 0.0, 0.0);
+}
+
+static double MEDist2D(const Vector& a, const Vector& b)
+{
+    double dx = a.x - b.x, dy = a.y - b.y;
+    return std::sqrt(dx * dx + dy * dy);
+}
+
+static MESingle3Topology MEClassifySingle3(uint32_t v1_id, uint32_t v2_id,
+                                            uint32_t v3_id, uint32_t atk_id)
+{
+    Vector p1 = MEGetVehiclePos(v1_id), p2 = MEGetVehiclePos(v2_id);
+    Vector p3 = MEGetVehiclePos(v3_id), pA = MEGetVehiclePos(atk_id);
+    MESingle3Topology t;
+    t.d12 = MEDist2D(p1, p2);
+    t.d23 = MEDist2D(p2, p3);
+    t.dA3 = MEDist2D(pA, p3);
+    bool link12 = t.d12 <= TTW_COMM_RANGE;
+    bool link23 = t.d23 <= TTW_COMM_RANGE;
+    bool linkA3 = t.dA3 <= TTW_COMM_RANGE;
+    t.chain = link12 && link23;
+    t.split = link12 && !link23 && linkA3;
+    return t;
+}
+
+// Places the 4-vehicle group for the single-attacker case. Must be called via
+// Simulator::Schedule right before the discovery event (not directly in
+// main()): SUMO trace playback schedules its own SetPosition/SetVelocity
+// events for every vehicle with waypoint data at their recorded timestamps,
+// which would silently overwrite a position set synchronously in main() by
+// the time the attack actually fires later in the run.
+void MESetSingle3Positions(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
+                            uint32_t atk_id, bool useChain)
+{
+    Ptr<ConstantVelocityMobilityModel> m_v1 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>());
+    Ptr<ConstantVelocityMobilityModel> m_v2 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>());
+    Ptr<ConstantVelocityMobilityModel> m_v3 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>());
+    Ptr<ConstantVelocityMobilityModel> m_atk = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(atk_id)->GetObject<MobilityModel>());
+    if (m_v1) { m_v1->SetPosition(Vector(0.0, 0.0, 0.0)); m_v1->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+    if (m_v2) { m_v2->SetPosition(Vector(150.0, 0.0, 0.0)); m_v2->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+    if (useChain) {
+        if (m_v3)  { m_v3->SetPosition(Vector(280.0, 0.0, 0.0)); m_v3->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+        if (m_atk) { m_atk->SetPosition(Vector(1000.0, 1000.0, 0.0)); m_atk->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+    } else {
+        if (m_v3)  { m_v3->SetPosition(Vector(1000.0, 0.0, 0.0)); m_v3->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+        if (m_atk) { m_atk->SetPosition(Vector(1130.0, 0.0, 0.0)); m_atk->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+    }
+}
+
+// mode: 1=ME-S1 (malicious vehicle, direct DSRC), 2=ME-S2 (malicious RSU),
+//       3=ME-S3 (malicious controller, no RSU), 4=ME-S4 (malicious controller, with RSU)
+void ME_Single3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
+                                     uint32_t atk_id, double t, int mode, uint32_t rsu_id)
+{
+    double now = Simulator::Now().GetSeconds();
+    MESingle3Topology topo = MEClassifySingle3(v1_id, v2_id, v3_id, atk_id);
+
+    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    if (topo.chain) {
+        ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v3_id)] = {v2_id, v3_id, t, false};
+        ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v2_id)] = {v3_id, v2_id, t, false};
+    }
+    if (topo.split) {
+        ttw_controller_table[std::to_string(atk_id)+"_"+std::to_string(v3_id)] = {atk_id, v3_id, t, false};
+        ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(atk_id)] = {v3_id, atk_id, t, false};
+    }
+
+    uint32_t v1n = (v1_id  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()  : v1_id;
+    uint32_t v2n = (v2_id  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()  : v2_id;
+    uint32_t v3n = (v3_id  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v3_id)->GetId()  : v3_id;
+    uint32_t an  = (atk_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(atk_id)->GetId() : atk_id;
+    const char* tag = (mode == 1) ? "ME-S1" : (mode == 2) ? "ME-S2" : (mode == 3) ? "ME-S3" : "ME-S4";
+
+    me_log << "[t=" << now << "]  STEP ①  3-LEGITIMATE-VEHICLE TOPOLOGY DISCOVERY (single attacker)\n"
+           << "  Measured distances: d(V" << v1n << ",V" << v2n << ")=" << topo.d12
+           << "m  d(V" << v2n << ",V" << v3n << ")=" << topo.d23
+           << "m  d(V" << an << ",V" << v3n << ")=" << topo.dA3 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << "  Topology detected: "
+           << (topo.chain ? ("FULL CHAIN V" + std::to_string(v1n) + "<->V" + std::to_string(v2n) +
+                             "<->V" + std::to_string(v3n) + " (attacker V" + std::to_string(an) + " isolated)\n")
+                          : topo.split ? ("SPLIT — V" + std::to_string(v1n) + "<->V" + std::to_string(v2n) +
+                             " real pair; attacker V" + std::to_string(an) + "<->V" + std::to_string(v3n) +
+                             " is the attacker's own genuine link\n")
+                                       : "SPLIT (fallback, unexpected placement) — treating V3 as unrelated bystander\n")
+           << "  V" << v1n << " <-> V" << v2n << " : HELLO exchange (real V2V link)\n"
+           << (topo.chain ? ("  V" + std::to_string(v2n) + " <-> V" + std::to_string(v3n) + " : HELLO exchange (real V2V link)\n") : "")
+           << (topo.split ? ("  V" + std::to_string(an) + " <-> V" + std::to_string(v3n) + " : HELLO exchange (attacker's own genuine link)\n") : "")
+           << "\n";
+
+    // STEP②: legitimate topology reporting to the controller — transport differs per scenario mode
+    me_log << "[t=" << now << "]  STEP ②  LEGITIMATE TOPOLOGY REPORTING (" << tag << ")\n";
+    if (mode == 1) {
+        me_log << "  V" << v1n << " -> Controller : <V" << v1n << " sees V" << v2n << ", t=" << t << ">  ACCEPTED\n"
+               << "  V" << v2n << " -> Controller : <V" << v2n << " sees V" << v1n << ", t=" << t << ">  ACCEPTED\n"
+               << (topo.chain ? ("  V" + std::to_string(v3n) + " -> Controller : <V" + std::to_string(v3n) +
+                                 " sees V" + std::to_string(v2n) + ", t=" + std::to_string(t) + ">  ACCEPTED\n") : "")
+               << (topo.split ? ("  V" + std::to_string(v3n) + " -> Controller : <V" + std::to_string(v3n) +
+                                 " sees V" + std::to_string(an) + ", t=" + std::to_string(t) + ">  ACCEPTED\n") : "")
+               << "\n";
+    } else if (mode == 2 || mode == 4) {
+        me_log << "  V" << v1n << " -> RSU_" << rsu_id << " : <V" << v1n << " sees V" << v2n << ", t=" << t << ">\n"
+               << "  V" << v2n << " -> RSU_" << rsu_id << " : <V" << v2n << " sees V" << v1n << ", t=" << t << ">\n"
+               << (topo.chain ? ("  V" + std::to_string(v3n) + " -> RSU_" + std::to_string(rsu_id) +
+                                 " : <V" + std::to_string(v3n) + " sees V" + std::to_string(v2n) + ", t=" + std::to_string(t) + ">\n") : "")
+               << (topo.split ? ("  V" + std::to_string(v3n) + " -> RSU_" + std::to_string(rsu_id) +
+                                 " : <V" + std::to_string(v3n) + " sees V" + std::to_string(an) + ", t=" + std::to_string(t) + ">\n") : "")
+               << "  RSU_" << rsu_id << " -> Controller : forwarding aggregated legitimate report\n\n";
+    } else {
+        me_log << "  V" << v1n << " -> Controller : <V" << v1n << " sees V" << v2n << ", t=" << t << ">  ACCEPTED\n"
+               << "  V" << v2n << " -> Controller : <V" << v2n << " sees V" << v1n << ", t=" << t << ">  ACCEPTED\n"
+               << (topo.chain ? ("  V" + std::to_string(v3n) + " -> Controller : <V" + std::to_string(v3n) +
+                                 " sees V" + std::to_string(v2n) + ", t=" + std::to_string(t) + ">  ACCEPTED\n") : "")
+               << (topo.split ? ("  V" + std::to_string(v3n) + " -> Controller : <V" + std::to_string(v3n) +
+                                 " sees V" + std::to_string(an) + ", t=" + std::to_string(t) + ">  ACCEPTED\n") : "")
+               << "\n";
+    }
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "[" << tag << "][t=" << now << "]  STEP①②  3-legit single-attacker topology: "
+              << (topo.chain ? "CHAIN" : topo.split ? "SPLIT" : "SPLIT(fallback)") << std::endl;
+
+    Vector pos1 = MEGetVehiclePos(v1_id), pos2 = MEGetVehiclePos(v2_id), pos3 = MEGetVehiclePos(v3_id);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, (mode==2||mode==4) ? rsu_id : v1_id, v1_id, v2_id, t, now, pos1, pos1, pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, (mode==2||mode==4) ? rsu_id : v2_id, v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    if (topo.chain)
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, (mode==2||mode==4) ? rsu_id : v3_id, v3_id, v2_id, t, now, pos3, pos3, pos2, false);
+    if (topo.split)
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, (mode==2||mode==4) ? rsu_id : v3_id, v3_id, atk_id, t, now, pos3, pos3, MEGetVehiclePos(atk_id), false);
+    PemEmitVehicleBeacon(v1_id, v2_id);
+    if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
+    }
+    if (topo.chain && v2_id < Vehicle_Nodes.GetN() && v3_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v3_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(v2_id));
+    }
+    if (topo.split && atk_id < Vehicle_Nodes.GetN() && v3_id < Vehicle_Nodes.GetN()) {
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(atk_id), Vehicle_Nodes.Get(v3_id));
+        AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(atk_id));
+    }
+    if (mode == 2 || mode == 4) AttackSendRSUToController(rsu_id);
+}
+
+void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
+                           uint32_t atk_id, double t, int mode, uint32_t rsu_id)
+{
+    double now = Simulator::Now().GetSeconds();
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
+    pem_attack_active = true;
+    pem_mitigation_active = false;
+
+    MESingle3Topology topo = MEClassifySingle3(v1_id, v2_id, v3_id, atk_id);
+    me_s1_actual_attackers.insert(atk_id);
+
+    uint32_t v1n = (v1_id  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()  : v1_id;
+    uint32_t v2n = (v2_id  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()  : v2_id;
+    uint32_t v3n = (v3_id  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v3_id)->GetId()  : v3_id;
+    uint32_t an  = (atk_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(atk_id)->GetId() : atk_id;
+    const char* tag = (mode == 1) ? "ME-S1" : (mode == 2) ? "ME-S2" : (mode == 3) ? "ME-S3" : "ME-S4";
+
+    // The attacker echoes every real edge that does NOT already touch it —
+    // one echo report per real edge, exactly the same "false reporter of an
+    // existing real link" mechanic already used by the 2-attacker functions
+    // above, just applied to however many real edges the detected topology has.
+    std::vector<std::pair<uint32_t,uint32_t>> echoedEdges;
+    echoedEdges.push_back({v1_id, v2_id});
+    if (topo.chain) echoedEdges.push_back({v2_id, v3_id});
+
+    for (auto& e : echoedEdges) {
+        MEEchoReport r = {e.first, e.second, atk_id, t, true};
+        me_echo_reports.push_back(r);
+        std::string k = std::to_string(atk_id) + "_echo3_" + std::to_string(e.first) + "_" + std::to_string(e.second);
+        ttw_controller_table[k] = {atk_id, e.second, t, true};
+        attack_E_matrix.insert(k);
+        topology_divergence_delta++;
+    }
+
+    Vector v1Pos = MEGetVehiclePos(v1_id), v2Pos = MEGetVehiclePos(v2_id);
+    Vector v3Pos = MEGetVehiclePos(v3_id), aPos  = MEGetVehiclePos(atk_id);
+
+    me_log << "[t=" << now << "]  STEP ③  ECHO INJECTION BY ATTACKER V" << an << " (" << tag << ")\n";
+    for (auto& e : echoedEdges) {
+        uint32_t en1 = (e.first  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(e.first)->GetId()  : e.first;
+        uint32_t en2 = (e.second < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(e.second)->GetId() : e.second;
+        me_log << "  V" << an << " -> Controller : <V" << en1 << " sees V" << en2
+               << ", t=" << t << ">  (ECHO — false reporter)\n";
+    }
+    me_log << "  Note: attacker duplicates existing real link(s) — no new physical link fabricated\n\n";
+
+    me_log << "[t=" << now << "]  STEP ④  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)\n"
+           << "  Controller incorrectly infers:\n";
+    int pathNum = 1;
+    if (topo.chain) {
+        me_log << "    Path " << pathNum++ << ": V" << v1n << " -> V" << v2n << " -> V" << v3n << "  (REAL)\n"
+               << "    Path " << pathNum++ << ": V" << v1n << " -> V" << v2n << " -> V" << an  << " -> V" << v3n << "  (PHANTOM)\n"
+               << "    Path " << pathNum++ << ": V" << v1n << " -> V" << an  << " -> V" << v2n << " -> V" << v3n << "  (PHANTOM)\n"
+               << "    Path " << pathNum++ << ": V" << v1n << " -> V" << v2n << " -> V" << v3n << " -> V" << an  << "  (PHANTOM)\n"
+               << "    Path " << pathNum++ << ": V" << an  << " -> V" << v1n << " -> V" << v2n << " -> V" << v3n << "  (PHANTOM)\n";
+    } else {
+        me_log << "    Path " << pathNum++ << ": V" << v1n << " -> V" << v2n << "  (REAL)\n"
+               << "    Path " << pathNum++ << ": V" << an  << " -> V" << v3n << "  (REAL — attacker's own genuine link)\n"
+               << "    Path " << pathNum++ << ": V" << v1n << " -> V" << an  << " -> V" << v2n << "  (PHANTOM)\n"
+               << "    Path " << pathNum++ << ": V" << v1n << " -> V" << v2n << " -> V" << an  << "  (PHANTOM)\n"
+               << "    Path " << pathNum++ << ": V" << v1n << " -> V" << v2n << " -> V" << an  << " -> V" << v3n << "  (PHANTOM — stitched via attacker's real V3 link)\n";
+    }
+    me_log << "\n[t=" << now << "]  STEP ⑤  FAULTY ROUTING DECISIONS\n"
+           << "  Controller installs routing rules relying on phantom paths through V" << an << "\n"
+           << "  Expected impact: packet loss, increased delay, routing instability\n"
+           << "  <- ATTACK SUCCESS\n\n";
+    me_log.flush();
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "[" << tag << "][t=" << now << "]  STEP③④  V" << an << " echoes "
+              << echoedEdges.size() << " real edge(s) — "
+              << (topo.chain ? "CHAIN 4-phantom-path" : "SPLIT 3-phantom-path")
+              << " inference  *** ATTACK COMPLETE ***" << std::endl;
+
+    for (auto& e : echoedEdges) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, atk_id, atk_id,
+                     (mode == 2 || mode == 4) ? rsu_id : atk_id,
+                     e.first, e.second, t, now, aPos,
+                     MEGetVehiclePos(e.first), MEGetVehiclePos(e.second), true);
+    }
+    if (mode == 2 || mode == 4) AttackSendRSUToController(rsu_id);
+
+    if (pem_last_alert) {
+        for (auto& e : echoedEdges) {
+            std::string k = std::to_string(atk_id) + "_echo3_" + std::to_string(e.first) + "_" + std::to_string(e.second);
+            ttw_controller_table.erase(k);
+            attack_E_matrix.erase(k);
+            if (topology_divergence_delta > 0) topology_divergence_delta--;
+        }
+        const PemQuorumEvidence ev{aPos, v1Pos, v2Pos};
+        std::string mit = PemApplyMitigation(atk_id, now, tag, &ev);
+        me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
+               << "  Attacker V" << an << " identified; phantom entries removed\n"
+               << "  Score: " << pem_last_detection_score << "\n"
+               << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
+               << "  delta after mitigation: " << topology_divergence_delta << "\n"
+               << mit << "\n";
+        me_log.flush();
+    }
+}
+
+// Thin per-scenario wrappers with <=6 parameters — ns3::Simulator::Schedule's
+// free-function template overload only supports up to 6 trailing arguments;
+// the 7-argument core functions above (v1,v2,v3,atk,t,mode,rsu_id) cannot be
+// passed to Schedule directly (the compiler otherwise silently falls back to
+// the member-function-pointer overload and fails with an unrelated template
+// error about EventMemberImplObjTraits).
+void ME_Single3_LegitimateDiscovery_S1(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t)
+{ ME_Single3_LegitimateDiscovery(v1_id, v2_id, v3_id, atk_id, t, 1, UINT32_MAX); }
+void ME_Single3_LegitimateDiscovery_S2(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t, uint32_t rsu_id)
+{ ME_Single3_LegitimateDiscovery(v1_id, v2_id, v3_id, atk_id, t, 2, rsu_id); }
+void ME_Single3_LegitimateDiscovery_S3(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t)
+{ ME_Single3_LegitimateDiscovery(v1_id, v2_id, v3_id, atk_id, t, 3, UINT32_MAX); }
+void ME_Single3_LegitimateDiscovery_S4(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t, uint32_t rsu_id)
+{ ME_Single3_LegitimateDiscovery(v1_id, v2_id, v3_id, atk_id, t, 4, rsu_id); }
+
+void ME_Single3_EchoAttack_S1(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t)
+{ ME_Single3_EchoAttack(v1_id, v2_id, v3_id, atk_id, t, 1, UINT32_MAX); }
+void ME_Single3_EchoAttack_S2(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t, uint32_t rsu_id)
+{ ME_Single3_EchoAttack(v1_id, v2_id, v3_id, atk_id, t, 2, rsu_id); }
+void ME_Single3_EchoAttack_S3(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t)
+{ ME_Single3_EchoAttack(v1_id, v2_id, v3_id, atk_id, t, 3, UINT32_MAX); }
+void ME_Single3_EchoAttack_S4(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id, uint32_t atk_id, double t, uint32_t rsu_id)
+{ ME_Single3_EchoAttack(v1_id, v2_id, v3_id, atk_id, t, 4, rsu_id); }
+
+
+// =============================================================================
 // ME-S2: MALICIOUS RSU — attack_scenario == 10
 // =============================================================================
 
@@ -151471,6 +151777,75 @@ attack_mobility.Install(Vehicle_Nodes);
       }
       AttackShuffleVector(me_echo_cidx);
       AttackShuffleVector(me_real_cidx);
+
+      // Genuine single-attacker case: exactly 1 declared attacker with >=3
+      // legit vehicles available. Rather than forcibly borrowing a legit
+      // vehicle to manufacture a second attacker (which discarded this case
+      // entirely before), run the dedicated 3-legit-vehicle model: the real/
+      // phantom path enumeration is derived from actual measured distances
+      // (ME_Single3_LegitimateDiscovery / ME_Single3_EchoAttack).
+      if (me_echo_cidx.size() == 1 && me_real_cidx.size() >= 3) {
+          uint32_t v1_cidx  = me_real_cidx[0];
+          uint32_t v2_cidx  = me_real_cidx[1];
+          uint32_t v3_cidx  = me_real_cidx[2];
+          uint32_t atk_cidx = me_echo_cidx[0];
+
+          std::cout << "\n========================================" << std::endl;
+          std::cout << "SCENARIO 09 - ME-S1 ATTACK CONFIGURED (single attacker, 3 legit)" << std::endl;
+          std::cout << "  Total vehicles : " << N_Vehicles << std::endl;
+          std::cout << "  Legit V1/V2/V3 : V" << Vehicle_Nodes.Get(v1_cidx)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v2_cidx)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v3_cidx)->GetId() << std::endl;
+          std::cout << "  Attacker       : V" << Vehicle_Nodes.Get(atk_cidx)->GetId() << std::endl;
+          std::cout << "========================================\n" << std::endl;
+
+          std::vector<uint32_t> active_real_pair = {v1_cidx, v2_cidx};
+          ME_S1_InitLog(N_Vehicles, 1u, (uint32_t)me_real_cidx.size(), 1u, me_echo_cidx, active_real_pair);
+
+          static const double ME_S1_DISCOVERY_TIME = 10.0;
+          const double discoveryObservedTime =
+              ME_S1_DISCOVERY_TIME + AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
+
+          // Which of the two topology cases (chain vs split) is exercised is
+          // chosen randomly here (same convention as the existing
+          // sophistication rolls, drawn from the shared AttackGetRng()), then
+          // the actual real/phantom classification is measured from these
+          // positions at attack time — not hardcoded from this choice.
+          const bool meS1UseChain = (AttackGetRng()->GetValue() < 0.5);
+          // Scheduled (not called directly): SUMO trace playback schedules its
+          // own position events for every vehicle up through this time, which
+          // would otherwise silently overwrite a synchronous SetPosition call.
+          Simulator::Schedule(Seconds(discoveryObservedTime - 0.001),
+              &MESetSingle3Positions, v1_cidx, v2_cidx, v3_cidx, atk_cidx, meS1UseChain);
+
+          Simulator::Schedule(Seconds(discoveryObservedTime),
+              &ME_Single3_LegitimateDiscovery_S1, v1_cidx, v2_cidx, v3_cidx, atk_cidx,
+              discoveryObservedTime);
+          const double echoAttackTime =
+              AttackMax(discoveryObservedTime + 0.010,
+                        discoveryObservedTime + 0.1 + AttackSampleSignedJitter(attack_time_jitter_s));
+          // Re-freeze immediately before the echo event too — SUMO can still
+          // fire a waypoint for one of these vehicles in the gap between the
+          // discovery and echo-attack events, which would otherwise flip the
+          // detected topology mid-attack.
+          Simulator::Schedule(Seconds(echoAttackTime - 0.001),
+              &MESetSingle3Positions, v1_cidx, v2_cidx, v3_cidx, atk_cidx, meS1UseChain);
+          Simulator::Schedule(Seconds(echoAttackTime),
+              &ME_Single3_EchoAttack_S1, v1_cidx, v2_cidx, v3_cidx, atk_cidx,
+              discoveryObservedTime);
+
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_cidx), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_cidx), "V-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_cidx), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_cidx), "V-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v3_cidx), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v3_cidx), "V-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(atk_cidx), 255, 0, 0);
+          anim.UpdateNodeSize(Vehicle_Nodes.Get(atk_cidx)->GetId(), 25.0, 25.0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(atk_cidx), "V-Echo");
+          anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+      }
+      else {
       // Ensure at least 2 echo attackers by borrowing from real list.
       // Only borrow when at least 1 attacker was declared (attack_percentage > 0).
       // If me_echo_cidx is empty, this is a baseline run — do not manufacture attackers.
@@ -151625,6 +152000,7 @@ attack_mobility.Install(Vehicle_Nodes);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(last_cidx), "V-Echo");
       }
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+      }  // end else (2-attacker / legacy ME-S1 path)
   }
 
 
@@ -151665,13 +152041,66 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S2 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
           return 1;
       }
+      static const double ME_S2_DISCOVERY_TIME = 10.0;
+
+      // Genuine single-attacker case: exactly 1 impersonated identity declared
+      // with >=3 real vehicles available — run the dedicated 3-legit model
+      // instead of forcibly borrowing a second phantom reporter.
+      if (s2_phantom_cidx.size() == 1 && s2_real_cidx.size() >= 3) {
+          uint32_t v1_id  = s2_real_cidx[0];
+          uint32_t v2_id  = s2_real_cidx[1];
+          uint32_t v3_id  = s2_real_cidx[2];
+          uint32_t atk_id = s2_phantom_cidx[0];
+
+          std::cout << "\n========================================" << std::endl;
+          std::cout << "SCENARIO 10 - ME-S2 ATTACK CONFIGURED (single attacker, 3 legit)" << std::endl;
+          std::cout << "  Total vehicles : " << N_Vehicles << "  Malicious RSUs: " << n_mal_rsus2 << std::endl;
+          std::cout << "  Legit V1/V2/V3 : V" << Vehicle_Nodes.Get(v1_id)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v2_id)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v3_id)->GetId() << std::endl;
+          std::cout << "  Impersonated ID: V" << Vehicle_Nodes.Get(atk_id)->GetId() << std::endl;
+          std::cout << "========================================\n" << std::endl;
+
+          ME_S2_InitLog(n_mal_rsus2, N_RSUs);
+
+          const bool meS2UseChain = (AttackGetRng()->GetValue() < 0.5);
+          Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME - 0.001),
+              &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS2UseChain);
+
+          for (uint32_t r = 0; r < n_mal_rsus2; r++) {
+              uint32_t rsu_id = RSU_Nodes.Get(r)->GetId();
+              const double dt = r * 0.001;
+              Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + dt),
+                  &ME_Single3_LegitimateDiscovery_S2, v1_id, v2_id, v3_id, atk_id,
+                  ME_S2_DISCOVERY_TIME, rsu_id);
+              // Re-freeze immediately before the echo event too — SUMO can
+              // still fire a waypoint in the gap between discovery and echo.
+              Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1 + dt - 0.001),
+                  &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS2UseChain);
+              Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1 + dt),
+                  &ME_Single3_EchoAttack_S2, v1_id, v2_id, v3_id, atk_id,
+                  ME_S2_DISCOVERY_TIME, rsu_id);
+              anim.UpdateNodeColor(RSU_Nodes.Get(r), 255, 0, 0);
+              anim.UpdateNodeSize(RSU_Nodes.Get(r)->GetId(), 38.0, 38.0);
+              anim.UpdateNodeDescription(RSU_Nodes.Get(r), "RSU-Attacker");
+          }
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v3_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v3_id), "V3-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(atk_id), 255, 165, 0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(atk_id), "V-Phantom");
+          anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+      }
+      else {
       // Second phantom (for pair): borrow only if real has surplus (>= 3)
       if (s2_phantom_cidx.size() < 2 && s2_real_cidx.size() >= 3) {
           s2_phantom_cidx.push_back(s2_real_cidx.back()); s2_real_cidx.pop_back();
       }
       uint32_t v1_id = s2_real_cidx[0];
       uint32_t v2_id = s2_real_cidx[1];
-      static const double ME_S2_DISCOVERY_TIME = 10.0;
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 10 - ME-S2 ATTACK CONFIGURED" << std::endl;
@@ -151722,6 +152151,7 @@ attack_mobility.Install(Vehicle_Nodes);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(k), "V-Phantom");
       }
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
+      }  // end else (2-attacker / legacy ME-S2 path)
   }
 
 
@@ -151759,13 +152189,64 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S3 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
           return 1;
       }
+      static const double ME_S3_DISCOVERY_TIME = 10.0;
+
+      // Genuine single-attacker case: exactly 1 impersonated identity declared
+      // with >=3 real vehicles available — run the dedicated 3-legit model
+      // instead of forcibly borrowing a second phantom reporter.
+      if (s3_phantom_cidx.size() == 1 && s3_real_cidx.size() >= 3) {
+          uint32_t v1_id  = s3_real_cidx[0];
+          uint32_t v2_id  = s3_real_cidx[1];
+          uint32_t v3_id  = s3_real_cidx[2];
+          uint32_t atk_id = s3_phantom_cidx[0];
+
+          std::cout << "\n========================================" << std::endl;
+          std::cout << "SCENARIO 11 - ME-S3 ATTACK CONFIGURED (single attacker, 3 legit)" << std::endl;
+          std::cout << "  Total vehicles : " << N_Vehicles << "  Malicious controllers: " << n_mal_ctrl3 << std::endl;
+          std::cout << "  Legit V1/V2/V3 : V" << Vehicle_Nodes.Get(v1_id)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v2_id)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v3_id)->GetId() << std::endl;
+          std::cout << "  Impersonated ID: V" << Vehicle_Nodes.Get(atk_id)->GetId() << std::endl;
+          std::cout << "========================================\n" << std::endl;
+
+          ME_S3_InitLog(n_mal_ctrl3, N_Controllers);
+
+          const bool meS3UseChain = (AttackGetRng()->GetValue() < 0.5);
+          Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME - 0.001),
+              &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS3UseChain);
+
+          for (uint32_t c = 0; c < n_mal_ctrl3; c++) {
+              const double dt = c * 0.001;
+              Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + dt),
+                  &ME_Single3_LegitimateDiscovery_S3, v1_id, v2_id, v3_id, atk_id,
+                  ME_S3_DISCOVERY_TIME);
+              // Re-freeze immediately before the echo event too — SUMO can
+              // still fire a waypoint in the gap between discovery and echo.
+              Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt - 0.001),
+                  &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS3UseChain);
+              Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt),
+                  &ME_Single3_EchoAttack_S3, v1_id, v2_id, v3_id, atk_id,
+                  ME_S3_DISCOVERY_TIME);
+          }
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v3_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v3_id), "V3-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(atk_id), 255, 165, 0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(atk_id), "V-Phantom");
+          anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
+          anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
+          anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+      }
+      else {
       // Second phantom (for pair): borrow only if real has surplus (>= 3)
       if (s3_phantom_cidx.size() < 2 && s3_real_cidx.size() >= 3) {
           s3_phantom_cidx.push_back(s3_real_cidx.back()); s3_real_cidx.pop_back();
       }
       uint32_t v1_id = s3_real_cidx[0];
       uint32_t v2_id = s3_real_cidx[1];
-      static const double ME_S3_DISCOVERY_TIME = 10.0;
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 11 - ME-S3 ATTACK CONFIGURED" << std::endl;
@@ -151813,6 +152294,7 @@ attack_mobility.Install(Vehicle_Nodes);
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+      }  // end else (2-attacker / legacy ME-S3 path)
   }
 
 
@@ -151853,14 +152335,68 @@ attack_mobility.Install(Vehicle_Nodes);
           std::cout << "[ERROR] ME-S4 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
           return 1;
       }
+      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
+      static const double ME_S4_DISCOVERY_TIME = 10.0;
+
+      // Genuine single-attacker case: exactly 1 impersonated identity declared
+      // with >=3 real vehicles available — run the dedicated 3-legit model
+      // instead of forcibly borrowing a second phantom reporter.
+      if (s4_phantom_cidx.size() == 1 && s4_real_cidx.size() >= 3) {
+          uint32_t v1_id  = s4_real_cidx[0];
+          uint32_t v2_id  = s4_real_cidx[1];
+          uint32_t v3_id  = s4_real_cidx[2];
+          uint32_t atk_id = s4_phantom_cidx[0];
+
+          std::cout << "\n========================================" << std::endl;
+          std::cout << "SCENARIO 12 - ME-S4 ATTACK CONFIGURED (single attacker, 3 legit)" << std::endl;
+          std::cout << "  Total vehicles : " << N_Vehicles << "  Malicious controllers: " << n_mal_ctrl4 << std::endl;
+          std::cout << "  RSU in path    : RSU_" << rsu_id << " (legitimate)" << std::endl;
+          std::cout << "  Legit V1/V2/V3 : V" << Vehicle_Nodes.Get(v1_id)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v2_id)->GetId()
+                    << "/V" << Vehicle_Nodes.Get(v3_id)->GetId() << std::endl;
+          std::cout << "  Impersonated ID: V" << Vehicle_Nodes.Get(atk_id)->GetId() << std::endl;
+          std::cout << "========================================\n" << std::endl;
+
+          ME_S4_InitLog(n_mal_ctrl4, N_Controllers, N_RSUs);
+
+          const bool meS4UseChain = (AttackGetRng()->GetValue() < 0.5);
+          Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME - 0.001),
+              &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS4UseChain);
+
+          for (uint32_t c = 0; c < n_mal_ctrl4; c++) {
+              const double dt = c * 0.001;
+              Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + dt),
+                  &ME_Single3_LegitimateDiscovery_S4, v1_id, v2_id, v3_id, atk_id,
+                  ME_S4_DISCOVERY_TIME, rsu_id);
+              // Re-freeze immediately before the echo event too — SUMO can
+              // still fire a waypoint in the gap between discovery and echo.
+              Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt - 0.001),
+                  &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS4UseChain);
+              Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt),
+                  &ME_Single3_EchoAttack_S4, v1_id, v2_id, v3_id, atk_id,
+                  ME_S4_DISCOVERY_TIME, rsu_id);
+          }
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_id), "V2-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(v3_id), 0, 150, 255);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(v3_id), "V3-Real");
+          anim.UpdateNodeColor(Vehicle_Nodes.Get(atk_id), 255, 165, 0);
+          anim.UpdateNodeDescription(Vehicle_Nodes.Get(atk_id), "V-Phantom");
+          anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0);
+          anim.UpdateNodeDescription(RSU_Nodes.Get(0), "RSU-In-Path");
+          anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
+          anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
+          anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+      }
+      else {
       // Second phantom (for pair): borrow only if real has surplus (>= 3)
       if (s4_phantom_cidx.size() < 2 && s4_real_cidx.size() >= 3) {
           s4_phantom_cidx.push_back(s4_real_cidx.back()); s4_real_cidx.pop_back();
       }
       uint32_t v1_id = s4_real_cidx[0];
       uint32_t v2_id = s4_real_cidx[1];
-      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
-      static const double ME_S4_DISCOVERY_TIME = 10.0;
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 12 - ME-S4 ATTACK CONFIGURED" << std::endl;
@@ -151912,6 +152448,7 @@ attack_mobility.Install(Vehicle_Nodes);
       anim.UpdateNodeColor(controller_Node.Get(0), 255, 0, 0);
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
+      }  // end else (2-attacker / legacy ME-S4 path)
   }
 
 
