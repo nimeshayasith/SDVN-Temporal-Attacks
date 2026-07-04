@@ -1,11 +1,11 @@
 [
   {
-    "v_id": "V5",
-    "alpha": "TTW",
+    "v_id": "V9999",
+    "alpha": "ME",
     "y_hat": 0.111111,
-    "t_alert": 20060,
-    "interval_ts_ms": 20060,
-    "S_trig": [2],
+    "t_alert": 20050,
+    "interval_ts_ms": 20050,
+    "S_trig": [6],
     "from_lw_path": true,
     "from_fs_path": false,
     "tdet_ms": 50
