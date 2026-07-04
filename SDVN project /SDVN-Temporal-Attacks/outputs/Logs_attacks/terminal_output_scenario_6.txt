@@ -1,6 +1,6 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [SUMO] Attack 6: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/06_BSHH_S2_Malicious_RSU.xml
 
@@ -21,22 +21,22 @@ Stored HB time : t=5 (from legitimate exchange)
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=4)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 4/4 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 5.000s with delay 1ms
-[BSHH-S2][t=5.100]  RSU0(ns3=11) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
-[BSHH-S2][t=10.000]  RSU0(ns3=11) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V11, claimed=V0(ns3=5), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 6/6 >= t=4 -> PASS
-[BSHH-S2][t=10.000]  FS-MITIGATE ABORTED (gate failed)  attacker=V11
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.000s with delay 1ms
+[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
+[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 5.000s with delay 1ms
+[BSHH-S2][t=5.100]  RSU0(ns3=9) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
+[BSHH-S2][t=10.000]  RSU0(ns3=9) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V9, claimed=V0(ns3=5), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 4/4 >= t=3 -> PASS
+[BSHH-S2][t=10.000]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.000s with delay 1ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
@@ -59,8 +59,8 @@ Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 2
   Stage-0 blocked (attacks): 1
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]

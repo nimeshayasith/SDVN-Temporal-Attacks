@@ -1,13 +1,13 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
 [SUMO] Attack 5: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/05_BSHH_S1_Malicious_Vehicle.xml
 
 ========================================
 SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED
 Attackers (1): V0 
-Victim pool (5): V1 V5 V4 V3 V2 
+Victim pool (3): V1 V3 V2 
 Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count
 Replay jitter window   : +/-0.04 s
 Support evidence prob. : 1
@@ -31,21 +31,21 @@ Timeline:
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=4)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 4/4 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S1][t=5.041]  V5 captured heartbeat for replay  Heartbeat(Sender=V6, t=5.002)
-[BSHH-S1][t=10.008]  V5 --REPLAY old heartbeat--> V6  Heartbeat(Sender=V6, t=5.002)  [MALICIOUS â€” replayed victim's captured heartbeat]
-[BSHH-S1][t=10.009]  V6 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V6, t=5.002)  Controller liveness POISONED
-[BSHH-S1][t=10.010]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V6, t=5.002)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.010]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_THRESHOLD_SIG 6/6 >= t=4 -> PASS
-[BSHH-S1][t=10.010]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=300.000 ms
-[Trust][t=10.010]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[BSHH-S1][t=5.036]  V5 captured heartbeat for replay  Heartbeat(Sender=V6, t=5.007)
+[BSHH-S1][t=10.024]  V5 --REPLAY old heartbeat--> V6  Heartbeat(Sender=V6, t=5.007)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=10.025]  V6 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V6, t=5.007)  Controller liveness POISONED
+[BSHH-S1][t=10.038]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V6, t=5.007)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.038]  FS-MITIGATE gate: PBFT n=4 f=1 q_needed=3 -> PASS  |  VERIFY_THRESHOLD_SIG 4/4 >= t=3 -> PASS
+[BSHH-S1][t=10.038]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=200.000 ms
+[Trust][t=10.038]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 
 [CRYPTO] crypto_latency_sumo.csv written    (22 events)
 [CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
@@ -70,8 +70,8 @@ Timeline:
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 2
   Stage-0 blocked (attacks): 2
   |E_t^trusted|  : 2
