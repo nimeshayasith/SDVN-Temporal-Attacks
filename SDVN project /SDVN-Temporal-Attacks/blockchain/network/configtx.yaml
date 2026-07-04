@@ -60,8 +60,17 @@ Organizations:
         Type: Signature
         Rule: "OR('TetaGuardMSP.peer')"
     AnchorPeers:
-      - Host: peer0.rsu1.tetaguard.net
-        Port: 7051
+      # Changed from peer0.rsu1 (7051): confirmed stuck at block height 1
+      # despite its container running — a pre-existing environment issue
+      # (deploy_chaincode.sh's own comments already document RSU1 as
+      # unreliable for gossip/network operations here). Any peer bootstrapping
+      # via anchor-peer discovery inherited that stuck state — this blocked
+      # newly-joined OBU peers (whose gossip bootstrap list only contains
+      # each other, so anchor discovery is their only path to the RSU peers)
+      # from ever syncing past genesis. rsu3 is the peer already used
+      # throughout this deployment's scripts as the confirmed-reliable one.
+      - Host: peer0.rsu3.tetaguard.net
+        Port: 7053
 
 Capabilities:
   Channel: &ChannelCapabilities
