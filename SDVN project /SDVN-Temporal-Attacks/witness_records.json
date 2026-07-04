@@ -1,34 +1,3 @@
 [
-  {
-    "vehicle_id": "V4",
-    "reporter_id": "RSU25",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8637,
-    "rssi_from_vi_dbm": -112.005,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V5",
-    "reporter_id": "RSU25",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8637,
-    "rssi_from_vi_dbm": -96.998,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V4",
-    "reporter_id": "RSU26",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8661,
-    "rssi_from_vi_dbm": -110.565,
-    "ts_ms": 10000
-  },
-  {
-    "vehicle_id": "V5",
-    "reporter_id": "RSU26",
-    "reporter_lat": 6.92947,
-    "reporter_lon": 79.8661,
-    "rssi_from_vi_dbm": -88.0273,
-    "ts_ms": 10000
-  }
+
 ]

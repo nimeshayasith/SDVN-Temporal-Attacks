@@ -7,7 +7,7 @@ Solution at controller cleared
 ========================================
 SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED
 Attackers (1): V0 
-Victim pool (5): V4 V5 V3 V1 V2 
+Victim pool (5): V1 V4 V2 V3 V5 
 Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count
 Replay jitter window   : +/-0.04 s
 Support evidence prob. : 1
@@ -39,23 +39,20 @@ Timeline:
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S1][t=5.043]  V5 captured heartbeat for replay  Heartbeat(Sender=V9, t=5.015)
-[BSHH-S1][t=9.975]  V5 --REPLAY old heartbeat--> V9  Heartbeat(Sender=V5, t=5.015)  [MALICIOUS â€” replayed attacker old heartbeat]
-[BSHH-S1][t=10.017]  V9 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V5, t=5.015)  Controller liveness POISONED
-[BSHH-S1][t=10.033]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V9, t=5.015)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.033]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_THRESHOLD_SIG 6/6 >= t=4 -> PASS
-[BSHH-S1][t=10.033]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=300.000 ms
-[Trust][t=10.033]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[BSHH-S1][t=5.055]  V5 captured heartbeat for replay  Heartbeat(Sender=V6, t=4.998)
+[BSHH-S1][t=10.024]  V5 --REPLAY old heartbeat--> V6  Heartbeat(Sender=V5, t=4.998)  [MALICIOUS â€” replayed attacker old heartbeat]
+[BSHH-S1][t=10.025]  V6 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V5, t=4.998)  Controller liveness POISONED
+[BSHH-S1][t=10.026]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V6, claimed=V6, t=10.026)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 
 [CRYPTO] crypto_latency_sumo.csv written    (22 events)
 [CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
 [CRYPTO] Beacon TX signed: 1   RX verified: 1
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
-[TGN] Trusted nodes (Tier 2 OBU): ctrl 
+[TGN] Tier2: admitted 1/1 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 5 ctrl 
 [TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 2 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 3 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
@@ -70,9 +67,9 @@ Timeline:
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 2
-  Stage-0 blocked (attacks): 2
+  Stage-0 blocked (attacks): 1
   |E_t^trusted|  : 2
 ============================================================

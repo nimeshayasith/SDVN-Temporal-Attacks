@@ -6,7 +6,7 @@ Solution at controller cleared
 
 ========================================
 SCENARIO 02 - TTW-S2 ATTACK CONFIGURED
-Malicious RSUs : 1 / 2
+Malicious RSUs : 1 / 1
 Victim pairs   (1):
   RSU_11  ->  V5 <-> V6
 Timeline:
@@ -42,9 +42,8 @@ Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.
 [TTW-S2][t=20.000]  Pipeline armed: RSU NS3-ID=11 will inject 1 forged pair(s)
     V5 sees V6
 [TTW-S2][t=20.000]  RSU_11 --FORGED replay--> Controller  <V5 sees V6, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.050]  FS-MITIGATE gate: PBFT n=2 f=0 q_needed=1 -> PASS  |  VERIFY_THRESHOLD_SIG 6/6 >= t=4 -> PASS
-[TTW-S2][t=20.050]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V11
-[Trust][t=20.050]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[TTW-S2][t=20.050]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 6/6 >= t=4 -> PASS
+[TTW-S2][t=20.050]  FS-MITIGATE ABORTED (gate failed)  attacker=V11
 
 [CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
@@ -70,8 +69,8 @@ Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 4
   Stage-0 blocked (attacks): 1
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
