@@ -8207,9 +8207,19 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
               << (topo.chain ? "CHAIN 4-phantom-path" : "SPLIT 3-phantom-path")
               << " inference  *** ATTACK COMPLETE ***" << std::endl;
 
+    // physical_sender/reporter conventions must match the legacy 2-attacker
+    // functions above (ME_S2_InjectEchoReports / ME_S3_InjectPhantomPaths /
+    // ME_S4_InjectPhantomPaths): mode 2 (malicious RSU) is physically injected
+    // by the RSU itself, so physical_sender=reporter=rsu_id; modes 3 and 4
+    // (malicious controller, with or without RSU in the legitimate-reporting
+    // path) inject purely internally at the controller (sentinel 9999u), with
+    // the impersonated vehicle identity as reporter — NOT the RSU, even in
+    // mode 4, since the RSU there is legitimate and only carries real reports.
+    const uint32_t echoPhysicalSender = (mode == 2) ? rsu_id : (mode == 3 || mode == 4) ? 9999u : atk_id;
+    const uint32_t echoReporterId     = (mode == 2) ? rsu_id : atk_id;
     for (auto& e : echoedEdges) {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, atk_id, atk_id,
-                     (mode == 2 || mode == 4) ? rsu_id : atk_id,
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echoPhysicalSender, atk_id,
+                     echoReporterId,
                      e.first, e.second, t, now, aPos,
                      MEGetVehiclePos(e.first), MEGetVehiclePos(e.second), true);
     }
