@@ -2,10 +2,10 @@
   {
     "v_id": "V9999",
     "alpha": "ME",
-    "y_hat": 0.222222,
+    "y_hat": 0.111111,
     "t_alert": 10100,
     "interval_ts_ms": 10100,
-    "S_trig": [6, 8],
+    "S_trig": [7],
     "from_lw_path": true,
     "from_fs_path": false,
     "tdet_ms": 0
