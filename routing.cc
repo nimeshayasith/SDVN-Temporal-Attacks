@@ -7791,17 +7791,34 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
               << "  *** ATTACK COMPLETE ***" << std::endl;
     // Sophistication roll — ME-S1 (per echo reporter independently).
     // Both reporters use own identity (physical=claimed) so Step 1 always passes.
-    // Step 1b location-binding (TetaGuardLocBindVerify, Eqs. 3.27-3.29):
-    //   Basic: reporter_position = actual NS-3 position (may be out of range → DROPPED).
-    //   Sophisticated: reporter_position = link midpoint (within range) → Step 1b passes → LW+TGN.
-    //     At LW+TGN the reporter-count density excess (sig[6], Eq. 3.8) detects the surplus.
-    // sender_timestamp=now in both cases so Step 2 (Eq. 3.16 age) always passes.
-    const Vector me_s1_midpoint((vSrcPos.x + vDstPos.x) / 2.0,
-                                 (vSrcPos.y + vDstPos.y) / 2.0, 0.0);
+    // Step 1b location-binding (TetaGuardLocBindVerify, Eqs. 3.27-3.29) checks
+    // distance from the FORGED reporter_position to whichever single link
+    // endpoint (src or dst) is nearest that forged position — see
+    // TetaGuardLocBindVerify's closer_to_src selection in teta_guard_filter.h.
+    // Bug fix: forging to the MIDPOINT of src/dst (as before) only works when
+    // src and dst are within 2*R_COMM of each other — if the real link's own
+    // endpoints are farther apart than that (possible with independent vehicle
+    // mobility), the midpoint is > R_COMM from BOTH endpoints and every
+    // "sophisticated" echo still gets dropped at Stage-0, silently degenerating
+    // to the basic case. A real GPS-spoofing attacker would not need to know
+    // both endpoints' exact positions to average them — it only needs to claim
+    // to be near ONE endpoint (whichever is closer to its own real position,
+    // the more plausible lie), with a small jitter modelling GPS spoofing
+    // imprecision. This is realistic under the same "attacker forges its own
+    // reported position" capability already assumed for the basic path, and
+    // it is correct regardless of how far apart src/dst themselves are.
+    auto meS1SpoofNearEndpoint = [&](const Vector& realPos) -> Vector {
+        const double dSrc = std::sqrt(std::pow(realPos.x - vSrcPos.x, 2.0) + std::pow(realPos.y - vSrcPos.y, 2.0));
+        const double dDst = std::sqrt(std::pow(realPos.x - vDstPos.x, 2.0) + std::pow(realPos.y - vDstPos.y, 2.0));
+        const Vector& target = (dSrc <= dDst) ? vSrcPos : vDstPos;
+        const double jitter = g_attacker_rng ? g_attacker_rng->GetValue() * 50.0 : 25.0;   // up to 50m GPS-spoof imprecision
+        const double angle  = g_attacker_rng ? g_attacker_rng->GetValue() * 2.0 * M_PI : 0.0;
+        return Vector(target.x + jitter * std::cos(angle), target.y + jitter * std::sin(angle), 0.0);
+    };
     if (emit_v3)
     {
             const bool me_s1_v3_soph = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
-            const Vector v3ReportPos = me_s1_v3_soph ? me_s1_midpoint : v3Pos;
+            const Vector v3ReportPos = me_s1_v3_soph ? meS1SpoofNearEndpoint(v3Pos) : v3Pos;
                 std::cout << "[ME-S1][t=" << now << "]  V" << echo_v3 << " sophistication: "
                   << (me_s1_v3_soph ? "SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN"
                                     : "BASIC — actual pos, may be dropped at Stage-0 locbind") << "\n";
@@ -7810,7 +7827,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
     if (emit_v4)
     {
             const bool me_s1_v4_soph = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
-            const Vector v4ReportPos = me_s1_v4_soph ? me_s1_midpoint : v4Pos;
+            const Vector v4ReportPos = me_s1_v4_soph ? meS1SpoofNearEndpoint(v4Pos) : v4Pos;
         std::cout << "[ME-S1][t=" << now << "]  V" << echo_v4 << " sophistication: "
                   << (me_s1_v4_soph ? "SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN"
                                     : "BASIC — actual pos, may be dropped at Stage-0 locbind") << "\n";
@@ -8092,15 +8109,32 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         if (m) v2Pos = m->GetPosition();
     }
     // Sophistication roll — ME-S2.
-    // Sophisticated RSU: forges the claimed-reporter's position to the link midpoint
-    //   so TetaGuardLocBindVerify haversine ≤ R_comm (Step 1b) passes → LW+TGN.
-    //   The RSU already holds all legitimate signed reports, so Step 1c threshold
-    //   aggregate (Eq. 3.26) also passes with the stored real partial sigs.
+    // Sophisticated RSU: forges the claimed-reporter's position to appear near
+    //   whichever single link endpoint (v1 or v2) is nearest the RSU's own real
+    //   position, so TetaGuardLocBindVerify's haversine-to-nearest-endpoint gate
+    //   (Step 1b) passes → LW+TGN. The RSU already holds all legitimate signed
+    //   reports, so Step 1c threshold aggregate (Eq. 3.26) also passes with the
+    //   stored real partial sigs.
+    //   Bug fix (matches ME-S1): forging to the MIDPOINT of v1/v2 only works
+    //   when they are within 2*R_COMM of each other — if the link's own two
+    //   endpoints are farther apart, the midpoint is > R_COMM from BOTH and
+    //   every "sophisticated" injection still silently drops at Stage-0. A
+    //   real GPS-spoofing RSU would claim to be near ONE endpoint (the more
+    //   plausible lie relative to its own real position), not at a computed
+    //   average of two other nodes' positions — realistic and correct
+    //   regardless of the v1-v2 separation.
     // Basic RSU: uses its own actual position as the reporter position.
     //   If RSU is out of range of the link → Step 1b locbind drops at Stage-0.
     const bool me_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
-    const Vector me_s2_midpoint((v1Pos.x + v2Pos.x) / 2.0, (v1Pos.y + v2Pos.y) / 2.0, 0.0);
-    const Vector me_s2_reportPos = me_s2_sophisticated ? me_s2_midpoint : rsuPos;
+    const Vector me_s2_spoofPos = [&]() -> Vector {
+        const double dToV1 = std::sqrt(std::pow(rsuPos.x - v1Pos.x, 2.0) + std::pow(rsuPos.y - v1Pos.y, 2.0));
+        const double dToV2 = std::sqrt(std::pow(rsuPos.x - v2Pos.x, 2.0) + std::pow(rsuPos.y - v2Pos.y, 2.0));
+        const Vector& target = (dToV1 <= dToV2) ? v1Pos : v2Pos;
+        const double jitter = g_attacker_rng ? g_attacker_rng->GetValue() * 50.0 : 25.0;
+        const double angle  = g_attacker_rng ? g_attacker_rng->GetValue() * 2.0 * M_PI : 0.0;
+        return Vector(target.x + jitter * std::cos(angle), target.y + jitter * std::sin(angle), 0.0);
+    }();
+    const Vector me_s2_reportPos = me_s2_sophisticated ? me_s2_spoofPos : rsuPos;
     me_log << "[t=" << now << "]  ME-S2 RSU attacker sophistication: "
            << (me_s2_sophisticated
                ? "SOPHISTICATED — forged near-link reporter position → Stage-0 locbind BYPASSED → LW+TGN\n"

@@ -11,10 +11,10 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   Echo attackers        : 2
   Benign (real link) veh: 4
   Active attack groups  : 1
-  Real link pair        : V9<->V10
-  Echo attackers (NS-3 IDs): V5 V7 
-  Active groups (all echo V9<->V10):
-    Group 1: V5+V7 echo V9<->V10
+  Real link pair        : V6<->V9
+  Echo attackers (NS-3 IDs): V5 V10 
+  Active groups (all echo V6<->V9):
+    Group 1: V5+V10 echo V6<->V9
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -35,25 +35,25 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S1][t=10.015]  STEP①  V9 <-> V10 HELLO exchange (real link)
-[ME-S1][t=10.015]  STEP②  V9, V10 report real link to controller
-[ME-S1][t=10.015]  STEP③  V5, V7 overhear HELLO — stored for echo
-[ME-S1][t=10.090]  STEP④  V5 --ECHO--> Controller  <V9 sees V10>  FALSE REPORTER
-[ME-S1][t=10.090]  STEP④  V7 --ECHO--> Controller  <V9 sees V10>  FALSE REPORTER
-[ME-S1][t=10.090]  STEP⑤  Controller infers 4 path(s) for V9->V10  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.090]  V0 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.090]  V2 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.090]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_QUORUM 6/6 >= t=4 -> PASS
-[ME-S1][t=10.090]  MITIGATION Tier 2: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY  attacker=V0  propagation=300.000 ms
-[Trust][t=10.090]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[ME-S1][t=9.998]  STEP①  V6 <-> V9 HELLO exchange (real link)
+[ME-S1][t=9.998]  STEP②  V6, V9 report real link to controller
+[ME-S1][t=9.998]  STEP③  V5, V10 overhear HELLO — stored for echo
+[ME-S1][t=10.106]  STEP④  V5 --ECHO--> Controller  <V6 sees V9>  FALSE REPORTER
+[ME-S1][t=10.106]  STEP④  V10 --ECHO--> Controller  <V6 sees V9>  FALSE REPORTER
+[ME-S1][t=10.106]  STEP⑤  Controller infers 4 path(s) for V6->V9  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
+[ME-S1][t=10.106]  V0 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
+[ME-S1][t=10.106]  V5 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
+[ME-S1][t=10.106]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_QUORUM 6/6 >= t=4 -> PASS
+[ME-S1][t=10.106]  MITIGATION Tier 2: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY  attacker=V0  propagation=300.000 ms
+[Trust][t=10.106]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 
 [CRYPTO] crypto_latency_sumo.csv written    (30 events)
 [CRYPTO] crypto_latency_summary.csv written  (20 distinct operations)
 [CRYPTO] Beacon TX signed: 1   RX verified: 1
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=1  reject=0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=2  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 4 5 ctrl 
+[TGN] Trusted nodes (Tier 2 OBU): 1 4 ctrl 
 [TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
 [CryptoFilter] 5 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
@@ -70,8 +70,8 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 4
   Stage-0 blocked (attacks): 2
   |E_t^trusted|  : 4
