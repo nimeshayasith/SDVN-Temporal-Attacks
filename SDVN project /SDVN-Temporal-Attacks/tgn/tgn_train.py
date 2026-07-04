@@ -234,29 +234,59 @@ class TGNModel(nn.Module):
     # ── Message passing (Eq 3.22) ─────────────────────────────────────────────
     def mp_step(self,
                 h_node: torch.Tensor,
+                h_lsrc: torch.Tensor,
                 h_ldst: torch.Tensor,
+                same_node_src: bool,
                 Auv:    float) -> torch.Tensor:
         """
-        Mirrors C++ MessagePassingRound over 3-node subgraph {node_id, link_src, link_dst}.
+        Mirrors C++ MessagePassingRound over the 3-node INDUCED subgraph
+        {node_id, link_src, link_dst} (tgn_core.cc ProcessEvent lines 418-443 +
+        MessagePassingRound lines 606-630) — NOT a 2-node {node_id, link_dst}
+        pair. §3.4.3's "Neighbourhood Implementation" describes this as an
+        induced subgraph, which wires all 3 pairwise edges, not just
+        reporter<->link_dst.
 
-        Adjacency (built in ProcessEvent):
-          adj[node_id][link_dst] = Auv  (symmetric, no self-loops)
-          adj[link_dst][node_id] = Auv
-          link_src has no adj entries → passes through unchanged, not used for scoring.
+        Edges (all weighted by the SAME scalar Auv — one edge-freshness value
+        computed once per event, applied uniformly, exactly as in ProcessEvent):
+          node_id  <-> link_dst   (always)
+          link_src <-> link_dst   (always)
+          node_id  <-> link_src   (only when node_id != link_src; the C++ skips
+                                   this edge as a meaningless self-loop when the
+                                   reporter IS the link's source)
 
-        Each round l:
-          hn_new = ReLU(W_l @ (Auv * hd) + b_l)   # node_id aggregates from link_dst
-          hd_new = ReLU(W_l @ (Auv * hn) + b_l)   # link_dst aggregates from node_id
+        Each round, every active vertex aggregates the MEAN (not sum) of its
+        neighbors' embeddings from the previous round, scaled by Auv, then
+        applies the shared per-layer W/b and ReLU — mirroring
+        MessagePassingRound's per-vertex loop (agg accumulated then divided by
+        cnt) exactly, including the same_node_src reduction: when node_id ==
+        link_src, adj[link_dst][node_id] and adj[link_dst][link_src] are the
+        SAME map key in C++ (one write, not two), so link_dst has exactly one
+        neighbor there, and "node"/"lsrc" collapse to a single vertex whose
+        only neighbor is link_dst — reproduced here via the same_node_src branch.
 
-        For L=2 rounds, node_id embedding becomes:
-          relu(W1 @ (Auv * relu(W0 @ (Auv * h_node) + b0)) + b1)
-        which matches the C++ 2-round message passing path.
+        Only the final node_id embedding (returned) feeds the score/classifier
+        (Eq 3.24/3.25 read states_[feat.node_id].embedding only), but its value
+        depends on link_src/link_dst's embeddings across every layer, so all
+        three must be propagated correctly, not just node_id's.
         """
-        hn, hd = h_node, h_ldst
+        hn, hs, hd = h_node, h_lsrc, h_ldst
         for l in range(self.layers):
-            hn_new = torch.relu(self.W_layers[l] @ (Auv * hd) + self.b_layers[l])
-            hd_new = torch.relu(self.W_layers[l] @ (Auv * hn) + self.b_layers[l])
-            hn, hd = hn_new, hd_new
+            if same_node_src:
+                # node_id == link_src: only one distinct neighbor pair exists
+                # (the shared node <-> link_dst edge); no division needed
+                # since each vertex has exactly 1 active neighbor (cnt=1).
+                hn_new = torch.relu(self.W_layers[l] @ (Auv * hd) + self.b_layers[l])
+                hs_new = hn_new
+                hd_new = torch.relu(self.W_layers[l] @ (Auv * hn) + self.b_layers[l])
+            else:
+                # Each vertex has exactly 2 active neighbors — mean = /2.
+                agg_n = Auv * (hd + hs) / 2.0
+                agg_s = Auv * (hd + hn) / 2.0
+                agg_d = Auv * (hn + hs) / 2.0
+                hn_new = torch.relu(self.W_layers[l] @ agg_n + self.b_layers[l])
+                hs_new = torch.relu(self.W_layers[l] @ agg_s + self.b_layers[l])
+                hd_new = torch.relu(self.W_layers[l] @ agg_d + self.b_layers[l])
+            hn, hs, hd = hn_new, hs_new, hd_new
         return hn
 
     # ── Sequential forward (per-node window-based TBPTT, W=100) ─────────────
@@ -303,8 +333,14 @@ class TGNModel(nn.Module):
             # GRU memory update for the reporting node (gradient flows within window)
             h_new = self.gru_step(mem[nid], feats[i])
 
-            # Message passing over 3-node subgraph
-            h_final = self.mp_step(h_new, mem[ldst], Auv)
+            # Message passing over the 3-node induced subgraph {nid, lsrc, ldst}.
+            # When lsrc == nid, C++'s states_[link_src].memory IS states_[nid].memory
+            # (same map entry) — already reflecting h_new after UpdateNodeMemory ran,
+            # not the pre-update value — so h_lsrc must use h_new here too, not the
+            # stale mem[lsrc].
+            same_node_src = (lsrc == nid)
+            h_lsrc_in = h_new if same_node_src else mem[lsrc]
+            h_final = self.mp_step(h_new, h_lsrc_in, mem[ldst], same_node_src, Auv)
 
             # Binary score logit (sigmoid applied by loss/caller)  — Eq 3.23
             logits.append(torch.dot(self.w_score, h_final) + self.b_score)
