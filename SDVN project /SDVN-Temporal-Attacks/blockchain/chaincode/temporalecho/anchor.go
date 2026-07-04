@@ -39,34 +39,25 @@ func (t *TemporalEchoMitigator) CreateAnchorCheckpoint(
 ) (string, error) {
 	trust := loadTrust(ctx, fromPeerID)
 
-	// In no-RSU mode the thesis is silent on who creates anchor checkpoints —
-	// Tier-1 RSU peers are unavailable but OBUs need checkpoint-sync to join
-	// consensus, creating a bootstrapping deadlock. Resolution: in no-RSU mode
-	// the highest-trust eligible OBU may create checkpoints, matching the same
-	// bootstrap-mode authority already granted by UpdateTrustRound (TR-01).
-	noRSUFlag, _ := ctx.GetStub().GetState("SIM_NO_RSU_MODE")
-	noRSUMode := string(noRSUFlag) == "1"
-
-	if noRSUMode {
-		// No-RSU path: require τk ≥ τminGT (0.50) — the ground-truth evidence
-		// threshold — rather than the bare participation floor τmin (0.10).
-		// Anchor checkpoints are PBFT-signed state digests that every OBU
-		// bootstraps its ledger view from; using the same low floor as ordinary
-		// peer admission would let a barely-admitted OBU become the chain anchor.
-		// τminGT matches the existing bar for submitting evidence the controller
-		// acts on, which carries comparable downstream trust-chain consequence.
-		if trust.Score < TrustMinGT || trust.Flagged {
-			return "", fmt.Errorf(
-				"CreateAnchorCheckpoint (no-RSU): peer %s has insufficient trust (score=%.3f, need≥%.2f, flagged=%v)",
-				fromPeerID, trust.Score, TrustMinGT, trust.Flagged)
-		}
-	} else {
-		// Normal path: Tier-1 RSU only
-		if !trust.IsRSUPeer || trust.Score < TrustInitTier1-1e-9 {
-			return "", fmt.Errorf(
-				"CreateAnchorCheckpoint: peer %s is not an authorised Tier 1 RSU (trust=%.3f, isRSU=%v)",
-				fromPeerID, trust.Score, trust.IsRSUPeer)
-		}
+	// Bug fix (matches ZeroTrust/DemotePeerToClient/SubmitLWDetectionResult):
+	// gating the OBU exception on the global SIM_NO_RSU_MODE flag only covers
+	// deployments with zero RSUs anywhere. In a mixed deployment (RSUs
+	// present), a legitimately-active, top-trust Tier 2 OBU sitting in the
+	// same active/consensus set as the RSUs would still be blocked here,
+	// since the flag is false whenever any RSU exists. §3.1.3's "each trusted
+	// node nk (RSU or designated OBU)" is a per-caller property, not a
+	// deployment-wide switch. Corrected to a single, unconditional check:
+	// RSU status always qualifies; otherwise the caller's own trust must
+	// clear τk ≥ τminGT (0.50) — the ground-truth evidence threshold, not the
+	// bare participation floor τmin (0.10). Anchor checkpoints are
+	// PBFT-signed state digests every OBU bootstraps its ledger view from;
+	// using the low floor would let a barely-admitted OBU become the chain
+	// anchor. τminGT matches the existing bar for submitting evidence the
+	// controller acts on, which carries comparable downstream consequence.
+	if !(trust.IsRSUPeer || (trust.Score >= TrustMinGT && !trust.Flagged)) {
+		return "", fmt.Errorf(
+			"CreateAnchorCheckpoint: unauthorised peer %s (not RSU, trust=%.3f < %.2f or flagged=%v)",
+			fromPeerID, trust.Score, TrustMinGT, trust.Flagged)
 	}
 
 	blockHeight := anchorIncrementCounter(ctx)
@@ -222,23 +213,17 @@ func (t *TemporalEchoMitigator) SyncFromAnchorCheckpoint(
 			checkpointID, cp.CreatedByPeer)
 	}
 
-	// A-2: verify creator authority matches the current deployment mode.
-	// In no-RSU mode the creator may be a trusted OBU (see CreateAnchorCheckpoint).
-	noRSUFlagSync, _ := ctx.GetStub().GetState("SIM_NO_RSU_MODE")
+	// A-2: verify creator authority — same unconditional per-caller check as
+	// CreateAnchorCheckpoint (bug fix: the previous global-SIM_NO_RSU_MODE-flag
+	// version would reject a checkpoint legitimately created by a top-trust
+	// Tier 2 OBU whenever any RSU also exists in the deployment, even though
+	// CreateAnchorCheckpoint itself would have allowed that same OBU to create
+	// it in the first place — creation and sync-verification must agree).
 	creatorTrust := loadTrust(ctx, cp.CreatedByPeer)
-	if string(noRSUFlagSync) != "1" {
-		if !creatorTrust.IsRSUPeer {
-			return fmt.Errorf(
-				"SyncFromAnchorCheckpoint: checkpoint creator %s is not a Tier 1 RSU",
-				cp.CreatedByPeer)
-		}
-	} else {
-		// No-RSU sync path: mirror the creation bar — creator must have τk ≥ τminGT
-		if creatorTrust.Score < TrustMinGT || creatorTrust.Flagged {
-			return fmt.Errorf(
-				"SyncFromAnchorCheckpoint (no-RSU): checkpoint creator %s has insufficient trust (score=%.3f, need≥%.2f)",
-				cp.CreatedByPeer, creatorTrust.Score, TrustMinGT)
-		}
+	if !(creatorTrust.IsRSUPeer || (creatorTrust.Score >= TrustMinGT && !creatorTrust.Flagged)) {
+		return fmt.Errorf(
+			"SyncFromAnchorCheckpoint: checkpoint creator %s is not an authorised RSU or trusted OBU (trust=%.3f < %.2f or flagged=%v)",
+			cp.CreatedByPeer, creatorTrust.Score, TrustMinGT, creatorTrust.Flagged)
 	}
 
 	// Idempotent — skip if already recorded
