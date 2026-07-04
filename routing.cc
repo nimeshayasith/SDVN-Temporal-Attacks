@@ -8037,30 +8037,6 @@ static MESingle3Topology MEClassifySingle3(uint32_t v1_id, uint32_t v2_id,
     return t;
 }
 
-// Places the 4-vehicle group for the single-attacker case. Must be called via
-// Simulator::Schedule right before the discovery event (not directly in
-// main()): SUMO trace playback schedules its own SetPosition/SetVelocity
-// events for every vehicle with waypoint data at their recorded timestamps,
-// which would silently overwrite a position set synchronously in main() by
-// the time the attack actually fires later in the run.
-void MESetSingle3Positions(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
-                            uint32_t atk_id, bool useChain)
-{
-    Ptr<ConstantVelocityMobilityModel> m_v1 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>());
-    Ptr<ConstantVelocityMobilityModel> m_v2 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>());
-    Ptr<ConstantVelocityMobilityModel> m_v3 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>());
-    Ptr<ConstantVelocityMobilityModel> m_atk = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(atk_id)->GetObject<MobilityModel>());
-    if (m_v1) { m_v1->SetPosition(Vector(0.0, 0.0, 0.0)); m_v1->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-    if (m_v2) { m_v2->SetPosition(Vector(150.0, 0.0, 0.0)); m_v2->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-    if (useChain) {
-        if (m_v3)  { m_v3->SetPosition(Vector(280.0, 0.0, 0.0)); m_v3->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-        if (m_atk) { m_atk->SetPosition(Vector(1000.0, 1000.0, 0.0)); m_atk->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-    } else {
-        if (m_v3)  { m_v3->SetPosition(Vector(1000.0, 0.0, 0.0)); m_v3->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-        if (m_atk) { m_atk->SetPosition(Vector(1130.0, 0.0, 0.0)); m_atk->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-    }
-}
-
 // mode: 1=ME-S1 (malicious vehicle, direct DSRC), 2=ME-S2 (malicious RSU),
 //       3=ME-S3 (malicious controller, no RSU), 4=ME-S4 (malicious controller, with RSU)
 void ME_Single3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
@@ -151806,30 +151782,20 @@ attack_mobility.Install(Vehicle_Nodes);
           const double discoveryObservedTime =
               ME_S1_DISCOVERY_TIME + AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
 
-          // Which of the two topology cases (chain vs split) is exercised is
-          // chosen randomly here (same convention as the existing
-          // sophistication rolls, drawn from the shared AttackGetRng()), then
-          // the actual real/phantom classification is measured from these
-          // positions at attack time — not hardcoded from this choice.
-          const bool meS1UseChain = (AttackGetRng()->GetValue() < 0.5);
-          // Scheduled (not called directly): SUMO trace playback schedules its
-          // own position events for every vehicle up through this time, which
-          // would otherwise silently overwrite a synchronous SetPosition call.
-          Simulator::Schedule(Seconds(discoveryObservedTime - 0.001),
-              &MESetSingle3Positions, v1_cidx, v2_cidx, v3_cidx, atk_cidx, meS1UseChain);
-
+          // No code-controlled positioning: v1/v2/v3/attacker are wherever the
+          // SUMO trace actually places them at attack time. The chain/split
+          // classification (ME_Single3_LegitimateDiscovery / EchoAttack) is
+          // measured from these organic positions — it is possible for
+          // neither CHAIN nor SPLIT to be detected if the trace has these
+          // vehicles scattered outside DSRC range of one another; both
+          // functions already fall back gracefully to a single-echo model in
+          // that case (see MEClassifySingle3 fallback path).
           Simulator::Schedule(Seconds(discoveryObservedTime),
               &ME_Single3_LegitimateDiscovery_S1, v1_cidx, v2_cidx, v3_cidx, atk_cidx,
               discoveryObservedTime);
           const double echoAttackTime =
               AttackMax(discoveryObservedTime + 0.010,
                         discoveryObservedTime + 0.1 + AttackSampleSignedJitter(attack_time_jitter_s));
-          // Re-freeze immediately before the echo event too — SUMO can still
-          // fire a waypoint for one of these vehicles in the gap between the
-          // discovery and echo-attack events, which would otherwise flip the
-          // detected topology mid-attack.
-          Simulator::Schedule(Seconds(echoAttackTime - 0.001),
-              &MESetSingle3Positions, v1_cidx, v2_cidx, v3_cidx, atk_cidx, meS1UseChain);
           Simulator::Schedule(Seconds(echoAttackTime),
               &ME_Single3_EchoAttack_S1, v1_cidx, v2_cidx, v3_cidx, atk_cidx,
               discoveryObservedTime);
@@ -152063,20 +152029,14 @@ attack_mobility.Install(Vehicle_Nodes);
 
           ME_S2_InitLog(n_mal_rsus2, N_RSUs);
 
-          const bool meS2UseChain = (AttackGetRng()->GetValue() < 0.5);
-          Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME - 0.001),
-              &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS2UseChain);
-
+          // No code-controlled positioning: vehicles are wherever SUMO
+          // actually places them at attack time (see ME-S1's comment above).
           for (uint32_t r = 0; r < n_mal_rsus2; r++) {
               uint32_t rsu_id = RSU_Nodes.Get(r)->GetId();
               const double dt = r * 0.001;
               Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + dt),
                   &ME_Single3_LegitimateDiscovery_S2, v1_id, v2_id, v3_id, atk_id,
                   ME_S2_DISCOVERY_TIME, rsu_id);
-              // Re-freeze immediately before the echo event too — SUMO can
-              // still fire a waypoint in the gap between discovery and echo.
-              Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1 + dt - 0.001),
-                  &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS2UseChain);
               Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1 + dt),
                   &ME_Single3_EchoAttack_S2, v1_id, v2_id, v3_id, atk_id,
                   ME_S2_DISCOVERY_TIME, rsu_id);
@@ -152211,19 +152171,13 @@ attack_mobility.Install(Vehicle_Nodes);
 
           ME_S3_InitLog(n_mal_ctrl3, N_Controllers);
 
-          const bool meS3UseChain = (AttackGetRng()->GetValue() < 0.5);
-          Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME - 0.001),
-              &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS3UseChain);
-
+          // No code-controlled positioning: vehicles are wherever SUMO
+          // actually places them at attack time (see ME-S1's comment above).
           for (uint32_t c = 0; c < n_mal_ctrl3; c++) {
               const double dt = c * 0.001;
               Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + dt),
                   &ME_Single3_LegitimateDiscovery_S3, v1_id, v2_id, v3_id, atk_id,
                   ME_S3_DISCOVERY_TIME);
-              // Re-freeze immediately before the echo event too — SUMO can
-              // still fire a waypoint in the gap between discovery and echo.
-              Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt - 0.001),
-                  &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS3UseChain);
               Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt),
                   &ME_Single3_EchoAttack_S3, v1_id, v2_id, v3_id, atk_id,
                   ME_S3_DISCOVERY_TIME);
@@ -152359,19 +152313,13 @@ attack_mobility.Install(Vehicle_Nodes);
 
           ME_S4_InitLog(n_mal_ctrl4, N_Controllers, N_RSUs);
 
-          const bool meS4UseChain = (AttackGetRng()->GetValue() < 0.5);
-          Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME - 0.001),
-              &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS4UseChain);
-
+          // No code-controlled positioning: vehicles are wherever SUMO
+          // actually places them at attack time (see ME-S1's comment above).
           for (uint32_t c = 0; c < n_mal_ctrl4; c++) {
               const double dt = c * 0.001;
               Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + dt),
                   &ME_Single3_LegitimateDiscovery_S4, v1_id, v2_id, v3_id, atk_id,
                   ME_S4_DISCOVERY_TIME, rsu_id);
-              // Re-freeze immediately before the echo event too — SUMO can
-              // still fire a waypoint in the gap between discovery and echo.
-              Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt - 0.001),
-                  &MESetSingle3Positions, v1_id, v2_id, v3_id, atk_id, meS4UseChain);
               Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt),
                   &ME_Single3_EchoAttack_S4, v1_id, v2_id, v3_id, atk_id,
                   ME_S4_DISCOVERY_TIME, rsu_id);
