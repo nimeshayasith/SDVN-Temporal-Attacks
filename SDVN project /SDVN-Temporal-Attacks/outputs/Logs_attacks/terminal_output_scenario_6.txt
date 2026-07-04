@@ -1,0 +1,67 @@
+Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Attack 6: attacker/victim positions overridden by attack setup.
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/06_BSHH_S2_Malicious_RSU.xml
+
+========================================
+SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED
+Malicious RSUs : 1 / 1
+Victim pairs   : 1
+Stored HB time : t=5 (from legitimate exchange)
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.26-3.28).
+[CRYPTO] TETA-Guard pipeline initialised:
+  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28, Eq. 3.26)
+      dilithium5_sign / dilithium5_verify / dilithium5_thresh
+  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)
+      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]
+  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
+      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
+  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
+  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
+      create_location_bound_report / verify_single_witness / verify_quorum
+  [6] Haversine distance (GPS consistency gate, Eq. 3.29)
+  All modules from .crypto_src/
+[CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
+[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=11) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
+Current neighbor size is 0Received packet from 11 of size 12packet timestamp 5.000s with delay 1ms
+[BSHH-S2][t=5.100]  RSU0(ns3=11) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
+[BSHH-S2][t=10.000]  RSU0(ns3=11) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V11, claimed=V0(ns3=5), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 6/6 >= t=4 -> PASS
+[BSHH-S2][t=10.000]  FS-MITIGATE ABORTED (gate failed)  attacker=V11
+Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.000s with delay 1ms
+
+[CRYPTO] crypto_latency_sumo.csv written    (7 events)
+[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 3 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
+
+========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
+  Scenario  : 6 — BSHH-S2: Malicious RSU
+  RSU mode  : WITH RSU
+  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  MCC         : 0.000
+  AUROC       : 0.500
+  ACR         : 100.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 2
+  Stage-0 blocked (attacks): 1
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+============================================================
