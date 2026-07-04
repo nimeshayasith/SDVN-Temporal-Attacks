@@ -7485,36 +7485,63 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
     uint32_t v2_ns3 = (v2_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId() : v2_id;
     uint32_t v3_ns3 = (v3_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v3_id)->GetId() : v3_id;
     uint32_t v4_ns3 = (v4_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v4_id)->GetId() : v4_id;
-    // Update controller table with real links
-    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
-    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
-    ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
-    ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
+
+    // Positions come from wherever SUMO/the mobility model actually placed
+    // these vehicles at attack time — no code-controlled positioning (matches
+    // ME_Single3's organic model). Both "real" pairs are therefore only
+    // genuinely real if actually within DSRC range; measure, don't assume.
+    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
+    if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); }
+    if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); }
+    if (v3_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
+    if (v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    // Inlined distance (MEDist2D is declared later in the file, after this
+    // function — same reason ME_S1_EchoAttack below inlines it too).
+    const double d12 = std::sqrt((pos1.x-pos2.x)*(pos1.x-pos2.x) + (pos1.y-pos2.y)*(pos1.y-pos2.y));
+    const double d34 = std::sqrt((pos3.x-pos4.x)*(pos3.x-pos4.x) + (pos3.y-pos4.y)*(pos3.y-pos4.y));
+    const bool link12 = d12 <= TTW_COMM_RANGE;
+    const bool link34 = d34 <= TTW_COMM_RANGE;
+
+    // Update controller table only with links that are actually real.
+    if (link12) {
+        ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+        ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    }
+    if (link34) {
+        ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
+        ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
+    }
 
     // STEP ①: Normal V2V Topology Discovery — real pair + echo pair own link
     me_log << "[t=" << now << "]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY\n"
-           << "  V" << v1_ns3 << " -> V" << v2_ns3
-           << " : HELLO(Sender=V" << v1_ns3 << ", t=" << t << ")  (real link pair)\n"
-           << "  V" << v2_ns3 << " -> V" << v1_ns3
-           << " : HELLO(Sender=V" << v2_ns3 << ", t=" << t << ")  (real link pair)\n"
-           << "  V" << v3_ns3 << " -> V" << v4_ns3
-           << " : HELLO(Sender=V" << v3_ns3 << ", t=" << t << ")  (echo pair — own legitimate link)\n"
-           << "  V" << v4_ns3 << " -> V" << v3_ns3
-           << " : HELLO(Sender=V" << v4_ns3 << ", t=" << t << ")  (echo pair — own legitimate link)\n"
+           << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << d12
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << (link12 ? ("  V" + std::to_string(v1_ns3) + " -> V" + std::to_string(v2_ns3) +
+                         " : HELLO(Sender=V" + std::to_string(v1_ns3) + ", t=" + std::to_string(t) + ")  (real link pair)\n"
+                         "  V" + std::to_string(v2_ns3) + " -> V" + std::to_string(v1_ns3) +
+                         " : HELLO(Sender=V" + std::to_string(v2_ns3) + ", t=" + std::to_string(t) + ")  (real link pair)\n")
+                       : ("  V" + std::to_string(v1_ns3) + "<->V" + std::to_string(v2_ns3) +
+                          " OUT OF RANGE — no real HELLO exchange this run\n"))
+           << (link34 ? ("  V" + std::to_string(v3_ns3) + " -> V" + std::to_string(v4_ns3) +
+                         " : HELLO(Sender=V" + std::to_string(v3_ns3) + ", t=" + std::to_string(t) + ")  (echo pair — own legitimate link)\n"
+                         "  V" + std::to_string(v4_ns3) + " -> V" + std::to_string(v3_ns3) +
+                         " : HELLO(Sender=V" + std::to_string(v4_ns3) + ", t=" + std::to_string(t) + ")  (echo pair — own legitimate link)\n")
+                       : ("  V" + std::to_string(v3_ns3) + "<->V" + std::to_string(v4_ns3) +
+                          " OUT OF RANGE — echo pair has no genuine link of its own this run\n"))
            << "  [V" << v3_ns3 << " and V" << v4_ns3
            << " are in overhearing range of V" << v1_ns3 << "↔V" << v2_ns3
            << " but have NO direct link to V" << v1_ns3 << " or V" << v2_ns3 << "]\n\n";
 
     // STEP ②: All four vehicles report legitimate topology to controller
     me_log << "[t=" << now << "]  STEP ②  LEGITIMATE LINK ESTABLISHMENT\n"
-           << "  V" << v1_ns3 << " -> Controller : <V" << v1_ns3
-           << " sees V" << v2_ns3 << ", t=" << t << ">  (real reporter)\n"
-           << "  V" << v2_ns3 << " -> Controller : <V" << v2_ns3
-           << " sees V" << v1_ns3 << ", t=" << t << ">  (real reporter)\n"
-           << "  V" << v3_ns3 << " -> Controller : <V" << v3_ns3
-           << " sees V" << v4_ns3 << ", t=" << t << ">  (echo pair's own real link)\n"
-           << "  V" << v4_ns3 << " -> Controller : <V" << v4_ns3
-           << " sees V" << v3_ns3 << ", t=" << t << ">  (echo pair's own real link)\n"
+           << (link12 ? ("  V" + std::to_string(v1_ns3) + " -> Controller : <V" + std::to_string(v1_ns3) +
+                         " sees V" + std::to_string(v2_ns3) + ", t=" + std::to_string(t) + ">  (real reporter)\n"
+                         "  V" + std::to_string(v2_ns3) + " -> Controller : <V" + std::to_string(v2_ns3) +
+                         " sees V" + std::to_string(v1_ns3) + ", t=" + std::to_string(t) + ">  (real reporter)\n") : "")
+           << (link34 ? ("  V" + std::to_string(v3_ns3) + " -> Controller : <V" + std::to_string(v3_ns3) +
+                         " sees V" + std::to_string(v4_ns3) + ", t=" + std::to_string(t) + ">  (echo pair's own real link)\n"
+                         "  V" + std::to_string(v4_ns3) + " -> Controller : <V" + std::to_string(v4_ns3) +
+                         " sees V" + std::to_string(v3_ns3) + ", t=" + std::to_string(t) + ">  (echo pair's own real link)\n") : "")
            << "  No direct links: V" << v1_ns3 << "-V" << v3_ns3
            << ", V" << v1_ns3 << "-V" << v4_ns3
            << ", V" << v2_ns3 << "-V" << v3_ns3
@@ -7530,23 +7557,20 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
 
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S1][t=" << now << "]  STEP①  V" << v1_ns3
-              << " <-> V" << v2_ns3 << " HELLO exchange (real link)" << std::endl;
+              << " <-> V" << v2_ns3 << (link12 ? " HELLO exchange (real link)" : " OUT OF RANGE (no real link)") << std::endl;
     std::cout << "[ME-S1][t=" << now << "]  STEP②  V" << v1_ns3 << ", V" << v2_ns3
-              << " report real link to controller" << std::endl;
+              << (link12 ? " report real link to controller" : " have no real link to report") << std::endl;
     std::cout << "[ME-S1][t=" << now << "]  STEP③  V" << v3_ns3 << ", V" << v4_ns3
               << " overhear HELLO — stored for echo" << std::endl;
 
-    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
-    if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); }
-    if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); }
-    if (v3_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
-    if (v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id, v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id, v2_id, v1_id, t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, v4_id, t, now, pos3, pos3, pos4, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
+    if (link34) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, v4_id, t, now, pos3, pos3, pos4, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
+    }
     PemEmitVehicleBeacon(v1_id, v2_id);
-    PemEmitVehicleBeacon(v3_id, v4_id);
+    if (link34) PemEmitVehicleBeacon(v3_id, v4_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -7759,6 +7783,15 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
     if (link_src < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(link_src)->GetObject<MobilityModel>(); if (m) vSrcPos = m->GetPosition(); }
     if (link_dst < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(link_dst)->GetObject<MobilityModel>(); if (m) vDstPos = m->GetPosition(); }
 
+    // Honest check: is the echoed link itself actually real (link_src<->link_dst
+    // in DSRC range)? The echo reports below are fabricated by the attacker
+    // regardless — that IS the attack — but the log/Path-1 label must reflect
+    // measured reality, not assume it, now that positions are organic (SUMO)
+    // rather than code-forced.
+    const double srcDstDist = std::sqrt((vSrcPos.x-vDstPos.x)*(vSrcPos.x-vDstPos.x) +
+                                         (vSrcPos.y-vDstPos.y)*(vSrcPos.y-vDstPos.y));
+    const bool srcDstLinked = srcDstDist <= TTW_COMM_RANGE;
+
     // Path 4 (V1→V3→V4→V2) exists only when V3 and V4 have a real wireless link
     // between them (distance ≤ DSRC range).  Paper: "V3 and V4 are within overhearing
     // range; no direct links V1–V3, V1–V4, V2–V3, V2–V4 — but V3↔V4 may exist."
@@ -7801,6 +7834,9 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
                << "m  " << (v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4")
                << "\n";
     }
+    me_log << "  V" << src_ns3 << "↔V" << dst_ns3 << " echoed link: dist=" << std::fixed << std::setprecision(1)
+           << srcDstDist << "m  " << (srcDstLinked ? "IN RANGE — genuinely real" : "OUT OF RANGE — Path 1 claim itself is false")
+           << "\n";
     me_log << "  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links\n\n";
 
     // STEP ⑤: Multipath inference at controller
@@ -7817,7 +7853,8 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
                       std::to_string(src_ns3) + "↔V" + std::to_string(dst_ns3) + "  [ECHO]\n")
                    : "")
            << "  Controller incorrectly infers:\n"
-           << "    Path 1: V" << src_ns3 << " -> V" << dst_ns3 << "  (REAL)\n"
+           << "    Path 1: V" << src_ns3 << " -> V" << dst_ns3
+           << (srcDstLinked ? "  (REAL)\n" : "  (FALSE — out of range, echoed anyway)\n")
            << (emit_v3
                    ? ("    Path 2: V" + std::to_string(src_ns3) + " -> V" +
                       std::to_string(ev3_ns3) + " -> V" + std::to_string(dst_ns3) +
@@ -8319,9 +8356,24 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
     uint32_t v4_ns3  = (s2_ld_have_v4 && false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
-    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
-    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
-    if (s2_ld_have_v4) {
+
+    // Positions are organic (SUMO/mobility model) — measure both pairs'
+    // distances rather than assuming they're real (mirrors ME-S1's fix).
+    Vector s2ld_pos1(0,0,0), s2ld_pos2(0,0,0), s2ld_pos3(0,0,0), s2ld_pos4(0,0,0);
+    if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) s2ld_pos1 = m->GetPosition(); }
+    if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) s2ld_pos2 = m->GetPosition(); }
+    if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) s2ld_pos3 = m->GetPosition(); }
+    if (s2_ld_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) s2ld_pos4 = m->GetPosition(); }
+    const double s2ld_d12 = std::sqrt((s2ld_pos1.x-s2ld_pos2.x)*(s2ld_pos1.x-s2ld_pos2.x) + (s2ld_pos1.y-s2ld_pos2.y)*(s2ld_pos1.y-s2ld_pos2.y));
+    const double s2ld_d34 = std::sqrt((s2ld_pos3.x-s2ld_pos4.x)*(s2ld_pos3.x-s2ld_pos4.x) + (s2ld_pos3.y-s2ld_pos4.y)*(s2ld_pos3.y-s2ld_pos4.y));
+    const bool s2ld_link12 = s2ld_d12 <= TTW_COMM_RANGE;
+    const bool s2ld_link34 = s2_ld_have_v4 && (s2ld_d34 <= TTW_COMM_RANGE);
+
+    if (s2ld_link12) {
+        ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+        ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    }
+    if (s2ld_link34) {
         ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
         ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
     }
@@ -8346,10 +8398,14 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
                                 + " : <own, t=" + std::to_string(t) + "> (single)\n\n"));
     // STEP ③: RSU aggregates
     me_log << "[t=" << now << "]  STEP ③  RSU_" << rsu_id << " AGGREGATES LEGITIMATE TOPOLOGY\n"
-           << "  <V" << v1_ns3 << " sees V" << v2_ns3 << ">  AGGREGATED\n"
-           << "  <V" << v2_ns3 << " sees V" << v1_ns3 << ">  AGGREGATED\n"
-           << (s2_ld_have_v4 ? ("  <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3) + ">  AGGREGATED\n"
-                                "  <V" + std::to_string(v4_ns3) + " sees V" + std::to_string(v3_ns3) + ">  AGGREGATED\n") : "")
+           << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << s2ld_d12
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s2ld_d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << (s2ld_link12 ? ("  <V" + std::to_string(v1_ns3) + " sees V" + std::to_string(v2_ns3) + ">  AGGREGATED\n"
+                              "  <V" + std::to_string(v2_ns3) + " sees V" + std::to_string(v1_ns3) + ">  AGGREGATED\n")
+                           : ("  V" + std::to_string(v1_ns3) + "<->V" + std::to_string(v2_ns3) + " OUT OF RANGE — no real link\n"))
+           << (s2ld_link34 ? ("  <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3) + ">  AGGREGATED\n"
+                                "  <V" + std::to_string(v4_ns3) + " sees V" + std::to_string(v3_ns3) + ">  AGGREGATED\n")
+                           : (s2_ld_have_v4 ? ("  V" + std::to_string(v3_ns3) + "<->V" + std::to_string(v4_ns3) + " OUT OF RANGE — echo pair has no genuine link of its own\n") : ""))
            << "  RSU -> Controller: forwarding aggregated report\n\n";
 
     std::cout << std::fixed << std::setprecision(3)
@@ -8357,15 +8413,14 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
               << " HELLO; vehicles report to RSU_" << rsu_id
               << "; RSU aggregates" << std::endl;
 
-    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
-    if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) pos1 = m->GetPosition(); }
-    if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
-    if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
-    if (s2_ld_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, s2_ld_have_v4 ? false_v4 : v2_id, t, now, pos3, pos3, pos4, false);
-    if (s2_ld_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, s2ld_pos1, s2ld_pos1, s2ld_pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, s2ld_pos2, s2ld_pos2, s2ld_pos1, false);
+    if (s2ld_link34) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, s2ld_pos3, s2ld_pos3, s2ld_pos4, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, s2ld_pos4, s2ld_pos4, s2ld_pos3, false);
+    } else if (!s2_ld_have_v4) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, v2_id, t, now, s2ld_pos3, s2ld_pos3, s2ld_pos2, false);
+    }
     // Issue 4/3 fix — real vehicle beacons for downstream beacon_evidence.csv /
     // witness_records.json (this RSU-present scenario previously never emitted
     // any). Only the real V1<->V2 link, not the false_v3/v4 echo reporters.
@@ -8428,6 +8483,21 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         }
     }
 
+    // Honest check: is the echoed V1<->V2 link itself actually real? The RSU
+    // injects the forged echo regardless — that IS the attack — but the log
+    // and Path-1 label must reflect measured reality now that positions are
+    // organic rather than assumed (mirrors ME-S1's fix).
+    bool s2_srcdst_linked = false;
+    double s2_srcdst_dist = 0.0;
+    {
+        Vector pV1(0,0,0), pV2(0,0,0);
+        if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pV1 = m->GetPosition(); }
+        if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pV2 = m->GetPosition(); }
+        double dx = pV1.x - pV2.x, dy = pV1.y - pV2.y;
+        s2_srcdst_dist = std::sqrt(dx*dx + dy*dy);
+        s2_srcdst_linked = (s2_srcdst_dist <= TTW_COMM_RANGE);
+    }
+
     // STEP ④: RSU injects echo reports
     me_log << "[t=" << now << "]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_" << rsu_id << "\n"
            << "  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:\n"
@@ -8450,8 +8520,11 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
            << "\n";
     // STEP ⑥: Phantom path inference — Path 3 only with V4, Path 4 only when V3↔V4 in range
     me_log << "[t=" << now << "]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER\n"
+           << "  V" << v1_ns3 << "↔V" << v2_ns3 << " echoed link: dist=" << std::fixed << std::setprecision(1)
+           << s2_srcdst_dist << "m  " << (s2_srcdst_linked ? "IN RANGE — genuinely real" : "OUT OF RANGE — Path 1 claim itself is false") << "\n"
            << "  Controller incorrectly infers:\n"
-           << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3 << "  (REAL)\n"
+           << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3
+           << (s2_srcdst_linked ? "  (REAL)\n" : "  (FALSE — out of range, echoed anyway)\n")
            << "    Path 2: V" << v1_ns3 << " → V" << v3_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
            << (s2_have_v4 ? ("    Path 3: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v4_ns3) +
                              " → V" + std::to_string(v2_ns3) + "  (PHANTOM)\n") : "")
@@ -8582,60 +8655,78 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
 {
     double now = Simulator::Now().GetSeconds();
     const bool s3_ld_have_v4 = (v4_id != UINT32_MAX) && (v4_id != v3_id);
-    // V1↔V2 real link
-    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
-    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
-    // V3↔V4 real link (phantom reporters' own legitimate link) — only if V4 exists
-    if (s3_ld_have_v4) {
-        ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
-        ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
-    }
     uint32_t v1_ns3 = (v1_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId() : v1_id;
     uint32_t v2_ns3 = (v2_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId() : v2_id;
     uint32_t v3_ns3 = (v3_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v3_id)->GetId() : v3_id;
     uint32_t v4_ns3 = (s3_ld_have_v4 && v4_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v4_id)->GetId() : v4_id;
 
+    // Positions are organic (SUMO/mobility model) — measure both pairs'
+    // distances rather than assuming they're real (mirrors ME-S1's fix).
+    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
+    if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); }
+    if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); }
+    if (v3_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
+    if (s3_ld_have_v4 && v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    const double s3ld_d12 = std::sqrt((pos1.x-pos2.x)*(pos1.x-pos2.x) + (pos1.y-pos2.y)*(pos1.y-pos2.y));
+    const double s3ld_d34 = std::sqrt((pos3.x-pos4.x)*(pos3.x-pos4.x) + (pos3.y-pos4.y)*(pos3.y-pos4.y));
+    const bool s3ld_link12 = s3ld_d12 <= TTW_COMM_RANGE;
+    const bool s3ld_link34 = s3_ld_have_v4 && (s3ld_d34 <= TTW_COMM_RANGE);
+
+    // V1↔V2 real link (only if actually in range)
+    if (s3ld_link12) {
+        ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+        ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    }
+    // V3↔V4 real link (phantom reporters' own legitimate link) — only if actually in range
+    if (s3ld_link34) {
+        ttw_controller_table[std::to_string(v3_id)+"_"+std::to_string(v4_id)] = {v3_id, v4_id, t, false};
+        ttw_controller_table[std::to_string(v4_id)+"_"+std::to_string(v3_id)] = {v4_id, v3_id, t, false};
+    }
+
     me_log << "[t=" << now << "]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY\n"
-           << "  V" << v1_ns3 << " <-> V" << v2_ns3 << " : HELLO exchange (real V2V link)\n"
-           << (s3_ld_have_v4 ? ("  V" + std::to_string(v3_ns3) + " <-> V" + std::to_string(v4_ns3) + " : HELLO exchange (own legitimate link)\n"
+           << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << s3ld_d12
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s3ld_d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << (s3ld_link12 ? ("  V" + std::to_string(v1_ns3) + " <-> V" + std::to_string(v2_ns3) + " : HELLO exchange (real V2V link)\n")
+                           : ("  V" + std::to_string(v1_ns3) + "<->V" + std::to_string(v2_ns3) + " OUT OF RANGE — no real link\n"))
+           << (s3ld_link34 ? ("  V" + std::to_string(v3_ns3) + " <-> V" + std::to_string(v4_ns3) + " : HELLO exchange (own legitimate link)\n"
                                 "  V" + std::to_string(v3_ns3) + " and V" + std::to_string(v4_ns3) + " in overhearing range of V"
                                 + std::to_string(v1_ns3) + "↔V" + std::to_string(v2_ns3) + " but NO direct link\n\n")
-                             : ("  V" + std::to_string(v3_ns3) + " in overhearing range (single phantom, no own link pair)\n\n"));
+                             : (s3_ld_have_v4 ? ("  V" + std::to_string(v3_ns3) + "<->V" + std::to_string(v4_ns3) + " OUT OF RANGE — no own link pair\n\n")
+                                              : ("  V" + std::to_string(v3_ns3) + " in overhearing range (single phantom, no own link pair)\n\n")));
     me_log << "[t=" << now << "]  STEP ②  LEGITIMATE TOPOLOGY UPDATES TO CONTROLLER\n"
-           << "  V" << v1_ns3 << " -> Controller : <V" << v1_ns3
-           << " sees V" << v2_ns3 << ", t=" << t << ">  ACCEPTED\n"
-           << "  V" << v2_ns3 << " -> Controller : <V" << v2_ns3
-           << " sees V" << v1_ns3 << ", t=" << t << ">  ACCEPTED\n"
-           << (s3_ld_have_v4 ? ("  V" + std::to_string(v3_ns3) + " -> Controller : <V" + std::to_string(v3_ns3)
+           << (s3ld_link12 ? ("  V" + std::to_string(v1_ns3) + " -> Controller : <V" + std::to_string(v1_ns3) +
+                              " sees V" + std::to_string(v2_ns3) + ", t=" + std::to_string(t) + ">  ACCEPTED\n"
+                              "  V" + std::to_string(v2_ns3) + " -> Controller : <V" + std::to_string(v2_ns3) +
+                              " sees V" + std::to_string(v1_ns3) + ", t=" + std::to_string(t) + ">  ACCEPTED\n") : "")
+           << (s3ld_link34 ? ("  V" + std::to_string(v3_ns3) + " -> Controller : <V" + std::to_string(v3_ns3)
                                 + " sees V" + std::to_string(v4_ns3) + ", t=" + std::to_string(t) + ">  ACCEPTED\n"
                                 "  V" + std::to_string(v4_ns3) + " -> Controller : <V" + std::to_string(v4_ns3)
                                 + " sees V" + std::to_string(v3_ns3) + ", t=" + std::to_string(t) + ">  ACCEPTED\n\n")
                              : ("  V" + std::to_string(v3_ns3) + " -> Controller : <own position, t=" + std::to_string(t) + ">  ACCEPTED\n\n"));
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S3][t=" << now << "]  V" << v1_id << " --topo--> Controller"
-              << "  <V" << v1_id << " sees V" << v2_id << ">  ACCEPTED (real link)" << std::endl;
+              << "  <V" << v1_id << " sees V" << v2_id << ">  " << (s3ld_link12 ? "ACCEPTED (real link)" : "OUT OF RANGE") << std::endl;
     std::cout << "[ME-S3][t=" << now << "]  V" << v2_id << " --topo--> Controller"
-              << "  <V" << v2_id << " sees V" << v1_id << ">  ACCEPTED (real link)" << std::endl;
-    if (s3_ld_have_v4) {
+              << "  <V" << v2_id << " sees V" << v1_id << ">  " << (s3ld_link12 ? "ACCEPTED (real link)" : "OUT OF RANGE") << std::endl;
+    if (s3ld_link34) {
         std::cout << "[ME-S3][t=" << now << "]  V" << v3_id << " --topo--> Controller"
                   << "  <V" << v3_id << " sees V" << v4_id << ">  ACCEPTED (real link)" << std::endl;
         std::cout << "[ME-S3][t=" << now << "]  V" << v4_id << " --topo--> Controller"
                   << "  <V" << v4_id << " sees V" << v3_id << ">  ACCEPTED (real link)" << std::endl;
     }
-    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
-    if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); }
-    if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); }
-    if (v3_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v3_id)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
-    if (s3_ld_have_v4 && v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id, v1_id, v2_id, t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id, v2_id, v1_id, t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, s3_ld_have_v4 ? v4_id : v2_id, t, now, pos3, pos3, pos4, false);
-    if (s3_ld_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
+    if (s3ld_link34) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, v4_id, t, now, pos3, pos3, pos4, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v4_id, v4_id, v4_id, v4_id, v3_id, t, now, pos4, pos4, pos3, false);
+    } else if (!s3_ld_have_v4) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, v3_id, v3_id, v2_id, t, now, pos3, pos3, pos2, false);
+    }
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
     }
-    if (s3_ld_have_v4 && v3_id < Vehicle_Nodes.GetN() && v4_id < Vehicle_Nodes.GetN()) {
+    if (s3ld_link34 && v3_id < Vehicle_Nodes.GetN() && v4_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(v4_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v4_id), Vehicle_Nodes.Get(v3_id));
     }
@@ -8684,6 +8775,20 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         }
     }
 
+    // Honest check: is the fabricated V1<->V2 link itself actually real?
+    // The controller fabricates the echo regardless — that IS the attack —
+    // but the log/Path-1 label must reflect measured reality (mirrors ME-S1/S2).
+    bool s3_srcdst_linked = false;
+    double s3_srcdst_dist = 0.0;
+    {
+        Vector pV1(0,0,0), pV2(0,0,0);
+        if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) pV1 = m->GetPosition(); }
+        if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pV2 = m->GetPosition(); }
+        double dx = pV1.x - pV2.x, dy = pV1.y - pV2.y;
+        s3_srcdst_dist = std::sqrt(dx*dx + dy*dy);
+        s3_srcdst_linked = (s3_srcdst_dist <= TTW_COMM_RANGE);
+    }
+
     me_log << "[t=" << now << "]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER\n"
            << "  Controller injects forged observations into its internal topology database:\n"
            << "  <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t
@@ -8694,8 +8799,11 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                              "m  " + (s3_v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4") + "\n") : "")
            << "  Note: No external packet sent — manipulation is purely internal\n\n";
     me_log << "[t=" << now << "]  STEP ④  FALSE MULTIPATH INFERENCE\n"
+           << "  V" << v1_ns3 << "↔V" << v2_ns3 << " fabricated link: dist=" << std::fixed << std::setprecision(1)
+           << s3_srcdst_dist << "m  " << (s3_srcdst_linked ? "IN RANGE — genuinely real" : "OUT OF RANGE — Path 1 claim itself is false") << "\n"
            << "  Controller incorrectly infers:\n"
-           << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3 << "  (REAL)\n"
+           << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3
+           << (s3_srcdst_linked ? "  (REAL)\n" : "  (FALSE — out of range, fabricated anyway)\n")
            << "    Path 2: V" << v1_ns3 << " → V" << v3_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
            << (s3_have_v4 ? ("    Path 3: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v4_ns3) +
                              " → V" + std::to_string(v2_ns3) + "  (PHANTOM)\n") : "")
@@ -8802,27 +8910,45 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
 {
     double now = Simulator::Now().GetSeconds();
     const bool s4_vr_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
-    // V1↔V2 real link
-    ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
-    ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
-    // V3↔V4 real link — only if V4 exists
-    if (s4_vr_have_v4) {
-        ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
-        ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
-    }
     uint32_t v1_ns3  = (v1_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()    : v1_id;
     uint32_t v2_ns3  = (v2_id    < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v2_id)->GetId()    : v2_id;
     uint32_t v3_ns3  = (false_v3 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v3)->GetId() : false_v3;
     uint32_t v4_ns3  = (s4_vr_have_v4 && false_v4 < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(false_v4)->GetId() : false_v4;
 
+    // Positions are organic (SUMO/mobility model) — measure both pairs'
+    // distances rather than assuming they're real (mirrors ME-S1/S2/S3's fix).
+    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
+    if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) pos1 = m->GetPosition(); }
+    if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
+    if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
+    if (s4_vr_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
+    const double s4vr_d12 = std::sqrt((pos1.x-pos2.x)*(pos1.x-pos2.x) + (pos1.y-pos2.y)*(pos1.y-pos2.y));
+    const double s4vr_d34 = std::sqrt((pos3.x-pos4.x)*(pos3.x-pos4.x) + (pos3.y-pos4.y)*(pos3.y-pos4.y));
+    const bool s4vr_link12 = s4vr_d12 <= TTW_COMM_RANGE;
+    const bool s4vr_link34 = s4_vr_have_v4 && (s4vr_d34 <= TTW_COMM_RANGE);
+
+    // V1↔V2 real link (only if actually in range)
+    if (s4vr_link12) {
+        ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
+        ttw_controller_table[std::to_string(v2_id)+"_"+std::to_string(v1_id)] = {v2_id, v1_id, t, false};
+    }
+    // V3↔V4 real link — only if actually in range
+    if (s4vr_link34) {
+        ttw_controller_table[std::to_string(false_v3)+"_"+std::to_string(false_v4)] = {false_v3, false_v4, t, false};
+        ttw_controller_table[std::to_string(false_v4)+"_"+std::to_string(false_v3)] = {false_v4, false_v3, t, false};
+    }
+
     me_log << "[t=" << now << "]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)\n"
-           << "  V" << v1_ns3 << " <-> V" << v2_ns3 << " : HELLO exchange (real link)\n"
+           << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << s4vr_d12
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s4vr_d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << (s4vr_link12 ? ("  V" + std::to_string(v1_ns3) + " <-> V" + std::to_string(v2_ns3) + " : HELLO exchange (real link)\n")
+                           : ("  V" + std::to_string(v1_ns3) + "<->V" + std::to_string(v2_ns3) + " OUT OF RANGE — no real link\n"))
            << "  V" << v3_ns3 << (s4_vr_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)")
            << " in overhearing range — no direct link to V" << v1_ns3 << " or V" << v2_ns3 << "\n\n";
     me_log << "[t=" << now << "]  STEP ②  TOPOLOGY REPORTING TO RSU_" << rsu_id << "\n"
-           << "  V" << v1_ns3 << " -> RSU_" << rsu_id << " : <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t << ">\n"
-           << "  V" << v2_ns3 << " -> RSU_" << rsu_id << " : <V" << v2_ns3 << " sees V" << v1_ns3 << ", t=" << t << ">\n"
-           << (s4_vr_have_v4 ? ("  V" + std::to_string(v3_ns3) + " -> RSU_" + std::to_string(rsu_id)
+           << (s4vr_link12 ? ("  V" + std::to_string(v1_ns3) + " -> RSU_" + std::to_string(rsu_id) + " : <V" + std::to_string(v1_ns3) + " sees V" + std::to_string(v2_ns3) + ", t=" + std::to_string(t) + ">\n"
+                              "  V" + std::to_string(v2_ns3) + " -> RSU_" + std::to_string(rsu_id) + " : <V" + std::to_string(v2_ns3) + " sees V" + std::to_string(v1_ns3) + ", t=" + std::to_string(t) + ">\n") : "")
+           << (s4vr_link34 ? ("  V" + std::to_string(v3_ns3) + " -> RSU_" + std::to_string(rsu_id)
                                 + " : <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3)
                                 + ", t=" + std::to_string(t) + ">\n"
                                 "  V" + std::to_string(v4_ns3) + " -> RSU_" + std::to_string(rsu_id)
@@ -8831,23 +8957,22 @@ void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
                              : ("  V" + std::to_string(v3_ns3) + " -> RSU_" + std::to_string(rsu_id)
                                 + " : <own, t=" + std::to_string(t) + "> (single)\n\n"));
     me_log << "[t=" << now << "]  STEP ③  RSU_" << rsu_id << " AGGREGATES AND FORWARDS TO CONTROLLER\n"
-           << "  <V" << v1_ns3 << " sees V" << v2_ns3 << ", t=" << t << ">  FORWARDED\n"
-           << "  <V" << v2_ns3 << " sees V" << v1_ns3 << ", t=" << t << ">  FORWARDED\n"
-           << (s4_vr_have_v4 ? ("  <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3) + ", t=" + std::to_string(t) + ">  FORWARDED\n"
+           << (s4vr_link12 ? ("  <V" + std::to_string(v1_ns3) + " sees V" + std::to_string(v2_ns3) + ", t=" + std::to_string(t) + ">  FORWARDED\n"
+                              "  <V" + std::to_string(v2_ns3) + " sees V" + std::to_string(v1_ns3) + ", t=" + std::to_string(t) + ">  FORWARDED\n") : "")
+           << (s4vr_link34 ? ("  <V" + std::to_string(v3_ns3) + " sees V" + std::to_string(v4_ns3) + ", t=" + std::to_string(t) + ">  FORWARDED\n"
                                 "  <V" + std::to_string(v4_ns3) + " sees V" + std::to_string(v3_ns3) + ", t=" + std::to_string(t) + ">  FORWARDED\n") : "")
            << "  [RSU is legitimate; malicious action occurs at controller]\n\n";
     std::cout << std::fixed << std::setprecision(3)
               << "[ME-S4][t=" << now << "]  STEP①②③  V" << v1_ns3 << "<->V" << v2_ns3
               << " HELLO; report via RSU_" << rsu_id << " to Controller" << std::endl;
-    Vector pos1(0,0,0), pos2(0,0,0), pos3(0,0,0), pos4(0,0,0);
-    if (v1_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>();    if (m) pos1 = m->GetPosition(); }
-    if (v2_id    < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();    if (m) pos2 = m->GetPosition(); }
-    if (false_v3 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v3)->GetObject<MobilityModel>(); if (m) pos3 = m->GetPosition(); }
-    if (s4_vr_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, pos2, pos2, pos1, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, s4_vr_have_v4 ? false_v4 : v2_id, t, now, pos3, pos3, pos4, false);
-    if (s4_vr_have_v4) PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    if (s4vr_link34) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, pos3, pos3, pos4, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, pos4, pos4, pos3, false);
+    } else if (!s4_vr_have_v4) {
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, v2_id, t, now, pos3, pos3, pos2, false);
+    }
     // Issue 4/3 fix — real vehicle beacons for downstream beacon_evidence.csv /
     // witness_records.json (this RSU-present scenario previously never emitted
     // any). Only the real V1<->V2 link, not the false_v3/v4 echo reporters.
@@ -8907,6 +9032,14 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         }
     }
 
+    // Honest check: is the fabricated V1<->V2 link itself actually real?
+    // (mirrors ME-S1/S2/S3's fix)
+    Vector s4ip_pV1(0,0,0), s4ip_pV2(0,0,0);
+    if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) s4ip_pV1 = m->GetPosition(); }
+    if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) s4ip_pV2 = m->GetPosition(); }
+    const double s4_srcdst_dist = std::sqrt((s4ip_pV1.x-s4ip_pV2.x)*(s4ip_pV1.x-s4ip_pV2.x) + (s4ip_pV1.y-s4ip_pV2.y)*(s4ip_pV1.y-s4ip_pV2.y));
+    const bool s4_srcdst_linked = s4_srcdst_dist <= TTW_COMM_RANGE;
+
     me_log << "[t=" << now << "]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)\n"
            << "  Controller injects forged echo observations into its topology database:\n"
            << "  <V" << v1_ns3 << " sees V" << v2_ns3 << "> as-relayed-via V" << v3_ns3 << "  (FORGED internally)\n"
@@ -8916,8 +9049,11 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                           "m  " + (s4_v3v4_linked ? "IN RANGE — Path 4 inferred" : "OUT OF RANGE — no Path 4") + "\n") : "  Single false reporter: only Path 2 inferred\n")
            << "  No external packet required — purely internal manipulation\n\n";
     me_log << "[t=" << now << "]  STEP ⑤  FALSE MULTIPATH INFERENCE\n"
+           << "  V" << v1_ns3 << "↔V" << v2_ns3 << " fabricated link: dist=" << std::fixed << std::setprecision(1)
+           << s4_srcdst_dist << "m  " << (s4_srcdst_linked ? "IN RANGE — genuinely real" : "OUT OF RANGE — Path 1 claim itself is false") << "\n"
            << "  Controller incorrectly infers:\n"
-           << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3 << "  (REAL)\n"
+           << "    Path 1: V" << v1_ns3 << " → V" << v2_ns3
+           << (s4_srcdst_linked ? "  (REAL)\n" : "  (FALSE — out of range, fabricated anyway)\n")
            << "    Path 2: V" << v1_ns3 << " → V" << v3_ns3 << " → V" << v2_ns3 << "  (PHANTOM)\n"
            << (have_v4 ? ("    Path 3: V" + std::to_string(v1_ns3) + " → V" + std::to_string(v4_ns3) +
                           " → V" + std::to_string(v2_ns3) + "  (PHANTOM)\n") : "")
@@ -151882,13 +152018,12 @@ attack_mobility.Install(Vehicle_Nodes);
       const double discoveryObservedTime =
           ME_S1_DISCOVERY_TIME + AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
 
-      // Position real pair once
+      // No code-controlled positioning — v1/v2 stay wherever the SUMO trace
+      // actually places them at attack time (matching ME-S2/S3/S4, which never
+      // forced positions here, and ME-S1's own single-attacker/3-legit path
+      // above). ME_S1_EchoAttack/LegitimateDiscovery now validate the real
+      // V1<->V2 link distance themselves rather than assuming it unconditionally.
       if (n_me_groups > 0) {
-          Ptr<ConstantVelocityMobilityModel> m_r1 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v1_cidx)->GetObject<MobilityModel>());
-          Ptr<ConstantVelocityMobilityModel> m_r2 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v2_cidx)->GetObject<MobilityModel>());
-          if (m_r1) { m_r1->SetPosition(Vector(100.0, 0.0, 0.0)); m_r1->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-          if (m_r2) { m_r2->SetPosition(Vector(200.0, 0.0, 0.0)); m_r2->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-
           // Legitimate discovery scheduled once for real pair + first echo pair
           Simulator::Schedule(Seconds(discoveryObservedTime),
               &ME_S1_LegitimateDiscovery, v1_cidx, v2_cidx,
@@ -151925,14 +152060,9 @@ attack_mobility.Install(Vehicle_Nodes);
                         discoveryObservedTime + 0.1 + AttackSampleSignedJitter(attack_time_jitter_s))
               + g * 0.001;
 
-          // All echo vehicles positioned in overhearing range of real pair
-          {
-              const double echo_y = 50.0 + g * 30.0;
-              Ptr<ConstantVelocityMobilityModel> m_e3 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(echo_v3_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> m_e4 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(echo_v4_cidx)->GetObject<MobilityModel>());
-              if (m_e3) { m_e3->SetPosition(Vector(150.0,  echo_y, 0.0)); m_e3->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-              if (m_e4) { m_e4->SetPosition(Vector(150.0, -echo_y, 0.0)); m_e4->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-          }
+          // No code-controlled positioning — echo vehicles stay at their
+          // organic SUMO positions; ME_S1_EchoAttack measures the real
+          // V3<->V4 distance itself to decide whether Path 4 is plausible.
 
           // Both vehicles in every pair always emit (reporter_mask = 0x3)
           Simulator::Schedule(Seconds(echoAttackTime),
@@ -151963,14 +152093,9 @@ attack_mobility.Install(Vehicle_Nodes);
               AttackMax(discoveryObservedTime + 0.010,
                         discoveryObservedTime + 0.1 + AttackSampleSignedJitter(attack_time_jitter_s))
               + n_me_groups * 0.001;
-          Ptr<ConstantVelocityMobilityModel> m_last = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(last_cidx)->GetObject<MobilityModel>());
-          if (m_last) { m_last->SetPosition(Vector(150.0, 50.0 + n_me_groups * 30.0, 0.0)); m_last->SetVelocity(Vector(0.0, 0.0, 0.0)); }
+          // No code-controlled positioning — organic SUMO positions used throughout.
           // If this is the only attacker (n_me_groups==0), real-pair setup was skipped — do it now
           if (n_me_groups == 0) {
-              Ptr<ConstantVelocityMobilityModel> m_r1 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v1_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> m_r2 = DynamicCast<ConstantVelocityMobilityModel>(Vehicle_Nodes.Get(v2_cidx)->GetObject<MobilityModel>());
-              if (m_r1) { m_r1->SetPosition(Vector(100.0, 0.0, 0.0)); m_r1->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-              if (m_r2) { m_r2->SetPosition(Vector(200.0, 0.0, 0.0)); m_r2->SetVelocity(Vector(0.0, 0.0, 0.0)); }
               // Legitimate discovery with single echo attacker (v3=last_cidx, v4=last_cidx sentinel)
               Simulator::Schedule(Seconds(discoveryObservedTime),
                   &ME_S1_LegitimateDiscovery, v1_cidx, v2_cidx,
