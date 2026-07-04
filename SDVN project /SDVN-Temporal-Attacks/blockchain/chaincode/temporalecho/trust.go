@@ -210,9 +210,18 @@ func (t *TemporalEchoMitigator) SetRSUZone(
 }
 
 // UpdateTrustRound applies trust delta for one beacon interval round.
-// TR-01: during bootstrap (no RSU peers), the highest-trust OBU may drive trust
-// rounds. This allows trust to accumulate in OBU-only / no-RSU deployments.
-// TR-04 (from previous fix): when RSU peers ARE present, restricts callers to Tier 1 RSU.
+// TR-04: caller must be RSU-equivalent standing.
+//
+// Bug fix (6th instance of the same pattern — see ZeroTrust/DemotePeerToClient/
+// SubmitLWDetectionResult/CreateAnchorCheckpoint/SyncFromAnchorCheckpoint):
+// the previous hasRSU peer-scan is a deployment-wide check ("does any RSU
+// exist anywhere"), the same shape of bug as the SIM_NO_RSU_MODE flag used
+// (and since corrected) elsewhere — not a per-caller check. In a mixed
+// deployment (RSUs present), any of the legitimately-active, top-trust Tier 2
+// OBUs sitting in the same active set as the RSUs would still be rejected
+// here, since hasRSU is true whenever any RSU exists. Corrected to the same
+// single, unconditional per-caller check as the other five: RSU status
+// always qualifies; otherwise the caller's own trust must clear τ ≥ τminGT.
 func (t *TemporalEchoMitigator) UpdateTrustRound(
 	ctx contractapi.TransactionContextInterface,
 	callerPeerID string,
@@ -220,31 +229,10 @@ func (t *TemporalEchoMitigator) UpdateTrustRound(
 	allPeersJSON string,
 ) error {
 	callerTrust := loadTrust(ctx, callerPeerID)
-
-	// TR-01: detect whether any RSU peers are registered
-	allPeerIDs := loadAllPeerIDs(ctx)
-	hasRSU := false
-	for _, pid := range allPeerIDs {
-		if loadTrust(ctx, pid).IsRSUPeer {
-			hasRSU = true
-			break
-		}
-	}
-
-	if hasRSU {
-		// Normal mode: only Tier 1 RSU peers may drive trust rounds (TR-04)
-		if !callerTrust.IsRSUPeer || callerTrust.Score < TrustInitTier1-1e-9 {
-			return fmt.Errorf(
-				"UpdateTrustRound: caller %s is not an authorised Tier 1 RSU peer",
-				callerPeerID)
-		}
-	} else {
-		// TR-01: Tier 2 / OBU-only bootstrap mode — highest-trust OBU may call
-		if callerTrust.Score < TrustMin || callerTrust.Flagged {
-			return fmt.Errorf(
-				"UpdateTrustRound: caller %s has insufficient trust for bootstrap mode (score=%.3f)",
-				callerPeerID, callerTrust.Score)
-		}
+	if !(callerTrust.IsRSUPeer || (callerTrust.Score >= TrustMinGT && !callerTrust.Flagged)) {
+		return fmt.Errorf(
+			"UpdateTrustRound: unauthorised caller %s (not RSU, trust=%.3f < %.2f or flagged=%v)",
+			callerPeerID, callerTrust.Score, TrustMinGT, callerTrust.Flagged)
 	}
 
 	var participating []string
