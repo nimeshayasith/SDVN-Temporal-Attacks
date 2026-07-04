@@ -2683,10 +2683,27 @@ static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
 
 // Eq. 3.41: select active peer set P_active of size n_p = 7 by trust ranking.
 // E_t^trusted = ⋃_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_{n_k}(t) — Eq. 3.44.
+//
+// Controllers (registry C, Eq. 3.37) are explicitly excluded from this candidate
+// pool — they are a distinct population from the Fabric consensus peer set
+// P_active (RSU/OBU peers only, Eq. 3.41). Without this exclusion, a
+// controller's g_trust_table entry (registered at TRUST_TAU_TIER1_INIT=1.00 in
+// TrustInit(), same map OBUs live in) would pass TrustIsEligible/the tau>=
+// TRUST_TAU_GT_MIN check in TrustGetTrustedPeers() and — since it isn't in
+// RSU_Nodes either — get misclassified into the Tier-2 "trusted OBU" bucket,
+// making E_t^trusted look non-empty via the controller's own pre-vetted trust
+// regardless of whether any real vehicle ever bootstrapped trust. That would
+// silently mask whether TrustPeriodicRewardTick's OBU reward path is actually
+// doing anything for the TTW-S3/BSHH-S3/ME-S3 controller-divergence gate.
 static std::vector<uint32_t> TrustSelectActivePeers()
 {
     std::vector<std::pair<double, uint32_t>> cands;
     for (const auto& kv : g_trust_table) {
+        bool is_ctrl = false;
+        for (const auto& c : g_ctrl_table)
+            if (c.ctrl_ns3_id == kv.first) { is_ctrl = true; break; }
+        if (is_ctrl) continue;
+
         bool is_rsu = false;
         for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
             if (RSU_Nodes.Get(i)->GetId() == kv.first) { is_rsu = true; break; }
