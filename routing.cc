@@ -7811,8 +7811,20 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
         const double dSrc = std::sqrt(std::pow(realPos.x - vSrcPos.x, 2.0) + std::pow(realPos.y - vSrcPos.y, 2.0));
         const double dDst = std::sqrt(std::pow(realPos.x - vDstPos.x, 2.0) + std::pow(realPos.y - vDstPos.y, 2.0));
         const Vector& target = (dSrc <= dDst) ? vSrcPos : vDstPos;
-        const double jitter = g_attacker_rng ? g_attacker_rng->GetValue() * 50.0 : 25.0;   // up to 50m GPS-spoof imprecision
-        const double angle  = g_attacker_rng ? g_attacker_rng->GetValue() * 2.0 * M_PI : 0.0;
+        // Draw from AttackGetRng() (already-existing shared attacker-randomization
+        // utility used elsewhere for topology/attacker selection), not a new RNG
+        // object: creating a new Ptr<UniformRandomVariable> shifts NS-3's
+        // auto-assigned stream index for every RandomVariableStream constructed
+        // afterward — including AttackGetRng()'s own lazily-constructed static —
+        // which perturbs topology/attacker selection for the WHOLE run, a far
+        // bigger and less controlled side effect than the one being avoided.
+        // AttackGetRng()'s topology-selection draws (AttackShuffleVector, called
+        // from declare_attackers() in main()) all happen before Simulator::Run()
+        // starts; this call happens later, inside a scheduled callback at
+        // t≈10s, so it only ever consumes draws AFTER topology selection has
+        // already completed — it cannot retroactively change it.
+        const double jitter = AttackGetRng()->GetValue(0.0, 50.0);   // up to 50m GPS-spoof imprecision
+        const double angle  = AttackGetRng()->GetValue(0.0, 2.0 * M_PI);
         return Vector(target.x + jitter * std::cos(angle), target.y + jitter * std::sin(angle), 0.0);
     };
     if (emit_v3)
@@ -8130,8 +8142,11 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         const double dToV1 = std::sqrt(std::pow(rsuPos.x - v1Pos.x, 2.0) + std::pow(rsuPos.y - v1Pos.y, 2.0));
         const double dToV2 = std::sqrt(std::pow(rsuPos.x - v2Pos.x, 2.0) + std::pow(rsuPos.y - v2Pos.y, 2.0));
         const Vector& target = (dToV1 <= dToV2) ? v1Pos : v2Pos;
-        const double jitter = g_attacker_rng ? g_attacker_rng->GetValue() * 50.0 : 25.0;
-        const double angle  = g_attacker_rng ? g_attacker_rng->GetValue() * 2.0 * M_PI : 0.0;
+        // Same rationale as ME-S1's meS1SpoofNearEndpoint: reuse AttackGetRng()
+        // rather than a new RNG object, to avoid perturbing NS-3's auto-assigned
+        // stream indices for anything else in the run.
+        const double jitter = AttackGetRng()->GetValue(0.0, 50.0);
+        const double angle  = AttackGetRng()->GetValue(0.0, 2.0 * M_PI);
         return Vector(target.x + jitter * std::cos(angle), target.y + jitter * std::sin(angle), 0.0);
     }();
     const Vector me_s2_reportPos = me_s2_sophisticated ? me_s2_spoofPos : rsuPos;
