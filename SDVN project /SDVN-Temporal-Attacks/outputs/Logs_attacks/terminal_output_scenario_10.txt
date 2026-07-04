@@ -53,6 +53,7 @@ Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.1
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
   [beh]  TP/TN/FP/FN : 0 / 3 / 0 / 0
   MCC         : 0.000
+  [comb] TP/TN/FP/FN : 0 / 3 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 0.500
   ACR         : 100.000 %
   Tdet        : -1.000 ms

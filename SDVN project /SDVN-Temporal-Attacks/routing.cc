@@ -1477,6 +1477,11 @@ struct HeartbeatPacket {
 };
 HeartbeatPacket bshh_stored_heartbeat;
 bool            bshh_heartbeat_stored = false;
+// BSHH-S2 second, even-older duplicate (thesis scenario 6: RSU injects an old
+// stored heartbeat PLUS a second, even-older duplicate, after suppressing the
+// victim's genuine current one).
+HeartbeatPacket bshh_s2_even_older_heartbeat;
+bool            bshh_s2_even_older_stored = false;
 std::map<uint32_t, HeartbeatPacket> bshh_controller_liveness_table;
 std::map<uint32_t, HeartbeatPacket> bshh_stored_heartbeats;
 std::map<uint32_t, std::string> bshh_s1_pair_logs;
@@ -6936,6 +6941,69 @@ void BSHH_S2_StoreOldHeartbeat(uint32_t rsu_id, uint32_t victim_id, double store
               << ")  (replay at t=10)" << std::endl;
 }
 
+// Captures a SECOND, genuinely earlier heartbeat than BSHH_S2_StoreOldHeartbeat's
+// (from an earlier legitimate exchange) — the "even-older duplicate" the RSU
+// injects alongside the old one at replay time.
+void BSHH_S2_StoreEvenOlderHeartbeat(uint32_t rsu_id, uint32_t victim_id, double stored_time)
+{
+    double now = Simulator::Now().GetSeconds();
+    const std::string rsuLabel    = GetRSULogLabel(rsu_id);
+    const std::string victimLabel = GetVehicleLogLabel(victim_id);
+
+    bshh_s2_even_older_heartbeat = {victim_id, victim_id, stored_time, false};
+    bshh_s2_even_older_stored = true;
+
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3);
+    ss << "[t=" << now << "]  STEP ④b  MALICIOUS RSU STORES A SECOND, EVEN-OLDER HB\n"
+       << "  Attacker RSU    : " << rsuLabel << "\n"
+       << "  Victim          : " << victimLabel << "\n"
+       << "  captured_packet : Heartbeat(Sender=" << victimLabel
+       << ", beacon_sending_time=" << stored_time << ")  (from an EARLIER legitimate exchange)\n"
+       << "  Action          : " << rsuLabel
+       << " keeps this even-older copy for a SECOND replay duplicate (STEP ⑤)\n\n";
+    bshh_s2_pair_logs[rsu_id] += ss.str();
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S2][t=" << now << "]  " << rsuLabel << " stored EVEN-OLDER heartbeat"
+              << "  Heartbeat(" << victimLabel << ", t=" << stored_time
+              << ")  (second duplicate for replay at t=10)" << std::endl;
+}
+
+// Victim's genuine CURRENT heartbeat arrives at the malicious RSU around replay
+// time — the RSU suppresses it (never forwards it to the controller) instead of
+// relaying it honestly, so the controller's only view of this victim's liveness
+// at t~10 comes from the stale duplicates injected in BSHH_S2_ReplayAttack.
+void BSHH_S2_SuppressCurrentHeartbeat(uint32_t rsu_id, uint32_t victim_id, double currentTime)
+{
+    double now = Simulator::Now().GetSeconds();
+    const std::string rsuLabel    = GetRSULogLabel(rsu_id);
+    const std::string victimLabel = GetVehicleLogLabel(victim_id);
+
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3);
+    ss << "[t=" << now << "]  STEP ④c  RSU SUPPRESSES VICTIM'S GENUINE CURRENT HB\n"
+       << "  " << victimLabel << " --[DSRC broadcast]--> " << rsuLabel
+       << " : Heartbeat(Sender=" << victimLabel << ", beacon_sending_time=" << currentTime << ")  GENUINE, CURRENT\n"
+       << "  Action          : " << rsuLabel
+       << " DOES NOT forward this genuine heartbeat to the controller (suppressed)\n"
+       << "  Consequence     : controller's only liveness view for " << victimLabel
+       << " at t~" << currentTime << " will come from the forged stale duplicates below\n\n";
+    bshh_s2_pair_logs[rsu_id] += ss.str();
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "[BSHH-S2][t=" << now << "]  " << rsuLabel
+              << " SUPPRESSES genuine current heartbeat from " << victimLabel
+              << " (t=" << currentTime << ")  — never forwarded" << std::endl;
+
+    // Physically transmitted over DSRC (so it's a real, observable radio event)
+    // but never relayed onward — no PemEmitHeartbeatEvent / AttackSendRSUToController
+    // call here, since suppression means the controller never learns of it.
+    if (victim_id < Vehicle_Nodes.GetN()) {
+        AttackSendHeartbeat(Vehicle_Nodes.Get(victim_id), victim_id, currentTime, false);
+    }
+}
+
 
 void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_time)
 {
@@ -7010,6 +7078,26 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
             if (RSU_Nodes.Get(ri)->GetId() == rsu_id) { rsuNode = RSU_Nodes.Get(ri); break; }
         }
         if (rsuNode) AttackSendHeartbeat(rsuNode, victim_id, stored_time, true);
+    }
+
+    // Second, even-older duplicate — same physical/claimed attribution as the
+    // primary replay above (reuses the same sophistication roll: if the RSU
+    // has compromised the victim's key, both duplicates are equally valid-
+    // looking; if not, both get caught the same way). Distinct timestamp only.
+    if (bshh_s2_even_older_stored) {
+        bshh_s2_pair_logs[rsu_id] +=
+            "[t=" + std::to_string(now) + "]  STEP ⑤b  RSU REPLAYS SECOND, EVEN-OLDER DUPLICATE\n"
+            "  " + rsuLabel + " -> Controller : Heartbeat(claimed=" + victimLabel +
+            ", beacon_sending_time=" + std::to_string(bshh_s2_even_older_heartbeat.timestamp) + ")\n"
+            "  Controller now sees TWO conflicting stale entries for " + victimLabel +
+            " under one identity\n\n";
+        std::cout << std::fixed << std::setprecision(3)
+                  << "[BSHH-S2][t=" << now << "]  " << rsuLabel
+                  << " --REPLAY even-older duplicate--> Controller"
+                  << "  Heartbeat(physical=V" << bshh_s2_phys << ", claimed=" << victimLabel
+                  << ", t=" << bshh_s2_even_older_heartbeat.timestamp << ")" << std::endl;
+        PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_even_older_heartbeat.timestamp, true);
+        AttackSendRSUToController(rsu_id);
     }
 
     if (pem_last_alert) {
@@ -151431,20 +151519,37 @@ attack_mobility.Install(Vehicle_Nodes);
           //   Step 5: victim physically forwards attacker's old heartbeat → controller
           //           (physical_sender=victim, claimed=attacker)
           //   Step 6: attacker directly sends victim's old heartbeat → controller
-          //           (physical_sender=attacker, claimed=victim)
+          //           (physical_sender=attacker, claimed=victim, or physical=claimed=
+          //           victim when sophisticated)
           // The contradiction "two heartbeats claim same identity, different physical
-          // senders" only fires at the controller when BOTH arrive.  Always schedule both.
+          // senders" only fires at the controller when BOTH arrive — order doesn't
+          // matter for Sig[3] (it just scans the sliding window for both entries).
+          //
+          // Ordering fix: Step 6 (hijack) now fires BEFORE Step 5 (victim-forward),
+          // not after. Step 5 uses physical_sender=victim_id (deliberately
+          // "correctly-attributed but stale" — see that function's own comment)
+          // and always gets caught at Stage-0 (Eq. 3.16 freshness). PemEmitEvent's
+          // Stage-0 drop path inserts physical_sender_id into g_tgn_flagged_nodes
+          // (Eq. 3.40 Cond 5), and TGN_ProcessEventInline silently discards any
+          // later event whose reporter_id is in that set — before it's even
+          // scored, with no CSV row and no tp/fn/comb counter increment. Since
+          // Step 6's sophisticated case ALSO uses physical=reporter=victim_id
+          // (that's what impersonation means), scheduling it after Step 5 meant
+          // it was silently discarded by this flag every single sophisticated
+          // run, even though it genuinely passes the crypto gate (Step 1/2/3 all
+          // pass — verified directly). Firing Step 6 first lets it reach Stage-1/
+          // TGN before Step 5's catch flags that identity.
           const bool victimForwardScheduled = true;
           const bool hijackScheduled        = true;
-          const double victimForwardTime =
-              AttackMax(replayTime + 0.001,
-                        BSHH_S1_VICTIM_FORWARD_TIME + dt +
-                            AttackSampleSignedJitter(attack_time_jitter_s * 0.5));
           const double hijackTime =
-              AttackMax(victimForwardTime + 0.001,
+              AttackMax(replayTime + 0.001,
                         BSHH_S1_HIJACK_TIME + dt +
                             AttackSampleSignedJitter(attack_time_jitter_s * 0.5));
-          const double consequenceTime = hijackTime + 0.001;
+          const double victimForwardTime =
+              AttackMax(hijackTime + 0.001,
+                        BSHH_S1_VICTIM_FORWARD_TIME + dt +
+                            AttackSampleSignedJitter(attack_time_jitter_s * 0.5));
+          const double consequenceTime = victimForwardTime + 0.001;
 
           // STEP 1 — V2V heartbeat exchange
           Simulator::Schedule(Seconds(exchangeTime),
@@ -151546,7 +151651,9 @@ attack_mobility.Install(Vehicle_Nodes);
       BSHH_S2_InitLog();
 
       
+      static const double BSHH_S2_EARLIER_EXCHANGE_TIME = 2.0;
       static const double BSHH_S2_EXCHANGE_TIME = 5.0;
+      static const double BSHH_S2_SUPPRESS_TIME = 9.9;
       static const double BSHH_S2_REPLAY_TIME   = 10.0;
 
       uint32_t n_malicious_rsus2 =
@@ -151601,11 +151708,24 @@ attack_mobility.Install(Vehicle_Nodes);
 
           const double dt = (double)ri * 0.001;
 
+          // Earlier legitimate exchange (t=2) — captured as the "even-older"
+          // duplicate, genuinely distinct from the t=5 one below (thesis
+          // scenario 6: RSU injects an old stored heartbeat PLUS a second,
+          // even-older duplicate).
+          Simulator::Schedule(Seconds(BSHH_S2_EARLIER_EXCHANGE_TIME + dt),
+              &BSHH_S2_LegitimateExchange, vA_ns3, vB_ns3, rsu_ns3, BSHH_S2_EARLIER_EXCHANGE_TIME);
+          Simulator::Schedule(Seconds(BSHH_S2_EARLIER_EXCHANGE_TIME + 0.1 + dt),
+              &BSHH_S2_StoreEvenOlderHeartbeat, rsu_ns3, vA_ns3, BSHH_S2_EARLIER_EXCHANGE_TIME);
+
           Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt),
               &BSHH_S2_LegitimateExchange, vA_ns3, vB_ns3, rsu_ns3, BSHH_S2_EXCHANGE_TIME);
           // Store AFTER exchange (t=5.1), not at t=0
           Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + 0.1 + dt),
               &BSHH_S2_StoreOldHeartbeat, rsu_ns3, vA_ns3, BSHH_S2_EXCHANGE_TIME);
+          // Victim's genuine current heartbeat arrives just before replay —
+          // the malicious RSU suppresses it rather than forwarding it honestly.
+          Simulator::Schedule(Seconds(BSHH_S2_SUPPRESS_TIME + dt),
+              &BSHH_S2_SuppressCurrentHeartbeat, rsu_ns3, vA_ns3, BSHH_S2_SUPPRESS_TIME);
           Simulator::Schedule(Seconds(BSHH_S2_REPLAY_TIME + dt),
               &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, BSHH_S2_EXCHANGE_TIME);
 

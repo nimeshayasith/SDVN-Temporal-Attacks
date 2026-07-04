@@ -62,6 +62,7 @@ Timeline:
   [ctrl] TP/TN/FP/FN : 1 / 0 / 0 / 0
   [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
   MCC         : 1.000
+  [comb] TP/TN/FP/FN : 1 / 4 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 1.000
   ACR         : 100.000 %
   Tdet        : 0.000 ms
