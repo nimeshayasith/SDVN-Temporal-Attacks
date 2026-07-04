@@ -2683,10 +2683,27 @@ static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
 
 // Eq. 3.41: select active peer set P_active of size n_p = 7 by trust ranking.
 // E_t^trusted = ⋃_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_{n_k}(t) — Eq. 3.44.
+//
+// Controllers (registry C, Eq. 3.37) are explicitly excluded from this candidate
+// pool — they are a distinct population from the Fabric consensus peer set
+// P_active (RSU/OBU peers only, Eq. 3.41). Without this exclusion, a
+// controller's g_trust_table entry (registered at TRUST_TAU_TIER1_INIT=1.00 in
+// TrustInit(), same map OBUs live in) would pass TrustIsEligible/the tau>=
+// TRUST_TAU_GT_MIN check in TrustGetTrustedPeers() and — since it isn't in
+// RSU_Nodes either — get misclassified into the Tier-2 "trusted OBU" bucket,
+// making E_t^trusted look non-empty via the controller's own pre-vetted trust
+// regardless of whether any real vehicle ever bootstrapped trust. That would
+// silently mask whether TrustPeriodicRewardTick's OBU reward path is actually
+// doing anything for the TTW-S3/BSHH-S3/ME-S3 controller-divergence gate.
 static std::vector<uint32_t> TrustSelectActivePeers()
 {
     std::vector<std::pair<double, uint32_t>> cands;
     for (const auto& kv : g_trust_table) {
+        bool is_ctrl = false;
+        for (const auto& c : g_ctrl_table)
+            if (c.ctrl_ns3_id == kv.first) { is_ctrl = true; break; }
+        if (is_ctrl) continue;
+
         bool is_rsu = false;
         for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
             if (RSU_Nodes.Get(i)->GetId() == kv.first) { is_rsu = true; break; }
@@ -4940,6 +4957,41 @@ PemBshh3PresenceTick()
 
     if (now + PEM_BEACON_INTERVAL_S < simTime) {
         Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemBshh3PresenceTick);
+    }
+}
+
+// ── Trust reward tick (§3.4.11 Eq. 3.38 correct-participation branch) ───────
+// TrustUpdateNode(id, correct_participation, flagged) has always been called
+// with flagged=true (penalty branch) from every attack-detection call site —
+// there was no analogue of the chaincode's periodic updateTrust(peer, true,
+// false) reward step (UpdateTrustRound / runMitigation's TE-07 bump on
+// trust.go), so no peer's tau could ever rise off its Tier-2 init value
+// (0.10). That silently kept TrustGetTrustedPeers()'s tau >= TRUST_TAU_GT_MIN
+// (0.50) filter permanently unsatisfiable for OBUs in no-RSU deployments,
+// which in turn kept E_t^trusted (PemGetTrustedEvidence) permanently empty
+// and made PemComputeControllerDivergenceDelta count every controller-claimed
+// edge as divergent by definition — a structural false-positive source for
+// the TTW-S3/BSHH-S3/ME-S3 controller-divergence gate. This models "trust is
+// re-evaluated at every beacon interval" (Table 3.4 derivation: R_min=8 is
+// exactly (0.50-0.10)/0.05, i.e. it assumes a reward tick fires every round).
+//
+// Deliberately as lightweight as PemBshh3PresenceTick above — touches only
+// g_trust_table (no PemEmitEvent/ns.event_window interaction) — so it cannot
+// reproduce the Gap 13 regression documented there. Skips any peer already
+// TRUST_QUARANTINE/TRUST_REMOVED so a reward tick can never claw a flagged
+// attacker's trust back up; TrustUpdateNode's own flagged=true penalty path
+// (called separately, at detection time) remains the only way to demote.
+static void
+TrustPeriodicRewardTick()
+{
+    const double now = Simulator::Now().GetSeconds();
+    for (auto& kv : g_trust_table) {
+        if (kv.second.state != TRUST_ACTIVE) continue;
+        TrustUpdateNode(kv.first, /*correct_participation=*/true, /*flagged=*/false);
+    }
+
+    if (now + PEM_BEACON_INTERVAL_S < simTime) {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &TrustPeriodicRewardTick);
     }
 }
 
@@ -151908,6 +151960,14 @@ attack_mobility.Install(Vehicle_Nodes);
   // PemBshh3PresenceTick() for why. Started early (t=0.1) and at the paper's
   // 10 Hz so it's warm well before any scenario's first heartbeat (t=10.0).
   Simulator::Schedule(Seconds(0.1), &PemBshh3PresenceTick);
+
+  // ── Trust reward tick (Eq. 3.38 correct-participation branch) ───────────────
+  // Must run every scenario (not just no-RSU) so RSU/controller tau values
+  // stay saturated at 1.0 and so g_trust_table state matches what
+  // TrustGetTrustedPeers()/PemIsBootstrapComplete's arithmetic assumes.
+  // Started at the same t=0.1 as PemBshh3PresenceTick — see
+  // TrustPeriodicRewardTick()'s comment for why this was missing before.
+  Simulator::Schedule(Seconds(0.1), &TrustPeriodicRewardTick);
 
   // ── Issue 7 runtime PQC degradation notice ──────────────────────────────────
   // Emitted once per run alongside the build-time #pragma message above so the
