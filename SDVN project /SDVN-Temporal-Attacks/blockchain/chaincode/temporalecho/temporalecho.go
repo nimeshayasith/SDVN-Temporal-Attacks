@@ -243,32 +243,18 @@ func (t *TemporalEchoMitigator) SubmitLWDetectionResult(
 ) error {
 	callerTrust := loadTrust(ctx, callerPeerID)
 
-	// Bug fix: this function previously hard-required a Tier 1 RSU caller with
-	// no no-RSU exception, directly contradicting §3.1.3 ("Detection logic is
-	// embedded within each trusted node nk (RSU or designated OBU)") — the same
-	// principle already correctly implemented on the C++ simulation side
-	// (TetaGuardCryptoFilter runs identically per-trusted-node regardless of
-	// RSU/OBU). In a no-RSU deployment this made the LW path permanently
-	// uncallable by anyone. Mirrors the same SIM_NO_RSU_MODE-flag pattern used
-	// by CreateAnchorCheckpoint/SyncFromAnchorCheckpoint (anchor.go) and now
-	// ZeroTrust (trust.go).
-	noRSUFlag, _ := ctx.GetStub().GetState("SIM_NO_RSU_MODE")
-	noRSUMode := string(noRSUFlag) == "1"
-
-	if noRSUMode {
-		// Tier 2 / no-RSU mode: highest-trust eligible OBU may submit LW
-		// detection results, at the same ground-truth bar (τ ≥ τminGT) used
-		// elsewhere for evidence a mitigation decision gets built on.
-		if callerTrust.Score < TrustMinGT || callerTrust.Flagged {
-			return fmt.Errorf(
-				"SubmitLWDetectionResult (no-RSU): caller %s has insufficient trust (score=%.3f, need>=%.2f)",
-				callerPeerID, callerTrust.Score, TrustMinGT)
-		}
-	} else {
-		// Tier 1: verify caller is a Tier 1 RSU peer
-		if !callerTrust.IsRSUPeer || callerTrust.Score < TrustInitTier1-1e-9 {
-			return fmt.Errorf("SubmitLWDetectionResult: caller %s is not Tier 1 RSU", callerPeerID)
-		}
+	// Bug fix (2nd pass): gating the exception on the global SIM_NO_RSU_MODE
+	// flag was still wrong — it's a deployment-wide switch, but §3.1.3's
+	// "each trusted node nk (RSU or designated OBU)" is a per-caller property.
+	// In a mixed deployment (RSUs present), a legitimately-active, top-trust
+	// Tier 2 OBU sitting in the same active/consensus set as the RSUs
+	// (selectPeers fills np=8 slots by trust rank regardless of type) would
+	// still have been blocked here, since the flag is false whenever any RSU
+	// exists anywhere. Corrected to a single, unconditional per-caller check.
+	if !(callerTrust.IsRSUPeer || (callerTrust.Score >= TrustMinGT && !callerTrust.Flagged)) {
+		return fmt.Errorf(
+			"SubmitLWDetectionResult: unauthorised caller %s (not RSU, trust=%.3f < %.2f or flagged=%v)",
+			callerPeerID, callerTrust.Score, TrustMinGT, callerTrust.Flagged)
 	}
 
 	// ADD: verify signature

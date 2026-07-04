@@ -268,17 +268,20 @@ func (t *TemporalEchoMitigator) UpdateTrustRound(
 // ZeroTrust initiates the demotion pipeline for a peer on confirmed attack detection.
 // For RSU peers: demotes to QUARANTINED_CLIENT (Stage 1 of 3-stage pipeline).
 // For OBU/vehicle peers: zeroes trust immediately.
-// TR-04: restricted to Tier 1 RSU callers with a backing detection event.
+// TR-04: caller must be RSU-equivalent standing, with a backing detection event.
 //
-// Bug fix: in a no-RSU (Tier 2) deployment there are no Tier 1 RSU peers to
-// ever satisfy the check below, which made ZeroTrust permanently uncallable
-// by anyone — no peer could ever demote another. §3.1.3 of the thesis states
-// detection/enforcement logic runs on "each trusted node nk (RSU or
-// designated OBU)", the same principle already correctly implemented for
-// CreateAnchorCheckpoint/SyncFromAnchorCheckpoint (anchor.go). This mirrors
-// that same SIM_NO_RSU_MODE-flag pattern (the reliable one — see the comment
-// on selectPeers explaining why peer-existence scanning is not trustworthy
-// here) rather than introducing a third, different detection method.
+// Bug fix (2nd pass): the first fix gated the no-RSU exception on the global,
+// deployment-wide SIM_NO_RSU_MODE flag — which is false in a mixed deployment
+// (RSUs present) even when a specific caller is a legitimately-active,
+// top-trust Tier 2 OBU peer sitting in the same active/consensus set as the
+// RSUs (selectPeers ranks all eligible peers by trust and fills np=8 slots
+// regardless of type — e.g. 5 RSUs + 3 OBUs when both exist). That caller
+// would still have been blocked. §3.1.3 of the thesis is a per-node property
+// ("each trusted node nk (RSU or designated OBU)"), not a deployment-wide
+// switch — it doesn't say "only when no RSU exists anywhere." Corrected to a
+// single, unconditional per-caller check: RSU status always qualifies;
+// otherwise the caller's own trust must clear the ground-truth bar. This is
+// also simpler than the two-branch form it replaces.
 func (t *TemporalEchoMitigator) ZeroTrust(
 	ctx contractapi.TransactionContextInterface,
 	callerID string,
@@ -286,27 +289,10 @@ func (t *TemporalEchoMitigator) ZeroTrust(
 	detectionEventKey string,
 ) error {
 	caller := loadTrust(ctx, callerID)
-	noRSUFlag, _ := ctx.GetStub().GetState("SIM_NO_RSU_MODE")
-	noRSUMode := string(noRSUFlag) == "1"
-
-	if noRSUMode {
-		// Tier 2 / no-RSU mode: highest-trust eligible OBU may initiate
-		// demotion. Uses the same τ ≥ τminGT bar as CreateAnchorCheckpoint's
-		// no-RSU path — ZeroTrust is a consequential ledger-writing action
-		// (it can zero another peer's trust) with comparable downstream
-		// trust-chain impact to anchor-checkpoint creation, so it gets the
-		// stricter ground-truth threshold rather than the bare participation
-		// floor UpdateTrustRound uses for ordinary per-round trust nudges.
-		if caller.Score < TrustMinGT || caller.Flagged {
-			return fmt.Errorf(
-				"ZeroTrust (no-RSU): caller %s has insufficient trust (score=%.3f, need>=%.2f)",
-				callerID, caller.Score, TrustMinGT)
-		}
-	} else {
-		// TR-04: only Tier 1 RSU may initiate demotion
-		if !caller.IsRSUPeer || caller.Score < TrustInitTier1-1e-9 {
-			return fmt.Errorf("ZeroTrust: unauthorised caller %s", callerID)
-		}
+	if !(caller.IsRSUPeer || (caller.Score >= TrustMinGT && !caller.Flagged)) {
+		return fmt.Errorf(
+			"ZeroTrust: unauthorised caller %s (not RSU, trust=%.3f < %.2f or flagged=%v)",
+			callerID, caller.Score, TrustMinGT, caller.Flagged)
 	}
 	// TR-04: require a backing detection event
 	data, err := ctx.GetStub().GetState(detectionEventKey)
@@ -409,7 +395,11 @@ func monitorAndRemovePeer(ctx contractapi.TransactionContextInterface, peerID st
 }
 
 // DemotePeerToClient is the public chaincode function for the demotion pipeline.
-// Called by trusted RSU peers when a consortium peer is confirmed malicious.
+// Called by a trusted node — an RSU, or a Tier 2 OBU with RSU-equivalent
+// standing (τ ≥ τminGT, not flagged) — when a consortium peer is confirmed
+// malicious. Same bug/fix as ZeroTrust above: this entry point was missed in
+// the first pass and had no no-RSU exception at all (not even the incomplete
+// global-flag version) — in a no-RSU deployment it was uncallable by anyone.
 func (t *TemporalEchoMitigator) DemotePeerToClient(
 	ctx contractapi.TransactionContextInterface,
 	callerID string,
@@ -417,8 +407,10 @@ func (t *TemporalEchoMitigator) DemotePeerToClient(
 	detectionEventKey string,
 ) error {
 	caller := loadTrust(ctx, callerID)
-	if !caller.IsRSUPeer || caller.Score < TrustInitTier1-1e-9 {
-		return fmt.Errorf("DemotePeerToClient: unauthorised caller %s", callerID)
+	if !(caller.IsRSUPeer || (caller.Score >= TrustMinGT && !caller.Flagged)) {
+		return fmt.Errorf(
+			"DemotePeerToClient: unauthorised caller %s (not RSU, trust=%.3f < %.2f or flagged=%v)",
+			callerID, caller.Score, TrustMinGT, caller.Flagged)
 	}
 	data, err := ctx.GetStub().GetState(detectionEventKey)
 	if err != nil || data == nil {
