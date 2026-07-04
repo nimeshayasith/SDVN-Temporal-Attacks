@@ -726,6 +726,14 @@ static uint64_t g_tgn_stage0_blocked_attacks = 0;
 // Split metrics: controller-sentinel origin (physical_sender_id==9999) vs behavioral (vehicle/RSU)
 static uint64_t g_tgn_tp_ctrl = 0, g_tgn_tn_ctrl = 0, g_tgn_fp_ctrl = 0, g_tgn_fn_ctrl = 0;
 static uint64_t g_tgn_tp_beh  = 0, g_tgn_tn_beh  = 0, g_tgn_fp_beh  = 0, g_tgn_fn_beh  = 0;
+// Controller-origin attacks caught ONLY by the blockchain divergence audit
+// (TGN_CheckControllerDivergence), i.e. TGN's own inline score never crossed
+// theta_FS for these. Tracked as a SEPARATE detection mechanism's count —
+// never folded into g_tgn_tp/g_tgn_tp_ctrl. Reviewer note: "If the TGN missed
+// a controller-origin attack but the divergence detector caught it, do NOT
+// count that as a TGN true positive in your MCC calculation. Count it as a
+// TGN false negative and as a divergence mechanism detection separately."
+static uint64_t g_tgn_divergence_only_detections = 0;
 static double   g_tgn_first_alert_time  = -1.0;
 static double   g_tgn_attack_start_time = -1.0;
 static std::vector<double> g_tgn_pos_scores, g_tgn_neg_scores;
@@ -1628,7 +1636,7 @@ static void TGN_WriteSummary()
     sum << "attack_scenario,attack_name,tp,tn,fp,fn,mcc,acr_pct,precision,recall,"
         << "tdet_ms,auroc,theta_fs,theta_mcc_optimal,dim,layers,n_rsu,gamma,wmax,"
         << "ctrl_tp,ctrl_tn,ctrl_fp,ctrl_fn,beh_tp,beh_tn,beh_fp,beh_fn,"
-        << "stage0_blocked_attacks,e_trusted_n,blind_window\n"
+        << "stage0_blocked_attacks,e_trusted_n,blind_window,divergence_only_detections\n"
         << std::fixed << std::setprecision(3)
         << attack_scenario << ",\"" << TGN_AttackName(attack_scenario) << "\","
         << g_tgn_tp << "," << g_tgn_tn << "," << g_tgn_fp << "," << g_tgn_fn << ","
@@ -1641,8 +1649,13 @@ static void TGN_WriteSummary()
         << g_tgn_tp_beh  << "," << g_tgn_tn_beh  << "," << g_tgn_fp_beh  << "," << g_tgn_fn_beh
         << "," << g_tgn_stage0_blocked_attacks
         << "," << g_tgn_E_trusted_n
-        << "," << (g_tgn_E_was_ever_nonempty ? 0 : 1) << "\n";
+        << "," << (g_tgn_E_was_ever_nonempty ? 0 : 1)
+        << "," << g_tgn_divergence_only_detections << "\n";
         // blind_window=1 means E_t^trusted was ALWAYS empty (full startup blind window)
+        // divergence_only_detections: controller-origin attacks caught SOLELY by the
+        // blockchain divergence audit (TGN's own score never crossed theta_FS for
+        // these) — already excluded from tp/ctrl_tp above; report this separately,
+        // never add it into the TGN MCC calculation.
     sum.close();
 
     std::ostringstream out;
@@ -1666,6 +1679,9 @@ static void TGN_WriteSummary()
         << "  |E_t^trusted|  : " << g_tgn_E_trusted_n
         << (g_tgn_E_was_ever_nonempty ? "" : "  [BLIND WINDOW — E_t^trusted=∅ throughout]")
         << "\n"
+        << "  Divergence-only detections: " << g_tgn_divergence_only_detections
+        << "  [controller-origin attacks TGN itself missed but the blockchain"
+        << " divergence audit caught — NOT counted in TGN TP/MCC above]\n"
         << "============================================================\n";
     std::cout << out.str();
     if (g_tgn_summary_txt.is_open()) { g_tgn_summary_txt << out.str(); g_tgn_summary_txt.flush(); }
@@ -2161,14 +2177,12 @@ static void TGN_RunPipeline()
                               << std::defaultfloat << ")\n";
                     const uint32_t ndiv = TGN_CheckControllerDivergence(E_trusted);
                     if (ndiv > 0) {
-                        // Divergence = controller-origin TP via ledger audit.
-                        // Convert outstanding ctrl FNs to TPs (inline path may have
-                        // scored them below threshold before divergence was computable).
-                        const uint64_t conv = std::min((uint64_t)ndiv, g_tgn_fn_ctrl);
-                        g_tgn_tp_ctrl += conv;   g_tgn_fn_ctrl -= conv;
-                        g_tgn_tp      += conv;   g_tgn_fn      -= conv;
-                        if (g_tgn_first_alert_time < 0.0)
-                            g_tgn_first_alert_time = g_tgn_attack_start_time;
+                        // Divergence caught controller-origin attack(s) that TGN's own
+                        // inline score missed (still counted in g_tgn_fn_ctrl/g_tgn_fn).
+                        // Do NOT convert these to TGN true positives — that would credit
+                        // the blockchain divergence audit's catch to the TGN model's own
+                        // MCC. Track as a separate mechanism's detection count instead.
+                        g_tgn_divergence_only_detections += ndiv;
                     }
                 }
             } else {
@@ -2176,11 +2190,11 @@ static void TGN_RunPipeline()
                           << " (Tier 1: all RSU-reported events, tau_k=1)\n";
                 const uint32_t ndiv = TGN_CheckControllerDivergence(E_trusted);
                 if (ndiv > 0) {
-                    const uint64_t conv = std::min((uint64_t)ndiv, g_tgn_fn_ctrl);
-                    g_tgn_tp_ctrl += conv;   g_tgn_fn_ctrl -= conv;
-                    g_tgn_tp      += conv;   g_tgn_fn      -= conv;
-                    if (g_tgn_first_alert_time < 0.0)
-                        g_tgn_first_alert_time = g_tgn_attack_start_time;
+                    // See comment above — do not convert to TGN TP; count separately.
+                    // Also do not set g_tgn_first_alert_time here — that feeds TGN's
+                    // own Tdet metric, which should reflect only what TGN itself
+                    // detected, not the divergence audit's catch.
+                    g_tgn_divergence_only_detections += ndiv;
                 }
             }
         }
