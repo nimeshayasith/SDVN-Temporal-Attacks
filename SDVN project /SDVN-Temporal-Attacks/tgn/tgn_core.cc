@@ -720,6 +720,11 @@ static std::map<uint32_t, std::map<std::string, std::set<uint32_t>>> g_tgn_link_
 static std::map<uint32_t, std::map<uint32_t, std::vector<double>>>   g_tgn_beacon_windows;
 
 static uint64_t g_tgn_tp = 0, g_tgn_tn = 0, g_tgn_fp = 0, g_tgn_fn = 0;
+// Combined-layer metric: alert = (LW signature detector OR TGN score) fired.
+// TGN's own tp/fn above only count tgn_alert; this tracks what the overall
+// crypto+LW+TGN pipeline actually catches, since LW (e.alert_raised, Stage-1
+// Algorithm 1 signatures) can independently flag events TGN's score misses.
+static uint64_t g_comb_tp = 0, g_comb_tn = 0, g_comb_fp = 0, g_comb_fn = 0;
 // Attack events caught at Stage 0 (crypto pre-filter) — never reached TGN.
 // Incremented in PemEmitEvent's Stage-0 drop branch (routing.cc).
 static uint64_t g_tgn_stage0_blocked_attacks = 0;
@@ -1432,6 +1437,11 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
             g_tgn_neg_scores.push_back(tgn_score);
         }
 
+        // Combined LW+TGN metric — alert if EITHER layer fired independently.
+        const bool comb_alert = e.alert_raised || tgn_alert;
+        if (e.attack_label) { if (comb_alert) ++g_comb_tp; else ++g_comb_fn; }
+        else                { if (comb_alert) ++g_comb_fp; else ++g_comb_tn; }
+
         const bool is_ctrl = (e.physical_sender_id == 9999u);
         if (e.attack_label) {
             if (tgn_alert) { if (is_ctrl) ++g_tgn_tp_ctrl; else ++g_tgn_tp_beh; }
@@ -1632,11 +1642,21 @@ static void TGN_WriteSummary()
     // In production, this sweep runs on held-out validation data (tgn_train.py).
     double theta_opt = TGN_ComputeOptimalTheta();
 
+    // Combined LW+TGN metric (alert = e.alert_raised OR tgn_alert) — reflects
+    // what the overall crypto+LW+TGN pipeline actually catches, since LW can
+    // independently flag events TGN's own score misses (and vice versa).
+    // Reported alongside, never blended into the TGN-only tp/fn/mcc above.
+    double ctp=(double)g_comb_tp, ctn=(double)g_comb_tn,
+           cfp=(double)g_comb_fp, cfn=(double)g_comb_fn;
+    double cdenom = std::sqrt((ctp+cfp)*(ctp+cfn)*(ctn+cfp)*(ctn+cfn));
+    double cmcc   = cdenom > 0.0 ? (ctp*ctn - cfp*cfn) / cdenom : 0.0;
+
     std::ofstream sum("tgn_summary.csv");
     sum << "attack_scenario,attack_name,tp,tn,fp,fn,mcc,acr_pct,precision,recall,"
         << "tdet_ms,auroc,theta_fs,theta_mcc_optimal,dim,layers,n_rsu,gamma,wmax,"
         << "ctrl_tp,ctrl_tn,ctrl_fp,ctrl_fn,beh_tp,beh_tn,beh_fp,beh_fn,"
-        << "stage0_blocked_attacks,e_trusted_n,blind_window,divergence_only_detections\n"
+        << "stage0_blocked_attacks,e_trusted_n,blind_window,divergence_only_detections,"
+        << "comb_tp,comb_tn,comb_fp,comb_fn,comb_mcc\n"
         << std::fixed << std::setprecision(3)
         << attack_scenario << ",\"" << TGN_AttackName(attack_scenario) << "\","
         << g_tgn_tp << "," << g_tgn_tn << "," << g_tgn_fp << "," << g_tgn_fn << ","
@@ -1650,7 +1670,8 @@ static void TGN_WriteSummary()
         << "," << g_tgn_stage0_blocked_attacks
         << "," << g_tgn_E_trusted_n
         << "," << (g_tgn_E_was_ever_nonempty ? 0 : 1)
-        << "," << g_tgn_divergence_only_detections << "\n";
+        << "," << g_tgn_divergence_only_detections
+        << "," << g_comb_tp << "," << g_comb_tn << "," << g_comb_fp << "," << g_comb_fn << "," << cmcc << "\n";
         // blind_window=1 means E_t^trusted was ALWAYS empty (full startup blind window)
         // divergence_only_detections: controller-origin attacks caught SOLELY by the
         // blockchain divergence audit (TGN's own score never crossed theta_FS for
@@ -1667,6 +1688,8 @@ static void TGN_WriteSummary()
         << "  [ctrl] TP/TN/FP/FN : " << g_tgn_tp_ctrl<<" / "<<g_tgn_tn_ctrl<<" / "<<g_tgn_fp_ctrl<<" / "<<g_tgn_fn_ctrl<<"\n"
         << "  [beh]  TP/TN/FP/FN : " << g_tgn_tp_beh <<" / "<<g_tgn_tn_beh <<" / "<<g_tgn_fp_beh <<" / "<<g_tgn_fn_beh <<"\n"
         << "  MCC         : " << mcc   << "\n"
+        << "  [comb] TP/TN/FP/FN : " << g_comb_tp<<" / "<<g_comb_tn<<" / "<<g_comb_fp<<" / "<<g_comb_fn
+        << "   MCC=" << cmcc << "  [LW-signature OR TGN-score — overall pipeline detection]\n"
         << "  AUROC       : " << auroc << "\n"
         << "  ACR         : " << acr   << " %\n"
         << "  Tdet        : " << tdet  << " ms\n"
@@ -2083,6 +2106,13 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     } else {
         if (tgn_alert) ++g_tgn_fp; else ++g_tgn_tn;
         g_tgn_neg_scores.push_back(tgn_score);
+    }
+
+    // Combined LW+TGN metric — alert if EITHER layer fired independently.
+    {
+        const bool comb_alert = e.alert_raised || tgn_alert;
+        if (e.attack_label) { if (comb_alert) ++g_comb_tp; else ++g_comb_fn; }
+        else                { if (comb_alert) ++g_comb_fp; else ++g_comb_tn; }
     }
 
     const bool is_ctrl = (e.physical_sender_id == 9999u);

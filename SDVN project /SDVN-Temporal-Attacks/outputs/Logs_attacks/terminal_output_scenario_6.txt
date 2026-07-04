@@ -29,31 +29,39 @@ Stored HB time : t=5 (from legitimate exchange)
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 2/2 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[BSHH-S2][t=2.000]  V0(ns3=5) --DSRC--> RSU0(ns3=7) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=2.000)  ACCEPTED
+[BSHH-S2][t=2.000]  V1(ns3=6) --DSRC--> RSU0(ns3=7) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=2.000)  ACCEPTED
+Current neighbor size is 0Received packet from 7 of size 12packet timestamp 2.000s with delay 1ms
+[BSHH-S2][t=2.100]  RSU0(ns3=7) stored EVEN-OLDER heartbeat  Heartbeat(V0(ns3=5), t=2.000)  (second duplicate for replay at t=10)
 [BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=7) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
 [BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=7) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
 Current neighbor size is 0Received packet from 7 of size 12packet timestamp 5.000s with delay 1ms
 [BSHH-S2][t=5.100]  RSU0(ns3=7) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
+[BSHH-S2][t=9.900]  RSU0(ns3=7) SUPPRESSES genuine current heartbeat from V0(ns3=5) (t=9.900)  — never forwarded
 [BSHH-S2][t=10.000]  RSU0(ns3=7) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V7, claimed=V0(ns3=5), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=10.000]  RSU0(ns3=7) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V7, claimed=V0(ns3=5), t=2.000)
 [BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 2/2 >= t=2 -> PASS
 [BSHH-S2][t=10.000]  FS-MITIGATE ABORTED (gate failed)  attacker=V7
+Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.000s with delay 1ms
 Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.000s with delay 1ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
-[TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
+[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 3 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 6 — BSHH-S2: Malicious RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  TP/TN/FP/FN : 0 / 4 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
   MCC         : 0.000
+  [comb] TP/TN/FP/FN : 0 / 4 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 0.500
   ACR         : 100.000 %
   Tdet        : -1.000 ms
@@ -61,8 +69,8 @@ Current neighbor size is 0Received packet from 7 of size 12packet timestamp 10.0
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
   W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 2
-  Stage-0 blocked (attacks): 1
+  Events      : 4
+  Stage-0 blocked (attacks): 2
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
