@@ -716,6 +716,19 @@ static tgn::TGNParams    g_tgn_params;
 // present. Scoping by event type means a topology report's timestamp is only
 // ever compared against a prior topology report's, and likewise for heartbeats.
 static std::map<uint32_t, std::map<PemEventType, std::map<uint32_t, double>>> g_tgn_last_sender_ts;
+// Genuine sequence-number watermark (Eq. 3.20 Δs_v, TTW family only — see
+// PemEvent::claimed_seq_no / g_vehicle_next_seq_no in routing.cc). Keyed by
+// trusted_node_id -> claimed_sender_id -> highest sequence number ever seen
+// from that sender (never regresses, so a replay of an old/stale number is
+// flagged even if it exactly repeats the last real one). Deliberately NOT
+// keyed by event type or link: TTW's forged-fresh sender_timestamp is
+// monotonic by construction and so can never trip g_tgn_last_sender_ts's
+// regression check (see routing.cc's TTW_RunReplayDetection comment); this
+// watermark is the real countermeasure the thesis's Eq. 3.20 commentary
+// specifies in its place. Events that don't populate claimed_seq_no (BSHH,
+// ME) are untouched — TGN_ExtractFeatures falls back to the legacy
+// g_tgn_last_sender_ts path for them exactly as before.
+static std::map<uint32_t, std::map<uint32_t, uint64_t>> g_tgn_last_claimed_seq;
 static std::map<uint32_t, std::map<std::string, std::set<uint32_t>>> g_tgn_link_reporters;
 static std::map<uint32_t, std::map<uint32_t, std::vector<double>>>   g_tgn_beacon_windows;
 
@@ -852,12 +865,28 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     auto& win = g_tgn_beacon_windows[trusted_node_id][e.claimed_sender_id];
     f.beacon_count = (double)win.size();
 
-    // Δs_v — backward timestamp regression magnitude (TTW-S2 signal).
-    // Scoped by event type (see g_tgn_last_sender_ts declaration): a topology
-    // report's sender_timestamp is only ever compared against a prior topology
-    // report's, never against an interleaved heartbeat's, since those are
-    // independent streams even under benign operation.
+    // Δs_v (Eq 3.20) — TTW family: genuine sequence-number regression.
+    // routing.cc's TTW attack legs forge sender_timestamp = Simulator::Now(),
+    // which is monotonic by construction, so a wall-clock regression check
+    // can never fire against it (see TTW_RunReplayDetection's comment). The
+    // thesis specifies Δs_v as an independent sequence number for exactly
+    // this reason: the attacker can only resend a previously-issued number
+    // (PemEvent::claimed_seq_no), never mint a current one, so a replay is
+    // visible even when it exactly repeats the last real value (<=, not <).
+    // e.claimed_seq_no == UINT64_MAX (sentinel) means the caller hasn't been
+    // wired for this yet (BSHH heartbeats, ME echoes) — those fall back to
+    // the legacy sender_timestamp-regression check, unchanged.
     f.seq_gap = 0.0;
+    if (e.claimed_seq_no != UINT64_MAX)
+    {
+        auto& last_seq = g_tgn_last_claimed_seq[trusted_node_id];
+        auto it = last_seq.find(e.claimed_sender_id);
+        if (it != last_seq.end() && e.claimed_seq_no <= it->second)
+            f.seq_gap = (double)(it->second - e.claimed_seq_no) + 1.0;
+        if (it == last_seq.end() || e.claimed_seq_no > it->second)
+            last_seq[e.claimed_sender_id] = e.claimed_seq_no;
+    }
+    else
     {
         auto& last_ts = g_tgn_last_sender_ts[trusted_node_id][e.type];
         auto it = last_ts.find(e.claimed_sender_id);

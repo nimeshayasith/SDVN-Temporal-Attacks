@@ -1301,6 +1301,9 @@ double TTW_HELLO_TIME  = 10.0;   // t=10: HELLO exchange  (overridable via --ttw
 double TTW_LINK_BREAK  = 15.0;   // t=15: physical link breaks (overridable via --ttw_link_break)
 double TTW_REPLAY_TIME = 20.0;   // t=20: attacker replays   (overridable via --ttw_replay_time)
 static const double TTW_DETECTION_DELAY_MS = 50.0; // PEM fires 50ms after replay
+// TTW-S1 (Option B): how long after a pair's REAL, SUMO-derived link break
+// the attacker fires its replay (replaces the old fixed TTW_REPLAY_TIME).
+static const double TTW_S1_REPLAY_MARGIN_S = 2.0;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // §3.4.1 — TEMPORAL-ECHO ATTACK FORMALIZATION
@@ -1395,6 +1398,15 @@ uint32_t ttws3_completed_pairs    = 0;
 uint32_t ttws4_total_pairs        = 0;
 uint32_t ttws4_completed_pairs    = 0;
 double   ttw_physical_break_time  = 0.0; // computed in main() after cmd.Parse
+
+// TTW-S1 (Option B): real SUMO trajectory, hoisted from the trace-parsing
+// block in main() so the S1 attacker/victim natural-break search can read it.
+// Keyed by Vehicle_Nodes container index (same space as attacker_cidx/victim_cidx),
+// not the ns-3 global node ID.
+struct SumoWaypoint { double t, x, y; };
+std::map<uint32_t, std::vector<SumoWaypoint>> g_sumo_wp_map;
+std::map<uint32_t, Vector> g_sumo_initial_pos;
+bool g_sumo_trace_loaded = false;
 
 // S2: RSU intercepts RSU_dataunicast_agent
 bool     ttw_s2_attack_active    = false;
@@ -5339,6 +5351,67 @@ static Ptr<Node> GetVehicleByNs3Id(uint32_t ns3_id) {
     return nullptr;
 }
 
+// ── TTW-S1 (Option B): real-SUMO natural link-break discovery ───────────────
+// g_sumo_wp_map/g_sumo_initial_pos are populated once, in main(), while the
+// SUMO .tcl trace is parsed (before any attack scheduling runs). These
+// helpers let the S1 attacker/victim pairing search the REAL trajectory
+// instead of assuming a synthetic converge/diverge model.
+
+// Interpolated real SUMO position of vehicle `cidx` (Vehicle_Nodes container
+// index) at time `t`, mirroring exactly what the simulator's
+// ConstantVelocityMobilityModel will do (position snap at each waypoint,
+// linear fill toward the next one).
+static Vector TtwSumoPositionAt(uint32_t cidx, double t)
+{
+    Vector base = g_sumo_initial_pos.count(cidx) ? g_sumo_initial_pos[cidx] : Vector(0.0, 0.0, 0.0);
+    auto it = g_sumo_wp_map.find(cidx);
+    if (it == g_sumo_wp_map.end() || it->second.empty() || t <= it->second.front().t)
+        return base;
+    const auto& wps = it->second;
+    for (size_t i = 0; i + 1 < wps.size(); i++) {
+        if (t >= wps[i].t && t <= wps[i + 1].t) {
+            double dt = wps[i + 1].t - wps[i].t;
+            double frac = dt > 1e-9 ? (t - wps[i].t) / dt : 0.0;
+            return Vector(wps[i].x + frac * (wps[i + 1].x - wps[i].x),
+                          wps[i].y + frac * (wps[i + 1].y - wps[i].y), 0.0);
+        }
+    }
+    return Vector(wps.back().x, wps.back().y, 0.0);
+}
+
+// Result of scanning a candidate attacker/victim pair's real trajectories
+// for a genuine communication-range break.
+struct TtwBreakEval {
+    bool   found          = false;
+    double breakTime      = 0.0;  // first time distance exceeds commRange
+    double brokenDuration = 0.0;  // total time spent beyond commRange in the window
+    double maxDist        = 0.0;  // largest separation reached beyond commRange
+};
+
+// Requires the pair to be within commRange at helloTime (so HELLO/topology
+// discovery is physically plausible), then scans [searchStart, searchEnd]
+// for how genuinely the link gets severed afterward.
+static TtwBreakEval TtwEvaluateNaturalBreak(uint32_t attackerCidx, uint32_t victimCidx,
+                                             double helloTime, double searchStart, double searchEnd,
+                                             double commRange, double stepSec)
+{
+    TtwBreakEval r;
+    if (PemDistance2d(TtwSumoPositionAt(attackerCidx, helloTime),
+                       TtwSumoPositionAt(victimCidx, helloTime)) > commRange)
+        return r;  // not in range at HELLO time -> not a viable candidate
+
+    for (double t = searchStart; t <= searchEnd; t += stepSec) {
+        double d = PemDistance2d(TtwSumoPositionAt(attackerCidx, t),
+                                  TtwSumoPositionAt(victimCidx, t));
+        if (d > commRange) {
+            if (!r.found) { r.found = true; r.breakTime = t; }
+            r.brokenDuration += stepSec;
+            r.maxDist = std::max(r.maxDist, d);
+        }
+    }
+    return r;
+}
+
 void TTW_InitLog()
 {
     ttw_log.open(BuildLogPath("ttw_attack_scenario4.txt"), std::ios::out | std::ios::trunc);
@@ -5458,7 +5531,7 @@ void TTW_SendTopologyUpdate(Ptr<Node> vehicle, uint32_t seen_id, double obs_time
 }
 
 // ── STEP 3: Attacker stores own packet ───────────────────────────────────────
-void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
+void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time, double real_break_time)
 {
     double now = Simulator::Now().GetSeconds();
 
@@ -5467,6 +5540,7 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
 
 	ttw_stored_packets[src_id] = {src_id, dst_id, obs_time, false};
 
+    const double expectedReplayTime = real_break_time + TTW_S1_REPLAY_MARGIN_S;
 
     NS_LOG_INFO("[TTW-S4] t=" << now << "s  STEP-3 PACKET STORED"
                 << "  old_packet=<V" << src_id << " sees V" << dst_id
@@ -5474,19 +5548,18 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time)
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S1][t=" << now << "]  V" << src_id
               << " stored old packet <V" << src_id << " sees V" << dst_id
-              << ", t=" << obs_time << ">  (will replay at t=" << TTW_REPLAY_TIME << ")" << std::endl;
+              << ", t=" << obs_time << ">  (will replay at t~=" << expectedReplayTime << ")" << std::endl;
 
     ttw_log << "[t=" << now << "]  STEP ③  ATTACKER STORES PACKET\n"
             << "  old_packet : <V" << src_id << " sees V" << dst_id
             << ", t=" << obs_time << ">\n"
-            << "  Status     : Stored — awaiting replay at t="
-            << TTW_REPLAY_TIME << "\n\n"
+            << "  Status     : Stored — awaiting replay at t~="
+            << expectedReplayTime << "\n\n"
             << "  NOTE: Link V" << src_id << "<->V" << dst_id
-            << " physically breaks at t≈" << std::fixed << std::setprecision(1)
-            << ttw_physical_break_time << "s"
+            << " physically breaks (real SUMO trajectory) at t="
+            << std::fixed << std::setprecision(3) << real_break_time << "s"
             << " (dist > " << TTW_COMM_RANGE << "m)\n"
-            << "  Simulation declares it broken at t=" << TTW_LINK_BREAK
-            << "s — controller receives no link-down notification.\n\n"
+            << "  Controller receives no link-down notification.\n\n"
             << std::setprecision(3);
 }
 
@@ -5579,7 +5652,7 @@ void TTW_L3_Done(uint32_t, uint32_t, double)
 
 void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
                       uint32_t  src_id,   uint32_t  dst_id,
-                      double    forged_time)
+                      double    forged_time, double real_break_time)
 {
     double now = Simulator::Now().GetSeconds();
 
@@ -5607,7 +5680,7 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
             << "  Forged packet : <V" << src_id << " sees V" << dst_id
             << ", t=" << forged_time << ">  timestamp changed " << stored_ts << " -> " << forged_time << "\n"
             << "  Forge action  : attacker changes timestamp to appear current, sends to controller at t=" << now
-            << " — link has been broken since t≈" << ttw_physical_break_time << "s\n"
+            << " — link has been broken since t=" << real_break_time << "s (real SUMO trajectory)\n"
             << "  Physical link distance : " << dist << " m  "
             << (dist > TTW_COMM_RANGE ? "BROKEN\n\n" : "WARNING still in range!\n\n");
 
@@ -5659,7 +5732,7 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
         ttw_log << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
             << "  Controller believes V" << src_id << "<->V" << dst_id
             << " was ACTIVE at t=" << forged_time
-            << " (forged entry — link broken since t≈" << ttw_physical_break_time << "s)\n"
+            << " (forged entry — link broken since t=" << real_break_time << "s)\n"
             << "  Physical reality : link "
             << (linkPhysicallyBroken ? "BROKEN" : "ACTIVE")
             << " (dist=" << dist << "m)\n"
@@ -148485,57 +148558,13 @@ static int RoutingMain(int argc, char *argv[])
   }
   else if (attack_scenario == 1)
   {
-      // TTW-S1: Malicious Vehicle, No RSU
-      // V0 (attacker) starts at x=200, moves right slowly  (+3 m/s)
-      // V1 (victim)   starts at x=100, moves left  fast   (-13 m/s)
-      // Relative separation rate = 16 m/s  →  initial gap = 100 m
-      // At t=10: gap = 260 m  (IN range,  HELLO works)
-      // At t=15: gap = 340 m  (OUT of range, link breaks)
-      // At t=20: gap = 420 m  (confirmed broken before replay)
+      // TTW-S1 (Option B): let vehicles follow their REAL SUMO trajectories —
+      // no synthetic converge/diverge mobility override. The attacker/victim
+      // pairing and the real link-break time are discovered later, once the
+      // SUMO trace has been parsed (see g_sumo_wp_map / TtwEvaluateNaturalBreak
+      // and the S1 scheduling block below). Vehicles get their one and only
+      // mobility model from the unconditional SUMO-trace install further down.
       Vehicle_Nodes.Create(N_Vehicles);
-
-      MobilityHelper attack_mobility;
-      attack_mobility.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
-
-      // Ptr<ListPositionAllocator> attackPosAlloc = CreateObject<ListPositionAllocator>();
-      // attackPosAlloc->Add(Vector(300.0, ttw_att_x0, 0.0));  // V0 attacker — x=300 fixed, y=ttw_att_x0
-      // attackPosAlloc->Add(Vector(200.0, ttw_vic_x0, 0.0));  // V1 victim   — x=200 fixed, y=ttw_vic_x0
-      // attack_mobility.SetPositionAllocator(attackPosAlloc);
-      // attack_mobility.Install(Vehicle_Nodes);
-      Ptr<ListPositionAllocator> attackPosAlloc = CreateObject<ListPositionAllocator>();
-{
-    uint32_t att_idx = 0, vic_idx = 0;
-    for (uint32_t k = 0; k < N_Vehicles; k++)
-    {
-        if (ttw_malicious_nodes[k])
-        {
-            // Attacker column x=300, spread vertically 200m per node
-            attackPosAlloc->Add(Vector(300.0, ttw_att_x0 + att_idx * 200.0, 0.0));
-            att_idx++;
-        }
-        else
-        {
-            // Victim column x=170, spread vertically 200m per node
-            attackPosAlloc->Add(Vector(170.0, ttw_vic_x0 + vic_idx * 200.0, 0.0));
-            vic_idx++;
-        }
-    }
-}
-attack_mobility.SetPositionAllocator(attackPosAlloc);
-attack_mobility.Install(Vehicle_Nodes);
-
-
-      // V0 moves right slowly (+ttw_att_speed)
-      Ptr<ConstantVelocityMobilityModel> mob_v0 =
-          DynamicCast<ConstantVelocityMobilityModel>(
-              Vehicle_Nodes.Get(malicious_vehicle_id)->GetObject<MobilityModel>());
-      mob_v0->SetVelocity(Vector(0.0, ttw_att_speed, 0.0));   // moves DOWN (y+)
-
-      // V1 moves left fast (-ttw_vic_speed) — moves out of range by TTW_LINK_BREAK
-      Ptr<ConstantVelocityMobilityModel> mob_v1 =
-          DynamicCast<ConstantVelocityMobilityModel>(
-              Vehicle_Nodes.Get(victim_neighbor_id)->GetObject<MobilityModel>());
-      mob_v1->SetVelocity(Vector(0.0, -ttw_vic_speed, 0.0));  // moves UP (y-)
   }
   else if (attack_scenario == 2 || attack_scenario == 3 || attack_scenario == 4)
   {
@@ -149204,9 +149233,24 @@ attack_mobility.Install(Vehicle_Nodes);
       }
       std::cout<<"[SUMO] Loaded "<<sumo_x.size()<<" positions, scheduled "
                <<total_wps<<" exact position+velocity events\n";
-      if (attack_scenario != 0)
+      if (attack_scenario != 0 && attack_scenario != 1)
           std::cout<<"[SUMO] Attack "<<attack_scenario
                    <<": attacker/victim positions overridden by attack setup.\n";
+
+      // TTW-S1 (Option B): hoist the parsed trajectory to file scope so the
+      // S1 attacker/victim natural-break search (later in this function) can
+      // read real per-vehicle positions over time.
+      for (const auto& kv : wp_map) {
+          std::vector<SumoWaypoint> converted;
+          converted.reserve(kv.second.size());
+          for (const auto& wp : kv.second) converted.push_back({wp.t, wp.x, wp.y});
+          g_sumo_wp_map[(uint32_t)kv.first] = std::move(converted);
+      }
+      for (const auto& kv : sumo_x) {
+          double py = sumo_y.count(kv.first) ? sumo_y[kv.first] : 0.0;
+          g_sumo_initial_pos[(uint32_t)kv.first] = Vector(kv.second, py, 0.0);
+      }
+      g_sumo_trace_loaded = true;
   }
   else if (routing_test == false)
   {
@@ -150859,137 +150903,169 @@ attack_mobility.Install(Vehicle_Nodes);
       std::cout << "Activation probability : " << attack_activation_probability << std::endl;
       std::cout << "Replay jitter window   : +/-" << attack_time_jitter_s << " s" << std::endl;
       std::cout << "Support evidence prob. : " << attack_support_evidence_probability << std::endl;
-      std::cout << "Timeline:" << std::endl;
-      std::cout << "  t=10s  STEP 1+2 : V2V HELLO + topology updates to controller" << std::endl;
-      std::cout << "  t=10s  STEP 3   : Each attacker stores old packet" << std::endl;
-      std::cout << "  t=15s           : Physical links break" << std::endl;
-      std::cout << "  t=20s  STEP 4+5 : Each attacker replays forged packet" << std::endl;
-      std::cout << "  t=20s  STEP 6   : Controller has wrong topology" << std::endl;
+      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
+      std::cout << "  t=10s     STEP 1+2 : V2V HELLO + topology updates to controller" << std::endl;
+      std::cout << "  t=10.2s   STEP 3   : Each attacker stores old packet" << std::endl;
+      std::cout << "  [per-pair]         : Physical link breaks whenever that pair's real"
+                   " SUMO trajectory naturally exceeds " << TTW_COMM_RANGE << " m" << std::endl;
+      std::cout << "  [per-pair]         : Attacker replays forged packet " << TTW_S1_REPLAY_MARGIN_S
+                << "s after its pair's real break" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      // Set pair counter so TTW_ReplayAttack knows when to print the final banner
-      ttw_s1_total_pairs     = (uint32_t)attacker_idx.size();
-      ttw_s1_completed_pairs = 0;
-      ttw_s1_attacker_victim_map.clear();
-
-      for (uint32_t a = 0; a < (uint32_t)attacker_idx.size(); a++)
+      if (!g_sumo_trace_loaded)
       {
-          uint32_t attacker_cidx = attacker_idx[a];
-          uint32_t victim_cidx   = victim_idx.empty()
-                                   ? attacker_idx[(a + 1) % attacker_idx.size()]
-                                   : victim_idx[a % victim_idx.size()];
-          const bool corroboratedVictimReport =
-              AttackRoll(attack_support_evidence_probability);
-          const double storeJitter = AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
-          const double replayJitter = AttackSampleSignedJitter(attack_time_jitter_s);
-          const double storeTime = 10.200 + storeJitter;
-          double replayTime = TTW_REPLAY_TIME + replayJitter;
-          if (replayTime <= (TTW_LINK_BREAK + 0.25))
-          {
-              replayTime = TTW_LINK_BREAK + 0.25;
-          }
-
-          uint32_t mal_ns3 = Vehicle_Nodes.Get(attacker_cidx)->GetId();
-          uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_cidx)->GetId();
-
-          // Each pair gets its own y-lane (300 m apart) so pairs don't interfere.
-          // Attacker at x=200 moves right (+3 m/s); victim at x=100 moves left
-          // (-13 m/s). Combined separation rate = 16 m/s, initial gap = 100 m.
-          //   At t=0:  gap = 100 m  (trivially in range)
-          //   At t=10: gap = 260 m  (HELLO delivered ✓)
-          //   At t=12.5: gap = 300 m (link breaks)
-          //   At t=15: gap = 340 m  (confirmed broken)
-          //   At t=20: gap = 420 m  (replay fired on broken link ✓)
-          {
-              const double y_lane = static_cast<double>(a) * ttw_lane_sep;
-              Ptr<ConstantVelocityMobilityModel> m_att =
-                  DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(attacker_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> m_vic =
-                  DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(victim_cidx)->GetObject<MobilityModel>());
-              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
-              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-          }
-
-          // Register attacker->victim pair for the pipeline intercept
-          ttw_s1_attacker_victim_map[mal_ns3] = vic_ns3;
-
-          // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
-          const uint32_t app_veh_base = N_Controllers + 1;
-          Ptr<SimpleUdpApplication> app_attacker =
-              DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + attacker_cidx));
-          Ptr<SimpleUdpApplication> app_victim =
-              DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + victim_cidx));
-
-          // STEP 1 — V2V HELLO exchange at t=10
-          Simulator::Schedule(Seconds(10.000), &TTW_SendHelloBeacon,
-              Vehicle_Nodes.Get(victim_cidx),   Vehicle_Nodes.Get(attacker_cidx));
-          Simulator::Schedule(Seconds(10.001), &TTW_SendHelloBeacon,
-              Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx));
-
-          Simulator::Schedule(Seconds(10.000), &PemEmitVehicleBeacon,
-              victim_cidx, attacker_cidx);
-          Simulator::Schedule(Seconds(10.001), &PemEmitVehicleBeacon,
-              attacker_cidx, victim_cidx);
-
-          Simulator::Schedule(Seconds(10.020), &PemEmitVehicleHeartbeat,
-              attacker_cidx, attacker_cidx, 10.020, false);
-          if (corroboratedVictimReport)
-          {
-              Simulator::Schedule(Seconds(10.030), &PemEmitVehicleHeartbeat,
-                  victim_cidx, victim_cidx, 10.030, false);
-          }
-
-          // STEP 2 — Legitimate topology updates -> controller
-          Simulator::Schedule(Seconds(10.100), &TTW_SendTopologyUpdate,
-              Vehicle_Nodes.Get(attacker_cidx), vic_ns3, 10.0);
-          if (corroboratedVictimReport)
-          {
-              Simulator::Schedule(Seconds(10.101), &TTW_SendTopologyUpdate,
-                  Vehicle_Nodes.Get(victim_cidx), mal_ns3, 10.0);
-          }
-
-          // STEP 3 — Attacker stores old packet
-          Simulator::Schedule(Seconds(storeTime), &TTW_StorePacket,
-              mal_ns3, vic_ns3, 10.0);
-
-          // STEPS 4+5+6 — Replay attack with stochastic activation timing
-          Simulator::Schedule(Seconds(replayTime), &TTW_ReplayAttack,
-              Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
-              mal_ns3, vic_ns3, replayTime);
-
-          // NetAnim visual packets
-          Simulator::Schedule(Seconds(10.000), &send_LTE_routing_data_alone,
-              app_victim,   Vehicle_Nodes.Get(victim_cidx),
-              Vehicle_Nodes.Get(attacker_cidx), victim_cidx);
-          Simulator::Schedule(Seconds(10.005), &send_LTE_routing_data_alone,
-              app_attacker, Vehicle_Nodes.Get(attacker_cidx),
-              Vehicle_Nodes.Get(victim_cidx),   attacker_cidx);
-          Simulator::Schedule(Seconds(10.100), &send_LTE_routing_data_alone,
-              app_attacker, Vehicle_Nodes.Get(attacker_cidx),
-              controller_Node.Get(0), attacker_cidx);
-          if (corroboratedVictimReport)
-          {
-              Simulator::Schedule(Seconds(10.110), &send_LTE_routing_data_alone,
-                  app_victim, Vehicle_Nodes.Get(victim_cidx),
-                  controller_Node.Get(0), victim_cidx);
-          }
-          Simulator::Schedule(Seconds(replayTime), &send_LTE_routing_data_alone,
-              app_attacker, Vehicle_Nodes.Get(attacker_cidx),
-              controller_Node.Get(0), attacker_cidx);
+          std::cout << "[TTW-S1] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
       }
-
-      // Single arming call — arms all active attackers before the earliest replay
-      const double armTime =
-          ((TTW_REPLAY_TIME - attack_time_jitter_s - 0.001) > 0.0)
-              ? (TTW_REPLAY_TIME - attack_time_jitter_s - 0.001)
-              : 0.0;
-      if (!attacker_idx.empty())
+      else
       {
-          Simulator::Schedule(Seconds(armTime), &TTW_ActivateReplay_S1);
+          // ── Discover, for each fixed attacker, the best-scoring victim whose
+          // real trajectory starts in-range at HELLO time and later genuinely
+          // exceeds TTW_COMM_RANGE. attacker_idx is NEVER expanded — only
+          // victim assignment is decided here. Each victim is claimed by at
+          // most one attacker (removed from the pool once assigned).
+          struct TtwAssignedPair { uint32_t attackerCidx; uint32_t victimCidx; double breakTime; };
+          std::vector<TtwAssignedPair> assignedPairs;
+          std::vector<uint32_t> remainingVictims = victim_idx;
+          const double searchStart = TTW_HELLO_TIME + 0.5;
+          const double searchEnd   = simTime - 3.0;   // leaves room for replay + 50ms detection
+          const double stepSec     = 0.2;
+
+          for (uint32_t attacker_cidx : attacker_idx)
+          {
+              int bestIdx = -1;
+              TtwBreakEval best;
+              for (size_t vi = 0; vi < remainingVictims.size(); vi++)
+              {
+                  TtwBreakEval ev = TtwEvaluateNaturalBreak(
+                      attacker_cidx, remainingVictims[vi], TTW_HELLO_TIME,
+                      searchStart, searchEnd, TTW_COMM_RANGE, stepSec);
+                  if (!ev.found) continue;
+                  const bool better =
+                      (bestIdx < 0) ||
+                      (ev.brokenDuration > best.brokenDuration) ||
+                      (ev.brokenDuration == best.brokenDuration && ev.maxDist > best.maxDist) ||
+                      (ev.brokenDuration == best.brokenDuration && ev.maxDist == best.maxDist
+                       && ev.breakTime < best.breakTime);
+                  if (better) { bestIdx = (int)vi; best = ev; }
+              }
+              if (bestIdx < 0)
+              {
+                  std::cout << "[TTW-S1] no natural link break found for attacker V" << attacker_cidx
+                            << " in the assigned victim pool — skipping" << std::endl;
+                  continue;
+              }
+              uint32_t victim_cidx = remainingVictims[(size_t)bestIdx];
+              remainingVictims.erase(remainingVictims.begin() + bestIdx);
+              assignedPairs.push_back({attacker_cidx, victim_cidx, best.breakTime});
+          }
+
+          if (assignedPairs.empty())
+          {
+              std::cout << "[TTW-S1] no attacker-victim pair naturally exceeded comm range within "
+                           "simTime — running as a clean no-attack pass" << std::endl;
+          }
+          else
+          {
+              // Set pair counter so TTW_ReplayAttack knows when to print the final banner
+              ttw_s1_total_pairs     = (uint32_t)assignedPairs.size();
+              ttw_s1_completed_pairs = 0;
+              ttw_s1_attacker_victim_map.clear();
+
+              double minReplayTime = -1.0;
+
+              for (const auto& pair : assignedPairs)
+              {
+                  uint32_t attacker_cidx  = pair.attackerCidx;
+                  uint32_t victim_cidx    = pair.victimCidx;
+                  const double breakTime  = pair.breakTime;
+
+                  const bool corroboratedVictimReport =
+                      AttackRoll(attack_support_evidence_probability);
+                  const double storeJitter  = AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
+                  const double replayJitter = AttackSampleSignedJitter(attack_time_jitter_s);
+                  const double storeTime = 10.200 + storeJitter;
+                  double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S + replayJitter;
+                  if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+                  if (replayTime >= simTime)   replayTime = simTime - 0.5;
+                  if (minReplayTime < 0.0 || replayTime < minReplayTime) minReplayTime = replayTime;
+
+                  uint32_t mal_ns3 = Vehicle_Nodes.Get(attacker_cidx)->GetId();
+                  uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_cidx)->GetId();
+
+                  // Register attacker->victim pair for the pipeline intercept
+                  ttw_s1_attacker_victim_map[mal_ns3] = vic_ns3;
+
+                  // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+                  const uint32_t app_veh_base = N_Controllers + 1;
+                  Ptr<SimpleUdpApplication> app_attacker =
+                      DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + attacker_cidx));
+                  Ptr<SimpleUdpApplication> app_victim =
+                      DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + victim_cidx));
+
+                  // STEP 1 — V2V HELLO exchange at t=10
+                  Simulator::Schedule(Seconds(10.000), &TTW_SendHelloBeacon,
+                      Vehicle_Nodes.Get(victim_cidx),   Vehicle_Nodes.Get(attacker_cidx));
+                  Simulator::Schedule(Seconds(10.001), &TTW_SendHelloBeacon,
+                      Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx));
+
+                  Simulator::Schedule(Seconds(10.000), &PemEmitVehicleBeacon,
+                      victim_cidx, attacker_cidx);
+                  Simulator::Schedule(Seconds(10.001), &PemEmitVehicleBeacon,
+                      attacker_cidx, victim_cidx);
+
+                  Simulator::Schedule(Seconds(10.020), &PemEmitVehicleHeartbeat,
+                      attacker_cidx, attacker_cidx, 10.020, false);
+                  if (corroboratedVictimReport)
+                  {
+                      Simulator::Schedule(Seconds(10.030), &PemEmitVehicleHeartbeat,
+                          victim_cidx, victim_cidx, 10.030, false);
+                  }
+
+                  // STEP 2 — Legitimate topology updates -> controller
+                  Simulator::Schedule(Seconds(10.100), &TTW_SendTopologyUpdate,
+                      Vehicle_Nodes.Get(attacker_cidx), vic_ns3, 10.0);
+                  if (corroboratedVictimReport)
+                  {
+                      Simulator::Schedule(Seconds(10.101), &TTW_SendTopologyUpdate,
+                          Vehicle_Nodes.Get(victim_cidx), mal_ns3, 10.0);
+                  }
+
+                  // STEP 3 — Attacker stores old packet
+                  Simulator::Schedule(Seconds(storeTime), &TTW_StorePacket,
+                      mal_ns3, vic_ns3, 10.0, breakTime);
+
+                  // STEPS 4+5+6 — Replay attack after the REAL discovered break
+                  Simulator::Schedule(Seconds(replayTime), &TTW_ReplayAttack,
+                      Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
+                      mal_ns3, vic_ns3, replayTime, breakTime);
+
+                  // NetAnim visual packets
+                  Simulator::Schedule(Seconds(10.000), &send_LTE_routing_data_alone,
+                      app_victim,   Vehicle_Nodes.Get(victim_cidx),
+                      Vehicle_Nodes.Get(attacker_cidx), victim_cidx);
+                  Simulator::Schedule(Seconds(10.005), &send_LTE_routing_data_alone,
+                      app_attacker, Vehicle_Nodes.Get(attacker_cidx),
+                      Vehicle_Nodes.Get(victim_cidx),   attacker_cidx);
+                  Simulator::Schedule(Seconds(10.100), &send_LTE_routing_data_alone,
+                      app_attacker, Vehicle_Nodes.Get(attacker_cidx),
+                      controller_Node.Get(0), attacker_cidx);
+                  if (corroboratedVictimReport)
+                  {
+                      Simulator::Schedule(Seconds(10.110), &send_LTE_routing_data_alone,
+                          app_victim, Vehicle_Nodes.Get(victim_cidx),
+                          controller_Node.Get(0), victim_cidx);
+                  }
+                  Simulator::Schedule(Seconds(replayTime), &send_LTE_routing_data_alone,
+                      app_attacker, Vehicle_Nodes.Get(attacker_cidx),
+                      controller_Node.Get(0), attacker_cidx);
+              }
+
+              // Single arming call — arms all active attackers before the earliest
+              // (per-pair, SUMO-derived) replay
+              const double armTime = (minReplayTime - 0.001 > 0.0) ? (minReplayTime - 0.001) : 0.0;
+              Simulator::Schedule(Seconds(armTime), &TTW_ActivateReplay_S1);
+          }
       }
   }
 

@@ -1,0 +1,270 @@
+================================================================
+  TETA-Guard TGN Training Data Generator (tmux edition)
+  NS-3 home         : /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35
+  sim_time          : 30s
+  N_Vehicles        : 200
+  mobility_scenario : 0  (0=urban 1=rural 2=highway)
+  maxspeed          : 80 km/h
+  Seeds             : 1
+  Skip training     : 0
+  Output            : tgn_weights.bin
+================================================================
+
+[build] Running ./waf build ...
+[build] Build complete.
+[timer] Started at 2026-07-05 04:07:22
+
+── Scenario 0 (Baseline)  seed=1  N_RSUs=0 ──
+  Events      : 0
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 1 lines to all_events.csv
+
+── Scenario 0r (Baseline-RSU)  seed=1  N_RSUs=64 ──
+  Events      : 0
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 1 lines to all_events.csv
+
+── Scenario 1 (TTW-S1)  seed=1  N_RSUs=0 ──
+  Events      : 160
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 128
+  Divergence-only detections: 8  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 161 lines to all_events.csv
+
+── Scenario 2 (TTW-S2)  seed=1  N_RSUs=64 ──
+  Events      : 57
+  Stage-0 blocked (attacks): 8
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 58 lines to all_events.csv
+
+── Scenario 3 (TTW-S3)  seed=1  N_RSUs=0 ──
+  Events      : 5
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 4
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 6 lines to all_events.csv
+
+── Scenario 4 (TTW-S4)  seed=1  N_RSUs=64 ──
+  Events      : 5
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 2
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 6 lines to all_events.csv
+
+── Scenario 5 (BSHH-S1)  seed=1  N_RSUs=0 ──
+  Events      : 97
+  Stage-0 blocked (attacks): 63
+  |E_t^trusted|  : 80
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 98 lines to all_events.csv
+
+── Scenario 6 (BSHH-S2)  seed=1  N_RSUs=64 ──
+  Events      : 57
+  Stage-0 blocked (attacks): 21
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 58 lines to all_events.csv
+
+── Scenario 7 (BSHH-S3)  seed=1  N_RSUs=0 ──
+  Events      : 4
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 2
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 5 lines to all_events.csv
+
+── Scenario 8 (BSHH-S4)  seed=1  N_RSUs=64 ──
+  Events      : 4
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 5 lines to all_events.csv
+
+── Scenario 9 (ME-S1)  seed=1  N_RSUs=0 ──
+  Events      : 2
+  Stage-0 blocked (attacks): 40
+  |E_t^trusted|  : 2
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 3 lines to all_events.csv
+
+── Scenario 10 (ME-S2)  seed=1  N_RSUs=64 ──
+
+
+
+
+
+   → appended 0 lines to all_events.csv
+
+── Scenario 11 (ME-S3)  seed=1  N_RSUs=0 ──
+  Events      : 44
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 4
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 45 lines to all_events.csv
+
+── Scenario 12 (ME-S4)  seed=1  N_RSUs=64 ──
+  Events      : 44
+  Stage-0 blocked (attacks): 0
+  |E_t^trusted|  : 4
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+   → appended 45 lines to all_events.csv
+
+================================================================
+  Runs completed : 14 / 14
+  Failed runs    : 0
+  all_events.csv : 480 lines  →  /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/training_data/all_events.csv
+  Total time     : 31h 48m 7s
+  Finished at    : 2026-07-06 11:55:29
+================================================================
+
+[train] Training TGN on /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/training_data/all_events.csv ...
+        epochs=50  l_link=43s  output=tgn_weights.bin
+[TGN] L_link=43.0s  gamma=310.2  W_max=430
+[TGN] Loaded 479 rows from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/training_data/all_events.csv'
+      Attack events: 145  Benign events: 334
+[TGN] After BEACON filter: 479 rows
+
+[TGN] Events per attack_scenario:
+        scenario  1:   160 events (32 attack, 128 benign)
+        scenario  2:    57 events (5 attack, 52 benign)
+        scenario  3:     5 events (1 attack, 4 benign)
+        scenario  4:     5 events (1 attack, 4 benign)
+        scenario  5:    97 events (17 attack, 80 benign)
+        scenario  6:    57 events (5 attack, 52 benign)
+        scenario  7:     4 events (2 attack, 2 benign)
+        scenario  8:     4 events (2 attack, 2 benign)
+        scenario  9:     2 events (0 attack, 2 benign)
+        scenario 11:    44 events (40 attack, 4 benign)
+        scenario 12:    44 events (40 attack, 4 benign)
+[TGN] Device: cpu
+       train:   327 events  (99 attack, 228 benign)
+       val  :    73 events  (22 attack, 51 benign)
+       test :    79 events  (24 attack, 55 benign)
+       pos_weight = 2.30  (228 benign / 99 attack in train)
+
+[TGN] Training attempt 1/5: dim=32 layers=2 epochs=50 lr=0.001 theta=-1.0
+
+  Epoch    5/50  loss=1.5718  bce=1.0853  gap=0.001  mrgn=0.349  val_MCC@0.5=0.000  val_bestMCC=0.394  (θ=0.302)  val_AUROC=0.717  TP=0 TN=51 FP=0 FN=22
+  Epoch   10/50  loss=1.5503  bce=1.0757  gap=0.003  mrgn=0.347  val_MCC@0.5=0.000  val_bestMCC=0.353  (θ=0.305)  val_AUROC=0.679  TP=0 TN=51 FP=0 FN=22
+  Epoch   15/50  loss=1.5245  bce=1.0616  gap=0.007  mrgn=0.343  val_MCC@0.5=0.000  val_bestMCC=0.534  (θ=0.309)  val_AUROC=0.675  TP=0 TN=51 FP=0 FN=22
+  Epoch   20/50  loss=1.4954  bce=1.0433  gap=0.012  mrgn=0.338  val_MCC@0.5=0.000  val_bestMCC=0.494  (θ=0.313)  val_AUROC=0.652  TP=0 TN=51 FP=0 FN=22
+  Epoch   25/50  loss=1.4656  bce=1.0229  gap=0.019  mrgn=0.331  val_MCC@0.5=0.000  val_bestMCC=0.494  (θ=0.317)  val_AUROC=0.666  TP=0 TN=51 FP=0 FN=22
+  Epoch   30/50  loss=1.4381  bce=1.0033  gap=0.026  mrgn=0.324  val_MCC@0.5=0.000  val_bestMCC=0.533  (θ=0.320)  val_AUROC=0.666  TP=0 TN=51 FP=0 FN=22
+  Epoch   35/50  loss=1.4167  bce=0.9876  gap=0.032  mrgn=0.318  val_MCC@0.5=0.000  val_bestMCC=0.533  (θ=0.323)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+  Epoch   40/50  loss=1.4032  bce=0.9777  gap=0.036  mrgn=0.314  val_MCC@0.5=0.000  val_bestMCC=0.533  (θ=0.324)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+  Epoch   45/50  loss=1.3970  bce=0.9732  gap=0.037  mrgn=0.313  val_MCC@0.5=0.000  val_bestMCC=0.533  (θ=0.325)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+  Epoch   50/50  loss=1.3957  bce=0.9722  gap=0.038  mrgn=0.312  val_MCC@0.5=0.000  val_bestMCC=0.533  (θ=0.325)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+
+[TGN] Best checkpoint: epoch=15  val_bestMCC=0.534  val_AUROC=0.675
+[TGN] Restart check: val_bestMCC=0.534 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 1/4 — val_bestMCC=0.534 < target=0.975. Re-initialising model.
+       pos_weight = 2.30  (228 benign / 99 attack in train)
+
+[TGN] Training attempt 2/5: dim=32 layers=2 epochs=50 lr=0.001 theta=-1.0
+
+  Epoch    5/50  loss=1.5487  bce=1.0787  gap=0.002  mrgn=0.348  val_MCC@0.5=0.000  val_bestMCC=0.308  (θ=0.304)  val_AUROC=0.628  TP=0 TN=51 FP=0 FN=22
+  Epoch   10/50  loss=1.5237  bce=1.0650  gap=0.005  mrgn=0.345  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.308)  val_AUROC=0.640  TP=0 TN=51 FP=0 FN=22
+  Epoch   15/50  loss=1.4952  bce=1.0450  gap=0.011  mrgn=0.339  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.312)  val_AUROC=0.652  TP=0 TN=51 FP=0 FN=22
+  Epoch   20/50  loss=1.4628  bce=1.0199  gap=0.019  mrgn=0.331  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.317)  val_AUROC=0.656  TP=0 TN=51 FP=0 FN=22
+  Epoch   25/50  loss=1.4277  bce=0.9937  gap=0.029  mrgn=0.321  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.321)  val_AUROC=0.657  TP=0 TN=51 FP=0 FN=22
+  Epoch   30/50  loss=1.3960  bce=0.9706  gap=0.038  mrgn=0.312  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.325)  val_AUROC=0.657  TP=0 TN=51 FP=0 FN=22
+  Epoch   35/50  loss=1.3722  bce=0.9533  gap=0.046  mrgn=0.304  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.328)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+  Epoch   40/50  loss=1.3577  bce=0.9427  gap=0.050  mrgn=0.300  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.330)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+  Epoch   45/50  loss=1.3512  bce=0.9379  gap=0.053  mrgn=0.297  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.330)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+  Epoch   50/50  loss=1.3497  bce=0.9368  gap=0.053  mrgn=0.297  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.330)  val_AUROC=0.661  TP=0 TN=51 FP=0 FN=22
+
+[TGN] Best checkpoint: epoch=35  val_bestMCC=0.509  val_AUROC=0.661
+[TGN] Restart check: val_bestMCC=0.509 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 2/4 — val_bestMCC=0.509 < target=0.975. Re-initialising model.
+       pos_weight = 2.30  (228 benign / 99 attack in train)
+
+[TGN] Training attempt 3/5: dim=32 layers=2 epochs=50 lr=0.001 theta=-1.0
+
+  Epoch    5/50  loss=1.5745  bce=1.0865  gap=0.000  mrgn=0.350  val_MCC@0.5=0.000  val_bestMCC=0.027  (θ=0.301)  val_AUROC=0.480  TP=0 TN=51 FP=0 FN=22
+  Epoch   10/50  loss=1.5567  bce=1.0785  gap=0.002  mrgn=0.348  val_MCC@0.5=0.000  val_bestMCC=0.128  (θ=0.304)  val_AUROC=0.722  TP=0 TN=51 FP=0 FN=22
+  Epoch   15/50  loss=1.5353  bce=1.0656  gap=0.005  mrgn=0.345  val_MCC@0.5=0.000  val_bestMCC=0.308  (θ=0.308)  val_AUROC=0.682  TP=0 TN=51 FP=0 FN=22
+  Epoch   20/50  loss=1.5117  bce=1.0474  gap=0.010  mrgn=0.340  val_MCC@0.5=0.000  val_bestMCC=0.340  (θ=0.309)  val_AUROC=0.635  TP=0 TN=51 FP=0 FN=22
+  Epoch   25/50  loss=1.4875  bce=1.0261  gap=0.017  mrgn=0.333  val_MCC@0.5=0.000  val_bestMCC=0.340  (θ=0.312)  val_AUROC=0.611  TP=0 TN=51 FP=0 FN=22
+  Epoch   30/50  loss=1.4653  bce=1.0056  gap=0.024  mrgn=0.326  val_MCC@0.5=0.000  val_bestMCC=0.340  (θ=0.314)  val_AUROC=0.628  TP=0 TN=51 FP=0 FN=22
+  Epoch   35/50  loss=1.4482  bce=0.9898  gap=0.030  mrgn=0.320  val_MCC@0.5=0.000  val_bestMCC=0.340  (θ=0.315)  val_AUROC=0.633  TP=0 TN=51 FP=0 FN=22
+  Epoch   40/50  loss=1.4375  bce=0.9803  gap=0.034  mrgn=0.316  val_MCC@0.5=0.000  val_bestMCC=0.340  (θ=0.316)  val_AUROC=0.636  TP=0 TN=51 FP=0 FN=22
+  Epoch   45/50  loss=1.4327  bce=0.9760  gap=0.036  mrgn=0.314  val_MCC@0.5=0.000  val_bestMCC=0.344  (θ=0.320)  val_AUROC=0.637  TP=0 TN=51 FP=0 FN=22
+  Epoch   50/50  loss=1.4317  bce=0.9751  gap=0.036  mrgn=0.314  val_MCC@0.5=0.000  val_bestMCC=0.340  (θ=0.316)  val_AUROC=0.637  TP=0 TN=51 FP=0 FN=22
+
+[TGN] Best checkpoint: epoch=45  val_bestMCC=0.344  val_AUROC=0.637
+[TGN] Restart check: val_bestMCC=0.344 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 3/4 — val_bestMCC=0.344 < target=0.975. Re-initialising model.
+       pos_weight = 2.30  (228 benign / 99 attack in train)
+
+[TGN] Training attempt 4/5: dim=32 layers=2 epochs=50 lr=0.001 theta=-1.0
+
+  Epoch    5/50  loss=1.5787  bce=1.0841  gap=0.001  mrgn=0.349  val_MCC@0.5=0.000  val_bestMCC=0.346  (θ=0.303)  val_AUROC=0.632  TP=0 TN=51 FP=0 FN=22
+  Epoch   10/50  loss=1.5630  bce=1.0796  gap=0.001  mrgn=0.349  val_MCC@0.5=0.000  val_bestMCC=0.308  (θ=0.306)  val_AUROC=0.648  TP=0 TN=51 FP=0 FN=22
+  Epoch   15/50  loss=1.5445  bce=1.0714  gap=0.003  mrgn=0.347  val_MCC@0.5=0.000  val_bestMCC=0.467  (θ=0.309)  val_AUROC=0.666  TP=0 TN=51 FP=0 FN=22
+  Epoch   20/50  loss=1.5217  bce=1.0592  gap=0.006  mrgn=0.344  val_MCC@0.5=0.000  val_bestMCC=0.519  (θ=0.312)  val_AUROC=0.667  TP=0 TN=51 FP=0 FN=22
+  Epoch   25/50  loss=1.4957  bce=1.0431  gap=0.011  mrgn=0.339  val_MCC@0.5=0.000  val_bestMCC=0.519  (θ=0.316)  val_AUROC=0.662  TP=0 TN=51 FP=0 FN=22
+  Epoch   30/50  loss=1.4703  bce=1.0258  gap=0.016  mrgn=0.334  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.319)  val_AUROC=0.659  TP=0 TN=51 FP=0 FN=22
+  Epoch   35/50  loss=1.4495  bce=1.0108  gap=0.021  mrgn=0.329  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.321)  val_AUROC=0.646  TP=0 TN=51 FP=0 FN=22
+  Epoch   40/50  loss=1.4360  bce=1.0007  gap=0.025  mrgn=0.325  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.322)  val_AUROC=0.646  TP=0 TN=51 FP=0 FN=22
+  Epoch   45/50  loss=1.4297  bce=0.9960  gap=0.027  mrgn=0.323  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.323)  val_AUROC=0.646  TP=0 TN=51 FP=0 FN=22
+  Epoch   50/50  loss=1.4283  bce=0.9949  gap=0.027  mrgn=0.323  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.323)  val_AUROC=0.646  TP=0 TN=51 FP=0 FN=22
+
+[TGN] Best checkpoint: epoch=20  val_bestMCC=0.519  val_AUROC=0.667
+[TGN] Restart check: val_bestMCC=0.519 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 4/4 — val_bestMCC=0.519 < target=0.975. Re-initialising model.
+       pos_weight = 2.30  (228 benign / 99 attack in train)
+
+[TGN] Training attempt 5/5: dim=32 layers=2 epochs=50 lr=0.001 theta=-1.0
+
+  Epoch    5/50  loss=1.5807  bce=1.0836  gap=0.001  mrgn=0.349  val_MCC@0.5=0.000  val_bestMCC=0.317  (θ=0.302)  val_AUROC=0.703  TP=0 TN=51 FP=0 FN=22
+  Epoch   10/50  loss=1.5565  bce=1.0738  gap=0.004  mrgn=0.346  val_MCC@0.5=0.000  val_bestMCC=0.344  (θ=0.304)  val_AUROC=0.678  TP=0 TN=51 FP=0 FN=22
+  Epoch   15/50  loss=1.5303  bce=1.0598  gap=0.008  mrgn=0.342  val_MCC@0.5=0.000  val_bestMCC=0.344  (θ=0.307)  val_AUROC=0.673  TP=0 TN=51 FP=0 FN=22
+  Epoch   20/50  loss=1.5037  bce=1.0421  gap=0.013  mrgn=0.337  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.310)  val_AUROC=0.660  TP=0 TN=51 FP=0 FN=22
+  Epoch   25/50  loss=1.4781  bce=1.0223  gap=0.020  mrgn=0.330  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.313)  val_AUROC=0.659  TP=0 TN=51 FP=0 FN=22
+  Epoch   30/50  loss=1.4562  bce=1.0036  gap=0.026  mrgn=0.324  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.315)  val_AUROC=0.660  TP=0 TN=51 FP=0 FN=22
+  Epoch   35/50  loss=1.4396  bce=0.9890  gap=0.032  mrgn=0.318  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.317)  val_AUROC=0.660  TP=0 TN=51 FP=0 FN=22
+  Epoch   40/50  loss=1.4293  bce=0.9800  gap=0.036  mrgn=0.314  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.318)  val_AUROC=0.660  TP=0 TN=51 FP=0 FN=22
+  Epoch   45/50  loss=1.4246  bce=0.9759  gap=0.038  mrgn=0.312  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.318)  val_AUROC=0.660  TP=0 TN=51 FP=0 FN=22
+  Epoch   50/50  loss=1.4236  bce=0.9750  gap=0.038  mrgn=0.312  val_MCC@0.5=0.000  val_bestMCC=0.509  (θ=0.318)  val_AUROC=0.660  TP=0 TN=51 FP=0 FN=22
+
+[TGN] Best checkpoint: epoch=35  val_bestMCC=0.509  val_AUROC=0.660
+[TGN] Restart check: val_bestMCC=0.509 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+[TGN] Max restarts (5) reached. Proceeding with global best (val_bestMCC=0.534).
+[TGN] Global best restored: epoch=15  val_bestMCC=0.534  val_AUROC=0.675
+[TGN] Optimal theta_FS = 0.309  (val_MCC=0.534  theta_plateau=0.309  gap=N/A  method=plateau_mid [no val separation gap])
+
+[TGN] Test  MCC=0.152  AUROC=0.587  TP=6 TN=48 FP=7 FN=18
+[TGN] Weights saved to 'tgn_weights.bin'  (72488 bytes, dim=32 layers=2)
+
+[TGN] Complete.  Deploy with (use the SAME simTime/N_Vehicles/mobility_scenario
+                 as the data generation runs to avoid train/eval mismatch):
+  ./waf --run "scratch/routing --simTime=<N> --N_Vehicles=<N> \
+               --mobility_scenario=<N> --maxspeed=<N> \
+               --attack_scenario=1 --tgn_weights=tgn_weights.bin \
+               --tgn_theta=0.31 --tgn_l_link=43.0"
+
+================================================================
+  Training complete.
+  Weights saved : tgn_weights.bin  (72K)
+================================================================

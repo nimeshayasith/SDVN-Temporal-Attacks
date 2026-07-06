@@ -1,13 +1,200 @@
 [
   {
-    "v_id": "V9999",
-    "alpha": "ME",
+    "v_id": "V7",
+    "alpha": "TTW",
     "y_hat": 0.111111,
-    "t_alert": 10100,
-    "interval_ts_ms": 10100,
-    "S_trig": [7],
+    "t_alert": 45977,
+    "interval_ts_ms": 45977,
+    "S_trig": [1],
     "from_lw_path": true,
     "from_fs_path": false,
-    "tdet_ms": 0
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V8",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 52711,
+    "interval_ts_ms": 52711,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V9",
+    "alpha": "TTW",
+    "y_hat": 0.222222,
+    "t_alert": 17520,
+    "interval_ts_ms": 17520,
+    "S_trig": [1, 2],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V10",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 50146,
+    "interval_ts_ms": 50146,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V11",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 34568,
+    "interval_ts_ms": 34568,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V12",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 31713,
+    "interval_ts_ms": 31713,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V13",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 32336,
+    "interval_ts_ms": 32336,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V14",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 47311,
+    "interval_ts_ms": 47311,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V15",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 45751,
+    "interval_ts_ms": 45751,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V16",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 38742,
+    "interval_ts_ms": 38742,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V17",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 40150,
+    "interval_ts_ms": 40150,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V18",
+    "alpha": "TTW",
+    "y_hat": 0.222222,
+    "t_alert": 55959,
+    "interval_ts_ms": 55959,
+    "S_trig": [0, 1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V19",
+    "alpha": "TTW",
+    "y_hat": 0.222222,
+    "t_alert": 53382,
+    "interval_ts_ms": 53382,
+    "S_trig": [0, 1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V20",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 41129,
+    "interval_ts_ms": 41129,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V22",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 49359,
+    "interval_ts_ms": 49359,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V24",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 50914,
+    "interval_ts_ms": 50914,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V25",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 58585,
+    "interval_ts_ms": 58585,
+    "S_trig": [0],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V27",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 54352,
+    "interval_ts_ms": 54352,
+    "S_trig": [0],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
   }
 ]

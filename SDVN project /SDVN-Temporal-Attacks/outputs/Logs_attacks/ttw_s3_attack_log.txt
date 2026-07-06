@@ -42,10 +42,10 @@
   Internal replay detected and removed
   Score: 0.111
   Latency: 50.000 ms
-  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
-  PBFT consensus (n=2, f=0, need>=1): Fail
-  VERIFY_THRESHOLD_SIG (Eq. 3.26): 2/2 valid, need t=2: Pass
-  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V5 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V5): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V5 excluded until re-admission via consortium CA
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=1  delta_thresh=3  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  delta_t=2  delta_thresh=19  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 
