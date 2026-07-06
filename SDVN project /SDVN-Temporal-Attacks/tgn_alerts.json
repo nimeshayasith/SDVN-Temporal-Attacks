@@ -1,13 +1,3 @@
 [
-  {
-    "v_id": "V5",
-    "alpha": "TTW",
-    "y_hat": 0.111111,
-    "t_alert": 79950,
-    "interval_ts_ms": 79950,
-    "S_trig": [0],
-    "from_lw_path": true,
-    "from_fs_path": false,
-    "tdet_ms": 50
-  }
+
 ]

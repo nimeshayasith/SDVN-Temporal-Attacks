@@ -1,16 +1,15 @@
 Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Attack 12: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/12_ME_S4_Malicious_Controller_With_RSU.xml
 
 ========================================
-SCENARIO 12 - ME-S4 ATTACK CONFIGURED
-  Total vehicles       : 200
-  Total RSUs           : 64
-  Total controllers    : 4
-  Attack percentage    : 20%
-  Malicious controllers: 1
-  RSU in path          : RSU_205 (legitimate)
-  Real link            : V45<->V46
-  Phantom reporters (40): V5 V6 V7 V8 V9 V10 V11 V12 V13 V14 V15 V16 V17 V18 V19 V20 V21 V22 V23 V24 V25 V26 V27 V28 V29 V30 V31 V32 V33 V34 V35 V36 V37 V38 V39 V40 V41 V42 V43 V44 
+SCENARIO 12 - ME-S4 ATTACK CONFIGURED (single attacker, 3 legit)
+  Total vehicles : 6  Malicious controllers: 1
+  RSU in path    : RSU_11 (legitimate)
+  Legit V1/V2/V3 : V6/V7/V8
+  Impersonated ID: V5
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -23,158 +22,47 @@ SCENARIO 12 - ME-S4 ATTACK CONFIGURED
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S4][t=10.000]  STEP①②③  V45<->V46 HELLO; report via RSU_205 to Controller
-Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.000s with delay 1ms
-[ME-S4][t=10.100]  Controller --FABRICATED echo (RSU path)--> own table  V40->V5->V41  PHANTOM
-[ME-S4][t=10.100]  Controller --FABRICATED echo (RSU path)--> own table  V40->V6->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.100]  FS-MITIGATE gate: delta_t=3 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S4][t=10.100]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.100]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
-[ME-S4][t=10.102]  Controller --FABRICATED echo (RSU path)--> own table  V40->V7->V41  PHANTOM
-[ME-S4][t=10.102]  Controller --FABRICATED echo (RSU path)--> own table  V40->V8->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.102]  FS-MITIGATE gate: delta_t=6 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S4][t=10.102]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.102]  FS-MITIGATE ABORTED (gate failed)  attacker=V2
-[ME-S4][t=10.104]  Controller --FABRICATED echo (RSU path)--> own table  V40->V9->V41  PHANTOM
-[ME-S4][t=10.104]  Controller --FABRICATED echo (RSU path)--> own table  V40->V10->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.104]  FS-MITIGATE gate: delta_t=9 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S4][t=10.104]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.104]  FS-MITIGATE ABORTED (gate failed)  attacker=V4
-[ME-S4][t=10.106]  Controller --FABRICATED echo (RSU path)--> own table  V40->V11->V41  PHANTOM
-[ME-S4][t=10.106]  Controller --FABRICATED echo (RSU path)--> own table  V40->V12->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.106]  FS-MITIGATE gate: delta_t=12 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S4][t=10.106]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.106]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[ME-S4][t=10.108]  Controller --FABRICATED echo (RSU path)--> own table  V40->V13->V41  PHANTOM
-[ME-S4][t=10.108]  Controller --FABRICATED echo (RSU path)--> own table  V40->V14->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.108]  FS-MITIGATE gate: delta_t=15 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S4][t=10.108]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.108]  FS-MITIGATE ABORTED (gate failed)  attacker=V8
-[ME-S4][t=10.110]  Controller --FABRICATED echo (RSU path)--> own table  V40->V15->V41  PHANTOM
-[ME-S4][t=10.110]  Controller --FABRICATED echo (RSU path)--> own table  V40->V16->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.110]  FS-MITIGATE gate: delta_t=18 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S4][t=10.110]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.110]  FS-MITIGATE ABORTED (gate failed)  attacker=V10
-[ME-S4][t=10.112]  Controller --FABRICATED echo (RSU path)--> own table  V40->V17->V41  PHANTOM
-[ME-S4][t=10.112]  Controller --FABRICATED echo (RSU path)--> own table  V40->V18->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.112]  FS-MITIGATE gate: delta_t=21 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.112]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[Trust][t=10.112]  C_0 tau=0.800 >= tau_min^C — monitoring
-[ME-S4][t=10.112]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.112]  FS-MITIGATE ABORTED (gate failed)  attacker=V12
-[ME-S4][t=10.114]  Controller --FABRICATED echo (RSU path)--> own table  V40->V19->V41  PHANTOM
-[ME-S4][t=10.114]  Controller --FABRICATED echo (RSU path)--> own table  V40->V20->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.114]  FS-MITIGATE gate: delta_t=24 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.114]  C_0 tau=0.600 >= tau_min^C — monitoring
-[ME-S4][t=10.114]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.114]  FS-MITIGATE ABORTED (gate failed)  attacker=V14
-[ME-S4][t=10.116]  Controller --FABRICATED echo (RSU path)--> own table  V40->V21->V41  PHANTOM
-[ME-S4][t=10.116]  Controller --FABRICATED echo (RSU path)--> own table  V40->V22->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.116]  FS-MITIGATE gate: delta_t=27 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.116]  C_0 tau=0.400 >= tau_min^C — monitoring
-[ME-S4][t=10.116]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.116]  FS-MITIGATE ABORTED (gate failed)  attacker=V16
-[ME-S4][t=10.118]  Controller --FABRICATED echo (RSU path)--> own table  V40->V23->V41  PHANTOM
-[ME-S4][t=10.118]  Controller --FABRICATED echo (RSU path)--> own table  V40->V24->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.118]  FS-MITIGATE gate: delta_t=30 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.118]  REASSIGN(Z_0 -> C_4)  tau=0.200 < tau_min^C=0.300
-[ME-S4][t=10.118]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.118]  FS-MITIGATE ABORTED (gate failed)  attacker=V18
-[ME-S4][t=10.120]  Controller --FABRICATED echo (RSU path)--> own table  V40->V25->V41  PHANTOM
-[ME-S4][t=10.120]  Controller --FABRICATED echo (RSU path)--> own table  V40->V26->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.120]  FS-MITIGATE gate: delta_t=33 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.120]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.120]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.120]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
-[ME-S4][t=10.122]  Controller --FABRICATED echo (RSU path)--> own table  V40->V27->V41  PHANTOM
-[ME-S4][t=10.122]  Controller --FABRICATED echo (RSU path)--> own table  V40->V28->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.122]  FS-MITIGATE gate: delta_t=36 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.122]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.122]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.122]  FS-MITIGATE ABORTED (gate failed)  attacker=V22
-[ME-S4][t=10.124]  Controller --FABRICATED echo (RSU path)--> own table  V40->V29->V41  PHANTOM
-[ME-S4][t=10.124]  Controller --FABRICATED echo (RSU path)--> own table  V40->V30->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.124]  FS-MITIGATE gate: delta_t=39 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.124]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.124]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.124]  FS-MITIGATE ABORTED (gate failed)  attacker=V24
-[ME-S4][t=10.126]  Controller --FABRICATED echo (RSU path)--> own table  V40->V31->V41  PHANTOM
-[ME-S4][t=10.126]  Controller --FABRICATED echo (RSU path)--> own table  V40->V32->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.126]  FS-MITIGATE gate: delta_t=42 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.126]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.126]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.126]  FS-MITIGATE ABORTED (gate failed)  attacker=V26
-[ME-S4][t=10.128]  Controller --FABRICATED echo (RSU path)--> own table  V40->V33->V41  PHANTOM
-[ME-S4][t=10.128]  Controller --FABRICATED echo (RSU path)--> own table  V40->V34->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.128]  FS-MITIGATE gate: delta_t=45 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.128]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.128]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.128]  FS-MITIGATE ABORTED (gate failed)  attacker=V28
-[ME-S4][t=10.130]  Controller --FABRICATED echo (RSU path)--> own table  V40->V35->V41  PHANTOM
-[ME-S4][t=10.130]  Controller --FABRICATED echo (RSU path)--> own table  V40->V36->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.130]  FS-MITIGATE gate: delta_t=48 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.130]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.130]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.130]  FS-MITIGATE ABORTED (gate failed)  attacker=V30
-[ME-S4][t=10.132]  Controller --FABRICATED echo (RSU path)--> own table  V40->V37->V41  PHANTOM
-[ME-S4][t=10.132]  Controller --FABRICATED echo (RSU path)--> own table  V40->V38->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.132]  FS-MITIGATE gate: delta_t=51 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.132]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.132]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.132]  FS-MITIGATE ABORTED (gate failed)  attacker=V32
-[ME-S4][t=10.134]  Controller --FABRICATED echo (RSU path)--> own table  V40->V39->V41  PHANTOM
-[ME-S4][t=10.134]  Controller --FABRICATED echo (RSU path)--> own table  V40->V40->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.134]  FS-MITIGATE gate: delta_t=54 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.134]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.134]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.134]  FS-MITIGATE ABORTED (gate failed)  attacker=V34
-[ME-S4][t=10.136]  Controller --FABRICATED echo (RSU path)--> own table  V40->V41->V41  PHANTOM
-[ME-S4][t=10.136]  Controller --FABRICATED echo (RSU path)--> own table  V40->V42->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.136]  FS-MITIGATE gate: delta_t=57 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.136]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.136]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.136]  FS-MITIGATE ABORTED (gate failed)  attacker=V36
-[ME-S4][t=10.138]  Controller --FABRICATED echo (RSU path)--> own table  V40->V43->V41  PHANTOM
-[ME-S4][t=10.138]  Controller --FABRICATED echo (RSU path)--> own table  V40->V44->V41  PHANTOM  *** ATTACK COMPLETE ***
-[ME-S4][t=10.138]  FS-MITIGATE gate: delta_t=60 (Eq.3.45)  delta_thresh=19 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.138]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[ME-S4][t=10.138]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S4][t=10.138]  FS-MITIGATE ABORTED (gate failed)  attacker=V38
+[ME-S4][t=10.000]  STEP①②  3-legit single-attacker topology: CHAIN
+Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.000s with delay 1ms
+[ME-S4][t=10.100]  STEP③④  V5 echoes 2 real edge(s) — CHAIN 4-phantom-path inference  *** ATTACK COMPLETE ***
+[ME-S4][t=10.100]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> PASS  |  VERIFY_QUORUM 6/6 >= t=4 -> PASS
+[ME-S4][t=10.100]  MITIGATION Tier 1: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY -> RSU OpenFlow  attacker=V0
+Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.100s with delay 1ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (45 events)
-[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] crypto_latency_sumo.csv written    (5 events)
+[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=8  reject=0
-[TGN] Online mode — 44 events already processed inline. Running secondary crypto audit...
-[TGN] |E_t^trusted|=4 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 46 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=6  reject=0
+[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=3 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 12 — ME-S4: Malicious Controller, With RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 0 / 4 / 0 / 40
-  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 40
-  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  TP/TN/FP/FN : 0 / 3 / 0 / 2
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 2
+  [beh]  TP/TN/FP/FN : 0 / 3 / 0 / 0
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 40 / 4 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 2 / 3 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 1.000
-  ACR         : 9.091 %
+  ACR         : 60.000 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 44
+  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 5
   Stage-0 blocked (attacks): 0
-  |E_t^trusted|  : 4
+  |E_t^trusted|  : 3
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================

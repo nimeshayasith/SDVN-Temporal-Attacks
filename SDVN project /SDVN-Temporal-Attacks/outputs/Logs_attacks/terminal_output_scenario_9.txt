@@ -1,36 +1,14 @@
 Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Attack 9: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/09_ME_S1_Malicious_Vehicles.xml
 
 ========================================
-SCENARIO 09 - ME-S1 ATTACK CONFIGURED
-  Total vehicles        : 200
-  Attack percentage     : 20%
-  Echo attackers        : 40
-  Benign (real link) veh: 160
-  Active attack groups  : 20
-  Real link pair        : V155<->V195
-  Echo attackers (NS-3 IDs): V26 V17 V44 V37 V36 V20 V19 V22 V16 V6 V30 V31 V33 V27 V13 V23 V9 V34 V18 V38 V43 V29 V8 V32 V14 V25 V5 V42 V28 V21 V24 V11 V40 V35 V12 V7 V10 V41 V15 V39 
-  Active groups (all echo V155<->V195):
-    Group 1: V26+V17 echo V155<->V195
-    Group 2: V44+V37 echo V155<->V195
-    Group 3: V36+V20 echo V155<->V195
-    Group 4: V19+V22 echo V155<->V195
-    Group 5: V16+V6 echo V155<->V195
-    Group 6: V30+V31 echo V155<->V195
-    Group 7: V33+V27 echo V155<->V195
-    Group 8: V13+V23 echo V155<->V195
-    Group 9: V9+V34 echo V155<->V195
-    Group 10: V18+V38 echo V155<->V195
-    Group 11: V43+V29 echo V155<->V195
-    Group 12: V8+V32 echo V155<->V195
-    Group 13: V14+V25 echo V155<->V195
-    Group 14: V5+V42 echo V155<->V195
-    Group 15: V28+V21 echo V155<->V195
-    Group 16: V24+V11 echo V155<->V195
-    Group 17: V40+V35 echo V155<->V195
-    Group 18: V12+V7 echo V155<->V195
-    Group 19: V10+V41 echo V155<->V195
-    Group 20: V15+V39 echo V155<->V195
+SCENARIO 09 - ME-S1 ATTACK CONFIGURED (single attacker, 3 legit)
+  Total vehicles : 6
+  Legit V1/V2/V3 : V9/V10/V8
+  Attacker       : V5
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -43,167 +21,29 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S1][t=9.988]  STEP①  V155 <-> V195 HELLO exchange (real link)
-[ME-S1][t=9.988]  STEP②  V155, V195 report real link to controller
-[ME-S1][t=9.988]  STEP③  V26, V17 overhear HELLO — stored for echo
-[ME-S1][t=10.053]  STEP④  V44 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.053]  STEP④  V37 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.053]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.053]  V39 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.053]  V32 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.053]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.053]  FS-MITIGATE ABORTED (gate failed)  attacker=V39
-[ME-S1][t=10.054]  STEP④  V26 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.054]  STEP④  V17 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.054]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.054]  V21 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.054]  V12 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.054]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.054]  FS-MITIGATE ABORTED (gate failed)  attacker=V21
-[ME-S1][t=10.061]  STEP④  V33 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.061]  STEP④  V27 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.061]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.061]  V28 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.061]  V22 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.061]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.061]  FS-MITIGATE ABORTED (gate failed)  attacker=V28
-[ME-S1][t=10.064]  STEP④  V13 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.064]  STEP④  V23 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.064]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.064]  V8 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.064]  V18 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.064]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.064]  FS-MITIGATE ABORTED (gate failed)  attacker=V8
-[ME-S1][t=10.064]  STEP④  V8 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.064]  STEP④  V32 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.064]  STEP⑤  Controller infers 4 path(s) for V155->V195  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.064]  V3 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.064]  V27 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.064]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.064]  FS-MITIGATE ABORTED (gate failed)  attacker=V3
-[ME-S1][t=10.073]  STEP④  V30 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.073]  STEP④  V31 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.073]  STEP⑤  Controller infers 4 path(s) for V155->V195  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.073]  V25 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.073]  V26 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.073]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.073]  FS-MITIGATE ABORTED (gate failed)  attacker=V25
-[ME-S1][t=10.073]  STEP④  V15 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.073]  STEP④  V39 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.073]  STEP⑤  Controller infers 4 path(s) for V155->V195  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.073]  V10 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.073]  V34 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.073]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.073]  FS-MITIGATE ABORTED (gate failed)  attacker=V10
-[ME-S1][t=10.080]  STEP④  V43 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.080]  STEP④  V29 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.080]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.080]  V38 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.080]  V24 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.080]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.080]  FS-MITIGATE ABORTED (gate failed)  attacker=V38
-[ME-S1][t=10.082]  STEP④  V36 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.082]  STEP④  V20 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.082]  STEP⑤  Controller infers 4 path(s) for V155->V195  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.082]  V31 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.082]  V15 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.082]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.082]  FS-MITIGATE ABORTED (gate failed)  attacker=V31
-[ME-S1][t=10.096]  STEP④  V14 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.096]  STEP④  V25 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.096]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.096]  V9 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.096]  V20 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.096]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.096]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
-[ME-S1][t=10.098]  STEP④  V24 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.098]  STEP④  V11 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.098]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.098]  V19 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.098]  V6 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.098]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.098]  FS-MITIGATE ABORTED (gate failed)  attacker=V19
-[ME-S1][t=10.099]  STEP④  V12 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.099]  STEP④  V7 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.099]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.099]  V7 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.099]  V2 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.099]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.099]  FS-MITIGATE ABORTED (gate failed)  attacker=V7
-[ME-S1][t=10.104]  STEP④  V9 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.104]  STEP④  V34 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.104]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.104]  V4 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.104]  V29 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.104]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.104]  FS-MITIGATE ABORTED (gate failed)  attacker=V4
-[ME-S1][t=10.108]  STEP④  V18 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.108]  STEP④  V38 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.108]  STEP⑤  Controller infers 4 path(s) for V155->V195  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.108]  V13 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.108]  V33 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.108]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.108]  FS-MITIGATE ABORTED (gate failed)  attacker=V13
-[ME-S1][t=10.109]  STEP④  V10 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.109]  STEP④  V41 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.109]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.109]  V5 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.109]  V36 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.109]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.109]  FS-MITIGATE ABORTED (gate failed)  attacker=V5
-[ME-S1][t=10.110]  STEP④  V19 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.110]  STEP④  V22 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.110]  STEP⑤  Controller infers 4 path(s) for V155->V195  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.110]  V14 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.110]  V17 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.110]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.110]  FS-MITIGATE ABORTED (gate failed)  attacker=V14
-[ME-S1][t=10.127]  STEP④  V28 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP④  V21 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.127]  V23 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.127]  V16 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.127]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.127]  FS-MITIGATE ABORTED (gate failed)  attacker=V23
-[ME-S1][t=10.128]  STEP④  V40 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.128]  STEP④  V35 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.128]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.128]  V35 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.128]  V30 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.128]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.128]  FS-MITIGATE ABORTED (gate failed)  attacker=V35
-[ME-S1][t=10.132]  STEP④  V16 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.132]  STEP④  V6 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.132]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.132]  V11 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.132]  V1 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
-[ME-S1][t=10.132]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.132]  FS-MITIGATE ABORTED (gate failed)  attacker=V11
-[ME-S1][t=10.137]  STEP④  V5 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.137]  STEP④  V42 --ECHO--> Controller  <V155 sees V195>  FALSE REPORTER
-[ME-S1][t=10.137]  STEP⑤  Controller infers 3 path(s) for V155->V195  *** ATTACK COMPLETE ***
-[ME-S1][t=10.137]  V0 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.137]  V37 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
-[ME-S1][t=10.137]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S1][t=10.137]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
+[ME-S1][t=10.015]  STEP①②  3-legit single-attacker topology: SPLIT(fallback)
+[ME-S1][t=10.090]  STEP③④  V5 echoes 1 real edge(s) — SPLIT 3-phantom-path inference  *** ATTACK COMPLETE ***
+[ME-S1][t=10.090]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_QUORUM 6/6 >= t=4 -> PASS
+[ME-S1][t=10.090]  MITIGATION Tier 2: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY  attacker=V0  propagation=300.000 ms
+[Trust][t=10.090]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 
-[CRYPTO] crypto_latency_sumo.csv written    (410 events)
-[CRYPTO] crypto_latency_summary.csv written  (20 distinct operations)
-[CRYPTO] Beacon TX signed: 1   RX verified: 1
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=12  reject=0
+[CRYPTO] crypto_latency_sumo.csv written    (5 events)
+[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
 [TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
 [TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 150 190 ctrl 
+[TGN] Trusted nodes (Tier 2 OBU): 4 5 ctrl 
 [TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 3 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 2 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
@@ -219,10 +59,10 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 2
-  Stage-0 blocked (attacks): 40
+  Stage-0 blocked (attacks): 1
   |E_t^trusted|  : 2
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================

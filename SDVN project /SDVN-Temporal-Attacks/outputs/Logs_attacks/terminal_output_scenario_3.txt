@@ -1,20 +1,21 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 62367 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 15304 exact position+velocity events
 [SUMO] Attack 3: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/03_TTW_S3_Malicious_Controller_No_RSU.xml
+[TTW-S3] no natural link break found for candidate V0 in the vehicle pool — skipping this controller slot
 
 ========================================
 SCENARIO 03 - TTW-S3 ATTACK CONFIGURED
 Attacker      : 1 malicious controller(s) / 4 total
-Poisoned pairs: 1 / 20
-  V5 <-> V40  (real break at t=77.9s)
+Poisoned pairs: 0 / 5
 Timeline (Option B — real SUMO trajectories decide the break):
   t=10s      : Legit updates -> controller, stores stale
   [per-pair] : Physical link breaks whenever that pair's real SUMO trajectory naturally exceeds 300 m
   [per-pair] : Controller internal replay 2s after its pair's real break (no ext packet)
 ========================================
 
+[TTW-S3] no candidate pair naturally exceeded comm range within simTime — running as a clean no-attack pass
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.26-3.28).
 [CRYPTO] TETA-Guard pipeline initialised:
@@ -25,53 +26,38 @@ Timeline (Option B — real SUMO trajectories decide the break):
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=40)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=10)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 10/10 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TTW-S3][t=10.000]  V5 --topo update--> Controller  <V5 sees V40, t=10.000>  ACCEPTED
-[TTW-S3][t=10.000]  V40 --topo update--> Controller  <V40 sees V5, t=10.000>  ACCEPTED
-[TTW-S3][t=10.100]  Controller keeps stale copy  <V5 sees V40, t=10.000>  (internal replay at t=20.000)
-[TTW-S3][t=79.900]  Controller --TIMESTAMP FORGE + REINSERTION--> own table  <V5 sees V40, t=79.900>  (stored=10.000)  TABLE POISONED  *** ATTACK COMPLETE ***
-[TTW-S3][t=79.950]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[TTW-S3][t=79.950]  FS-MITIGATE gate: PBFT n=40 f=13 q_needed=27 -> PASS  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
-[TTW-S3][t=79.950]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=600.000 ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (7 events)
-[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] crypto_latency_sumo.csv written    (5 events)
+[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
-[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 3/3 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 0 5 35 ctrl 
-[TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 1 alert(s) → tgn_alerts.json
-[TGN] beacon_evidence.csv written: 1 observation(s)
-[TGN] ctrl_topo.json written: 1 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] No PEM events — all attacks blocked at Stage 0 (0 blocked). Writing summary.
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 3 — TTW-S3: Malicious Controller, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 1 / 4 / 0 / 0
-  [ctrl] TP/TN/FP/FN : 1 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
-  MCC         : 1.000
-  [comb] TP/TN/FP/FN : 1 / 4 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 1.000
-  ACR         : 100.000 %
-  Tdet        : 0.000 ms
+  TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 0 / 0 / 0
+  MCC         : 0.000
+  [comb] TP/TN/FP/FN : 0 / 0 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 0.500
+  ACR         : 0.000 %
+  Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
-  θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 166.679  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 231  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 5
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 364.633  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 505  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 0
   Stage-0 blocked (attacks): 0
-  |E_t^trusted|  : 4
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================

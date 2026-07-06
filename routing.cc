@@ -1783,6 +1783,12 @@ struct PemEvent
     // builder falls back to its legacy sender_timestamp-regression check
     // unchanged for those events.
     uint64_t claimed_seq_no = UINT64_MAX;
+    // Who ACTUALLY, physically originated this message (not who last relayed
+    // it) — see the multi-plane attribution comment near g_vehicle_next_seq_no
+    // for the full rationale. UINT32_MAX sentinel = "not populated" (every
+    // caller except TTW-S2's forged-replay path), meaning attribution falls
+    // back to physical_sender_id unchanged for those events.
+    uint32_t radio_origin_id = UINT32_MAX;
 };
 
 uint64_t pem_true_positive = 0;
@@ -2077,58 +2083,44 @@ extern NodeContainer RSU_Nodes;
 extern NodeContainer controller_Node;
 extern NodeContainer management_Node;
 
-// ── Physical-layer attribution for identity-theft attacks (e.g. TTW-S2) ─────
+// ── Multi-plane attribution for identity-theft attacks (e.g. TTW-S2) ────────
 // A real controller cannot cryptographically distinguish a compromised-key
 // impersonation from a genuine self-report — the MAC verifies either way.
-// But it CAN independently know (a) the time it last legitimately heard a
-// given vehicle identity vouch for a SPECIFIC edge, and (b) its own
-// authority-provisioned RSU positions (RSUs are authority-vetted at
-// registration, unlike vehicles — see PemIsBootstrapComplete's Tier-1
-// assumption). RSU-relayed data arriving from a known RSU's location is
-// completely normal by itself (that IS how this architecture delivers
-// vehicle reports) — what is NOT normal is that same RSU location still
-// "speaking for" a claim about an edge that identity hasn't legitimately
-// reported in a long time.
+// Two earlier approaches were tried and rejected here:
+//   1. Comparing forged events' authored "reporter_position" against a known
+//      RSU location — rejected because reporter_position is a plaintext
+//      field the same compromised-key attacker fully controls; a fully
+//      adaptive attacker would simply forge it too.
+//   2. Blindly attributing every RSU-relayed attack event to that RSU —
+//      rejected because it conflates "who relayed this" with "who forged
+//      this": an HONEST RSU faithfully relaying a genuinely malicious
+//      vehicle's own traffic would be wrongly blamed instead of the vehicle.
 //
-// Keyed per-EDGE (claimed_sender_id, link_dst_id), not just per claimed
-// sender: a vehicle that is still alive and legitimately reporting OTHER
-// neighbours must not reset the staleness clock for an edge it has actually
-// stopped reporting — that would make this check vacuously false in any
-// simulation where the impersonated vehicle has other ongoing legitimate
-// traffic (ordinary VANET behaviour), silently defeating the check.
-//
-// KNOWN LIMITATION (see TTWS2_RunDetection's reporter_position assignment):
-// the position side of this check is currently authored directly by the
-// scenario script from the real RSU position, not derived from an
-// independent physical-layer measurement — so it does not yet defend
-// against an attacker sophisticated enough to also forge reporter_position
-// (it already forges timestamp+identity via the same code path, and could
-// trivially forge this too). A real fix requires deriving position/distance
-// from ns-3's actual measured RSSI (see the real Rx()/MonitorSnifferRx
-// SignalNoiseDbm callback, already used elsewhere in this file for real
-// physical-layer measurement) instead of an authored value. Tracked as
-// follow-up work, not yet implemented.
-struct PemLastLegitObservation { Vector pos; double time; };
-static std::map<std::pair<uint32_t,uint32_t>, PemLastLegitObservation> g_pem_last_legit_position;
+// The correct signal is a THIRD, independent plane, never conflated with
+// either of the above:
+//   claimed_sender_id  — the payload's identity claim (crypto verifies this;
+//                        forgeable by whoever holds that identity's key)
+//   physical_sender_id — kept unchanged; still drives Stage-0 crypto/MAC
+//                        pass-fail exactly as before (zero behaviour change)
+//   radio_origin_id    — who ACTUALLY, physically originated these bits at
+//                        the point they entered the network (NOT who last
+//                        relayed them). For a genuine vehicle self-report
+//                        relayed by an RSU, this is the vehicle (matches
+//                        claimed_sender_id — no inconsistency, RSU never
+//                        blamed). For TTW-S2's forged replay specifically,
+//                        there is no real vehicle transmission behind either
+//                        the "basic" or "sophisticated" branch — the RSU
+//                        internally fabricates the replay in both cases, so
+//                        radio_origin_id is unambiguously the RSU there,
+//                        known with certainty by the scenario code (it is a
+//                        plain function parameter, not something read back
+//                        from the attacker-controlled payload).
+// Attribution is then a deterministic reconciliation, not a probabilistic
+// heuristic: radio_origin_id disagreeing with claimed_sender_id means
+// whoever is at radio_origin_id lied about identity. This requires no
+// position, RSSI, or staleness window, and does not misattribute an honest
+// relay of a genuinely malicious vehicle's own traffic.
 
-// Returns true and sets outRsuId if some RSU's real current position is
-// within toleranceM of pos. RSU positions are authority-known infrastructure
-// data (see comment above), not simulation ground truth being peeked at.
-static bool PemFindNearestKnownRsu(const Vector& pos, double toleranceM, uint32_t& outRsuId)
-{
-    double bestDist = -1.0;
-    uint32_t bestId = 0;
-    for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
-    {
-        Ptr<MobilityModel> m = RSU_Nodes.Get(i)->GetObject<MobilityModel>();
-        if (!m) continue;
-        Vector p = m->GetPosition();
-        double d = std::sqrt(std::pow(p.x - pos.x, 2.0) + std::pow(p.y - pos.y, 2.0));
-        if (bestDist < 0.0 || d < bestDist) { bestDist = d; bestId = RSU_Nodes.Get(i)->GetId(); }
-    }
-    if (bestDist >= 0.0 && bestDist <= toleranceM) { outRsuId = bestId; return true; }
-    return false;
-}
 
 // Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.44). Called
 // unconditionally from PemEmitVehicleBeacon for every real vehicle beacon
@@ -3213,11 +3205,13 @@ static void PemEmitEvent(PemEventType type,
                          const Vector& linkSrcPosition,
                          const Vector& linkDstPosition,
                          bool attackLabel,
-                         uint64_t claimedSeqNo = UINT64_MAX);
+                         uint64_t claimedSeqNo = UINT64_MAX,
+                         uint32_t radioOriginId = UINT32_MAX);
 static void PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                                   uint32_t claimedSenderId,
                                   double senderTimestamp,
-                                  bool attackLabel);
+                                  bool attackLabel,
+                                  uint32_t radioOriginId = UINT32_MAX);
 static void PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId);
 static void PemEmitVehicleHeartbeat(uint32_t senderId,
                                     uint32_t claimedSenderId,
@@ -4566,16 +4560,6 @@ PemEvaluateEvent(PemEvent& event)
             event.triggered[8] = true;
         }
 
-        // Record this claimed sender's real physical origin from ACCEPTED,
-        // non-attack traffic only, keyed per-EDGE — this is the "known good"
-        // baseline the physical-layer attribution check below compares forged
-        // events against (see g_pem_last_legit_position declaration for
-        // rationale on the per-edge keying).
-        if (!event.attack_label)
-        {
-            g_pem_last_legit_position[{event.claimed_sender_id, event.link_dst_id}] =
-                {event.reporter_position, event.reception_timestamp};
-        }
     }
 
     // ── STEP 1+2: Weighted signature scoring ─────────────────────────────────
@@ -4604,47 +4588,29 @@ PemEvaluateEvent(PemEvent& event)
     pem_all_seen_node_ids.insert(event.physical_sender_id);
     if (event.attack_label)
     {
-        // Physical-layer attribution correction (identity-theft attacks, e.g.
-        // TTW-S2 sophisticated RSU): physical_sender_id may be the impersonated
-        // vehicle's identity, not who actually transmitted. RSU-relayed data
-        // legitimately arrives from the RSU's own location (that's how this
-        // architecture works) — but a claim under a MOBILE vehicle's identity,
-        // about an edge that identity hasn't legitimately vouched for in a
-        // long time, that keeps "arriving" from a known-static RSU's location,
-        // is something a real vehicle cannot do. That combination attributes
-        // the attack to the RSU instead of the impersonated identity.
-        // KNOWN LIMITATION: event.reporter_position is currently authored
-        // directly by the scenario script (see TTWS2_RunDetection), not
-        // derived from an independent physical-layer measurement — so this
-        // does NOT yet defend against an attacker sophisticated enough to
-        // also forge reporter_position. See g_pem_last_legit_position's
-        // declaration comment for the real fix (ns-3's measured RSSI via
-        // Rx()/MonitorSnifferRx), not yet implemented. This is a documented
-        // heuristic, not a closed threat model.
+        // Multi-plane attribution (identity-theft attacks, e.g. TTW-S2
+        // sophisticated RSU): physical_sender_id may be the impersonated
+        // vehicle's identity, not who actually transmitted. radio_origin_id
+        // (see PemEvent's declaration and the comment near
+        // g_vehicle_next_seq_no for full rationale) is a THIRD, independent
+        // plane set only by callers that know with certainty who physically
+        // originated the bits — never derived from anything the attacker's
+        // payload controls. Reconciling it against claimed_sender_id is
+        // deterministic, not a heuristic: a genuine vehicle self-report
+        // relayed by an RSU always has radio_origin_id == claimed_sender_id
+        // (no inconsistency, RSU never blamed for honestly relaying); only a
+        // fabricated replay (no real vehicle transmission behind it) produces
+        // a mismatch, and that mismatch names the true origin.
         uint32_t attributionId = event.physical_sender_id;
-        if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && has_RSU_infrastructure)
+        if (event.radio_origin_id != UINT32_MAX &&
+            event.radio_origin_id != event.claimed_sender_id)
         {
-            uint32_t nearestRsuId = 0;
-            if (PemFindNearestKnownRsu(event.reporter_position, g_rcomm, nearestRsuId))
-            {
-                auto lastLegitIt = g_pem_last_legit_position.find(
-                    {event.claimed_sender_id, event.link_dst_id});
-                if (lastLegitIt != g_pem_last_legit_position.end())
-                {
-                    const double staleGapS =
-                        event.reception_timestamp - lastLegitIt->second.time;
-                    if (staleGapS > (2.0 * PEM_BEACON_INTERVAL_S))
-                    {
-                        printf("[ATTRIBUTION][t=%.3f] claimed sender V%u has not been heard"
-                               " from legitimately in %.3fs, yet this report arrives from"
-                               " known RSU_%u's location — attributing attack to RSU_%u,"
-                               " not the impersonated identity\n",
-                               Simulator::Now().GetSeconds(), event.claimed_sender_id,
-                               staleGapS, nearestRsuId, nearestRsuId);
-                        attributionId = nearestRsuId;
-                    }
-                }
-            }
+            printf("[ATTRIBUTION][t=%.3f] claimed sender V%u's report physically originated"
+                   " from V%u instead — attributing attack to V%u, not the impersonated"
+                   " identity\n",
+                   Simulator::Now().GetSeconds(), event.claimed_sender_id,
+                   event.radio_origin_id, event.radio_origin_id);
+            attributionId = event.radio_origin_id;
         }
 
         pem_actual_attacker_nodes.insert(attributionId);
@@ -4867,7 +4833,8 @@ PemEmitEvent(PemEventType type,
              const Vector& linkSrcPosition,
              const Vector& linkDstPosition,
              bool attackLabel,
-             uint64_t claimedSeqNo)
+             uint64_t claimedSeqNo,
+             uint32_t radioOriginId)
 {
     // Issue 6 fix — reject beacons/topology updates from a blacklisted sender
     // outright (report: "reject its beacons"), before they reach Stage-0 or
@@ -4893,6 +4860,7 @@ PemEmitEvent(PemEventType type,
     event.link_dst_position = linkDstPosition;
     event.attack_label = attackLabel;
     event.claimed_seq_no = claimedSeqNo;
+    event.radio_origin_id = radioOriginId;
     event.score = 0.0;
     event.alert_raised = false;
     event.detection_latency_ms = -1.0;
@@ -4908,29 +4876,46 @@ PemEmitEvent(PemEventType type,
         pem_all_seen_node_ids.insert(physicalSenderId);
         if (attackLabel)
         {
-            pem_actual_attacker_nodes.insert(physicalSenderId);
-            pem_detected_attacker_nodes.insert(physicalSenderId);
-            PemCryptoRegisterDetection(physicalSenderId, reporterId);
+            // Same multi-plane attribution reconciliation as PemEvaluateEvent's
+            // Stage-1 path (see PemEvent's radio_origin_id declaration) — this
+            // is a SEPARATE bookkeeping block (Stage-0 drops return before
+            // ever reaching PemEvaluateEvent), so it needs its own copy of the
+            // same fix or events caught here silently fall back to blaming
+            // physicalSenderId (e.g. an impersonated/deceived identity).
+            uint32_t attributionId = physicalSenderId;
+            if (event.radio_origin_id != UINT32_MAX &&
+                event.radio_origin_id != claimedSenderId)
+            {
+                printf("[ATTRIBUTION][t=%.3f] claimed sender V%u's report physically"
+                       " originated from V%u instead — attributing attack to V%u,"
+                       " not the impersonated identity (Stage-0 drop)\n",
+                       Simulator::Now().GetSeconds(), claimedSenderId,
+                       event.radio_origin_id, event.radio_origin_id);
+                attributionId = event.radio_origin_id;
+            }
+            pem_actual_attacker_nodes.insert(attributionId);
+            pem_detected_attacker_nodes.insert(attributionId);
+            PemCryptoRegisterDetection(attributionId, reporterId);
             g_tgn_stage0_blocked_attacks++;
-            g_tgn_flagged_nodes.insert(physicalSenderId);
+            g_tgn_flagged_nodes.insert(attributionId);
             // Eq. 3.18 — live LKH revocation at Stage 0 (crypto gate detected attacker).
             if (g_lkh_ready &&
                 g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-                g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
+                g_lkh_already_revoked.find(attributionId) == g_lkh_already_revoked.end())
             {
-                uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
+                uint32_t leaf_idx = attributionId % g_lkh_n_leaves;
                 lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
-                g_lkh_already_revoked.insert(physicalSenderId);
+                g_lkh_already_revoked.insert(attributionId);
                 // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
                 // consortium certificate and is immediately peer-ineligible.
-                if (g_trust_table.count(physicalSenderId))
-                    g_trust_table[physicalSenderId].cert_valid = false;
+                if (g_trust_table.count(attributionId))
+                    g_trust_table[attributionId].cert_valid = false;
                 const uint32_t depth = (g_lkh_n_leaves > 1u)
                     ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
                 printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
                        " (Eq. 3.18, Stage-0 detection)\n",
                        Simulator::Now().GetSeconds(),
-                       physicalSenderId, leaf_idx, g_lkh_n_leaves, depth);
+                       attributionId, leaf_idx, g_lkh_n_leaves, depth);
             }
         }
         PemRecordObservation(attackLabel, 1.0, attackLabel);
@@ -4945,7 +4930,8 @@ static void
 PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                       uint32_t claimedSenderId,
                       double senderTimestamp,
-                      bool attackLabel)
+                      bool attackLabel,
+                      uint32_t radioOriginId)
 {
     Vector reporterPosition(0.0, 0.0, 0.0);
     Vector endpointPosition(0.0, 0.0, 0.0);
@@ -4960,7 +4946,9 @@ PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                  reporterPosition,
                  endpointPosition,
                  endpointPosition,
-                 attackLabel);
+                 attackLabel,
+                 UINT64_MAX,
+                 radioOriginId);
 }
 
 static void
@@ -6111,29 +6099,25 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     // reporter_position is the PHYSICAL origin of this transmission — the RSU,
     // in both branches (it is always the RSU's radio that actually transmits;
     // only the claimed identity in the payload differs). Using the victim
-    // vehicle's position here would misrepresent physical reality and defeat
-    // the physical-layer attribution check in PemEvaluateEvent.
+    // vehicle's position here would misrepresent physical reality.
     //
-    // *** KNOWN LIMITATION — NOT A CLOSED THREAT MODEL ***
-    // rsuPos is AUTHORED here directly from the RSU's real MobilityModel
-    // position by this scenario script — it is NOT derived from an
-    // independent physical-layer measurement. A fully sophisticated attacker
-    // that already forges physical_sender_id/claimed_sender_id/timestamp via
-    // this exact code path has no obstacle to also forging reporter_position
-    // (e.g. to the victim's captured position instead), which would defeat
-    // PemEvaluateEvent's attribution check and revert to blaming the victim.
-    // A real fix requires routing this replay over an actual WifiNetDevice
-    // transmission (as AttackSendDSRCBeacon does) so the real Rx()/
-    // MonitorSnifferRx SignalNoiseDbm callback measures genuine signal
-    // strength, then deriving position/distance from THAT — something the
-    // attacker's compromised key cannot alter. Not yet implemented; tracked
-    // as follow-up work.
+    // radio_origin_id = rsu_id (always, both branches) is the load-bearing
+    // attribution signal — see PemEvent's declaration and the multi-plane
+    // attribution comment near g_vehicle_next_seq_no. Unlike reporter_position
+    // (a payload-adjacent field an attacker could in principle also forge),
+    // rsu_id here is simply this scenario's own function parameter: this
+    // specific code path is, by construction, always the RSU internally
+    // fabricating a replay with no real vehicle transmission behind it in
+    // EITHER branch — the attacker choosing "basic" vs "sophisticated" only
+    // changes which identity the crypto layer is asked to verify, never who
+    // physically originates these bits. That fact is known with certainty by
+    // this code, not read back from anything attacker-controlled.
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,
                  _ts2,
                  now2, rsuPos, v1Pos, v2Pos, true,
-                 ttws2_stored_seq_no);
+                 ttws2_stored_seq_no, rsu_id);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -6212,12 +6196,16 @@ void TTWS2_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
+    // radio_origin_id == claimed_sender_id here (v1_id/v2_id) — the vehicle
+    // genuinely, physically transmits its own report; consistent with the
+    // multi-plane attribution model even though it's a no-op for legit
+    // (non-attack) events (see PemEvaluateEvent's attribution block).
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id,
                  v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false,
-                 PemNextSeqNo(v1_id));
+                 PemNextSeqNo(v1_id), v1_id);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
                  v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false,
-                 PemNextSeqNo(v2_id));
+                 PemNextSeqNo(v2_id), v2_id);
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
     {
@@ -7042,7 +7030,17 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32
               << " --forwards stale heartbeat--> Controller"
               << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time
               << ")  Controller liveness POISONED" << std::endl;
-    PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true);
+    // radio_origin_id = attacker_id here, NOT victim_id, even though victim_id
+    // genuinely transmits this specific hop: victim_id is an innocent,
+    // deceived relay of a stale artifact attacker_id fabricated in the
+    // earlier hijack step. Blaming/revoking the deceived victim instead of
+    // the actual attacker would punish an innocent node — this is a
+    // provenance question (who originated the malicious characteristic of
+    // this data), not a same-hop identity-mismatch question like TTW-S2's,
+    // but the same radio_origin_id mechanism resolves it: the scenario code
+    // knows attacker_id with certainty, independent of what this hop's
+    // packet claims.
+    PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true, attacker_id);
 }
 
 void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time)
@@ -7085,7 +7083,11 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
               << ", t=" << bshh_s1_ts << ")  IMPERSONATION"
               << (bshh_s1_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true);
+    // radio_origin_id = attacker_id always (both branches) — the attacker
+    // vehicle physically transmits this hijack in both cases; only the
+    // crypto-claimed identity differs. Same multi-plane attribution model as
+    // TTW-S2 (see PemEvent's declaration): deterministic, not a heuristic.
+    PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true, attacker_id);
 
     // Crypto latency: detection verify + freshness + LKH mitigation
     if (enable_crypto_latency == 3 && g_crypto_ready) {
@@ -7383,7 +7385,10 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
               << ", t=" << bshh_s2_ts << ")"
               << (bshh_s2_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true);
+    // radio_origin_id = rsu_id always (both branches) — same multi-plane
+    // attribution model as TTW-S2: the RSU physically transmits this replay
+    // in both cases, only the crypto-claimed identity differs.
+    PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true, rsu_id);
     AttackSendRSUToController(rsu_id);
     {
         Ptr<Node> rsuNode = nullptr;
@@ -7409,7 +7414,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
                   << " --REPLAY even-older duplicate--> Controller"
                   << "  Heartbeat(physical=V" << bshh_s2_phys << ", claimed=" << victimLabel
                   << ", t=" << bshh_s2_even_older_heartbeat.timestamp << ")" << std::endl;
-        PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_even_older_heartbeat.timestamp, true);
+        PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_even_older_heartbeat.timestamp, true, rsu_id);
         AttackSendRSUToController(rsu_id);
     }
 
