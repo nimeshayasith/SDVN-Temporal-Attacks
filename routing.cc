@@ -5416,6 +5416,55 @@ static TtwBreakEval TtwEvaluateNaturalBreak(uint32_t attackerCidx, uint32_t vict
     return r;
 }
 
+// One resolved attacker/victim assignment out of TtwFindNaturalBreakPairs.
+struct TtwAssignedPair {
+    uint32_t attackerCidx;
+    uint32_t victimCidx;
+    double   breakTime;
+};
+
+// Shared pair-selection search (Option B): for each attacker in attackerPool,
+// scan victimPool (shrinking as victims get claimed) for the best-scoring
+// candidate whose REAL SUMO trajectory is in range at helloTime and later
+// genuinely exceeds commRange — exactly the loop TTW-S1 already runs inline
+// (see the attack_scenario==1 block). Extracted so TTW-S2/S3/S4 and
+// BSHH-S1..S4 can reuse it without duplicating the selection logic, while
+// TTW-S1's own inline block is left untouched (zero regression risk to the
+// one scenario already proven to work).
+static std::vector<TtwAssignedPair>
+TtwFindNaturalBreakPairs(const std::vector<uint32_t>& attackerPool,
+                         std::vector<uint32_t> victimPool,   // copy — drained as victims are claimed
+                         double helloTime, double searchStart, double searchEnd,
+                         double commRange, double stepSec)
+{
+    std::vector<TtwAssignedPair> assigned;
+    for (uint32_t attackerCidx : attackerPool)
+    {
+        int bestIdx = -1;
+        TtwBreakEval best;
+        for (size_t vi = 0; vi < victimPool.size(); vi++)
+        {
+            if (victimPool[vi] == attackerCidx) continue;  // never pair a node with itself
+            TtwBreakEval ev = TtwEvaluateNaturalBreak(
+                attackerCidx, victimPool[vi], helloTime,
+                searchStart, searchEnd, commRange, stepSec);
+            if (!ev.found) continue;
+            const bool better =
+                (bestIdx < 0) ||
+                (ev.brokenDuration > best.brokenDuration) ||
+                (ev.brokenDuration == best.brokenDuration && ev.maxDist > best.maxDist) ||
+                (ev.brokenDuration == best.brokenDuration && ev.maxDist == best.maxDist
+                 && ev.breakTime < best.breakTime);
+            if (better) { bestIdx = (int)vi; best = ev; }
+        }
+        if (bestIdx < 0) continue;  // no natural break found for this attacker — caller logs/skips
+        uint32_t victimCidx = victimPool[(size_t)bestIdx];
+        victimPool.erase(victimPool.begin() + bestIdx);
+        assigned.push_back({attackerCidx, victimCidx, best.breakTime});
+    }
+    return assigned;
+}
+
 void TTW_InitLog()
 {
     ttw_log.open(BuildLogPath("ttw_attack_scenario4.txt"), std::ios::out | std::ios::trunc);
@@ -6035,7 +6084,8 @@ void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
     AttackSendRSUToController(rsu_id);
 }
 
-void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time)
+void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time,
+                        double realBreakTime, double realReplayTime)
 {
     double now = Simulator::Now().GetSeconds();
     ttws2_stored_packet = {v1_id, v2_id, obs_time, false};
@@ -6043,16 +6093,14 @@ void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time)
     ttws2_log << "[t=" << now << "]  STEP ③  MALICIOUS RSU STORES PACKET\n"
               << "  old_packet : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
-              << "  Awaiting replay at t=" << TTWS2_REPLAY_TIME << "\n"
+              << "  Awaiting replay at t=" << realReplayTime << "\n"
               << "  Link physically breaks at t≈" << std::fixed << std::setprecision(1)
-              << ttw_physical_break_time << "s (dist > " << TTW_COMM_RANGE << "m)\n"
-              << "  Simulation declares it broken at t=" << TTWS2_LINK_BREAK
-              << "s — controller receives no link-down notification.\n\n"
+              << realBreakTime << "s (dist > " << TTW_COMM_RANGE << "m, real SUMO trajectory)\n\n"
               << std::setprecision(3);
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S2][t=" << now << "]  Malicious RSU stored old packet"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
-              << "  (link breaks t≈" << ttw_physical_break_time << "s, replay at t=" << TTWS2_REPLAY_TIME << ")" << std::endl;
+              << "  (link breaks t≈" << realBreakTime << "s, replay at t=" << realReplayTime << ")" << std::endl;
 }
 
 void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double forged_time)
@@ -6222,7 +6270,8 @@ void TTWS3_ReceiveLegitimateUpdates(uint32_t v1_id, uint32_t v2_id, double obs_t
     }
 }
 
-void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
+void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time,
+                                double realBreakTime, double realReplayTime)
 {
     double now = Simulator::Now().GetSeconds();
     ttws3_stored_packet = {v1_id, v2_id, obs_time, false};
@@ -6231,13 +6280,13 @@ void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
               << "  Stored : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
               << "  Link physically breaks at t≈" << std::fixed << std::setprecision(1)
-              << ttw_physical_break_time << "s (dist > " << TTW_COMM_RANGE << "m)\n"
+              << realBreakTime << "s (dist > " << TTW_COMM_RANGE << "m, real SUMO trajectory)\n"
               << "  Controller WILL NOT time out this entry\n\n"
               << std::setprecision(3);
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S3][t=" << now << "]  Controller keeps stale copy"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
-              << "  (internal replay at t=" << TTWS3_INTERNAL_REPLAY << ")" << std::endl;
+              << "  (internal replay at t=" << realReplayTime << ")" << std::endl;
 }
 
 void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
@@ -6401,7 +6450,8 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
     AttackSendRSUToController(rsu_id);
 }
 
-void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
+void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time,
+                                double realBreakTime, double realReplayTime)
 {
     double now = Simulator::Now().GetSeconds();
     ttws4_stored_packet = {v1_id, v2_id, obs_time, false};
@@ -6410,13 +6460,13 @@ void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
               << "  Stored : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
               << "  Link physically breaks at t≈" << std::fixed << std::setprecision(1)
-              << ttw_physical_break_time << "s (dist > " << TTW_COMM_RANGE << "m)\n"
-              << "  Controller WILL NOT time out this entry — will replay at t=" << TTWS4_INTERNAL_REPLAY << "\n\n"
+              << realBreakTime << "s (dist > " << TTW_COMM_RANGE << "m, real SUMO trajectory)\n"
+              << "  Controller WILL NOT time out this entry — will replay at t=" << realReplayTime << "\n\n"
               << std::setprecision(3);
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S4][t=" << now << "]  Controller stores stale copy (from RSU aggregate)"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << obs_time << ">"
-              << "  (internal replay at t=" << TTWS4_INTERNAL_REPLAY << ")" << std::endl;
+              << "  (internal replay at t=" << realReplayTime << ")" << std::endl;
 }
 
 void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
@@ -149290,9 +149340,10 @@ static int RoutingMain(int argc, char *argv[])
       }
       std::cout<<"[SUMO] Loaded "<<sumo_x.size()<<" positions, scheduled "
                <<total_wps<<" exact position+velocity events\n";
-      if (attack_scenario != 0 && attack_scenario != 1)
-          std::cout<<"[SUMO] Attack "<<attack_scenario
-                   <<": attacker/victim positions overridden by attack setup.\n";
+      // All attack scenarios (TTW/BSHH/ME, all placements) now use Option B:
+      // vehicles run on their real SUMO trajectory with no position override;
+      // attacker/victim pairs are selected via TtwFindNaturalBreakPairs /
+      // per-event GetPosition() range checks instead of scripted geometry.
 
       // TTW-S1 (Option B): hoist the parsed trajectory to file scope so the
       // S1 attacker/victim natural-break search (later in this function) can
@@ -151149,69 +151200,89 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_rsus > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus = (uint32_t)RSU_Nodes.GetN();
       if (n_malicious_rsus > N_Vehicles / 2)            n_malicious_rsus = N_Vehicles / 2;
 
-      // One victim pair per malicious RSU
-      std::vector<std::pair<uint32_t,uint32_t>> s2_pairs;
-      for (uint32_t ri = 0; ri < n_malicious_rsus; ri++)
-      {
-          uint32_t vA = Vehicle_Nodes.Get(ri * 2)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(ri * 2 + 1)->GetId();
-          s2_pairs.push_back({vA, vB});
-          ttw_s2_all_pairs.push_back({vA, vB});
+      // Option B: search real SUMO trajectories (same search TTW-S1 uses via
+      // TtwFindNaturalBreakPairs) for n_malicious_rsus disjoint vehicle pairs
+      // that are in range at HELLO time and later genuinely exceed
+      // TTW_COMM_RANGE. Previously this block force-assigned consecutive
+      // vehicle indices as pairs and nudged their ConstantVelocityMobilityModel
+      // with a scripted lane geometry — but the SUMO waypoint schedule
+      // (installed earlier in main()) overwrites that nudge within ~0.1s of
+      // Simulator::Run() starting, so "link physically broke" was asserted
+      // without ever being verified against real movement. This replaces
+      // that with a genuine natural-break search.
+      std::vector<uint32_t> s2_victim_pool;
+      for (uint32_t k = 0; k < N_Vehicles; k++) s2_victim_pool.push_back(k);
+      AttackShuffleVector(s2_victim_pool);
+      std::vector<uint32_t> s2_attacker_pool(
+          s2_victim_pool.begin(),
+          s2_victim_pool.begin() + std::min((size_t)n_malicious_rsus, s2_victim_pool.size()));
+
+      std::vector<TtwAssignedPair> s2_assigned;
+      if (!g_sumo_trace_loaded)
+          std::cout << "[TTW-S2] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
+      else
+          s2_assigned = TtwFindNaturalBreakPairs(
+              s2_attacker_pool, s2_victim_pool, TTWS2_HELLO_TIME,
+              TTWS2_HELLO_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+
+      for (const auto& ap : s2_assigned) {
+          ttw_s2_all_pairs.push_back({Vehicle_Nodes.Get(ap.attackerCidx)->GetId(),
+                                       Vehicle_Nodes.Get(ap.victimCidx)->GetId()});
       }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 02 - TTW-S2 ATTACK CONFIGURED"   << std::endl;
-      std::cout << "Malicious RSUs : " << n_malicious_rsus << " / " << N_RSUs << std::endl;
-      std::cout << "Victim pairs   (" << s2_pairs.size() << "):" << std::endl;
-      for (uint32_t ri = 0; ri < (uint32_t)s2_pairs.size(); ri++)
+      std::cout << "Malicious RSUs : " << s2_assigned.size() << " / " << N_RSUs << std::endl;
+      std::cout << "Victim pairs   (" << s2_assigned.size() << "):" << std::endl;
+      for (size_t ri = 0; ri < s2_assigned.size(); ri++)
           std::cout << "  RSU_" << RSU_Nodes.Get(ri)->GetId()
-                    << "  ->  V" << s2_pairs[ri].first
-                    << " <-> V" << s2_pairs[ri].second << std::endl;
-      std::cout << "Timeline:" << std::endl;
-      std::cout << "  t=10s  STEP 1+2 : Each pair -> its RSU -> Controller (legit)" << std::endl;
-      std::cout << "  t=10s  STEP 3   : Each malicious RSU stores pair's old packet" << std::endl;
-      std::cout << "  t=15s           : Physical links break"                         << std::endl;
-      std::cout << "  t=20s  STEP 4+5 : Each malicious RSU replays stale packet"     << std::endl;
+                    << "  ->  V" << Vehicle_Nodes.Get(s2_assigned[ri].attackerCidx)->GetId()
+                    << " <-> V" << Vehicle_Nodes.Get(s2_assigned[ri].victimCidx)->GetId()
+                    << "  (real break at t=" << s2_assigned[ri].breakTime << "s)" << std::endl;
+      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
+      std::cout << "  t=10s     STEP 1+2 : Each pair -> its RSU -> Controller (legit)" << std::endl;
+      std::cout << "  t=10.2s   STEP 3   : Each malicious RSU stores pair's old packet" << std::endl;
+      std::cout << "  [per-pair]         : Physical link breaks whenever that pair's real"
+                   " SUMO trajectory naturally exceeds " << TTW_COMM_RANGE << " m" << std::endl;
+      std::cout << "  [per-pair]         : Malicious RSU replays forged packet " << TTW_S1_REPLAY_MARGIN_S
+                << "s after its pair's real break" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      ttws2_total_pairs     = (uint32_t)s2_pairs.size();
+      ttws2_total_pairs     = (uint32_t)s2_assigned.size();
       ttws2_completed_pairs = 0;
       // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
       const uint32_t s2_app_veh_base = N_Controllers + 1;
 
-      for (uint32_t pi = 0; pi < (uint32_t)s2_pairs.size(); pi++)
-      {
-          uint32_t rsu_id  = RSU_Nodes.Get(pi)->GetId(); // pi-th RSU is malicious
-          uint32_t vA      = s2_pairs[pi].first;
-          uint32_t vB      = s2_pairs[pi].second;
-          double   dt      = pi * 0.0005; // 0.5 ms stagger per pair
-          uint32_t vA_cidx = pi * 2;
-          uint32_t vB_cidx = pi * 2 + 1;
+      double s2_min_replay_time = -1.0;
 
-          // Each pair gets its own y-lane; both vehicles and its RSU move accordingly.
-          {
-              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
-              // Vehicles: attacker moves right, victim moves left (away)
-              Ptr<ConstantVelocityMobilityModel> m_att =
+      for (uint32_t pi = 0; pi < (uint32_t)s2_assigned.size(); pi++)
+      {
+          uint32_t rsu_id        = RSU_Nodes.Get(pi)->GetId(); // pi-th RSU is malicious
+          uint32_t vA_cidx       = s2_assigned[pi].attackerCidx;
+          uint32_t vB_cidx       = s2_assigned[pi].victimCidx;
+          uint32_t vA            = Vehicle_Nodes.Get(vA_cidx)->GetId();
+          uint32_t vB            = Vehicle_Nodes.Get(vB_cidx)->GetId();
+          const double breakTime = s2_assigned[pi].breakTime;
+          double   dt            = pi * 0.0005; // 0.5 ms stagger per pair
+
+          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
+          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+          if (replayTime >= simTime)   replayTime = simTime - 0.5;
+          if (s2_min_replay_time < 0.0 || replayTime < s2_min_replay_time) s2_min_replay_time = replayTime;
+
+          // RSU pi: placed at the real midpoint of the pair's position at
+          // HELLO time (RSUs aren't SUMO-driven, so this placement is durable
+          // — unlike the vehicle nudge it replaces, which never was).
+          if (pi < RSU_Nodes.GetN()) {
+              Vector posA = TtwSumoPositionAt(vA_cidx, TTWS2_HELLO_TIME);
+              Vector posB = TtwSumoPositionAt(vB_cidx, TTWS2_HELLO_TIME);
+              Ptr<ConstantVelocityMobilityModel> m_rsu =
                   DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> m_vic =
-                  DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
-              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
-              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-              // RSU pi: place midway between vehicles, 80m off-lane — within DSRC range
-              if (pi < RSU_Nodes.GetN()) {
-                  Ptr<ConstantVelocityMobilityModel> m_rsu =
-                      DynamicCast<ConstantVelocityMobilityModel>(
-                          RSU_Nodes.Get(pi)->GetObject<MobilityModel>());
-                  if (m_rsu) {
-                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
-                                               y_lane + 80.0, 0.0));
-                      m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
-                  }
+                      RSU_Nodes.Get(pi)->GetObject<MobilityModel>());
+              if (m_rsu) {
+                  m_rsu->SetPosition(Vector((posA.x + posB.x) / 2.0, (posA.y + posB.y) / 2.0, 0.0));
+                  m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
               }
           }
 
@@ -151220,9 +151291,9 @@ static int RoutingMain(int argc, char *argv[])
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + 0.1 + dt),
               &TTWS2_RSUForwardAggregated, rsu_id, vA, vB, TTWS2_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + 0.2 + dt),
-              &TTWS2_StorePacket, vA, vB, TTWS2_HELLO_TIME);
-          Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME + dt),
-              &TTWS2_ReplayAttack, rsu_id, vA, vB, TTWS2_REPLAY_TIME);
+              &TTWS2_StorePacket, vA, vB, TTWS2_HELLO_TIME, breakTime, replayTime);
+          Simulator::Schedule(Seconds(replayTime + dt),
+              &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (topology update path)
           if (s2_app_veh_base + vA_cidx < apps.GetN()) {
@@ -151263,9 +151334,13 @@ static int RoutingMain(int argc, char *argv[])
               "RSU-" + std::to_string(pi) + "-Attacker");
       }
 
-      // Arm pipeline intercept using the first malicious RSU's ID
-      Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME - 0.0001),
-          &TTWS2_ActivateReplay, RSU_Nodes.Get(0)->GetId());
+      if (!s2_assigned.empty()) {
+          // Arm pipeline intercept using the first malicious RSU's ID, just
+          // before the earliest (per-pair, SUMO-derived) replay.
+          const double s2ArmTime = (s2_min_replay_time - 0.001 > 0.0) ? (s2_min_replay_time - 0.001) : 0.0;
+          Simulator::Schedule(Seconds(s2ArmTime),
+              &TTWS2_ActivateReplay, RSU_Nodes.Get(0)->GetId());
+      }
 
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
@@ -151290,60 +151365,69 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl3 > controller_Node.GetN())   n_malicious_ctrl3 = controller_Node.GetN();
       if (n_malicious_ctrl3 > N_Vehicles / 2)           n_malicious_ctrl3 = N_Vehicles / 2;
 
-      // One victim pair per malicious controller
-      std::vector<std::pair<uint32_t,uint32_t>> s3_pairs;
-      for (uint32_t k = 0; k < n_malicious_ctrl3; k++) {
-          uint32_t vA = Vehicle_Nodes.Get(k * 2)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(k * 2 + 1)->GetId();
-          s3_pairs.push_back({vA, vB});
-      }
+      // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
+      // search TTW-S1 uses) for n_malicious_ctrl3 disjoint vehicle pairs that
+      // are in range at HELLO time and later genuinely exceed TTW_COMM_RANGE.
+      // Previously this forced consecutive-index pairs onto a scripted lane
+      // geometry that the SUMO waypoint schedule silently overwrote, so the
+      // controller's internal replay always claimed a "physical link break"
+      // that was never actually verified against real vehicle movement.
+      std::vector<uint32_t> s3_victim_pool;
+      for (uint32_t k = 0; k < N_Vehicles; k++) s3_victim_pool.push_back(k);
+      AttackShuffleVector(s3_victim_pool);
+      std::vector<uint32_t> s3_attacker_pool(
+          s3_victim_pool.begin(),
+          s3_victim_pool.begin() + std::min((size_t)n_malicious_ctrl3, s3_victim_pool.size()));
+
+      std::vector<TtwAssignedPair> s3_assigned;
+      if (!g_sumo_trace_loaded)
+          std::cout << "[TTW-S3] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
+      else
+          s3_assigned = TtwFindNaturalBreakPairs(
+              s3_attacker_pool, s3_victim_pool, TTWS3_HELLO_TIME,
+              TTWS3_HELLO_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 03 - TTW-S3 ATTACK CONFIGURED"   << std::endl;
       std::cout << "Attacker      : " << n_malicious_ctrl3 << " malicious controller(s) / "
                 << controller_Node.GetN() << " total"         << std::endl;
-      std::cout << "Poisoned pairs: " << s3_pairs.size() << " / " << N_Vehicles/2 << std::endl;
-      for (auto& p : s3_pairs)
-          std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
-      std::cout << "Timeline:"                                  << std::endl;
-      std::cout << "  t=10s  : Legit updates -> controller, stores stale" << std::endl;
-      std::cout << "  t=15s  : Physical link breaks"                       << std::endl;
-      std::cout << "  t=20s  : Controller internal replay (no ext packet)" << std::endl;
+      std::cout << "Poisoned pairs: " << s3_assigned.size() << " / " << N_Vehicles/2 << std::endl;
+      for (const auto& ap : s3_assigned)
+          std::cout << "  V" << Vehicle_Nodes.Get(ap.attackerCidx)->GetId()
+                    << " <-> V" << Vehicle_Nodes.Get(ap.victimCidx)->GetId()
+                    << "  (real break at t=" << ap.breakTime << "s)" << std::endl;
+      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
+      std::cout << "  t=10s     : Legit updates -> controller, stores stale"        << std::endl;
+      std::cout << "  [per-pair]: Physical link breaks whenever that pair's real"
+                   " SUMO trajectory naturally exceeds " << TTW_COMM_RANGE << " m"  << std::endl;
+      std::cout << "  [per-pair]: Controller internal replay " << TTW_S1_REPLAY_MARGIN_S
+                << "s after its pair's real break (no ext packet)"                  << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      ttws3_total_pairs     = (uint32_t)s3_pairs.size();
+      ttws3_total_pairs     = (uint32_t)s3_assigned.size();
       ttws3_completed_pairs = 0;
       // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
       const uint32_t s3_app_veh_base = N_Controllers + 1;
 
-      for (uint32_t pi = 0; pi < s3_pairs.size(); pi++) {
-          uint32_t vA    = s3_pairs[pi].first;
-          uint32_t vB    = s3_pairs[pi].second;
-          uint32_t cidxA = pi * 2;
-          uint32_t cidxB = pi * 2 + 1;
+      for (uint32_t pi = 0; pi < s3_assigned.size(); pi++) {
+          uint32_t cidxA = s3_assigned[pi].attackerCidx;
+          uint32_t cidxB = s3_assigned[pi].victimCidx;
+          uint32_t vA    = Vehicle_Nodes.Get(cidxA)->GetId();
+          uint32_t vB    = Vehicle_Nodes.Get(cidxB)->GetId();
+          const double breakTime = s3_assigned[pi].breakTime;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
 
-          // Each pair gets its own y-lane — all pairs move with attack velocities
-          {
-              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
-              Ptr<ConstantVelocityMobilityModel> m_att =
-                  DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> m_vic =
-                  DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
-              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
-              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-          }
+          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
+          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+          if (replayTime >= simTime)   replayTime = simTime - 0.5;
 
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt),
               &TTWS3_ReceiveLegitimateUpdates, vA, vB, TTWS3_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.1),
-              &TTWS3_StorePacketInternal, vA, vB, TTWS3_HELLO_TIME);
-          Simulator::Schedule(Seconds(TTWS3_INTERNAL_REPLAY + dt),
-              &TTWS3_InternalReplay, vA, vB, TTWS3_INTERNAL_REPLAY);
+              &TTWS3_StorePacketInternal, vA, vB, TTWS3_HELLO_TIME, breakTime, replayTime);
+          Simulator::Schedule(Seconds(replayTime + dt),
+              &TTWS3_InternalReplay, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (topology update — S3 internal attack,
           // vehicles send legitimate updates before controller corrupts internally)
@@ -151415,62 +151499,75 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl4 > controller_Node.GetN())   n_malicious_ctrl4 = controller_Node.GetN();
       if (n_malicious_ctrl4 > N_Vehicles / 2)           n_malicious_ctrl4 = N_Vehicles / 2;
 
-      // One victim pair per malicious controller
-      std::vector<std::pair<uint32_t,uint32_t>> s4_pairs;
-      for (uint32_t k = 0; k < n_malicious_ctrl4; k++) {
-          uint32_t vA = Vehicle_Nodes.Get(k * 2)->GetId();
-          uint32_t vB = Vehicle_Nodes.Get(k * 2 + 1)->GetId();
-          s4_pairs.push_back({vA, vB});
-      }
+      // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
+      // search TTW-S1 uses) for n_malicious_ctrl4 disjoint vehicle pairs that
+      // are in range at HELLO time and later genuinely exceed TTW_COMM_RANGE.
+      // Previously this forced consecutive-index pairs onto a scripted lane
+      // geometry that the SUMO waypoint schedule silently overwrote, so the
+      // controller's internal replay always claimed a "physical link break"
+      // that was never actually verified against real vehicle movement.
+      std::vector<uint32_t> s4_victim_pool;
+      for (uint32_t k = 0; k < N_Vehicles; k++) s4_victim_pool.push_back(k);
+      AttackShuffleVector(s4_victim_pool);
+      std::vector<uint32_t> s4_attacker_pool(
+          s4_victim_pool.begin(),
+          s4_victim_pool.begin() + std::min((size_t)n_malicious_ctrl4, s4_victim_pool.size()));
+
+      std::vector<TtwAssignedPair> s4_assigned;
+      if (!g_sumo_trace_loaded)
+          std::cout << "[TTW-S4] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
+      else
+          s4_assigned = TtwFindNaturalBreakPairs(
+              s4_attacker_pool, s4_victim_pool, TTWS4_HELLO_TIME,
+              TTWS4_HELLO_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 04 - TTW-S4 ATTACK CONFIGURED"   << std::endl;
       std::cout << "Attacker      : " << n_malicious_ctrl4 << " malicious controller(s) / "
                 << controller_Node.GetN() << " total (RSU in path)" << std::endl;
-      std::cout << "Poisoned pairs: " << s4_pairs.size() << " / " << N_Vehicles/2 << std::endl;
-      for (auto& p : s4_pairs)
-          std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
-      std::cout << "Timeline:"                                            << std::endl;
-      std::cout << "  t=10s  : V pairs -> RSU -> Controller, ctrl stores stale" << std::endl;
-      std::cout << "  t=15s  : Physical link breaks"                             << std::endl;
-      std::cout << "  t=20s  : Controller internal replay (RSU path variant)"    << std::endl;
+      std::cout << "Poisoned pairs: " << s4_assigned.size() << " / " << N_Vehicles/2 << std::endl;
+      for (const auto& ap : s4_assigned)
+          std::cout << "  V" << Vehicle_Nodes.Get(ap.attackerCidx)->GetId()
+                    << " <-> V" << Vehicle_Nodes.Get(ap.victimCidx)->GetId()
+                    << "  (real break at t=" << ap.breakTime << "s)" << std::endl;
+      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
+      std::cout << "  t=10s     : V pairs -> RSU -> Controller, ctrl stores stale" << std::endl;
+      std::cout << "  [per-pair]: Physical link breaks whenever that pair's real"
+                   " SUMO trajectory naturally exceeds " << TTW_COMM_RANGE << " m" << std::endl;
+      std::cout << "  [per-pair]: Controller internal replay " << TTW_S1_REPLAY_MARGIN_S
+                << "s after its pair's real break (RSU path variant)"             << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      ttws4_total_pairs     = (uint32_t)s4_pairs.size();
+      ttws4_total_pairs     = (uint32_t)s4_assigned.size();
       ttws4_completed_pairs = 0;
       // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
       const uint32_t s4_app_veh_base = N_Controllers + 1;
 
-      for (uint32_t pi = 0; pi < s4_pairs.size(); pi++) {
-          uint32_t vA    = s4_pairs[pi].first;
-          uint32_t vB    = s4_pairs[pi].second;
-          uint32_t cidxA = pi * 2;
-          uint32_t cidxB = pi * 2 + 1;
+      for (uint32_t pi = 0; pi < s4_assigned.size(); pi++) {
+          uint32_t cidxA = s4_assigned[pi].attackerCidx;
+          uint32_t cidxB = s4_assigned[pi].victimCidx;
+          uint32_t vA    = Vehicle_Nodes.Get(cidxA)->GetId();
+          uint32_t vB    = Vehicle_Nodes.Get(cidxB)->GetId();
+          const double breakTime = s4_assigned[pi].breakTime;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
 
-          // Each pair gets its own y-lane — all pairs move with attack velocities.
-          // RSU is positioned midway between attacker/victim, within DSRC range.
+          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
+          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+          if (replayTime >= simTime)   replayTime = simTime - 0.5;
+
+          // RSU placed at the real midpoint of the pair's position at HELLO
+          // time (RSUs aren't SUMO-driven, so this placement is durable).
           {
-              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
-              Ptr<ConstantVelocityMobilityModel> m_att =
-                  DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> m_vic =
-                  DynamicCast<ConstantVelocityMobilityModel>(
-                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
-              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
-              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-              // Place RSU 0 (the single relay) in lane 0, then others by pi if available
+              Vector posA = TtwSumoPositionAt(cidxA, TTWS4_HELLO_TIME);
+              Vector posB = TtwSumoPositionAt(cidxB, TTWS4_HELLO_TIME);
               uint32_t rsu_lane_idx = (RSU_Nodes.GetN() > 1) ? pi : 0;
               if (rsu_lane_idx < RSU_Nodes.GetN()) {
                   Ptr<ConstantVelocityMobilityModel> m_rsu =
                       DynamicCast<ConstantVelocityMobilityModel>(
                           RSU_Nodes.Get(rsu_lane_idx)->GetObject<MobilityModel>());
                   if (m_rsu) {
-                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
-                                               y_lane + 80.0, 0.0));
+                      m_rsu->SetPosition(Vector((posA.x + posB.x) / 2.0, (posA.y + posB.y) / 2.0, 0.0));
                       m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
                   }
               }
@@ -151479,9 +151576,9 @@ static int RoutingMain(int argc, char *argv[])
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt),
               &TTWS4_VehiclesToRSU, vA, vB, rsu_id4, TTWS4_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.1),
-              &TTWS4_StorePacketInternal, vA, vB, TTWS4_HELLO_TIME);
-          Simulator::Schedule(Seconds(TTWS4_INTERNAL_REPLAY + dt),
-              &TTWS4_InternalReplay, vA, vB, TTWS4_INTERNAL_REPLAY);
+              &TTWS4_StorePacketInternal, vA, vB, TTWS4_HELLO_TIME, breakTime, replayTime);
+          Simulator::Schedule(Seconds(replayTime + dt),
+              &TTWS4_InternalReplay, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (vehicles send topology to controller via RSU path)
           if (s4_app_veh_base + cidxB < apps.GetN()) {
@@ -151562,34 +151659,41 @@ static int RoutingMain(int argc, char *argv[])
           bshh_attacker_idx.resize(half);
       }
 
-      AttackShuffleVector(bshh_attacker_idx);
-      AttackShuffleVector(bshh_victim_idx);
-
       static const double BSHH_S1_EXCHANGE_TIME       = 5.0;
       static const double BSHH_S1_FORWARD_TIME        = 5.010;
       static const double BSHH_S1_STORE_TIME          = 5.050;
-      static const double BSHH_S1_REPLAY_TIME         = 10.0;
       static const double BSHH_S1_VICTIM_FORWARD_TIME = 10.010;
       static const double BSHH_S1_HIJACK_TIME         = 10.020;
 
-      // Pairs = min(attackers, victims) — never more pairs than available victims
-      const uint32_t bshh_s1_npairs =
-          (uint32_t)std::min(bshh_attacker_idx.size(), bshh_victim_idx.size());
+      // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
+      // search TTW-S1 uses) for pairs that are in range at the exchange time
+      // and later genuinely exceed TTW_COMM_RANGE, instead of forcing a lane
+      // geometry the SUMO waypoint schedule would silently overwrite and then
+      // replaying on a fixed 5s->10s clock regardless of real separation. The
+      // replay/hijack/victim-forward timestamps below are derived from each
+      // pair's real breakTime instead of a fixed absolute replay time.
+      std::vector<TtwAssignedPair> bshh_s1_assigned;
+      if (!g_sumo_trace_loaded) {
+          std::cout << "[BSHH-S1] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
+      } else {
+          bshh_s1_assigned = TtwFindNaturalBreakPairs(
+              bshh_attacker_idx, bshh_victim_idx, BSHH_S1_EXCHANGE_TIME,
+              BSHH_S1_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+      }
+      const uint32_t bshh_s1_npairs = (uint32_t)bshh_s1_assigned.size();
       bshh_s1_total_pairs = bshh_s1_npairs;
-      bshh_s1_total_pairs = bshh_s1_npairs;
-
-
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED" << std::endl;
       std::cout << "Attackers (" << bshh_s1_npairs << "): ";
       bshh_log << "  Selected Attackers (" << bshh_s1_npairs << "): ";
-      for (uint32_t a = 0; a < bshh_s1_npairs; a++) {
-          uint32_t att_ns3 = Vehicle_Nodes.Get(bshh_attacker_idx[a])->GetId();
+      for (const auto& ap : bshh_s1_assigned) {
+          uint32_t att_ns3 = Vehicle_Nodes.Get(ap.attackerCidx)->GetId();
           bshh_log << GetVehicleLogLabel(att_ns3) << "  ";
       }
       bshh_log << "\n========================================================\n\n";
-      for (uint32_t k : bshh_attacker_idx) std::cout << "V" << k << " ";
+      for (const auto& ap : bshh_s1_assigned) std::cout << "V" << ap.attackerCidx << " ";
       std::cout << std::endl;
       std::cout << "Victim pool (" << bshh_victim_idx.size() << "): ";
       for (uint32_t k : bshh_victim_idx)   std::cout << "V" << k << " ";
@@ -151597,38 +151701,23 @@ static int RoutingMain(int argc, char *argv[])
       std::cout << "Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count" << std::endl;
       std::cout << "Replay jitter window   : +/-" << attack_time_jitter_s << " s" << std::endl;
       std::cout << "Support evidence prob. : " << attack_support_evidence_probability << std::endl;
-      std::cout << "Timeline:" << std::endl;
-      std::cout << "  t=5.000s  STEP 1 : V2V heartbeat exchange" << std::endl;
-      std::cout << "  t=5.010s  STEP 2 : Both send honest heartbeats to controller" << std::endl;
-      std::cout << "  t=5.050s  STEP 3 : Attacker stores captured heartbeat (t=5)" << std::endl;
-      std::cout << "  t=10.000s STEP 4 : Attacker sends old heartbeat to victim" << std::endl;
-      std::cout << "  t=10.010s STEP 5 : Victim forwards old heartbeat to controller" << std::endl;
-      std::cout << "  t=10.020s STEP 6 : Attacker hijacks same old heartbeat to controller" << std::endl;
-      std::cout << "  t=10.030s STEP 7 : Controller holds conflicting liveness" << std::endl;
+      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
+      std::cout << "  t=5.000s   STEP 1 : V2V heartbeat exchange" << std::endl;
+      std::cout << "  t=5.010s   STEP 2 : Both send honest heartbeats to controller" << std::endl;
+      std::cout << "  t=5.050s   STEP 3 : Attacker stores captured heartbeat (t=5)" << std::endl;
+      std::cout << "  [per-pair] STEP 4+: Attacker replays old heartbeat " << TTW_S1_REPLAY_MARGIN_S
+                << "s after its pair's real SUMO break (exceeds " << TTW_COMM_RANGE << "m)" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
       const uint32_t bshh_s1_app_veh_base = N_Controllers + 1;
 
       for (uint32_t a = 0; a < bshh_s1_npairs; a++) {
-          uint32_t att_cidx = bshh_attacker_idx[a];
-          uint32_t vic_cidx = bshh_victim_idx[a % bshh_victim_idx.size()];
-
+          uint32_t att_cidx = bshh_s1_assigned[a].attackerCidx;
+          uint32_t vic_cidx = bshh_s1_assigned[a].victimCidx;
+          const double breakTime = bshh_s1_assigned[a].breakTime;
 
           uint32_t att_ns3 = Vehicle_Nodes.Get(att_cidx)->GetId();
           uint32_t vic_ns3 = Vehicle_Nodes.Get(vic_cidx)->GetId();
-
-          // Per-pair y-lane so pairs don't interfere
-          const double y_lane = static_cast<double>(a) * ttw_lane_sep;
-          {
-              Ptr<ConstantVelocityMobilityModel> m_att = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(att_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> m_vic = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(vic_cidx)->GetObject<MobilityModel>());
-              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                           m_att->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
-              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-          }
 
           Ptr<SimpleUdpApplication> app_att =
               DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s1_app_veh_base + att_cidx));
@@ -151645,9 +151734,10 @@ static int RoutingMain(int argc, char *argv[])
           const double storeTime =
               AttackMax(forwardTime + 0.001,
                         BSHH_S1_STORE_TIME + dt + AttackSampleSignedJitter(attack_time_jitter_s * 0.5));
-          const double replayTime =
+          double replayTime =
               AttackMax(storeTime + 0.001,
-                        BSHH_S1_REPLAY_TIME + dt + AttackSampleSignedJitter(attack_time_jitter_s));
+                        breakTime + TTW_S1_REPLAY_MARGIN_S + dt + AttackSampleSignedJitter(attack_time_jitter_s));
+          if (replayTime >= simTime) replayTime = simTime - 0.5;
           // Sig[3] (BSHH-S1) requires BOTH paths to arrive at the controller:
           //   Step 5: victim physically forwards attacker's old heartbeat → controller
           //           (physical_sender=victim, claimed=attacker)
@@ -151783,55 +151873,73 @@ static int RoutingMain(int argc, char *argv[])
       }
       BSHH_S2_InitLog();
 
-      
       static const double BSHH_S2_EARLIER_EXCHANGE_TIME = 2.0;
       static const double BSHH_S2_EXCHANGE_TIME = 5.0;
-      static const double BSHH_S2_SUPPRESS_TIME = 9.9;
-      static const double BSHH_S2_REPLAY_TIME   = 10.0;
 
       uint32_t n_malicious_rsus2 =
           (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
       if (n_malicious_rsus2 < 1u)                          n_malicious_rsus2 = 1u;
       if (n_malicious_rsus2 > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus2 = (uint32_t)RSU_Nodes.GetN();
       if (n_malicious_rsus2 > N_Vehicles / 2)              n_malicious_rsus2 = N_Vehicles / 2;
-      bshh_s2_total_pairs = n_malicious_rsus2;
+
+      // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
+      // search TTW-S1 uses) for n_malicious_rsus2 disjoint vehicle pairs that
+      // are in range at the exchange time and later genuinely exceed
+      // TTW_COMM_RANGE, instead of forcing a lane geometry the SUMO waypoint
+      // schedule would silently overwrite and replaying on a fixed clock.
+      std::vector<uint32_t> s6_victim_pool;
+      for (uint32_t k = 0; k < N_Vehicles; k++) s6_victim_pool.push_back(k);
+      AttackShuffleVector(s6_victim_pool);
+      std::vector<uint32_t> s6_attacker_pool(
+          s6_victim_pool.begin(),
+          s6_victim_pool.begin() + std::min((size_t)n_malicious_rsus2, s6_victim_pool.size()));
+
+      std::vector<TtwAssignedPair> s6_assigned;
+      if (!g_sumo_trace_loaded)
+          std::cout << "[BSHH-S2] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
+      else
+          s6_assigned = TtwFindNaturalBreakPairs(
+              s6_attacker_pool, s6_victim_pool, BSHH_S2_EXCHANGE_TIME,
+              BSHH_S2_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+
+      bshh_s2_total_pairs = (uint32_t)s6_assigned.size();
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED" << std::endl;
-      std::cout << "Malicious RSUs : " << n_malicious_rsus2 << " / " << N_RSUs << std::endl;
-      std::cout << "Victim pairs   : " << n_malicious_rsus2 << std::endl;
+      std::cout << "Malicious RSUs : " << s6_assigned.size() << " / " << N_RSUs << std::endl;
+      std::cout << "Victim pairs   : " << s6_assigned.size() << std::endl;
       std::cout << "Stored HB time : t=" << BSHH_S2_EXCHANGE_TIME << " (from legitimate exchange)" << std::endl;
+      std::cout << "Replay timing  : Option B — " << TTW_S1_REPLAY_MARGIN_S
+                << "s after each pair's real SUMO break" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
       const uint32_t bshh_s2_app_veh_base = N_Controllers + 1;
 
-      for (uint32_t ri = 0; ri < n_malicious_rsus2; ri++) {
-          uint32_t vA_cidx = ri * 2;
-          uint32_t vB_cidx = ri * 2 + 1;
-          if (vB_cidx >= N_Vehicles) break;
+      for (uint32_t ri = 0; ri < s6_assigned.size(); ri++) {
+          uint32_t vA_cidx = s6_assigned[ri].attackerCidx;
+          uint32_t vB_cidx = s6_assigned[ri].victimCidx;
+          const double breakTime = s6_assigned[ri].breakTime;
 
           uint32_t vA_ns3 = Vehicle_Nodes.Get(vA_cidx)->GetId();
           uint32_t vB_ns3 = Vehicle_Nodes.Get(vB_cidx)->GetId();
           uint32_t rsu_ns3 = RSU_Nodes.Get(ri)->GetId();
 
-          // Per-pair y-lane
-          const double y_lane = static_cast<double>(ri) * ttw_lane_sep;
-          {
-              Ptr<ConstantVelocityMobilityModel> mA = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> mB = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
-              if (mA) { mA->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                        mA->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
-              if (mB) { mB->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                        mB->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-              // RSU at midpoint between pair
-              if (ri < RSU_Nodes.GetN()) {
-                  Ptr<ConstantVelocityMobilityModel> mR = DynamicCast<ConstantVelocityMobilityModel>(
-                      RSU_Nodes.Get(ri)->GetObject<MobilityModel>());
-                  if (mR) { mR->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0, y_lane + 80.0, 0.0));
-                            mR->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-              }
+          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
+          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+          if (replayTime >= simTime)   replayTime = simTime - 0.5;
+          const double suppressTime = replayTime - 0.1;
+
+          // RSU placed at the real midpoint of the pair's position at the
+          // exchange time (RSUs aren't SUMO-driven, so this placement is
+          // durable — unlike the vehicle nudge it replaces, which never was).
+          if (ri < RSU_Nodes.GetN()) {
+              Vector posA = TtwSumoPositionAt(vA_cidx, BSHH_S2_EXCHANGE_TIME);
+              Vector posB = TtwSumoPositionAt(vB_cidx, BSHH_S2_EXCHANGE_TIME);
+              Ptr<ConstantVelocityMobilityModel> mR = DynamicCast<ConstantVelocityMobilityModel>(
+                  RSU_Nodes.Get(ri)->GetObject<MobilityModel>());
+              if (mR) { mR->SetPosition(Vector((posA.x + posB.x) / 2.0, (posA.y + posB.y) / 2.0, 0.0));
+                        mR->SetVelocity(Vector(0.0, 0.0, 0.0)); }
           }
 
           Ptr<SimpleUdpApplication> app_vA =
@@ -151857,9 +151965,9 @@ static int RoutingMain(int argc, char *argv[])
               &BSHH_S2_StoreOldHeartbeat, rsu_ns3, vA_ns3, BSHH_S2_EXCHANGE_TIME);
           // Victim's genuine current heartbeat arrives just before replay —
           // the malicious RSU suppresses it rather than forwarding it honestly.
-          Simulator::Schedule(Seconds(BSHH_S2_SUPPRESS_TIME + dt),
-              &BSHH_S2_SuppressCurrentHeartbeat, rsu_ns3, vA_ns3, BSHH_S2_SUPPRESS_TIME);
-          Simulator::Schedule(Seconds(BSHH_S2_REPLAY_TIME + dt),
+          Simulator::Schedule(Seconds(suppressTime + dt),
+              &BSHH_S2_SuppressCurrentHeartbeat, rsu_ns3, vA_ns3, suppressTime);
+          Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, BSHH_S2_EXCHANGE_TIME);
 
           // NetAnim visual packets
@@ -151870,7 +151978,7 @@ static int RoutingMain(int argc, char *argv[])
               Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt + 0.005),
                   &send_LTE_routing_data_alone, app_vB,
                   Vehicle_Nodes.Get(vB_cidx), controller_Node.Get(0), vB_cidx);
-              Simulator::Schedule(Seconds(BSHH_S2_REPLAY_TIME + dt),
+              Simulator::Schedule(Seconds(replayTime + dt),
                   &send_LTE_routing_data_alone, app_vA,
                   Vehicle_Nodes.Get(vA_cidx), controller_Node.Get(0), vA_cidx);
           }
@@ -151912,44 +152020,58 @@ static int RoutingMain(int argc, char *argv[])
       is_malicious_controller = true;
 
       static const double BSHH_S3_EXCHANGE_TIME = 5.0;
-      static const double BSHH_S3_REPLAY_TIME   = 10.0;
 
       uint32_t n_malicious_ctrl3b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
       if (n_malicious_ctrl3b < 1u)                      n_malicious_ctrl3b = 1u;
       if (n_malicious_ctrl3b > controller_Node.GetN()) n_malicious_ctrl3b = controller_Node.GetN();
       if (n_malicious_ctrl3b > N_Vehicles / 2)          n_malicious_ctrl3b = N_Vehicles / 2;
-      bshh_s3_total_pairs = n_malicious_ctrl3b;
+
+      // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
+      // search TTW-S1 uses) for n_malicious_ctrl3b disjoint vehicle pairs that
+      // are in range at the exchange time and later genuinely exceed
+      // TTW_COMM_RANGE, instead of forcing a lane geometry the SUMO waypoint
+      // schedule would silently overwrite and replaying on a fixed clock.
+      std::vector<uint32_t> s7_victim_pool;
+      for (uint32_t k = 0; k < N_Vehicles; k++) s7_victim_pool.push_back(k);
+      AttackShuffleVector(s7_victim_pool);
+      std::vector<uint32_t> s7_attacker_pool(
+          s7_victim_pool.begin(),
+          s7_victim_pool.begin() + std::min((size_t)n_malicious_ctrl3b, s7_victim_pool.size()));
+
+      std::vector<TtwAssignedPair> s7_assigned;
+      if (!g_sumo_trace_loaded)
+          std::cout << "[BSHH-S3] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
+      else
+          s7_assigned = TtwFindNaturalBreakPairs(
+              s7_attacker_pool, s7_victim_pool, BSHH_S3_EXCHANGE_TIME,
+              BSHH_S3_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+
+      bshh_s3_total_pairs = (uint32_t)s7_assigned.size();
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 07 - BSHH-S3 ATTACK CONFIGURED" << std::endl;
-      std::cout << "Malicious controllers : " << n_malicious_ctrl3b << " / " << controller_Node.GetN() << std::endl;
-      std::cout << "Victim pairs          : " << n_malicious_ctrl3b << std::endl;
+      std::cout << "Malicious controllers : " << s7_assigned.size() << " / " << controller_Node.GetN() << std::endl;
+      std::cout << "Victim pairs          : " << s7_assigned.size() << std::endl;
       std::cout << "Stored HB time        : t=" << BSHH_S3_EXCHANGE_TIME << std::endl;
+      std::cout << "Replay timing         : Option B — " << TTW_S1_REPLAY_MARGIN_S
+                << "s after each pair's real SUMO break" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
       [[maybe_unused]] const uint32_t bshh_s3_app_veh_base = N_Controllers + 1;
 
-      for (uint32_t ci = 0; ci < n_malicious_ctrl3b; ci++) {
-          uint32_t vA_cidx = ci * 2;
-          uint32_t vB_cidx = ci * 2 + 1;
-          if (vB_cidx >= N_Vehicles) break;
+      for (uint32_t ci = 0; ci < s7_assigned.size(); ci++) {
+          uint32_t vA_cidx = s7_assigned[ci].attackerCidx;
+          uint32_t vB_cidx = s7_assigned[ci].victimCidx;
+          const double breakTime = s7_assigned[ci].breakTime;
 
           uint32_t vA_ns3 = Vehicle_Nodes.Get(vA_cidx)->GetId();
           uint32_t vB_ns3 = Vehicle_Nodes.Get(vB_cidx)->GetId();
 
-          // Per-pair y-lane
-          const double y_lane = static_cast<double>(ci) * ttw_lane_sep;
-          {
-              Ptr<ConstantVelocityMobilityModel> mA = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> mB = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
-              if (mA) { mA->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                        mA->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
-              if (mB) { mB->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                        mB->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-          }
+          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
+          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+          if (replayTime >= simTime)   replayTime = simTime - 0.5;
 
           // Ptr<SimpleUdpApplication> app_vA =
           //     DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s3_app_veh_base + vA_cidx));
@@ -151963,7 +152085,7 @@ static int RoutingMain(int argc, char *argv[])
           // Store AFTER exchange (t=5.1), not t=0
           Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + 0.1 + dt),
               &BSHH_S3_StoreOldHeartbeats, vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S3_REPLAY_TIME + dt),
+          Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S3_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
 
           // // NetAnim visual packets
@@ -152024,7 +152146,6 @@ static int RoutingMain(int argc, char *argv[])
       is_malicious_controller = true;
 
       static const double BSHH_S4_EXCHANGE_TIME = 5.0;
-      static const double BSHH_S4_REPLAY_TIME   = 10.0;
 
       uint32_t n_malicious_ctrl4b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
@@ -152032,43 +152153,64 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl4b > controller_Node.GetN()) n_malicious_ctrl4b = controller_Node.GetN();
       if (n_malicious_ctrl4b > N_Vehicles / 2)          n_malicious_ctrl4b = N_Vehicles / 2;
       if (n_malicious_ctrl4b > RSU_Nodes.GetN())        n_malicious_ctrl4b = RSU_Nodes.GetN();
-      bshh_s4_total_pairs = n_malicious_ctrl4b;
+
+      // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
+      // search TTW-S1 uses) for n_malicious_ctrl4b disjoint vehicle pairs that
+      // are in range at the exchange time and later genuinely exceed
+      // TTW_COMM_RANGE, instead of forcing a lane geometry the SUMO waypoint
+      // schedule would silently overwrite and replaying on a fixed clock.
+      std::vector<uint32_t> s8_victim_pool;
+      for (uint32_t k = 0; k < N_Vehicles; k++) s8_victim_pool.push_back(k);
+      AttackShuffleVector(s8_victim_pool);
+      std::vector<uint32_t> s8_attacker_pool(
+          s8_victim_pool.begin(),
+          s8_victim_pool.begin() + std::min((size_t)n_malicious_ctrl4b, s8_victim_pool.size()));
+
+      std::vector<TtwAssignedPair> s8_assigned;
+      if (!g_sumo_trace_loaded)
+          std::cout << "[BSHH-S4] no SUMO trace loaded — cannot determine a natural link break; "
+                       "attack skipped" << std::endl;
+      else
+          s8_assigned = TtwFindNaturalBreakPairs(
+              s8_attacker_pool, s8_victim_pool, BSHH_S4_EXCHANGE_TIME,
+              BSHH_S4_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+
+      bshh_s4_total_pairs = (uint32_t)s8_assigned.size();
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 08 - BSHH-S4 ATTACK CONFIGURED" << std::endl;
-      std::cout << "Malicious controllers : " << n_malicious_ctrl4b << " / " << controller_Node.GetN() << std::endl;
-      std::cout << "RSUs in path          : " << n_malicious_ctrl4b << std::endl;
+      std::cout << "Malicious controllers : " << s8_assigned.size() << " / " << controller_Node.GetN() << std::endl;
+      std::cout << "RSUs in path          : " << s8_assigned.size() << std::endl;
       std::cout << "Stored HB time        : t=" << BSHH_S4_EXCHANGE_TIME << std::endl;
+      std::cout << "Replay timing         : Option B — " << TTW_S1_REPLAY_MARGIN_S
+                << "s after each pair's real SUMO break" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
       [[maybe_unused]] const uint32_t bshh_s4_app_veh_base = N_Controllers + 1;
 
-      for (uint32_t ci = 0; ci < n_malicious_ctrl4b; ci++) {
-          uint32_t vA_cidx = ci * 2;
-          uint32_t vB_cidx = ci * 2 + 1;
-          if (vB_cidx >= N_Vehicles) break;
+      for (uint32_t ci = 0; ci < s8_assigned.size(); ci++) {
+          uint32_t vA_cidx = s8_assigned[ci].attackerCidx;
+          uint32_t vB_cidx = s8_assigned[ci].victimCidx;
+          const double breakTime = s8_assigned[ci].breakTime;
 
           uint32_t vA_ns3  = Vehicle_Nodes.Get(vA_cidx)->GetId();
           uint32_t vB_ns3  = Vehicle_Nodes.Get(vB_cidx)->GetId();
           uint32_t rsu_ns3 = RSU_Nodes.Get(ci)->GetId();
 
-          // Per-pair y-lane
-          const double y_lane = static_cast<double>(ci) * ttw_lane_sep;
-          {
-              Ptr<ConstantVelocityMobilityModel> mA = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
-              Ptr<ConstantVelocityMobilityModel> mB = DynamicCast<ConstantVelocityMobilityModel>(
-                  Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
-              if (mA) { mA->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
-                        mA->SetVelocity(Vector(ttw_att_speed, 0.0, 0.0)); }
-              if (mB) { mB->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
-                        mB->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
-              if (ci < RSU_Nodes.GetN()) {
-                  Ptr<ConstantVelocityMobilityModel> mR = DynamicCast<ConstantVelocityMobilityModel>(
-                      RSU_Nodes.Get(ci)->GetObject<MobilityModel>());
-                  if (mR) { mR->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0, y_lane + 80.0, 0.0));
-                            mR->SetVelocity(Vector(0.0, 0.0, 0.0)); }
-              }
+          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
+          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+          if (replayTime >= simTime)   replayTime = simTime - 0.5;
+
+          // RSU placed at the real midpoint of the pair's position at the
+          // exchange time (RSUs aren't SUMO-driven, so this placement is
+          // durable — unlike the vehicle nudge it replaces, which never was).
+          if (ci < RSU_Nodes.GetN()) {
+              Vector posA = TtwSumoPositionAt(vA_cidx, BSHH_S4_EXCHANGE_TIME);
+              Vector posB = TtwSumoPositionAt(vB_cidx, BSHH_S4_EXCHANGE_TIME);
+              Ptr<ConstantVelocityMobilityModel> mR = DynamicCast<ConstantVelocityMobilityModel>(
+                  RSU_Nodes.Get(ci)->GetObject<MobilityModel>());
+              if (mR) { mR->SetPosition(Vector((posA.x + posB.x) / 2.0, (posA.y + posB.y) / 2.0, 0.0));
+                        mR->SetVelocity(Vector(0.0, 0.0, 0.0)); }
           }
 
           // Ptr<SimpleUdpApplication> app_vA =
@@ -152083,7 +152225,7 @@ static int RoutingMain(int argc, char *argv[])
           // Store AFTER exchange (t=5.1), not t=0
           Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + 0.1 + dt),
               &BSHH_S4_StoreOldHeartbeats, vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S4_REPLAY_TIME + dt),
+          Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S4_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
 
           // // NetAnim visual packets

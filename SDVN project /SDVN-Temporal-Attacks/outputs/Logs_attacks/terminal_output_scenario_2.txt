@@ -8,12 +8,12 @@ Solution at controller cleared
 SCENARIO 02 - TTW-S2 ATTACK CONFIGURED
 Malicious RSUs : 1 / 1
 Victim pairs   (1):
-  RSU_45  ->  V5 <-> V6
-Timeline:
-  t=10s  STEP 1+2 : Each pair -> its RSU -> Controller (legit)
-  t=10s  STEP 3   : Each malicious RSU stores pair's old packet
-  t=15s           : Physical links break
-  t=20s  STEP 4+5 : Each malicious RSU replays stale packet
+  RSU_45  ->  V10 <-> V40  (real break at t=78.9s)
+Timeline (Option B — real SUMO trajectories decide the break):
+  t=10s     STEP 1+2 : Each pair -> its RSU -> Controller (legit)
+  t=10.2s   STEP 3   : Each malicious RSU stores pair's old packet
+  [per-pair]         : Physical link breaks whenever that pair's real SUMO trajectory naturally exceeds 300 m
+  [per-pair]         : Malicious RSU replays forged packet 2s after its pair's real break
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -34,24 +34,24 @@ Timeline:
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TTW-S2][t=10.000]  V5 --HELLO + topo--> RSU_45  <V5 sees V6, t=10.000>
-[TTW-S2][t=10.000]  V6 --HELLO + topo--> RSU_45  <V6 sees V5, t=10.000>
-[TTW-S2][t=10.100]  RSU_45 --aggregate forward--> Controller  [<V5 sees V6>, <V6 sees V5>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.000]  V10 --HELLO + topo--> RSU_45  <V10 sees V40, t=10.000>
+[TTW-S2][t=10.000]  V40 --HELLO + topo--> RSU_45  <V40 sees V10, t=10.000>
+[TTW-S2][t=10.100]  RSU_45 --aggregate forward--> Controller  [<V10 sees V40>, <V40 sees V10>]  t=10.000  ACCEPTED
 Current neighbor size is 0Received packet from 45 of size 12packet timestamp 10.100s with delay 1ms
-[TTW-S2][t=10.200]  Malicious RSU stored old packet  <V5 sees V6, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=20.000]  Pipeline armed: RSU NS3-ID=45 will inject 1 forged pair(s)
-    V5 sees V6
-[TTW-S2][t=20.000]  RSU_45 --FORGED replay--> Controller  <V5 sees V6, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.050]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
-[TTW-S2][t=20.050]  FS-MITIGATE ABORTED (gate failed)  attacker=V45
+[TTW-S2][t=10.200]  Malicious RSU stored old packet  <V10 sees V40, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
+[TTW-S2][t=80.899]  Pipeline armed: RSU NS3-ID=45 will inject 1 forged pair(s)
+    V10 sees V40
+[TTW-S2][t=80.900]  RSU_45 --FORGED replay--> Controller  <V10 sees V40, t=80.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=80.950]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
+[TTW-S2][t=80.950]  FS-MITIGATE ABORTED (gate failed)  attacker=V45
 
 [CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=3  reject=0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[TGN] DIVERGENCE(phantom): controller has V5<->V6 (t=20.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V10<->V40 (t=80.900) not in E_t^trusted
 [TGN] Eq.3.45 δ=1 (phantom=1 stale=0 missed=0)  Eq.3.46 δ_thresh=15 (raw=13.20)
 [TGN] 0 < δ ≤ δ_thresh → within propagation-delay tolerance; no controller-origin alert
 [CryptoFilter] 5 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
