@@ -10,32 +10,43 @@
 
 ========================================================
 
-[t=10.000]  STEP ①  V5/V6 -> RSU_205 -> Controller (legitimate aggregate)
-  <V5 sees V6, t=10.000>  ACCEPTED
-  <V6 sees V5, t=10.000>  ACCEPTED
+[t=10.000]  STEP ①  V5/V40 -> RSU_45 -> Controller (legitimate aggregate)
+  <V5 sees V40, t=10.000>  ACCEPTED
+  <V40 sees V5, t=10.000>  ACCEPTED
 
 [t=10.100]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V5 sees V6, t=10.000>
+  Stored : <V5 sees V40, t=10.000>
   Link physically breaks at t≈12.5s (dist > 300.0m)
   Controller WILL NOT time out this entry — will replay at t=20.0
 
-[t=20.000]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
-  Stored entry  : <V5 sees V6, t=10.000>  (captured from RSU-aggregated update at t=10.000)
-  Forged packet : <V5 sees V6, t=20.000>  timestamp changed 10.000 -> 20.000
-  Forge action  : controller changes timestamp to appear current, reinserts at t=20.000 — no external packet required
+[t=79.900]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V5 sees V40, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V5 sees V40, t=79.900>  timestamp changed 10.000 -> 79.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=79.900 — no external packet required
   RSU was in original data path (V→RSU→Controller)
 
-[t=20.000]  STEP ④  TABLE POISONED (internal — no external packet)
-  Controller believes V5<->V6 was ACTIVE at t=20.000 (forged — link has since broken)
-  Physical reality : link BROKEN
+[t=79.900]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V5<->V40 was ACTIVE at t=79.900 (forged — link has since broken)
+  Physical reality : link BROKEN  (dist=335.505m)
   <- ATTACK SUCCESS
 
   Topology Table (after replay):
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
-  V5  ->  V6    t=20.000    YES <- FORGED
-  V6  ->  V5    t=10.000    No
+  V40  ->  V5    t=10.000    No
+  V5  ->  V40    t=79.900    YES <- FORGED
 
 ========================================================
   TTW ATTACK S4 COMPLETE
 ========================================================
+[t=79.950]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.111
+  Latency: 50.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V5): O(log 40) = 6 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V5 excluded until re-admission via consortium CA
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=9  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+

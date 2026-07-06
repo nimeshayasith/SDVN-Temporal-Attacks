@@ -11,41 +11,41 @@
 ========================================================
 
 [t=10.000]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
-  V5 -> Controller : <V5 sees V6, t=10.000>  ACCEPTED
-  V6 -> Controller : <V6 sees V5, t=10.000>  ACCEPTED
+  V5 -> Controller : <V5 sees V40, t=10.000>  ACCEPTED
+  V40 -> Controller : <V40 sees V5, t=10.000>  ACCEPTED
 
 [t=10.100]  STEP ②  CONTROLLER KEEPS STALE COPY
-  Stored : <V5 sees V6, t=10.000>
+  Stored : <V5 sees V40, t=10.000>
   Link physically breaks at t≈12.5s (dist > 300.0m)
   Controller WILL NOT time out this entry
 
-[t=20.000]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
-  Stored entry  : <V5 sees V6, t=10.000>  (captured from legitimate update at t=10.000)
-  Forged packet : <V5 sees V6, t=20.000>  timestamp changed 10.000 -> 20.000
-  Forge action  : controller changes timestamp to appear current, reinserts at t=20.000 — no external packet required
+[t=79.900]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V5 sees V40, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V5 sees V40, t=79.900>  timestamp changed 10.000 -> 79.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=79.900 — no external packet required
 
-[t=20.000]  STEP ④  TABLE POISONED (internal — no external packet)
-  Controller believes V5<->V6 was ACTIVE at t=20.000 (forged — link has since broken)
-  Physical reality : link BROKEN
+[t=79.900]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V5<->V40 was ACTIVE at t=79.900 (forged — link has since broken)
+  Physical reality : link BROKEN  (dist=335.505m)
   <- ATTACK SUCCESS
 
   Topology Table (after replay):
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
-  V5  ->  V6    t=20.000    YES <- FORGED
-  V6  ->  V5    t=10.000    No
+  V40  ->  V5    t=10.000    No
+  V5  ->  V40    t=79.900    YES <- FORGED
 
 ========================================================
   TTW ATTACK S3 COMPLETE
 ========================================================
-[t=20.050]  DETECTION + MITIGATION
+[t=79.950]  DETECTION + MITIGATION
   Internal replay detected and removed
   Score: 0.111
   Latency: 50.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V5 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V5): O(log 200) = 8 KEK updates on path to LKH root
+  Propagation: ceil(diam(G_t)) ~= 6 hop(s) x 100.000 ms/hop = 600.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V5): O(log 40) = 6 KEK updates on path to LKH root
   [CA]  Certificate revocation: V5 excluded until re-admission via consortium CA
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=2  delta_thresh=19  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  delta_t=1  delta_thresh=9  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 
