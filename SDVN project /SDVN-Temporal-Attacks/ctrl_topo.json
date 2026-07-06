@@ -1,7 +1,7 @@
 {
   "controller_id": "sdn-controller",
-  "interval_ts": 29999,
+  "interval_ts": 89999,
   "links": [
-
+    {"node_a": "V40", "node_b": "V10", "ts": 10000}
   ]
 }
