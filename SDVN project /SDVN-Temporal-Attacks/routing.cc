@@ -7311,10 +7311,18 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         NS_LOG_WARN("[BSHH-S3] No stored heartbeats!");
         return;
     }
-    HeartbeatPacket stale1 = {v1_id, v1_id, stored_time, true};
-    HeartbeatPacket stale2 = {v2_id, v2_id, stored_time, true};
+    // V1's slot: reactivated with its own identity (claimed==physical==v1),
+    // just stale — genuine staleness, no impersonation needed.
+    // V2's slot: overwritten with a FORGED heartbeat claiming to be V1
+    // (claimed_sender_id=v1_id) while the true/physical slot owner is V2
+    // (physical_sender_id=v2_id) — this is the impersonation step: the
+    // controller now holds two entries (V1's own slot + V2's slot) both
+    // asserting "Sender=V1" — the duplicate-identity/conflicting-liveness
+    // condition this scenario is meant to model.
+    HeartbeatPacket stale1  = {v1_id, v1_id, stored_time, true};
+    HeartbeatPacket forged2 = {v1_id, v2_id, stored_time, true};
     bshh_controller_liveness_table[v1_id] = stale1;
-    bshh_controller_liveness_table[v2_id] = stale2;
+    bshh_controller_liveness_table[v2_id] = forged2;
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -7324,15 +7332,22 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     ss << "[t=" << now << "]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)\n"
        << "  Attacker Controller : " << ctrlLabel << "\n"
        << "  Packet source       : stored STEP ④ stale copies\n"
-       << "  Overwrites " << v1Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
-       << "  Overwrites " << v2Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
+       << "  Overwrites " << v1Label << " liveness with " << v1Label
+       << "'s own stale beacon_sending_time=" << stored_time << " (correctly attributed, just old)\n"
+       << "  Overwrites " << v2Label << " liveness SLOT with a FORGED heartbeat\n"
+       << "    physical_sender (true slot owner) = " << v2Label << "\n"
+       << "    claimed_sender  (forged identity)  = " << v1Label << "\n"
+       << "    " << ctrlLabel << " topology DB[" << v2Label << "] <- Heartbeat(Sender="
+       << v1Label << ", beacon_sending_time=" << stored_time << ")  IMPERSONATING " << v1Label << "\n"
+       << "  Different claimed vs. slot identity -> impersonation evidence\n"
        << "  No external packet sent — attack is entirely internal to " << ctrlLabel << "\n\n"
        << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING CONSEQUENCES\n"
        << "  " << ctrlLabel << " now holds conflicting liveness:\n"
        << "    " << v1Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE]\n"
        << "    " << v2Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE/FORGED — claims to be " << v1Label << "]\n"
+       << "  Two liveness entries now assert the same identity (" << v1Label << ") under different slots\n"
        << "  Packets may be routed using stale/non-existent liveness\n"
        << "  Expected impact: packet loss, added delay, degraded PDR\n"
        << "  <- ATTACK SUCCESS (no external packet)\n\n";
@@ -7349,11 +7364,16 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S3][t=" << now << "]  " << ctrlLabel
               << " --INTERNAL REPLAY--> own liveness table"
-              << "  HB(" << v1Label << ", t=" << stored_time << ")"
-              << "  HB(" << v2Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v1Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v2Label << ", t=" << stored_time << ")  IMPERSONATION"
               << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
+    // Two events for the two poisoned slots, both claiming V1's identity.
+    // physical_sender stays the 9999 sentinel (internal-controller action,
+    // no external transmitter) rather than v1_id/v2_id, so the node-level
+    // ground-truth attacker attribution isn't misassigned to the innocent
+    // victim vehicles (physical_sender_id self-populates pem_actual_attacker_nodes).
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
+    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
 
     if (pem_last_alert) {
         bshh_controller_liveness_table.erase(v1_id);
@@ -7519,10 +7539,14 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         NS_LOG_WARN("[BSHH-S4] No stored heartbeats!");
         return;
     }
-    HeartbeatPacket stale1 = {v1_id, v1_id, stored_time, true};
-    HeartbeatPacket stale2 = {v2_id, v2_id, stored_time, true};
+    // Same identity-hijack pattern as BSHH-S3: V1's slot is reactivated with
+    // its own stale identity; V2's slot is overwritten with a FORGED
+    // heartbeat claiming to be V1, producing two conflicting entries under
+    // one identity.
+    HeartbeatPacket stale1  = {v1_id, v1_id, stored_time, true};
+    HeartbeatPacket forged2 = {v1_id, v2_id, stored_time, true};
     bshh_controller_liveness_table[v1_id] = stale1;
-    bshh_controller_liveness_table[v2_id] = stale2;
+    bshh_controller_liveness_table[v2_id] = forged2;
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -7532,15 +7556,23 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     ss << "[t=" << now << "]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)\n"
        << "  Attacker Controller : " << ctrlLabel << "\n"
        << "  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)\n"
-       << "  Overwrites " << v1Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
-       << "  Overwrites " << v2Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
+       << "  Overwrites " << v1Label << " liveness with " << v1Label
+       << "'s own stale beacon_sending_time=" << stored_time << " (correctly attributed, just old)\n"
+       << "  Overwrites " << v2Label << " liveness SLOT with a FORGED heartbeat\n"
+       << "    physical_sender (true slot owner) = " << v2Label << "\n"
+       << "    claimed_sender  (forged identity)  = " << v1Label << "\n"
+       << "    " << ctrlLabel << " topology DB[" << v2Label << "] <- Heartbeat(Sender="
+       << v1Label << ", beacon_sending_time=" << stored_time
+       << ", sourced from old RSU report)  IMPERSONATING " << v1Label << "\n"
+       << "  Different claimed vs. slot identity -> impersonation evidence\n"
        << "  No external packet sent — attack is entirely internal to " << ctrlLabel << "\n\n"
        << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING CONSEQUENCES\n"
        << "  " << ctrlLabel << " now holds conflicting liveness:\n"
        << "    " << v1Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE]\n"
        << "    " << v2Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE/FORGED — claims to be " << v1Label << "]\n"
+       << "  Two liveness entries now assert the same identity (" << v1Label << ") under different slots\n"
        << "  Packets may be routed using stale/non-existent liveness\n"
        << "  Expected impact: packet loss, added delay, degraded PDR\n"
        << "  <- ATTACK SUCCESS (no external packet)\n\n";
@@ -7557,11 +7589,15 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S4][t=" << now << "]  " << ctrlLabel
               << " --INTERNAL REPLAY (RSU path)--> own liveness table"
-              << "  HB(" << v1Label << ", t=" << stored_time << ")"
-              << "  HB(" << v2Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v1Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v2Label << ", t=" << stored_time << ")  IMPERSONATION"
               << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
+    // Two events for the two poisoned slots, both claiming V1's identity.
+    // physical_sender stays the 9999 sentinel (internal-controller action,
+    // no external transmitter) so node-level ground-truth attacker
+    // attribution isn't misassigned to the innocent victim vehicles.
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
+    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
 
     if (pem_last_alert) {
         bshh_controller_liveness_table.erase(v1_id);

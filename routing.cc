@@ -1358,11 +1358,6 @@ bool           ttw_packet_stored = false;
 
 // Per-attacker stored copies of old packets. Key = attacker NS-3 node ID.
 std::map<uint32_t, TopologyPacket> ttw_stored_packets;
-// The genuine sequence number (PemPeekSeqNo) V_src had at the moment its
-// legitimate report was stored — this, not the timestamp, is what TTW-S1's
-// replay resends; a real vehicle's counter has since moved on (or simply
-// never will for this link again), so replaying it is visibly stale.
-std::map<uint32_t, uint64_t> ttw_stored_seq_no;
 
 
 // Controller's belief about the network topology
@@ -1475,17 +1470,14 @@ private:
 TopologyPacket ttws2_stored_packet;
 bool           ttws2_packet_stored = false;
 double         ttws2_forged_timestamp = 0.0;
-uint64_t       ttws2_stored_seq_no = 0;   // see ttw_stored_seq_no comment
 std::ofstream  ttws2_log;
 TopologyPacket ttws3_stored_packet;
 bool           ttws3_packet_stored = false;
 double         ttws3_forged_timestamp = 0.0;
-uint64_t       ttws3_stored_seq_no = 0;
 std::ofstream  ttws3_log;
 TopologyPacket ttws4_stored_packet;
 bool           ttws4_packet_stored = false;
 double         ttws4_forged_timestamp = 0.0;
-uint64_t       ttws4_stored_seq_no = 0;
 std::ofstream  ttws4_log;
 
 // ── BSHH globals ──────────────────────────────────────────────────────────────
@@ -1777,18 +1769,6 @@ struct PemEvent
     bool alert_raised;
     double detection_latency_ms;
     double rssi_reporter_dbm;  // computed from path-loss model; used in ME-S3 RSSI check
-    // Genuine sequence number (Eq. 3.20 Δs_v) for the TTW family only — see
-    // g_vehicle_next_seq_no. UINT64_MAX sentinel = "not populated" (BSHH/ME
-    // and any other caller not yet wired for this), meaning TGN's feature
-    // builder falls back to its legacy sender_timestamp-regression check
-    // unchanged for those events.
-    uint64_t claimed_seq_no = UINT64_MAX;
-    // Who ACTUALLY, physically originated this message (not who last relayed
-    // it) — see the multi-plane attribution comment near g_vehicle_next_seq_no
-    // for the full rationale. UINT32_MAX sentinel = "not populated" (every
-    // caller except TTW-S2's forged-replay path), meaning attribution falls
-    // back to physical_sender_id unchanged for those events.
-    uint32_t radio_origin_id = UINT32_MAX;
 };
 
 uint64_t pem_true_positive = 0;
@@ -2035,32 +2015,6 @@ static std::set<uint32_t> pem_false_positive_nodes;
 // gives BSHH-S3 the genuine periodic presence signal Eq. 3.7 requires without
 // touching the window TTW/ME's own signatures depend on.
 static std::map<uint32_t, double> g_pem_last_beacon_time;
-
-// ── Genuine per-vehicle monotonic sequence counter (Eq. 3.20's Δs_v) ─────────
-// The thesis specifies Δs_v as a real sequence-number gap, independent of
-// wall-clock time, precisely because TTW forges sender_timestamp to look
-// fresh (Simulator::Now()) and that forgery is by construction monotonic —
-// no wall-clock-based regression check can ever fire against it. This counter
-// is incremented once per real (non-forged) transmission PEM observes from a
-// vehicle (TTW_SendTopologyUpdate and the TTW-S2/S3/S4 legitimate-update
-// legs); the replay/forge legs only ever resend a previously-issued value
-// (see ttw*_stored_seq_no below), never mint a new one, since they never call
-// PemNextSeqNo(). Scoped globally per vehicle (not per link), so a replay of
-// a link's old report is flagged even if that vehicle has done nothing else
-// since — the watermark simply never regresses.
-static std::map<uint32_t, uint64_t> g_vehicle_next_seq_no;
-
-static uint64_t PemNextSeqNo(uint32_t vehicleId)
-{
-    return ++g_vehicle_next_seq_no[vehicleId];
-}
-
-static uint64_t PemPeekSeqNo(uint32_t vehicleId)
-{
-    auto it = g_vehicle_next_seq_no.find(vehicleId);
-    return (it != g_vehicle_next_seq_no.end()) ? it->second : 0;
-}
-
 // Tracks which physical_sender_ids have already had LKH revocation issued
 // so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
 static std::set<uint32_t> g_lkh_already_revoked;
@@ -2082,65 +2036,6 @@ extern NodeContainer Vehicle_Nodes;
 extern NodeContainer RSU_Nodes;
 extern NodeContainer controller_Node;
 extern NodeContainer management_Node;
-
-// ── Multi-plane attribution for identity-theft attacks (e.g. TTW-S2) ────────
-// A real controller cannot cryptographically distinguish a compromised-key
-// impersonation from a genuine self-report — the MAC verifies either way.
-// Two earlier approaches were tried and rejected here:
-//   1. Comparing forged events' authored "reporter_position" against a known
-//      RSU location — rejected because reporter_position is a plaintext
-//      field the same compromised-key attacker fully controls; a fully
-//      adaptive attacker would simply forge it too.
-//   2. Blindly attributing every RSU-relayed attack event to that RSU —
-//      rejected because it conflates "who relayed this" with "who forged
-//      this": an HONEST RSU faithfully relaying a genuinely malicious
-//      vehicle's own traffic would be wrongly blamed instead of the vehicle.
-//
-// The correct signal is a THIRD, independent plane, never conflated with
-// either of the above:
-//   claimed_sender_id  — the payload's identity claim (crypto verifies this;
-//                        forgeable by whoever holds that identity's key)
-//   physical_sender_id — kept unchanged; still drives Stage-0 crypto/MAC
-//                        pass-fail exactly as before (zero behaviour change)
-//   radio_origin_id    — who ACTUALLY, physically originated these bits at
-//                        the point they entered the network (NOT who last
-//                        relayed them). For a genuine vehicle self-report
-//                        relayed by an RSU, this is the vehicle (matches
-//                        claimed_sender_id — no inconsistency, RSU never
-//                        blamed). For TTW-S2's forged replay specifically,
-//                        there is no real vehicle transmission behind either
-//                        the "basic" or "sophisticated" branch — the RSU
-//                        internally fabricates the replay in both cases, so
-//                        radio_origin_id is unambiguously the RSU there,
-//                        known with certainty by the scenario code (it is a
-//                        plain function parameter, not something read back
-//                        from the attacker-controlled payload).
-// Attribution is then a deterministic reconciliation, not a probabilistic
-// heuristic: radio_origin_id disagreeing with claimed_sender_id means
-// whoever is at radio_origin_id lied about identity. This requires no
-// position, RSSI, or staleness window, and does not misattribute an honest
-// relay of a genuinely malicious vehicle's own traffic.
-//
-// *** KNOWN LIMITATION — NOT YET BACKED BY A REAL VERIFICATION MECHANISM ***
-// radio_origin_id conceptually represents which AUTHENTICATED TRANSPORT
-// CHANNEL a message arrived over (e.g. a real deployment's per-RSU mutual-TLS
-// connection identity or equivalent) — a signal genuinely independent of the
-// application-layer payload, unlike reporter_position or claimed_sender_id.
-// That concept is legitimate and standard (transport-layer authentication is
-// ordinary network security practice). BUT, as implemented in this codebase,
-// radio_origin_id is currently just an ASSERTED function parameter passed
-// directly by the same scenario script that also orchestrates the attack —
-// it is not DERIVED from any actual connection-authentication mechanism the
-// way claimed_sender_id is backed by TetaGuardCryptoFilter's real HMAC-SHA256
-// verification. Porting this to a real deployment requires first building
-// that missing piece: authenticate each RSU's connection (e.g. per-RSU
-// mutual TLS) and derive radio_origin_id from the verified connection at
-// message-receipt time, not hand it in as a trusted parameter. Until that
-// exists, treat radio_origin_id as a simulation-side placeholder for a real
-// mechanism, not a deployment-ready one. Training the TGN model does not
-// change this either way — this attribution logic is deterministic,
-// rule-based, and entirely outside the trained scoring pipeline.
-
 
 // Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.44). Called
 // unconditionally from PemEmitVehicleBeacon for every real vehicle beacon
@@ -3224,14 +3119,11 @@ static void PemEmitEvent(PemEventType type,
                          const Vector& reporterPosition,
                          const Vector& linkSrcPosition,
                          const Vector& linkDstPosition,
-                         bool attackLabel,
-                         uint64_t claimedSeqNo = UINT64_MAX,
-                         uint32_t radioOriginId = UINT32_MAX);
+                         bool attackLabel);
 static void PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                                   uint32_t claimedSenderId,
                                   double senderTimestamp,
-                                  bool attackLabel,
-                                  uint32_t radioOriginId = UINT32_MAX);
+                                  bool attackLabel);
 static void PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId);
 static void PemEmitVehicleHeartbeat(uint32_t senderId,
                                     uint32_t claimedSenderId,
@@ -4579,7 +4471,6 @@ PemEvaluateEvent(PemEvent& event)
         {
             event.triggered[8] = true;
         }
-
     }
 
     // ── STEP 1+2: Weighted signature scoring ─────────────────────────────────
@@ -4608,56 +4499,31 @@ PemEvaluateEvent(PemEvent& event)
     pem_all_seen_node_ids.insert(event.physical_sender_id);
     if (event.attack_label)
     {
-        // Multi-plane attribution (identity-theft attacks, e.g. TTW-S2
-        // sophisticated RSU): physical_sender_id may be the impersonated
-        // vehicle's identity, not who actually transmitted. radio_origin_id
-        // (see PemEvent's declaration and the comment near
-        // g_vehicle_next_seq_no for full rationale) is a THIRD, independent
-        // plane set only by callers that know with certainty who physically
-        // originated the bits — never derived from anything the attacker's
-        // payload controls. Reconciling it against claimed_sender_id is
-        // deterministic, not a heuristic: a genuine vehicle self-report
-        // relayed by an RSU always has radio_origin_id == claimed_sender_id
-        // (no inconsistency, RSU never blamed for honestly relaying); only a
-        // fabricated replay (no real vehicle transmission behind it) produces
-        // a mismatch, and that mismatch names the true origin.
-        uint32_t attributionId = event.physical_sender_id;
-        if (event.radio_origin_id != UINT32_MAX &&
-            event.radio_origin_id != event.claimed_sender_id)
-        {
-            printf("[ATTRIBUTION][t=%.3f] claimed sender V%u's report physically originated"
-                   " from V%u instead — attributing attack to V%u, not the impersonated"
-                   " identity\n",
-                   Simulator::Now().GetSeconds(), event.claimed_sender_id,
-                   event.radio_origin_id, event.radio_origin_id);
-            attributionId = event.radio_origin_id;
-        }
-
-        pem_actual_attacker_nodes.insert(attributionId);
+        pem_actual_attacker_nodes.insert(event.physical_sender_id);
             if (event.alert_raised)
         {
-            pem_detected_attacker_nodes.insert(attributionId);
+            pem_detected_attacker_nodes.insert(event.physical_sender_id);
                     // Eq. 3.18 — live LKH revocation: O(log n) KEK-path update for
             // the detected attacker's leaf node.  Called once per unique
             // physical_sender_id to avoid redundant tree walks.
             if (g_lkh_ready &&
                 g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-                g_lkh_already_revoked.find(attributionId) ==
+                g_lkh_already_revoked.find(event.physical_sender_id) ==
                     g_lkh_already_revoked.end())
             {
-                uint32_t leaf_idx = attributionId % g_lkh_n_leaves;
+                uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
                             lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
-                g_lkh_already_revoked.insert(attributionId);
+                g_lkh_already_revoked.insert(event.physical_sender_id);
                 // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
                 // consortium certificate and is immediately peer-ineligible.
-                if (g_trust_table.count(attributionId))
-                    g_trust_table[attributionId].cert_valid = false;
+                if (g_trust_table.count(event.physical_sender_id))
+                    g_trust_table[event.physical_sender_id].cert_valid = false;
                 const uint32_t depth = (g_lkh_n_leaves > 1u)
                     ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
                 printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
                        " (Eq. 3.18)\n",
                        Simulator::Now().GetSeconds(),
-                       attributionId, leaf_idx, g_lkh_n_leaves, depth);
+                       event.physical_sender_id, leaf_idx, g_lkh_n_leaves, depth);
             }
         }
     }
@@ -4852,9 +4718,7 @@ PemEmitEvent(PemEventType type,
              const Vector& reporterPosition,
              const Vector& linkSrcPosition,
              const Vector& linkDstPosition,
-             bool attackLabel,
-             uint64_t claimedSeqNo,
-             uint32_t radioOriginId)
+             bool attackLabel)
 {
     // Issue 6 fix — reject beacons/topology updates from a blacklisted sender
     // outright (report: "reject its beacons"), before they reach Stage-0 or
@@ -4879,8 +4743,6 @@ PemEmitEvent(PemEventType type,
     event.link_src_position = linkSrcPosition;
     event.link_dst_position = linkDstPosition;
     event.attack_label = attackLabel;
-    event.claimed_seq_no = claimedSeqNo;
-    event.radio_origin_id = radioOriginId;
     event.score = 0.0;
     event.alert_raised = false;
     event.detection_latency_ms = -1.0;
@@ -4896,46 +4758,29 @@ PemEmitEvent(PemEventType type,
         pem_all_seen_node_ids.insert(physicalSenderId);
         if (attackLabel)
         {
-            // Same multi-plane attribution reconciliation as PemEvaluateEvent's
-            // Stage-1 path (see PemEvent's radio_origin_id declaration) — this
-            // is a SEPARATE bookkeeping block (Stage-0 drops return before
-            // ever reaching PemEvaluateEvent), so it needs its own copy of the
-            // same fix or events caught here silently fall back to blaming
-            // physicalSenderId (e.g. an impersonated/deceived identity).
-            uint32_t attributionId = physicalSenderId;
-            if (event.radio_origin_id != UINT32_MAX &&
-                event.radio_origin_id != claimedSenderId)
-            {
-                printf("[ATTRIBUTION][t=%.3f] claimed sender V%u's report physically"
-                       " originated from V%u instead — attributing attack to V%u,"
-                       " not the impersonated identity (Stage-0 drop)\n",
-                       Simulator::Now().GetSeconds(), claimedSenderId,
-                       event.radio_origin_id, event.radio_origin_id);
-                attributionId = event.radio_origin_id;
-            }
-            pem_actual_attacker_nodes.insert(attributionId);
-            pem_detected_attacker_nodes.insert(attributionId);
-            PemCryptoRegisterDetection(attributionId, reporterId);
+            pem_actual_attacker_nodes.insert(physicalSenderId);
+            pem_detected_attacker_nodes.insert(physicalSenderId);
+            PemCryptoRegisterDetection(physicalSenderId, reporterId);
             g_tgn_stage0_blocked_attacks++;
-            g_tgn_flagged_nodes.insert(attributionId);
+            g_tgn_flagged_nodes.insert(physicalSenderId);
             // Eq. 3.18 — live LKH revocation at Stage 0 (crypto gate detected attacker).
             if (g_lkh_ready &&
                 g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-                g_lkh_already_revoked.find(attributionId) == g_lkh_already_revoked.end())
+                g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
             {
-                uint32_t leaf_idx = attributionId % g_lkh_n_leaves;
+                uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
                 lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
-                g_lkh_already_revoked.insert(attributionId);
+                g_lkh_already_revoked.insert(physicalSenderId);
                 // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
                 // consortium certificate and is immediately peer-ineligible.
-                if (g_trust_table.count(attributionId))
-                    g_trust_table[attributionId].cert_valid = false;
+                if (g_trust_table.count(physicalSenderId))
+                    g_trust_table[physicalSenderId].cert_valid = false;
                 const uint32_t depth = (g_lkh_n_leaves > 1u)
                     ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
                 printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
                        " (Eq. 3.18, Stage-0 detection)\n",
                        Simulator::Now().GetSeconds(),
-                       attributionId, leaf_idx, g_lkh_n_leaves, depth);
+                       physicalSenderId, leaf_idx, g_lkh_n_leaves, depth);
             }
         }
         PemRecordObservation(attackLabel, 1.0, attackLabel);
@@ -4950,8 +4795,7 @@ static void
 PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                       uint32_t claimedSenderId,
                       double senderTimestamp,
-                      bool attackLabel,
-                      uint32_t radioOriginId)
+                      bool attackLabel)
 {
     Vector reporterPosition(0.0, 0.0, 0.0);
     Vector endpointPosition(0.0, 0.0, 0.0);
@@ -4966,9 +4810,7 @@ PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                  reporterPosition,
                  endpointPosition,
                  endpointPosition,
-                 attackLabel,
-                 UINT64_MAX,
-                 radioOriginId);
+                 attackLabel);
 }
 
 static void
@@ -5509,23 +5351,6 @@ static Ptr<Node> GetVehicleByNs3Id(uint32_t ns3_id) {
     return nullptr;
 }
 
-// Real current-position distance between two vehicles (by NS-3 global ID).
-// Returns -1.0 if either vehicle/mobility model can't be resolved — callers
-// must treat that as "unknown," not "in range." Used by TTW-S2/S3/S4's replay
-// logging so "Physical reality" reflects the actual mobility model instead of
-// an assumed/hardcoded BROKEN state.
-static double TtwComputeLinkDistance(uint32_t v1_id, uint32_t v2_id)
-{
-    Ptr<Node> n1 = GetVehicleByNs3Id(v1_id);
-    Ptr<Node> n2 = GetVehicleByNs3Id(v2_id);
-    if (!n1 || !n2) return -1.0;
-    Ptr<MobilityModel> m1 = n1->GetObject<MobilityModel>();
-    Ptr<MobilityModel> m2 = n2->GetObject<MobilityModel>();
-    if (!m1 || !m2) return -1.0;
-    Vector p1 = m1->GetPosition(), p2 = m2->GetPosition();
-    return std::sqrt(std::pow(p1.x - p2.x, 2.0) + std::pow(p1.y - p2.y, 2.0));
-}
-
 // ── TTW-S1 (Option B): real-SUMO natural link-break discovery ───────────────
 // g_sumo_wp_map/g_sumo_initial_pos are populated once, in main(), while the
 // SUMO .tcl trace is parsed (before any attack scheduling runs). These
@@ -5543,21 +5368,15 @@ static Vector TtwSumoPositionAt(uint32_t cidx, double t)
     if (it == g_sumo_wp_map.end() || it->second.empty() || t <= it->second.front().t)
         return base;
     const auto& wps = it->second;
-    if (t >= wps.back().t)
-        return Vector(wps.back().x, wps.back().y, 0.0);
-    // Binary search for the bracketing waypoint pair — waypoints are in
-    // chronological order (sequential trace), so this is safe. Linear scan
-    // here would be O(waypoints) per call and this function is evaluated
-    // many times per candidate pair during the S1 natural-break search.
-    size_t lo = 0, hi = wps.size() - 1;
-    while (hi - lo > 1) {
-        size_t mid = lo + (hi - lo) / 2;
-        if (wps[mid].t <= t) lo = mid; else hi = mid;
+    for (size_t i = 0; i + 1 < wps.size(); i++) {
+        if (t >= wps[i].t && t <= wps[i + 1].t) {
+            double dt = wps[i + 1].t - wps[i].t;
+            double frac = dt > 1e-9 ? (t - wps[i].t) / dt : 0.0;
+            return Vector(wps[i].x + frac * (wps[i + 1].x - wps[i].x),
+                          wps[i].y + frac * (wps[i + 1].y - wps[i].y), 0.0);
+        }
     }
-    double dt = wps[hi].t - wps[lo].t;
-    double frac = dt > 1e-9 ? (t - wps[lo].t) / dt : 0.0;
-    return Vector(wps[lo].x + frac * (wps[hi].x - wps[lo].x),
-                  wps[lo].y + frac * (wps[hi].y - wps[lo].y), 0.0);
+    return Vector(wps.back().x, wps.back().y, 0.0);
 }
 
 // Result of scanning a candidate attacker/victim pair's real trajectories
@@ -5587,7 +5406,7 @@ static TtwBreakEval TtwEvaluateNaturalBreak(uint32_t attackerCidx, uint32_t vict
         if (d > commRange) {
             if (!r.found) { r.found = true; r.breakTime = t; }
             r.brokenDuration += stepSec;
-            if (d > r.maxDist) r.maxDist = d;
+            r.maxDist = std::max(r.maxDist, d);
         }
     }
     return r;
@@ -5708,8 +5527,7 @@ void TTW_SendTopologyUpdate(Ptr<Node> vehicle, uint32_t seen_id, double obs_time
                  reporterPosition,
                  reporterPosition,
                  neighborPosition,
-                 false,
-                 PemNextSeqNo(pkt.src_id));
+                 false);
 }
 
 // ── STEP 3: Attacker stores own packet ───────────────────────────────────────
@@ -5721,7 +5539,6 @@ void TTW_StorePacket(uint32_t src_id, uint32_t dst_id, double obs_time, double r
     //ttw_packet_stored = true;
 
 	ttw_stored_packets[src_id] = {src_id, dst_id, obs_time, false};
-    ttw_stored_seq_no[src_id] = PemPeekSeqNo(src_id);
 
     const double expectedReplayTime = real_break_time + TTW_S1_REPLAY_MARGIN_S;
 
@@ -6004,19 +5821,12 @@ void TTW_RunReplayDetection(uint32_t src_id, uint32_t dst_id, double linkDistanc
             << "  forged fresh ts=" << ttw_s1_sender_ts
             << " (stored original ts=" << ttw_s1_stored_ts
             << ") → Stage-0 BYPASSED by construction → reaches LW+TGN\n";
-    // Genuine sequence-number replay (Eq. 3.20 Δs_v): the attacker can only
-    // resend the seq no it captured back when the real report was legitimate
-    // (TTW_StorePacket) — it never calls PemNextSeqNo(), so it cannot mint a
-    // new/current one. Unlike sender_timestamp, this is never forged fresh.
-    const uint64_t ttw_s1_stored_seq = ttw_stored_seq_no.count(src_id)
-                                      ? ttw_stored_seq_no[src_id] : 0;
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  src_id, src_id, src_id, src_id, dst_id,
                  ttw_s1_sender_ts,
                  Simulator::Now().GetSeconds(),
                  reporterPosition, sourcePosition, destinationPosition,
-                 true,
-                 ttw_s1_stored_seq);
+                 true);
 
     // Crypto latency: detection gate (verify + haversine + freshness)
     if (enable_crypto_latency == 3 && g_crypto_ready) {
@@ -6082,18 +5892,9 @@ static void TTW_ActivateReplay_S1()
 static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
 {
     double now2 = Simulator::Now().GetSeconds();
-    Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0), rsuPos(0.0,0.0,0.0);
+    Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    {
-        for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
-            if (RSU_Nodes.Get(i)->GetId() == rsu_id) {
-                Ptr<MobilityModel> m = RSU_Nodes.Get(i)->GetObject<MobilityModel>();
-                if (m) rsuPos = m->GetPosition();
-                break;
-            }
-        }
-    }
     // Timestamp forgery — always happens; this IS the TTW attack (see TTW-S1
     // fix above). A stale-timestamp resend is a naive replay, not a time-warp,
     // and was never the threat this scenario models.
@@ -6116,32 +5917,11 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
               << (ttw_s2_sophisticated
                   ? "SOPHISTICATED — forges V1 identity → Stage-0 BYPASSED by construction → LW+TGN\n"
                   : "BASIC — relays under own identity (RSU≠V1) → routed to threshold-sig gate (Eq. 3.26)\n");
-    // reporter_position is the PHYSICAL origin of this transmission — the RSU,
-    // in both branches (it is always the RSU's radio that actually transmits;
-    // only the claimed identity in the payload differs). Using the victim
-    // vehicle's position here would misrepresent physical reality.
-    //
-    // radio_origin_id = rsu_id (always, both branches) is the load-bearing
-    // attribution signal — see PemEvent's declaration and the multi-plane
-    // attribution comment near g_vehicle_next_seq_no. Unlike reporter_position
-    // (a payload-adjacent field an attacker could in principle also forge),
-    // rsu_id here is simply this scenario's own function parameter: this
-    // specific code path is, by construction, always the RSU internally
-    // fabricating a replay with no real vehicle transmission behind it in
-    // EITHER branch — the attacker choosing "basic" vs "sophisticated" only
-    // changes which identity the crypto layer is asked to verify, never who
-    // physically originates these bits. That fact is known with certainty by
-    // this code, not read back from anything attacker-controlled.
-    // KNOWN LIMITATION: rsu_id is asserted here, not derived from a real
-    // connection-authentication mechanism — see the "KNOWN LIMITATION" note
-    // on radio_origin_id's declaration (PemEvent struct) before treating this
-    // as deployment-ready.
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,
                  _ts2,
-                 now2, rsuPos, v1Pos, v2Pos, true,
-                 ttws2_stored_seq_no, rsu_id);
+                 now2, v1Pos, v1Pos, v2Pos, true);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -6220,16 +6000,10 @@ void TTWS2_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
     Vector pos1(0.0,0.0,0.0), pos2(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
-    // radio_origin_id == claimed_sender_id here (v1_id/v2_id) — the vehicle
-    // genuinely, physically transmits its own report; consistent with the
-    // multi-plane attribution model even though it's a no-op for legit
-    // (non-attack) events (see PemEvaluateEvent's attribution block).
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id,
-                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false,
-                 PemNextSeqNo(v1_id), v1_id);
+                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
-                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false,
-                 PemNextSeqNo(v2_id), v2_id);
+                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     PemEmitVehicleBeacon(v2_id, v1_id);
     {
@@ -6262,7 +6036,6 @@ void TTWS2_StorePacket(uint32_t v1_id, uint32_t v2_id, double obs_time)
     double now = Simulator::Now().GetSeconds();
     ttws2_stored_packet = {v1_id, v2_id, obs_time, false};
     ttws2_packet_stored = true;
-    ttws2_stored_seq_no = PemPeekSeqNo(v1_id);
     ttws2_log << "[t=" << now << "]  STEP ③  MALICIOUS RSU STORES PACKET\n"
               << "  old_packet : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
@@ -6292,10 +6065,6 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
     ttw_controller_table[key] = forged;
     attack_T_matrix[key] = forged_time;
     topology_divergence_delta++;
-    // Compute the REAL distance at replay time — do not assume BROKEN
-    // (see TTW-S1's TTW_ReplayAttack, which already does this correctly).
-    const double s2_dist = TtwComputeLinkDistance(v1_id, v2_id);
-    const bool   s2_linkBroken = (s2_dist > TTW_COMM_RANGE);
     // Bug 1 fix — see comment in TTW_ReplayAttack.
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
@@ -6312,11 +6081,8 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
               << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING DECISION\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
-              << "  Physical reality : link " << (s2_linkBroken ? "BROKEN" : "STILL IN RANGE")
-              << "  (dist=" << s2_dist << "m)\n"
-              << (s2_linkBroken
-                      ? "  Consequence : packets routed via ghost link will be DROPPED\n\n"
-                      : "  Consequence : link is still genuinely in range — forged timestamp is redundant here\n\n");
+              << "  Physical reality : link BROKEN\n"
+              << "  Consequence : packets routed via ghost link will be DROPPED\n\n";
     ttws2_log << "  Topology Table (after replay):\n"
               << "  Src   Dst   Timestamp   Forged?\n"
               << "  ──────────────────────────────────\n";
@@ -6370,8 +6136,7 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
                  _ts3,
-                 now2, v1Pos, v1Pos, v2Pos, true,
-                 ttws3_stored_seq_no);
+                 now2, v1Pos, v1Pos, v2Pos, true);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -6442,11 +6207,9 @@ void TTWS3_ReceiveLegitimateUpdates(uint32_t v1_id, uint32_t v2_id, double obs_t
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, v1_id,
-                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false,
-                 PemNextSeqNo(v1_id));
+                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, v2_id,
-                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false,
-                 PemNextSeqNo(v2_id));
+                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     {
         Ptr<Node> n1 = GetVehicleByNs3Id(v1_id);
@@ -6460,7 +6223,6 @@ void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
     double now = Simulator::Now().GetSeconds();
     ttws3_stored_packet = {v1_id, v2_id, obs_time, false};
     ttws3_packet_stored = true;
-    ttws3_stored_seq_no = PemPeekSeqNo(v1_id);
     ttws3_log << "[t=" << now << "]  STEP ②  CONTROLLER KEEPS STALE COPY\n"
               << "  Stored : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
@@ -6496,10 +6258,6 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    // Compute the REAL distance at replay time — do not assume BROKEN.
-    const double s3_dist = TtwComputeLinkDistance(v1_id, v2_id);
-    const bool   s3_linkBroken = (s3_dist > TTW_COMM_RANGE);
-
     ttws3_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION\n"
               << "  Stored entry  : <V" << v1_id << " sees V" << v2_id
               << ", t=" << stored_ts3 << ">  (captured from legitimate update at t=" << stored_ts3 << ")\n"
@@ -6510,8 +6268,7 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "[t=" << now << "]  STEP ④  TABLE POISONED (internal — no external packet)\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
-              << "  Physical reality : link " << (s3_linkBroken ? "BROKEN" : "STILL IN RANGE")
-              << "  (dist=" << s3_dist << "m)\n"
+              << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
     ttws3_log << "  Topology Table (after replay):\n"
               << "  Src   Dst   Timestamp   Forged?\n"
@@ -6559,8 +6316,7 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
                  _ts4,
-                 now2, v1Pos, v1Pos, v2Pos, true,
-                 ttws4_stored_seq_no);
+                 now2, v1Pos, v1Pos, v2Pos, true);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -6625,11 +6381,9 @@ void TTWS4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, double
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos1 = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) pos2 = m->GetPosition(); } }
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, rsu_id,
-                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false,
-                 PemNextSeqNo(v1_id));
+                 v1_id, v2_id, obs_time, now, pos1, pos1, pos2, false);
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, rsu_id,
-                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false,
-                 PemNextSeqNo(v2_id));
+                 v2_id, v1_id, obs_time, now, pos2, pos2, pos1, false);
     // Issue 4/3 fix — real vehicle beacons for downstream beacon_evidence.csv /
     // witness_records.json (this RSU-present scenario previously never emitted
     // any, unlike TTW-S2). Mirrors TTW-S2's exact call pattern.
@@ -6648,7 +6402,6 @@ void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time)
     double now = Simulator::Now().GetSeconds();
     ttws4_stored_packet = {v1_id, v2_id, obs_time, false};
     ttws4_packet_stored = true;
-    ttws4_stored_seq_no = PemPeekSeqNo(v1_id);
     ttws4_log << "[t=" << now << "]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)\n"
               << "  Stored : <V" << v1_id << " sees V" << v2_id
               << ", t=" << obs_time << ">\n"
@@ -6684,10 +6437,6 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
     pem_attack_active = true;
     pem_mitigation_active = false;
 
-    // Compute the REAL distance at replay time — do not assume BROKEN.
-    const double s4_dist = TtwComputeLinkDistance(v1_id, v2_id);
-    const bool   s4_linkBroken = (s4_dist > TTW_COMM_RANGE);
-
     ttws4_log << "[t=" << now << "]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)\n"
               << "  Stored entry  : <V" << v1_id << " sees V" << v2_id
               << ", t=" << stored_ts4 << ">  (captured from RSU-aggregated update at t=" << stored_ts4 << ")\n"
@@ -6699,8 +6448,7 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "[t=" << now << "]  STEP ④  TABLE POISONED (internal — no external packet)\n"
               << "  Controller believes V" << v1_id << "<->V" << v2_id
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
-              << "  Physical reality : link " << (s4_linkBroken ? "BROKEN" : "STILL IN RANGE")
-              << "  (dist=" << s4_dist << "m)\n"
+              << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
     ttws4_log << "  Topology Table (after replay):\n"
               << "  Src   Dst   Timestamp   Forged?\n"
@@ -7054,20 +6802,7 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32
               << " --forwards stale heartbeat--> Controller"
               << "  Heartbeat(Sender=V" << victim_id << ", t=" << stored_time
               << ")  Controller liveness POISONED" << std::endl;
-    // radio_origin_id = attacker_id here, NOT victim_id, even though victim_id
-    // genuinely transmits this specific hop: victim_id is an innocent,
-    // deceived relay of a stale artifact attacker_id fabricated in the
-    // earlier hijack step. Blaming/revoking the deceived victim instead of
-    // the actual attacker would punish an innocent node — this is a
-    // provenance question (who originated the malicious characteristic of
-    // this data), not a same-hop identity-mismatch question like TTW-S2's,
-    // but the same radio_origin_id mechanism resolves it: the scenario code
-    // knows attacker_id with certainty, independent of what this hop's
-    // packet claims.
-    // KNOWN LIMITATION: see radio_origin_id's "KNOWN LIMITATION" note on
-    // PemEvent's declaration — attacker_id is asserted here, not derived from
-    // a real verification mechanism.
-    PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true, attacker_id);
+    PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true);
 }
 
 void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint32_t victim_id, double stored_time)
@@ -7110,13 +6845,7 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
               << ", t=" << bshh_s1_ts << ")  IMPERSONATION"
               << (bshh_s1_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    // radio_origin_id = attacker_id always (both branches) — the attacker
-    // vehicle physically transmits this hijack in both cases; only the
-    // crypto-claimed identity differs. Same multi-plane attribution model as
-    // TTW-S2 (see PemEvent's declaration): deterministic, not a heuristic.
-    // KNOWN LIMITATION: attacker_id is asserted, not derived from a real
-    // verification mechanism — see PemEvent's radio_origin_id declaration.
-    PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true, attacker_id);
+    PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true);
 
     // Crypto latency: detection verify + freshness + LKH mitigation
     if (enable_crypto_latency == 3 && g_crypto_ready) {
@@ -7414,12 +7143,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
               << ", t=" << bshh_s2_ts << ")"
               << (bshh_s2_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    // radio_origin_id = rsu_id always (both branches) — same multi-plane
-    // attribution model as TTW-S2: the RSU physically transmits this replay
-    // in both cases, only the crypto-claimed identity differs.
-    // KNOWN LIMITATION: rsu_id is asserted, not derived from a real
-    // verification mechanism — see PemEvent's radio_origin_id declaration.
-    PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true, rsu_id);
+    PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true);
     AttackSendRSUToController(rsu_id);
     {
         Ptr<Node> rsuNode = nullptr;
@@ -7445,7 +7169,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
                   << " --REPLAY even-older duplicate--> Controller"
                   << "  Heartbeat(physical=V" << bshh_s2_phys << ", claimed=" << victimLabel
                   << ", t=" << bshh_s2_even_older_heartbeat.timestamp << ")" << std::endl;
-        PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_even_older_heartbeat.timestamp, true, rsu_id);
+        PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_even_older_heartbeat.timestamp, true);
         AttackSendRSUToController(rsu_id);
     }
 
@@ -7587,10 +7311,18 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         NS_LOG_WARN("[BSHH-S3] No stored heartbeats!");
         return;
     }
-    HeartbeatPacket stale1 = {v1_id, v1_id, stored_time, true};
-    HeartbeatPacket stale2 = {v2_id, v2_id, stored_time, true};
+    // V1's slot: reactivated with its own identity (claimed==physical==v1),
+    // just stale — genuine staleness, no impersonation needed.
+    // V2's slot: overwritten with a FORGED heartbeat claiming to be V1
+    // (claimed_sender_id=v1_id) while the true/physical slot owner is V2
+    // (physical_sender_id=v2_id) — this is the impersonation step: the
+    // controller now holds two entries (V1's own slot + V2's slot) both
+    // asserting "Sender=V1" — the duplicate-identity/conflicting-liveness
+    // condition this scenario is meant to model.
+    HeartbeatPacket stale1  = {v1_id, v1_id, stored_time, true};
+    HeartbeatPacket forged2 = {v1_id, v2_id, stored_time, true};
     bshh_controller_liveness_table[v1_id] = stale1;
-    bshh_controller_liveness_table[v2_id] = stale2;
+    bshh_controller_liveness_table[v2_id] = forged2;
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -7600,15 +7332,22 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     ss << "[t=" << now << "]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)\n"
        << "  Attacker Controller : " << ctrlLabel << "\n"
        << "  Packet source       : stored STEP ④ stale copies\n"
-       << "  Overwrites " << v1Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
-       << "  Overwrites " << v2Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
+       << "  Overwrites " << v1Label << " liveness with " << v1Label
+       << "'s own stale beacon_sending_time=" << stored_time << " (correctly attributed, just old)\n"
+       << "  Overwrites " << v2Label << " liveness SLOT with a FORGED heartbeat\n"
+       << "    physical_sender (true slot owner) = " << v2Label << "\n"
+       << "    claimed_sender  (forged identity)  = " << v1Label << "\n"
+       << "    " << ctrlLabel << " topology DB[" << v2Label << "] <- Heartbeat(Sender="
+       << v1Label << ", beacon_sending_time=" << stored_time << ")  IMPERSONATING " << v1Label << "\n"
+       << "  Different claimed vs. slot identity -> impersonation evidence\n"
        << "  No external packet sent — attack is entirely internal to " << ctrlLabel << "\n\n"
        << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING CONSEQUENCES\n"
        << "  " << ctrlLabel << " now holds conflicting liveness:\n"
        << "    " << v1Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE]\n"
        << "    " << v2Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE/FORGED — claims to be " << v1Label << "]\n"
+       << "  Two liveness entries now assert the same identity (" << v1Label << ") under different slots\n"
        << "  Packets may be routed using stale/non-existent liveness\n"
        << "  Expected impact: packet loss, added delay, degraded PDR\n"
        << "  <- ATTACK SUCCESS (no external packet)\n\n";
@@ -7625,11 +7364,16 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S3][t=" << now << "]  " << ctrlLabel
               << " --INTERNAL REPLAY--> own liveness table"
-              << "  HB(" << v1Label << ", t=" << stored_time << ")"
-              << "  HB(" << v2Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v1Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v2Label << ", t=" << stored_time << ")  IMPERSONATION"
               << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
+    // Two events for the two poisoned slots, both claiming V1's identity.
+    // physical_sender stays the 9999 sentinel (internal-controller action,
+    // no external transmitter) rather than v1_id/v2_id, so the node-level
+    // ground-truth attacker attribution isn't misassigned to the innocent
+    // victim vehicles (physical_sender_id self-populates pem_actual_attacker_nodes).
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
+    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
 
     if (pem_last_alert) {
         bshh_controller_liveness_table.erase(v1_id);
@@ -7795,10 +7539,14 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         NS_LOG_WARN("[BSHH-S4] No stored heartbeats!");
         return;
     }
-    HeartbeatPacket stale1 = {v1_id, v1_id, stored_time, true};
-    HeartbeatPacket stale2 = {v2_id, v2_id, stored_time, true};
+    // Same identity-hijack pattern as BSHH-S3: V1's slot is reactivated with
+    // its own stale identity; V2's slot is overwritten with a FORGED
+    // heartbeat claiming to be V1, producing two conflicting entries under
+    // one identity.
+    HeartbeatPacket stale1  = {v1_id, v1_id, stored_time, true};
+    HeartbeatPacket forged2 = {v1_id, v2_id, stored_time, true};
     bshh_controller_liveness_table[v1_id] = stale1;
-    bshh_controller_liveness_table[v2_id] = stale2;
+    bshh_controller_liveness_table[v2_id] = forged2;
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -7808,15 +7556,23 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     ss << "[t=" << now << "]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)\n"
        << "  Attacker Controller : " << ctrlLabel << "\n"
        << "  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)\n"
-       << "  Overwrites " << v1Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
-       << "  Overwrites " << v2Label << " liveness with stale beacon_sending_time=" << stored_time << "\n"
+       << "  Overwrites " << v1Label << " liveness with " << v1Label
+       << "'s own stale beacon_sending_time=" << stored_time << " (correctly attributed, just old)\n"
+       << "  Overwrites " << v2Label << " liveness SLOT with a FORGED heartbeat\n"
+       << "    physical_sender (true slot owner) = " << v2Label << "\n"
+       << "    claimed_sender  (forged identity)  = " << v1Label << "\n"
+       << "    " << ctrlLabel << " topology DB[" << v2Label << "] <- Heartbeat(Sender="
+       << v1Label << ", beacon_sending_time=" << stored_time
+       << ", sourced from old RSU report)  IMPERSONATING " << v1Label << "\n"
+       << "  Different claimed vs. slot identity -> impersonation evidence\n"
        << "  No external packet sent — attack is entirely internal to " << ctrlLabel << "\n\n"
        << "[t=" << now << "]  STEP ⑥  FAULTY ROUTING CONSEQUENCES\n"
        << "  " << ctrlLabel << " now holds conflicting liveness:\n"
        << "    " << v1Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE]\n"
        << "    " << v2Label << " : beacon_sending_time=" << stored_time
-       << " < current t=" << now << "  [STALE/FORGED]\n"
+       << " < current t=" << now << "  [STALE/FORGED — claims to be " << v1Label << "]\n"
+       << "  Two liveness entries now assert the same identity (" << v1Label << ") under different slots\n"
        << "  Packets may be routed using stale/non-existent liveness\n"
        << "  Expected impact: packet loss, added delay, degraded PDR\n"
        << "  <- ATTACK SUCCESS (no external packet)\n\n";
@@ -7833,11 +7589,15 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S4][t=" << now << "]  " << ctrlLabel
               << " --INTERNAL REPLAY (RSU path)--> own liveness table"
-              << "  HB(" << v1Label << ", t=" << stored_time << ")"
-              << "  HB(" << v2Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v1Label << ", t=" << stored_time << ")"
+              << "  HB(claimed=" << v1Label << ", slot=" << v2Label << ", t=" << stored_time << ")  IMPERSONATION"
               << "  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)" << std::endl;
+    // Two events for the two poisoned slots, both claiming V1's identity.
+    // physical_sender stays the 9999 sentinel (internal-controller action,
+    // no external transmitter) so node-level ground-truth attacker
+    // attribution isn't misassigned to the innocent victim vehicles.
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v2_id, stored_time, true);
+    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
 
     if (pem_last_alert) {
         bshh_controller_liveness_table.erase(v1_id);
@@ -151368,66 +151128,14 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_rsus > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus = (uint32_t)RSU_Nodes.GetN();
       if (n_malicious_rsus > N_Vehicles / 2)            n_malicious_rsus = N_Vehicles / 2;
 
-      // ── Option B (matches TTW-S1): real SUMO trajectories decide which
-      // vehicle pair genuinely breaks, and when — no synthetic
-      // converge/diverge mobility override. One candidate reporter per
-      // malicious RSU slot (vA_cidx = ri*2, unchanged indexing scheme);
-      // the partner (vB) is whichever unused vehicle its REAL trajectory
-      // naturally separates from beyond TTW_COMM_RANGE within the run.
-      std::vector<std::pair<uint32_t,uint32_t>> s2_pairs;       // NS-3 ids
-      std::vector<std::pair<uint32_t,uint32_t>> s2_pairs_cidx;  // container indices
-      std::vector<double> s2_break_times;
-
-      if (!g_sumo_trace_loaded)
+      // One victim pair per malicious RSU
+      std::vector<std::pair<uint32_t,uint32_t>> s2_pairs;
+      for (uint32_t ri = 0; ri < n_malicious_rsus; ri++)
       {
-          std::cout << "[TTW-S2] no SUMO trace loaded — cannot determine a natural link break; "
-                       "attack skipped" << std::endl;
-      }
-      else
-      {
-          std::vector<uint32_t> usedVehicles;
-          const double searchStart = TTWS2_HELLO_TIME + 0.5;
-          const double searchEnd   = simTime - 3.0;
-          const double stepSec     = 0.2;
-
-          for (uint32_t ri = 0; ri < n_malicious_rsus; ri++)
-          {
-              uint32_t vA_cidx = ri * 2;
-              if (vA_cidx >= N_Vehicles) break;
-              usedVehicles.push_back(vA_cidx);
-
-              int bestIdx = -1;
-              TtwBreakEval best;
-              for (uint32_t vB_cidx = 0; vB_cidx < N_Vehicles; vB_cidx++)
-              {
-                  if (vB_cidx == vA_cidx) continue;
-                  if (std::find(usedVehicles.begin(), usedVehicles.end(), vB_cidx) != usedVehicles.end())
-                      continue;
-                  TtwBreakEval ev = TtwEvaluateNaturalBreak(
-                      vA_cidx, vB_cidx, TTWS2_HELLO_TIME, searchStart, searchEnd, TTW_COMM_RANGE, stepSec);
-                  if (!ev.found) continue;
-                  const bool better =
-                      (bestIdx < 0) ||
-                      (ev.brokenDuration > best.brokenDuration) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist > best.maxDist) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist == best.maxDist
-                       && ev.breakTime < best.breakTime);
-                  if (better) { bestIdx = (int)vB_cidx; best = ev; }
-              }
-              if (bestIdx < 0)
-              {
-                  std::cout << "[TTW-S2] no natural link break found for candidate V" << vA_cidx
-                            << " in the vehicle pool — skipping this RSU slot" << std::endl;
-                  continue;
-              }
-              usedVehicles.push_back((uint32_t)bestIdx);
-              uint32_t vA = Vehicle_Nodes.Get(vA_cidx)->GetId();
-              uint32_t vB = Vehicle_Nodes.Get((uint32_t)bestIdx)->GetId();
-              s2_pairs.push_back({vA, vB});
-              s2_pairs_cidx.push_back({vA_cidx, (uint32_t)bestIdx});
-              s2_break_times.push_back(best.breakTime);
-              ttw_s2_all_pairs.push_back({vA, vB});
-          }
+          uint32_t vA = Vehicle_Nodes.Get(ri * 2)->GetId();
+          uint32_t vB = Vehicle_Nodes.Get(ri * 2 + 1)->GetId();
+          s2_pairs.push_back({vA, vB});
+          ttw_s2_all_pairs.push_back({vA, vB});
       }
 
       std::cout << "\n========================================" << std::endl;
@@ -151437,29 +151145,18 @@ static int RoutingMain(int argc, char *argv[])
       for (uint32_t ri = 0; ri < (uint32_t)s2_pairs.size(); ri++)
           std::cout << "  RSU_" << RSU_Nodes.Get(ri)->GetId()
                     << "  ->  V" << s2_pairs[ri].first
-                    << " <-> V" << s2_pairs[ri].second
-                    << "  (real break at t=" << s2_break_times[ri] << "s)" << std::endl;
-      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
+                    << " <-> V" << s2_pairs[ri].second << std::endl;
+      std::cout << "Timeline:" << std::endl;
       std::cout << "  t=10s  STEP 1+2 : Each pair -> its RSU -> Controller (legit)" << std::endl;
       std::cout << "  t=10s  STEP 3   : Each malicious RSU stores pair's old packet" << std::endl;
-      std::cout << "  [per-pair]      : Physical link breaks whenever that pair's real"
-                   " SUMO trajectory naturally exceeds " << TTW_COMM_RANGE << " m" << std::endl;
-      std::cout << "  [per-pair]      : Malicious RSU replays stale packet " << TTW_S1_REPLAY_MARGIN_S
-                << "s after its pair's real break" << std::endl;
+      std::cout << "  t=15s           : Physical links break"                         << std::endl;
+      std::cout << "  t=20s  STEP 4+5 : Each malicious RSU replays stale packet"     << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      if (s2_pairs.empty())
-      {
-          std::cout << "[TTW-S2] no candidate pair naturally exceeded comm range within "
-                       "simTime — running as a clean no-attack pass" << std::endl;
-      }
-      else
-      {
       ttws2_total_pairs     = (uint32_t)s2_pairs.size();
       ttws2_completed_pairs = 0;
       // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
       const uint32_t s2_app_veh_base = N_Controllers + 1;
-      double s2_minReplayTime = -1.0;
 
       for (uint32_t pi = 0; pi < (uint32_t)s2_pairs.size(); pi++)
       {
@@ -151467,25 +151164,33 @@ static int RoutingMain(int argc, char *argv[])
           uint32_t vA      = s2_pairs[pi].first;
           uint32_t vB      = s2_pairs[pi].second;
           double   dt      = pi * 0.0005; // 0.5 ms stagger per pair
-          uint32_t vA_cidx = s2_pairs_cidx[pi].first;
-          uint32_t vB_cidx = s2_pairs_cidx[pi].second;
-          const double breakTime  = s2_break_times[pi];
-          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
-          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
-          if (replayTime >= simTime)   replayTime = simTime - 0.5;
-          if (s2_minReplayTime < 0.0 || replayTime < s2_minReplayTime) s2_minReplayTime = replayTime;
+          uint32_t vA_cidx = pi * 2;
+          uint32_t vB_cidx = pi * 2 + 1;
 
-          // RSU pi: place at the pair's real midpoint (from the SUMO trace at
-          // HELLO time), 80m off-lane — within DSRC range of both real positions.
-          if (pi < RSU_Nodes.GetN()) {
-              Vector pA = TtwSumoPositionAt(vA_cidx, TTWS2_HELLO_TIME);
-              Vector pB = TtwSumoPositionAt(vB_cidx, TTWS2_HELLO_TIME);
-              Ptr<ConstantVelocityMobilityModel> m_rsu =
+          // Each pair gets its own y-lane; both vehicles and its RSU move accordingly.
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              // Vehicles: attacker moves right, victim moves left (away)
+              Ptr<ConstantVelocityMobilityModel> m_att =
                   DynamicCast<ConstantVelocityMobilityModel>(
-                      RSU_Nodes.Get(pi)->GetObject<MobilityModel>());
-              if (m_rsu) {
-                  m_rsu->SetPosition(Vector((pA.x + pB.x) / 2.0, (pA.y + pB.y) / 2.0 + 80.0, 0.0));
-                  m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+                      Vehicle_Nodes.Get(vA_cidx)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(vB_cidx)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              // RSU pi: place midway between vehicles, 80m off-lane — within DSRC range
+              if (pi < RSU_Nodes.GetN()) {
+                  Ptr<ConstantVelocityMobilityModel> m_rsu =
+                      DynamicCast<ConstantVelocityMobilityModel>(
+                          RSU_Nodes.Get(pi)->GetObject<MobilityModel>());
+                  if (m_rsu) {
+                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
+                                               y_lane + 80.0, 0.0));
+                      m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
+                  }
               }
           }
 
@@ -151495,8 +151200,8 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS2_RSUForwardAggregated, rsu_id, vA, vB, TTWS2_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + 0.2 + dt),
               &TTWS2_StorePacket, vA, vB, TTWS2_HELLO_TIME);
-          Simulator::Schedule(Seconds(replayTime + dt),
-              &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
+          Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME + dt),
+              &TTWS2_ReplayAttack, rsu_id, vA, vB, TTWS2_REPLAY_TIME);
 
           // V→Controller LTE visual packets (topology update path)
           if (s2_app_veh_base + vA_cidx < apps.GetN()) {
@@ -151537,12 +151242,9 @@ static int RoutingMain(int argc, char *argv[])
               "RSU-" + std::to_string(pi) + "-Attacker");
       }
 
-      // Arm pipeline intercept using the first malicious RSU's ID, before the
-      // earliest (per-pair, SUMO-derived) replay
-      const double s2_armTime = (s2_minReplayTime - 0.001 > 0.0) ? (s2_minReplayTime - 0.001) : 0.0;
-      Simulator::Schedule(Seconds(s2_armTime),
+      // Arm pipeline intercept using the first malicious RSU's ID
+      Simulator::Schedule(Seconds(TTWS2_REPLAY_TIME - 0.0001),
           &TTWS2_ActivateReplay, RSU_Nodes.Get(0)->GetId());
-      }
 
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller");
   }
@@ -151567,62 +151269,12 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl3 > controller_Node.GetN())   n_malicious_ctrl3 = controller_Node.GetN();
       if (n_malicious_ctrl3 > N_Vehicles / 2)           n_malicious_ctrl3 = N_Vehicles / 2;
 
-      // ── Option B (matches TTW-S1): real SUMO trajectories decide which
-      // vehicle pair genuinely breaks, and when — no synthetic
-      // converge/diverge mobility override.
-      std::vector<std::pair<uint32_t,uint32_t>> s3_pairs;       // NS-3 ids
-      std::vector<std::pair<uint32_t,uint32_t>> s3_pairs_cidx;  // container indices
-      std::vector<double> s3_break_times;
-
-      if (!g_sumo_trace_loaded)
-      {
-          std::cout << "[TTW-S3] no SUMO trace loaded — cannot determine a natural link break; "
-                       "attack skipped" << std::endl;
-      }
-      else
-      {
-          std::vector<uint32_t> usedVehicles;
-          const double searchStart = TTWS3_HELLO_TIME + 0.5;
-          const double searchEnd   = simTime - 3.0;
-          const double stepSec     = 0.2;
-
-          for (uint32_t k = 0; k < n_malicious_ctrl3; k++)
-          {
-              uint32_t cidxA = k * 2;
-              if (cidxA >= N_Vehicles) break;
-              usedVehicles.push_back(cidxA);
-
-              int bestIdx = -1;
-              TtwBreakEval best;
-              for (uint32_t cidxB = 0; cidxB < N_Vehicles; cidxB++)
-              {
-                  if (cidxB == cidxA) continue;
-                  if (std::find(usedVehicles.begin(), usedVehicles.end(), cidxB) != usedVehicles.end())
-                      continue;
-                  TtwBreakEval ev = TtwEvaluateNaturalBreak(
-                      cidxA, cidxB, TTWS3_HELLO_TIME, searchStart, searchEnd, TTW_COMM_RANGE, stepSec);
-                  if (!ev.found) continue;
-                  const bool better =
-                      (bestIdx < 0) ||
-                      (ev.brokenDuration > best.brokenDuration) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist > best.maxDist) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist == best.maxDist
-                       && ev.breakTime < best.breakTime);
-                  if (better) { bestIdx = (int)cidxB; best = ev; }
-              }
-              if (bestIdx < 0)
-              {
-                  std::cout << "[TTW-S3] no natural link break found for candidate V" << cidxA
-                            << " in the vehicle pool — skipping this controller slot" << std::endl;
-                  continue;
-              }
-              usedVehicles.push_back((uint32_t)bestIdx);
-              uint32_t vA = Vehicle_Nodes.Get(cidxA)->GetId();
-              uint32_t vB = Vehicle_Nodes.Get((uint32_t)bestIdx)->GetId();
-              s3_pairs.push_back({vA, vB});
-              s3_pairs_cidx.push_back({cidxA, (uint32_t)bestIdx});
-              s3_break_times.push_back(best.breakTime);
-          }
+      // One victim pair per malicious controller
+      std::vector<std::pair<uint32_t,uint32_t>> s3_pairs;
+      for (uint32_t k = 0; k < n_malicious_ctrl3; k++) {
+          uint32_t vA = Vehicle_Nodes.Get(k * 2)->GetId();
+          uint32_t vB = Vehicle_Nodes.Get(k * 2 + 1)->GetId();
+          s3_pairs.push_back({vA, vB});
       }
 
       std::cout << "\n========================================" << std::endl;
@@ -151630,24 +151282,14 @@ static int RoutingMain(int argc, char *argv[])
       std::cout << "Attacker      : " << n_malicious_ctrl3 << " malicious controller(s) / "
                 << controller_Node.GetN() << " total"         << std::endl;
       std::cout << "Poisoned pairs: " << s3_pairs.size() << " / " << N_Vehicles/2 << std::endl;
-      for (uint32_t pi = 0; pi < (uint32_t)s3_pairs.size(); pi++)
-          std::cout << "  V" << s3_pairs[pi].first << " <-> V" << s3_pairs[pi].second
-                    << "  (real break at t=" << s3_break_times[pi] << "s)" << std::endl;
-      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
-      std::cout << "  t=10s      : Legit updates -> controller, stores stale" << std::endl;
-      std::cout << "  [per-pair] : Physical link breaks whenever that pair's real"
-                   " SUMO trajectory naturally exceeds " << TTW_COMM_RANGE << " m" << std::endl;
-      std::cout << "  [per-pair] : Controller internal replay " << TTW_S1_REPLAY_MARGIN_S
-                << "s after its pair's real break (no ext packet)" << std::endl;
+      for (auto& p : s3_pairs)
+          std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
+      std::cout << "Timeline:"                                  << std::endl;
+      std::cout << "  t=10s  : Legit updates -> controller, stores stale" << std::endl;
+      std::cout << "  t=15s  : Physical link breaks"                       << std::endl;
+      std::cout << "  t=20s  : Controller internal replay (no ext packet)" << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      if (s3_pairs.empty())
-      {
-          std::cout << "[TTW-S3] no candidate pair naturally exceeded comm range within "
-                       "simTime — running as a clean no-attack pass" << std::endl;
-      }
-      else
-      {
       ttws3_total_pairs     = (uint32_t)s3_pairs.size();
       ttws3_completed_pairs = 0;
       // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
@@ -151656,20 +151298,31 @@ static int RoutingMain(int argc, char *argv[])
       for (uint32_t pi = 0; pi < s3_pairs.size(); pi++) {
           uint32_t vA    = s3_pairs[pi].first;
           uint32_t vB    = s3_pairs[pi].second;
-          uint32_t cidxA = s3_pairs_cidx[pi].first;
-          uint32_t cidxB = s3_pairs_cidx[pi].second;
+          uint32_t cidxA = pi * 2;
+          uint32_t cidxB = pi * 2 + 1;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
-          const double breakTime = s3_break_times[pi];
-          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
-          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
-          if (replayTime >= simTime)   replayTime = simTime - 0.5;
+
+          // Each pair gets its own y-lane — all pairs move with attack velocities
+          {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+          }
 
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt),
               &TTWS3_ReceiveLegitimateUpdates, vA, vB, TTWS3_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.1),
               &TTWS3_StorePacketInternal, vA, vB, TTWS3_HELLO_TIME);
-          Simulator::Schedule(Seconds(replayTime + dt),
-              &TTWS3_InternalReplay, vA, vB, replayTime);
+          Simulator::Schedule(Seconds(TTWS3_INTERNAL_REPLAY + dt),
+              &TTWS3_InternalReplay, vA, vB, TTWS3_INTERNAL_REPLAY);
 
           // V→Controller LTE visual packets (topology update — S3 internal attack,
           // vehicles send legitimate updates before controller corrupts internally)
@@ -151698,7 +151351,6 @@ static int RoutingMain(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxA), ("V" + std::to_string(cidxA) + "-Victim").c_str());
           anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxB), 0, 255, 100);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxB), ("V" + std::to_string(cidxB) + "-Victim").c_str());
-      }
       }
       // Colour malicious controllers red, benign controllers purple
       for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
@@ -151742,62 +151394,12 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl4 > controller_Node.GetN())   n_malicious_ctrl4 = controller_Node.GetN();
       if (n_malicious_ctrl4 > N_Vehicles / 2)           n_malicious_ctrl4 = N_Vehicles / 2;
 
-      // ── Option B (matches TTW-S1): real SUMO trajectories decide which
-      // vehicle pair genuinely breaks, and when — no synthetic
-      // converge/diverge mobility override.
-      std::vector<std::pair<uint32_t,uint32_t>> s4_pairs;       // NS-3 ids
-      std::vector<std::pair<uint32_t,uint32_t>> s4_pairs_cidx;  // container indices
-      std::vector<double> s4_break_times;
-
-      if (!g_sumo_trace_loaded)
-      {
-          std::cout << "[TTW-S4] no SUMO trace loaded — cannot determine a natural link break; "
-                       "attack skipped" << std::endl;
-      }
-      else
-      {
-          std::vector<uint32_t> usedVehicles;
-          const double searchStart = TTWS4_HELLO_TIME + 0.5;
-          const double searchEnd   = simTime - 3.0;
-          const double stepSec     = 0.2;
-
-          for (uint32_t k = 0; k < n_malicious_ctrl4; k++)
-          {
-              uint32_t cidxA = k * 2;
-              if (cidxA >= N_Vehicles) break;
-              usedVehicles.push_back(cidxA);
-
-              int bestIdx = -1;
-              TtwBreakEval best;
-              for (uint32_t cidxB = 0; cidxB < N_Vehicles; cidxB++)
-              {
-                  if (cidxB == cidxA) continue;
-                  if (std::find(usedVehicles.begin(), usedVehicles.end(), cidxB) != usedVehicles.end())
-                      continue;
-                  TtwBreakEval ev = TtwEvaluateNaturalBreak(
-                      cidxA, cidxB, TTWS4_HELLO_TIME, searchStart, searchEnd, TTW_COMM_RANGE, stepSec);
-                  if (!ev.found) continue;
-                  const bool better =
-                      (bestIdx < 0) ||
-                      (ev.brokenDuration > best.brokenDuration) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist > best.maxDist) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist == best.maxDist
-                       && ev.breakTime < best.breakTime);
-                  if (better) { bestIdx = (int)cidxB; best = ev; }
-              }
-              if (bestIdx < 0)
-              {
-                  std::cout << "[TTW-S4] no natural link break found for candidate V" << cidxA
-                            << " in the vehicle pool — skipping this controller slot" << std::endl;
-                  continue;
-              }
-              usedVehicles.push_back((uint32_t)bestIdx);
-              uint32_t vA = Vehicle_Nodes.Get(cidxA)->GetId();
-              uint32_t vB = Vehicle_Nodes.Get((uint32_t)bestIdx)->GetId();
-              s4_pairs.push_back({vA, vB});
-              s4_pairs_cidx.push_back({cidxA, (uint32_t)bestIdx});
-              s4_break_times.push_back(best.breakTime);
-          }
+      // One victim pair per malicious controller
+      std::vector<std::pair<uint32_t,uint32_t>> s4_pairs;
+      for (uint32_t k = 0; k < n_malicious_ctrl4; k++) {
+          uint32_t vA = Vehicle_Nodes.Get(k * 2)->GetId();
+          uint32_t vB = Vehicle_Nodes.Get(k * 2 + 1)->GetId();
+          s4_pairs.push_back({vA, vB});
       }
 
       std::cout << "\n========================================" << std::endl;
@@ -151805,24 +151407,14 @@ static int RoutingMain(int argc, char *argv[])
       std::cout << "Attacker      : " << n_malicious_ctrl4 << " malicious controller(s) / "
                 << controller_Node.GetN() << " total (RSU in path)" << std::endl;
       std::cout << "Poisoned pairs: " << s4_pairs.size() << " / " << N_Vehicles/2 << std::endl;
-      for (uint32_t pi = 0; pi < (uint32_t)s4_pairs.size(); pi++)
-          std::cout << "  V" << s4_pairs[pi].first << " <-> V" << s4_pairs[pi].second
-                    << "  (real break at t=" << s4_break_times[pi] << "s)" << std::endl;
-      std::cout << "Timeline (Option B — real SUMO trajectories decide the break):" << std::endl;
-      std::cout << "  t=10s      : V pairs -> RSU -> Controller, ctrl stores stale" << std::endl;
-      std::cout << "  [per-pair] : Physical link breaks whenever that pair's real"
-                   " SUMO trajectory naturally exceeds " << TTW_COMM_RANGE << " m" << std::endl;
-      std::cout << "  [per-pair] : Controller internal replay " << TTW_S1_REPLAY_MARGIN_S
-                << "s after its pair's real break (RSU path variant)" << std::endl;
+      for (auto& p : s4_pairs)
+          std::cout << "  V" << p.first << " <-> V" << p.second << std::endl;
+      std::cout << "Timeline:"                                            << std::endl;
+      std::cout << "  t=10s  : V pairs -> RSU -> Controller, ctrl stores stale" << std::endl;
+      std::cout << "  t=15s  : Physical link breaks"                             << std::endl;
+      std::cout << "  t=20s  : Controller internal replay (RSU path variant)"    << std::endl;
       std::cout << "========================================\n" << std::endl;
 
-      if (s4_pairs.empty())
-      {
-          std::cout << "[TTW-S4] no candidate pair naturally exceeded comm range within "
-                       "simTime — running as a clean no-attack pass" << std::endl;
-      }
-      else
-      {
       ttws4_total_pairs     = (uint32_t)s4_pairs.size();
       ttws4_completed_pairs = 0;
       // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
@@ -151831,26 +151423,33 @@ static int RoutingMain(int argc, char *argv[])
       for (uint32_t pi = 0; pi < s4_pairs.size(); pi++) {
           uint32_t vA    = s4_pairs[pi].first;
           uint32_t vB    = s4_pairs[pi].second;
-          uint32_t cidxA = s4_pairs_cidx[pi].first;
-          uint32_t cidxB = s4_pairs_cidx[pi].second;
+          uint32_t cidxA = pi * 2;
+          uint32_t cidxB = pi * 2 + 1;
           double   dt    = pi * 0.0005;  // 0.5 ms stagger per pair
-          const double breakTime = s4_break_times[pi];
-          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
-          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
-          if (replayTime >= simTime)   replayTime = simTime - 0.5;
 
-          // RSU is positioned at the pair's real midpoint (from the SUMO trace
-          // at HELLO time), 80m off-lane — within DSRC range of both.
+          // Each pair gets its own y-lane — all pairs move with attack velocities.
+          // RSU is positioned midway between attacker/victim, within DSRC range.
           {
+              const double y_lane = static_cast<double>(pi) * ttw_lane_sep;
+              Ptr<ConstantVelocityMobilityModel> m_att =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxA)->GetObject<MobilityModel>());
+              Ptr<ConstantVelocityMobilityModel> m_vic =
+                  DynamicCast<ConstantVelocityMobilityModel>(
+                      Vehicle_Nodes.Get(cidxB)->GetObject<MobilityModel>());
+              if (m_att) { m_att->SetPosition(Vector(ttw_att_x0, y_lane, 0.0));
+                           m_att->SetVelocity(Vector( ttw_att_speed, 0.0, 0.0)); }
+              if (m_vic) { m_vic->SetPosition(Vector(ttw_vic_x0, y_lane, 0.0));
+                           m_vic->SetVelocity(Vector(-ttw_vic_speed, 0.0, 0.0)); }
+              // Place RSU 0 (the single relay) in lane 0, then others by pi if available
               uint32_t rsu_lane_idx = (RSU_Nodes.GetN() > 1) ? pi : 0;
               if (rsu_lane_idx < RSU_Nodes.GetN()) {
-                  Vector pA = TtwSumoPositionAt(cidxA, TTWS4_HELLO_TIME);
-                  Vector pB = TtwSumoPositionAt(cidxB, TTWS4_HELLO_TIME);
                   Ptr<ConstantVelocityMobilityModel> m_rsu =
                       DynamicCast<ConstantVelocityMobilityModel>(
                           RSU_Nodes.Get(rsu_lane_idx)->GetObject<MobilityModel>());
                   if (m_rsu) {
-                      m_rsu->SetPosition(Vector((pA.x + pB.x) / 2.0, (pA.y + pB.y) / 2.0 + 80.0, 0.0));
+                      m_rsu->SetPosition(Vector((ttw_att_x0 + ttw_vic_x0) / 2.0,
+                                               y_lane + 80.0, 0.0));
                       m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
                   }
               }
@@ -151860,8 +151459,8 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS4_VehiclesToRSU, vA, vB, rsu_id4, TTWS4_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.1),
               &TTWS4_StorePacketInternal, vA, vB, TTWS4_HELLO_TIME);
-          Simulator::Schedule(Seconds(replayTime + dt),
-              &TTWS4_InternalReplay, vA, vB, replayTime);
+          Simulator::Schedule(Seconds(TTWS4_INTERNAL_REPLAY + dt),
+              &TTWS4_InternalReplay, vA, vB, TTWS4_INTERNAL_REPLAY);
 
           // V→Controller LTE visual packets (vehicles send topology to controller via RSU path)
           if (s4_app_veh_base + cidxB < apps.GetN()) {
@@ -151888,7 +151487,6 @@ static int RoutingMain(int argc, char *argv[])
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxA), ("V" + std::to_string(cidxA) + "-Victim").c_str());
           anim.UpdateNodeColor(Vehicle_Nodes.Get(cidxB), 0, 255, 100);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(cidxB), ("V" + std::to_string(cidxB) + "-Victim").c_str());
-      }
       }
       anim.UpdateNodeColor(RSU_Nodes.Get(0), 255, 200, 0);
       anim.UpdateNodeSize(RSU_Nodes.Get(0)->GetId(), 10.0, 10.0);
