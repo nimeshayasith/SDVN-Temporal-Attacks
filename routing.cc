@@ -2077,6 +2077,59 @@ extern NodeContainer RSU_Nodes;
 extern NodeContainer controller_Node;
 extern NodeContainer management_Node;
 
+// ── Physical-layer attribution for identity-theft attacks (e.g. TTW-S2) ─────
+// A real controller cannot cryptographically distinguish a compromised-key
+// impersonation from a genuine self-report — the MAC verifies either way.
+// But it CAN independently know (a) the time it last legitimately heard a
+// given vehicle identity vouch for a SPECIFIC edge, and (b) its own
+// authority-provisioned RSU positions (RSUs are authority-vetted at
+// registration, unlike vehicles — see PemIsBootstrapComplete's Tier-1
+// assumption). RSU-relayed data arriving from a known RSU's location is
+// completely normal by itself (that IS how this architecture delivers
+// vehicle reports) — what is NOT normal is that same RSU location still
+// "speaking for" a claim about an edge that identity hasn't legitimately
+// reported in a long time.
+//
+// Keyed per-EDGE (claimed_sender_id, link_dst_id), not just per claimed
+// sender: a vehicle that is still alive and legitimately reporting OTHER
+// neighbours must not reset the staleness clock for an edge it has actually
+// stopped reporting — that would make this check vacuously false in any
+// simulation where the impersonated vehicle has other ongoing legitimate
+// traffic (ordinary VANET behaviour), silently defeating the check.
+//
+// KNOWN LIMITATION (see TTWS2_RunDetection's reporter_position assignment):
+// the position side of this check is currently authored directly by the
+// scenario script from the real RSU position, not derived from an
+// independent physical-layer measurement — so it does not yet defend
+// against an attacker sophisticated enough to also forge reporter_position
+// (it already forges timestamp+identity via the same code path, and could
+// trivially forge this too). A real fix requires deriving position/distance
+// from ns-3's actual measured RSSI (see the real Rx()/MonitorSnifferRx
+// SignalNoiseDbm callback, already used elsewhere in this file for real
+// physical-layer measurement) instead of an authored value. Tracked as
+// follow-up work, not yet implemented.
+struct PemLastLegitObservation { Vector pos; double time; };
+static std::map<std::pair<uint32_t,uint32_t>, PemLastLegitObservation> g_pem_last_legit_position;
+
+// Returns true and sets outRsuId if some RSU's real current position is
+// within toleranceM of pos. RSU positions are authority-known infrastructure
+// data (see comment above), not simulation ground truth being peeked at.
+static bool PemFindNearestKnownRsu(const Vector& pos, double toleranceM, uint32_t& outRsuId)
+{
+    double bestDist = -1.0;
+    uint32_t bestId = 0;
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
+    {
+        Ptr<MobilityModel> m = RSU_Nodes.Get(i)->GetObject<MobilityModel>();
+        if (!m) continue;
+        Vector p = m->GetPosition();
+        double d = std::sqrt(std::pow(p.x - pos.x, 2.0) + std::pow(p.y - pos.y, 2.0));
+        if (bestDist < 0.0 || d < bestDist) { bestDist = d; bestId = RSU_Nodes.Get(i)->GetId(); }
+    }
+    if (bestDist >= 0.0 && bestDist <= toleranceM) { outRsuId = bestId; return true; }
+    return false;
+}
+
 // Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.44). Called
 // unconditionally from PemEmitVehicleBeacon for every real vehicle beacon
 // broadcast, regardless of receiver range (broadcast medium), mirroring how
@@ -4512,6 +4565,17 @@ PemEvaluateEvent(PemEvent& event)
         {
             event.triggered[8] = true;
         }
+
+        // Record this claimed sender's real physical origin from ACCEPTED,
+        // non-attack traffic only, keyed per-EDGE — this is the "known good"
+        // baseline the physical-layer attribution check below compares forged
+        // events against (see g_pem_last_legit_position declaration for
+        // rationale on the per-edge keying).
+        if (!event.attack_label)
+        {
+            g_pem_last_legit_position[{event.claimed_sender_id, event.link_dst_id}] =
+                {event.reporter_position, event.reception_timestamp};
+        }
     }
 
     // ── STEP 1+2: Weighted signature scoring ─────────────────────────────────
@@ -4540,31 +4604,74 @@ PemEvaluateEvent(PemEvent& event)
     pem_all_seen_node_ids.insert(event.physical_sender_id);
     if (event.attack_label)
     {
-        pem_actual_attacker_nodes.insert(event.physical_sender_id);
+        // Physical-layer attribution correction (identity-theft attacks, e.g.
+        // TTW-S2 sophisticated RSU): physical_sender_id may be the impersonated
+        // vehicle's identity, not who actually transmitted. RSU-relayed data
+        // legitimately arrives from the RSU's own location (that's how this
+        // architecture works) — but a claim under a MOBILE vehicle's identity,
+        // about an edge that identity hasn't legitimately vouched for in a
+        // long time, that keeps "arriving" from a known-static RSU's location,
+        // is something a real vehicle cannot do. That combination attributes
+        // the attack to the RSU instead of the impersonated identity.
+        // KNOWN LIMITATION: event.reporter_position is currently authored
+        // directly by the scenario script (see TTWS2_RunDetection), not
+        // derived from an independent physical-layer measurement — so this
+        // does NOT yet defend against an attacker sophisticated enough to
+        // also forge reporter_position. See g_pem_last_legit_position's
+        // declaration comment for the real fix (ns-3's measured RSSI via
+        // Rx()/MonitorSnifferRx), not yet implemented. This is a documented
+        // heuristic, not a closed threat model.
+        uint32_t attributionId = event.physical_sender_id;
+        if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && has_RSU_infrastructure)
+        {
+            uint32_t nearestRsuId = 0;
+            if (PemFindNearestKnownRsu(event.reporter_position, g_rcomm, nearestRsuId))
+            {
+                auto lastLegitIt = g_pem_last_legit_position.find(
+                    {event.claimed_sender_id, event.link_dst_id});
+                if (lastLegitIt != g_pem_last_legit_position.end())
+                {
+                    const double staleGapS =
+                        event.reception_timestamp - lastLegitIt->second.time;
+                    if (staleGapS > (2.0 * PEM_BEACON_INTERVAL_S))
+                    {
+                        printf("[ATTRIBUTION][t=%.3f] claimed sender V%u has not been heard"
+                               " from legitimately in %.3fs, yet this report arrives from"
+                               " known RSU_%u's location — attributing attack to RSU_%u,"
+                               " not the impersonated identity\n",
+                               Simulator::Now().GetSeconds(), event.claimed_sender_id,
+                               staleGapS, nearestRsuId, nearestRsuId);
+                        attributionId = nearestRsuId;
+                    }
+                }
+            }
+        }
+
+        pem_actual_attacker_nodes.insert(attributionId);
             if (event.alert_raised)
         {
-            pem_detected_attacker_nodes.insert(event.physical_sender_id);
+            pem_detected_attacker_nodes.insert(attributionId);
                     // Eq. 3.18 — live LKH revocation: O(log n) KEK-path update for
             // the detected attacker's leaf node.  Called once per unique
             // physical_sender_id to avoid redundant tree walks.
             if (g_lkh_ready &&
                 g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-                g_lkh_already_revoked.find(event.physical_sender_id) ==
+                g_lkh_already_revoked.find(attributionId) ==
                     g_lkh_already_revoked.end())
             {
-                uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
+                uint32_t leaf_idx = attributionId % g_lkh_n_leaves;
                             lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
-                g_lkh_already_revoked.insert(event.physical_sender_id);
+                g_lkh_already_revoked.insert(attributionId);
                 // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
                 // consortium certificate and is immediately peer-ineligible.
-                if (g_trust_table.count(event.physical_sender_id))
-                    g_trust_table[event.physical_sender_id].cert_valid = false;
+                if (g_trust_table.count(attributionId))
+                    g_trust_table[attributionId].cert_valid = false;
                 const uint32_t depth = (g_lkh_n_leaves > 1u)
                     ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
                 printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
                        " (Eq. 3.18)\n",
                        Simulator::Now().GetSeconds(),
-                       event.physical_sender_id, leaf_idx, g_lkh_n_leaves, depth);
+                       attributionId, leaf_idx, g_lkh_n_leaves, depth);
             }
         }
     }
@@ -5967,9 +6074,18 @@ static void TTW_ActivateReplay_S1()
 static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
 {
     double now2 = Simulator::Now().GetSeconds();
-    Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
+    Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0), rsuPos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
+    {
+        for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
+            if (RSU_Nodes.Get(i)->GetId() == rsu_id) {
+                Ptr<MobilityModel> m = RSU_Nodes.Get(i)->GetObject<MobilityModel>();
+                if (m) rsuPos = m->GetPosition();
+                break;
+            }
+        }
+    }
     // Timestamp forgery — always happens; this IS the TTW attack (see TTW-S1
     // fix above). A stale-timestamp resend is a naive replay, not a time-warp,
     // and was never the threat this scenario models.
@@ -5992,11 +6108,31 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
               << (ttw_s2_sophisticated
                   ? "SOPHISTICATED — forges V1 identity → Stage-0 BYPASSED by construction → LW+TGN\n"
                   : "BASIC — relays under own identity (RSU≠V1) → routed to threshold-sig gate (Eq. 3.26)\n");
+    // reporter_position is the PHYSICAL origin of this transmission — the RSU,
+    // in both branches (it is always the RSU's radio that actually transmits;
+    // only the claimed identity in the payload differs). Using the victim
+    // vehicle's position here would misrepresent physical reality and defeat
+    // the physical-layer attribution check in PemEvaluateEvent.
+    //
+    // *** KNOWN LIMITATION — NOT A CLOSED THREAT MODEL ***
+    // rsuPos is AUTHORED here directly from the RSU's real MobilityModel
+    // position by this scenario script — it is NOT derived from an
+    // independent physical-layer measurement. A fully sophisticated attacker
+    // that already forges physical_sender_id/claimed_sender_id/timestamp via
+    // this exact code path has no obstacle to also forging reporter_position
+    // (e.g. to the victim's captured position instead), which would defeat
+    // PemEvaluateEvent's attribution check and revert to blaming the victim.
+    // A real fix requires routing this replay over an actual WifiNetDevice
+    // transmission (as AttackSendDSRCBeacon does) so the real Rx()/
+    // MonitorSnifferRx SignalNoiseDbm callback measures genuine signal
+    // strength, then deriving position/distance from THAT — something the
+    // attacker's compromised key cannot alter. Not yet implemented; tracked
+    // as follow-up work.
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,
                  _ts2,
-                 now2, v1Pos, v1Pos, v2Pos, true,
+                 now2, rsuPos, v1Pos, v2Pos, true,
                  ttws2_stored_seq_no);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
