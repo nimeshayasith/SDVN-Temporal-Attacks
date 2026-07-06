@@ -1769,6 +1769,10 @@ struct PemEvent
     bool alert_raised;
     double detection_latency_ms;
     double rssi_reporter_dbm;  // computed from path-loss model; used in ME-S3 RSSI check
+    // Eq. 3.20 Δs_v watermark (tgn_core.cc TGN_ExtractFeatures). UINT64_MAX
+    // sentinel = "caller hasn't been wired for this yet" (BSHH/ME today) —
+    // those fall back to the legacy sender_timestamp-regression check there.
+    uint64_t claimed_seq_no = UINT64_MAX;
 };
 
 uint64_t pem_true_positive = 0;
@@ -5406,7 +5410,7 @@ static TtwBreakEval TtwEvaluateNaturalBreak(uint32_t attackerCidx, uint32_t vict
         if (d > commRange) {
             if (!r.found) { r.found = true; r.breakTime = t; }
             r.brokenDuration += stepSec;
-            r.maxDist = std::max(r.maxDist, d);
+            if (d > r.maxDist) r.maxDist = d;
         }
     }
     return r;
