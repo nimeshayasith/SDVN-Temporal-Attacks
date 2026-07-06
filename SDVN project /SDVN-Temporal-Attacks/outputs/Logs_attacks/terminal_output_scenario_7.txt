@@ -1,4 +1,7 @@
 Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
+[SUMO] Attack 7: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/07_BSHH_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
@@ -18,33 +21,33 @@ Stored HB time        : t=5
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=4)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 4/4 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [BSHH-S3][t=5.000]  V0(ns3=5) --heartbeat--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
 [BSHH-S3][t=5.000]  V1(ns3=6) --heartbeat--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
 [BSHH-S3][t=5.100]  Ctrl0(ns3=0) stores stale copies  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  (internal replay at t=10)
 [BSHH-S3][t=10.000]  Ctrl0(ns3=0) --INTERNAL REPLAY--> own liveness table  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
-[BSHH-S3][t=10.000]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=10 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[BSHH-S3][t=10.000]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S3][t=10.000]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=800.000 ms
+[BSHH-S3][t=10.000]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S3][t=10.000]  FS-MITIGATE gate: PBFT n=4 f=1 q_needed=3 -> PASS  |  VERIFY_THRESHOLD_SIG 4/4 >= t=3 -> PASS
+[BSHH-S3][t=10.000]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=200.000 ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 5 6 ctrl 
+[TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
+[TGN] Trusted nodes (Tier 2 OBU): ctrl 
 [TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 5 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 4 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 2 alert(s) → tgn_alerts.json
-[TGN] beacon_evidence.csv written: 1 observation(s)
+[TGN] beacon_evidence.csv written: 0 observation(s)
 [TGN] ctrl_topo.json written: 0 link(s)
 [TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
 
@@ -61,8 +64,8 @@ Stored HB time        : t=5
   Tdet        : 0.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 338.979  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 469  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 534.372  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 740  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 4
   Stage-0 blocked (attacks): 0
   |E_t^trusted|  : 2

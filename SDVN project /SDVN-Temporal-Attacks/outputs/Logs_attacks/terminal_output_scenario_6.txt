@@ -1,10 +1,13 @@
 Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 6815 exact position+velocity events
+[SUMO] Attack 6: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/06_BSHH_S2_Malicious_RSU.xml
 
 ========================================
 SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED
-Malicious RSUs : 13 / 64
-Victim pairs   : 13
+Malicious RSUs : 1 / 1
+Victim pairs   : 1
 Stored HB time : t=5 (from legitimate exchange)
 ========================================
 
@@ -18,237 +21,56 @@ Stored HB time : t=5 (from legitimate exchange)
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=4)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 4/4 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S2][t=2.000]  V0(ns3=5) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.000]  V1(ns3=6) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.001]  V2(ns3=7) --DSRC--> RSU1(ns3=206) --CSMA--> Controller  Heartbeat(V2(ns3=7), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.001]  V3(ns3=8) --DSRC--> RSU1(ns3=206) --CSMA--> Controller  Heartbeat(V3(ns3=8), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.002]  V4(ns3=9) --DSRC--> RSU2(ns3=207) --CSMA--> Controller  Heartbeat(V4(ns3=9), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.002]  V5(ns3=10) --DSRC--> RSU2(ns3=207) --CSMA--> Controller  Heartbeat(V5(ns3=10), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 205 of size 12packet timestamp 2.000s with delay 1ms
-Current neighbor size is 0Received packet from 207 of size 12packet timestamp 2.002s with delay 1ms
-[BSHH-S2][t=2.003]  V6(ns3=11) --DSRC--> RSU3(ns3=208) --CSMA--> Controller  Heartbeat(V6(ns3=11), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.003]  V7(ns3=12) --DSRC--> RSU3(ns3=208) --CSMA--> Controller  Heartbeat(V7(ns3=12), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.004]  V8(ns3=13) --DSRC--> RSU4(ns3=209) --CSMA--> Controller  Heartbeat(V8(ns3=13), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.004]  V9(ns3=14) --DSRC--> RSU4(ns3=209) --CSMA--> Controller  Heartbeat(V9(ns3=14), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.005]  V10(ns3=15) --DSRC--> RSU5(ns3=210) --CSMA--> Controller  Heartbeat(V10(ns3=15), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.005]  V11(ns3=16) --DSRC--> RSU5(ns3=210) --CSMA--> Controller  Heartbeat(V11(ns3=16), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 206 of size 12packet timestamp 2.001s with delay 1ms
-[BSHH-S2][t=2.006]  V12(ns3=17) --DSRC--> RSU6(ns3=211) --CSMA--> Controller  Heartbeat(V12(ns3=17), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.006]  V13(ns3=18) --DSRC--> RSU6(ns3=211) --CSMA--> Controller  Heartbeat(V13(ns3=18), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 209 of size 12packet timestamp 2.004s with delay 1ms
-[BSHH-S2][t=2.007]  V14(ns3=19) --DSRC--> RSU7(ns3=212) --CSMA--> Controller  Heartbeat(V14(ns3=19), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.007]  V15(ns3=20) --DSRC--> RSU7(ns3=212) --CSMA--> Controller  Heartbeat(V15(ns3=20), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.008]  V16(ns3=21) --DSRC--> RSU8(ns3=213) --CSMA--> Controller  Heartbeat(V16(ns3=21), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.008]  V17(ns3=22) --DSRC--> RSU8(ns3=213) --CSMA--> Controller  Heartbeat(V17(ns3=22), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 208 of size 12packet timestamp 2.003s with delay 1ms
-[BSHH-S2][t=2.009]  V18(ns3=23) --DSRC--> RSU9(ns3=214) --CSMA--> Controller  Heartbeat(V18(ns3=23), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.009]  V19(ns3=24) --DSRC--> RSU9(ns3=214) --CSMA--> Controller  Heartbeat(V19(ns3=24), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 211 of size 12packet timestamp 2.006s with delay 1ms
-[BSHH-S2][t=2.010]  V20(ns3=25) --DSRC--> RSU10(ns3=215) --CSMA--> Controller  Heartbeat(V20(ns3=25), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.010]  V21(ns3=26) --DSRC--> RSU10(ns3=215) --CSMA--> Controller  Heartbeat(V21(ns3=26), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.011]  V22(ns3=27) --DSRC--> RSU11(ns3=216) --CSMA--> Controller  Heartbeat(V22(ns3=27), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.011]  V23(ns3=28) --DSRC--> RSU11(ns3=216) --CSMA--> Controller  Heartbeat(V23(ns3=28), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.012]  V24(ns3=29) --DSRC--> RSU12(ns3=217) --CSMA--> Controller  Heartbeat(V24(ns3=29), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.012]  V25(ns3=30) --DSRC--> RSU12(ns3=217) --CSMA--> Controller  Heartbeat(V25(ns3=30), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 216 of size 12packet timestamp 2.011s with delay 1ms
-Current neighbor size is 0Received packet from 212 of size 12packet timestamp 2.007s with delay 1ms
-Current neighbor size is 0Received packet from 210 of size 12packet timestamp 2.005s with delay 1ms
-Current neighbor size is 0Received packet from 213 of size 12packet timestamp 2.008s with delay 1ms
-Current neighbor size is 0Received packet from 214 of size 12packet timestamp 2.009s with delay 1ms
-Current neighbor size is 0Received packet from 215 of size 12packet timestamp 2.010s with delay 1ms
-Current neighbor size is 0Received packet from 217 of size 12packet timestamp 2.012s with delay 1ms
-[BSHH-S2][t=2.100]  RSU0(ns3=205) stored EVEN-OLDER heartbeat  Heartbeat(V0(ns3=5), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.101]  RSU1(ns3=206) stored EVEN-OLDER heartbeat  Heartbeat(V2(ns3=7), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.102]  RSU2(ns3=207) stored EVEN-OLDER heartbeat  Heartbeat(V4(ns3=9), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.103]  RSU3(ns3=208) stored EVEN-OLDER heartbeat  Heartbeat(V6(ns3=11), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.104]  RSU4(ns3=209) stored EVEN-OLDER heartbeat  Heartbeat(V8(ns3=13), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.105]  RSU5(ns3=210) stored EVEN-OLDER heartbeat  Heartbeat(V10(ns3=15), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.106]  RSU6(ns3=211) stored EVEN-OLDER heartbeat  Heartbeat(V12(ns3=17), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.107]  RSU7(ns3=212) stored EVEN-OLDER heartbeat  Heartbeat(V14(ns3=19), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.108]  RSU8(ns3=213) stored EVEN-OLDER heartbeat  Heartbeat(V16(ns3=21), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.109]  RSU9(ns3=214) stored EVEN-OLDER heartbeat  Heartbeat(V18(ns3=23), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.110]  RSU10(ns3=215) stored EVEN-OLDER heartbeat  Heartbeat(V20(ns3=25), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.111]  RSU11(ns3=216) stored EVEN-OLDER heartbeat  Heartbeat(V22(ns3=27), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=2.112]  RSU12(ns3=217) stored EVEN-OLDER heartbeat  Heartbeat(V24(ns3=29), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 205 of size 12packet timestamp 5.000s with delay 1ms
-[BSHH-S2][t=5.001]  V2(ns3=7) --DSRC--> RSU1(ns3=206) --CSMA--> Controller  Heartbeat(V2(ns3=7), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.001]  V3(ns3=8) --DSRC--> RSU1(ns3=206) --CSMA--> Controller  Heartbeat(V3(ns3=8), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 206 of size 12packet timestamp 5.001s with delay 1ms
-[BSHH-S2][t=5.002]  V4(ns3=9) --DSRC--> RSU2(ns3=207) --CSMA--> Controller  Heartbeat(V4(ns3=9), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.002]  V5(ns3=10) --DSRC--> RSU2(ns3=207) --CSMA--> Controller  Heartbeat(V5(ns3=10), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 207 of size 12packet timestamp 5.002s with delay 1ms
-[BSHH-S2][t=5.003]  V6(ns3=11) --DSRC--> RSU3(ns3=208) --CSMA--> Controller  Heartbeat(V6(ns3=11), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.003]  V7(ns3=12) --DSRC--> RSU3(ns3=208) --CSMA--> Controller  Heartbeat(V7(ns3=12), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 208 of size 12packet timestamp 5.003s with delay 1ms
-[BSHH-S2][t=5.004]  V8(ns3=13) --DSRC--> RSU4(ns3=209) --CSMA--> Controller  Heartbeat(V8(ns3=13), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.004]  V9(ns3=14) --DSRC--> RSU4(ns3=209) --CSMA--> Controller  Heartbeat(V9(ns3=14), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 209 of size 12packet timestamp 5.004s with delay 1ms
-[BSHH-S2][t=5.005]  V10(ns3=15) --DSRC--> RSU5(ns3=210) --CSMA--> Controller  Heartbeat(V10(ns3=15), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.005]  V11(ns3=16) --DSRC--> RSU5(ns3=210) --CSMA--> Controller  Heartbeat(V11(ns3=16), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 210 of size 12packet timestamp 5.005s with delay 1ms
-[BSHH-S2][t=5.006]  V12(ns3=17) --DSRC--> RSU6(ns3=211) --CSMA--> Controller  Heartbeat(V12(ns3=17), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.006]  V13(ns3=18) --DSRC--> RSU6(ns3=211) --CSMA--> Controller  Heartbeat(V13(ns3=18), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 211 of size 12packet timestamp 5.006s with delay 1ms
-[BSHH-S2][t=5.007]  V14(ns3=19) --DSRC--> RSU7(ns3=212) --CSMA--> Controller  Heartbeat(V14(ns3=19), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.007]  V15(ns3=20) --DSRC--> RSU7(ns3=212) --CSMA--> Controller  Heartbeat(V15(ns3=20), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 212 of size 12packet timestamp 5.007s with delay 1ms
-[BSHH-S2][t=5.008]  V16(ns3=21) --DSRC--> RSU8(ns3=213) --CSMA--> Controller  Heartbeat(V16(ns3=21), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.008]  V17(ns3=22) --DSRC--> RSU8(ns3=213) --CSMA--> Controller  Heartbeat(V17(ns3=22), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 213 of size 12packet timestamp 5.008s with delay 1ms
-[BSHH-S2][t=5.009]  V18(ns3=23) --DSRC--> RSU9(ns3=214) --CSMA--> Controller  Heartbeat(V18(ns3=23), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.009]  V19(ns3=24) --DSRC--> RSU9(ns3=214) --CSMA--> Controller  Heartbeat(V19(ns3=24), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 214 of size 12packet timestamp 5.009s with delay 1ms
-[BSHH-S2][t=5.010]  V20(ns3=25) --DSRC--> RSU10(ns3=215) --CSMA--> Controller  Heartbeat(V20(ns3=25), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.010]  V21(ns3=26) --DSRC--> RSU10(ns3=215) --CSMA--> Controller  Heartbeat(V21(ns3=26), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 215 of size 12packet timestamp 5.010s with delay 1ms
-[BSHH-S2][t=5.011]  V22(ns3=27) --DSRC--> RSU11(ns3=216) --CSMA--> Controller  Heartbeat(V22(ns3=27), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.011]  V23(ns3=28) --DSRC--> RSU11(ns3=216) --CSMA--> Controller  Heartbeat(V23(ns3=28), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 216 of size 12packet timestamp 5.011s with delay 1ms
-[BSHH-S2][t=5.012]  V24(ns3=29) --DSRC--> RSU12(ns3=217) --CSMA--> Controller  Heartbeat(V24(ns3=29), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.012]  V25(ns3=30) --DSRC--> RSU12(ns3=217) --CSMA--> Controller  Heartbeat(V25(ns3=30), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 217 of size 12packet timestamp 5.012s with delay 1ms
-[BSHH-S2][t=5.100]  RSU0(ns3=205) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.101]  RSU1(ns3=206) stored old heartbeat  Heartbeat(V2(ns3=7), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.102]  RSU2(ns3=207) stored old heartbeat  Heartbeat(V4(ns3=9), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.103]  RSU3(ns3=208) stored old heartbeat  Heartbeat(V6(ns3=11), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.104]  RSU4(ns3=209) stored old heartbeat  Heartbeat(V8(ns3=13), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.105]  RSU5(ns3=210) stored old heartbeat  Heartbeat(V10(ns3=15), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.106]  RSU6(ns3=211) stored old heartbeat  Heartbeat(V12(ns3=17), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.107]  RSU7(ns3=212) stored old heartbeat  Heartbeat(V14(ns3=19), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.108]  RSU8(ns3=213) stored old heartbeat  Heartbeat(V16(ns3=21), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.109]  RSU9(ns3=214) stored old heartbeat  Heartbeat(V18(ns3=23), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.110]  RSU10(ns3=215) stored old heartbeat  Heartbeat(V20(ns3=25), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.111]  RSU11(ns3=216) stored old heartbeat  Heartbeat(V22(ns3=27), t=5.000)  (replay at t=10)
-[BSHH-S2][t=5.112]  RSU12(ns3=217) stored old heartbeat  Heartbeat(V24(ns3=29), t=5.000)  (replay at t=10)
-[BSHH-S2][t=9.900]  RSU0(ns3=205) SUPPRESSES genuine current heartbeat from V0(ns3=5) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.901]  RSU1(ns3=206) SUPPRESSES genuine current heartbeat from V2(ns3=7) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.902]  RSU2(ns3=207) SUPPRESSES genuine current heartbeat from V4(ns3=9) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.903]  RSU3(ns3=208) SUPPRESSES genuine current heartbeat from V6(ns3=11) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.904]  RSU4(ns3=209) SUPPRESSES genuine current heartbeat from V8(ns3=13) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.905]  RSU5(ns3=210) SUPPRESSES genuine current heartbeat from V10(ns3=15) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.906]  RSU6(ns3=211) SUPPRESSES genuine current heartbeat from V12(ns3=17) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.907]  RSU7(ns3=212) SUPPRESSES genuine current heartbeat from V14(ns3=19) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.908]  RSU8(ns3=213) SUPPRESSES genuine current heartbeat from V16(ns3=21) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.909]  RSU9(ns3=214) SUPPRESSES genuine current heartbeat from V18(ns3=23) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.910]  RSU10(ns3=215) SUPPRESSES genuine current heartbeat from V20(ns3=25) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.911]  RSU11(ns3=216) SUPPRESSES genuine current heartbeat from V22(ns3=27) (t=9.900)  — never forwarded
-[BSHH-S2][t=9.912]  RSU12(ns3=217) SUPPRESSES genuine current heartbeat from V24(ns3=29) (t=9.900)  — never forwarded
-[BSHH-S2][t=10.000]  RSU0(ns3=205) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V205, claimed=V0(ns3=5), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.000]  RSU0(ns3=205) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V205, claimed=V0(ns3=5), t=2.000)
-[BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.000]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V205
-[Trust][t=10.000]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.000s with delay 1ms
-Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.000s with delay 1ms
-[BSHH-S2][t=10.001]  RSU1(ns3=206) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V206, claimed=V2(ns3=7), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.001]  RSU1(ns3=206) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V206, claimed=V2(ns3=7), t=2.000)
-[BSHH-S2][t=10.001]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.001]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V206
-Current neighbor size is 0Received packet from 206 of size 12packet timestamp 10.001s with delay 1ms
-Current neighbor size is 0Received packet from 206 of size 12packet timestamp 10.001s with delay 1ms
-[BSHH-S2][t=10.002]  RSU2(ns3=207) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V9, claimed=V4(ns3=9), t=10.002) [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.002]  RSU2(ns3=207) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V9, claimed=V4(ns3=9), t=2.000)
-[BSHH-S2][t=10.002]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.002]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V207
-Current neighbor size is 0Received packet from 207 of size 12packet timestamp 10.002s with delay 1ms
-Current neighbor size is 0Received packet from 207 of size 12packet timestamp 10.002s with delay 1ms
-[BSHH-S2][t=10.003]  RSU3(ns3=208) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V11, claimed=V6(ns3=11), t=10.003) [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.003]  RSU3(ns3=208) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V11, claimed=V6(ns3=11), t=2.000)
-[BSHH-S2][t=10.003]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.003]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V208
-Current neighbor size is 0Received packet from 208 of size 12packet timestamp 10.003s with delay 1ms
-Current neighbor size is 0Received packet from 208 of size 12packet timestamp 10.003s with delay 1ms
-[BSHH-S2][t=10.004]  RSU4(ns3=209) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V209, claimed=V8(ns3=13), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.004]  RSU4(ns3=209) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V209, claimed=V8(ns3=13), t=2.000)
-[BSHH-S2][t=10.004]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.004]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V209
-Current neighbor size is 0Received packet from 209 of size 12packet timestamp 10.004s with delay 1ms
-Current neighbor size is 0Received packet from 209 of size 12packet timestamp 10.004s with delay 1ms
-[BSHH-S2][t=10.005]  RSU5(ns3=210) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V210, claimed=V10(ns3=15), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.005]  RSU5(ns3=210) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V210, claimed=V10(ns3=15), t=2.000)
-[BSHH-S2][t=10.005]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.005]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V210
-Current neighbor size is 0Received packet from 210 of size 12packet timestamp 10.005s with delay 1ms
-Current neighbor size is 0Received packet from 210 of size 12packet timestamp 10.005s with delay 1ms
-[BSHH-S2][t=10.006]  RSU6(ns3=211) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V211, claimed=V12(ns3=17), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.006]  RSU6(ns3=211) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V211, claimed=V12(ns3=17), t=2.000)
-[BSHH-S2][t=10.006]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.006]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V211
-Current neighbor size is 0Received packet from 211 of size 12packet timestamp 10.006s with delay 1ms
-Current neighbor size is 0Received packet from 211 of size 12packet timestamp 10.006s with delay 1ms
-[BSHH-S2][t=10.007]  RSU7(ns3=212) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V19, claimed=V14(ns3=19), t=10.007) [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.007]  RSU7(ns3=212) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V19, claimed=V14(ns3=19), t=2.000)
-[BSHH-S2][t=10.007]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.007]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V212
-Current neighbor size is 0Received packet from 212 of size 12packet timestamp 10.007s with delay 1ms
-Current neighbor size is 0Received packet from 212 of size 12packet timestamp 10.007s with delay 1ms
-[BSHH-S2][t=10.008]  RSU8(ns3=213) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V213, claimed=V16(ns3=21), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.008]  RSU8(ns3=213) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V213, claimed=V16(ns3=21), t=2.000)
-[BSHH-S2][t=10.008]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.008]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V213
-Current neighbor size is 0Received packet from 213 of size 12packet timestamp 10.008s with delay 1ms
-Current neighbor size is 0Received packet from 213 of size 12packet timestamp 10.008s with delay 1ms
-[BSHH-S2][t=10.009]  RSU9(ns3=214) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V23, claimed=V18(ns3=23), t=10.009) [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.009]  RSU9(ns3=214) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V23, claimed=V18(ns3=23), t=2.000)
-[BSHH-S2][t=10.009]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.009]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V214
-Current neighbor size is 0Received packet from 214 of size 12packet timestamp 10.009s with delay 1ms
-Current neighbor size is 0Received packet from 214 of size 12packet timestamp 10.009s with delay 1ms
-[BSHH-S2][t=10.010]  RSU10(ns3=215) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V215, claimed=V20(ns3=25), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.010]  RSU10(ns3=215) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V215, claimed=V20(ns3=25), t=2.000)
-[BSHH-S2][t=10.010]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.010]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V215
-Current neighbor size is 0Received packet from 215 of size 12packet timestamp 10.010s with delay 1ms
-Current neighbor size is 0Received packet from 215 of size 12packet timestamp 10.010s with delay 1ms
-[BSHH-S2][t=10.011]  RSU11(ns3=216) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V27, claimed=V22(ns3=27), t=10.011) [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.011]  RSU11(ns3=216) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V27, claimed=V22(ns3=27), t=2.000)
-[BSHH-S2][t=10.011]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.011]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V216
-Current neighbor size is 0Received packet from 216 of size 12packet timestamp 10.011s with delay 1ms
-Current neighbor size is 0Received packet from 216 of size 12packet timestamp 10.011s with delay 1ms
-[BSHH-S2][t=10.012]  RSU12(ns3=217) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V217, claimed=V24(ns3=29), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.012]  RSU12(ns3=217) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V217, claimed=V24(ns3=29), t=2.000)
-[BSHH-S2][t=10.012]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S2][t=10.012]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V217
-Current neighbor size is 0Received packet from 217 of size 12packet timestamp 10.012s with delay 1ms
-Current neighbor size is 0Received packet from 217 of size 12packet timestamp 10.012s with delay 1ms
+[BSHH-S2][t=2.000]  V0(ns3=5) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=2.000)  ACCEPTED
+[BSHH-S2][t=2.000]  V1(ns3=6) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=2.000)  ACCEPTED
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 2.000s with delay 1ms
+[BSHH-S2][t=2.100]  RSU0(ns3=9) stored EVEN-OLDER heartbeat  Heartbeat(V0(ns3=5), t=2.000)  (second duplicate for replay at t=10)
+[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
+[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=9) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 5.000s with delay 1ms
+[BSHH-S2][t=5.100]  RSU0(ns3=9) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
+[BSHH-S2][t=9.900]  RSU0(ns3=9) SUPPRESSES genuine current heartbeat from V0(ns3=5) (t=9.900)  — never forwarded
+[BSHH-S2][t=10.000]  RSU0(ns3=9) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V0(ns3=5), t=10.000) [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=10.000]  RSU0(ns3=9) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V5, claimed=V0(ns3=5), t=2.000)
+[BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 4/4 >= t=3 -> PASS
+[BSHH-S2][t=10.000]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.000s with delay 1ms
+Current neighbor size is 0Received packet from 9 of size 12packet timestamp 10.000s with delay 1ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (31 events)
+[CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=33  reject=0
-[TGN] Online mode — 57 events already processed inline. Running secondary crypto audit...
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 83 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 7 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 6 — BSHH-S2: Malicious RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 0 / 52 / 0 / 5
+  TP/TN/FP/FN : 0 / 4 / 0 / 1
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 52 / 0 / 5
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 1
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 0 / 52 / 0 / 5   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.038
-  ACR         : 91.228 %
+  [comb] TP/TN/FP/FN : 0 / 4 / 0 / 1   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 0.500
+  ACR         : 80.000 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 338.979  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 469  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 57
-  Stage-0 blocked (attacks): 21
+  γ_init      : 534.372  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 740  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 5
+  Stage-0 blocked (attacks): 1
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================

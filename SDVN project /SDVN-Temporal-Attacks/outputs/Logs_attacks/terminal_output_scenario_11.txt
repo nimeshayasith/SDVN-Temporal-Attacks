@@ -1,14 +1,14 @@
 Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Attack 11: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/11_ME_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
-SCENARIO 11 - ME-S3 ATTACK CONFIGURED
-  Total vehicles      : 200
-  Total controllers   : 4
-  Attack percentage   : 20%
-  Malicious controllers: 1
-  Real link           : V45<->V46
-  Phantom reporters (40): V5 V6 V7 V8 V9 V10 V11 V12 V13 V14 V15 V16 V17 V18 V19 V20 V21 V22 V23 V24 V25 V26 V27 V28 V29 V30 V31 V32 V33 V34 V35 V36 V37 V38 V39 V40 V41 V42 V43 V44 
+SCENARIO 11 - ME-S3 ATTACK CONFIGURED (single attacker, 3 legit)
+  Total vehicles : 6  Malicious controllers: 1
+  Legit V1/V2/V3 : V6/V7/V8
+  Impersonated ID: V5
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -21,185 +21,45 @@ SCENARIO 11 - ME-S3 ATTACK CONFIGURED
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S3][t=10.000]  V40 --topo--> Controller  <V40 sees V41>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V41 --topo--> Controller  <V41 sees V40>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V0 --topo--> Controller  <V0 sees V1>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V1 --topo--> Controller  <V1 sees V0>  ACCEPTED (real link)
-[ME-S3][t=10.100]  STEP③  Controller FORGES: <V45 sees V46> via V5 and V6
-[ME-S3][t=10.100]  STEP④  Phantom: V45->V5->V46, V45->V6->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.100]  FS-MITIGATE gate: delta_t=4 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.100]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[Trust][t=10.100]  C_0 tau=0.800 >= tau_min^C — monitoring
-[ME-S3][t=10.100]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.100]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
-[ME-S3][t=10.102]  STEP③  Controller FORGES: <V45 sees V46> via V7 and V8
-[ME-S3][t=10.102]  STEP④  Phantom: V45->V7->V46, V45->V8->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.102]  FS-MITIGATE gate: delta_t=7 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.102]  C_0 tau=0.600 >= tau_min^C — monitoring
-[ME-S3][t=10.102]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.102]  FS-MITIGATE ABORTED (gate failed)  attacker=V2
-[ME-S3][t=10.104]  STEP③  Controller FORGES: <V45 sees V46> via V9 and V10
-[ME-S3][t=10.104]  STEP④  Phantom: V45->V9->V46, V45->V10->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.104]  FS-MITIGATE gate: delta_t=10 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.104]  C_0 tau=0.400 >= tau_min^C — monitoring
-[ME-S3][t=10.104]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.104]  FS-MITIGATE ABORTED (gate failed)  attacker=V4
-[ME-S3][t=10.106]  STEP③  Controller FORGES: <V45 sees V46> via V11 and V12
-[ME-S3][t=10.106]  STEP④  Phantom: V45->V11->V46, V45->V12->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.106]  FS-MITIGATE gate: delta_t=13 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.106]  REASSIGN(Z_0 -> C_4)  tau=0.200 < tau_min^C=0.300
-[Trust][t=10.106]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.106]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.106]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[ME-S3][t=10.108]  STEP③  Controller FORGES: <V45 sees V46> via V13 and V14
-[ME-S3][t=10.108]  STEP④  Phantom: V45->V13->V46, V45->V14->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.108]  FS-MITIGATE gate: delta_t=16 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.108]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.108]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.108]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.108]  FS-MITIGATE ABORTED (gate failed)  attacker=V8
-[ME-S3][t=10.110]  STEP③  Controller FORGES: <V45 sees V46> via V15 and V16
-[ME-S3][t=10.110]  STEP④  Phantom: V45->V15->V46, V45->V16->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.110]  FS-MITIGATE gate: delta_t=19 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.110]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.110]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.110]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.110]  FS-MITIGATE ABORTED (gate failed)  attacker=V10
-[ME-S3][t=10.112]  STEP③  Controller FORGES: <V45 sees V46> via V17 and V18
-[ME-S3][t=10.112]  STEP④  Phantom: V45->V17->V46, V45->V18->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.112]  FS-MITIGATE gate: delta_t=22 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.112]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.112]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.112]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.112]  FS-MITIGATE ABORTED (gate failed)  attacker=V12
-[ME-S3][t=10.114]  STEP③  Controller FORGES: <V45 sees V46> via V19 and V20
-[ME-S3][t=10.114]  STEP④  Phantom: V45->V19->V46, V45->V20->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.114]  FS-MITIGATE gate: delta_t=25 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.114]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.114]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.114]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.114]  FS-MITIGATE ABORTED (gate failed)  attacker=V14
-[ME-S3][t=10.116]  STEP③  Controller FORGES: <V45 sees V46> via V21 and V22
-[ME-S3][t=10.116]  STEP④  Phantom: V45->V21->V46, V45->V22->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.116]  FS-MITIGATE gate: delta_t=28 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.116]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.116]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.116]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.116]  FS-MITIGATE ABORTED (gate failed)  attacker=V16
-[ME-S3][t=10.118]  STEP③  Controller FORGES: <V45 sees V46> via V23 and V24
-[ME-S3][t=10.118]  STEP④  Phantom: V45->V23->V46, V45->V24->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.118]  FS-MITIGATE gate: delta_t=31 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.118]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.118]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.118]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.118]  FS-MITIGATE ABORTED (gate failed)  attacker=V18
-[ME-S3][t=10.120]  STEP③  Controller FORGES: <V45 sees V46> via V25 and V26
-[ME-S3][t=10.120]  STEP④  Phantom: V45->V25->V46, V45->V26->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.120]  FS-MITIGATE gate: delta_t=34 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.120]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.120]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.120]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.120]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
-[ME-S3][t=10.122]  STEP③  Controller FORGES: <V45 sees V46> via V27 and V28
-[ME-S3][t=10.122]  STEP④  Phantom: V45->V27->V46, V45->V28->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.122]  FS-MITIGATE gate: delta_t=37 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.122]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.122]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.122]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.122]  FS-MITIGATE ABORTED (gate failed)  attacker=V22
-[ME-S3][t=10.124]  STEP③  Controller FORGES: <V45 sees V46> via V29 and V30
-[ME-S3][t=10.124]  STEP④  Phantom: V45->V29->V46, V45->V30->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.124]  FS-MITIGATE gate: delta_t=40 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.124]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.124]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.124]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.124]  FS-MITIGATE ABORTED (gate failed)  attacker=V24
-[ME-S3][t=10.126]  STEP③  Controller FORGES: <V45 sees V46> via V31 and V32
-[ME-S3][t=10.126]  STEP④  Phantom: V45->V31->V46, V45->V32->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.126]  FS-MITIGATE gate: delta_t=43 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.126]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.126]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.126]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.126]  FS-MITIGATE ABORTED (gate failed)  attacker=V26
-[ME-S3][t=10.128]  STEP③  Controller FORGES: <V45 sees V46> via V33 and V34
-[ME-S3][t=10.128]  STEP④  Phantom: V45->V33->V46, V45->V34->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.128]  FS-MITIGATE gate: delta_t=46 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.128]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.128]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.128]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.128]  FS-MITIGATE ABORTED (gate failed)  attacker=V28
-[ME-S3][t=10.130]  STEP③  Controller FORGES: <V45 sees V46> via V35 and V36
-[ME-S3][t=10.130]  STEP④  Phantom: V45->V35->V46, V45->V36->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.130]  FS-MITIGATE gate: delta_t=49 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.130]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.130]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.130]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.130]  FS-MITIGATE ABORTED (gate failed)  attacker=V30
-[ME-S3][t=10.132]  STEP③  Controller FORGES: <V45 sees V46> via V37 and V38
-[ME-S3][t=10.132]  STEP④  Phantom: V45->V37->V46, V45->V38->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.132]  FS-MITIGATE gate: delta_t=52 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.132]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.132]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.132]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.132]  FS-MITIGATE ABORTED (gate failed)  attacker=V32
-[ME-S3][t=10.134]  STEP③  Controller FORGES: <V45 sees V46> via V39 and V40
-[ME-S3][t=10.134]  STEP④  Phantom: V45->V39->V46, V45->V40->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.134]  FS-MITIGATE gate: delta_t=55 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.134]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.134]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.134]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.134]  FS-MITIGATE ABORTED (gate failed)  attacker=V34
-[ME-S3][t=10.136]  STEP③  Controller FORGES: <V45 sees V46> via V41 and V42
-[ME-S3][t=10.136]  STEP④  Phantom: V45->V41->V46, V45->V42->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.136]  FS-MITIGATE gate: delta_t=58 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.136]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.136]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.136]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.136]  FS-MITIGATE ABORTED (gate failed)  attacker=V36
-[ME-S3][t=10.138]  STEP③  Controller FORGES: <V45 sees V46> via V43 and V44
-[ME-S3][t=10.138]  STEP④  Phantom: V45->V43->V46, V45->V44->V46  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.138]  FS-MITIGATE gate: delta_t=61 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.138]  REASSIGN(Z_0 -> C_4)  tau=0.000 < tau_min^C=0.300
-[Trust][t=10.138]  ControllerRevokedBeacon V2V: revoked=C_0 backup=C_4 prop=800.000 ms
-[ME-S3][t=10.138]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=101 -> FAIL
-[ME-S3][t=10.138]  FS-MITIGATE ABORTED (gate failed)  attacker=V38
+[ME-S3][t=10.000]  STEP①②  3-legit single-attacker topology: CHAIN
+[ME-S3][t=10.100]  STEP③④  V5 echoes 2 real edge(s) — CHAIN 4-phantom-path inference  *** ATTACK COMPLETE ***
 
-[CRYPTO] crypto_latency_sumo.csv written    (45 events)
-[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] crypto_latency_sumo.csv written    (5 events)
+[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
-[TGN] Online mode — 44 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 8/42 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 0 1 2 3 4 5 6 7 ctrl 
-[TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 44 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=6  reject=0
+[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
+[TGN] Tier2: admitted 4/4 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
+[TGN] Trusted nodes (Tier 2 OBU): 0 1 2 3 ctrl 
+[TGN] |E_t^trusted|=3 (Tier 2: 3 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 11 — ME-S3: Malicious Controller, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 4 / 0 / 40
-  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 40
-  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  TP/TN/FP/FN : 0 / 3 / 0 / 2
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 2
+  [beh]  TP/TN/FP/FN : 0 / 3 / 0 / 0
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 40 / 4 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 1 / 3 / 0 / 1   MCC=0.612  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 1.000
-  ACR         : 9.091 %
+  ACR         : 60.000 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 44
+  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 5
   Stage-0 blocked (attacks): 0
-  |E_t^trusted|  : 4
+  |E_t^trusted|  : 3
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
