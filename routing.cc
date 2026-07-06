@@ -2120,6 +2120,26 @@ extern NodeContainer management_Node;
 // whoever is at radio_origin_id lied about identity. This requires no
 // position, RSSI, or staleness window, and does not misattribute an honest
 // relay of a genuinely malicious vehicle's own traffic.
+//
+// *** KNOWN LIMITATION — NOT YET BACKED BY A REAL VERIFICATION MECHANISM ***
+// radio_origin_id conceptually represents which AUTHENTICATED TRANSPORT
+// CHANNEL a message arrived over (e.g. a real deployment's per-RSU mutual-TLS
+// connection identity or equivalent) — a signal genuinely independent of the
+// application-layer payload, unlike reporter_position or claimed_sender_id.
+// That concept is legitimate and standard (transport-layer authentication is
+// ordinary network security practice). BUT, as implemented in this codebase,
+// radio_origin_id is currently just an ASSERTED function parameter passed
+// directly by the same scenario script that also orchestrates the attack —
+// it is not DERIVED from any actual connection-authentication mechanism the
+// way claimed_sender_id is backed by TetaGuardCryptoFilter's real HMAC-SHA256
+// verification. Porting this to a real deployment requires first building
+// that missing piece: authenticate each RSU's connection (e.g. per-RSU
+// mutual TLS) and derive radio_origin_id from the verified connection at
+// message-receipt time, not hand it in as a trusted parameter. Until that
+// exists, treat radio_origin_id as a simulation-side placeholder for a real
+// mechanism, not a deployment-ready one. Training the TGN model does not
+// change this either way — this attribution logic is deterministic,
+// rule-based, and entirely outside the trained scoring pipeline.
 
 
 // Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.44). Called
@@ -6112,6 +6132,10 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     // changes which identity the crypto layer is asked to verify, never who
     // physically originates these bits. That fact is known with certainty by
     // this code, not read back from anything attacker-controlled.
+    // KNOWN LIMITATION: rsu_id is asserted here, not derived from a real
+    // connection-authentication mechanism — see the "KNOWN LIMITATION" note
+    // on radio_origin_id's declaration (PemEvent struct) before treating this
+    // as deployment-ready.
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,
@@ -7040,6 +7064,9 @@ void BSHH_S1_VictimForwardsOldHeartbeatToController(uint32_t attacker_id, uint32
     // but the same radio_origin_id mechanism resolves it: the scenario code
     // knows attacker_id with certainty, independent of what this hop's
     // packet claims.
+    // KNOWN LIMITATION: see radio_origin_id's "KNOWN LIMITATION" note on
+    // PemEvent's declaration — attacker_id is asserted here, not derived from
+    // a real verification mechanism.
     PemEmitHeartbeatEvent(victim_id, victim_id, stored_time, true, attacker_id);
 }
 
@@ -7087,6 +7114,8 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
     // vehicle physically transmits this hijack in both cases; only the
     // crypto-claimed identity differs. Same multi-plane attribution model as
     // TTW-S2 (see PemEvent's declaration): deterministic, not a heuristic.
+    // KNOWN LIMITATION: attacker_id is asserted, not derived from a real
+    // verification mechanism — see PemEvent's radio_origin_id declaration.
     PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true, attacker_id);
 
     // Crypto latency: detection verify + freshness + LKH mitigation
@@ -7388,6 +7417,8 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     // radio_origin_id = rsu_id always (both branches) — same multi-plane
     // attribution model as TTW-S2: the RSU physically transmits this replay
     // in both cases, only the crypto-claimed identity differs.
+    // KNOWN LIMITATION: rsu_id is asserted, not derived from a real
+    // verification mechanism — see PemEvent's radio_origin_id declaration.
     PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true, rsu_id);
     AttackSendRSUToController(rsu_id);
     {
