@@ -7376,8 +7376,18 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     // no external transmitter) rather than v1_id/v2_id, so the node-level
     // ground-truth attacker attribution isn't misassigned to the innocent
     // victim vehicles (physical_sender_id self-populates pem_actual_attacker_nodes).
+    // Event 1 = V1's own reactivated slot: reporter/link fields = v1_id.
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
+    // Event 2 = V2's forged slot: reporter/link fields carry v2_id (not
+    // v1_id) so this row is distinguishable from Event 1 in pem_event_log.csv
+    // — otherwise both rows are byte-identical and the impersonation is
+    // invisible to anything reading the event stream (TGN, audits), even
+    // though the in-memory liveness table and the log text both show it.
+    {
+        Vector zeroPos(0.0, 0.0, 0.0);
+        PemEmitEvent(PEM_EVENT_HEARTBEAT, 9999u, v1_id, v2_id, v2_id, v2_id,
+                     stored_time, now, zeroPos, zeroPos, zeroPos, true);
+    }
 
     if (pem_last_alert) {
         bshh_controller_liveness_table.erase(v1_id);
@@ -7600,8 +7610,15 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     // physical_sender stays the 9999 sentinel (internal-controller action,
     // no external transmitter) so node-level ground-truth attacker
     // attribution isn't misassigned to the innocent victim vehicles.
+    // Event 1 = V1's own reactivated slot: reporter/link fields = v1_id.
     PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
-    PemEmitHeartbeatEvent(9999u, v1_id, stored_time, true);
+    // Event 2 = V2's forged slot: reporter/link fields carry v2_id (not
+    // v1_id) so this row is distinguishable from Event 1 in pem_event_log.csv.
+    {
+        Vector zeroPos(0.0, 0.0, 0.0);
+        PemEmitEvent(PEM_EVENT_HEARTBEAT, 9999u, v1_id, v2_id, v2_id, v2_id,
+                     stored_time, now, zeroPos, zeroPos, zeroPos, true);
+    }
 
     if (pem_last_alert) {
         bshh_controller_liveness_table.erase(v1_id);

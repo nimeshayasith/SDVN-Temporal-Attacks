@@ -1,14 +1,17 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
 [SUMO] Attack 10: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/10_ME_S2_Malicious_RSU.xml
 
 ========================================
-SCENARIO 10 - ME-S2 ATTACK CONFIGURED (single attacker, 3 legit)
-  Total vehicles : 6  Malicious RSUs: 1
-  Legit V1/V2/V3 : V6/V7/V8
-  Impersonated ID: V5
+SCENARIO 10 - ME-S2 ATTACK CONFIGURED
+  Total vehicles    : 20
+  Total RSUs        : 1
+  Attack percentage : 20%
+  Malicious RSUs    : 1
+  Real link         : V9<->V10
+  Phantom reporters (4): V5 V6 V7 V8 
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -21,48 +24,55 @@ SCENARIO 10 - ME-S2 ATTACK CONFIGURED (single attacker, 3 legit)
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S2][t=10.000]  STEP①②  3-legit single-attacker topology: CHAIN
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.000s with delay 1ms
-[ME-S2][t=10.100]  STEP③④  V5 echoes 2 real edge(s) — CHAIN 4-phantom-path inference  *** ATTACK COMPLETE ***
-[ME-S2][t=10.100]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> PASS  |  VERIFY_QUORUM 6/6 >= t=4 -> PASS
-[ME-S2][t=10.100]  MITIGATION Tier 1: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY -> RSU OpenFlow  attacker=V0
-[Trust][t=10.100]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-Current neighbor size is 0Received packet from 11 of size 12packet timestamp 10.100s with delay 1ms
+[ME-S2][t=10.000]  STEP①②③  V9<->V10 HELLO; vehicles report to RSU_25; RSU aggregates
+Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.000s with delay 1ms
+[ME-S2][t=10.100]  STEP④  RSU_25 INJECTS echo <V9 sees V10> as-if-by V5 and V6
+[ME-S2][t=10.100]  STEP⑥  Phantom: V9->V5->V10, V9->V6->V10  *** ATTACK COMPLETE ***
+[ME-S2][t=10.100]  Sophistication: BASIC→Stage-0 drop
+[ME-S2][t=10.100]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S2][t=10.100]  FS-MITIGATE ABORTED (gate failed)  attacker=V25
+Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.100s with delay 1ms
+[ME-S2][t=10.102]  STEP④  RSU_25 INJECTS echo <V9 sees V10> as-if-by V7 and V8
+[ME-S2][t=10.102]  STEP⑥  Phantom: V9->V7->V10, V9->V8->V10  *** ATTACK COMPLETE ***
+[ME-S2][t=10.102]  Sophistication: BASIC→Stage-0 drop
+[ME-S2][t=10.102]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S2][t=10.102]  FS-MITIGATE ABORTED (gate failed)  attacker=V25
+Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.102s with delay 1ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (5 events)
-[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
+[CRYPTO] crypto_latency_sumo.csv written    (9 events)
+[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=6  reject=0
-[TGN] Online mode — 3 events already processed inline. Running secondary crypto audit...
-[TGN] |E_t^trusted|=3 (Tier 1: all RSU-reported events, tau_k=1)
+[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=4 (Tier 1: all RSU-reported events, tau_k=1)
 [CryptoFilter] 4 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 10 — ME-S2: Malicious RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 0 / 3 / 0 / 0
+  TP/TN/FP/FN : 0 / 4 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 3 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 0 / 3 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 0 / 4 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 0.500
   ACR         : 100.000 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 3
-  Stage-0 blocked (attacks): 2
-  |E_t^trusted|  : 3
+  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 4
+  Stage-0 blocked (attacks): 4
+  |E_t^trusted|  : 4
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
