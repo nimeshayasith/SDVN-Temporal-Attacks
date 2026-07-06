@@ -1,14 +1,21 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
 [SUMO] Attack 9: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/09_ME_S1_Malicious_Vehicles.xml
 
 ========================================
-SCENARIO 09 - ME-S1 ATTACK CONFIGURED (single attacker, 3 legit)
-  Total vehicles : 6
-  Legit V1/V2/V3 : V9/V10/V8
-  Attacker       : V5
+SCENARIO 09 - ME-S1 ATTACK CONFIGURED
+  Total vehicles        : 20
+  Attack percentage     : 20%
+  Echo attackers        : 4
+  Benign (real link) veh: 16
+  Active attack groups  : 2
+  Real link pair        : V21<->V20
+  Echo attackers (NS-3 IDs): V5 V7 V6 V8 
+  Active groups (all echo V21<->V20):
+    Group 1: V5+V7 echo V21<->V20
+    Group 2: V6+V8 echo V21<->V20
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -21,48 +28,60 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED (single attacker, 3 legit)
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[ME-S1][t=10.015]  STEP①②  3-legit single-attacker topology: SPLIT(fallback)
-[ME-S1][t=10.090]  STEP③④  V5 echoes 1 real edge(s) — SPLIT 3-phantom-path inference  *** ATTACK COMPLETE ***
-[ME-S1][t=10.090]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_QUORUM 6/6 >= t=4 -> PASS
-[ME-S1][t=10.090]  MITIGATION Tier 2: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY  attacker=V0  propagation=300.000 ms
-[Trust][t=10.090]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[ME-S1][t=9.990]  STEP①  V21 <-> V20 OUT OF RANGE (no real link)
+[ME-S1][t=9.990]  STEP②  V21, V20 have no real link to report
+[ME-S1][t=9.990]  STEP③  V5, V7 overhear HELLO — stored for echo
+[ME-S1][t=10.052]  STEP④  V6 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.052]  STEP④  V8 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.052]  STEP⑤  Controller infers 4 path(s) for V21->V20  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
+[ME-S1][t=10.052]  V1 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
+[ME-S1][t=10.052]  V3 sophistication: BASIC — actual pos, may be dropped at Stage-0 locbind
+[ME-S1][t=10.052]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S1][t=10.052]  FS-MITIGATE ABORTED (gate failed)  attacker=V1
+[ME-S1][t=10.081]  STEP④  V5 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.081]  STEP④  V7 --ECHO--> Controller  <V21 sees V20>  FALSE REPORTER
+[ME-S1][t=10.081]  STEP⑤  Controller infers 4 path(s) for V21->V20  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
+[ME-S1][t=10.081]  V0 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
+[ME-S1][t=10.081]  V2 sophistication: SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN
+[ME-S1][t=10.081]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S1][t=10.081]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
 
-[CRYPTO] crypto_latency_sumo.csv written    (5 events)
-[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
-[CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
-[TGN] Online mode — 2 events already processed inline. Running secondary crypto audit...
+[CRYPTO] crypto_latency_sumo.csv written    (50 events)
+[CRYPTO] crypto_latency_summary.csv written  (20 distinct operations)
+[CRYPTO] Beacon TX signed: 1   RX verified: 1
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=7  reject=0
+[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 4 5 ctrl 
-[TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 2 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] Trusted nodes (Tier 2 OBU): 15 16 ctrl 
+[TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 5 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 9 — ME-S1: Malicious Vehicles, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  TP/TN/FP/FN : 0 / 4 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 0 / 2 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 0 / 4 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 0.500
   ACR         : 100.000 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 416.914  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 577  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 2
-  Stage-0 blocked (attacks): 1
-  |E_t^trusted|  : 2
+  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 4
+  Stage-0 blocked (attacks): 4
+  |E_t^trusted|  : 4
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
