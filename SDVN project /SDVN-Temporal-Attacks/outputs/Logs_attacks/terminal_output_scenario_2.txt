@@ -1,28 +1,19 @@
 Solution at controller cleared
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 62367 exact position+velocity events
+[SUMO] Attack 2: attacker/victim positions overridden by attack setup.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/02_TTW_S2_Malicious_RSU.xml
 
 ========================================
 SCENARIO 02 - TTW-S2 ATTACK CONFIGURED
-Malicious RSUs : 13 / 64
-Victim pairs   (13):
-  RSU_205  ->  V5 <-> V6
-  RSU_206  ->  V7 <-> V8
-  RSU_207  ->  V9 <-> V10
-  RSU_208  ->  V11 <-> V12
-  RSU_209  ->  V13 <-> V14
-  RSU_210  ->  V15 <-> V16
-  RSU_211  ->  V17 <-> V18
-  RSU_212  ->  V19 <-> V20
-  RSU_213  ->  V21 <-> V22
-  RSU_214  ->  V23 <-> V24
-  RSU_215  ->  V25 <-> V26
-  RSU_216  ->  V27 <-> V28
-  RSU_217  ->  V29 <-> V30
-Timeline:
+Malicious RSUs : 1 / 1
+Victim pairs   (1):
+  RSU_45  ->  V5 <-> V40  (real break at t=77.9s)
+Timeline (Option B — real SUMO trajectories decide the break):
   t=10s  STEP 1+2 : Each pair -> its RSU -> Controller (legit)
   t=10s  STEP 3   : Each malicious RSU stores pair's old packet
-  t=15s           : Physical links break
-  t=20s  STEP 4+5 : Each malicious RSU replays stale packet
+  [per-pair]      : Physical link breaks whenever that pair's real SUMO trajectory naturally exceeds 300 m
+  [per-pair]      : Malicious RSU replays stale packet 2s after its pair's real break
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -35,175 +26,54 @@ Timeline:
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=40)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TTW-S2][t=10.000]  V5 --HELLO + topo--> RSU_205  <V5 sees V6, t=10.000>
-[TTW-S2][t=10.000]  V6 --HELLO + topo--> RSU_205  <V6 sees V5, t=10.000>
-[TTW-S2][t=10.001]  V7 --HELLO + topo--> RSU_206  <V7 sees V8, t=10.000>
-[TTW-S2][t=10.001]  V8 --HELLO + topo--> RSU_206  <V8 sees V7, t=10.000>
-[TTW-S2][t=10.001]  V9 --HELLO + topo--> RSU_207  <V9 sees V10, t=10.000>
-[TTW-S2][t=10.001]  V10 --HELLO + topo--> RSU_207  <V10 sees V9, t=10.000>
-[TTW-S2][t=10.002]  V11 --HELLO + topo--> RSU_208  <V11 sees V12, t=10.000>
-[TTW-S2][t=10.002]  V12 --HELLO + topo--> RSU_208  <V12 sees V11, t=10.000>
-[TTW-S2][t=10.002]  V13 --HELLO + topo--> RSU_209  <V13 sees V14, t=10.000>
-[TTW-S2][t=10.002]  V14 --HELLO + topo--> RSU_209  <V14 sees V13, t=10.000>
-[TTW-S2][t=10.002]  V15 --HELLO + topo--> RSU_210  <V15 sees V16, t=10.000>
-[TTW-S2][t=10.002]  V16 --HELLO + topo--> RSU_210  <V16 sees V15, t=10.000>
-[TTW-S2][t=10.003]  V17 --HELLO + topo--> RSU_211  <V17 sees V18, t=10.000>
-[TTW-S2][t=10.003]  V18 --HELLO + topo--> RSU_211  <V18 sees V17, t=10.000>
-[TTW-S2][t=10.004]  V19 --HELLO + topo--> RSU_212  <V19 sees V20, t=10.000>
-[TTW-S2][t=10.004]  V20 --HELLO + topo--> RSU_212  <V20 sees V19, t=10.000>
-[TTW-S2][t=10.004]  V21 --HELLO + topo--> RSU_213  <V21 sees V22, t=10.000>
-[TTW-S2][t=10.004]  V22 --HELLO + topo--> RSU_213  <V22 sees V21, t=10.000>
-[TTW-S2][t=10.005]  V23 --HELLO + topo--> RSU_214  <V23 sees V24, t=10.000>
-[TTW-S2][t=10.005]  V24 --HELLO + topo--> RSU_214  <V24 sees V23, t=10.000>
-[TTW-S2][t=10.005]  V25 --HELLO + topo--> RSU_215  <V25 sees V26, t=10.000>
-[TTW-S2][t=10.005]  V26 --HELLO + topo--> RSU_215  <V26 sees V25, t=10.000>
-[TTW-S2][t=10.005]  V27 --HELLO + topo--> RSU_216  <V27 sees V28, t=10.000>
-[TTW-S2][t=10.005]  V28 --HELLO + topo--> RSU_216  <V28 sees V27, t=10.000>
-[TTW-S2][t=10.006]  V29 --HELLO + topo--> RSU_217  <V29 sees V30, t=10.000>
-[TTW-S2][t=10.006]  V30 --HELLO + topo--> RSU_217  <V30 sees V29, t=10.000>
-[TTW-S2][t=10.100]  RSU_205 --aggregate forward--> Controller  [<V5 sees V6>, <V6 sees V5>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.101]  RSU_206 --aggregate forward--> Controller  [<V7 sees V8>, <V8 sees V7>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.101]  RSU_207 --aggregate forward--> Controller  [<V9 sees V10>, <V10 sees V9>]  t=10.000  ACCEPTED
-Current neighbor size is 0Received packet from 207 of size 12packet timestamp 10.101s with delay 1ms
-[TTW-S2][t=10.101]  RSU_208 --aggregate forward--> Controller  [<V11 sees V12>, <V12 sees V11>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.102]  RSU_209 --aggregate forward--> Controller  [<V13 sees V14>, <V14 sees V13>]  t=10.000  ACCEPTED
-Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.100s with delay 1ms
-[TTW-S2][t=10.102]  RSU_210 --aggregate forward--> Controller  [<V15 sees V16>, <V16 sees V15>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.103]  RSU_211 --aggregate forward--> Controller  [<V17 sees V18>, <V18 sees V17>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.104]  RSU_212 --aggregate forward--> Controller  [<V19 sees V20>, <V20 sees V19>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.104]  RSU_213 --aggregate forward--> Controller  [<V21 sees V22>, <V22 sees V21>]  t=10.000  ACCEPTED
-Current neighbor size is 0Received packet from 209 of size 12packet timestamp 10.102s with delay 1ms
-[TTW-S2][t=10.104]  RSU_214 --aggregate forward--> Controller  [<V23 sees V24>, <V24 sees V23>]  t=10.000  ACCEPTED
-Current neighbor size is 0Received packet from 206 of size 12packet timestamp 10.101s with delay 1ms
-[TTW-S2][t=10.105]  RSU_215 --aggregate forward--> Controller  [<V25 sees V26>, <V26 sees V25>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.105]  RSU_216 --aggregate forward--> Controller  [<V27 sees V28>, <V28 sees V27>]  t=10.000  ACCEPTED
-[TTW-S2][t=10.106]  RSU_217 --aggregate forward--> Controller  [<V29 sees V30>, <V30 sees V29>]  t=10.000  ACCEPTED
-Current neighbor size is 0Received packet from 211 of size 12packet timestamp 10.103s with delay 1ms
-Current neighbor size is 0Received packet from 208 of size 12packet timestamp 10.101s with delay 1ms
-Current neighbor size is 0Received packet from 216 of size 12packet timestamp 10.105s with delay 1ms
-Current neighbor size is 0Received packet from 212 of size 12packet timestamp 10.104s with delay 1ms
-Current neighbor size is 0Received packet from 214 of size 12packet timestamp 10.104s with delay 1ms
-Current neighbor size is 0Received packet from 213 of size 12packet timestamp 10.104s with delay 1ms
-Current neighbor size is 0Received packet from 210 of size 12packet timestamp 10.102s with delay 1ms
-Current neighbor size is 0Received packet from 217 of size 12packet timestamp 10.106s with delay 1ms
-Current neighbor size is 0Received packet from 215 of size 12packet timestamp 10.105s with delay 1ms
-[TTW-S2][t=10.200]  Malicious RSU stored old packet  <V5 sees V6, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.200]  Malicious RSU stored old packet  <V7 sees V8, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.201]  Malicious RSU stored old packet  <V9 sees V10, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.201]  Malicious RSU stored old packet  <V11 sees V12, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.202]  Malicious RSU stored old packet  <V13 sees V14, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.203]  Malicious RSU stored old packet  <V15 sees V16, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.203]  Malicious RSU stored old packet  <V17 sees V18, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.204]  Malicious RSU stored old packet  <V19 sees V20, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.204]  Malicious RSU stored old packet  <V21 sees V22, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.204]  Malicious RSU stored old packet  <V23 sees V24, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.205]  Malicious RSU stored old packet  <V25 sees V26, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.206]  Malicious RSU stored old packet  <V27 sees V28, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=10.206]  Malicious RSU stored old packet  <V29 sees V30, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
-[TTW-S2][t=20.000]  Pipeline armed: RSU NS3-ID=205 will inject 13 forged pair(s)
-    V5 sees V6
-    V7 sees V8
-    V9 sees V10
-    V11 sees V12
-    V13 sees V14
-    V15 sees V16
-    V17 sees V18
-    V19 sees V20
-    V21 sees V22
-    V23 sees V24
-    V25 sees V26
-    V27 sees V28
-    V29 sees V30
-[TTW-S2][t=20.000]  RSU_205 --FORGED replay--> Controller  <V5 sees V6, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.000]  RSU_206 --FORGED replay--> Controller  <V7 sees V8, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.001]  RSU_207 --FORGED replay--> Controller  <V9 sees V10, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.002]  RSU_208 --FORGED replay--> Controller  <V11 sees V12, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.002]  RSU_209 --FORGED replay--> Controller  <V13 sees V14, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.003]  RSU_210 --FORGED replay--> Controller  <V15 sees V16, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.003]  RSU_211 --FORGED replay--> Controller  <V17 sees V18, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.003]  RSU_212 --FORGED replay--> Controller  <V19 sees V20, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.004]  RSU_213 --FORGED replay--> Controller  <V21 sees V22, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.005]  RSU_214 --FORGED replay--> Controller  <V23 sees V24, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.005]  RSU_215 --FORGED replay--> Controller  <V25 sees V26, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.006]  RSU_216 --FORGED replay--> Controller  <V27 sees V28, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.006]  RSU_217 --FORGED replay--> Controller  <V29 sees V30, t=20.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.050]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.050]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V205
-[Trust][t=20.050]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[TTW-S2][t=20.050]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.050]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V206
-[TTW-S2][t=20.051]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.051]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V207
-[TTW-S2][t=20.052]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.052]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V208
-[TTW-S2][t=20.052]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.052]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V209
-[TTW-S2][t=20.052]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.052]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V210
-[TTW-S2][t=20.053]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.053]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V211
-[TTW-S2][t=20.053]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.053]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V212
-[TTW-S2][t=20.054]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.054]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V213
-[TTW-S2][t=20.055]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.055]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V214
-[TTW-S2][t=20.055]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.055]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V215
-[TTW-S2][t=20.055]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.055]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V216
-[TTW-S2][t=20.056]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S2][t=20.056]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V217
+[TTW-S2][t=10.000]  V5 --HELLO + topo--> RSU_45  <V5 sees V40, t=10.000>
+[TTW-S2][t=10.000]  V40 --HELLO + topo--> RSU_45  <V40 sees V5, t=10.000>
+[TTW-S2][t=10.100]  RSU_45 --aggregate forward--> Controller  [<V5 sees V40>, <V40 sees V5>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 45 of size 12packet timestamp 10.100s with delay 1ms
+[TTW-S2][t=10.200]  Malicious RSU stored old packet  <V5 sees V40, t=10.000>  (link breaks t≈12.500s, replay at t=20.000)
+[TTW-S2][t=79.899]  Pipeline armed: RSU NS3-ID=45 will inject 1 forged pair(s)
+    V5 sees V40
+[TTW-S2][t=79.900]  RSU_45 --FORGED replay--> Controller  <V5 sees V40, t=79.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=79.950]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
+[TTW-S2][t=79.950]  FS-MITIGATE ABORTED (gate failed)  attacker=V45
 
-[CRYPTO] crypto_latency_sumo.csv written    (31 events)
+[CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=13  reject=0
-[TGN] Online mode — 57 events already processed inline. Running secondary crypto audit...
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
+[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[TGN] DIVERGENCE(phantom): controller has V11<->V12 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V13<->V14 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V15<->V16 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V17<->V18 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V19<->V20 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V21<->V22 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V23<->V24 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V25<->V26 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V27<->V28 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V29<->V30 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V5<->V6 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V7<->V8 (t=20.000) not in E_t^trusted
-[TGN] DIVERGENCE(phantom): controller has V9<->V10 (t=20.000) not in E_t^trusted
-[TGN] Eq.3.45 δ=13 (phantom=13 stale=0 missed=0)  Eq.3.46 δ_thresh=15 (raw=13.20)
+[TGN] DIVERGENCE(phantom): controller has V5<->V40 (t=79.900) not in E_t^trusted
+[TGN] Eq.3.45 δ=1 (phantom=1 stale=0 missed=0)  Eq.3.46 δ_thresh=15 (raw=13.20)
 [TGN] 0 < δ ≤ δ_thresh → within propagation-delay tolerance; no controller-origin alert
-[CryptoFilter] 74 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 2 — TTW-S2: Malicious RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 0 / 52 / 0 / 5
+  TP/TN/FP/FN : 0 / 4 / 0 / 1
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 52 / 0 / 5
+  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 1
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 5 / 52 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.019
-  ACR         : 91.228 %
+  [comb] TP/TN/FP/FN : 1 / 4 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 1.000
+  ACR         : 80.000 %
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 338.979  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 469  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 57
-  Stage-0 blocked (attacks): 8
+  γ_init      : 166.679  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 231  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 5
+  Stage-0 blocked (attacks): 0
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
