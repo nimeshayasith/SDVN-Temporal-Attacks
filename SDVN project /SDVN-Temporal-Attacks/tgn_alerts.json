@@ -1,3 +1,46 @@
 [
-
+  {
+    "v_id": "V11",
+    "alpha": "TTW",
+    "y_hat": 0.222222,
+    "t_alert": 12544,
+    "interval_ts_ms": 12544,
+    "S_trig": [1, 2],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V13",
+    "alpha": "TTW",
+    "y_hat": 0.222222,
+    "t_alert": 20174,
+    "interval_ts_ms": 20174,
+    "S_trig": [1, 2],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V16",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 38711,
+    "interval_ts_ms": 38711,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  },
+  {
+    "v_id": "V17",
+    "alpha": "TTW",
+    "y_hat": 0.111111,
+    "t_alert": 36763,
+    "interval_ts_ms": 36763,
+    "S_trig": [1],
+    "from_lw_path": true,
+    "from_fs_path": false,
+    "tdet_ms": 50
+  }
 ]
