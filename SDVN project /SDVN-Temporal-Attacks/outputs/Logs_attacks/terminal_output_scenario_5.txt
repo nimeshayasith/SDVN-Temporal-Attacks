@@ -1,24 +1,20 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
-[SUMO] Attack 5: attacker/victim positions overridden by attack setup.
+[SUMO] Loaded 304 positions, scheduled 62367 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/05_BSHH_S1_Malicious_Vehicle.xml
 
 ========================================
 SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED
-Attackers (4): V0 V2 V1 V3 
-Victim pool (16): V16 V15 V7 V14 V10 V11 V6 V13 V17 V9 V19 V8 V5 V4 V18 V12 
+Attackers (4): V0 V4 V6 V7 
+Victim pool (32): V8 V9 V10 V11 V12 V13 V14 V15 V16 V17 V18 V19 V20 V21 V22 V23 V24 V25 V26 V27 V28 V29 V30 V31 V32 V33 V34 V35 V36 V37 V38 V39 
 Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count
 Replay jitter window   : +/-0.04 s
 Support evidence prob. : 1
-Timeline:
-  t=5.000s  STEP 1 : V2V heartbeat exchange
-  t=5.010s  STEP 2 : Both send honest heartbeats to controller
-  t=5.050s  STEP 3 : Attacker stores captured heartbeat (t=5)
-  t=10.000s STEP 4 : Attacker sends old heartbeat to victim
-  t=10.010s STEP 5 : Victim forwards old heartbeat to controller
-  t=10.020s STEP 6 : Attacker hijacks same old heartbeat to controller
-  t=10.030s STEP 7 : Controller holds conflicting liveness
+Timeline (Option B — real SUMO trajectories decide the break):
+  t=5.000s   STEP 1 : V2V heartbeat exchange
+  t=5.010s   STEP 2 : Both send honest heartbeats to controller
+  t=5.050s   STEP 3 : Attacker stores captured heartbeat (t=5)
+  [per-pair] STEP 4+: Attacker replays old heartbeat 2s after its pair's real SUMO break (exceeds 300m)
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -31,50 +27,51 @@ Timeline:
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=40)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S1][t=5.031]  V5 captured heartbeat for replay  Heartbeat(Sender=V21, t=4.990)
-[BSHH-S1][t=5.045]  V6 captured heartbeat for replay  Heartbeat(Sender=V12, t=4.993)
-[BSHH-S1][t=5.054]  V7 captured heartbeat for replay  Heartbeat(Sender=V20, t=5.013)
-[BSHH-S1][t=5.068]  V8 captured heartbeat for replay  Heartbeat(Sender=V19, t=4.999)
-[BSHH-S1][t=9.968]  V5 --REPLAY old heartbeat--> V21  Heartbeat(Sender=V21, t=4.990)  [MALICIOUS â€” replayed victim's captured heartbeat]
-[BSHH-S1][t=9.973]  V6 --REPLAY old heartbeat--> V12  Heartbeat(Sender=V12, t=4.993)  [MALICIOUS â€” replayed victim's captured heartbeat]
-[BSHH-S1][t=9.989]  V7 --REPLAY old heartbeat--> V20  Heartbeat(Sender=V20, t=5.013)  [MALICIOUS â€” replayed victim's captured heartbeat]
-[BSHH-S1][t=10.002]  V8 --REPLAY old heartbeat--> V19  Heartbeat(Sender=V19, t=4.999)  [MALICIOUS â€” replayed victim's captured heartbeat]
-[BSHH-S1][t=10.005]  V6 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V6, claimed=V12, t=4.993)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.005]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[BSHH-S1][t=10.005]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V6  propagation=500.000 ms
-[Trust][t=10.005]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[BSHH-S1][t=10.006]  V7 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V7, claimed=V20, t=5.013)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.006]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[BSHH-S1][t=10.006]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V7  propagation=500.000 ms
-[BSHH-S1][t=10.008]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V21, claimed=V21, t=10.008)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.008]  V12 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V12, t=4.993)  Controller liveness POISONED
-[BSHH-S1][t=10.011]  V20 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V20, t=5.013)  Controller liveness POISONED
-[BSHH-S1][t=10.022]  V21 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V21, t=4.990)  Controller liveness POISONED
-[BSHH-S1][t=10.025]  V8 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V19, claimed=V19, t=10.025)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=10.026]  V19 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V19, t=4.999)  Controller liveness POISONED
+[BSHH-S1][t=5.035]  V5 captured heartbeat for replay  Heartbeat(Sender=V40, t=5.006)
+[BSHH-S1][t=5.049]  V9 captured heartbeat for replay  Heartbeat(Sender=V13, t=4.980)
+[BSHH-S1][t=5.067]  V12 captured heartbeat for replay  Heartbeat(Sender=V25, t=4.984)
+[BSHH-S1][t=5.068]  V11 captured heartbeat for replay  Heartbeat(Sender=V16, t=4.991)
+[BSHH-S1][t=23.899]  V11 --REPLAY old heartbeat--> V16  Heartbeat(Sender=V16, t=4.991)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=23.900]  V11 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V11, claimed=V16, t=4.991)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=23.900]  FS-MITIGATE gate: PBFT n=40 f=13 q_needed=27 -> PASS  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
+[BSHH-S1][t=23.900]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V11  propagation=600.000 ms
+[Trust][t=23.900]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[BSHH-S1][t=23.901]  V16 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V16, t=4.991)  Controller liveness POISONED
+[BSHH-S1][t=26.862]  V9 --REPLAY old heartbeat--> V13  Heartbeat(Sender=V13, t=4.980)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=26.863]  V9 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V9, claimed=V13, t=4.980)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=26.863]  FS-MITIGATE gate: PBFT n=40 f=13 q_needed=27 -> PASS  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
+[BSHH-S1][t=26.863]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V9  propagation=600.000 ms
+[BSHH-S1][t=26.864]  V13 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V13, t=4.980)  Controller liveness POISONED
+[BSHH-S1][t=46.913]  V12 --REPLAY old heartbeat--> V25  Heartbeat(Sender=V25, t=4.984)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=46.914]  V12 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V25, claimed=V25, t=46.914)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=46.915]  V25 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V25, t=4.984)  Controller liveness POISONED
+[Trust][t=53.900]  Node 11: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000s)
+[Trust][t=56.900]  Node 9: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000s)
+[Trust][t=56.900]  Stage-2 monitor disarmed (no active quarantines)
+[BSHH-S1][t=79.933]  V5 --REPLAY old heartbeat--> V40  Heartbeat(Sender=V40, t=5.006)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=79.934]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V40, claimed=V40, t=79.934)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=79.935]  V40 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V40, t=5.006)  Controller liveness POISONED
 
 [CRYPTO] crypto_latency_sumo.csv written    (73 events)
 [CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
 [CRYPTO] Beacon TX signed: 4   RX verified: 4
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 10 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 5 8 ctrl 
-[TGN] |E_t^trusted|=8 (Tier 2: 8 events from OBU peers with tau_k >= 0.50)
+[TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
 [CryptoFilter] 10 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 5 — BSHH-S1: Malicious Vehicle, No RSU
-  RSU mode  : NO RSU
+  RSU mode  : WITH RSU
   TP/TN/FP/FN : 0 / 8 / 0 / 2
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
   [beh]  TP/TN/FP/FN : 0 / 8 / 0 / 2
@@ -85,10 +82,10 @@ Timeline:
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 238.833  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 331  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 10
   Stage-0 blocked (attacks): 6
-  |E_t^trusted|  : 8
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================

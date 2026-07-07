@@ -1,7 +1,6 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
-[SUMO] Attack 6: attacker/victim positions overridden by attack setup.
+[SUMO] Loaded 304 positions, scheduled 62367 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/06_BSHH_S2_Malicious_RSU.xml
 
 ========================================
@@ -9,6 +8,7 @@ SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED
 Malicious RSUs : 1 / 1
 Victim pairs   : 1
 Stored HB time : t=5 (from legitimate exchange)
+Replay timing  : Option B — 2s after each pair's real SUMO break
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -21,34 +21,34 @@ Stored HB time : t=5 (from legitimate exchange)
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=40)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S2][t=2.000]  V0(ns3=5) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.000]  V1(ns3=6) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 25 of size 12packet timestamp 2.000s with delay 1ms
-[BSHH-S2][t=2.100]  RSU0(ns3=25) stored EVEN-OLDER heartbeat  Heartbeat(V0(ns3=5), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=5.000]  V0(ns3=5) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.000]  V1(ns3=6) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 25 of size 12packet timestamp 5.000s with delay 1ms
-[BSHH-S2][t=5.100]  RSU0(ns3=25) stored old heartbeat  Heartbeat(V0(ns3=5), t=5.000)  (replay at t=10)
-[BSHH-S2][t=9.900]  RSU0(ns3=25) SUPPRESSES genuine current heartbeat from V0(ns3=5) (t=9.900)  — never forwarded
-[BSHH-S2][t=10.000]  RSU0(ns3=25) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V25, claimed=V0(ns3=5), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=10.000]  RSU0(ns3=25) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V25, claimed=V0(ns3=5), t=2.000)
-[BSHH-S2][t=10.000]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[BSHH-S2][t=10.000]  FS-MITIGATE ABORTED (gate failed)  attacker=V25
-Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.000s with delay 1ms
-Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.000s with delay 1ms
+[BSHH-S2][t=2.000]  V5(ns3=10) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V5(ns3=10), t=2.000)  ACCEPTED
+[BSHH-S2][t=2.000]  V35(ns3=40) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V35(ns3=40), t=2.000)  ACCEPTED
+Current neighbor size is 0Received packet from 45 of size 12packet timestamp 2.000s with delay 1ms
+[BSHH-S2][t=2.100]  RSU0(ns3=45) stored EVEN-OLDER heartbeat  Heartbeat(V5(ns3=10), t=2.000)  (second duplicate for replay at t=10)
+[BSHH-S2][t=5.000]  V5(ns3=10) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V5(ns3=10), t=5.000)  ACCEPTED
+[BSHH-S2][t=5.000]  V35(ns3=40) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V35(ns3=40), t=5.000)  ACCEPTED
+Current neighbor size is 0Received packet from 45 of size 12packet timestamp 5.000s with delay 1ms
+[BSHH-S2][t=5.100]  RSU0(ns3=45) stored old heartbeat  Heartbeat(V5(ns3=10), t=5.000)  (replay at t=10)
+[BSHH-S2][t=80.800]  RSU0(ns3=45) SUPPRESSES genuine current heartbeat from V5(ns3=10) (t=80.800)  — never forwarded
+[BSHH-S2][t=80.900]  RSU0(ns3=45) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V45, claimed=V5(ns3=10), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=80.900]  RSU0(ns3=45) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V45, claimed=V5(ns3=10), t=2.000)
+[BSHH-S2][t=80.900]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
+[BSHH-S2][t=80.900]  FS-MITIGATE ABORTED (gate failed)  attacker=V45
+Current neighbor size is 0Received packet from 45 of size 12packet timestamp 80.900s with delay 1ms
+Current neighbor size is 0Received packet from 45 of size 12packet timestamp 80.900s with delay 1ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=14  reject=0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
 [CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
@@ -67,8 +67,8 @@ Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 238.833  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 331  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 4
   Stage-0 blocked (attacks): 2
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]

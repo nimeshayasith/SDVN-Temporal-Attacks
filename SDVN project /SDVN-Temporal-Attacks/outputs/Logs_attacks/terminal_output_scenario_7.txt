@@ -1,7 +1,6 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
-[SUMO] Attack 7: attacker/victim positions overridden by attack setup.
+[SUMO] Loaded 304 positions, scheduled 62367 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/07_BSHH_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
@@ -9,6 +8,7 @@ SCENARIO 07 - BSHH-S3 ATTACK CONFIGURED
 Malicious controllers : 1 / 4
 Victim pairs          : 1
 Stored HB time        : t=5
+Replay timing         : Option B — 2s after each pair's real SUMO break
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -21,39 +21,34 @@ Stored HB time        : t=5
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=40)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S3][t=5.000]  V0(ns3=5) --heartbeat--> Controller  Heartbeat(V0(ns3=5), t=5.000)  ACCEPTED
-[BSHH-S3][t=5.000]  V1(ns3=6) --heartbeat--> Controller  Heartbeat(V1(ns3=6), t=5.000)  ACCEPTED
-[BSHH-S3][t=5.100]  Ctrl0(ns3=0) stores stale copies  HB(V0(ns3=5), t=5.000)  HB(V1(ns3=6), t=5.000)  (internal replay at t=10)
-[BSHH-S3][t=10.000]  Ctrl0(ns3=0) --INTERNAL REPLAY--> own liveness table  HB(claimed=V0(ns3=5), slot=V0(ns3=5), t=5.000)  HB(claimed=V0(ns3=5), slot=V1(ns3=6), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
-[BSHH-S3][t=10.000]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[BSHH-S3][t=10.000]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
-[BSHH-S3][t=10.000]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=500.000 ms
+[BSHH-S3][t=5.000]  V5(ns3=10) --heartbeat--> Controller  Heartbeat(V5(ns3=10), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.000]  V35(ns3=40) --heartbeat--> Controller  Heartbeat(V35(ns3=40), t=5.000)  ACCEPTED
+[BSHH-S3][t=5.100]  Ctrl0(ns3=0) stores stale copies  HB(V5(ns3=10), t=5.000)  HB(V35(ns3=40), t=5.000)  (internal replay at t=10)
+[BSHH-S3][t=80.900]  Ctrl0(ns3=0) --INTERNAL REPLAY--> own liveness table  HB(claimed=V5(ns3=10), slot=V5(ns3=10), t=5.000)  HB(claimed=V5(ns3=10), slot=V35(ns3=40), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 
-[CRYPTO] crypto_latency_sumo.csv written    (7 events)
-[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] crypto_latency_sumo.csv written    (5 events)
+[CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=7  reject=0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 5 6 ctrl 
-[TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
+[TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
 [CryptoFilter] 4 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 2 alert(s) → tgn_alerts.json
 [TGN] beacon_evidence.csv written: 0 observation(s)
 [TGN] ctrl_topo.json written: 0 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
+[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 7 — BSHH-S3: Malicious Controller, No RSU
-  RSU mode  : NO RSU
+  RSU mode  : WITH RSU
   TP/TN/FP/FN : 2 / 2 / 0 / 0
   [ctrl] TP/TN/FP/FN : 2 / 0 / 0 / 0
   [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
@@ -64,10 +59,10 @@ Stored HB time        : t=5
   Tdet        : 0.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 273.241  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 378  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 238.833  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 331  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 4
   Stage-0 blocked (attacks): 0
-  |E_t^trusted|  : 2
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
