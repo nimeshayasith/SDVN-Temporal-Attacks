@@ -2089,7 +2089,7 @@ static std::map<uint32_t, double> g_pem_last_beacon_time;
 // so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
 static std::set<uint32_t> g_lkh_already_revoked;
 // Issue 6 fix — no-RSU BlacklistBeacon propagation. Populated by
-// PemReadBlacklistFile() polling /tmp/teta_guard_blacklist.txt (written by
+// PemReadBlacklistFile() polling /tmp/blacklist_vehicle_ids.txt (written by
 // blockchain/client/eventListener.js's handleBlacklistBeaconPublished on a
 // real BlacklistBeaconPublished chaincode event). Checked in PemEmitEvent so
 // a blacklisted sender's beacons/topology updates are rejected before any
@@ -4355,7 +4355,7 @@ PemWriteCtrlTopoJson()
 // network ... vehicles exclude the blacklisted node from their local routing
 // tables and reject its beacons."
 //
-// Polls /tmp/teta_guard_blacklist.txt (one decimal vehicle ns-3 node ID per
+// Polls /tmp/blacklist_vehicle_ids.txt (one decimal vehicle ns-3 node ID per
 // line), the file blockchain/client/eventListener.js's
 // handleBlacklistBeaconPublished() is expected to write on a real
 // BlacklistBeaconPublished chaincode event. Re-reads the whole file each tick
@@ -4368,7 +4368,7 @@ PemWriteCtrlTopoJson()
 static void
 PemReadBlacklistFile()
 {
-    std::ifstream f("/tmp/teta_guard_blacklist.txt");
+    std::ifstream f("/tmp/blacklist_vehicle_ids.txt");
     if (f.is_open())
     {
         uint32_t id;
@@ -4899,7 +4899,7 @@ PemEmitEvent(PemEventType type,
     // Issue 6 fix — reject beacons/topology updates from a blacklisted sender
     // outright (report: "reject its beacons"), before they reach Stage-0 or
     // any detector. g_blacklisted_nodes is populated by PemReadBlacklistFile()
-    // polling /tmp/teta_guard_blacklist.txt.
+    // polling /tmp/blacklist_vehicle_ids.txt.
     if (g_blacklisted_nodes.count(physicalSenderId))
     {
         return;
@@ -129362,17 +129362,26 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 	CustomDataTag1 tagd1;
 	if(pkt->PeekPacketTag(tagd1))
 	{
-		add_neighbor_info(neighbordata_inst+destination_node_id,tagd1.GetNodeId()); //add current neighbor information
-		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
-		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd1.GetPosition(), tagd1.GetVelocity(), tagd1.GetAcceleration(), tagd1.GetNodeId(), tagd1.GetNeighborids(), 1);
-		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		// SUPPRESSED: std::cout << "Received data broadcasted packet from "<< tagd1.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd1.GetSerializedSize()<<" at position "<< tagd1.GetPosition()<<"with velocity "<<tagd1.GetVelocity()<<"with acceleration "<<tagd1.GetAcceleration()<<"packet timestamp "<< tagd1.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd1.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
-
 		// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) — real verification on
 		// receipt, mirroring AttackSendDSRCBeacon()'s real beacon_sign().
 		// lw_mitigate() is hmac_filter.cc's actual Algorithm 3 entry point;
 		// this is a genuine HMAC-SHA256 recompute + freshness + nonce check
 		// against the real KEM-derived K_{Vi,nk}, not a simulation proxy.
+		//
+		// Consolidation fix: this check now runs BEFORE the routing/neighbor
+		// table updates below, and those updates are gated on its verdict
+		// (CRYPTO_ACCEPT). Previously the four update calls ran
+		// unconditionally, before this check even executed, so
+		// lw_mitigate()'s real, correctly-computed verdict had zero effect
+		// on routing state — it only fed pass/fail counters. This is what
+		// "retire Pipeline A as an independent verifier" means in practice:
+		// its verdict now genuinely gates behavior (only validated beacons
+		// update routing/neighbor state), instead of being computed and
+		// then discarded. lw_mitigate() itself, hmac_filter.cc, and the
+		// benchmark timing calls (TimedHmacSign/Verify etc., used elsewhere
+		// for CryptoRecord CSV output) are unchanged — only the gating of
+		// THIS call site's downstream effect changed.
+		CryptoVerifyResult vr;
 		{
 			BeaconMessage bm = {};
 			uint32_t sender_id = tagd1.GetNodeId();
@@ -129404,14 +129413,22 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 				uint32_t leaf_idx = sender_id % g_lkh_n_leaves;
 				key_revoked = lkh_is_revoked(&g_lkh_tree, g_lkh_vids[leaf_idx]);
 			}
-			CryptoVerifyResult vr = lw_mitigate(&bm, (uint64_t)Simulator::Now().GetMilliSeconds(),
-			                                    key, key_revoked, &cache);
+			vr = lw_mitigate(&bm, (uint64_t)Simulator::Now().GetMilliSeconds(),
+			                 key, key_revoked, &cache);
 			if (vr == CRYPTO_ACCEPT) {
 				g_beacon_verify_ok_count++;
 			} else {
 				g_beacon_verify_fail_count++;
 			}
 		}
+
+		if (vr == CRYPTO_ACCEPT) {
+			add_neighbor_info(neighbordata_inst+destination_node_id,tagd1.GetNodeId()); //add current neighbor information
+			refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
+			add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd1.GetPosition(), tagd1.GetVelocity(), tagd1.GetAcceleration(), tagd1.GetNodeId(), tagd1.GetNeighborids(), 1);
+			refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
+		}
+		// SUPPRESSED: std::cout << "Received data broadcasted packet from "<< tagd1.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd1.GetSerializedSize()<<" at position "<< tagd1.GetPosition()<<"with velocity "<<tagd1.GetVelocity()<<"with acceleration "<<tagd1.GetAcceleration()<<"packet timestamp "<< tagd1.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd1.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag2 tagd2;
