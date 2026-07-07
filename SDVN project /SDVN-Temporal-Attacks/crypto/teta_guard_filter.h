@@ -239,6 +239,12 @@ static uint64_t tg_crypto_drop_mac    = 0;
 static uint64_t tg_crypto_drop_stale  = 0;
 static uint64_t tg_crypto_drop_nonce  = 0;
 static uint64_t tg_crypto_drop_quorum = 0;
+// New (consolidation fix): LKH revocation (Eq. 3.18) drops at this pipeline.
+// Kept as a standalone counter (not threaded into TetaGuardGetDropCounters'
+// existing 4-field signature / the pem_run_summary.csv row it feeds) so this
+// addition can't shift that CSV's existing column layout for any
+// already-written analysis scripts. Exposed via its own getter below.
+static uint64_t tg_crypto_drop_revoked = 0;
 
 // ── Algorithm 3 (LW-MITIGATE) — live per-event enforcement ──────────────────
 // Thesis name : Algorithm 3 (LW-MITIGATE), §3.4.2, Fig. 3.15
@@ -383,6 +389,29 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // (vehicle/RSU) must convince an HONEST verifier.
     if (is_malicious_controller)
         return true;
+
+    // ── Revocation (Eq. 3.18) — LKH check added to this pipeline ────────────
+    // This pipeline previously had no LKH revocation check at all — only
+    // Rx()'s independent lw_mitigate() call (hmac_filter.cc) consulted the
+    // real LKH tree (g_lkh_tree/lkh_is_revoked). Meanwhile PemEmitEvent()
+    // already runs a SEPARATE, independent revocation-adjacent check before
+    // ever reaching this function: g_blacklisted_nodes, populated by
+    // PemReadBlacklistFile() polling the Tier-2 cooperative BlacklistBeacon
+    // IPC file. That is not a duplicate of LKH — per the paper's §3.4.10
+    // Node Removal Mechanism, LKH session-key revocation (Eq. 3.18, O(log n),
+    // both Tier 1 and Tier 2) and the Tier-2-only cooperative blacklist-beacon
+    // propagation (no-OpenFlow networks) are two distinct, both-legitimate
+    // mechanisms — this adds the missing one (LKH) here; it does not replace
+    // or duplicate the existing blacklist-file gate in PemEmitEvent.
+    // Same leaf-index convention as every other LKH call site in this
+    // codebase (physical_sender_id % g_lkh_n_leaves indexes g_lkh_vids).
+    if (g_lkh_ready && g_lkh_n_leaves > 0u) {
+        const uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
+        if (lkh_is_revoked(&g_lkh_tree, g_lkh_vids[leaf_idx])) {
+            tg_crypto_drop_revoked++;
+            return false;
+        }
+    }
 
     // Retrieve (or create) this verifier node's state
     TrustedNodeCryptoState& state = g_per_node_crypto_state[reporter_id];
@@ -766,6 +795,15 @@ TetaGuardGetDropCounters(uint64_t& mac, uint64_t& stale, uint64_t& nonce, uint64
     stale  = tg_crypto_drop_stale;
     nonce  = tg_crypto_drop_nonce;
     quorum = tg_crypto_drop_quorum;
+}
+
+// Standalone getter for the new revocation-drop counter (consolidation fix —
+// see tg_crypto_drop_revoked's declaration above for why this is separate
+// from TetaGuardGetDropCounters rather than a 5th out-param there).
+static uint64_t
+TetaGuardGetRevokedDropCount()
+{
+    return tg_crypto_drop_revoked;
 }
 
 // Restore routing.cc's #define max / #define min so code after this include
