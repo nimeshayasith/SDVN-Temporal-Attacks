@@ -2181,6 +2181,32 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     (void)tier_label; (void)mitig_mode; // used in detail log only (batch path)
 }
 
+// Sibling of TGN_ProcessEventInline, used ONLY by routing.cc's
+// PemEmitNeighborObservation (continuous mobility-derived neighbor beaconing,
+// gated by g_enable_neighborhood_beaconing). For PEM_EVENT_BEACON events,
+// TGN_ProcessEventInline's own beacon branch (above) does nothing but append
+// to g_tgn_beacon_windows and return — it never calls g_tgn->ProcessEvent
+// (the GRU/graph memory) or touches g_tgn_tp/fp/fn/tn, g_comb_*,
+// g_tgn_scored_events, or TGN_WriteEventRow for beacons (those only happen in
+// the non-beacon branch below that early return). So this function is just
+// that one branch, extracted, with zero scoring side effects — it can never
+// change TGN's own reported accuracy metrics for the 12 attack scenarios.
+static void TGN_ProcessNeighborObservationInline(const PemEvent& e)
+{
+    if (!g_tgn) return;
+    const uint32_t trusted_node_id = e.reporter_id;
+    const int tier = (N_RSUs > 0) ? 1 : 2;
+    // Parity with TGN_ProcessEventInline's Tier 2 F_flagged exclusion (Eq. 3.40
+    // Cond 5): a previously-flagged reporter is no longer an eligible verifier.
+    if (tier == 2 && trusted_node_id != 9999u && g_tgn_flagged_nodes.count(trusted_node_id))
+    {
+        return;
+    }
+    auto& win = g_tgn_beacon_windows[trusted_node_id][e.claimed_sender_id];
+    win.push_back(e.reception_timestamp);
+    while ((int)win.size() > TGN_WMAX) win.erase(win.begin());
+}
+
 // =============================================================================
 //  SECTION 11  Top-level entry point — called by routing.cc after Simulator::Destroy()
 //

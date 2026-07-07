@@ -377,6 +377,60 @@ static CertificateRecord g_test_cert __attribute__((unused)) = {};
 using HiResClock = std::chrono::high_resolution_clock;
 using MicroSec   = std::chrono::duration<double, std::micro>;
 
+// ── Generic wall-clock stage timing (real-time budget check) ────────────────
+// T_b = 100ms is the beacon-interval deadline (== PEM_BEACON_INTERVAL_S*1000,
+// declared later in this file — hardcoded here, not referenced, purely to
+// avoid a forward-declaration/linkage change for that constant; keep the two
+// in sync if PEM_BEACON_INTERVAL_S is ever changed from 0.100s).
+// Used to check whether each pipeline stage's real wall-clock cost fits
+// inside one beacon interval on this hardware — purely observational, never
+// alters scores/alerts/control flow. Declared early (before CryptoMeasureX
+// below) so those functions, defined ~line 1000, can use it too.
+struct PemSimpleStageStats {
+    const char* label;
+    double   totalMs = 0.0;
+    double   maxMs = 0.0;
+    uint64_t count = 0;
+    uint64_t overBudgetCount = 0;
+};
+
+static PemSimpleStageStats g_pem_beacon_send_stats{
+    "Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon)"};
+static PemSimpleStageStats g_pem_rsu_forward_stats{
+    "RSU-forward (CSMA dispatch, AttackSendRSUToController)"};
+static PemSimpleStageStats g_pem_beacon_crypto_stats{
+    "Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify)"};
+static PemSimpleStageStats g_pem_detection_crypto_stats{
+    "Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection)"};
+static PemSimpleStageStats g_pem_lkh_crypto_stats{
+    "LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH)"};
+
+static void PemRecordSimpleStage(PemSimpleStageStats& s, double elapsedMs)
+{
+    const double budgetMs = 100.0;   // T_b — see comment above
+    s.totalMs += elapsedMs;
+    ++s.count;
+    if (elapsedMs > s.maxMs) s.maxMs = elapsedMs;
+    if (elapsedMs > budgetMs) {
+        ++s.overBudgetCount;
+        std::cout << "[WARN][t=" << Simulator::Now().GetSeconds() << "] "
+                  << s.label << " took " << elapsedMs << " ms, exceeding "
+                  << budgetMs << " ms beacon-interval budget (T_b)\n";
+    }
+}
+
+// RAII helper — records a simple (non-chained) stage's wall-clock time at
+// scope exit, covering every return path automatically.
+struct PemSimpleStageTimer {
+    PemSimpleStageStats& stats_;
+    HiResClock::time_point start_ = HiResClock::now();
+    explicit PemSimpleStageTimer(PemSimpleStageStats& s) : stats_(s) {}
+    ~PemSimpleStageTimer() {
+        const double elapsedMs = MicroSec(HiResClock::now() - start_).count() / 1000.0;
+        PemRecordSimpleStage(stats_, elapsedMs);
+    }
+};
+
 // ── Record helper ─────────────────────────────────────────────────────────────
 static inline void CryptoRecord(double sim_t, const char *op, double us,
                                  uint32_t nid, const char *evt, bool atk)
@@ -1027,6 +1081,7 @@ static void CryptoInitKeys()
 // op_suffix distinguishes scenarios: "TTW"|"BSHH"|"ME"
 static void CryptoMeasureBeaconSign(double sim_t, uint32_t nid, const char *suffix, bool atk)
 {
+    PemSimpleStageTimer __pemBeaconCryptoTimer(g_pem_beacon_crypto_stats);
 #ifdef HAVE_LIBOQS
     if (!enable_crypto_latency || !g_crypto_ready) return;
     uint8_t msg[64]; RAND_bytes(msg, 64);
@@ -1043,6 +1098,7 @@ static void CryptoMeasureBeaconSign(double sim_t, uint32_t nid, const char *suff
 
 static void CryptoMeasureBeaconVerify(double sim_t, uint32_t nid, const char *suffix, bool atk)
 {
+    PemSimpleStageTimer __pemBeaconCryptoTimer(g_pem_beacon_crypto_stats);
 #ifdef HAVE_LIBOQS
     if (!enable_crypto_latency || !g_crypto_ready) return;
     uint8_t msg[64]; RAND_bytes(msg, 64);
@@ -1063,6 +1119,7 @@ static void CryptoMeasureBeaconVerify(double sim_t, uint32_t nid, const char *su
 // ── Detection gate measurements ───────────────────────────────────────────────
 static void CryptoMeasureDetection(double sim_t, uint32_t nid, const char *suffix, bool me_double)
 {
+    PemSimpleStageTimer __pemDetectionCryptoTimer(g_pem_detection_crypto_stats);
 #ifdef HAVE_LIBOQS
     if (!enable_crypto_latency || !g_crypto_ready) return;
     uint8_t msg[64]; RAND_bytes(msg, 64);
@@ -1095,6 +1152,7 @@ static void CryptoMeasureDetection(double sim_t, uint32_t nid, const char *suffi
 // ── LKH revocation measurement (post-detection mitigation) ───────────────────
 static void CryptoMeasureLKH(double sim_t, uint32_t nid, uint32_t n_vehicles)
 {
+    PemSimpleStageTimer __pemLkhCryptoTimer(g_pem_lkh_crypto_stats);
     if (!enable_crypto_latency || !g_crypto_ready) return;
     char op[48];
     // n=16 representative for small groups, n=64 for realistic groups
@@ -1704,6 +1762,14 @@ struct AblationFlags {
     bool no_lbs           = false;   // A5
 };
 static AblationFlags g_abl;
+
+// ── Continuous mobility-derived neighborhood beaconing (opt-in, default off) ──
+// Feeds only g_rsu_beacon_log (ME's lambda_hat/rho_max/delta_max) and TGN's
+// beacon-count window via PemEmitNeighborObservation/TGN_ProcessNeighborObservationInline
+// — never ns.event_window, tp/fp/fn/tn counters, or pem_event_log.csv. See
+// PemNeighborhoodDiscoveryTick (near PemEmitVehicleBeacon) for the periodic tick
+// this flag arms. Default false = byte-identical to prior behavior.
+static bool g_enable_neighborhood_beaconing = false;
 
 // ── Attacker sophistication model (S1/S2 scenarios) ───────────────────────────
 // Each attack-injection event independently rolls this probability.
@@ -2388,10 +2454,114 @@ PemIsBootstrapComplete(double sim_time_s)
 // this function only logs the action so it is not invoked twice.
 static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool flagged);  // fwd decl — defined below, used for Eq. 3.38 FLAG_REAUTH
 
+// ── Full end-to-end pipeline budget check (wall-clock, not simulated time) ──
+// T_b = PEM_BEACON_INTERVAL_S (100ms) is the deadline before the next beacon
+// arrives on real hardware. "Detect" stage = PemEmitEvent's own body, which
+// runs Stage-0 crypto pre-filter (PemCryptoPreFilter/TetaGuardCryptoFilter)
+// then Stage-1 LW signature scoring (PemEvaluateEvent, which itself invokes
+// TGN_ProcessEventInline) — timing PemEmitEvent end-to-end therefore covers
+// crypto + LW + TGN in one measurement. "Mitigate" stage = PemApplyMitigation's
+// own body (PBFT quorum gate, threshold-sig verify, LKH KEK revocation,
+// BlacklistBeacon/FlowMod/INVALIDATE_PATHS — the blockchain/enforcement part).
+// Every PemApplyMitigation call in this file runs synchronously, in the same
+// NS-3 event callback, directly after the PemEmitEvent call whose alert
+// triggered it (no Simulator::Schedule gap) — all ~14 call sites follow the
+// pattern "PemEmitEvent(...); if (pem_last_alert) { ... PemApplyMitigation(...); }".
+// So g_pem_last_detect_stage_ms (set when PemEmitEvent returns) plus
+// PemApplyMitigation's own measured time gives the true full detect+mitigate
+// pipeline latency (crypto+LW+TGN+blockchain) without editing every call site.
+static double   g_pem_last_detect_stage_ms = 0.0;
+
+static double   g_pem_detect_total_ms = 0.0;
+static double   g_pem_detect_max_ms = 0.0;
+static uint64_t g_pem_detect_count = 0;
+static uint64_t g_pem_detect_over_budget_count = 0;
+
+static double   g_pem_mitigate_total_ms = 0.0;
+static double   g_pem_mitigate_max_ms = 0.0;
+static uint64_t g_pem_mitigate_count = 0;
+
+static double   g_pem_full_pipeline_total_ms = 0.0;
+static double   g_pem_full_pipeline_max_ms = 0.0;
+static uint64_t g_pem_full_pipeline_count = 0;
+static uint64_t g_pem_full_pipeline_over_budget_count = 0;
+
+// ── Beacon-send and RSU-forward stages ───────────────────────────────────────
+// AttackSendDSRCBeacon (real 802.11p send + live HMAC-SHA256 beacon_sign(),
+// Eq. 3.15) and AttackSendRSUToController (RSU->controller CSMA dispatch) are
+// each single, centralized functions like PemEmitEvent/PemApplyMitigation, so
+// they can be timed the same low-risk way. IMPORTANT: unlike detect->mitigate,
+// these do NOT chain into detect via a "last stage" value — verified by
+// reading the actual schedule (e.g. TTW-S1: HELLO beacon at t=10.000/10.001
+// vs topology-update-forwarding, which is what calls PemEmitEvent, at
+// t=10.100/10.101 — two separate Simulator::Schedule events, not one
+// synchronous call). Chaining them would misattribute an unrelated beacon's
+// wall-clock cost onto an unrelated later detect event. So these are reported
+// as their own independent stages; the end-of-run summary combines all four
+// stage AVERAGES into one approximate full-pipeline estimate, clearly labeled
+// as an estimate (not a precise per-event trace like detect+mitigate is).
+// PemSimpleStageStats/PemRecordSimpleStage/PemSimpleStageTimer are declared
+// near HiResClock/MicroSec above (before CryptoMeasureBeaconSign etc., which
+// also use them) — see that block for g_pem_beacon_send_stats,
+// g_pem_rsu_forward_stats, and the three g_pem_*_crypto_stats instances.
+
+enum class PemPipelineStage { kDetect, kMitigate };
+
+// RAII helper — records a pipeline stage's wall-clock time at scope exit, so
+// every return path (including early returns) is covered automatically
+// without changing that function's control flow. Purely observational: it
+// never alters scores, alerts, or any detection/mitigation decision.
+struct PemStageTimer {
+    PemPipelineStage stage_;
+    HiResClock::time_point start_ = HiResClock::now();
+    explicit PemStageTimer(PemPipelineStage stage) : stage_(stage) {}
+    ~PemStageTimer() {
+        const double elapsedMs = MicroSec(HiResClock::now() - start_).count() / 1000.0;
+        const double budgetMs = PEM_BEACON_INTERVAL_S * 1000.0;   // T_b
+        switch (stage_) {
+        case PemPipelineStage::kDetect: {
+            g_pem_detect_total_ms += elapsedMs;
+            ++g_pem_detect_count;
+            if (elapsedMs > g_pem_detect_max_ms) g_pem_detect_max_ms = elapsedMs;
+            if (elapsedMs > budgetMs) {
+                ++g_pem_detect_over_budget_count;
+                std::cout << "[WARN][t=" << Simulator::Now().GetSeconds() << "] "
+                          << "Detect stage (crypto+LW+TGN, PemEmitEvent) took "
+                          << elapsedMs << " ms, exceeding " << budgetMs
+                          << " ms beacon-interval budget (T_b)\n";
+            }
+            g_pem_last_detect_stage_ms = elapsedMs;
+            break;
+        }
+        case PemPipelineStage::kMitigate: {
+            g_pem_mitigate_total_ms += elapsedMs;
+            ++g_pem_mitigate_count;
+            if (elapsedMs > g_pem_mitigate_max_ms) g_pem_mitigate_max_ms = elapsedMs;
+
+            const double fullMs = g_pem_last_detect_stage_ms + elapsedMs;
+            g_pem_full_pipeline_total_ms += fullMs;
+            ++g_pem_full_pipeline_count;
+            if (fullMs > g_pem_full_pipeline_max_ms) g_pem_full_pipeline_max_ms = fullMs;
+            if (fullMs > budgetMs) {
+                ++g_pem_full_pipeline_over_budget_count;
+                std::cout << "[WARN][t=" << Simulator::Now().GetSeconds() << "] "
+                          << "Full detect+mitigate pipeline (crypto+LW+TGN+blockchain) took "
+                          << fullMs << " ms (detect=" << g_pem_last_detect_stage_ms
+                          << " ms + mitigate=" << elapsedMs << " ms), exceeding "
+                          << budgetMs << " ms beacon-interval budget (T_b)\n";
+            }
+            break;
+        }
+        }
+    }
+};
+
 static std::string
 PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenario_tag,
                     const PemQuorumEvidence *ev = nullptr)
 {
+    PemStageTimer __pemMitigateTimer(PemPipelineStage::kMitigate);
+
     // A1/A2 (--no_blockchain=1): suppress all smart-contract mitigation actions.
     // Detection metrics (TP/FP/MCC) still accumulate; only enforcement is skipped.
     if (g_abl.no_blockchain)
@@ -4724,6 +4894,8 @@ PemEmitEvent(PemEventType type,
              const Vector& linkDstPosition,
              bool attackLabel)
 {
+    PemStageTimer __pemDetectTimer(PemPipelineStage::kDetect);
+
     // Issue 6 fix — reject beacons/topology updates from a blacklisted sender
     // outright (report: "reject its beacons"), before they reach Stage-0 or
     // any detector. g_blacklisted_nodes is populated by PemReadBlacklistFile()
@@ -4910,6 +5082,98 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
                  false);
 }
 
+// ── Continuous mobility-derived neighbor observation (opt-in, see
+// g_enable_neighborhood_beaconing) ──────────────────────────────────────────
+// Unlike PemEmitVehicleBeacon (self-reporting: physical/claimed/reporter all
+// equal senderId), a real beacon is transmitted by one vehicle and observed
+// by every OTHER vehicle in range, so this records who observed whom:
+//   claimed_sender_id = transmitter (who broadcast)
+//   reporter_id       = receiver    (who heard it)
+// Deliberately does NOT call PemEmitEvent/PemEmitVehicleBeacon/PemEvaluateEvent
+// — it feeds only g_rsu_beacon_log (ME's lambda_hat/rho_max/delta_max) and TGN's
+// beacon-count window via TGN_ProcessNeighborObservationInline, so it can never
+// touch ns.event_window, tp/fp/fn/tn counters, or pem_event_log.csv. See the
+// "Continuous mobility-derived neighborhood beaconing" plan for full rationale.
+// Returns true iff transmitter/receiver were in range and an observation was
+// recorded (used only for the statistics counters in PemNeighborhoodDiscoveryTick,
+// never for detection logic).
+static bool
+PemEmitNeighborObservation(uint32_t transmitterId, uint32_t receiverId)
+{
+    if (transmitterId == receiverId) return false;   // defensive; caller already excludes this
+    if (transmitterId >= Vehicle_Nodes.GetN() || receiverId >= Vehicle_Nodes.GetN())
+    {
+        return false;
+    }
+
+    Ptr<MobilityModel> transmitterMobility = Vehicle_Nodes.Get(transmitterId)->GetObject<MobilityModel>();
+    Ptr<MobilityModel> receiverMobility = Vehicle_Nodes.Get(receiverId)->GetObject<MobilityModel>();
+    if (!transmitterMobility || !receiverMobility)
+    {
+        return false;
+    }
+
+    Vector transmitterPosition = transmitterMobility->GetPosition();
+    Vector receiverPosition = receiverMobility->GetPosition();
+
+    if (PemDistance2d(transmitterPosition, receiverPosition) > TTW_COMM_RANGE)
+    {
+        return false;
+    }
+
+    // Value-initialize (PemEvent event{};), not PemEvent event; — PemComputeLambdaHat
+    // checks `if (w->type != PEM_EVENT_BEACON) continue;`, so an uninitialized `type`
+    // on a stack PemEvent could silently vanish from (or corrupt) the ME density
+    // computation. This is a correctness requirement, not just style.
+    PemEvent event{};
+    event.type          = PEM_EVENT_BEACON;
+    event.attack_label  = false;
+    event.sim_time             = Simulator::Now().GetSeconds();
+    event.sender_timestamp     = Simulator::Now().GetSeconds();
+    event.reception_timestamp  = Simulator::Now().GetSeconds();
+
+    event.claimed_sender_id = transmitterId;   // vehicle that transmitted the beacon
+    event.physical_sender_id = transmitterId;  // Simulator ground truth only — this is
+                                                // NOT receiver-derived PHY evidence and
+                                                // must not be used for real-world
+                                                // attacker attribution decisions; kept
+                                                // for schema completeness only.
+    event.reporter_id       = receiverId;      // vehicle that heard/observed the beacon
+    event.link_src_id       = transmitterId;
+    event.link_dst_id       = receiverId;
+
+    // PemComputeLambdaHat (routing.cc, PemComputeLambdaHat) computes
+    //   dist(w->reporter_position, event.link_src/dst_position) <= TTW_COMM_RANGE
+    //   -> vehiclesNearLink.insert(w->claimed_sender_id)
+    // i.e. it was written under the old self-reporting convention where
+    // reporter_id == claimed_sender_id, so it implicitly treats reporter_position as
+    // "the position of whichever vehicle is about to be inserted into the density
+    // set" — that vehicle is claimed_sender_id (the transmitter), not reporter_id
+    // (the receiver). Since PemEvent has no separate claimed_sender_position field,
+    // reporter_position must stay pinned to the TRANSMITTER's position here even
+    // though reporter_id itself is the receiver, or every density-estimate lookup
+    // silently attributes the wrong vehicle's position to the wrong ID.
+    event.reporter_position = transmitterPosition;   // NOT receiverPosition — see above
+    event.link_src_position = transmitterPosition;
+    event.link_dst_position = receiverPosition;
+    event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;
+
+    // Historical name: g_rsu_beacon_log. Stores RSU observations and, when continuous
+    // neighborhood beaconing is enabled, mobility-derived vehicle neighbor observations
+    // too. Consumed by PemComputeLambdaHat/PemComputeRhoMaxForLink/PemComputeDeltaMax as
+    // a generic topology-observation log — the name is not changed here to avoid
+    // touching every existing reader site.
+    g_rsu_beacon_log.push_back(event);
+    PemTrimRsuBeaconLog(event.reception_timestamp);
+
+    if (!g_abl.no_tgn)
+    {
+        TGN_ProcessNeighborObservationInline(event);
+    }
+
+    return true;
+}
+
 static void
 PemEmitVehicleHeartbeat(uint32_t senderId,
                         uint32_t claimedSenderId,
@@ -4947,6 +5211,88 @@ PemPeriodicBeaconTick()
 
     if (Simulator::Now().GetSeconds() + PEM_BEACON_INTERVAL_S < simTime) {
         Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemPeriodicBeaconTick);
+    }
+}
+
+// ── Continuous neighborhood discovery tick (opt-in: g_enable_neighborhood_beaconing) ──
+// Redesigned replacement for PemPeriodicBeaconTick above: instead of routing
+// through PemEmitVehicleBeacon (which floods ns.event_window/tp/fp/fn counters
+// via PemEmitEvent -> PemEvaluateEvent — see the Gap 13 regression note near
+// this flag's scheduling site in main()), this calls PemEmitNeighborObservation,
+// which feeds only g_rsu_beacon_log and TGN's beacon-count window. Outer loop
+// variable is the transmitter; inner loop variable is a candidate receiver —
+// PemEmitNeighborObservation(transmitter, receiver) range-gates internally and,
+// if in range, records "receiver observed transmitter" (not a self-report).
+static const double PEM_NEIGHBORHOOD_WARMUP_S = 10.0;   // matches the file's existing
+                                                          // t~=10s "network settled"
+                                                          // convention (e.g. TTW_HELLO_TIME)
+                                                          // so initial SUMO placement /
+                                                          // mobility-startup transients
+                                                          // never get recorded as topology
+                                                          // evidence.
+static uint64_t g_neighbor_observation_count = 0;        // successful (in-range) observations
+static uint64_t g_neighbor_candidate_pair_count = 0;     // every (transmitter, receiver) checked
+static uint64_t g_neighbor_tick_count = 0;               // ticks actually executed past warm-up
+static uint32_t g_max_neighbor_count = 0;
+
+// ── Real-time budget check (wall-clock, not simulated time) ─────────────────
+// T_b = PEM_BEACON_INTERVAL_S (100ms) is the interval at which the NEXT beacon
+// arrives in a real deployment. If this tick's own O(N^2) discovery sweep takes
+// longer than that in actual CPU time, the pipeline would fall behind incoming
+// beacons on real hardware — NS-3's discrete-event scheduler itself doesn't
+// care (simulated time and wall-clock time are decoupled here), but this is a
+// real feasibility concern for whether the design could run live. Uses the
+// same HiResClock/MicroSec convention already used for crypto-op timing above.
+static double   g_neighbor_tick_max_wallclock_ms = 0.0;
+static double   g_neighbor_tick_total_wallclock_ms = 0.0;
+static uint64_t g_neighbor_tick_over_budget_count = 0;
+
+static void __attribute__((unused))
+PemNeighborhoodDiscoveryTick()
+{
+    if (Simulator::Now().GetSeconds() < PEM_NEIGHBORHOOD_WARMUP_S) {
+        if (Simulator::Now().GetSeconds() + PEM_BEACON_INTERVAL_S < simTime) {
+            Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemNeighborhoodDiscoveryTick);
+        }
+        return;
+    }
+
+    const auto tickStart = HiResClock::now();
+
+    const uint32_t n = Vehicle_Nodes.GetN();
+    uint32_t neighborsThisTick = 0;
+    for (uint32_t transmitter = 0; transmitter < n; ++transmitter) {
+        uint32_t neighborsThisTx = 0;
+        for (uint32_t receiver = 0; receiver < n; ++receiver) {
+            if (transmitter == receiver) continue;
+            ++g_neighbor_candidate_pair_count;
+            if (PemEmitNeighborObservation(transmitter, receiver)) {
+                ++g_neighbor_observation_count;
+                ++neighborsThisTx;
+                ++neighborsThisTick;
+            }
+        }
+        if (neighborsThisTx > g_max_neighbor_count) g_max_neighbor_count = neighborsThisTx;
+    }
+    ++g_neighbor_tick_count;
+    (void)neighborsThisTick;
+
+    const double tickWallclockMs = MicroSec(HiResClock::now() - tickStart).count() / 1000.0;
+    g_neighbor_tick_total_wallclock_ms += tickWallclockMs;
+    if (tickWallclockMs > g_neighbor_tick_max_wallclock_ms) {
+        g_neighbor_tick_max_wallclock_ms = tickWallclockMs;
+    }
+    const double budgetMs = PEM_BEACON_INTERVAL_S * 1000.0;   // T_b, the next-beacon deadline
+    if (tickWallclockMs > budgetMs) {
+        ++g_neighbor_tick_over_budget_count;
+        std::cout << "[WARN][t=" << Simulator::Now().GetSeconds() << "] Continuous "
+                  << "neighborhood discovery tick took " << tickWallclockMs << " ms, "
+                  << "exceeding the " << budgetMs << " ms beacon-interval budget (T_b) — "
+                  << "on real hardware this pipeline would fall behind the next beacon.\n";
+    }
+
+    if (Simulator::Now().GetSeconds() + PEM_BEACON_INTERVAL_S < simTime) {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemNeighborhoodDiscoveryTick);
     }
 }
 
@@ -121202,6 +121548,8 @@ bool X_nodes[total_size+2];
 
 static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
 {
+    PemSimpleStageTimer __pemBeaconSendTimer(g_pem_beacon_send_stats);
+
     Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
     if (!wdi) return;
 
@@ -121252,6 +121600,8 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
 
 static void AttackSendRSUToController(uint32_t rsu_global_id)
 {
+    PemSimpleStageTimer __pemRsuForwardTimer(g_pem_rsu_forward_stats);
+
     Ptr<Node> rsu_node = nullptr;
     for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
         if (RSU_Nodes.Get(i)->GetId() == rsu_global_id) { rsu_node = RSU_Nodes.Get(i); break; }
@@ -148413,6 +148763,12 @@ static int RoutingMain(int argc, char *argv[])
                   "1 = A5: suppress ME-S3 geometric/RSSI check sig[8] (Eq. 3.11; NOT the "
                   "separate Eq. 3.28 ML-DSA-87 signature check in TetaGuardLocBindVerify)",
                   g_abl.no_lbs);
+    cmd.AddValue ("enable_neighborhood_beaconing",
+                  "1 = continuous per-vehicle mobility-derived neighbor beaconing, feeding "
+                  "TGN's beacon-count window and ME's lambda_hat density estimator only "
+                  "(does not touch ns.event_window, tp/fp/fn counters, or CSV logs). "
+                  "Default 0 = off, byte-identical to prior behavior.",
+                  g_enable_neighborhood_beaconing);
     cmd.AddValue ("attacker_sophistication",
                   "Probability [0,1] that each S1/S2 attack injection is SOPHISTICATED: "
                   "attacker also forges nonce/key/position so Stage-0 crypto is bypassed "
@@ -148517,6 +148873,15 @@ static int RoutingMain(int argc, char *argv[])
     // periodic beacons from signature-relevant windows) before this can be
     // safely enabled — left disabled pending that redesign.
     // Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemPeriodicBeaconTick);
+
+    // Redesigned replacement for the disabled PemPeriodicBeaconTick above: feeds
+    // only g_rsu_beacon_log (lambda_hat) and TGN's beacon-count window, never
+    // ns.event_window or any scored counter — see PemEmitNeighborObservation /
+    // TGN_ProcessNeighborObservationInline. Opt-in, default off (byte-identical
+    // to prior behavior when g_enable_neighborhood_beaconing is false).
+    if (g_enable_neighborhood_beaconing) {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemNeighborhoodDiscoveryTick);
+    }
 
     // ── Ablation: propagate flags that cross the routing.cc / tgn_core.cc boundary ─
     if (g_abl.static_gcn)   TGN_SetStaticGCN(true);
@@ -153050,6 +153415,161 @@ static int RoutingMain(int argc, char *argv[])
   // secondary Algorithm 3 crypto audit and writes output files — all event
   // processing already happened inline during the simulation.
   TGN_RunPipeline();
+
+  // ── Full detect+mitigate pipeline budget check (crypto+LW+TGN+blockchain) ──
+  // Runs in every scenario (not gated behind --enable_neighborhood_beaconing),
+  // since PemEmitEvent/PemApplyMitigation are the core detection/mitigation
+  // path used by all 12 attack scenarios.
+  {
+      const double budgetMs = PEM_BEACON_INTERVAL_S * 1000.0;
+      const double avgDetectMs =
+          (g_pem_detect_count > 0) ? g_pem_detect_total_ms / (double)g_pem_detect_count : 0.0;
+      const double avgMitigateMs =
+          (g_pem_mitigate_count > 0) ? g_pem_mitigate_total_ms / (double)g_pem_mitigate_count : 0.0;
+      const double avgFullMs =
+          (g_pem_full_pipeline_count > 0)
+              ? g_pem_full_pipeline_total_ms / (double)g_pem_full_pipeline_count : 0.0;
+      std::cout << "\nFull Pipeline Real-Time Budget Check (wall-clock, T_b="
+                << budgetMs << " ms)\n"
+                << "----------------------------------------------------------\n"
+                << "Detect stage (crypto+LW+TGN, PemEmitEvent):\n"
+                << "  Events processed: " << g_pem_detect_count << "\n"
+                << "  Avg wall-clock time: " << avgDetectMs << " ms\n"
+                << "  Max wall-clock time: " << g_pem_detect_max_ms << " ms\n"
+                << "  Events exceeding budget: " << g_pem_detect_over_budget_count
+                << " / " << g_pem_detect_count << "\n"
+                << "Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon,"
+                   " PemApplyMitigation):\n"
+                << "  Mitigations applied: " << g_pem_mitigate_count << "\n"
+                << "  Avg wall-clock time: " << avgMitigateMs << " ms\n"
+                << "  Max wall-clock time: " << g_pem_mitigate_max_ms << " ms\n"
+                << "Full pipeline (detect+mitigate combined, when mitigation fired):\n"
+                << "  Triggered events: " << g_pem_full_pipeline_count << "\n"
+                << "  Avg wall-clock time: " << avgFullMs << " ms\n"
+                << "  Max wall-clock time: " << g_pem_full_pipeline_max_ms << " ms\n"
+                << "  Events exceeding " << budgetMs << " ms budget: "
+                << g_pem_full_pipeline_over_budget_count << " / " << g_pem_full_pipeline_count
+                << (g_pem_full_pipeline_over_budget_count > 0
+                        ? "  <-- full pipeline would fall behind the next beacon on this hardware\n"
+                        : (g_pem_full_pipeline_count > 0
+                               ? "  -- full pipeline stays within the T_b budget on this hardware\n"
+                               : "  -- no mitigation was triggered this run\n"));
+
+      // Simple (non-chained) stages — beacon-send/rsu-forward verified NOT to
+      // chain synchronously into detect (separate Simulator::Schedule events,
+      // see comment at PemPipelineStage's declaration); the three PQC crypto
+      // stages (CryptoMeasureBeaconSign/Verify, CryptoMeasureDetection,
+      // CryptoMeasureLKH) are likewise called as separate statements outside
+      // AttackSendDSRCBeacon/PemEmitEvent/PemApplyMitigation's scope in the
+      // scenario functions — real ML-DSA/Dilithium sign+verify+threshold-sig
+      // and LKH revocation cost, active whenever enable_crypto_latency != 0
+      // (default 1), NOT previously covered by the Detect/Mitigate stages
+      // above even though it runs on every beacon/detection/mitigation.
+      auto printSimpleStage = [](const PemSimpleStageStats& s) {
+          const double avgMs = (s.count > 0) ? s.totalMs / (double)s.count : 0.0;
+          std::cout << "\n" << s.label << ":\n"
+                    << "  Calls: " << s.count << "\n"
+                    << "  Avg wall-clock time: " << avgMs << " ms\n"
+                    << "  Max wall-clock time: " << s.maxMs << " ms\n"
+                    << "  Calls exceeding budget: " << s.overBudgetCount
+                    << " / " << s.count << "\n";
+          return avgMs;
+      };
+      const double avgBeaconSendMs = printSimpleStage(g_pem_beacon_send_stats);
+      const double avgRsuForwardMs = printSimpleStage(g_pem_rsu_forward_stats);
+      const double avgBeaconCryptoMs = printSimpleStage(g_pem_beacon_crypto_stats);
+      const double avgDetectionCryptoMs = printSimpleStage(g_pem_detection_crypto_stats);
+      const double avgLkhCryptoMs = printSimpleStage(g_pem_lkh_crypto_stats);
+
+      // ── Approximate combined estimate (sum of independently-measured stage
+      // averages). NOT a precise per-event trace like the detect+mitigate
+      // figure above — these stages run as separate NS-3 events/statements
+      // (see comments above), so this sums each stage's own average as an
+      // upper-bound-ish estimate of "beacon send (+ PQC sign/verify) -> RSU
+      // forward -> crypto pre-filter+LW+TGN (+ PQC detection crypto) ->
+      // blockchain mitigation (+ LKH crypto)" end-to-end, for scenarios
+      // where all stages actually occur in the same beacon cycle.
+      const double approxCombinedMs =
+          avgBeaconSendMs + avgBeaconCryptoMs + avgRsuForwardMs
+          + avgDetectMs + avgDetectionCryptoMs + avgMitigateMs + avgLkhCryptoMs;
+      std::cout << "\nApproximate End-to-End Estimate (sum of stage averages, NOT a"
+                   " per-event trace):\n"
+                << "  beacon-send(" << avgBeaconSendMs << ") + beacon-crypto("
+                << avgBeaconCryptoMs << ") + rsu-forward(" << avgRsuForwardMs
+                << ") + detect(" << avgDetectMs << ") + detection-crypto("
+                << avgDetectionCryptoMs << ") + mitigate(" << avgMitigateMs
+                << ") + lkh-crypto(" << avgLkhCryptoMs << ") = " << approxCombinedMs
+                << " ms\n"
+                << (approxCombinedMs > budgetMs
+                        ? "  <-- approximate combined estimate EXCEEDS the "
+                        : "  -- approximate combined estimate stays within the ")
+                << budgetMs << " ms beacon-interval budget (T_b)\n";
+  }
+
+  // ── Continuous neighborhood beaconing statistics (opt-in feature summary) ──
+  if (g_enable_neighborhood_beaconing) {
+      const double avgNeighborsPerVehicle =
+          (g_neighbor_tick_count > 0 && Vehicle_Nodes.GetN() > 0)
+              ? (double)g_neighbor_observation_count /
+                (double)(g_neighbor_tick_count * Vehicle_Nodes.GetN())
+              : 0.0;
+      const double avgTickWallclockMs =
+          (g_neighbor_tick_count > 0)
+              ? g_neighbor_tick_total_wallclock_ms / (double)g_neighbor_tick_count
+              : 0.0;
+      const double budgetMs = PEM_BEACON_INTERVAL_S * 1000.0;
+      std::cout << "\nContinuous Neighborhood Statistics\n"
+                << "---------------------------------\n"
+                << "Candidate pairs checked: " << g_neighbor_candidate_pair_count << "\n"
+                << "Successful neighbor observations: " << g_neighbor_observation_count << "\n"
+                << "Average neighbors/vehicle: " << avgNeighborsPerVehicle << "\n"
+                << "Maximum neighbors observed at once: " << g_max_neighbor_count << "\n"
+                << "\nReal-time (wall-clock) budget check — T_b=" << budgetMs << " ms:\n"
+                << "  Ticks executed: " << g_neighbor_tick_count << "\n"
+                << "  Avg tick wall-clock time: " << avgTickWallclockMs << " ms\n"
+                << "  Max tick wall-clock time: " << g_neighbor_tick_max_wallclock_ms << " ms\n"
+                << "  Ticks exceeding " << budgetMs << " ms budget: "
+                << g_neighbor_tick_over_budget_count << " / " << g_neighbor_tick_count
+                << (g_neighbor_tick_over_budget_count > 0
+                        ? "  <-- pipeline would fall behind real beacon arrivals on this hardware\n"
+                        : "  -- pipeline stays within the T_b budget on this hardware\n");
+
+      // ── Grand total: neighborhood discovery + beacon-send + beacon-crypto +
+      // rsu-forward + detect + detection-crypto + mitigate + lkh-crypto, all
+      // within one T_b interval. The neighbor-tick average is a per-INTERVAL
+      // cost (one O(N^2) sweep covering every vehicle pair), while the other
+      // seven are per-EVENT costs — added together this is the total
+      // wall-clock work competing for CPU time inside a single 100ms beacon
+      // interval on this hardware.
+      auto avgOf = [](const PemSimpleStageStats& s) {
+          return (s.count > 0) ? s.totalMs / (double)s.count : 0.0;
+      };
+      const double avgDetectMs2 =
+          (g_pem_detect_count > 0) ? g_pem_detect_total_ms / (double)g_pem_detect_count : 0.0;
+      const double avgMitigateMs2 =
+          (g_pem_mitigate_count > 0) ? g_pem_mitigate_total_ms / (double)g_pem_mitigate_count : 0.0;
+      const double avgBeaconSendMs2 = avgOf(g_pem_beacon_send_stats);
+      const double avgRsuForwardMs2 = avgOf(g_pem_rsu_forward_stats);
+      const double avgBeaconCryptoMs2 = avgOf(g_pem_beacon_crypto_stats);
+      const double avgDetectionCryptoMs2 = avgOf(g_pem_detection_crypto_stats);
+      const double avgLkhCryptoMs2 = avgOf(g_pem_lkh_crypto_stats);
+      const double grandTotalMs =
+          avgTickWallclockMs + avgBeaconSendMs2 + avgBeaconCryptoMs2 + avgRsuForwardMs2
+          + avgDetectMs2 + avgDetectionCryptoMs2 + avgMitigateMs2 + avgLkhCryptoMs2;
+      std::cout << "\nGrand Total Per-Interval Estimate (neighborhood-discovery +"
+                   " beacon-send + beacon-crypto + rsu-forward + detect +"
+                   " detection-crypto + mitigate + lkh-crypto):\n"
+                << "  neighborhood(" << avgTickWallclockMs << ") + beacon-send("
+                << avgBeaconSendMs2 << ") + beacon-crypto(" << avgBeaconCryptoMs2
+                << ") + rsu-forward(" << avgRsuForwardMs2 << ") + detect("
+                << avgDetectMs2 << ") + detection-crypto(" << avgDetectionCryptoMs2
+                << ") + mitigate(" << avgMitigateMs2 << ") + lkh-crypto("
+                << avgLkhCryptoMs2 << ") = " << grandTotalMs << " ms\n"
+                << (grandTotalMs > budgetMs
+                        ? "  <-- grand total EXCEEDS the "
+                        : "  -- grand total stays within the ")
+                << budgetMs << " ms beacon-interval budget (T_b) on this hardware\n";
+  }
 
   // ── Restore cout and flush terminal log ──────────────────────────────────
   std::cout.rdbuf(orig_cout_buf);
