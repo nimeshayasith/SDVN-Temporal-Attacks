@@ -4992,16 +4992,43 @@ PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                  attackLabel);
 }
 
+// ── ID-space fix ─────────────────────────────────────────────────────────────
+// senderId/receiverId are real ns-3 GLOBAL node IDs (matching every other
+// PemEmit*/PemEvent caller's convention throughout the file), NOT
+// Vehicle_Nodes container indices. This was previously inconsistent: this
+// function did `Vehicle_Nodes.Get(senderId)` directly (a container-index
+// lookup) while emitting senderId itself as the event's claimed_sender_id (a
+// global-ID-shaped field everywhere else) — silently resolving to the WRONG
+// vehicle's position/range whenever N_Controllers/N_RSUs > 0 (i.e. whenever
+// global ID != container index, which is every real run: node creation order
+// is controllers -> management -> vehicles -> RSUs, so
+// Vehicle_Nodes.Get(cidx)->GetId() == cidx + N_Controllers + 1). Two call
+// sites (BSHH_S2_LegitimateExchange, BSHH_S3-style RSU exchange) had already
+// discovered this and worked around it locally with their own linear-scan
+// cidx conversion before calling this function — those workarounds are
+// removed below now that the fix lives here, at the source, so every caller
+// (TTW-S1/S2, BSHH-S1..S4, ME-S1..S4) benefits without needing its own patch.
+// Confirmed root cause: TTW-S1's HELLO-time beacon was recorded under the
+// wrong ID space entirely, so signature Eq. 3.3 (TTW-S2 label in PEM CSV
+// output) could never find its own beacon record at attack time except by
+// coincidental cross-vehicle ID collision — producing both false negatives
+// and spurious/coincidental "detections" that weren't really testing the
+// intended condition.
 static void
 PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
 {
-    if (senderId >= Vehicle_Nodes.GetN() || receiverId >= Vehicle_Nodes.GetN())
+    Ptr<Node> senderNode = nullptr, receiverNode = nullptr;
+    for (uint32_t k = 0; k < Vehicle_Nodes.GetN(); ++k) {
+        if (Vehicle_Nodes.Get(k)->GetId() == senderId)   senderNode   = Vehicle_Nodes.Get(k);
+        if (Vehicle_Nodes.Get(k)->GetId() == receiverId) receiverNode = Vehicle_Nodes.Get(k);
+    }
+    if (!senderNode || !receiverNode)
     {
         return;
     }
 
-    Ptr<MobilityModel> senderMobility = Vehicle_Nodes.Get(senderId)->GetObject<MobilityModel>();
-    Ptr<MobilityModel> receiverMobility = Vehicle_Nodes.Get(receiverId)->GetObject<MobilityModel>();
+    Ptr<MobilityModel> senderMobility = senderNode->GetObject<MobilityModel>();
+    Ptr<MobilityModel> receiverMobility = receiverNode->GetObject<MobilityModel>();
     if (!senderMobility || !receiverMobility)
     {
         return;
@@ -5204,6 +5231,12 @@ PemEmitVehicleHeartbeat(uint32_t senderId,
 static void __attribute__((unused))
 PemPeriodicBeaconTick()
 {
+    // NOTE: dead code (unused, superseded by PemNeighborhoodDiscoveryTick /
+    // PemEmitNeighborObservation). If ever revived: i,j here are Vehicle_Nodes
+    // container indices, but PemEmitVehicleBeacon now expects real ns-3
+    // GLOBAL IDs (fixed at its definition) — this call would need
+    // Vehicle_Nodes.Get(i)->GetId()/Get(j)->GetId(), same fix as TTW-S1's
+    // HELLO step got.
     const uint32_t n = Vehicle_Nodes.GetN();
     for (uint32_t i = 0; i < n; ++i) {
         for (uint32_t j = 0; j < n; ++j) {
@@ -7412,23 +7445,17 @@ void BSHH_S2_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     // Issue 4/3 fix — real vehicle beacon for downstream beacon_evidence.csv /
     // witness_records.json (this RSU-present scenario previously never emitted
-    // any). Mirrors BSHH-S3's single-direction call pattern. v1_id/v2_id here
-    // are real ns-3 GLOBAL node IDs (vA_ns3/vB_ns3 = Vehicle_Nodes.Get(cidx)
-    // ->GetId() at the call site), but PemEmitVehicleBeacon expects
-    // Vehicle_Nodes CONTAINER indices — resolve via linear scan before
-    // calling, since the pre-existing AttackSendDSRCBeacon guard just below
-    // already silently no-ops for the same global-id/index mismatch (left
-    // untouched, out of scope).
-    {
-        uint32_t v1_cidx = UINT32_MAX, v2_cidx = UINT32_MAX;
-        for (uint32_t k = 0; k < Vehicle_Nodes.GetN(); ++k) {
-            if (Vehicle_Nodes.Get(k)->GetId() == v1_id) v1_cidx = k;
-            if (Vehicle_Nodes.Get(k)->GetId() == v2_id) v2_cidx = k;
-        }
-        if (v1_cidx != UINT32_MAX && v2_cidx != UINT32_MAX) {
-            PemEmitVehicleBeacon(v1_cidx, v2_cidx);
-        }
-    }
+    // any). Mirrors BSHH-S3's single-direction call pattern.
+    // PemEmitVehicleBeacon now resolves global ns-3 IDs internally (fixed at
+    // its definition — see comment there); the local cidx-resolution
+    // workaround previously needed here has been removed since it would now
+    // double-convert (global -> cidx -> treated as global again = wrong node).
+    // The AttackSendDSRCBeacon call just below still has the analogous defect
+    // (Vehicle_Nodes.Get(v1_id) with v1_id a global ID) — not fixed here,
+    // same "out of scope for this pass" as previously noted; flagged for a
+    // separate pass since AttackSendDSRCBeacon has many more call sites to
+    // verify individually.
+    PemEmitVehicleBeacon(v1_id, v2_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -7943,20 +7970,11 @@ void BSHH_S4_VehiclesToRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id, uint
     PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
     // Issue 4/3 fix — real vehicle beacon for downstream beacon_evidence.csv /
     // witness_records.json (this RSU-present scenario previously never emitted
-    // any). Mirrors BSHH-S3's single-direction call pattern. v1_id/v2_id here
-    // are real ns-3 GLOBAL node IDs, but PemEmitVehicleBeacon expects
-    // Vehicle_Nodes CONTAINER indices — resolve via linear scan first (same
-    // fix as BSHH_S2_LegitimateExchange above, same root cause).
-    {
-        uint32_t v1_cidx = UINT32_MAX, v2_cidx = UINT32_MAX;
-        for (uint32_t k = 0; k < Vehicle_Nodes.GetN(); ++k) {
-            if (Vehicle_Nodes.Get(k)->GetId() == v1_id) v1_cidx = k;
-            if (Vehicle_Nodes.Get(k)->GetId() == v2_id) v2_cidx = k;
-        }
-        if (v1_cidx != UINT32_MAX && v2_cidx != UINT32_MAX) {
-            PemEmitVehicleBeacon(v1_cidx, v2_cidx);
-        }
-    }
+    // any). Mirrors BSHH-S3's single-direction call pattern.
+    // PemEmitVehicleBeacon now resolves global ns-3 IDs internally (fixed at
+    // its definition) — the local cidx-resolution workaround previously
+    // needed here has been removed since it would now double-convert.
+    PemEmitVehicleBeacon(v1_id, v2_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
@@ -151571,17 +151589,32 @@ static int RoutingMain(int argc, char *argv[])
                   Simulator::Schedule(Seconds(10.001), &TTW_SendHelloBeacon,
                       Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx));
 
+                  // Fix: PemEmitVehicleBeacon takes real ns-3 GLOBAL IDs (see
+                  // its definition) — mal_ns3/vic_ns3 (== Vehicle_Nodes.Get
+                  // (cidx)->GetId()), not the raw container indices
+                  // attacker_cidx/victim_cidx. Passing container indices here
+                  // silently recorded this beacon under the wrong ID space,
+                  // so the later replay-detection signature (Eq. 3.3) could
+                  // never find its own beacon record except by coincidental
+                  // cross-vehicle ID collision — this was the confirmed root
+                  // cause of TTW-S1's structural false negatives.
                   Simulator::Schedule(Seconds(10.000), &PemEmitVehicleBeacon,
-                      victim_cidx, attacker_cidx);
+                      vic_ns3, mal_ns3);
                   Simulator::Schedule(Seconds(10.001), &PemEmitVehicleBeacon,
-                      attacker_cidx, victim_cidx);
+                      mal_ns3, vic_ns3);
 
+                  // Consistency fix: use the same global IDs as the rest of
+                  // this pipeline (PemEmitVehicleHeartbeat doesn't do its own
+                  // Vehicle_Nodes lookup like PemEmitVehicleBeacon did, so this
+                  // wasn't causing wrong-vehicle lookups, but mixing cidx here
+                  // with global IDs everywhere else in TTW-S1 was still an
+                  // inconsistency worth closing while fixing the beacon bug.
                   Simulator::Schedule(Seconds(10.020), &PemEmitVehicleHeartbeat,
-                      attacker_cidx, attacker_cidx, 10.020, false);
+                      mal_ns3, mal_ns3, 10.020, false);
                   if (corroboratedVictimReport)
                   {
                       Simulator::Schedule(Seconds(10.030), &PemEmitVehicleHeartbeat,
-                          victim_cidx, victim_cidx, 10.030, false);
+                          vic_ns3, vic_ns3, 10.030, false);
                   }
 
                   // STEP 2 — Legitimate topology updates -> controller
