@@ -5171,36 +5171,43 @@ PemEvaluateEvent(PemEvent& event)
     if (event.attack_label)
     {
         pem_actual_attacker_nodes.insert(event.physical_sender_id);
-            if (event.alert_raised)
+        if (event.alert_raised)
         {
             pem_detected_attacker_nodes.insert(event.physical_sender_id);
-                    // Eq. 3.18 — live LKH revocation: O(log n) KEK-path update for
-            // the detected attacker's leaf node.  Called once per unique
-            // physical_sender_id to avoid redundant tree walks.
-            if (g_lkh_ready &&
-                g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-                g_lkh_already_revoked.find(event.physical_sender_id) ==
-                    g_lkh_already_revoked.end())
-            {
-                uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
-                            lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
-                g_lkh_already_revoked.insert(event.physical_sender_id);
-                // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
-                // consortium certificate and is immediately peer-ineligible.
-                if (g_trust_table.count(event.physical_sender_id))
-                    g_trust_table[event.physical_sender_id].cert_valid = false;
-                const uint32_t depth = (g_lkh_n_leaves > 1u)
-                    ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
-                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
-                       " (Eq. 3.18)\n",
-                       Simulator::Now().GetSeconds(),
-                       event.physical_sender_id, leaf_idx, g_lkh_n_leaves, depth);
-            }
         }
     }
     else if (event.alert_raised)
     {
         pem_false_positive_nodes.insert(event.physical_sender_id);
+    }
+    // Ground-truth leak fix (threats-to-validity review, 8th instance found —
+    // same class as the Stage-0 revocation fix above): LKH revocation is a real
+    // mitigation ACTION, and previously only fired when event.attack_label was
+    // ALSO true — i.e. only for true positives. A real controller has no way to
+    // check ground truth before deciding whether to revoke; it only has its own
+    // alert. Moving this outside the attack_label branch means it now fires on
+    // event.alert_raised alone, matching a real deployment: false positives get
+    // revoked too, exactly as they would in reality (an accurately modelled
+    // consequence, not a bug — see ME-S2's fp=2 case for where this now bites).
+    if (event.alert_raised &&
+        g_lkh_ready &&
+        g_lkh_already_revoked.size() < g_lkh_n_leaves &&
+        g_lkh_already_revoked.find(event.physical_sender_id) ==
+            g_lkh_already_revoked.end())
+    {
+        uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
+        lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+        g_lkh_already_revoked.insert(event.physical_sender_id);
+        // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
+        // consortium certificate and is immediately peer-ineligible.
+        if (g_trust_table.count(event.physical_sender_id))
+            g_trust_table[event.physical_sender_id].cert_valid = false;
+        const uint32_t depth = (g_lkh_n_leaves > 1u)
+            ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
+        printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
+               " (Eq. 3.18)\n",
+               Simulator::Now().GetSeconds(),
+               event.physical_sender_id, leaf_idx, g_lkh_n_leaves, depth);
     }
 
     PemRecordObservation(event.attack_label, event.score, event.alert_raised);
@@ -5239,9 +5246,22 @@ PemEvaluateEvent(PemEvent& event)
     // Accumulate into this trusted node's local state (§3.1.3 per-nk state)
     ns.event_window.push_back(event);
     ns.sender_event_history[event.claimed_sender_id].push_back(event);
-    if (event.type == PEM_EVENT_BEACON &&
-        event.physical_sender_id == event.claimed_sender_id &&
-        !event.attack_label)
+    // Ground-truth leak fix (threats-to-validity review, 7th instance found):
+    // previously gated on physical_sender_id == claimed_sender_id AND
+    // !event.attack_label — both ground truth. physical_sender_id is exactly
+    // the field a sophisticated TTW-S2/BSHH-S2 RSU-collusion attack forges
+    // divergence in while remaining cryptographically indistinguishable (a
+    // real verifier fundamentally cannot check it), and attack_label is a pure
+    // simulator oracle. The only real basis available: PemEvaluateEvent (Stage 1,
+    // this function) is called exclusively on events that already survived
+    // Stage-0 crypto verification (see the early `return` on Stage-0 rejection
+    // a few lines above this file's call site, routing.cc ~5472) — i.e. every
+    // event reaching here already carries a genuinely-verified MAC (honestly
+    // held or exfiltrated key). There is no further real-world signal to filter
+    // on, so the baseline is now built from every beacon that reaches Stage 1,
+    // matching the same "already passed all available real checks" principle
+    // used for the Step 1c signed-report pool fix in teta_guard_filter.h.
+    if (event.type == PEM_EVENT_BEACON)
     {
         ns.last_authentic_beacon_reception[event.claimed_sender_id] =
             event.reception_timestamp;
@@ -5448,25 +5468,38 @@ PemEmitEvent(PemEventType type,
             PemCryptoRegisterDetection(physicalSenderId, reporterId);
             g_tgn_stage0_blocked_attacks++;
             g_tgn_flagged_nodes.insert(physicalSenderId);
-            // Eq. 3.18 — live LKH revocation at Stage 0 (crypto gate detected attacker).
-            if (g_lkh_ready &&
-                g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-                g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
-            {
-                uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
-                lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
-                g_lkh_already_revoked.insert(physicalSenderId);
-                // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
-                // consortium certificate and is immediately peer-ineligible.
-                if (g_trust_table.count(physicalSenderId))
-                    g_trust_table[physicalSenderId].cert_valid = false;
-                const uint32_t depth = (g_lkh_n_leaves > 1u)
-                    ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
-                printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
-                       " (Eq. 3.18, Stage-0 detection)\n",
-                       Simulator::Now().GetSeconds(),
-                       physicalSenderId, leaf_idx, g_lkh_n_leaves, depth);
-            }
+        }
+        // Ground-truth leak fix (threats-to-validity review, 8th instance found):
+        // LKH revocation — a real mitigation ACTION, not a scoring statistic —
+        // previously only fired inside the `if (attackLabel)` branch above. A
+        // real controller has no ground-truth oracle telling it whether a
+        // message it just rejected at Stage 0 genuinely came from an attacker;
+        // it only knows "this message failed crypto verification" (Eqs.
+        // 3.15-3.17). That rejection itself is the only real signal available,
+        // so revocation now fires for ANY Stage-0 drop, matching what an actual
+        // deployment would do — including the (accurately modelled) consequence
+        // that a benign sender whose message spuriously fails verification
+        // (clock skew, packet loss, corruption) gets revoked too, exactly as it
+        // would in reality. The TP/FP/FN bookkeeping above remains ground-truth
+        // gated, since that is legitimate offline-evaluation labeling, not a
+        // detection or mitigation decision.
+        if (g_lkh_ready &&
+            g_lkh_already_revoked.size() < g_lkh_n_leaves &&
+            g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
+        {
+            uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
+            lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+            g_lkh_already_revoked.insert(physicalSenderId);
+            // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
+            // consortium certificate and is immediately peer-ineligible.
+            if (g_trust_table.count(physicalSenderId))
+                g_trust_table[physicalSenderId].cert_valid = false;
+            const uint32_t depth = (g_lkh_n_leaves > 1u)
+                ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
+            printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
+                   " (Eq. 3.18, Stage-0 detection)\n",
+                   Simulator::Now().GetSeconds(),
+                   physicalSenderId, leaf_idx, g_lkh_n_leaves, depth);
         }
         PemRecordObservation(attackLabel, 1.0, attackLabel);
         return;  // silent drop — no alert label, no ledger entry, no FlowMod
