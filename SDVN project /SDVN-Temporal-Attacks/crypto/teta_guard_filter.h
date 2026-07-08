@@ -276,11 +276,19 @@ static uint64_t tg_crypto_drop_revoked = 0;
 // (guarded only by the --no_crypto=1 ablation flag, which defaults to false)
 // for every PemEvent — topology update, heartbeat, and beacon. All three
 // Algorithm 3 checks are genuine, not ground-truthed off event.attack_label:
-//   Step 1 (Eq. 3.15) — real HMAC-SHA256 via OpenSSL's HMAC(), computed over
-//     m' = TetaGuardBuildAuthPayload() using per-vehicle session keys derived
-//     by TetaGuardGetSessionKey(); macExp vs macReceived compared in constant
-//     time (TetaGuardCtMemcmp). Two different physical/claimed identities
-//     produce cryptographically different keys and therefore different tags.
+//   Step 1 (Eq. 3.15) — real HMAC-SHA256 via OpenSSL's HMAC(), verifying a
+//     genuinely CARRIED tag (event.message_mac, set at emission time by
+//     TetaGuardSignEvent()) against the tag recomputed from the CLAIMED
+//     sender's pairwise key (CryptoGetPairwiseSessionKey, real K_{Vi,nk}
+//     scoped to the specific verifying node), compared in constant time
+//     (TetaGuardCtMemcmp). physical_sender_id plays no role in this
+//     comparison — it is ground truth (who really transmitted the packet),
+//     not something an attacker's code can forge; what an attacker forges is
+//     the claimed identity and, if it possesses the right key, a matching
+//     MAC. See TetaGuardSignEvent's doc comment for how attack-injection
+//     code computes message_mac using either its own key (honest signer,
+//     will mismatch when claiming a different identity) or a genuinely
+//     stolen victim key (sophisticated attacker, will correctly match).
 //   Step 2 (Eq. 3.16) — real |reception_timestamp - sender_timestamp| bound.
 //   Step 3 (Eq. 3.17) — real per-trusted-node nonce cache
 //     (state.nonce_cache, one entry per reporter_id in g_per_node_crypto_state).
@@ -288,39 +296,19 @@ static uint64_t tg_crypto_drop_revoked = 0;
 // hmac_filter.cc's BeaconMessage/beacon_sign()/lw_mitigate() — that file's
 // functions remain wired only into the --latency=1 timing-benchmark path
 // (TimedHmacSign/TimedHmacVerify) and are not on this live detection path.
-// TetaGuardGetSessionKey() delegates to routing.cc's
-// CryptoGetVehicleSessionKey() (defined ~line 935, before this header's
-// #include point), which returns the REAL K_{Vi,nk} derived by the
-// ML-KEM-1024 + HQC-5 handshake in CryptoDeriveVehicleSessionKeys() when it
-// succeeded for vehicle_id -- the same key material AttackSendDSRCBeacon()/
-// Rx()'s beacon_sign()/lw_mitigate() path already uses. For IDs outside that
-// handshake's coverage (RSU/controller sentinels such as 9999, or
-// vehicle_id >= MAX_VEHICLES), CryptoGetVehicleSessionKey() itself falls back
-// to the same deterministic per-vehicle-id derivation this function used to
-// compute inline, so those callers see identical behaviour to before.
 //
 // reporter_id : trusted node nk performing verification (RSU node ID, OBU
 //               vehicle ID, or 9999 for the controller).  Each nk has its OWN
 //               entry in g_per_node_crypto_state (independent Nseen per node).
 //
-// ── Gap 9 fix — real HMAC-SHA256 for Step 1 (Eq. 3.15), not a ground-truth proxy ──
-// Previously Step 1 was `physical_sender_id != claimed_sender_id` — a simulation
-// shortcut, since PemEvent carries no real HMAC bytes or session-key material.
-// This is now a genuine HMAC-SHA256 computation using OpenSSL (already linked —
-// routing.cc includes <openssl/hmac.h> directly and this build has liboqs/OpenSSL
-// linked, confirmed at runtime via "[PQC] liboqs linked").
-//
-// K_{Vi,nk} (Eq. 3.15): real per-vehicle 256-bit session key when the t=0
-// ML-KEM-1024 + HQC-5 handshake (§3.4.2) succeeded for vehicle_id; falls back
-// to a deterministic per-id derivation otherwise (see
-// CryptoGetVehicleSessionKey() in routing.cc for the exact fallback rule).
-// This closes the gap where Eq. 3.15's live per-event HMAC filter verified
-// against a synthetic key instead of the KEM-established one.
-static void
-TetaGuardGetSessionKey(uint32_t vehicle_id, uint8_t out[SESSION_KEY_LEN])
-{
-    CryptoGetVehicleSessionKey(vehicle_id, out);
-}
+// K_{Vi,nk} (Eq. 3.15): real per-vehicle 256-bit base secret when the t=0
+// ML-KEM-1024 + HQC-5 handshake (§3.4.2) succeeded for vehicle_id (falls back
+// to a deterministic per-id derivation otherwise — see
+// CryptoGetVehicleSessionKey() in routing.cc), HKDF-derived per (vehicle,
+// receiver) pair by CryptoGetPairwiseSessionKey() so the final verification
+// key genuinely depends on which node is verifying, not just which vehicle
+// is claimed — a key exfiltrated from one link does not, by itself, produce
+// a valid key for a different verifying node.
 
 static void
 TetaGuardComputeHmac(const uint8_t *key, size_t key_len,
@@ -329,6 +317,48 @@ TetaGuardComputeHmac(const uint8_t *key, size_t key_len,
 {
     unsigned mac_len = HMAC_SHA256_LEN;
     HMAC(EVP_sha256(), key, (int)key_len, data, data_len, out, &mac_len);
+}
+
+// TetaGuardComputeNonceKey — Eq. 3.17 nonce value, factored out of
+// TetaGuardCryptoFilter's Step 1/Step 3 so emission-time signing
+// (TetaGuardSignEvent, below) can compute the IDENTICAL nonce_key the
+// verifier will later derive, without duplicating this formula.
+static uint64_t
+TetaGuardComputeNonceKey(const PemEvent& event)
+{
+    const uint32_t ts_slot   = (uint32_t)(event.sender_timestamp * 10.0 + 0.5);
+    const uint32_t type_bits = (uint32_t)event.type;
+    const uint32_t link_hash = event.link_src_id * 1000003u ^ event.link_dst_id;
+    return ((uint64_t)event.claimed_sender_id << 32)
+         | ((uint64_t)(ts_slot   & 0x3FFFu) << 18)
+         | ((uint64_t)(type_bits & 0x7u)    << 15)
+         | ((uint64_t)(link_hash & 0x7FFFu));
+}
+
+// TetaGuardSignEvent — computes a genuine HMAC-SHA256 over this event's
+// Eq. 3.15 auth payload using signingKeyOwnerId's pairwise session key
+// (CryptoGetPairwiseSessionKey, routing.cc — real K_{Vi,nk}, scoped to the
+// specific (vehicle, verifying-node) pair) and stores it into
+// event.message_mac. Called from PemEmitEvent before Stage-0 verification
+// runs, so the event "carries" a real MAC the way an actual packet would —
+// signingKeyOwnerId is normally the true physical sender's own ID (the
+// honest default), but a sophisticated key-exfiltration attacker can pass a
+// stolen victim ID here instead, modeling "this attacker genuinely possesses
+// the victim's real key" rather than just relabeling physical_sender_id.
+// Forward-declared: full definition (with doc comment) appears later in this
+// file, after TetaGuardSignEvent — TetaGuardSignEvent needs it before then.
+static size_t TetaGuardBuildAuthPayload(const PemEvent& event, uint64_t nonceKey,
+                                         uint8_t out[32]);
+
+static void
+TetaGuardSignEvent(PemEvent& event, uint32_t signingKeyOwnerId, uint32_t reporterId)
+{
+    const uint64_t nonceKey = TetaGuardComputeNonceKey(event);
+    uint8_t authPayload[32];
+    const size_t authLen = TetaGuardBuildAuthPayload(event, nonceKey, authPayload);
+    uint8_t signingKey[SESSION_KEY_LEN];
+    CryptoGetPairwiseSessionKey(signingKeyOwnerId, reporterId, signingKey);
+    TetaGuardComputeHmac(signingKey, SESSION_KEY_LEN, authPayload, authLen, event.message_mac);
 }
 
 // Constant-time compare — prevents timing side-channel (mirrors hmac_filter.cc's
@@ -420,49 +450,37 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // fold it into m' = m‖τs‖nonce (Eq. 3.49). The novelty CHECK against
     // state.nonce_cache still happens at Step 3, in its original position —
     // this only moves the VALUE computation earlier, no behaviour change there.
-    const uint32_t ts_slot   = (uint32_t)(event.sender_timestamp * 10.0 + 0.5);
-    const uint32_t type_bits = (uint32_t)event.type;
-    const uint32_t link_hash = event.link_src_id * 1000003u ^ event.link_dst_id;
-    const uint64_t nonce_key = ((uint64_t)event.claimed_sender_id << 32)
-                             | ((uint64_t)(ts_slot   & 0x3FFFu) << 18)
-                             | ((uint64_t)(type_bits & 0x7u)    << 15)
-                             | ((uint64_t)(link_hash & 0x7FFFu));
+    // Factored into TetaGuardComputeNonceKey() so emission-time signing
+    // (TetaGuardSignEvent) derives the identical value.
+    const uint64_t nonce_key = TetaGuardComputeNonceKey(event);
 
-    // ── Step 1 — Eq. 3.15: MAC_exp = HMAC-SHA256(K_Vi, m') =?= MAC_received ──
-    // Real HMAC-SHA256 computation (Gap 9 fix), not a ground-truth identity
-    // shortcut. K_Vi is the CLAIMED sender's session key (the verifier
-    // recomputes the tag it expects from Vi); MAC_received is simulated as
-    // HMAC-SHA256 under the PHYSICAL sender's own key (what the actual
-    // transmitter would have produced, whether or not it holds Vi's key).
-    // When physical_sender_id == claimed_sender_id, both HMACs use the SAME
-    // key over the SAME m' → deterministically equal → PASS. When they
-    // differ, different 256-bit keys over the same message → HMAC-SHA256
-    // output differs with overwhelming probability → FAIL. This reproduces
-    // Eq. 3.1's identity-spoofing matrix (I_jk = 1 iff physical j claims k)
-    // via genuine cryptographic computation instead of a data-driven shortcut.
+    // ── Step 1 — Eq. 3.15: MAC_exp = HMAC-SHA256(K_claimed, m') =?= event.message_mac ──
+    // Real HMAC-SHA256 verification against a genuinely CARRIED MAC value —
+    // event.message_mac, set at emission time by TetaGuardSignEvent() using
+    // whichever key the sender actually possesses (its own honest key, or a
+    // stolen victim key for a sophisticated attacker). This recomputes the
+    // EXPECTED tag from the CLAIMED sender's pairwise key (real K_{Vi,nk},
+    // scoped to this specific verifying node) and compares it against the
+    // carried value — physical_sender_id plays no role in this comparison
+    // at all, matching the fact that it isn't something a real attacker can
+    // forge (it's ground truth: who actually transmitted this packet). A
+    // sender who signed with the wrong key (its own, while claiming to be
+    // someone else) produces a mismatching tag; a sender who genuinely holds
+    // the claimed identity's key (honestly, or via real key exfiltration)
+    // produces a matching one — the same accept/reject outcome the previous
+    // physical-vs-claimed key comparison produced, now via a literal
+    // forged-vs-genuine MAC comparison instead of an identity-equality proxy.
     //
     // Eq. 3.26: Verify_agg(σ_agg, PK_agg) = 0 when attacker holds 0 key shares
     // — handled separately below (Step 1c, real Dilithium5 threshold sigs).
-    //
-    // Catches:
-    //   BSHH-S1/S2 : attacker (physical) impersonates victim (claimed)
-    //   TTW-S2      : malicious RSU (physical) claims topology from vehicle (claimed)
-    //
-    // Does NOT catch:
-    //   TTW-S1 : attacker replays its OWN stored observation (physical == claimed == V0)
-    //            → caught by Step 2 (freshness) and Step 3 (nonce replay) below
-    //   ME-S1/S2 : echo reporters claim their own identity (physical == claimed == V3)
-    //              → caught by Eq. 3.29 location-binding check below
     {
         uint8_t authPayload[32];
         const size_t authLen = TetaGuardBuildAuthPayload(event, nonce_key, authPayload);
-        uint8_t keyClaimed[SESSION_KEY_LEN], keyPhysical[SESSION_KEY_LEN];
-        TetaGuardGetSessionKey(event.claimed_sender_id, keyClaimed);
-        TetaGuardGetSessionKey(event.physical_sender_id, keyPhysical);
-        uint8_t macExp[HMAC_SHA256_LEN], macReceived[HMAC_SHA256_LEN];
+        uint8_t keyClaimed[SESSION_KEY_LEN];
+        CryptoGetPairwiseSessionKey(event.claimed_sender_id, reporter_id, keyClaimed);
+        uint8_t macExp[HMAC_SHA256_LEN];
         TetaGuardComputeHmac(keyClaimed, SESSION_KEY_LEN, authPayload, authLen, macExp);
-        TetaGuardComputeHmac(keyPhysical, SESSION_KEY_LEN, authPayload, authLen, macReceived);
-        if (!TetaGuardCtMemcmp(macExp, macReceived, HMAC_SHA256_LEN))
+        if (!TetaGuardCtMemcmp(macExp, event.message_mac, HMAC_SHA256_LEN))
         {
             tg_crypto_drop_mac++;
             return false;

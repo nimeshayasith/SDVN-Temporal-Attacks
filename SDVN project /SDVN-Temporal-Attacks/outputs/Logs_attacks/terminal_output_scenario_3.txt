@@ -8,7 +8,7 @@ Solution at controller cleared
 SCENARIO 03 - TTW-S3 ATTACK CONFIGURED
 Attacker      : 1 malicious controller(s) / 4 total
 Poisoned pairs: 1 / 10
-  V20 <-> V19  (real break at t=18.5s)
+  V5 <-> V22  (real break at t=13.1s)
 Timeline (Option B — real SUMO trajectories decide the break):
   t=10s     : Legit updates -> controller, stores stale
   [per-pair]: Physical link breaks whenever that pair's real SUMO trajectory naturally exceeds 300 m
@@ -33,23 +33,23 @@ Timeline (Option B — real SUMO trajectories decide the break):
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TTW-S3][t=10.000]  V20 --topo update--> Controller  <V20 sees V19, t=10.000>  ACCEPTED
-[TTW-S3][t=10.000]  V19 --topo update--> Controller  <V19 sees V20, t=10.000>  ACCEPTED
-[TTW-S3][t=10.100]  Controller keeps stale copy  <V20 sees V19, t=10.000>  (internal replay at t=20.500)
-[TTW-S3][t=20.500]  Controller --TIMESTAMP FORGE + REINSERTION--> own table  <V20 sees V19, t=20.500>  (stored=10.000)  TABLE POISONED  *** ATTACK COMPLETE ***
+[TTW-S3][t=10.000]  V5 --topo update--> Controller  <V5 sees V22, t=10.000>  ACCEPTED
+[TTW-S3][t=10.000]  V22 --topo update--> Controller  <V22 sees V5, t=10.000>  ACCEPTED
+[TTW-S3][t=10.100]  Controller keeps stale copy  <V5 sees V22, t=10.000>  (internal replay at t=15.100)
+[TTW-S3][t=15.100]  Controller --TIMESTAMP FORGE + REINSERTION--> own table  <V5 sees V22, t=15.100>  (stored=10.000)  TABLE POISONED  *** ATTACK COMPLETE ***
 
 [CRYPTO] crypto_latency_sumo.csv written    (5 events)
 [CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=0
 [TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[TGN] DIVERGENCE(phantom): controller has V20<->V19 (t=20.500) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V5<->V22 (t=15.100) not in E_t^trusted
 [TGN] Eq.3.45 δ=1 (phantom=1 stale=0 missed=0)  Eq.3.46 δ_thresh=15 (raw=13.20)
 [TGN] 0 < δ ≤ δ_thresh → within propagation-delay tolerance; no controller-origin alert
-[CryptoFilter] 7 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 1 alert(s) → tgn_alerts.json
-[TGN] beacon_evidence.csv written: 2 observation(s)
+[TGN] beacon_evidence.csv written: 1 observation(s)
 [TGN] ctrl_topo.json written: 2 link(s)
 [TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
 
@@ -77,10 +77,10 @@ Timeline (Option B — real SUMO trajectories decide the break):
 Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
-  Events processed: 7
-  Avg wall-clock time: 2.7 ms
-  Max wall-clock time: 4 ms
-  Events exceeding budget: 0 / 7
+  Events processed: 6
+  Avg wall-clock time: 2.8 ms
+  Max wall-clock time: 3.7 ms
+  Events exceeding budget: 0 / 6
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 0
   Avg wall-clock time: 0 ms
@@ -93,8 +93,8 @@ Full pipeline (detect+mitigate combined, when mitigation fired):
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 2
-  Avg wall-clock time: 0.07 ms
-  Max wall-clock time: 0.12 ms
+  Avg wall-clock time: 0.084 ms
+  Max wall-clock time: 0.15 ms
   Calls exceeding budget: 0 / 2
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
@@ -122,7 +122,7 @@ LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls exceeding budget: 0 / 0
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.07) + beacon-crypto(0) + rsu-forward(0) + detect(2.7) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 2.8 ms
+  beacon-send(0.084) + beacon-crypto(0) + rsu-forward(0) + detect(2.8) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 2.9 ms
   -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -134,10 +134,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=1e+02 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.28 ms
-  Max tick wall-clock time: 1.8 ms
+  Avg tick wall-clock time: 0.27 ms
+  Max tick wall-clock time: 0.3 ms
   Ticks exceeding 1e+02 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.28) + beacon-send(0.07) + beacon-crypto(0) + rsu-forward(0) + detect(2.7) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 3.1 ms
+  neighborhood(0.27) + beacon-send(0.084) + beacon-crypto(0) + rsu-forward(0) + detect(2.8) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 3.2 ms
   -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
