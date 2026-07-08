@@ -207,6 +207,27 @@ uint32_t N_RSUs        = 64;
 uint32_t N_Vehicles    = 200;
 uint32_t N_Controllers = 4;  // 4 SDN controllers in the distributed control plane; blockchain handles reassignment if one is malicious
 
+// ── Fast test-network mode (--test_network=1) ────────────────────────────────
+// Forces the SUMO trace loader to use mobility/test_network_20veh.tcl — a
+// synthetic, generated (not real SUMO) trace of 10 vehicle pairs, each pair
+// starting 50m apart (well within TTW_COMM_RANGE=300m) at one of the RSU
+// grid's first 10 cell positions (so an RSU-family scenario has an RSU right
+// there), stationary until t=10 (HELLO time), then moving directly apart at
+// 15 m/s each from t=10 — every pair crosses the 300m natural-break threshold
+// at a fixed, predictable ~t=18.3s, well inside every scenario's search
+// window. Different pairs are placed far enough apart (one per RSU grid
+// cell, ~270-560m apart) that they are never "in range at hello" with each
+// other, so TtwFindNaturalBreakPairs's random attacker/victim search always
+// resolves each attacker to its own designated partner regardless of which
+// vehicles get randomly selected as attackers for a given attack_percentage.
+// This exists purely so all 12 scenarios can be smoke-tested on a small,
+// fast (20-vehicle) network without the real 200-vehicle Colombo trace's
+// natural variance in whether any given pair happens to separate — it does
+// NOT change any detection/mitigation/crypto logic, only which trace file
+// is loaded, via the exact same trace-loading code path as any real run.
+// Use with --N_Vehicles=20 --N_RSUs=10 (or fewer) --N_Controllers=4.
+uint32_t test_network = 0;
+
 const int flows = 2;
 
 int routing_algorithm = 4;
@@ -6342,6 +6363,31 @@ static void TTW_ActivateReplay_S1()
 // ME-S2's "sophisticated" mode is a DIFFERENT mechanism (GPS/location-binding
 // spoofing, Eqs. 3.27-3.29 — the RSU fabricates ITS OWN reported position,
 // not a stolen vehicle identity) and does not use this helper.
+//
+// Decide basic vs sophisticated for the three malicious-RSU scenarios (TTW-S2,
+// BSHH-S2, ME-S2). Real runs keep the TRUE random roll (g_attacker_sophistication_prob,
+// default 0.5) — with the full 200-vehicle network's attacker count, that gives
+// good statistical coverage of both branches. The small test_network (10 pairs,
+// often only 1-2 malicious RSUs per scenario) doesn't have enough trials for
+// that: with so few coin-flips, a single test run can easily land all-basic or
+// all-sophisticated by chance, and — since NS-3 uses a fixed default RNG seed
+// unless --RngRun is varied — would deterministically repeat that same
+// incomplete coverage on every subsequent run of the same command. In
+// test-network mode this alternates deterministically by discriminator (the
+// RSU's ns-3 node id) instead, so a single test run reliably exercises BOTH
+// branches regardless of how many malicious RSUs get selected.
+static bool DecideRsuSophistication(uint32_t discriminator)
+{
+    // Only override in the ambiguous default case. An explicit extreme
+    // (--attacker_sophistication=0 or =1) is an unambiguous request for
+    // "always basic" / "always sophisticated" — honor it exactly, in test
+    // mode or not, rather than silently overriding it with alternation.
+    if (test_network == 1 &&
+        g_attacker_sophistication_prob > 0.0 && g_attacker_sophistication_prob < 1.0)
+        return (discriminator % 2) == 0;
+    return (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+}
+
 static std::string TtwRsuKeyExfiltrationNarrative(const std::string& attackTag,
                                                    uint32_t victim_id, uint32_t rsu_id,
                                                    double t)
@@ -6382,7 +6428,7 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     //   routes it through the threshold-sig gate (Eq. 3.26) rather than the
     //   simple identity check; it is caught there because the RSU holds no
     //   valid signed report from V1 for this (forged-fresh) claim.
-    const bool ttw_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const bool ttw_s2_sophisticated = DecideRsuSophistication(rsu_id);
     const uint32_t ttw_s2_phys = ttw_s2_sophisticated ? v1_id : rsu_id;
     double _ts2 = now2;
     // Explicit narrated cause for the sophisticated bypass (see
@@ -7609,7 +7655,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     //   (physical=claimed=victim_id) + fresh timestamp → Steps 1,2,3 pass → LW+TGN.
     // Basic RSU: identity mismatch (physical=rsu ≠ claimed=victim)
     //   → Step 1 (Eq. 3.15 MAC) drops at Stage-0.
-    const bool bshh_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const bool bshh_s2_sophisticated = DecideRsuSophistication(rsu_id);
     const uint32_t bshh_s2_phys = bshh_s2_sophisticated ? victim_id : rsu_id;
     const double bshh_s2_ts     = bshh_s2_sophisticated ? now : stored_time;
     // Explicit narrated cause for the sophisticated bypass (see
@@ -9285,7 +9331,7 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
     //   regardless of the v1-v2 separation.
     // Basic RSU: uses its own actual position as the reporter position.
     //   If RSU is out of range of the link → Step 1b locbind drops at Stage-0.
-    const bool me_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
+    const bool me_s2_sophisticated = DecideRsuSophistication(rsu_id);
     const Vector me_s2_spoofPos = [&]() -> Vector {
         const double dToV1 = std::sqrt(std::pow(rsuPos.x - v1Pos.x, 2.0) + std::pow(rsuPos.y - v1Pos.y, 2.0));
         const double dToV2 = std::sqrt(std::pow(rsuPos.x - v2Pos.x, 2.0) + std::pow(rsuPos.y - v2Pos.y, 2.0));
@@ -148753,6 +148799,7 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("N_RSUs", "N_RSUs", N_RSUs);
     cmd.AddValue ("N_Vehicles", "N_Vehicles", N_Vehicles);
     cmd.AddValue ("N_Controllers", "Number of SDN controller nodes in the distributed control plane (default 4)", N_Controllers);
+    cmd.AddValue ("test_network", "Use the small synthetic test network (mobility/test_network_20veh.tcl, 10 vehicle pairs guaranteed to naturally separate) instead of the real trace, for fast smoke-testing all 12 scenarios. Use with --N_Vehicles=20 --N_RSUs<=10. Default 0 (off, real trace).", test_network);
     cmd.AddValue ("data_transmission_frequency", "data_transmission_frequency", data_transmission_frequency);
     cmd.AddValue ("link_lifetime_threshold", "link_lifetime_threshold", link_lifetime_threshold);
     cmd.AddValue ("simTime", "simTime", simTime);
@@ -149648,8 +149695,20 @@ static int RoutingMain(int argc, char *argv[])
 	  }
    }
 
+  // Fast test-network override — replaces whichever trace the switch above
+  // picked with the synthetic 20-vehicle/10-pair trace (see test_network's
+  // declaration comment near N_Controllers). Deliberately overrides AFTER
+  // the normal selection logic runs, so it always wins regardless of
+  // maxspeed/mobility_scenario, and touches nothing else in the mobility
+  // pipeline below — the loader that reads trace_file has no idea whether
+  // the file is real SUMO output or this synthetic one.
+  if (test_network == 1)
+  {
+      trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/test_network_20veh.tcl";
+      std::cout << "[TEST-NETWORK] Using synthetic 20-vehicle/10-pair test trace "
+                   "(--test_network=1) instead of the real SUMO trace.\n";
+  }
 
-  
   //Ns2MobilityHelper vehicle_mobility  = Ns2MobilityHelper (trace_file);
   
  
