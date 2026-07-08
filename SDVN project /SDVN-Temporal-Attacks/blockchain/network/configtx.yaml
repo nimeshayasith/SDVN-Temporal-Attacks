@@ -221,3 +221,24 @@ Profiles:
     # channel not supported" if it's present. configtxgen already warned
     # about this ("'Consortiums' should be nil") when the block generated
     # successfully but silently included it anyway.
+
+  # TetaChannelNoRSU: second application channel, same org/orderers as
+  # TetaChannel, but with its own independent ledger. Used exclusively to
+  # bootstrap all 8 peers (rsu1-5 + obu1-3) as Tier-2 OBU (RegisterOBUPeer,
+  # tau0=0.10) for no-RSU scenario testing (np=8, Eq. 3.40-3.41), without
+  # touching TetaChannel's existing Tier-1 RSU trust records. See
+  # blockchain/NORSU_CHANNEL_PLAN.md.
+  TetaChannelNoRSU:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *TetaGuardOrg
+      Capabilities:
+        <<: *ApplicationCapabilities

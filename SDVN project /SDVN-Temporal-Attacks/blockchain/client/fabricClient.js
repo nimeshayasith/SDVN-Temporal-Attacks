@@ -62,7 +62,8 @@ async function submitTransactionWithRetry(contract, txName, ...args) {
  * for a script that runs once and exits; a persistent server should not pay
  * that connection cost on every alert).
  */
-async function connectContract(trustedNodeID) {
+async function connectContract(trustedNodeID, channelName) {
+    channelName = channelName || CHANNEL;
     if (!fs.existsSync(CONN_PROFILE)) {
         throw new Error(
             `Connection profile not found: ${CONN_PROFILE}\n` +
@@ -114,12 +115,12 @@ async function connectContract(trustedNodeID) {
         }
     });
 
-    const network  = await gateway.getNetwork(CHANNEL);
+    const network  = await gateway.getNetwork(channelName);
     const contract = network.getContract(CHAINCODE);
     return { gateway, contract, channelPeers: connProfileRaw.channels
-        && connProfileRaw.channels[CHANNEL]
-        && connProfileRaw.channels[CHANNEL].peers
-        ? Object.keys(connProfileRaw.channels[CHANNEL].peers)
+        && connProfileRaw.channels[channelName]
+        && connProfileRaw.channels[channelName].peers
+        ? Object.keys(connProfileRaw.channels[channelName].peers)
         : [] };
 }
 
@@ -172,7 +173,18 @@ const RSU_PEERS_DEFAULT = [
     'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
     'peer0.rsu5.tetaguard.net'
 ];
+// Table 3.5 / Eq. 3.40-3.41: np=8 active peer slots for a pure no-RSU
+// deployment. All 8 physical peers (rsu1-5 + obu1-3) are registered Tier-2
+// OBU on teta-channel-norsu (see bootstrap_norsu.sh /
+// blockchain/NORSU_CHANNEL_PLAN.md) — using only obu1-3 here would undersize
+// the eligible pool below np and never satisfy the paper's own bootstrap
+// admission condition (>= np=8 eligible OBUs). This list is specifically for
+// the norsu channel's Mitigate calls; teta-channel's RSU_PEERS_DEFAULT above
+// is unaffected.
 const OBU_PEERS_DEFAULT = [
+    'peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
+    'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
+    'peer0.rsu5.tetaguard.net',
     'peer0.obu1.tetaguard.net', 'peer0.obu2.tetaguard.net',
     'peer0.obu3.tetaguard.net'
 ];
