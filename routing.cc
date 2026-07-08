@@ -1763,13 +1763,16 @@ struct AblationFlags {
 };
 static AblationFlags g_abl;
 
-// ── Continuous mobility-derived neighborhood beaconing (opt-in, default off) ──
+// ── Continuous mobility-derived neighborhood beaconing (default ON) ─────────
 // Feeds only g_rsu_beacon_log (ME's lambda_hat/rho_max/delta_max) and TGN's
 // beacon-count window via PemEmitNeighborObservation/TGN_ProcessNeighborObservationInline
 // — never ns.event_window, tp/fp/fn/tn counters, or pem_event_log.csv. See
 // PemNeighborhoodDiscoveryTick (near PemEmitVehicleBeacon) for the periodic tick
-// this flag arms. Default false = byte-identical to prior behavior.
-static bool g_enable_neighborhood_beaconing = false;
+// this flag arms. Was default-off (byte-identical to prior behavior) during
+// initial validation; now default ON per explicit instruction — pass
+// --enable_neighborhood_beaconing=0 to get the old byte-identical behavior
+// back for a specific run/comparison.
+static bool g_enable_neighborhood_beaconing = true;
 
 // ── Attacker sophistication model (S1/S2 scenarios) ───────────────────────────
 // Each attack-injection event independently rolls this probability.
@@ -6284,6 +6287,44 @@ static void TTW_ActivateReplay_S1()
 }
 
 
+// ── Explicit key-exfiltration narrative (malicious-RSU "sophisticated" mode) ──
+// Used by TTW-S2 and BSHH-S2 only — both model the SAME real-crypto mechanism:
+// a colluding vehicle voluntarily hands its full session key (K_{Vi,nk}, used
+// for HMAC/Eq. 3.15) AND its long-term Dilithium signing key (SK_Vi, used for
+// any individually-signed report) to the malicious RSU. That handoff — not an
+// unexplained probability draw — is what makes the RSU's subsequent forged
+// message cryptographically indistinguishable from the victim's own genuine
+// self-report: Step 1's MAC recompute uses the SAME real key on both sides
+// (claimed and physical), so it passes by construction, not by a simulation
+// shortcut. This is a stronger assumption than session-key theft alone (the
+// architecture deliberately keeps K_{Vi,nk} and SK_Vi on separate credential
+// layers, e.g. SK_Vi is meant to be HSM/secure-element-bound) — both being
+// compromised together is the "sophisticated" threat model for these two
+// scenarios specifically, distinct from a basic RSU relaying under its own
+// identity with no stolen credentials (which correctly fails Step 1's real
+// HMAC mismatch and is dropped at Stage-0 — no fix needed there).
+// The colluding vehicle itself is assumed complicit and is NOT separately
+// flagged/detected; only the RSU is treated as the attacker for mitigation
+// (PemApplyMitigation is always called with rsu_id, never victim_id).
+// ME-S2's "sophisticated" mode is a DIFFERENT mechanism (GPS/location-binding
+// spoofing, Eqs. 3.27-3.29 — the RSU fabricates ITS OWN reported position,
+// not a stolen vehicle identity) and does not use this helper.
+static std::string TtwRsuKeyExfiltrationNarrative(const std::string& attackTag,
+                                                   uint32_t victim_id, uint32_t rsu_id,
+                                                   double t)
+{
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(3);
+    ss << "[t=" << t << "]  [KEY-EXFIL] " << attackTag << " sophistication: "
+       << "V" << victim_id << " (complicit) -> RSU V" << rsu_id
+       << " : session_key K_{V" << victim_id << ",nk} + private signing key SK_V"
+       << victim_id << " handed over (collusion)\n"
+       << "  RSU now holds V" << victim_id << "'s real credentials -> can produce "
+       << "messages cryptographically indistinguishable from V" << victim_id
+       << "'s own genuine self-report\n";
+    return ss.str();
+}
+
 // =============================================================================
 // TTW-S2: MALICIOUS RSU — attack_scenario == 2
 // =============================================================================
@@ -6311,11 +6352,22 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     const bool ttw_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
     const uint32_t ttw_s2_phys = ttw_s2_sophisticated ? v1_id : rsu_id;
     double _ts2 = now2;
+    // Explicit narrated cause for the sophisticated bypass (see
+    // TtwRsuKeyExfiltrationNarrative's comment above) — replaces the old bare
+    // coin-flip-decides-pass/fail behavior with a logged collusion event.
+    if (ttw_s2_sophisticated) {
+        ttws2_log << TtwRsuKeyExfiltrationNarrative("TTW-S2", v1_id, rsu_id, now2);
+    }
     ttws2_log << "[t=" << now2 << "]  TTW-S2 RSU attacker  forged fresh ts=" << now2
               << "  identity: "
               << (ttw_s2_sophisticated
-                  ? "SOPHISTICATED — forges V1 identity → Stage-0 BYPASSED by construction → LW+TGN\n"
-                  : "BASIC — relays under own identity (RSU≠V1) → routed to threshold-sig gate (Eq. 3.26)\n");
+                  ? "SOPHISTICATED [key-exfiltration] — RSU holds V1's real credentials, forges V1 identity -> Stage-0 BYPASSED (genuinely correct MAC) -> LW+TGN\n"
+                  : "BASIC [no keys held] — relays under own identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0\n");
+    std::cout << std::fixed << std::setprecision(3)
+              << "[TTW-S2][t=" << now2 << "]  Sophistication: "
+              << (ttw_s2_sophisticated
+                  ? "SOPHISTICATED (key-exfiltration) -> LW+TGN"
+                  : "BASIC (no keys held) -> Stage-0 drop") << "\n";
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,
@@ -7533,15 +7585,25 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     const bool bshh_s2_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
     const uint32_t bshh_s2_phys = bshh_s2_sophisticated ? victim_id : rsu_id;
     const double bshh_s2_ts     = bshh_s2_sophisticated ? now : stored_time;
+    // Explicit narrated cause for the sophisticated bypass (see
+    // TtwRsuKeyExfiltrationNarrative's comment, defined near TTWS2_RunDetection)
+    // — replaces the old bare coin-flip-decides-pass/fail behavior with a
+    // logged collusion event, same mechanism as TTW-S2 (key theft, not GPS
+    // spoofing like ME-S2).
+    if (bshh_s2_sophisticated) {
+        bshh_s2_pair_logs[rsu_id] += TtwRsuKeyExfiltrationNarrative("BSHH-S2", victim_id, rsu_id, now);
+    }
     bshh_s2_pair_logs[rsu_id] += (bshh_s2_sophisticated
-        ? "  Sophistication: SOPHISTICATED — RSU forges victim identity + fresh ts → Stage-0 BYPASSED → LW+TGN\n"
-        : "  Sophistication: BASIC — RSU identity mismatch → DROPPED at Stage-0 (Eq. 3.15 MAC)\n");
+        ? "  Sophistication: SOPHISTICATED [key-exfiltration] — RSU holds victim's real credentials, forges victim identity + fresh ts -> Stage-0 BYPASSED (genuinely correct MAC) -> LW+TGN\n"
+        : "  Sophistication: BASIC [no keys held] — RSU identity mismatch -> Step 1 MAC genuinely fails -> DROPPED at Stage-0 (Eq. 3.15)\n");
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S2][t=" << now << "]  " << rsuLabel
               << " --REPLAY old heartbeat--> Controller"
               << "  Heartbeat(physical=V" << bshh_s2_phys << ", claimed=" << victimLabel
               << ", t=" << bshh_s2_ts << ")"
-              << (bshh_s2_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
+              << (bshh_s2_sophisticated
+                      ? " [SOPHISTICATED (key-exfiltration)->LW+TGN]"
+                      : " [BASIC (no keys held)->Stage-0 drop]")
               << "  *** ATTACK COMPLETE ***" << std::endl;
     PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true);
     AttackSendRSUToController(rsu_id);
@@ -9181,6 +9243,14 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         if (m) v2Pos = m->GetPosition();
     }
     // Sophistication roll — ME-S2.
+    // IMPORTANT — this is a DIFFERENT sophistication mechanism from TTW-S2/
+    // BSHH-S2's key-exfiltration model (see TtwRsuKeyExfiltrationNarrative's
+    // comment near TTWS2_RunDetection). ME-S2 does NOT need a colluding
+    // vehicle's stolen keys: the RSU is a legitimate aggregation point that
+    // already legitimately holds real signed reports from vehicles as part of
+    // its normal (non-malicious) role, and "sophistication" here means
+    // fabricating its OWN reported GPS position (a GPS-spoofing attack) to
+    // pass the location-binding gate, not stealing anyone's identity or keys.
     // Sophisticated RSU: forges the claimed-reporter's position to appear near
     //   whichever single link endpoint (v1 or v2) is nearest the RSU's own real
     //   position, so TetaGuardLocBindVerify's haversine-to-nearest-endpoint gate
@@ -9212,10 +9282,12 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
     const Vector me_s2_reportPos = me_s2_sophisticated ? me_s2_spoofPos : rsuPos;
     me_log << "[t=" << now << "]  ME-S2 RSU attacker sophistication: "
            << (me_s2_sophisticated
-               ? "SOPHISTICATED — forged near-link reporter position → Stage-0 locbind BYPASSED → LW+TGN\n"
-               : "BASIC — actual RSU position used → may be DROPPED at Stage-0 locbind (Eqs. 3.27-3.29)\n");
+               ? "SOPHISTICATED [GPS-spoofing, not key-exfiltration] — forged near-link reporter position -> Stage-0 locbind BYPASSED -> LW+TGN\n"
+               : "BASIC [own real position reported] — actual RSU position used -> may be DROPPED at Stage-0 locbind (Eqs. 3.27-3.29)\n");
     std::cout << "[ME-S2][t=" << now << "]  Sophistication: "
-              << (me_s2_sophisticated ? "SOPHISTICATED→LW+TGN" : "BASIC→Stage-0 drop") << "\n";
+              << (me_s2_sophisticated
+                      ? "SOPHISTICATED (GPS-spoofing)->LW+TGN"
+                      : "BASIC (own real position)->Stage-0 drop") << "\n";
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v3, rsu_id,
                  v1_id, v2_id, t, now, me_s2_reportPos, v1Pos, v2Pos, true);
     if (s2_have_v4)
