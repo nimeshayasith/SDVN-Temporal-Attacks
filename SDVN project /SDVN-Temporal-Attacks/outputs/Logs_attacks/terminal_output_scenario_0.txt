@@ -1,6 +1,6 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 28611 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 10414 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/00_Baseline_No_Attack.xml
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.26-3.28).
@@ -12,13 +12,13 @@ Solution at controller cleared
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 average_latency 0 ms
 [PDR] Channel-wise: Ch172(133.305m)=100.0% Ch174(133.3m)=100.0% Ch176(133.3m)=100.0% Ch178(282.2m)=100.0% Ch180(67.4m)=100.0% Ch182(67.4m)=100.0% Ch184(214.8m)=100.0% | Avg=100.00%
@@ -1727,3 +1727,54 @@ written to file successfully
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
+
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.00 ms)
+----------------------------------------------------------
+Detect stage (crypto+LW+TGN, PemEmitEvent):
+  Events processed: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+  Events exceeding budget: 0 / 0
+Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
+  Mitigations applied: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+Full pipeline (detect+mitigate combined, when mitigation fired):
+  Triggered events: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+  Events exceeding 100.00 ms budget: 0 / 0  -- no mitigation was triggered this run
+
+Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
+  Calls: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+  Calls exceeding budget: 0 / 0
+
+RSU-forward (CSMA dispatch, AttackSendRSUToController):
+  Calls: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+  Calls exceeding budget: 0 / 0
+
+Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
+  Calls: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+  Calls exceeding budget: 0 / 0
+
+Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
+  Calls: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+  Calls exceeding budget: 0 / 0
+
+LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
+  Calls: 0
+  Avg wall-clock time: 0.00 ms
+  Max wall-clock time: 0.00 ms
+  Calls exceeding budget: 0 / 0
+
+Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
+  beacon-send(0.00) + beacon-crypto(0.00) + rsu-forward(0.00) + detect(0.00) + detection-crypto(0.00) + mitigate(0.00) + lkh-crypto(0.00) = 0.00 ms
+  -- approximate combined estimate stays within the 100.00 ms beacon-interval budget (T_b)

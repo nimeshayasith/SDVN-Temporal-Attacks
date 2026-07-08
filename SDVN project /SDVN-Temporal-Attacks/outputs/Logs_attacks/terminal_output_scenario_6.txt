@@ -1,11 +1,11 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 62367 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 316389 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/06_BSHH_S2_Malicious_RSU.xml
 
 ========================================
 SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED
-Malicious RSUs : 1 / 1
+Malicious RSUs : 1 / 64
 Victim pairs   : 1
 Stored HB time : t=5 (from legitimate exchange)
 Replay timing  : Option B — 2s after each pair's real SUMO break
@@ -21,34 +21,35 @@ Replay timing  : Option B — 2s after each pair's real SUMO break
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=40)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S2][t=2.000]  V5(ns3=10) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V5(ns3=10), t=2.000)  ACCEPTED
-[BSHH-S2][t=2.000]  V35(ns3=40) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V35(ns3=40), t=2.000)  ACCEPTED
-Current neighbor size is 0Received packet from 45 of size 12packet timestamp 2.000s with delay 1ms
-[BSHH-S2][t=2.100]  RSU0(ns3=45) stored EVEN-OLDER heartbeat  Heartbeat(V5(ns3=10), t=2.000)  (second duplicate for replay at t=10)
-[BSHH-S2][t=5.000]  V5(ns3=10) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V5(ns3=10), t=5.000)  ACCEPTED
-[BSHH-S2][t=5.000]  V35(ns3=40) --DSRC--> RSU0(ns3=45) --CSMA--> Controller  Heartbeat(V35(ns3=40), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 45 of size 12packet timestamp 5.000s with delay 1ms
-[BSHH-S2][t=5.100]  RSU0(ns3=45) stored old heartbeat  Heartbeat(V5(ns3=10), t=5.000)  (replay at t=10)
-[BSHH-S2][t=80.800]  RSU0(ns3=45) SUPPRESSES genuine current heartbeat from V5(ns3=10) (t=80.800)  — never forwarded
-[BSHH-S2][t=80.900]  RSU0(ns3=45) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V45, claimed=V5(ns3=10), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S2][t=80.900]  RSU0(ns3=45) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V45, claimed=V5(ns3=10), t=2.000)
-[BSHH-S2][t=80.900]  FS-MITIGATE gate: PBFT n=1 f=0 q_needed=1 -> FAIL  |  VERIFY_THRESHOLD_SIG 40/40 >= t=21 -> PASS
-[BSHH-S2][t=80.900]  FS-MITIGATE ABORTED (gate failed)  attacker=V45
-Current neighbor size is 0Received packet from 45 of size 12packet timestamp 80.900s with delay 1ms
-Current neighbor size is 0Received packet from 45 of size 12packet timestamp 80.900s with delay 1ms
+[BSHH-S2][t=2.000]  V10(ns3=15) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V10(ns3=15), t=2.000)  ACCEPTED
+[BSHH-S2][t=2.000]  V148(ns3=153) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V148(ns3=153), t=2.000)  ACCEPTED
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 2.000s with delay 1ms
+[BSHH-S2][t=2.100]  RSU0(ns3=205) stored EVEN-OLDER heartbeat  Heartbeat(V10(ns3=15), t=2.000)  (second duplicate for replay at t=10)
+[BSHH-S2][t=5.000]  V10(ns3=15) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V10(ns3=15), t=5.000)  ACCEPTED
+[BSHH-S2][t=5.000]  V148(ns3=153) --DSRC--> RSU0(ns3=205) --CSMA--> Controller  Heartbeat(V148(ns3=153), t=5.000)  ACCEPTED
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 5.000s with delay 1ms
+[BSHH-S2][t=5.100]  RSU0(ns3=205) stored old heartbeat  Heartbeat(V10(ns3=15), t=5.000)  (replay at t=10)
+[BSHH-S2][t=32.000]  RSU0(ns3=205) SUPPRESSES genuine current heartbeat from V10(ns3=15) (t=32.000)  — never forwarded
+[BSHH-S2][t=32.100]  RSU0(ns3=205) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V205, claimed=V10(ns3=15), t=5.000) [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S2][t=32.100]  RSU0(ns3=205) --REPLAY even-older duplicate--> Controller  Heartbeat(physical=V205, claimed=V10(ns3=15), t=2.000)
+[BSHH-S2][t=32.100]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S2][t=32.100]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V205
+[Trust][t=32.100]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 32.100s with delay 1ms
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 32.100s with delay 1ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (7 events)
 [CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=18  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
 [CryptoFilter] 6 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
@@ -67,10 +68,78 @@ Current neighbor size is 0Received packet from 45 of size 12packet timestamp 80.
   Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 238.833  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 331  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  γ_init      : 232.932  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 322  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 4
   Stage-0 blocked (attacks): 2
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
+
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
+----------------------------------------------------------
+Detect stage (crypto+LW+TGN, PemEmitEvent):
+  Events processed: 8
+  Avg wall-clock time: 3.284 ms
+  Max wall-clock time: 6.096 ms
+  Events exceeding budget: 0 / 8
+Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
+  Mitigations applied: 1
+  Avg wall-clock time: 23.831 ms
+  Max wall-clock time: 23.831 ms
+Full pipeline (detect+mitigate combined, when mitigation fired):
+  Triggered events: 1
+  Avg wall-clock time: 23.836 ms
+  Max wall-clock time: 23.836 ms
+  Events exceeding 100.000 ms budget: 0 / 1  -- full pipeline stays within the T_b budget on this hardware
+
+Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
+  Calls: 4
+  Avg wall-clock time: 0.086 ms
+  Max wall-clock time: 0.147 ms
+  Calls exceeding budget: 0 / 4
+
+RSU-forward (CSMA dispatch, AttackSendRSUToController):
+  Calls: 4
+  Avg wall-clock time: 0.011 ms
+  Max wall-clock time: 0.021 ms
+  Calls exceeding budget: 0 / 4
+
+Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
+  Calls: 0
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
+  Calls exceeding budget: 0 / 0
+
+Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
+  Calls: 0
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
+  Calls exceeding budget: 0 / 0
+
+LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
+  Calls: 1
+  Avg wall-clock time: 0.770 ms
+  Max wall-clock time: 0.770 ms
+  Calls exceeding budget: 0 / 1
+
+Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
+  beacon-send(0.086) + beacon-crypto(0.000) + rsu-forward(0.011) + detect(3.284) + detection-crypto(0.000) + mitigate(23.831) + lkh-crypto(0.770) = 27.982 ms
+  -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
+
+Continuous Neighborhood Statistics
+---------------------------------
+Candidate pairs checked: 11940000
+Successful neighbor observations: 1259256
+Average neighbors/vehicle: 20.988
+Maximum neighbors observed at once: 39
+
+Real-time (wall-clock) budget check — T_b=100.000 ms:
+  Ticks executed: 300
+  Avg tick wall-clock time: 23.222 ms
+  Max tick wall-clock time: 28.240 ms
+  Ticks exceeding 100.000 ms budget: 0 / 300  -- pipeline stays within the T_b budget on this hardware
+
+Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
+  neighborhood(23.222) + beacon-send(0.086) + beacon-crypto(0.000) + rsu-forward(0.011) + detect(3.284) + detection-crypto(0.000) + mitigate(23.831) + lkh-crypto(0.770) = 51.204 ms
+  -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

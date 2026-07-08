@@ -1,12 +1,12 @@
 Solution at controller cleared
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 62367 exact position+velocity events
+[SUMO] Loaded 304 positions, scheduled 316389 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/08_BSHH_S4_Malicious_Controller_With_RSU.xml
 
 ========================================
 SCENARIO 08 - BSHH-S4 ATTACK CONFIGURED
-Malicious controllers : 1 / 4
-RSUs in path          : 1
+Malicious controllers : 0 / 4
+RSUs in path          : 0
 Stored HB time        : t=5
 Replay timing         : Option B — 2s after each pair's real SUMO break
 ========================================
@@ -21,48 +21,106 @@ Replay timing         : Option B — 2s after each pair's real SUMO break
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=40)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 40/40 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[BSHH-S4][t=5.000]  V5(ns3=10)/V35(ns3=40) --DSRC--> RSU0(ns3=45) --CSMA--> Ctrl0(ns3=0)  HB(V5(ns3=10), t=5.000)  HB(V35(ns3=40), t=5.000)  ACCEPTED
-Current neighbor size is 0Received packet from 45 of size 12packet timestamp 5.000s with delay 1ms
-[BSHH-S4][t=5.100]  Ctrl0(ns3=0) stores stale copies (from RSU aggregate)  HB(V5(ns3=10), t=5.000)  HB(V35(ns3=40), t=5.000)  (internal replay at t=10)
-[BSHH-S4][t=80.900]  Ctrl0(ns3=0) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V5(ns3=10), slot=V5(ns3=10), t=5.000)  HB(claimed=V5(ns3=10), slot=V35(ns3=40), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 
 [CRYPTO] crypto_latency_sumo.csv written    (5 events)
 [CRYPTO] crypto_latency_summary.csv written  (5 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
-[TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
-[TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 5 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 2 alert(s) → tgn_alerts.json
-[TGN] beacon_evidence.csv written: 1 observation(s)
-[TGN] ctrl_topo.json written: 0 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
+[TGN] No PEM events — all attacks blocked at Stage 0 (0 blocked). Writing summary.
 
 ========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
   Scenario  : 8 — BSHH-S4: Malicious Controller, With RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 2 / 2 / 0 / 0
-  [ctrl] TP/TN/FP/FN : 2 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
-  MCC         : 1.000
-  [comb] TP/TN/FP/FN : 2 / 2 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 1.000
-  ACR         : 100.000 %
-  Tdet        : 0.000 ms
+  TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 0 / 0 / 0
+  MCC         : 0.000
+  [comb] TP/TN/FP/FN : 0 / 0 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 0.500
+  ACR         : 0.000 %
+  Tdet        : -1.000 ms
   θ_FS        : 0.400  [fixed placeholder]
-  θ_MCC_opt   : 0.119  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 238.833  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 331  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 4
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 232.932  [Eq. 3.21 init; validation-tuned hyperparameter]
+  W_max       : 322  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 0
   Stage-0 blocked (attacks): 0
   |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
+
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100 ms)
+----------------------------------------------------------
+Detect stage (crypto+LW+TGN, PemEmitEvent):
+  Events processed: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Events exceeding budget: 0 / 0
+Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
+  Mitigations applied: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+Full pipeline (detect+mitigate combined, when mitigation fired):
+  Triggered events: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Events exceeding 100 ms budget: 0 / 0  -- no mitigation was triggered this run
+
+Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
+
+RSU-forward (CSMA dispatch, AttackSendRSUToController):
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
+
+Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
+
+Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
+
+LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
+
+Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
+  beacon-send(0) + beacon-crypto(0) + rsu-forward(0) + detect(0) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 0 ms
+  -- approximate combined estimate stays within the 100 ms beacon-interval budget (T_b)
+
+Continuous Neighborhood Statistics
+---------------------------------
+Candidate pairs checked: 11940000
+Successful neighbor observations: 1259256
+Average neighbors/vehicle: 20.9876
+Maximum neighbors observed at once: 39
+
+Real-time (wall-clock) budget check — T_b=100 ms:
+  Ticks executed: 300
+  Avg tick wall-clock time: 23.2177 ms
+  Max tick wall-clock time: 28.8666 ms
+  Ticks exceeding 100 ms budget: 0 / 300  -- pipeline stays within the T_b budget on this hardware
+
+Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
+  neighborhood(23.2177) + beacon-send(0) + beacon-crypto(0) + rsu-forward(0) + detect(0) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 23.2177 ms
+  -- grand total stays within the 100 ms beacon-interval budget (T_b) on this hardware
