@@ -2168,6 +2168,20 @@ static std::set<uint32_t> pem_false_positive_nodes;
 // gives BSHH-S3 the genuine periodic presence signal Eq. 3.7 requires without
 // touching the window TTW/ME's own signatures depend on.
 static std::map<uint32_t, double> g_pem_last_beacon_time;
+// Ground-truth leak fix (threats-to-validity review) — ME-S3 (Eq. 3.11)
+// previously compared a reporter's position against event.link_src_position /
+// event.link_dst_position, which for a THIRD-PARTY ME echo reporter (V3/V4
+// claiming to witness V1<->V2) were populated from a direct GetPosition() read
+// on V1/V2 themselves: the TRUE simulator position of two other nodes, which
+// no real verifier or third-party witness could know. Real verifiers only
+// ever learn a node's position from that node's OWN broadcasts. This map
+// records each vehicle's position at the moment IT broadcasts (stamped
+// alongside g_pem_last_beacon_time below, same broadcast-medium reasoning —
+// see PemRecordBeaconEvidence's identical comment), so the ME-S3 check can
+// look up "the last position V1/V2 actually claimed for themselves" instead
+// of reading their live ground-truth position — closing the oracle without
+// losing detection power (positions barely drift within one beacon interval).
+static std::map<uint32_t, Vector> g_last_self_reported_position;
 // Tracks which physical_sender_ids have already had LKH revocation issued
 // so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
 static std::set<uint32_t> g_lkh_already_revoked;
@@ -5013,9 +5027,21 @@ PemEvaluateEvent(PemEvent& event)
         // this link exceeds Δ_max (Eq. 3.10, computed dynamically per event
         // from λ̂(t) and v_rel — see PemComputeDeltaMax) within one beacon
         // interval T_b.
-        // Non-attack topology updates refresh the mobility-consistent baseline;
-        // attack-labelled updates are compared against it so a burst of echo
-        // reporters is not hidden by updating the baseline after the first replay.
+        // Baseline refresh gate — ground-truth leak fix (threats-to-validity
+        // review): a real detector has no event.attack_label oracle to decide
+        // which update is "the attack one" before folding it into the baseline.
+        // Replaced with the structural self-report test used throughout this
+        // file (see teta_guard_filter.h's identical fix for the ME quorum
+        // witness set): the reporter IS one of the link's own two endpoints,
+        // i.e. it is asserting its own directly-observed link, not a
+        // third-party echo of a link it did not physically traverse. Only such
+        // self-reports refresh previous_path_counts; third-party reports
+        // (including in-range sophisticated echoes with valid keys) are
+        // compared against the existing baseline but never allowed to ratchet
+        // it upward themselves — otherwise a slow drip of echoes just under
+        // Δ_max each step could inflate the baseline until a real jump stops
+        // registering, which is exactly the failure mode this signature exists
+        // to catch.
         const uint32_t currentPathCount =
             PemComputeReporterInferredPathCount(event, ns);
         const double previousCount = ns.previous_path_counts[linkKey];
@@ -5028,15 +5054,35 @@ PemEvaluateEvent(PemEvent& event)
         {
             event.triggered[7] = true;
         }
-        if (!event.attack_label)
+        const bool is_self_report_me2 =
+            (event.physical_sender_id == event.link_src_id) ||
+            (event.physical_sender_id == event.link_dst_id);
+        if (is_self_report_me2)
         {
             ns.previous_path_counts[linkKey] = static_cast<double>(currentPathCount);
         }
 
+        // Ground-truth leak fix (threats-to-validity review): use each
+        // endpoint's own LAST SELF-BROADCAST position (g_last_self_reported_
+        // position, stamped only from that node's genuine beacons — see its
+        // declaration comment) instead of event.link_src_position /
+        // event.link_dst_position, which for a third-party ME reporter are a
+        // direct GetPosition() read on two other nodes' true simulator state —
+        // information no real witness could have. Falls back to the event's
+        // own field only for the (t≈0) edge case where an endpoint hasn't yet
+        // broadcast a single beacon in this run.
+        const Vector& effectiveSrcPos =
+            g_last_self_reported_position.count(event.link_src_id)
+                ? g_last_self_reported_position.at(event.link_src_id)
+                : event.link_src_position;
+        const Vector& effectiveDstPos =
+            g_last_self_reported_position.count(event.link_dst_id)
+                ? g_last_self_reported_position.at(event.link_dst_id)
+                : event.link_dst_position;
         const double distanceToSrc = PemDistance2d(event.reporter_position,
-                                                   event.link_src_position);
+                                                   effectiveSrcPos);
         const double distanceToDst = PemDistance2d(event.reporter_position,
-                                                   event.link_dst_position);
+                                                   effectiveDstPos);
         const double nearestDistance = std::min(distanceToSrc, distanceToDst);
 
         // Eq. 3.11 — ME-S3: reporter position is outside communication range of
@@ -5548,6 +5594,9 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
     // regardless of whether receiverId is in range (broadcast medium), so
     // this must happen before the range-gated early return below.
     g_pem_last_beacon_time[senderId] = Simulator::Now().GetSeconds();
+    // ME-S3 oracle fix: record senderId's own attested position at the moment
+    // it broadcasts (see g_last_self_reported_position's declaration comment).
+    g_last_self_reported_position[senderId] = senderPosition;
     // Issue 12 fix: same broadcast-medium reasoning — trusted-peer beacon
     // evidence (B_nk(t)) is recorded regardless of receiverId's range.
     PemRecordBeaconEvidence(senderId, senderPosition, Simulator::Now().GetSeconds());

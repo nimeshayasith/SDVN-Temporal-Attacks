@@ -504,13 +504,25 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // — they are never added to link_witnesses (only to link_all_reporters,
     // still done inside Step 1b itself), so an attacker still cannot inflate
     // its own quorum count.
-    if (!event.attack_label && event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
         const uint32_t me_lmin_pre = std::min(event.link_src_id, event.link_dst_id);
         const uint32_t me_lmax_pre = std::max(event.link_src_id, event.link_dst_id);
         const std::string lkey_pre =
             std::to_string(me_lmin_pre) + "_" + std::to_string(me_lmax_pre);
-        state.link_witnesses[lkey_pre].insert(event.reporter_id);
+        // Structural (not ground-truth) self-report test: the reporter IS one of
+        // the two link endpoints, i.e. it is asserting its own directly-observed
+        // link, not vouching for a link between two other nodes. That structural
+        // fact — not event.attack_label — is what makes it an immediate witness.
+        // Third-party reports (reporter differs from both endpoints) are handled
+        // in Step 1b below and only become witnesses after passing Eq. 3.29.
+        const bool is_self_report_pre =
+            (event.physical_sender_id == event.link_src_id) ||
+            (event.physical_sender_id == event.link_dst_id);
+        if (is_self_report_pre)
+        {
+            state.link_witnesses[lkey_pre].insert(event.reporter_id);
+        }
         state.link_all_reporters[lkey_pre].insert(event.reporter_id);
     }
 
@@ -563,6 +575,19 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // in routing.cc), so they are still excluded here — per Eq. 3.29's own scope,
     // external cryptographic validation does not apply when there is no external
     // message to validate.
+    //
+    // Ground-truth leak fix (threats-to-validity review): this gate's "legitimate
+    // witness" membership can no longer be decided by event.attack_label — a real
+    // verifier has no oracle telling it in advance which arriving report is "the
+    // attack one". legit_count below is fed exclusively by (a) direct self-reports
+    // (physical_sender_id IS a link endpoint, registered unconditionally in the
+    // pre-registration block above — reporting your own directly-observed link is
+    // definitionally not an echo) and (b) third-party reports that INDIVIDUALLY
+    // pass Eq. 3.29's cryptographic + spatial + RSSI gate below (TetaGuardLocBindVerify),
+    // registered into link_witnesses only after that gate succeeds (see below,
+    // post-loc-bind-verify). A sophisticated in-range echo with valid keys can still
+    // pass Eq. 3.29 and be counted — exactly the real-world failure mode Eq. 3.30's
+    // majority quorum (not per-report crypto alone) is meant to catch.
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
         event.physical_sender_id != event.link_src_id &&
         event.physical_sender_id != event.link_dst_id &&
