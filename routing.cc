@@ -1034,6 +1034,43 @@ static void CryptoGetVehicleSessionKey(uint32_t vehicle_id, uint8_t out[SESSION_
         out[j] = (uint8_t)((vehicle_id * 37u + j * 13u + 0x5Au) & 0xFFu);
 }
 
+// CryptoGetPairwiseSessionKey — real K_{Vi,nk}, genuinely scoped to the
+// (vehicle, receiving-node) pair, not just the vehicle. Previously
+// TetaGuardGetSessionKey()/CryptoGetVehicleSessionKey() returned one key per
+// vehicle regardless of which RSU/controller was verifying — meaning a
+// forged event with physical_sender_id == claimed_sender_id == victim_id
+// always passed Stage-0's Eq. 3.15 HMAC check purely from the ID match, with
+// no dependency on which node actually holds a legitimate session with that
+// vehicle. This derives the final verification key as
+// HMAC-SHA256(base_key_Vi, receiver_id) — base_key_Vi is unchanged (still
+// the real ML-KEM-1024+HQC-5-derived, or deterministic-fallback, per-vehicle
+// secret from CryptoGetVehicleSessionKey()); only the derivation step is new.
+// A key exfiltrated from vehicle Vi's session with one node does not, by
+// itself, produce a valid key for a DIFFERENT verifying node — matching how
+// real per-link session keys work. Within a single PemEvent evaluation both
+// the claimed- and physical-sender lookups use the same reporter_id (the
+// node currently verifying), so this does not change any pass/fail outcome
+// for the existing 12 attack scenarios — same-ID-twice still converges to
+// the same derived key. It only closes the gap for attacks that would try
+// to reuse a key stolen from a different link than the one being verified,
+// which none of the current 12 scenarios attempt.
+static void CryptoGetPairwiseSessionKey(uint32_t vehicle_id, uint32_t receiver_id,
+                                         uint8_t out[SESSION_KEY_LEN])
+{
+    uint8_t baseKey[SESSION_KEY_LEN];
+    CryptoGetVehicleSessionKey(vehicle_id, baseKey);
+
+    uint8_t receiverBytes[4] = {
+        (uint8_t)(receiver_id & 0xFFu),
+        (uint8_t)((receiver_id >> 8) & 0xFFu),
+        (uint8_t)((receiver_id >> 16) & 0xFFu),
+        (uint8_t)((receiver_id >> 24) & 0xFFu)
+    };
+    unsigned mac_len = SESSION_KEY_LEN;
+    HMAC(EVP_sha256(), baseKey, SESSION_KEY_LEN, receiverBytes, sizeof(receiverBytes),
+         out, &mac_len);
+}
+
 static void CryptoInitKeys()
 {
     // LKH tree is always initialised regardless of enable_crypto_latency — it is
@@ -1877,6 +1914,14 @@ struct PemEvent
     // sentinel = "caller hasn't been wired for this yet" (BSHH/ME today) —
     // those fall back to the legacy sender_timestamp-regression check there.
     uint64_t claimed_seq_no = UINT64_MAX;
+    // Eq. 3.15 HMAC — the MAC value actually "attached" to this event at
+    // emission time (TetaGuardSignEvent, .crypto_src/teta_guard_filter.h),
+    // computed with whichever key the sender genuinely possesses (its own,
+    // or — for sophisticated key-exfiltration attackers — a stolen victim
+    // key). TetaGuardCryptoFilter's Step 1 recomputes the EXPECTED mac from
+    // claimed_sender_id's key and compares against this carried value,
+    // rather than independently looking up two keys and comparing those.
+    uint8_t message_mac[HMAC_SHA256_LEN] = {};
 };
 
 uint64_t pem_true_positive = 0;
@@ -3378,11 +3423,13 @@ static void PemEmitEvent(PemEventType type,
                          const Vector& reporterPosition,
                          const Vector& linkSrcPosition,
                          const Vector& linkDstPosition,
-                         bool attackLabel);
+                         bool attackLabel,
+                         uint32_t macSignerIdOverride = UINT32_MAX);
 static void PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                                   uint32_t claimedSenderId,
                                   double senderTimestamp,
-                                  bool attackLabel);
+                                  bool attackLabel,
+                                  uint32_t macSignerIdOverride = UINT32_MAX);
 static void PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId);
 static void PemEmitVehicleHeartbeat(uint32_t senderId,
                                     uint32_t claimedSenderId,
@@ -5296,7 +5343,8 @@ PemEmitEvent(PemEventType type,
              const Vector& reporterPosition,
              const Vector& linkSrcPosition,
              const Vector& linkDstPosition,
-             bool attackLabel)
+             bool attackLabel,
+             uint32_t macSignerIdOverride)
 {
     PemStageTimer __pemDetectTimer(PemPipelineStage::kDetect);
 
@@ -5327,6 +5375,17 @@ PemEmitEvent(PemEventType type,
     event.alert_raised = false;
     event.detection_latency_ms = -1.0;
     event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;  // set by PemEvaluateEvent for topology events
+
+    // Sign the event with whichever key the sender actually possesses before
+    // Stage-0 sees it — event.message_mac is the "attached" MAC a real packet
+    // would carry. Default signs with physicalSenderId (the honest case: the
+    // true physical sender's own key). macSignerIdOverride lets a
+    // sophisticated key-exfiltration attacker sign with a genuinely stolen
+    // identity's key instead, without ever touching physical_sender_id
+    // itself (which stays ground truth — see TetaGuardSignEvent's comment).
+    TetaGuardSignEvent(event,
+        (macSignerIdOverride != UINT32_MAX) ? macSignerIdOverride : physicalSenderId,
+        reporterId);
 
     // Stage 0 — Crypto pre-filter (Algorithm 3 LW-MITIGATE, Eqs. 3.15-3.17).
     // A6 (--no_crypto=1): bypass entirely — all events pass through to Stage-1.
@@ -5375,7 +5434,8 @@ static void
 PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                       uint32_t claimedSenderId,
                       double senderTimestamp,
-                      bool attackLabel)
+                      bool attackLabel,
+                      uint32_t macSignerIdOverride)
 {
     Vector reporterPosition(0.0, 0.0, 0.0);
     Vector endpointPosition(0.0, 0.0, 0.0);
@@ -5390,7 +5450,8 @@ PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                  reporterPosition,
                  endpointPosition,
                  endpointPosition,
-                 attackLabel);
+                 attackLabel,
+                 macSignerIdOverride);
 }
 
 // ── ID-space fix ─────────────────────────────────────────────────────────────
@@ -6799,17 +6860,21 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     // and was never the threat this scenario models.
     //
     // Identity spoofing remains a genuine, separate escalation dimension for a
-    // malicious RSU (unlike TTW-S1, which has no identity dimension at all):
-    // Sophisticated RSU: compromises V1's session key → presents as V1
-    //   (physical=claimed=v1_id) → Step 1 (MAC) passes trivially, same as a
-    //   real V1 self-report → reaches LW+TGN by construction.
-    // Basic RSU: relays under its own identity (physical=rsu_id, claimed=v1_id)
-    //   — structurally identical to a legitimate RSU aggregate relay, so Stage-0
-    //   routes it through the threshold-sig gate (Eq. 3.26) rather than the
-    //   simple identity check; it is caught there because the RSU holds no
-    //   valid signed report from V1 for this (forged-fresh) claim.
+    // malicious RSU (unlike TTW-S1, which has no identity dimension at all).
+    // physical_sender_id stays rsu_id ALWAYS — the RSU is who physically
+    // transmits this event either way; that is ground truth, not something
+    // its own attack code gets to declare. What changes is which key the RSU
+    // uses to SIGN it (see PemEmitEvent's macSignerIdOverride / TetaGuardSignEvent):
+    // Sophisticated RSU: signs with V1's genuinely exfiltrated session key
+    //   (macSignerIdOverride=v1_id) → Step 1 (MAC) recomputed from claimed=V1's
+    //   pairwise key matches the carried tag → passes → reaches LW+TGN.
+    // Basic RSU: signs with its own key (default override, physicalSenderId=rsu_id)
+    //   while claiming to be V1 — the recomputed expected tag (from V1's key)
+    //   won't match a tag genuinely produced with the RSU's own key → Step 1
+    //   correctly fails → dropped at Stage-0.
     const bool ttw_s2_sophisticated = DecideRsuSophistication(rsu_id);
-    const uint32_t ttw_s2_phys = ttw_s2_sophisticated ? v1_id : rsu_id;
+    const uint32_t ttw_s2_phys = rsu_id; // ground truth — never overwritten
+    const uint32_t ttw_s2_mac_signer = ttw_s2_sophisticated ? v1_id : rsu_id;
     double _ts2 = now2;
     // Explicit narrated cause for the sophisticated bypass (see
     // TtwRsuKeyExfiltrationNarrative's comment above) — replaces the old bare
@@ -6820,8 +6885,8 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
     ttws2_log << "[t=" << now2 << "]  TTW-S2 RSU attacker  forged fresh ts=" << now2
               << "  identity: "
               << (ttw_s2_sophisticated
-                  ? "SOPHISTICATED [key-exfiltration] — RSU holds V1's real credentials, forges V1 identity -> Stage-0 BYPASSED (genuinely correct MAC) -> LW+TGN\n"
-                  : "BASIC [no keys held] — relays under own identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0\n");
+                  ? "SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN\n"
+                  : "BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0\n");
     std::cout << std::fixed << std::setprecision(3)
               << "[TTW-S2][t=" << now2 << "]  Sophistication: "
               << (ttw_s2_sophisticated
@@ -6831,7 +6896,8 @@ static void TTWS2_RunDetection(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id)
                  ttw_s2_phys, v1_id, ttw_s2_phys,
                  v1_id, v2_id,
                  _ts2,
-                 now2, v1Pos, v1Pos, v2Pos, true);
+                 now2, v1Pos, v1Pos, v2Pos, true,
+                 ttw_s2_mac_signer);
     if (pem_last_alert) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
@@ -7739,16 +7805,24 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
     bshh_s1_pair_logs[attacker_id] += ss.str();
     
     // Sophistication roll — BSHH-S1.
-    // Sophisticated attacker: has compromised victim's HMAC session key → presents
-    //   as victim (physical=claimed=victim_id) + fresh timestamp → Steps 1,2,3 pass → LW+TGN.
-    // Basic attacker: identity mismatch (physical=attacker ≠ claimed=victim)
-    //   → Step 1 (Eq. 3.15 MAC) drops at Stage-0.
+    // physical_sender_id stays attacker_id ALWAYS — the attacker vehicle is
+    // who physically transmits this heartbeat either way; that is ground
+    // truth. Timestamp forgery (bshh_s1_ts) is genuine payload content the
+    // attacker legitimately controls either way. What sophistication changes
+    // is which key signs the event (see PemEmitHeartbeatEvent's
+    // macSignerIdOverride):
+    // Sophisticated attacker: signs with victim's genuinely exfiltrated
+    //   session key + fresh timestamp → Step 1 MAC genuinely matches (via
+    //   claimed=victim's pairwise key) → Steps 1,2,3 pass → LW+TGN.
+    // Basic attacker: signs with its own key while claiming victim's identity
+    //   → Step 1 (Eq. 3.15 MAC) genuinely fails → drops at Stage-0.
     const bool bshh_s1_sophisticated = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
-    const uint32_t bshh_s1_phys = bshh_s1_sophisticated ? victim_id : attacker_id;
+    const uint32_t bshh_s1_phys = attacker_id; // ground truth — never overwritten
+    const uint32_t bshh_s1_mac_signer = bshh_s1_sophisticated ? victim_id : attacker_id;
     const double bshh_s1_ts     = bshh_s1_sophisticated ? now : stored_time;
     bshh_s1_pair_logs[attacker_id] += (bshh_s1_sophisticated
-        ? "  Sophistication: SOPHISTICATED — compromised victim key + fresh ts → Stage-0 BYPASSED → LW+TGN\n"
-        : "  Sophistication: BASIC — identity mismatch → DROPPED at Stage-0 (Eq. 3.15 MAC)\n");
+        ? "  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN\n"
+        : "  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)\n");
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S1][t=" << now << "]  V" << attacker_id
               << " --HIJACK old heartbeat--> Controller"
@@ -7756,7 +7830,7 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
               << ", t=" << bshh_s1_ts << ")  IMPERSONATION"
               << (bshh_s1_sophisticated ? " [SOPHISTICATED→LW+TGN]" : " [BASIC→Stage-0 drop]")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true);
+    PemEmitHeartbeatEvent(bshh_s1_phys, victim_id, bshh_s1_ts, true, bshh_s1_mac_signer);
 
     // Crypto latency: detection verify + freshness + LKH mitigation
     if (enable_crypto_latency == 3 && g_crypto_ready) {
@@ -8031,12 +8105,18 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
     NS_LOG_INFO("[BSHH-S2] t=" << now << "s  " << rsuLabel
                 << " replayed old HB claiming " << victimLabel);
     // Sophistication roll — BSHH-S2.
-    // Sophisticated RSU: compromises victim's HMAC session key → presents as victim
-    //   (physical=claimed=victim_id) + fresh timestamp → Steps 1,2,3 pass → LW+TGN.
-    // Basic RSU: identity mismatch (physical=rsu ≠ claimed=victim)
-    //   → Step 1 (Eq. 3.15 MAC) drops at Stage-0.
+    // physical_sender_id stays rsu_id ALWAYS — the RSU is who physically
+    // transmits this heartbeat either way; that is ground truth. What
+    // sophistication changes is which key signs the event (see
+    // PemEmitHeartbeatEvent's macSignerIdOverride):
+    // Sophisticated RSU: signs with victim's genuinely exfiltrated session
+    //   key + fresh timestamp → Step 1 MAC genuinely matches → Steps 1,2,3
+    //   pass → LW+TGN.
+    // Basic RSU: signs with its own key while claiming victim's identity →
+    //   Step 1 (Eq. 3.15 MAC) genuinely fails → drops at Stage-0.
     const bool bshh_s2_sophisticated = DecideRsuSophistication(rsu_id);
-    const uint32_t bshh_s2_phys = bshh_s2_sophisticated ? victim_id : rsu_id;
+    const uint32_t bshh_s2_phys = rsu_id; // ground truth — never overwritten
+    const uint32_t bshh_s2_mac_signer = bshh_s2_sophisticated ? victim_id : rsu_id;
     const double bshh_s2_ts     = bshh_s2_sophisticated ? now : stored_time;
     // Explicit narrated cause for the sophisticated bypass (see
     // TtwRsuKeyExfiltrationNarrative's comment, defined near TTWS2_RunDetection)
@@ -8047,8 +8127,8 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
         bshh_s2_pair_logs[rsu_id] += TtwRsuKeyExfiltrationNarrative("BSHH-S2", victim_id, rsu_id, now);
     }
     bshh_s2_pair_logs[rsu_id] += (bshh_s2_sophisticated
-        ? "  Sophistication: SOPHISTICATED [key-exfiltration] — RSU holds victim's real credentials, forges victim identity + fresh ts -> Stage-0 BYPASSED (genuinely correct MAC) -> LW+TGN\n"
-        : "  Sophistication: BASIC [no keys held] — RSU identity mismatch -> Step 1 MAC genuinely fails -> DROPPED at Stage-0 (Eq. 3.15)\n");
+        ? "  Sophistication: SOPHISTICATED [key-exfiltration] — RSU signs with victim's genuinely stolen key + fresh ts -> Stage-0 genuinely passes -> LW+TGN\n"
+        : "  Sophistication: BASIC [no keys held] — RSU signs with own key, claims victim identity -> Step 1 MAC genuinely fails -> DROPPED at Stage-0 (Eq. 3.15)\n");
     std::cout << std::fixed << std::setprecision(3)
               << "[BSHH-S2][t=" << now << "]  " << rsuLabel
               << " --REPLAY old heartbeat--> Controller"
@@ -8058,7 +8138,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
                       ? " [SOPHISTICATED (key-exfiltration)->LW+TGN]"
                       : " [BASIC (no keys held)->Stage-0 drop]")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true);
+    PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_ts, true, bshh_s2_mac_signer);
     AttackSendRSUToController(rsu_id);
     {
         Ptr<Node> rsuNode = nullptr;
@@ -8084,7 +8164,7 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
                   << " --REPLAY even-older duplicate--> Controller"
                   << "  Heartbeat(physical=V" << bshh_s2_phys << ", claimed=" << victimLabel
                   << ", t=" << bshh_s2_even_older_heartbeat.timestamp << ")" << std::endl;
-        PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_even_older_heartbeat.timestamp, true);
+        PemEmitHeartbeatEvent(bshh_s2_phys, victim_id, bshh_s2_even_older_heartbeat.timestamp, true, bshh_s2_mac_signer);
         AttackSendRSUToController(rsu_id);
     }
 
