@@ -593,17 +593,39 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         event.physical_sender_id != event.link_dst_id &&
         event.physical_sender_id != 9999u)
     {
+        // Ground-truth leak fix (threats-to-validity review): event.link_src_position
+        // / event.link_dst_position are a live GetPosition() read on V1/V2 — two
+        // OTHER nodes' true simulator state at verification time — not something
+        // this reporter (or any real verifier) could know. A real RSU/controller
+        // only knows wherever V1/V2 last authenticated themselves as being, via
+        // their own broadcasts. Use g_last_self_reported_position (stamped only
+        // from each vehicle's own genuine beacon — see its declaration comment in
+        // routing.cc, next to g_pem_last_beacon_time) as the spatial reference
+        // instead, falling back to the event field only for the (t≈0) edge case
+        // where an endpoint hasn't yet broadcast in this run. This is the same
+        // fix already applied to the Stage-1 ME-S3 signature check in routing.cc —
+        // this closes the identical oracle in the Stage-0 crypto gate that actually
+        // accepts/rejects the packet (a strictly more consequential instance of it).
+        const Vector& effectiveSrcPosLb =
+            g_last_self_reported_position.count(event.link_src_id)
+                ? g_last_self_reported_position.at(event.link_src_id)
+                : event.link_src_position;
+        const Vector& effectiveDstPosLb =
+            g_last_self_reported_position.count(event.link_dst_id)
+                ? g_last_self_reported_position.at(event.link_dst_id)
+                : event.link_dst_position;
+
         // Select the link endpoint nearest to the reporter as the spatial reference.
         // verify_single_witness uses this lat/lon as the link endpoint for gate (ii).
         const double distToSrc = PemDistance2d(event.reporter_position,
-                                               event.link_src_position);
+                                               effectiveSrcPosLb);
         const double distToDst = PemDistance2d(event.reporter_position,
-                                               event.link_dst_position);
+                                               effectiveDstPosLb);
         const bool closer_to_src = (distToSrc <= distToDst);
         const double ep_x = closer_to_src
-            ? event.link_src_position.x : event.link_dst_position.x;
+            ? effectiveSrcPosLb.x : effectiveDstPosLb.x;
         const double ep_y = closer_to_src
-            ? event.link_src_position.y : event.link_dst_position.y;
+            ? effectiveSrcPosLb.y : effectiveDstPosLb.y;
 
         // Eqs. 3.27-3.29: full crypto path — position + RSSI bound in signature.
         // tg_crypto_drop_mac accumulates rejections at this gate (identity+location).

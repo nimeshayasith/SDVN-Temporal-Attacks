@@ -5857,7 +5857,50 @@ PemBshh3PresenceTick()
 {
     const double now = Simulator::Now().GetSeconds();
     const uint32_t n = Vehicle_Nodes.GetN();
+    const uint32_t nRsu = RSU_Nodes.GetN();
+
+    // Ground-truth leak fix (threats-to-validity review): every vehicle DOES
+    // physically transmit a beacon every T_b (broadcast medium, true
+    // regardless of range) — that part of the original comment is correct.
+    // But unconditionally stamping ALL n vehicles gave BSHH-S3 universal,
+    // range-independent reachability: even a vehicle with no RSU or peer
+    // within r_comm was marked "present," which no single real verifier could
+    // ever witness (a beacon nobody was in range to receive corroborates
+    // nothing). Fixed by only stamping vehicle i when at least one other
+    // vehicle or RSU is within g_rcomm of it — i.e. the beacon was physically
+    // deliverable to SOME real receiver, matching the same range gate
+    // PemEmitVehicleBeacon's real radio path already enforces (its `distance
+    // > TTW_COMM_RANGE` early return) for the signature-relevant beacon flow.
+    // An isolated vehicle beyond everyone's range is correctly NOT stamped —
+    // BSHH-S3 should be able to fire for it, since nobody could have observed
+    // its liveness at that moment.
+    std::vector<Vector> vehiclePos(n);
     for (uint32_t i = 0; i < n; ++i) {
+        Ptr<MobilityModel> m = Vehicle_Nodes.Get(i)->GetObject<MobilityModel>();
+        vehiclePos[i] = m ? m->GetPosition() : Vector(0.0, 0.0, 0.0);
+    }
+    std::vector<Vector> rsuPos(nRsu);
+    for (uint32_t r = 0; r < nRsu; ++r) {
+        Ptr<MobilityModel> m = RSU_Nodes.Get(r)->GetObject<MobilityModel>();
+        rsuPos[r] = m ? m->GetPosition() : Vector(0.0, 0.0, 0.0);
+    }
+
+    for (uint32_t i = 0; i < n; ++i) {
+        bool hasWitnessInRange = false;
+        for (uint32_t r = 0; r < nRsu && !hasWitnessInRange; ++r) {
+            if (PemDistance2d(vehiclePos[i], rsuPos[r]) <= g_rcomm) {
+                hasWitnessInRange = true;
+            }
+        }
+        for (uint32_t j = 0; j < n && !hasWitnessInRange; ++j) {
+            if (j == i) continue;
+            if (PemDistance2d(vehiclePos[i], vehiclePos[j]) <= g_rcomm) {
+                hasWitnessInRange = true;
+            }
+        }
+        if (!hasWitnessInRange) {
+            continue;   // nobody could have received this beacon — do not stamp
+        }
         // Stamp both ID conventions in use across attack functions: some
         // (e.g. TTW_*) address vehicles by container index i directly;
         // others (e.g. BSHH_S1, which uses Vehicle_Nodes.Get(idx)->GetId())
