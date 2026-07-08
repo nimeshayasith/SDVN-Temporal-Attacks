@@ -45,6 +45,12 @@
 #include <iomanip>
 #include <limits.h>
 #include <bits/stdc++.h>
+// PemLiveSend / PemLiveSocketConnect (live blockchain wiring, --live_blockchain=1
+// only) — Unix domain socket client to fabricServer.js (Node blockchain service).
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <fcntl.h>
+#include <cerrno>
 
 // ── Comparison detector (VeReMi / MBSM) — zero impact on existing code ──────
 uint32_t comparison_detector = 0;   // 0=none  1=VeReMi  2=MBSM
@@ -278,6 +284,14 @@ bool skip_npfads    = true;   // --skip_npfads: disable NPFADS BSM collection+de
 // ERROR 1 FIX: was declared twice (uint32_t=0 AND int=4). Keep ONE declaration.
 //              Default = 0 (no attack). Pass --attack_scenario=4 on command line.
 uint32_t attack_scenario = 0;
+
+// Live blockchain wiring (default OFF). When 0, PemLiveSocketConnect/PemLiveSend
+// never execute and behavior is byte-identical to the existing offline/batch
+// pipeline (tgn_alerts.json / ctrl_topo.json / witness_records.json written
+// once at end-of-run, as before). When 1, alerts/ctrl-topo/witness records are
+// additionally streamed live to fabricServer.js over a Unix domain socket.
+// See PemLiveSocketConnect/PemLiveSend below.
+uint32_t g_live_blockchain = 0;
 
 // ERROR 2 FIX: was declared twice. Keep ONE declaration.
 uint32_t malicious_vehicle_id = 0;   // V0 = attacker
@@ -2121,6 +2135,15 @@ static std::set<uint32_t> g_lkh_already_revoked;
 // session writes that file (that requires running the blockchain layer).
 static std::set<uint32_t> g_blacklisted_nodes;
 static std::set<uint32_t> pem_all_seen_node_ids;
+
+// Forward declarations: PemRecordBeaconEvidence (below) needs these for live
+// blockchain wiring (--live_blockchain=1), but their full definitions live
+// later in the file (PemBuildWitnessJson next to PemWriteWitnessRecordsJson;
+// PemLiveSend next to PemLiveSocketConnect, near PemReadBlacklistFile).
+// PemBeaconEvidenceRecord itself is already fully defined above this point.
+static std::string PemBuildWitnessJson(uint32_t reporter_id, const PemBeaconEvidenceRecord& rec);
+static void PemLiveSend(const std::string& jsonObject);
+static std::string PemBase64Encode(const uint8_t *data, size_t len);
 std::set<uint32_t> ttw_s1_false_positive_reporters;
 extern double current_packet_delivery_ratio;
 extern uint64_t dsrc_beacon_tx_total;
@@ -2165,10 +2188,26 @@ PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double 
             log.push_back(rec);
             while (!log.empty() && (now - log.front().timestamp) > kEvidenceWindowS)
                 log.pop_front();
+
+            // Live blockchain wiring (no-op unless g_live_blockchain=1): "W:"
+            // + base64(WitnessRecord JSON) — already ML-DSA-87-signed by
+            // PemBuildWitnessJson, so the daemon forwards it opaquely without
+            // running it through the KEM/HMAC gate ("E:" alerts only).
+            if (g_live_blockchain)
+            {
+                const std::string wj = PemBuildWitnessJson(RSU_Nodes.Get(i)->GetId(), rec);
+                if (!wj.empty())
+                    PemLiveSend("W:" + PemBase64Encode(
+                        reinterpret_cast<const uint8_t*>(wj.data()), wj.size()));
+            }
         }
     }
     else
     {
+        // No live-send here: has_reporter_position=false means
+        // PemBuildWitnessJson always returns empty for this synthetic no-RSU
+        // bucket (same reason PemWriteWitnessRecordsJson already excludes it
+        // via skipped_no_position) — nothing valid to submit live either.
         PemBeaconEvidenceRecord rec{senderId, now, senderPosition,
                                      senderPosition, /*has_reporter_position=*/false, 0.0f};
         std::deque<PemBeaconEvidenceRecord>& log = g_peer_beacon_evidence[TRUST_OBU_PEER_ID];
@@ -2222,6 +2261,93 @@ static std::string PemBase64Encode(const uint8_t *data, size_t len)
                         out_len > 0 ? static_cast<size_t>(out_len) : 0);
 }
 
+// PemBuildWitnessJson — build a single WitnessRecord JSON object (matches
+// structs.go's WitnessRecord) from one PemBeaconEvidenceRecord, including the
+// Eq. 3.27 ML-DSA-87 signature. Factored out of PemWriteWitnessRecordsJson so
+// the end-of-run file writer and the live PemLiveSend path (called right
+// after each of PemRecordBeaconEvidence's two log.push_back(rec) sites) share
+// one implementation. Returns empty string if rec has no reporter position
+// (the no-RSU synthetic bucket) — caller should skip emitting in that case.
+// Single-line output, safe for newline-delimited live framing.
+static std::string
+PemBuildWitnessJson(uint32_t reporter_id, const PemBeaconEvidenceRecord& rec)
+{
+    if (!rec.has_reporter_position) return std::string();
+
+    const std::string reporter_label = PemResolvePeerLabel(reporter_id);
+
+    float reporter_lat, reporter_lon;
+    PemSimToGps(rec.reporter_position, reporter_lat, reporter_lon);
+    const long long ts_ms = static_cast<long long>(rec.timestamp * 1000.0);
+
+    // Eq. 3.27: m'_Vk = eij || pos_Vk || RSSI_Vk<-Vi || tau_s || nonce.
+    // eij is the (reporter, vehicle) observation edge; nonce is a
+    // fresh per-record random value for replay resistance.
+    uint8_t nonce[16];
+    RAND_bytes(nonce, sizeof(nonce));
+    std::ostringstream nonce_hex;
+    nonce_hex << std::hex << std::setfill('0');
+    for (uint8_t b : nonce) nonce_hex << std::setw(2) << (int)b;
+
+    std::ostringstream msg;
+    msg << std::fixed << std::setprecision(6)
+        << "V" << rec.vehicle_id << ":" << reporter_label << ":"
+        << reporter_lat << ":" << reporter_lon << ":"
+        << std::setprecision(2) << rec.rssi_dbm << ":"
+        << ts_ms << ":" << nonce_hex.str();
+    const std::string message = msg.str();
+
+    std::string sig_b64, pub_b64;
+#ifdef HAVE_LIBOQS
+    if (g_crypto_ready && !g_dil_sk.empty() && !g_dil_pk.empty())
+    {
+        uint8_t sig_out[DILITHIUM5_SIG_LEN];
+        size_t  sig_len = 0;
+        dilithium5_sign(reinterpret_cast<const uint8_t *>(message.data()),
+                         message.size(), g_dil_sk.data(), sig_out, &sig_len);
+        sig_b64 = PemBase64Encode(sig_out, sig_len);
+        pub_b64 = PemBase64Encode(g_dil_pk.data(), g_dil_pk.size());
+    }
+    else
+    {
+        // g_dil_sk/g_dil_pk are only populated by CryptoInitKeys(), which
+        // no-ops when --latency=0 (enable_crypto_latency=0) — warn once so
+        // an unsigned run (chaincode treats empty signature as "skip
+        // verification", not an error) doesn't go unnoticed.
+        static bool warned = false;
+        if (!warned) {
+            NS_LOG_UNCOND("[PEM] witness_records.json: signing keys not ready "
+                          "(--latency=0?) — records will be written "
+                          "UNSIGNED (signature/pub_key empty).");
+            warned = true;
+        }
+    }
+#else
+    {
+        static bool warned = false;
+        if (!warned) {
+            NS_LOG_UNCOND("[PEM] witness_records.json: built without HAVE_LIBOQS — "
+                          "records will be written UNSIGNED (signature/pub_key empty).");
+            warned = true;
+        }
+    }
+#endif
+
+    std::ostringstream jout;
+    jout << "{"
+         << "\"vehicle_id\":\"V" << rec.vehicle_id << "\","
+         << "\"reporter_id\":\"" << reporter_label << "\","
+         << "\"reporter_lat\":" << reporter_lat << ","
+         << "\"reporter_lon\":" << reporter_lon << ","
+         << "\"rssi_from_vi_dbm\":" << rec.rssi_dbm << ","
+         << "\"signature\":\"" << sig_b64 << "\","
+         << "\"message\":\"" << message << "\","
+         << "\"pub_key\":\"" << pub_b64 << "\","
+         << "\"ts_ms\":" << ts_ms
+         << "}";
+    return jout.str();
+}
+
 static void
 PemWriteWitnessRecordsJson()
 {
@@ -2238,81 +2364,16 @@ PemWriteWitnessRecordsJson()
          peer_it != g_peer_beacon_evidence.end(); ++peer_it)
     {
         const uint32_t reporter_id = peer_it->first;
-        const std::string reporter_label = PemResolvePeerLabel(reporter_id);
         for (const PemBeaconEvidenceRecord& rec : peer_it->second)
         {
             if (!rec.has_reporter_position) { ++skipped_no_position; continue; }
 
-            float reporter_lat, reporter_lon;
-            PemSimToGps(rec.reporter_position, reporter_lat, reporter_lon);
-            const long long ts_ms = static_cast<long long>(rec.timestamp * 1000.0);
-
-            // Eq. 3.27: m'_Vk = eij || pos_Vk || RSSI_Vk<-Vi || tau_s || nonce.
-            // eij is the (reporter, vehicle) observation edge; nonce is a
-            // fresh per-record random value for replay resistance.
-            uint8_t nonce[16];
-            RAND_bytes(nonce, sizeof(nonce));
-            std::ostringstream nonce_hex;
-            nonce_hex << std::hex << std::setfill('0');
-            for (uint8_t b : nonce) nonce_hex << std::setw(2) << (int)b;
-
-            std::ostringstream msg;
-            msg << std::fixed << std::setprecision(6)
-                << "V" << rec.vehicle_id << ":" << reporter_label << ":"
-                << reporter_lat << ":" << reporter_lon << ":"
-                << std::setprecision(2) << rec.rssi_dbm << ":"
-                << ts_ms << ":" << nonce_hex.str();
-            const std::string message = msg.str();
-
-            std::string sig_b64, pub_b64;
-#ifdef HAVE_LIBOQS
-            if (g_crypto_ready && !g_dil_sk.empty() && !g_dil_pk.empty())
-            {
-                uint8_t sig_out[DILITHIUM5_SIG_LEN];
-                size_t  sig_len = 0;
-                dilithium5_sign(reinterpret_cast<const uint8_t *>(message.data()),
-                                 message.size(), g_dil_sk.data(), sig_out, &sig_len);
-                sig_b64 = PemBase64Encode(sig_out, sig_len);
-                pub_b64 = PemBase64Encode(g_dil_pk.data(), g_dil_pk.size());
-            }
-            else
-            {
-                // g_dil_sk/g_dil_pk are only populated by CryptoInitKeys(), which
-                // no-ops when --latency=0 (enable_crypto_latency=0) — warn once so
-                // an unsigned run (chaincode treats empty signature as "skip
-                // verification", not an error) doesn't go unnoticed.
-                static bool warned = false;
-                if (!warned) {
-                    NS_LOG_UNCOND("[PEM] witness_records.json: signing keys not ready "
-                                  "(--latency=0?) — records will be written "
-                                  "UNSIGNED (signature/pub_key empty).");
-                    warned = true;
-                }
-            }
-#else
-            {
-                static bool warned = false;
-                if (!warned) {
-                    NS_LOG_UNCOND("[PEM] witness_records.json: built without HAVE_LIBOQS — "
-                                  "records will be written UNSIGNED (signature/pub_key empty).");
-                    warned = true;
-                }
-            }
-#endif
+            const std::string obj = PemBuildWitnessJson(reporter_id, rec);
+            if (obj.empty()) { ++skipped_no_position; continue; }
 
             if (!first) jout << ",\n";
             first = false;
-            jout << "  {\n"
-                 << "    \"vehicle_id\": \"V" << rec.vehicle_id << "\",\n"
-                 << "    \"reporter_id\": \"" << reporter_label << "\",\n"
-                 << "    \"reporter_lat\": " << reporter_lat << ",\n"
-                 << "    \"reporter_lon\": " << reporter_lon << ",\n"
-                 << "    \"rssi_from_vi_dbm\": " << rec.rssi_dbm << ",\n"
-                 << "    \"signature\": \"" << sig_b64 << "\",\n"
-                 << "    \"message\": \"" << message << "\",\n"
-                 << "    \"pub_key\": \"" << pub_b64 << "\",\n"
-                 << "    \"ts_ms\": " << ts_ms << "\n"
-                 << "  }";
+            jout << "  " << obj;
             ++written;
         }
     }
@@ -3848,6 +3909,40 @@ PemWriteCsvHeaderIfNeeded(const std::string& filename,
     alreadyWritten = true;
 }
 
+// PemBuildEventCsvRow — build one pem_event_log.csv row (the exact column
+// layout crypto_pipeline.cc's load_pem()/csv_col() already parses, documented
+// there as columns 0-21). Factored out of PemWriteEventCsv so the file writer
+// and the live wire protocol (PemLiveSend's "E:" lines, see PemEvaluateEvent)
+// build this from one place. No trailing newline — callers own that.
+static std::string
+PemBuildEventCsvRow(const PemEvent& event)
+{
+    std::ostringstream row;
+    row << event.sim_time << ","
+        << PemEventTypeToString(event.type) << ","
+        << event.physical_sender_id << ","
+        << event.claimed_sender_id << ","
+        << event.reporter_id << ","
+        << event.link_src_id << ","
+        << event.link_dst_id << ","
+        << event.sender_timestamp << ","
+        << event.reception_timestamp << ","
+        << (event.attack_label ? 1 : 0) << ","
+        << PemTriggeredSignatureString(event.triggered) << ","
+        << event.score << ","
+        << (event.alert_raised ? 1 : 0) << ","
+        << PemGetPhaseLabel() << ","
+        << event.detection_latency_ms << ","
+        << event.reporter_position.x << ","
+        << event.reporter_position.y << ","
+        << event.link_src_position.x << ","
+        << event.link_src_position.y << ","
+        << event.link_dst_position.x << ","
+        << event.link_dst_position.y << ","
+        << event.rssi_reporter_dbm;
+    return row.str();
+}
+
 static void
 PemWriteEventCsv(const PemEvent& event)
 {
@@ -3862,28 +3957,7 @@ PemWriteEventCsv(const PemEvent& event)
         pem_event_csv_header_written);
 
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
-    fout << event.sim_time << ","
-         << PemEventTypeToString(event.type) << ","
-         << event.physical_sender_id << ","
-         << event.claimed_sender_id << ","
-         << event.reporter_id << ","
-         << event.link_src_id << ","
-         << event.link_dst_id << ","
-         << event.sender_timestamp << ","
-         << event.reception_timestamp << ","
-         << (event.attack_label ? 1 : 0) << ","
-         << PemTriggeredSignatureString(event.triggered) << ","
-         << event.score << ","
-         << (event.alert_raised ? 1 : 0) << ","
-         << PemGetPhaseLabel() << ","
-         << event.detection_latency_ms << ","
-         << event.reporter_position.x << ","
-         << event.reporter_position.y << ","
-         << event.link_src_position.x << ","
-         << event.link_src_position.y << ","
-         << event.link_dst_position.x << ","
-         << event.link_dst_position.y << ","
-         << event.rssi_reporter_dbm << "\n";
+    fout << PemBuildEventCsvRow(event) << "\n";
 }
 
 // =============================================================================
@@ -4125,17 +4199,23 @@ PemCryptoRegisterDetection(uint32_t physicalSenderId, uint32_t reporterId)
 }
 
 // =============================================================================
-// PemWriteAlertsJson — write tgn_alerts.json directly from PEM detection events.
-//
-// Called at end of simulation alongside PemWriteRunSummaryCsv.  Scans
-// pem_all_events for rows where attack_label=true AND alert_raised=true,
-// deduplicates by physical_sender_id (keeps highest-score event per attacker),
-// and writes a JSON array compatible with blockchain/client/submitToFabric.js.
-//
-// This makes the TGN detector optional: routing.cc → tgn_alerts.json → blockchain.
+// PemBuildAlertJson — build a single AlertObject JSON block (the exact shape
+// blockchain/chaincode/temporalecho/structs.go's AlertObject expects) from one
+// PemEvent. Factored out of PemWriteAlertsJson (below) so the end-of-run batch
+// writer and the live per-event submission path (PemLiveSend, see the
+// PemLiveSocketConnect/PemLiveSend block further down) share one
+// implementation and cannot drift apart. Returns one JSON object, no trailing
+// comma/newline framing — callers own that. Single-line-safe: never emits a
+// literal embedded '\n', which PemLiveSend's newline-delimited framing
+// depends on.
 // =============================================================================
-static void
-PemWriteAlertsJson()
+// PemClassifyEventAlpha — derive the "TTW"/"BSHH"/"ME"/scenario-fallback
+// attack-type label for one event. Factored out of PemBuildAlertJson so the
+// live-submission dedup key (PemEvaluateEvent, keyed on (vehicle, alpha)) and
+// the AlertObject JSON body use the exact same classification — otherwise the
+// dedup key could silently diverge from what's actually being submitted.
+static std::string
+PemClassifyEventAlpha(const PemEvent& ev)
 {
     // scenario_alpha is a fallback for events with no triggered signatures
     // (e.g. crypto-layer events that never reached the signature detector).
@@ -4150,6 +4230,63 @@ PemWriteAlertsJson()
     const uint32_t safe_scenario = (attack_scenario <= 12) ? attack_scenario : 0;
     const std::string fallback_alpha = scenario_alpha[safe_scenario];
 
+    bool any_sig = false;
+    for (uint32_t i = 0; i < 9; ++i) if (ev.triggered[i]) { any_sig = true; break; }
+    return any_sig ? PemClassifyAttack(ev.triggered) : fallback_alpha;
+}
+
+static std::string
+PemBuildAlertJson(const PemEvent& ev)
+{
+    // Build S_trig array
+    std::ostringstream strig;
+    bool first_sig = true;
+    for (uint32_t i = 0; i < 9; ++i)
+    {
+        if (ev.triggered[i])
+        {
+            if (!first_sig) strig << ", ";
+            strig << i;
+            first_sig = false;
+        }
+    }
+
+    long long t_alert_ms = static_cast<long long>(ev.sim_time * 1000.0);
+    double tdet = ev.detection_latency_ms;
+    const std::string alpha = PemClassifyEventAlpha(ev);
+
+    // interval_ts_ms is nominally the beacon-interval timestamp (AlertObject
+    // spec, structs.go). routing.cc's PEM path has no separate beacon-interval
+    // clock distinct from the alert time, so it is set equal to t_alert here —
+    // this is a simplification, not a bug, but kept explicit rather than implied.
+    std::ostringstream jout;
+    jout << "{"
+         << "\"v_id\":\"V" << ev.physical_sender_id << "\","
+         << "\"alpha\":\"" << alpha << "\","
+         << "\"y_hat\":" << ev.score << ","
+         << "\"t_alert\":" << t_alert_ms << ","
+         << "\"interval_ts_ms\":" << t_alert_ms << ","
+         << "\"S_trig\":[" << strig.str() << "],"
+         << "\"from_lw_path\":true,"
+         << "\"from_fs_path\":false,"
+         << "\"tdet_ms\":" << tdet
+         << "}";
+    return jout.str();
+}
+
+// =============================================================================
+// PemWriteAlertsJson — write tgn_alerts.json directly from PEM detection events.
+//
+// Called at end of simulation alongside PemWriteRunSummaryCsv.  Scans
+// pem_all_events for rows where attack_label=true AND alert_raised=true,
+// deduplicates by physical_sender_id (keeps highest-score event per attacker),
+// and writes a JSON array compatible with blockchain/client/submitToFabric.js.
+//
+// This makes the TGN detector optional: routing.cc → tgn_alerts.json → blockchain.
+// =============================================================================
+static void
+PemWriteAlertsJson()
+{
     // Deduplicate by attacker: keep highest-score event per physical_sender_id
     std::map<uint32_t, const PemEvent*> best;
     for (const PemEvent& ev : pem_all_events)
@@ -4171,47 +4308,9 @@ PemWriteAlertsJson()
     for (std::map<uint32_t, const PemEvent*>::const_iterator it = best.begin();
          it != best.end(); ++it)
     {
-        const PemEvent& ev = *(it->second);
         if (!first_entry) jout << ",\n";
         first_entry = false;
-
-        // Build S_trig array
-        std::ostringstream strig;
-        bool first_sig = true;
-        for (uint32_t i = 0; i < 9; ++i)
-        {
-            if (ev.triggered[i])
-            {
-                if (!first_sig) strig << ", ";
-                strig << i;
-                first_sig = false;
-            }
-        }
-
-        long long t_alert_ms = static_cast<long long>(ev.sim_time * 1000.0);
-        double tdet = ev.detection_latency_ms;
-
-        // Derive α from triggered signatures (CLASSIFY_ATTACK, Stage 1).
-        // Fall back to scenario family if no signatures fired.
-        bool any_sig = false;
-        for (uint32_t i = 0; i < 9; ++i) if (ev.triggered[i]) { any_sig = true; break; }
-        const std::string alpha = any_sig ? PemClassifyAttack(ev.triggered) : fallback_alpha;
-
-        // interval_ts_ms is nominally the beacon-interval timestamp (AlertObject
-        // spec, structs.go). routing.cc's PEM path has no separate beacon-interval
-        // clock distinct from the alert time, so it is set equal to t_alert here —
-        // this is a simplification, not a bug, but kept explicit rather than implied.
-        jout << "  {\n"
-             << "    \"v_id\": \"V" << ev.physical_sender_id << "\",\n"
-             << "    \"alpha\": \"" << alpha << "\",\n"
-             << "    \"y_hat\": " << ev.score << ",\n"
-             << "    \"t_alert\": " << t_alert_ms << ",\n"
-             << "    \"interval_ts_ms\": " << t_alert_ms << ",\n"
-             << "    \"S_trig\": [" << strig.str() << "],\n"
-             << "    \"from_lw_path\": true,\n"
-             << "    \"from_fs_path\": false,\n"
-             << "    \"tdet_ms\": " << tdet << "\n"
-             << "  }";
+        jout << "  " << PemBuildAlertJson(*(it->second));
     }
     jout << "\n]\n";
     jout.close();
@@ -4323,12 +4422,65 @@ PemWriteBeaconEvidenceCsv()
 // injected) — it intentionally reflects the controller's belief, not ground
 // truth, since that is what the divergence check needs to compare against.
 // =============================================================================
+// PemBuildCtrlTopoJsonString — build the full ControllerTopologyClaim JSON
+// object (matches structs.go's ControllerTopologyClaim) from the live
+// ttw_controller_table/bshh_controller_liveness_table. Factored out of
+// PemWriteCtrlTopoJson so the end-of-run file writer and the live
+// PemLiveSend path share one implementation. Single-line output (no embedded
+// '\n') so it is safe to use as one newline-delimited live message.
+static std::string
+PemBuildCtrlTopoJsonString()
+{
+    long long interval_ts_ms =
+        static_cast<long long>(Simulator::Now().GetSeconds() * 1000.0);
+
+    std::ostringstream jout;
+    jout << "{"
+         << "\"controller_id\":\"sdn-controller\","
+         << "\"interval_ts\":" << interval_ts_ms << ","
+         << "\"links\":[";
+
+    bool first = true;
+
+    // TTW topology links: ttw_controller_table key = "srcId_seenId"
+    for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
+         it != ttw_controller_table.end(); ++it)
+    {
+        const TopologyPacket& pkt = it->second;
+        if (!first) jout << ",";
+        first = false;
+        jout << "{\"node_a\":\"V" << pkt.src_id
+             << "\",\"node_b\":\"V" << pkt.seen_id
+             << "\",\"ts\":" << static_cast<long long>(pkt.timestamp * 1000.0) << "}";
+    }
+
+    // BSHH liveness table: each entry is a claimed-alive vehicle, not itself
+    // a link — represented as a self-referential node presence entry so the
+    // controller's liveness belief is captured alongside its link belief.
+    for (std::map<uint32_t, HeartbeatPacket>::const_iterator it = bshh_controller_liveness_table.begin();
+         it != bshh_controller_liveness_table.end(); ++it)
+    {
+        const HeartbeatPacket& hb = it->second;
+        if (!first) jout << ",";
+        first = false;
+        jout << "{\"node_a\":\"V" << hb.claimed_sender_id
+             << "\",\"node_b\":\"V" << hb.claimed_sender_id
+             << "\",\"ts\":" << static_cast<long long>(hb.timestamp * 1000.0) << "}";
+    }
+
+    jout << "]}";
+    return jout.str();
+}
+
 static void
 PemWriteCtrlTopoJson()
 {
     const std::string out_path =
         std::string(OUTPUT_ROOT_DIR) + "/../ctrl_topo.json";
 
+    // Note: PemBuildCtrlTopoJsonString() above returns the same data as one
+    // compact line for the live path (PemLiveSend); this writer keeps its
+    // own multi-line formatting for human readability in the file artifact.
     long long interval_ts_ms =
         static_cast<long long>(Simulator::Now().GetSeconds() * 1000.0);
 
@@ -4371,6 +4523,204 @@ PemWriteCtrlTopoJson()
     jout.close();
 
     NS_LOG_UNCOND("[PEM] ctrl_topo.json written -> " << out_path);
+}
+
+// =============================================================================
+// PemLiveSocketConnect / PemLiveSend — live blockchain wiring, only active
+// when g_live_blockchain=1 (default 0, see the CLI flag).
+//
+// routing.cc speaks nothing but "write a JSON line to a socket" here — no
+// HTTP, no libcurl, no fork/exec. One persistent Unix domain socket is opened
+// to fabricServer.js (blockchain/client/fabricServer.js — a separate Node
+// process; crypto gating already happened in-process above, via
+// PemCryptoPreFilter/TetaGuardCryptoFilter, before this event ever reaches
+// PemEvaluateEvent) at simulation start
+// and kept open for the whole run; PemLiveSend() is a non-blocking write of
+// one newline-delimited JSON message. Framing invariant: exactly one JSON
+// object + '\n' per message — PemBuildAlertJson/PemBuildCtrlTopoJsonString/
+// PemBuildWitnessJson all produce single-line output, so this holds as long
+// as future edits to those builders don't introduce a literal embedded '\n'.
+//
+// Connect failures and mid-run disconnects both funnel into the same 2s
+// reconnect loop (PemLiveReconnectTick) rather than permanently disabling
+// live submission — the daemon may simply start a couple seconds after the
+// sim does, or may be restarted mid-run.
+//
+// Backpressure policy: a bounded ring buffer (kLiveSendBufMax messages) holds
+// anything that couldn't be written immediately (EAGAIN/EWOULDBLOCK or a
+// short write). If the buffer is already full, the OLDEST buffered message is
+// dropped (with a one-line warning) to make room for the newest — same
+// drop-oldest policy fabricServer.js uses on its own internal queue, so
+// behavior is
+// predictable end-to-end rather than differing by hop.
+// =============================================================================
+static const char*    kLiveSocketPath   = "/tmp/teta_guard_live.sock";
+static const size_t   kLiveSendBufMax   = 200;
+
+static int             g_live_fd = -1;
+static bool             g_live_connected = false;
+static std::deque<std::string> g_live_send_buf;
+
+// Per-(vehicle, attack_type) running-max-score dedup for live submissions —
+// only forward an alert to fabricServer.js when it beats the best score
+// already forwarded for that specific (vehicle, attack_type) pair. Keyed by
+// attack type (not just vehicle) so a vehicle raising e.g. a TTW alert and
+// later an unrelated ME alert both forward — a vehicle-only key would wrongly
+// suppress the second, distinct incident. Example: V3/TTW at 0.65 → forward,
+// 0.60 → ignore, 0.72 → forward, 0.70 → ignore; V3/ME at 0.69 still forwards
+// even though 0.69 < 0.72, because it's a different key. This has no effect
+// on the end-of-run tgn_alerts.json (PemWriteAlertsJson keeps its own
+// separate, unaffected vehicle-only dedup for that file).
+static std::map<std::pair<uint32_t, std::string>, double> g_live_best_score;
+
+static void PemLiveReconnectTick();
+
+// Attempts one non-blocking connect. Leaves g_live_fd/g_live_connected set on
+// success; on failure, closes any partial fd and returns false so the caller
+// can decide whether/when to retry.
+static bool
+PemLiveSocketConnect()
+{
+    if (g_live_fd >= 0) { close(g_live_fd); g_live_fd = -1; }
+    g_live_connected = false;
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return false;
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, kLiveSocketPath, sizeof(addr.sun_path) - 1);
+
+    // Blocking connect (local Unix socket — either the daemon is listening,
+    // in which case this is near-instant, or connect() fails immediately
+    // with ECONNREFUSED/ENOENT; there is no slow-network case to guard
+    // against here). The socket is switched to non-blocking only for the
+    // send path below, where a slow/blocked daemon reader is the real risk.
+    if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+    {
+        close(fd);
+        return false;
+    }
+
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+    g_live_fd = fd;
+    g_live_connected = true;
+    return true;
+}
+
+// Self-rescheduling reconnect loop. Runs for the whole simulation once
+// started (from main(), only when g_live_blockchain=1) — covers both "never
+// connected yet" (daemon started late) and "was connected, then the daemon
+// crashed/restarted" (PemLiveSend clears g_live_connected on EPIPE/ECONNRESET
+// below, and this tick picks it back up).
+static void
+PemLiveReconnectTick()
+{
+    if (!g_live_connected)
+    {
+        static bool warned = false;
+        if (PemLiveSocketConnect())
+        {
+            NS_LOG_UNCOND("[PEM][live] connected to fabricServer.js at "
+                          << kLiveSocketPath);
+            warned = false;
+        }
+        else if (!warned)
+        {
+            NS_LOG_UNCOND("[PEM][live] fabricServer.js not reachable at "
+                          << kLiveSocketPath << " — will keep retrying "
+                          "every 2s (live submission paused, batch JSON "
+                          "writers at end-of-run are unaffected).");
+            warned = true;
+        }
+    }
+
+    if (Simulator::Now().GetSeconds() + 2.0 < simTime)
+    {
+        Simulator::Schedule(Seconds(2.0), &PemLiveReconnectTick);
+    }
+}
+
+// Tries to flush as much of g_live_send_buf as the socket will currently
+// accept, oldest message first. Stops at the first short/blocked write and
+// leaves the remainder buffered for the next attempt.
+static void
+PemLiveFlushBuffer()
+{
+    if (!g_live_connected) return;
+
+    while (!g_live_send_buf.empty())
+    {
+        const std::string& msg = g_live_send_buf.front();
+        ssize_t n = write(g_live_fd, msg.data(), msg.size());
+        if (n == static_cast<ssize_t>(msg.size()))
+        {
+            g_live_send_buf.pop_front();
+            continue;
+        }
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            return; // socket full for now; retry on the next scheduled flush
+        }
+        if (n < 0 && (errno == EPIPE || errno == ECONNRESET))
+        {
+            close(g_live_fd);
+            g_live_fd = -1;
+            g_live_connected = false; // PemLiveReconnectTick will pick this back up
+            return;
+        }
+        if (n > 0 && n < static_cast<ssize_t>(msg.size()))
+        {
+            // Partial write: keep the unsent remainder at the front of the
+            // buffer and stop — the socket is momentarily full.
+            g_live_send_buf.front() = msg.substr(static_cast<size_t>(n));
+            return;
+        }
+        // Any other error: treat like a disconnect, let reconnect handle it.
+        close(g_live_fd);
+        g_live_fd = -1;
+        g_live_connected = false;
+        return;
+    }
+}
+
+// Periodic flush tick, independent of new sends, so a message that arrived
+// while the socket was momentarily full still gets drained promptly.
+static void
+PemLiveFlushTick()
+{
+    PemLiveFlushBuffer();
+    if (Simulator::Now().GetSeconds() + 0.1 < simTime)
+    {
+        Simulator::Schedule(Seconds(0.1), &PemLiveFlushTick);
+    }
+}
+
+// PemLiveSend — queue one JSON message (framing: caller passes the JSON
+// object WITHOUT the trailing '\n'; this function appends it) for delivery
+// to fabricServer.js. Never blocks, never throws, safe to call unconditionally
+// from any PEM choke point — it is a no-op whenever g_live_blockchain is 0.
+static void
+PemLiveSend(const std::string& jsonObject)
+{
+    if (!g_live_blockchain) return;
+
+    if (g_live_send_buf.size() >= kLiveSendBufMax)
+    {
+        static bool warnedFull = false;
+        g_live_send_buf.pop_front(); // drop-oldest backpressure policy
+        if (!warnedFull)
+        {
+            NS_LOG_UNCOND("[PEM][live] send buffer full (" << kLiveSendBufMax
+                          << ") — dropping oldest queued message(s).");
+            warnedFull = true;
+        }
+    }
+    g_live_send_buf.push_back(jsonObject + "\n");
+    PemLiveFlushBuffer();
 }
 
 // =============================================================================
@@ -4692,6 +5042,36 @@ PemEvaluateEvent(PemEvent& event)
     // PEM logs the score/signatures but never acts on them, so the controller
     // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
     event.alert_raised = detection_enabled && (event.score > PEM_SCORE_THRESHOLD);
+
+    // Live blockchain wiring (no-op unless g_live_blockchain=1): stream this
+    // alert to fabricServer.js immediately, instead of only at end-of-run.
+    // Wire format: "E:" + the same columns pem_event_log.csv already uses
+    // (PemBuildEventCsvRow) + two trailing base64 fields carrying the
+    // ready-made AlertObject and ControllerTopologyClaim JSON blobs
+    // (PemBuildAlertJson/PemBuildCtrlTopoJsonString — SubmitAlert's real
+    // signature requires both together, so they travel as one message).
+    // Per-(vehicle, attack_type) dedup (g_live_best_score, see its
+    // declaration) — only forward on strict score improvement, so a burst of
+    // alerts for the same ongoing incident doesn't flood fabricServer.js with
+    // one Fabric submission per event.
+    if (g_live_blockchain && event.alert_raised)
+    {
+        const std::string alpha = PemClassifyEventAlpha(event);
+        const auto dedupKey = std::make_pair(event.physical_sender_id, alpha);
+        auto it = g_live_best_score.find(dedupKey);
+        const bool improved = (it == g_live_best_score.end() || event.score > it->second);
+        if (improved)
+        {
+            g_live_best_score[dedupKey] = event.score;
+            const std::string alertJson    = PemBuildAlertJson(event);
+            const std::string ctrlTopoJson = PemBuildCtrlTopoJsonString();
+            std::string line = "E:" + PemBuildEventCsvRow(event) + ","
+                + PemBase64Encode(reinterpret_cast<const uint8_t*>(alertJson.data()), alertJson.size())
+                + ","
+                + PemBase64Encode(reinterpret_cast<const uint8_t*>(ctrlTopoJson.data()), ctrlTopoJson.size());
+            PemLiveSend(line);
+        }
+    }
 
     // Node-level detection tracking (unified across all 12 scenarios).
     pem_all_seen_node_ids.insert(event.physical_sender_id);
@@ -148816,6 +149196,12 @@ static int RoutingMain(int argc, char *argv[])
                   "Mobility-derived TTW link lifetime bound Llink in seconds (default 3.52)",
                   ttw_link_lifetime_bound);
     cmd.AddValue ("attack_scenario", "attack_scenario (0=none,1-12=attack variants)", attack_scenario);
+    cmd.AddValue ("live_blockchain",
+                  "1 = stream alerts/ctrl-topo/witness records live to the crypto "
+                  "daemon over a Unix socket during the run (see PemLiveSend). "
+                  "0 = DEFAULT, existing end-of-run batch JSON writers only, "
+                  "unchanged behavior.",
+                  g_live_blockchain);
     cmd.AddValue ("malicious_vehicle_id", "malicious_vehicle_id", malicious_vehicle_id);
     cmd.AddValue ("victim_neighbor_id", "victim_neighbor_id", victim_neighbor_id);
     cmd.AddValue ("latency",
@@ -153574,6 +153960,15 @@ static int RoutingMain(int argc, char *argv[])
   Simulator::Schedule(Seconds(simTime - 0.001), &PemWriteWitnessRecordsJson);
   Simulator::Schedule(Seconds(simTime - 0.001), &WriteChannelAnalysisCsv);
   Simulator::Schedule(Seconds(0.5), &PemReadBlacklistFile);
+  if (g_live_blockchain)
+  {
+      // Kick off the fabricServer.js connection + periodic buffer flush. Both
+      // are self-rescheduling for the rest of the run (see their definitions
+      // above PemReadBlacklistFile). Everything here is a no-op if the
+      // daemon isn't running yet — see PemLiveReconnectTick's warning path.
+      Simulator::Schedule(Seconds(0.0), &PemLiveReconnectTick);
+      Simulator::Schedule(Seconds(0.1), &PemLiveFlushTick);
+  }
   Simulator::Stop(Seconds(simTime));
 
   // Issue 8.1: Initialise TGN before the simulation so events are processed

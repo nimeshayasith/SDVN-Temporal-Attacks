@@ -1,24 +1,6 @@
 [
-  {
-    "v_id": "V14",
-    "alpha": "TTW",
-    "y_hat": 0.222222,
-    "t_alert": 20550,
-    "interval_ts_ms": 20550,
-    "S_trig": [1, 2],
-    "from_lw_path": true,
-    "from_fs_path": false,
-    "tdet_ms": 50
-  },
-  {
-    "v_id": "V20",
-    "alpha": "TTW",
-    "y_hat": 0.222222,
-    "t_alert": 20550,
-    "interval_ts_ms": 20550,
-    "S_trig": [1, 2],
-    "from_lw_path": true,
-    "from_fs_path": false,
-    "tdet_ms": 50
-  }
+  {"v_id":"V5","alpha":"TTW","y_hat":0.222222,"t_alert":15131,"interval_ts_ms":15131,"S_trig":[1, 2],"from_lw_path":true,"from_fs_path":false,"tdet_ms":50},
+  {"v_id":"V6","alpha":"TTW","y_hat":0.222222,"t_alert":15151,"interval_ts_ms":15151,"S_trig":[1, 2],"from_lw_path":true,"from_fs_path":false,"tdet_ms":50},
+  {"v_id":"V7","alpha":"TTW","y_hat":0.222222,"t_alert":15110,"interval_ts_ms":15110,"S_trig":[1, 2],"from_lw_path":true,"from_fs_path":false,"tdet_ms":50},
+  {"v_id":"V8","alpha":"TTW","y_hat":0.222222,"t_alert":15110,"interval_ts_ms":15110,"S_trig":[1, 2],"from_lw_path":true,"from_fs_path":false,"tdet_ms":50}
 ]
