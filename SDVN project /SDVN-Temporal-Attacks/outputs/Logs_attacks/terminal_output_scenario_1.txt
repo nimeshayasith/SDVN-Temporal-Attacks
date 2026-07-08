@@ -113,150 +113,66 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 28
-  Avg wall-clock time: 2.512 ms
-  Max wall10.198]  V15 stored old packet <V15 sees V178, t=10.000>  (will replay at t~=34.300)
-[TTW-S1][t=10.200]  V22 stored old packet <V22 sees V63, t=10.000>  (will replay at t~=33.900)
-[TTW-S1][t=10.208]  V13 stored old packet <V13 sees V189, t=10.000>  (will replay at t~=20.100)
-[TTW-S1][t=10.218]  V17 stored old packet <V17 sees V153, t=10.000>  (will replay at t~=36.700)
-[TTW-S1][t=12.494]  Pipeline armed: 8 attacker(s)
-    attacker NS3-ID=11 -> victim NS3-ID=68
-    attacker NS3-ID=13 -> victim NS3-ID=189
-    attacker NS3-ID=15 -> victim NS3-ID=178
-    attacker NS3-ID=16 -> victim NS3-ID=89
-    attacker NS3-ID=17 -> victim NS3-ID=153
-    attacker NS3-ID=18 -> victim NS3-ID=75
-    attacker NS3-ID=21 -> victim NS3-ID=157
-    attacker NS3-ID=22 -> victim NS3-ID=63
-[TTW-S1][t=12.495]  V11 --FORGED replay--> Controller  <V11 sees V68, t=12.495>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=305.861m)
-[TTW-S1][t=12.495]  *** ATTACK COMPLETE ***  ghost link V11<->V68 injected into controller table
-[TTW-S1][t=12.545]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=12.545]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V11  propagation=800.000 ms
-[Trust][t=12.545]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[TTW-S1][t=20.124]  V13 --FORGED replay--> Controller  <V13 sees V189, t=20.124>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=324.231m)
-[TTW-S1][t=20.124]  *** ATTACK COMPLETE ***  ghost link V13<->V189 injected into controller table
-[TTW-S1][t=20.174]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=20.174]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V13  propagation=800.000 ms
-[TTW-S1][t=26.929]  V18 --FORGED replay--> Controller  <V18 sees V75, t=26.929>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=301.361m)
-[TTW-S1][t=26.929]  *** ATTACK COMPLETE ***  ghost link V18<->V75 injected into controller table
-[TTW-S1][t=26.979]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=26.979]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V18  propagation=800.000 ms
-[TTW-S1][t=33.926]  V22 --FORGED replay--> Controller  <V22 sees V63, t=33.926>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=303.601m)
-[TTW-S1][t=33.926]  *** ATTACK COMPLETE ***  ghost link V22<->V63 injected into controller table
-[TTW-S1][t=33.976]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=33.976]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V22  propagation=800.000 ms
-[TTW-S1][t=34.268]  V15 --FORGED replay--> Controller  <V15 sees V178, t=34.268>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=313.283m)
-[TTW-S1][t=34.268]  *** ATTACK COMPLETE ***  ghost link V15<->V178 injected into controller table
-[TTW-S1][t=34.318]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=34.318]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V15  propagation=800.000 ms
-[TTW-S1][t=36.667]  V21 --FORGED replay--> Controller  <V21 sees V157, t=36.667>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=331.987m)
-[TTW-S1][t=36.667]  *** ATTACK COMPLETE ***  ghost link V21<->V157 injected into controller table
-[TTW-S1][t=36.714]  V17 --FORGED replay--> Controller  <V17 sees V153, t=36.714>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=319.600m)
-[TTW-S1][t=36.714]  *** ATTACK COMPLETE ***  ghost link V17<->V153 injected into controller table
-[TTW-S1][t=36.717]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=36.717]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V21  propagation=800.000 ms
-[TTW-S1][t=36.764]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=36.764]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V17  propagation=800.000 ms
-[TTW-S1][t=38.662]  V16 --FORGED replay--> Controller  <V16 sees V89, t=38.662>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=313.101m)
-[TTW-S1][t=38.662]  *** ATTACK COMPLETE ***  ghost link V16<->V89 injected into controller table
-[TTW-S1][t=38.712]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[TTW-S1][t=38.712]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V16  propagation=800.000 ms
-
-[CRYPTO] crypto_latency_sumo.csv written    (173 events)
-[CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
-[CRYPTO] Beacon TX signed: 16   RX verified: 16
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=60  reject=0
-[TGN] Online mode — 40 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 8/16 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 11 13 15 16 17 18 21 22 ctrl 
-[TGN] |E_t^trusted|=32 (Tier 2: 32 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 56 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
-
-========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========
-  Scenario  : 1 — TTW-S1: Malicious Vehicle, No RSU
-  RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 32 / 0 / 8
-  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 32 / 0 / 8
-  MCC         : 0.000
-  [comb] TP/TN/FP/FN : 8 / 32 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.250
-  ACR         : 80.000 %
-  Tdet        : -1.000 ms
-  θ_FS        : 0.400  [fixed placeholder]
-  θ_MCC_opt   : 0.121  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 232.932  [Eq. 3.21 init; validation-tuned hyperparameter]
-  W_max       : 322  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 40
-  Stage-0 blocked (attacks): 0
-  |E_t^trusted|  : 32
-  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
-============================================================
-
-Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
-----------------------------------------------------------
-Detect stage (crypto+LW+TGN, PemEmitEvent):
-  Events processed: 56
-  Avg wall-clock time: 9.2 ms
-  Max wall-clock time: 56 ms
-  Events exceeding budget: 0 / 56
+  Avg wall-clock time: 2.099 ms
+  Max wall-clock time: 3.146 ms
+  Events exceeding budget: 0 / 28
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
-  Mitigations applied: 8
-  Avg wall-clock time: 25 ms
-  Max wall-clock time: 26 ms
+  Mitigations applied: 4
+  Avg wall-clock time: 2.417 ms
+  Max wall-clock time: 2.550 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
-  Triggered events: 8
-  Avg wall-clock time: 66 ms
-  Max wall-clock time: 80 ms
-  Events exceeding 1e+02 ms budget: 0 / 8  -- full pipeline stays within the T_b budget on this hardware
+  Triggered events: 4
+  Avg wall-clock time: 4.934 ms
+  Max wall-clock time: 5.222 ms
+  Events exceeding 100.000 ms budget: 0 / 4  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
-  Calls: 32
-  Avg wall-clock time: 0.051 ms
-  Max wall-clock time: 0.13 ms
-  Calls exceeding budget: 0 / 32
+  Calls: 16
+  Avg wall-clock time: 0.050 ms
+  Max wall-clock time: 0.137 ms
+  Calls exceeding budget: 0 / 16
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 0
-  Avg wall-clock time: 0 ms
-  Max wall-clock time: 0 ms
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
   Calls exceeding budget: 0 / 0
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
-  Calls: 32
-  Avg wall-clock time: 0.068 ms
-  Max wall-clock time: 0.15 ms
-  Calls exceeding budget: 0 / 32
+  Calls: 16
+  Avg wall-clock time: 0.060 ms
+  Max wall-clock time: 0.095 ms
+  Calls exceeding budget: 0 / 16
 
 Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
-  Calls: 8
-  Avg wall-clock time: 0.31 ms
-  Max wall-clock time: 0.44 ms
-  Calls exceeding budget: 0 / 8
+  Calls: 4
+  Avg wall-clock time: 0.298 ms
+  Max wall-clock time: 0.346 ms
+  Calls exceeding budget: 0 / 4
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
-  Calls: 8
-  Avg wall-clock time: 0.11 ms
-  Max wall-clock time: 0.8 ms
-  Calls exceeding budget: 0 / 8
+  Calls: 4
+  Avg wall-clock time: 0.005 ms
+  Max wall-clock time: 0.014 ms
+  Calls exceeding budget: 0 / 4
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.051) + beacon-crypto(0.068) + rsu-forward(0) + detect(9.2) + detection-crypto(0.31) + mitigate(25) + lkh-crypto(0.11) = 35 ms
-  -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
+  beacon-send(0.050) + beacon-crypto(0.060) + rsu-forward(0.000) + detect(2.099) + detection-crypto(0.298) + mitigate(2.417) + lkh-crypto(0.005) = 4.929 ms
+  -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
 ---------------------------------
-Candidate pairs checked: 11940000
-Successful neighbor observations: 1259256
-Average neighbors/vehicle: 21
-Maximum neighbors observed at once: 39
+Candidate pairs checked: 76000
+Successful neighbor observations: 15664
+Average neighbors/vehicle: 3.916
+Maximum neighbors observed at once: 7
 
-Real-time (wall-clock) budget check — T_b=1e+02 ms:
-  Ticks executed: 300
-  Avg tick wall-clock time: 11 ms
-  Max tick wall-clock time: 18 ms
-  Ticks exceeding 1e+02 ms budget: 0 / 300  -- pipeline stays within the T_b budget on this hardware
+Real-time (wall-clock) budget check — T_b=100.000 ms:
+  Ticks executed: 200
+  Avg tick wall-clock time: 0.265 ms
+  Max tick wall-clock time: 0.292 ms
+  Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(11) + beacon-send(0.051) + beacon-crypto(0.068) + rsu-forward(0) + detect(9.2) + detection-crypto(0.31) + mitigate(25) + lkh-crypto(0.11) = 46 ms
-  -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
+  neighborhood(0.265) + beacon-send(0.050) + beacon-crypto(0.060) + rsu-forward(0.000) + detect(2.099) + detection-crypto(0.298) + mitigate(2.417) + lkh-crypto(0.005) = 5.194 ms
+  -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

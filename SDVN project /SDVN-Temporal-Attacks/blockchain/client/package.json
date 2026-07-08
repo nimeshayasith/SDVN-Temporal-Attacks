@@ -6,7 +6,8 @@
   "scripts": {
     "submit": "node submitToFabric.js",
     "listen": "node eventListener.js",
-    "enroll": "node enrollAdmin.js"
+    "enroll": "node enrollAdmin.js",
+    "serve": "node fabricServer.js"
   },
   "dependencies": {
     "fabric-network": "^2.2.20",
