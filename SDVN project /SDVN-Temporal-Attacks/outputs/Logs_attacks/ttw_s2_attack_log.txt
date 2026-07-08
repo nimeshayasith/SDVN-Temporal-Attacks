@@ -12,49 +12,99 @@
 
 ========================================================
 
-[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_205
-  V15 -> RSU : <V15 sees V153, t=10.000>
-  V153 -> RSU : <V153 sees V15, t=10.000>
+[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_25
+  V20 -> RSU : <V20 sees V19, t=10.000>
+  V19 -> RSU : <V19 sees V20, t=10.000>
 
-[t=10.100]  STEP ②  RSU_205 aggregated forward to controller
-  [<V15 sees V153, t=10.000>, <V153 sees V15, t=10.000>]
+[t=10.001]  STEP ①  V2V HELLO + topology updates to RSU_26
+  V14 -> RSU : <V14 sees V13, t=10.000>
+  V13 -> RSU : <V13 sees V14, t=10.000>
+
+[t=10.100]  STEP ②  RSU_25 aggregated forward to controller
+  [<V20 sees V19, t=10.000>, <V19 sees V20, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.101]  STEP ②  RSU_26 aggregated forward to controller
+  [<V14 sees V13, t=10.000>, <V13 sees V14, t=10.000>]
   Result : ACCEPTED (legitimate aggregate)
 
 [t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
-  old_packet : <V15 sees V153, t=10.000>
-  Awaiting replay at t=32.100
-  Link physically breaks at t≈30.1s (dist > 300.0m, real SUMO trajectory)
+  old_packet : <V20 sees V19, t=10.000>
+  Awaiting replay at t=20.500
+  Link physically breaks at t≈18.5s (dist > 300.0m, real SUMO trajectory)
 
-[t=32.100]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_205)
-  Stored packet : <V15 sees V153, t=10.000>  (original RSU-aggregated observation at t=10.000)
-  Forged packet : <V15 sees V153, t=32.100>  timestamp changed 10.000 -> 32.100
-  Forge action  : RSU changes timestamp to appear current, injects to controller at t=32.100
+[t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V14 sees V13, t=10.000>
+  Awaiting replay at t=20.500
+  Link physically breaks at t≈18.5s (dist > 300.0m, real SUMO trajectory)
 
-[t=32.100]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_205)
+[t=20.500]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_25)
+  Stored packet : <V20 sees V19, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V20 sees V19, t=20.500>  timestamp changed 10.000 -> 20.500
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=20.500
+
+[t=20.500]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_25)
   Controller ACCEPTED forged packet (no timestamp-integrity protection)
 
-[t=32.100]  STEP ⑥  FAULTY ROUTING DECISION
-  Controller believes V15<->V153 was ACTIVE at t=32.100 (forged — link has since broken)
+[t=20.500]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V20<->V19 was ACTIVE at t=20.500 (forged — link has since broken)
   Physical reality : link BROKEN
   Consequence : packets routed via ghost link will be DROPPED
 
   Topology Table (after replay):
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
-  V153  ->  V15    t=10.000    No
-  V15  ->  V153    t=32.100    YES <- FORGED
+  V13  ->  V14    t=10.000    No
+  V14  ->  V13    t=10.000    No
+  V19  ->  V20    t=10.000    No
+  V20  ->  V19    t=20.500    YES <- FORGED
+[t=20.500]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_26)
+  Stored packet : <V14 sees V13, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V14 sees V13, t=20.500>  timestamp changed 10.000 -> 20.500
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=20.500
+
+[t=20.500]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_26)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=20.500]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V14<->V13 was ACTIVE at t=20.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V13  ->  V14    t=10.000    No
+  V14  ->  V13    t=20.500    YES <- FORGED
+  V19  ->  V20    t=10.000    No
+  V20  ->  V19    t=20.500    YES <- FORGED
 
 ========================================================
   TTW ATTACK S2 COMPLETE
 ========================================================
-[t=32.150]  TTW-S2 RSU attacker  forged fresh ts=32.150  identity: BASIC — relays under own identity (RSU≠V1) → routed to threshold-sig gate (Eq. 3.26)
-[t=32.150]  DETECTION + MITIGATION
-  Ghost link V15<->V153 removed
-  Score: 1.000
+[t=20.550]  [KEY-EXFIL] TTW-S2 sophistication: V20 (complicit) -> RSU V25 : session_key K_{V20,nk} + private signing key SK_V20 handed over (collusion)
+  RSU now holds V20's real credentials -> can produce messages cryptographically indistinguishable from V20's own genuine self-report
+[t=20.550]  TTW-S2 RSU attacker  forged fresh ts=20.550  identity: SOPHISTICATED [key-exfiltration] — RSU holds V1's real credentials, forges V1 identity -> Stage-0 BYPASSED (genuinely correct MAC) -> LW+TGN
+[t=20.550]  DETECTION + MITIGATION
+  Ghost link V20<->V19 removed
+  Score: 0.222
   Latency: 50.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
-  [LKH] Revoke-Session-Key(V205): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V205 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V205): blocked from re-admission until re-authenticated
+  [LKH] Revoke-Session-Key(V25): O(log 20) = 5 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V25 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V25): blocked from re-admission until re-authenticated
+
+[t=20.550]  [KEY-EXFIL] TTW-S2 sophistication: V14 (complicit) -> RSU V26 : session_key K_{V14,nk} + private signing key SK_V14 handed over (collusion)
+  RSU now holds V14's real credentials -> can produce messages cryptographically indistinguishable from V14's own genuine self-report
+[t=20.550]  TTW-S2 RSU attacker  forged fresh ts=20.550  identity: SOPHISTICATED [key-exfiltration] — RSU holds V1's real credentials, forges V1 identity -> Stage-0 BYPASSED (genuinely correct MAC) -> LW+TGN
+[t=20.550]  DETECTION + MITIGATION
+  Ghost link V14<->V13 removed
+  Score: 0.222
+  Latency: 50.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V26): O(log 20) = 5 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V26 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V26): blocked from re-admission until re-authenticated
 
