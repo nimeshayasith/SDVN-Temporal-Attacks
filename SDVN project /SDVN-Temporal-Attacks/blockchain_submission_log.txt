@@ -1186,3 +1186,145 @@
 [2026-07-08T14:18:56.346Z] Connected (1 channel peer(s)). Ready to receive live events from routing.cc.
 [2026-07-08T14:18:56.347Z] Listening on /tmp/teta_guard_live.sock — waiting for routing.cc (--live_blockchain=1)...
 [2026-07-08T14:19:14.956Z] Received SIGTERM — draining queue (0 item(s)) before exit...
+[2026-07-08T15:03:38.451Z] fabricServer starting — socket=/tmp/teta_guard_live.sock node_id=peer0.rsu4.tetaguard.net no_rsu=false
+[2026-07-08T15:03:38.452Z] Connecting to Fabric gateway...
+[2026-07-08T15:03:44.532Z] Connected (1 channel peer(s)). Ready to receive live events from routing.cc.
+[2026-07-08T15:03:44.537Z] Listening on /tmp/teta_guard_live.sock — waiting for routing.cc (--live_blockchain=1)...
+[2026-07-08T15:04:20.344Z] routing.cc connected.
+[2026-07-08T15:04:37.654Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:39.658Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:41.662Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:43.664Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:45.668Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:47.672Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:49.675Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:51.680Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:53.682Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:55.686Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:57.689Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:04:59.691Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:01.695Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:03.699Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:05.702Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:07.706Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:09.707Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:09.825Z] routing.cc disconnected (will accept a new connection on reconnect).
+[2026-07-08T15:05:11.716Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:13.724Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:15.732Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:17.741Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:19.750Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:21.753Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:23.756Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:25.760Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:27.764Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:29.769Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:31.778Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:33.786Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:35.797Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:37.805Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:39.812Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:41.820Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:43.827Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:45.837Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:47.844Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:49.847Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:51.850Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:53.855Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:55.858Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:57.861Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:05:59.863Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:01.871Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:03.879Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:05.887Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:07.896Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:09.902Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:11.907Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:13.915Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:15.924Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:17.930Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:19.933Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:21.936Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:23.939Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:25.943Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:27.951Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:29.958Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:31.966Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:33.975Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:35.984Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:37.988Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:39.996Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:41.999Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:44.002Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:46.005Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:46.977Z] Received SIGTERM — draining queue (84 item(s)) before exit...
+[2026-07-08T15:06:48.011Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:50.017Z] [ERROR] submission failed, will retry in 2s: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[2026-07-08T15:06:51.994Z] [WARN] exiting with 84 item(s) still queued (shutdown grace period elapsed).
