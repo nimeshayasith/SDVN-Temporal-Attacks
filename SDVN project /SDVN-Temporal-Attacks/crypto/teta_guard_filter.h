@@ -664,7 +664,20 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // NOT repeated here — this block now only builds the IndividualSignedReport
     // material that verify_threshold_sig() consumes in Step 1c when an attack
     // event arrives for the same link.
-    if (!event.attack_label && event.type == PEM_EVENT_TOPOLOGY_UPDATE)
+    //
+    // Ground-truth leak fix (threats-to-validity review, 6th instance found):
+    // this previously gated on !event.attack_label — but any event that reaches
+    // this line has, by construction, already survived every real check this
+    // function performs: Step 1's HMAC/MAC verification (line ~483, unconditional
+    // for all events), and — for third-party reporters — Step 1b's location-bind
+    // + quorum gate above (which returns false and exits before this point on
+    // failure). There is no remaining structural signal left to exclude an event
+    // by other than ground truth, so a real verifier has no basis to keep a
+    // sophisticated attacker's genuinely-signed report out of this "honest
+    // reports" pool: it is, by every check the verifier can run, indistinguishable
+    // from a genuine one. Eq. 3.26 itself is defined over reports that pass
+    // Verify(sigma_i, msg_i, PK_Vi) = 1 — not over a ground-truth-benign subset.
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
         const uint32_t me_lmin = std::min(event.link_src_id, event.link_dst_id);
         const uint32_t me_lmax = std::max(event.link_src_id, event.link_dst_id);
