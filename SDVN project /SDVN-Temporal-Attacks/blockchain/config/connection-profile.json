@@ -25,6 +25,19 @@
           "eventSource": true
         }
       }
+    },
+    "teta-channel-norsu": {
+      "orderers": [
+        "orderer1.tetaguard.net"
+      ],
+      "peers": {
+        "peer0.rsu4.tetaguard.net": {
+          "endorsingPeer": true,
+          "chaincodeQuery": true,
+          "ledgerQuery": true,
+          "eventSource": true
+        }
+      }
     }
   },
   "organizations": {
@@ -68,6 +81,15 @@
       },
       "grpcOptions": {
         "ssl-target-name-override": "peer0.rsu3.tetaguard.net"
+      }
+    },
+    "peer0.rsu4.tetaguard.net": {
+      "url": "grpcs://peer0.rsu4.tetaguard.net:7055",
+      "tlsCACerts": {
+        "path": "../network/crypto-config/peerOrganizations/tetaguard.net/peers/peer0.rsu4.tetaguard.net/tls/ca.crt"
+      },
+      "grpcOptions": {
+        "ssl-target-name-override": "peer0.rsu4.tetaguard.net"
       }
     }
   },

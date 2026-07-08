@@ -107,6 +107,13 @@ async function main() {
     logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
     log(`fabricServer starting — socket=${socketPath} node_id=${nodeID} no_rsu=${noRSUMode}`);
 
+    // Auto-select the channel: no-RSU scenarios use teta-channel-norsu, where
+    // all 8 peers (rsu1-5 + obu1-3) are registered Tier-2 from a clean
+    // tau0=0.10 start (see blockchain/NORSU_CHANNEL_PLAN.md) — with-RSU
+    // scenarios keep using teta-channel, untouched. Same peer identity
+    // (nodeID) works on both: same MSP cert, just a different channel/ledger.
+    const channelName = noRSUMode ? 'teta-channel-norsu' : 'teta-channel';
+
     log('Connecting to Fabric gateway...');
     // The Fabric SDK's gateway.connect() can hang indefinitely (rather than
     // fail fast) when peers are unreachable (DNS/network down, network not
@@ -114,14 +121,14 @@ async function main() {
     // environment gets a clear, actionable error instead of hanging forever.
     const CONNECT_TIMEOUT_MS = 20000;
     const { gateway, contract, channelPeers } = await Promise.race([
-        fabricClient.connectContract(nodeID),
+        fabricClient.connectContract(nodeID, channelName),
         new Promise((_, reject) => setTimeout(
             () => reject(new Error(
                 `Timed out after ${CONNECT_TIMEOUT_MS}ms connecting to Fabric. ` +
                 'Is the network up? (docker-compose -f blockchain/network/docker-compose-teta.yaml up -d)'
             )), CONNECT_TIMEOUT_MS))
     ]);
-    log(`Connected (${channelPeers.length || 'default'} channel peer(s)). Ready to receive live events from routing.cc.`);
+    log(`Connected to channel '${channelName}' (${channelPeers.length || 'default'} channel peer(s)). Ready to receive live events from routing.cc.`);
 
     // Single bounded queue, drained by one worker loop so Fabric submissions
     // are serialized (avoids self-inflicted MVCC conflicts from firing many
