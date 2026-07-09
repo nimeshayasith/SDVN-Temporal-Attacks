@@ -10492,7 +10492,16 @@ public:
 	void SetNodeId (uint32_t node_id);
 	void SetTimestamp (Time t);
 
-
+	// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) wire fields — real HMAC-SHA256
+	// tag + nonce, populated by beacon_sign() in centralized_dsrc_data_broadcast()
+	// and checked by lw_mitigate() in Rx(). This is the periodic (every
+	// data_transmission_period) beacon tag used by the live 7-channel DSRC
+	// broadcast path — previously unauthenticated. See CustomDataTag1 for the
+	// original pattern this mirrors.
+	void GetMac(uint8_t out[HMAC_SHA256_LEN]) const;
+	void SetMac(const uint8_t mac[HMAC_SHA256_LEN]);
+	void GetNonce(uint8_t out[NONCE_LEN]) const;
+	void SetNonce(const uint8_t nonce[NONCE_LEN]);
 
 	CustomDataTag();
 	CustomDataTag(uint32_t node_id);
@@ -10500,14 +10509,15 @@ public:
 private:
 
 	uint32_t m_nodeId;
-	
+
 	/* Current status data */
-	
+
 	Vector m_currentPosition;
 	Vector m_currentVelocity;
 	Vector m_currentAcceleration;
 	Time m_timestamp;
-	
+	uint8_t m_mac[HMAC_SHA256_LEN];
+	uint8_t m_nonce[NONCE_LEN];
 
 };
 
@@ -10518,10 +10528,14 @@ NS_OBJECT_ENSURE_REGISTERED (CustomDataTag);
 CustomDataTag::CustomDataTag() {
 	m_timestamp = Simulator::Now();
 	m_nodeId = -1;
+	memset(m_mac, 0, sizeof(m_mac));
+	memset(m_nonce, 0, sizeof(m_nonce));
 }
 CustomDataTag::CustomDataTag(uint32_t node_id) {
 	m_timestamp = Simulator::Now();
 	m_nodeId = node_id;
+	memset(m_mac, 0, sizeof(m_mac));
+	memset(m_nonce, 0, sizeof(m_nonce));
 }
 
 CustomDataTag::~CustomDataTag() {
@@ -10545,7 +10559,7 @@ TypeId CustomDataTag::GetInstanceTypeId (void) const
  
 uint32_t CustomDataTag::GetSerializedSize (void) const
 {
-	return sizeof(Vector) + sizeof(Vector) + sizeof(Vector) + sizeof (ns3::Time) + sizeof(uint32_t);
+	return sizeof(Vector) + sizeof(Vector) + sizeof(Vector) + sizeof (ns3::Time) + sizeof(uint32_t) + sizeof(m_mac) + sizeof(m_nonce);
 }
 
 /*
@@ -10577,6 +10591,16 @@ void CustomDataTag::Serialize (TagBuffer i) const
 
 	//Then we store the node ID
 	i.WriteU32(m_nodeId);
+
+	//Then the real Algorithm 3 (Eqs. 3.15-3.17) MAC + nonce fields
+	for (uint32_t j=0;j<sizeof(m_mac);j++)
+	{
+		i.WriteU8(m_mac[j]);
+	}
+	for (uint32_t j=0;j<sizeof(m_nonce);j++)
+	{
+		i.WriteU8(m_nonce[j]);
+	}
 }
 
 /* This function reads data from a buffer and store it in class's instance variables.
@@ -10593,20 +10617,29 @@ void CustomDataTag::Deserialize (TagBuffer i)
 	m_currentPosition.x = i.ReadDouble();
 	m_currentPosition.y = i.ReadDouble();
 	m_currentPosition.z = i.ReadDouble();
-	
+
 	//Then the velocity
 	m_currentVelocity.x = i.ReadDouble();
 	m_currentVelocity.y = i.ReadDouble();
 	m_currentVelocity.z = i.ReadDouble();
-	
+
 	//Then the acceleration
 	m_currentAcceleration.x = i.ReadDouble();
 	m_currentAcceleration.y = i.ReadDouble();
 	m_currentAcceleration.z = i.ReadDouble();
-	
+
 	//Finally, we extract the node id
 	m_nodeId = i.ReadU32();
 
+	//Then the real Algorithm 3 (Eqs. 3.15-3.17) MAC + nonce fields
+	for (uint32_t j=0;j<sizeof(m_mac);j++)
+	{
+		m_mac[j] = i.ReadU8();
+	}
+	for (uint32_t j=0;j<sizeof(m_nonce);j++)
+	{
+		m_nonce[j] = i.ReadU8();
+	}
 }
 
 /*
@@ -10658,6 +10691,26 @@ void CustomDataTag::SetAcceleration(Vector acce) {
 
 void CustomDataTag::SetTimestamp(Time t) {
 	m_timestamp = t;
+}
+
+void CustomDataTag::GetMac(uint8_t out[HMAC_SHA256_LEN]) const
+{
+	memcpy(out, m_mac, HMAC_SHA256_LEN);
+}
+
+void CustomDataTag::SetMac(const uint8_t mac[HMAC_SHA256_LEN])
+{
+	memcpy(m_mac, mac, HMAC_SHA256_LEN);
+}
+
+void CustomDataTag::GetNonce(uint8_t out[NONCE_LEN]) const
+{
+	memcpy(out, m_nonce, NONCE_LEN);
+}
+
+void CustomDataTag::SetNonce(const uint8_t nonce[NONCE_LEN])
+{
+	memcpy(m_nonce, nonce, NONCE_LEN);
 }
 
 
@@ -130064,20 +130117,62 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 	CustomDataTag tag;
 	if(pkt->PeekPacketTag(tag))
 	{
-		if (experiment_number == 5)
+		// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) — real verification on
+		// receipt for the live, periodic 7-channel beacon (centralized_dsrc_
+		// data_broadcast()), mirroring CustomDataTag1's gate below and
+		// AttackSendDSRCBeacon()/Rx()'s real beacon_sign()/lw_mitigate() pair.
+		// This is the beacon traffic that actually drives routing/topology
+		// state for the whole simulation; previously it was accepted
+		// unconditionally with no signature at all.
+		CryptoVerifyResult vr_tag;
 		{
-			max_distance[tag.GetNodeId()] = tag.GetPosition().x;
+			BeaconMessage bm = {};
+			uint32_t sender_id = tag.GetNodeId();
+			memcpy(bm.vehicle_id, &sender_id, sizeof(sender_id));
+			bm.sender_timestamp_ms = (uint64_t)tag.GetTimestamp().GetMilliSeconds();
+			Vector txPos = tag.GetPosition();
+			bm.gps_lat = (float)txPos.x;
+			bm.gps_lon = (float)txPos.y;
+			bm.rssi_dbm = -70.0f;
+			bm.sequence_number = 0;
+			memcpy(bm.link_id, &sender_id, 4);
+			memcpy(bm.link_id + 4, &sender_id, 4);
+			tag.GetMac(bm.mac);
+			tag.GetNonce(bm.nonce);
+
+			uint8_t key[SESSION_KEY_LEN];
+			CryptoGetVehicleSessionKey(sender_id, key);
+			NonceCache &cache = g_beacon_nonce_cache_by_receiver[(uint32_t)destination_node_id];
+			bool key_revoked = false;
+			if (g_lkh_ready && g_lkh_n_leaves > 0u) {
+				uint32_t leaf_idx = sender_id % g_lkh_n_leaves;
+				key_revoked = lkh_is_revoked(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+			}
+			vr_tag = lw_mitigate(&bm, (uint64_t)Simulator::Now().GetMilliSeconds(),
+			                     key, key_revoked, &cache);
+			if (vr_tag == CRYPTO_ACCEPT) {
+				g_beacon_verify_ok_count++;
+			} else {
+				g_beacon_verify_fail_count++;
+			}
 		}
-		if (paper == 0)
-		{
-			dsrc_packet_final_timestamp[tag.GetNodeId()] = Simulator::Now().GetSeconds();
+
+		if (vr_tag == CRYPTO_ACCEPT) {
+			if (experiment_number == 5)
+			{
+				max_distance[tag.GetNodeId()] = tag.GetPosition().x;
+			}
+			if (paper == 0)
+			{
+				dsrc_packet_final_timestamp[tag.GetNodeId()] = Simulator::Now().GetSeconds();
+			}
+			dsrc_beacon_rx_total++;  // count one successful beacon reception
+			add_neighbor_info(neighbordata_inst+destination_node_id,tag.GetNodeId()); //add current neighbor information
+			refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
+			add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tag.GetPosition(), tag.GetVelocity(), tag.GetAcceleration(), tag.GetNodeId(), empty_neighborset, 0);
+			refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
+			// SUPPRESSED: std::cout << "Received data broadcasted packet from "<< tag.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tag.GetSerializedSize()<<" at position "<< tag.GetPosition()<<"with velocity "<<tag.GetVelocity()<<"with acceleration "<<tag.GetAcceleration()<<"packet timestamp "<< tag.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 		}
-		dsrc_beacon_rx_total++;  // count one successful beacon reception
-		add_neighbor_info(neighbordata_inst+destination_node_id,tag.GetNodeId()); //add current neighbor information
-		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
-		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tag.GetPosition(), tag.GetVelocity(), tag.GetAcceleration(), tag.GetNodeId(), empty_neighborset, 0);
-		refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
-		// SUPPRESSED: std::cout << "Received data broadcasted packet from "<< tag.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tag.GetSerializedSize()<<" at position "<< tag.GetPosition()<<"with velocity "<<tag.GetVelocity()<<"with acceleration "<<tag.GetAcceleration()<<"packet timestamp "<< tag.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tag.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
 	
 	CustomDataTag1 tagd1;
@@ -131355,6 +131450,26 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	tag.SetAcceleration(acceleration);
 	tag.SetTimestamp(ti);
 
+	// Algorithm 3 (LW-MITIGATE, Eq. 3.15) — real HMAC-SHA256 sign for the live,
+	// periodic (every data_transmission_period) 7-channel beacon. Previously
+	// this path (the one that actually drives routing/topology state for the
+	// whole simulation) carried no authentication at all — only the one-shot
+	// attack-scenario beacons (AttackSendDSRCBeacon) were signed. Mirrors that
+	// function's pattern; verified on receipt by lw_mitigate() in Rx() below.
+	// link_id is a constant {nid,nid} marker (this is a broadcast, not a
+	// specific link) — the receiver reconstructs it identically.
+	BeaconMessage bm = {};
+	memcpy(bm.vehicle_id, &nid, sizeof(nid));
+	bm.sender_timestamp_ms = (uint64_t)ti.GetMilliSeconds();
+	bm.gps_lat = (float)posi.x;
+	bm.gps_lon = (float)posi.y;
+	bm.rssi_dbm = -70.0f;
+	bm.sequence_number = 0;
+	memcpy(bm.link_id, &nid, 4);
+	memcpy(bm.link_id + 4, &nid, 4);
+	uint8_t beacon_key[SESSION_KEY_LEN];
+	CryptoGetVehicleSessionKey(nid, beacon_key);
+
 	// Broadcast on all 7 DSRC channels — each gets its own packet instance
 	NetDeviceContainer* ch_devs[7] = {
 		&wifidevices_172, &wifidevices_174, &wifidevices_176,
@@ -131401,6 +131516,13 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 		if (node_index >= ch_devs[c]->GetN()) continue;
 		Ptr<WifiNetDevice> wdi = DynamicCast<WifiNetDevice>(ch_devs[c]->Get(node_index));
 		if (!wdi) continue;
+		// Fresh nonce+MAC per channel: reusing one nonce across all 7 channel
+		// copies would make lw_mitigate()'s nonce-novelty check (Eq. 3.17) flag
+		// a receiver's 2nd..7th in-range channel reception as a replay, even
+		// though every channel copy is a distinct, legitimate transmission.
+		beacon_sign(&bm, beacon_key);
+		tag.SetMac(bm.mac);
+		tag.SetNonce(bm.nonce);
 		Ptr<Packet> pkt = Create<Packet>(0);
 		pkt->AddPacketTag(tag);
 		dsrc_total_packet_size += pkt->GetSerializedSize();
