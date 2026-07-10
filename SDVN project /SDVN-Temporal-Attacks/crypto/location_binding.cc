@@ -211,9 +211,9 @@ bool verify_single_witness(const LocationBoundReport *report,
                             float    link_endpoint_lon,
                             uint64_t recv_time_ms) {
     /* Gate A + Gate B — same three-gate pattern as KEM (Fix-1/2) and threshold_sig */
-    if (!dilithium5_verify_cert(&report->cert)) { fprintf(stderr, "[LB-DEBUG] FAIL Gate A (cert)\n"); return false; }
+    if (!dilithium5_verify_cert(&report->cert)) return false;
     if (memcmp(report->cert.pk_vi, report->pub_key, DILITHIUM5_PK_LEN) != 0)
-        { fprintf(stderr, "[LB-DEBUG] FAIL Gate B (pk mismatch)\n"); return false; }
+        return false;
 
     /* Gate D — Issue-3 fix: timestamp freshness.
      * Signed sender_timestamp_ms must be within LOCBIND_FRESHNESS_WINDOW_MS of
@@ -223,8 +223,7 @@ bool verify_single_witness(const LocationBoundReport *report,
         uint64_t ts = report->payload.sender_timestamp_ms;
         int64_t  delta = (int64_t)recv_time_ms - (int64_t)ts;
         if (delta < 0) delta = -delta;
-        if ((uint64_t)delta > LOCBIND_FRESHNESS_WINDOW_MS)
-            { fprintf(stderr, "[LB-DEBUG] FAIL Gate D (freshness) delta=%lld window=%lu\n", (long long)delta, (unsigned long)LOCBIND_FRESHNESS_WINDOW_MS); return false; }
+        if ((uint64_t)delta > LOCBIND_FRESHNESS_WINDOW_MS) return false;
     }
 
     /* Gate E — Issue-3 fix: per-reporter nonce novelty (cross-aggregate replay).
@@ -242,7 +241,7 @@ bool verify_single_witness(const LocationBoundReport *report,
      *
      * Do NOT move locbind_nonce_consume() earlier in this function.            */
     if (!locbind_nonce_is_novel(report->payload.reporter_id, report->payload.nonce))
-        { fprintf(stderr, "[LB-DEBUG] FAIL Gate E (nonce novelty)\n"); return false; }
+        return false;
 
     /* (i) Cryptographic authenticity — Fix-7: domain-separated locbind verify */
     bool crypto_ok = dilithium5_verify_locbind(
@@ -250,13 +249,13 @@ bool verify_single_witness(const LocationBoundReport *report,
         sizeof(LocationBindingPayload),
         report->signature, DILITHIUM5_SIG_LEN,
         report->pub_key);
-    if (!crypto_ok) { fprintf(stderr, "[LB-DEBUG] FAIL Gate C (sig verify)\n"); return false; }
+    if (!crypto_ok) return false;
 
     /* (ii) Spatial plausibility: d(pos_{Vk}, link endpoint) ≤ r_comm */
     float dist = haversine_distance_m(
         report->payload.reporter_lat, report->payload.reporter_lon,
         link_endpoint_lat, link_endpoint_lon);
-    if (dist > R_COMM_METERS) { fprintf(stderr, "[LB-DEBUG] FAIL Gate ii (spatial) dist=%f rcomm=%f\n", dist, (float)R_COMM_METERS); return false; }
+    if (dist > R_COMM_METERS) return false;
 
     /* (iii) Signal plausibility: RSSI ≥ RSSI_min.
      * Fix-5 repair: use rsu_measured_rssi_dbm (RSU's own physical-layer
@@ -281,7 +280,7 @@ bool verify_single_witness(const LocationBoundReport *report,
                 (int)sizeof(report->payload.reporter_id), report->payload.reporter_id);
         rssi_to_check = report->payload.rssi_from_vi_dbm;
     }
-    if (rssi_to_check < RSSI_MIN_DBM) { fprintf(stderr, "[LB-DEBUG] FAIL (iii) RSSI floor rssi=%f min=%f\n", rssi_to_check, (float)RSSI_MIN_DBM); return false; }
+    if (rssi_to_check < RSSI_MIN_DBM) return false;
 
     /* (iv) Fix-5: RSSI-vs-distance Friis plausibility check.
      * If RSSI is weaker than expected by more than RSSI_DISTANCE_MARGIN_DB at
@@ -292,9 +291,8 @@ bool verify_single_witness(const LocationBoundReport *report,
         float expected_rssi = RSSI_MIN_DBM
                               + 20.0f * log10f(R_COMM_METERS / dist);
         if (rssi_to_check < expected_rssi - RSSI_DISTANCE_MARGIN_DB)
-            { fprintf(stderr, "[LB-DEBUG] FAIL (iv) Friis rssi=%f expected=%f margin=%f\n", rssi_to_check, expected_rssi, (float)RSSI_DISTANCE_MARGIN_DB); return false; }
+            return false;
     }
-    fprintf(stderr, "[LB-DEBUG] PASS all gates\n");
 
     /* All gates passed — consume the (reporter_id, nonce) pair now so it
      * cannot be replayed into a subsequent aggregate call.                   */

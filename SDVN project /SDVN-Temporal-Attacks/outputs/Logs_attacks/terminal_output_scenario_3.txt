@@ -78,7 +78,7 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 7
-  Avg wall-clock time: 2.6 ms
+  Avg wall-clock time: 2.4 ms
   Max wall-clock time: 3.4 ms
   Events exceeding budget: 0 / 7
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
@@ -93,8 +93,8 @@ Full pipeline (detect+mitigate combined, when mitigation fired):
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 2
-  Avg wall-clock time: 0.089 ms
-  Max wall-clock time: 0.16 ms
+  Avg wall-clock time: 0.087 ms
+  Max wall-clock time: 0.15 ms
   Calls exceeding budget: 0 / 2
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
@@ -122,7 +122,7 @@ LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls exceeding budget: 0 / 0
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.089) + beacon-crypto(0) + rsu-forward(0) + detect(2.6) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 2.7 ms
+  beacon-send(0.087) + beacon-crypto(0) + rsu-forward(0) + detect(2.4) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 2.5 ms
   -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -134,10 +134,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=1e+02 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.26 ms
-  Max tick wall-clock time: 0.3 ms
+  Avg tick wall-clock time: 0.27 ms
+  Max tick wall-clock time: 0.56 ms
   Ticks exceeding 1e+02 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.26) + beacon-send(0.089) + beacon-crypto(0) + rsu-forward(0) + detect(2.6) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 2.9 ms
+  neighborhood(0.27) + beacon-send(0.087) + beacon-crypto(0) + rsu-forward(0) + detect(2.4) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 2.7 ms
   -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
