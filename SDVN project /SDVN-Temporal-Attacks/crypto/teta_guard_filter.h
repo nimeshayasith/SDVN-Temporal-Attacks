@@ -136,18 +136,23 @@ TetaGuardLocBindVerify(const PemEvent& event, double link_ep_x, double link_ep_y
     ns3_to_gps(event.reporter_position.x, event.reporter_position.y,
                &rep_lat, &rep_lon);
 
-    // Fix 5.1 (Eq. 3.29 RSSI_Vk<-Vi — "measured at Vk from endpoint Vi"): use the
-    // REAL PHY-measured RSSI (event.rssi_reporter_dbm, populated in PemEmitEvent()
-    // from Rx()'s MonitorSnifferRx signalNoise.signal via g_phy_rssi_dbm) when the
-    // reporter actually received a beacon from one of the link endpoints. This is
-    // what makes the Eq. 3.27-3.29 cryptographic binding meaningful: an attacker
-    // who never physically received a signal from the link cannot produce this
-    // value merely by knowing positions. Only when no real measurement exists
-    // (event.rssi_reporter_dbm == PEM_SIGNAL_PLACEHOLDER — e.g. an ME echo
-    // reporter that never received a beacon from the link it claims to witness)
-    // does this fall back to the same Cost231-boundary estimate used by Stage-1
-    // sig[8], so out-of-range/never-heard reporters are still rejected via the
-    // RSSI-floor path rather than silently passing.
+    // Fix 5.1 (Eq. 3.29 RSSI_Vk<-Vi — "measured at Vk from endpoint Vi"):
+    // event.rssi_reporter_dbm would carry a REAL PHY-measured signal here if
+    // one were available (Rx()'s MonitorSnifferRx callback does receive a
+    // genuine NS-3-simulated signalNoise.signal per reception — see Rx() in
+    // routing.cc), but that value is only ever logged, not captured into any
+    // state PemEmitEvent can read. So in the current build, event.rssi_reporter_dbm
+    // is always PEM_SIGNAL_PLACEHOLDER at this point (Stage-0 runs before
+    // Stage-1 ever computes a real value for topology events, and beacon-type
+    // events never set it at all) — hasRealRssi below is unconditionally
+    // false today, and every call falls back to the same Cost231-boundary
+    // distance estimate Stage-1 sig[8] uses. That fallback is still a
+    // legitimate, real-position-derived check (not a bypass — out-of-range/
+    // never-heard reporters are still correctly rejected via the RSSI-floor
+    // path), it just isn't the genuine PHY-layer measurement this comment
+    // used to claim was wired in. Threading Rx()'s real signalNoise.signal
+    // through to here would let this branch actually activate; it is not
+    // currently implemented.
     const bool hasRealRssi = (event.rssi_reporter_dbm != PEM_SIGNAL_PLACEHOLDER);
     float syntheticRSSI;
     if (hasRealRssi)
