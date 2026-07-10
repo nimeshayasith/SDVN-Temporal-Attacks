@@ -837,6 +837,23 @@ static void PemSimToGps(const Vector &pos, float &lat, float &lon)
 // report — Phase 2's PemSignGenuineReport only ever signs attackLabel==false
 // observations — so it fails Accept_Vk by construction, not by a
 // convenient absence check.
+// Stateful per-(witness, link, report-version) Accept_Vk decision cache —
+// Eq. 3.29's own quorum-round state, mirroring the Eq. 3.17 Nseen pattern
+// (a persistent map checked/set in O(1), not a re-verify or O(N) scan).
+// verify_single_witness() consumes the report's nonce (Gate E) on its FIRST
+// successful evaluation, by design, to stop the SAME signed report being
+// replayed into a different aggregate later — but that also means a second
+// PemVerifyQuorum call in the same round, re-checking the same still-fresh
+// cached report (e.g. two mitigation attempts on the same link within one
+// beacon interval), would spuriously read as "already consumed" and flip
+// PASS->FAIL for no attack-relevant reason. Caching the decision per
+// (reporterId, link, report_sim_time) — the last field pinning it to a
+// SPECIFIC signed report version, so a later freshly re-signed report still
+// gets its own fresh Accept_Vk call — fixes that without weakening Gate E's
+// real anti-replay property against a genuinely different/attacker-supplied
+// report.
+static std::map<std::tuple<uint32_t,uint32_t,uint32_t,double>, bool> g_pem_quorum_witness_cache;
+
 static bool PemVerifyQuorum(uint32_t n_witnesses, const PemQuorumEvidence *ev,
                              uint32_t &q_out, uint32_t &t_out)
 {
@@ -866,8 +883,19 @@ static bool PemVerifyQuorum(uint32_t n_witnesses, const PemQuorumEvidence *ev,
                 std::make_tuple(reporterId, ev->link_dst_id, ev->link_src_id));
             if (it2 != g_pem_genuine_reports.end()) w = &it2->second;
         }
-        if (w != nullptr && verify_single_witness(&w->report, link_lat, link_lon, recv_ms))
-            legit_count++;
+        if (w == nullptr) continue;
+
+        const auto wkey = std::make_tuple(reporterId, ev->link_src_id, ev->link_dst_id,
+                                           w->sim_time);
+        auto cacheIt = g_pem_quorum_witness_cache.find(wkey);
+        bool accepted;
+        if (cacheIt != g_pem_quorum_witness_cache.end()) {
+            accepted = cacheIt->second;
+        } else {
+            accepted = verify_single_witness(&w->report, link_lat, link_lon, recv_ms);
+            g_pem_quorum_witness_cache[wkey] = accepted;
+        }
+        if (accepted) legit_count++;
     }
 
     q_out = legit_count;
