@@ -28,7 +28,7 @@ Replay timing  : Option B — 2s after each pair's real SUMO break
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.27-3.28).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [BSHH-S2][t=2.000]  V15(ns3=20) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V15(ns3=20), t=2.000)  ACCEPTED
 [BSHH-S2][t=2.000]  V14(ns3=19) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V14(ns3=19), t=2.000)  ACCEPTED
@@ -96,29 +96,29 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 16
-  Avg wall-clock time: 1.961 ms
-  Max wall-clock time: 3.216 ms
+  Avg wall-clock time: 1.836 ms
+  Max wall-clock time: 3.051 ms
   Events exceeding budget: 0 / 16
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 2
-  Avg wall-clock time: 2.448 ms
-  Max wall-clock time: 2.610 ms
+  Avg wall-clock time: 2.375 ms
+  Max wall-clock time: 2.402 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 2
-  Avg wall-clock time: 2.457 ms
-  Max wall-clock time: 2.624 ms
+  Avg wall-clock time: 2.384 ms
+  Max wall-clock time: 2.415 ms
   Events exceeding 100.000 ms budget: 0 / 2  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 4
-  Avg wall-clock time: 0.080 ms
-  Max wall-clock time: 0.154 ms
+  Avg wall-clock time: 0.066 ms
+  Max wall-clock time: 0.112 ms
   Calls exceeding budget: 0 / 4
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 8
-  Avg wall-clock time: 0.019 ms
-  Max wall-clock time: 0.036 ms
+  Avg wall-clock time: 0.015 ms
+  Max wall-clock time: 0.035 ms
   Calls exceeding budget: 0 / 8
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
@@ -135,12 +135,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 2
-  Avg wall-clock time: 0.020 ms
-  Max wall-clock time: 0.036 ms
+  Avg wall-clock time: 0.011 ms
+  Max wall-clock time: 0.018 ms
   Calls exceeding budget: 0 / 2
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.080) + beacon-crypto(0.000) + rsu-forward(0.019) + detect(1.961) + detection-crypto(0.000) + mitigate(2.448) + lkh-crypto(0.020) = 4.528 ms
+  beacon-send(0.066) + beacon-crypto(0.000) + rsu-forward(0.015) + detect(1.836) + detection-crypto(0.000) + mitigate(2.375) + lkh-crypto(0.011) = 4.303 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -152,10 +152,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.263 ms
-  Max tick wall-clock time: 0.296 ms
+  Avg tick wall-clock time: 0.265 ms
+  Max tick wall-clock time: 0.292 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.263) + beacon-send(0.080) + beacon-crypto(0.000) + rsu-forward(0.019) + detect(1.961) + detection-crypto(0.000) + mitigate(2.448) + lkh-crypto(0.020) = 4.791 ms
+  neighborhood(0.265) + beacon-send(0.066) + beacon-crypto(0.000) + rsu-forward(0.015) + detect(1.836) + detection-crypto(0.000) + mitigate(2.375) + lkh-crypto(0.011) = 4.568 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

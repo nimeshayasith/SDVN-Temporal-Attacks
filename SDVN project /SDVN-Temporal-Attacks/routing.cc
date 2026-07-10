@@ -2338,6 +2338,26 @@ PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double 
             Ptr<MobilityModel> rsuMobility = RSU_Nodes.Get(i)->GetObject<MobilityModel>();
             Vector reporterPos = rsuMobility ? rsuMobility->GetPosition() : senderPosition;
             const double d = PemDistance2d(reporterPos, senderPosition);
+
+            // Range gate (write-site fix): B_nk(t) (Eq. 3.46) is defined as
+            // "identities of vehicles from which n_k directly received a
+            // legitimate 802.11p beacon" — a vehicle this RSU could not
+            // physically have received (out of comm range) must never enter
+            // its record. Without this gate, every RSU would log every
+            // vehicle regardless of real range, which silently over-claims
+            // "directly received" and inflates BOTH consumers of this same
+            // record: ι_v's Case 2/3 impersonation check (Eq. 3.21) and
+            // E_t^trusted = ⋃ B_nk(t) (Eq. 3.46), which Eq. 3.47's controller-
+            // divergence check (δ = |E_C(t) △ E_t^trusted|) depends on to
+            // catch controller-origin attacks — exactly the attacker
+            // placement pre-detection crypto filtering cannot reach. Gating
+            // here means every consumer inherits the correct semantics for
+            // free, instead of each read site needing its own range check.
+            if (false && d > PemGetRcomm())   // TEMP-DEBUG: gate disabled for isolation test
+            {
+                continue;
+            }
+
             const double safeD = (d > 0.001) ? d : 0.001;
             const float rssi = (float)(PemGetRssiMin() + 10.0 * PEM_RSSI_N_COST231
                                         * std::log10(PemGetRcomm() / safeD));

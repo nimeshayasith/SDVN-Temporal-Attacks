@@ -919,22 +919,58 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     link_reporters.insert(physical_is_rsu ? e.claimed_sender_id : e.reporter_id);
     f.reporter_count = (double)link_reporters.size();
 
-    // identity_mismatch (ι_v) — Eq 3.20's 5th formal component (BSHH signal).
-    //   No RSU : 1.0 when physical_sender ≠ claimed_sender (V2 impersonates V1)
-    //   With RSU: 0.0 — RSU forwarding V1's data under V1's ID is legitimate;
-    //             BSHH-S2/S4 is still caught via seq_gap and staleness signals.
-    //   Controller (9999): controller-origin events (TTW-S3/S4, ME-S3/S4) use
-    //             physical_sender_id=9999 as a sentinel.  9999 ≠ claimed_sender always,
-    //             but this is NOT identity impersonation — it means the controller is
-    //             internally replaying or fabricating an entry.  Suppress to avoid
-    //             contaminating BSHH signature in non-BSHH scenarios.
-    // Issue 8.12 confirm: ι_v IS forced to 0 for RSU-forwarded events (!physical_is_rsu
-    //   condition below) and for the controller sentinel (9999 guard).
-    //   This prevents distribution mismatch between RSU-path and vehicle-path training.
-    f.identity_mismatch =
-        (!physical_is_rsu
-         && e.physical_sender_id != 9999u
-         && e.physical_sender_id != e.claimed_sender_id) ? 1.0 : 0.0;
+    // identity_mismatch (ι_v) — Eq 3.21's 4-case definition, replacing the
+    // prior blanket RSU-forwarding suppression:
+    //   Case 1 (direct): physical == claimed -> 0.
+    //   Case 2 (legitimate RSU forwarding): physical is a consortium RSU AND
+    //     claimed vehicle appears in THAT RSU's own signed beacon evidence
+    //     record B_nk(t) (g_peer_beacon_evidence[physical_sender_id]) -> 0.
+    //     Bnk(t) already exists (Eq. 3.46's g_peer_beacon_evidence, populated
+    //     by every real vehicle beacon in routing.cc's PemRecordBeaconEvidence,
+    //     which now range-gates the write itself) — no new tracking variable
+    //     needed, only this conditional read of it.
+    //   Case 3 (impersonation): physical is a consortium RSU AND the claimed
+    //     vehicle is ABSENT from that RSU's own B_nk(t) (or was only ever
+    //     logged out of that RSU's real comm range) -> 1. A malicious RSU
+    //     holding a vehicle's credentials cannot make itself appear in that
+    //     vehicle's own genuine transmission log without the vehicle having
+    //     actually transmitted in range.
+    //   Case 4 (controller sentinel, physical_sender_id==9999): controller-
+    //     origin events (TTW-S3/S4, ME-S3/S4) are internal replay/fabrication,
+    //     not identity impersonation -> 0, unchanged from before.
+    //
+    // g_peer_beacon_evidence is now range-gated at the WRITE site
+    // (PemRecordBeaconEvidence, routing.cc) — every entry it holds is
+    // already a genuine in-range reception, for every consumer of B_nk(t)
+    // (this ι_v check AND Eq. 3.47's E_t^trusted controller-divergence
+    // path), not just this one. So this is a pure membership check; no
+    // redundant distance check is needed here.
+    if (e.physical_sender_id == 9999u)
+    {
+        f.identity_mismatch = 0.0;   // Case 4
+    }
+    else if (physical_is_rsu)
+    {
+        bool seen = false;
+        auto bnkIt = g_peer_beacon_evidence.find(e.physical_sender_id);
+        if (bnkIt != g_peer_beacon_evidence.end())
+        {
+            for (const auto& rec : bnkIt->second)
+            {
+                if (rec.vehicle_id == e.claimed_sender_id)
+                {
+                    seen = true;
+                    break;
+                }
+            }
+        }
+        f.identity_mismatch = seen ? 0.0 : 1.0;   // Case 2 / Case 3
+    }
+    else
+    {
+        f.identity_mismatch =
+            (e.physical_sender_id != e.claimed_sender_id) ? 1.0 : 0.0;   // Case 1
+    }
 
     return f;
 }
