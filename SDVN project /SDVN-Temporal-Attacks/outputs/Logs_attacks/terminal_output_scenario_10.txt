@@ -30,7 +30,7 @@ SCENARIO 10 - ME-S2 ATTACK CONFIGURED
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.27-3.28).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [ME-S2][t=10.000]  STEP①②③  V9<->V10 HELLO; vehicles report to RSU_25; RSU aggregates
 [ME-S2][t=10.001]  STEP①②③  V9<->V10 HELLO; vehicles report to RSU_26; RSU aggregates
@@ -38,24 +38,23 @@ Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.
 Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.000s with delay 1ms
 [ME-S2][t=10.100]  STEP④  RSU_25 INJECTS echo <V9 sees V10> as-if-by V5 and V6
 [ME-S2][t=10.100]  STEP⑥  Phantom: V9->V5->V10, V9->V6->V10  *** ATTACK COMPLETE ***
-[ME-S2][t=10.100]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S2][t=10.100]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 0/20 >= t=2 -> FAIL
 [ME-S2][t=10.100]  FS-MITIGATE ABORTED (gate failed)  attacker=V25
 Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.100s with delay 1ms
 [ME-S2][t=10.101]  STEP④  RSU_26 INJECTS echo <V9 sees V10> as-if-by V5 and V6
 [ME-S2][t=10.101]  STEP⑥  Phantom: V9->V5->V10, V9->V6->V10  *** ATTACK COMPLETE ***
-[ME-S2][t=10.101]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 20/20 >= t=11 -> PASS
-[ME-S2][t=10.101]  MITIGATION Tier 1: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY -> RSU OpenFlow  attacker=V26
-[Trust][t=10.101]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[ME-S2][t=10.101]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 0/20 >= t=2 -> FAIL
+[ME-S2][t=10.101]  FS-MITIGATE ABORTED (gate failed)  attacker=V26
 Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.101s with delay 1ms
 [ME-S2][t=10.102]  STEP④  RSU_25 INJECTS echo <V9 sees V10> as-if-by V7 and V8
 [ME-S2][t=10.102]  STEP⑥  Phantom: V9->V7->V10, V9->V8->V10  *** ATTACK COMPLETE ***
-[ME-S2][t=10.102]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 0/20 >= t=11 -> FAIL
+[ME-S2][t=10.102]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 0/20 >= t=2 -> FAIL
 [ME-S2][t=10.102]  FS-MITIGATE ABORTED (gate failed)  attacker=V25
 Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.102s with delay 1ms
 [ME-S2][t=10.103]  STEP④  RSU_26 INJECTS echo <V9 sees V10> as-if-by V7 and V8
 [ME-S2][t=10.103]  STEP⑥  Phantom: V9->V7->V10, V9->V8->V10  *** ATTACK COMPLETE ***
-[ME-S2][t=10.103]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 20/20 >= t=11 -> PASS
-[ME-S2][t=10.103]  MITIGATION Tier 1: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY -> RSU OpenFlow  attacker=V26
+[ME-S2][t=10.103]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 0/20 >= t=2 -> FAIL
+[ME-S2][t=10.103]  FS-MITIGATE ABORTED (gate failed)  attacker=V26
 Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.103s with delay 1ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (13 events)
@@ -74,7 +73,7 @@ Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
   [beh]  TP/TN/FP/FN : 0 / 8 / 0 / 0
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 0 / 6 / 2 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 0 / 8 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 0.500
   ACR         : 100.000 %
   Tdet        : -1.000 ms
@@ -92,28 +91,28 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 16
-  Avg wall-clock time: 1.261 ms
-  Max wall-clock time: 2.888 ms
+  Avg wall-clock time: 1.163 ms
+  Max wall-clock time: 3.394 ms
   Events exceeding budget: 0 / 16
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 4
-  Avg wall-clock time: 6.095 ms
-  Max wall-clock time: 9.464 ms
+  Avg wall-clock time: 0.009 ms
+  Max wall-clock time: 0.009 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 4
-  Avg wall-clock time: 6.099 ms
-  Max wall-clock time: 9.469 ms
+  Avg wall-clock time: 0.012 ms
+  Max wall-clock time: 0.013 ms
   Events exceeding 100.000 ms budget: 0 / 4  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 8
-  Avg wall-clock time: 0.048 ms
-  Max wall-clock time: 0.166 ms
+  Avg wall-clock time: 0.042 ms
+  Max wall-clock time: 0.131 ms
   Calls exceeding budget: 0 / 8
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 6
-  Avg wall-clock time: 0.012 ms
+  Avg wall-clock time: 0.011 ms
   Max wall-clock time: 0.019 ms
   Calls exceeding budget: 0 / 6
 
@@ -131,12 +130,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 4
-  Avg wall-clock time: 0.008 ms
-  Max wall-clock time: 0.016 ms
+  Avg wall-clock time: 0.007 ms
+  Max wall-clock time: 0.014 ms
   Calls exceeding budget: 0 / 4
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.048) + beacon-crypto(0.000) + rsu-forward(0.012) + detect(1.261) + detection-crypto(0.000) + mitigate(6.095) + lkh-crypto(0.008) = 7.425 ms
+  beacon-send(0.042) + beacon-crypto(0.000) + rsu-forward(0.011) + detect(1.163) + detection-crypto(0.000) + mitigate(0.009) + lkh-crypto(0.007) = 1.231 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -148,10 +147,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.278 ms
-  Max tick wall-clock time: 0.675 ms
+  Avg tick wall-clock time: 0.267 ms
+  Max tick wall-clock time: 0.288 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.278) + beacon-send(0.048) + beacon-crypto(0.000) + rsu-forward(0.012) + detect(1.261) + detection-crypto(0.000) + mitigate(6.095) + lkh-crypto(0.008) = 7.703 ms
+  neighborhood(0.267) + beacon-send(0.042) + beacon-crypto(0.000) + rsu-forward(0.011) + detect(1.163) + detection-crypto(0.000) + mitigate(0.009) + lkh-crypto(0.007) = 1.498 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

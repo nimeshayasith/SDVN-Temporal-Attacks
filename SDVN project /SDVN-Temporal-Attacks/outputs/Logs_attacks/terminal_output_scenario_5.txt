@@ -34,7 +34,7 @@ Timeline (Option B — real SUMO trajectories decide the break):
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.27-3.28).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [BSHH-S1][t=5.038]  V5 captured heartbeat for replay  Heartbeat(Sender=V22, t=5.001)
 [BSHH-S1][t=5.048]  V7 captured heartbeat for replay  Heartbeat(Sender=V24, t=4.988)
@@ -96,17 +96,17 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 24
-  Avg wall-clock time: 0.784 ms
-  Max wall-clock time: 2.636 ms
+  Avg wall-clock time: 0.854 ms
+  Max wall-clock time: 3.335 ms
   Events exceeding budget: 0 / 24
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 4
-  Avg wall-clock time: 2.499 ms
-  Max wall-clock time: 2.731 ms
+  Avg wall-clock time: 2.553 ms
+  Max wall-clock time: 2.775 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 4
-  Avg wall-clock time: 2.516 ms
-  Max wall-clock time: 2.745 ms
+  Avg wall-clock time: 2.569 ms
+  Max wall-clock time: 2.788 ms
   Events exceeding 100.000 ms budget: 0 / 4  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
@@ -123,24 +123,24 @@ RSU-forward (CSMA dispatch, AttackSendRSUToController):
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
   Calls: 8
-  Avg wall-clock time: 0.074 ms
-  Max wall-clock time: 0.119 ms
+  Avg wall-clock time: 0.096 ms
+  Max wall-clock time: 0.209 ms
   Calls exceeding budget: 0 / 8
 
 Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
   Calls: 4
-  Avg wall-clock time: 0.228 ms
-  Max wall-clock time: 0.252 ms
+  Avg wall-clock time: 0.249 ms
+  Max wall-clock time: 0.286 ms
   Calls exceeding budget: 0 / 4
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 4
-  Avg wall-clock time: 0.010 ms
-  Max wall-clock time: 0.031 ms
+  Avg wall-clock time: 0.005 ms
+  Max wall-clock time: 0.014 ms
   Calls exceeding budget: 0 / 4
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.000) + beacon-crypto(0.074) + rsu-forward(0.000) + detect(0.784) + detection-crypto(0.228) + mitigate(2.499) + lkh-crypto(0.010) = 3.595 ms
+  beacon-send(0.000) + beacon-crypto(0.096) + rsu-forward(0.000) + detect(0.854) + detection-crypto(0.249) + mitigate(2.553) + lkh-crypto(0.005) = 3.757 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -152,10 +152,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.264 ms
-  Max tick wall-clock time: 0.305 ms
+  Avg tick wall-clock time: 0.269 ms
+  Max tick wall-clock time: 0.297 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.264) + beacon-send(0.000) + beacon-crypto(0.074) + rsu-forward(0.000) + detect(0.784) + detection-crypto(0.228) + mitigate(2.499) + lkh-crypto(0.010) = 3.859 ms
+  neighborhood(0.269) + beacon-send(0.000) + beacon-crypto(0.096) + rsu-forward(0.000) + detect(0.854) + detection-crypto(0.249) + mitigate(2.553) + lkh-crypto(0.005) = 4.026 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

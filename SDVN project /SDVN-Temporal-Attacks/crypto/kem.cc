@@ -458,7 +458,8 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
  * Returns pointer to VehicleKeyRecord in the global store, or NULL if full.
  */
 VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
-                                        uint32_t lkh_leaf_index) {
+                                        uint32_t lkh_leaf_index,
+                                        uint8_t *sk_vi_out = nullptr) {
     if (g_keystore_count >= MAX_VEHICLES) return NULL;
 
     VehicleKeyRecord *rec = &g_keystore[g_keystore_count++];
@@ -481,6 +482,12 @@ VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
     /* Step 0a: Dilithium5 identity keypair — SK_Vi stays at vehicle */
     uint8_t sk_vi[DILITHIUM5_SK_LEN];
     dilithium5_keygen(rec->sign_pub_key, sk_vi);
+    /* sk_vi never enters VehicleKeyRecord (which is the RSU-side keystore,
+     * PK-only by protocol design) — it is only handed back to the caller
+     * for a simulation-side, vehicle-only signing array (see
+     * g_vehicle_dilithium_sk in routing.cc), matching "SKVk stays at
+     * vehicle; PKVk stored in RSU key store" above.                        */
+    if (sk_vi_out) memcpy(sk_vi_out, sk_vi, DILITHIUM5_SK_LEN);
 
     /* Step 0b: CA issues certificate binding vehicle_id → PK_Vi (Fix-2) */
     teta_ca_init();   /* no-op if already called */
