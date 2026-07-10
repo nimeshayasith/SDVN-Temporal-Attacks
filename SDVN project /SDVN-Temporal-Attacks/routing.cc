@@ -9374,9 +9374,11 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
 // =============================================================================
 
 struct MESingle3Topology {
-    bool   chain;   // V1<->V2<->V3 fully real chain, attacker isolated
-    bool   split;   // V1<->V2 real pair; attacker<->V3 real (attacker's own link)
-    double d12, d23, dA3;
+    bool   chain;   // V1<->V2<->V3 fully real chain, attacker isolated from V1 AND V2
+    bool   split;   // V1<->V2 real pair; attacker<->V3 real (attacker's own link);
+                     // attacker isolated from V1 AND V2 so its V1<->V2 report is a
+                     // genuine echo of a link it never physically observed
+    double d12, d23, dA3, dA1, dA2;
 };
 
 static Vector MEGetVehiclePos(uint32_t vidx)
@@ -9403,11 +9405,22 @@ static MESingle3Topology MEClassifySingle3(uint32_t v1_id, uint32_t v2_id,
     t.d12 = MEDist2D(p1, p2);
     t.d23 = MEDist2D(p2, p3);
     t.dA3 = MEDist2D(pA, p3);
+    t.dA1 = MEDist2D(pA, p1);
+    t.dA2 = MEDist2D(pA, p2);
     bool link12 = t.d12 <= TTW_COMM_RANGE;
     bool link23 = t.d23 <= TTW_COMM_RANGE;
     bool linkA3 = t.dA3 <= TTW_COMM_RANGE;
-    t.chain = link12 && link23;
-    t.split = link12 && !link23 && linkA3;
+    // Isolation from the actual echoed link (V1<->V2, and V2<->V3 for chain):
+    // without this, the attacker could sit within range of the very link it
+    // is echoing, in which case it would be a genuine third witness rather
+    // than a false one — the ME-S1 (reporter-density) and ME-S3
+    // (position/RSSI-out-of-range) signatures would then correctly find
+    // nothing anomalous, silently making the attack undetectable.
+    bool linkA1 = t.dA1 <= TTW_COMM_RANGE;
+    bool linkA2 = t.dA2 <= TTW_COMM_RANGE;
+    bool isolatedFromEchoedLink = !linkA1 && !linkA2;
+    t.chain = link12 && link23 && isolatedFromEchoedLink;
+    t.split = link12 && !link23 && linkA3 && isolatedFromEchoedLink;
     return t;
 }
 
@@ -9607,13 +9620,36 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
             if (topology_divergence_delta > 0) topology_divergence_delta--;
         }
         const PemQuorumEvidence ev{aPos, v1Pos, v2Pos};
-        std::string mit = PemApplyMitigation(atk_id, now, tag, &ev);
+        std::string trust_single3;
+        if (mode == 3 || mode == 4) {
+            // Controller-origin modes: the real attacker is the controller, not
+            // the impersonated vehicle atk_id (PemApplyMitigation's own guard
+            // already protects atk_id from being zero-trusted here — see its
+            // is_malicious_controller check). Without this, nothing else in
+            // this shared 3-legit-vehicle path penalises the controller at all,
+            // unlike the dedicated ME_S3_InjectPhantomPaths/ME_S4_... functions
+            // which already call TrustReassignController themselves.
+            uint32_t ctrl_single3 = (controller_Node.GetN() > 0)
+                                     ? controller_Node.Get(0)->GetId() : 9999u;
+            std::string ctrl_div_log_single3;
+            if (PemControllerDivergenceGate(now, tag, ctrl_div_log_single3, v1_id, v2_id, now)) {
+                TrustUpdateNode(ctrl_single3, false, true);
+                trust_single3 = TrustReassignController(ctrl_single3, now);
+            }
+            trust_single3 = ctrl_div_log_single3 + trust_single3;
+            TrustRunDemotionPipeline(now);
+        }
+        // Mode 2 (malicious RSU): the RSU is the real physical attacker
+        // (echoPhysicalSender == rsu_id above), so mitigation/trust zeroing
+        // must target the RSU, not the impersonated vehicle atk_id.
+        const uint32_t mitigationTargetId = (mode == 2) ? echoPhysicalSender : atk_id;
+        std::string mit = PemApplyMitigation(mitigationTargetId, now, tag, &ev);
         me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
                << "  Attacker V" << an << " identified; phantom entries removed\n"
                << "  Score: " << pem_last_detection_score << "\n"
                << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
                << "  delta after mitigation: " << topology_divergence_delta << "\n"
-               << mit << "\n";
+               << mit << trust_single3 << "\n";
         me_log.flush();
     }
 }
@@ -9891,52 +9927,14 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>();
         if (m) v2Pos = m->GetPosition();
     }
-    // Sophistication roll — ME-S2.
-    // IMPORTANT — this is a DIFFERENT sophistication mechanism from TTW-S2/
-    // BSHH-S2's key-exfiltration model (see TtwRsuKeyExfiltrationNarrative's
-    // comment near TTWS2_RunDetection). ME-S2 does NOT need a colluding
-    // vehicle's stolen keys: the RSU is a legitimate aggregation point that
-    // already legitimately holds real signed reports from vehicles as part of
-    // its normal (non-malicious) role, and "sophistication" here means
-    // fabricating its OWN reported GPS position (a GPS-spoofing attack) to
-    // pass the location-binding gate, not stealing anyone's identity or keys.
-    // Sophisticated RSU: forges the claimed-reporter's position to appear near
-    //   whichever single link endpoint (v1 or v2) is nearest the RSU's own real
-    //   position, so TetaGuardLocBindVerify's haversine-to-nearest-endpoint gate
-    //   (Step 1b) passes → LW+TGN. The RSU already holds all legitimate signed
-    //   reports, so Step 1c threshold aggregate (Eq. 3.26) also passes with the
-    //   stored real partial sigs.
-    //   Bug fix (matches ME-S1): forging to the MIDPOINT of v1/v2 only works
-    //   when they are within 2*R_COMM of each other — if the link's own two
-    //   endpoints are farther apart, the midpoint is > R_COMM from BOTH and
-    //   every "sophisticated" injection still silently drops at Stage-0. A
-    //   real GPS-spoofing RSU would claim to be near ONE endpoint (the more
-    //   plausible lie relative to its own real position), not at a computed
-    //   average of two other nodes' positions — realistic and correct
-    //   regardless of the v1-v2 separation.
-    // Basic RSU: uses its own actual position as the reporter position.
-    //   If RSU is out of range of the link → Step 1b locbind drops at Stage-0.
-    const bool me_s2_sophisticated = DecideRsuSophistication(rsu_id);
-    const Vector me_s2_spoofPos = [&]() -> Vector {
-        const double dToV1 = std::sqrt(std::pow(rsuPos.x - v1Pos.x, 2.0) + std::pow(rsuPos.y - v1Pos.y, 2.0));
-        const double dToV2 = std::sqrt(std::pow(rsuPos.x - v2Pos.x, 2.0) + std::pow(rsuPos.y - v2Pos.y, 2.0));
-        const Vector& target = (dToV1 <= dToV2) ? v1Pos : v2Pos;
-        // Same rationale as ME-S1's meS1SpoofNearEndpoint: reuse AttackGetRng()
-        // rather than a new RNG object, to avoid perturbing NS-3's auto-assigned
-        // stream indices for anything else in the run.
-        const double jitter = AttackGetRng()->GetValue(0.0, 50.0);
-        const double angle  = AttackGetRng()->GetValue(0.0, 2.0 * M_PI);
-        return Vector(target.x + jitter * std::cos(angle), target.y + jitter * std::sin(angle), 0.0);
-    }();
-    const Vector me_s2_reportPos = me_s2_sophisticated ? me_s2_spoofPos : rsuPos;
-    me_log << "[t=" << now << "]  ME-S2 RSU attacker sophistication: "
-           << (me_s2_sophisticated
-               ? "SOPHISTICATED [GPS-spoofing, not key-exfiltration] — forged near-link reporter position -> Stage-0 locbind BYPASSED -> LW+TGN\n"
-               : "BASIC [own real position reported] — actual RSU position used -> may be DROPPED at Stage-0 locbind (Eqs. 3.27-3.29)\n");
-    std::cout << "[ME-S2][t=" << now << "]  Sophistication: "
-              << (me_s2_sophisticated
-                      ? "SOPHISTICATED (GPS-spoofing)->LW+TGN"
-                      : "BASIC (own real position)->Stage-0 drop") << "\n";
+    // ME-S2 does not model a sophisticated/basic split (unlike TTW-S2/BSHH-S2,
+    // which forge signing identity via key exfiltration): the RSU always
+    // reports its own real, physically-measured position. This also keeps
+    // event.reporter_position true everywhere in the file, which is what lets
+    // the RSSI/position-based ME-S3 signature (Eq. 3.11) meaningfully catch a
+    // report whose reporter is actually out of range — a GPS-spoofed position
+    // would otherwise make that geometric check trivially self-consistent.
+    const Vector me_s2_reportPos = rsuPos;
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, rsu_id, false_v3, rsu_id,
                  v1_id, v2_id, t, now, me_s2_reportPos, v1Pos, v2Pos, true);
     if (s2_have_v4)
