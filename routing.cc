@@ -604,7 +604,12 @@ static double __attribute__((unused)) TimedVerifyQuorum()
     const uint32_t N_W = 2;
     LocationBoundReport reports[N_W];
     for (uint32_t i = 0; i < N_W; i++) {
-        uint8_t rid[16] = {}; rid[0] = (uint8_t)(3 + i);  // V3, V4 as witnesses
+        // rid[1]=0xFE marks this as a synthetic benchmark witness, distinct from
+        // any real vehicle_id (which always has rid[1]==0 — see the rid[16]={}
+        // pattern used everywhere else). Without this, a synthetic witness whose
+        // rid[0] happens to match a real vehicle_id byte value would spuriously
+        // inherit that vehicle's CRL revocation status in cert_is_revoked().
+        uint8_t rid[16] = {}; rid[0] = (uint8_t)(3 + i); rid[1] = 0xFE;  // V3, V4 as witnesses
         CertificateRecord qcert;
         dilithium5_issue_cert(rid, g_dil_pk.data(), (uint64_t)i * 1000, &qcert);
         create_location_bound_report(
@@ -797,7 +802,15 @@ static bool PemVerifyQuorum(uint32_t n_witnesses, const PemQuorumEvidence *ev,
 
     std::vector<LocationBoundReport> reports(n_witnesses);
     for (uint32_t i = 0; i < n_witnesses; i++) {
-        uint8_t rid[16] = {}; rid[0] = (uint8_t)(3 + i);  // V3, V4, ... as witnesses
+        // rid[1]=0xFE marks this as a synthetic quorum witness, distinct from
+        // any real vehicle_id (which always has rid[1]==0 — see the rid[16]={}
+        // pattern used everywhere else in this file). Without this, a synthetic
+        // witness whose rid[0] happens to match a real vehicle's byte-0 id
+        // value spuriously inherits that vehicle's CRL revocation status in
+        // cert_is_revoked() — confirmed empirically: witnesses i=12/16 (rid[0]
+        // =15/19) were rejected at Gate A because real vehicles with those same
+        // byte-0 ids had genuinely been revoked earlier in the same run.
+        uint8_t rid[16] = {}; rid[0] = (uint8_t)(3 + i); rid[1] = 0xFE;  // V3, V4, ... as witnesses
         CertificateRecord qcert;
         dilithium5_issue_cert(rid, g_dil_pk.data(), (uint64_t)i * 1000, &qcert);
         create_location_bound_report(
@@ -2841,6 +2854,21 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
                       << "]  MITIGATION Tier 2: INVALIDATE_PATHS + PUSH_REROUTE_EMERGENCY"
                          "  attacker=V" << attacker_id << "  propagation=" << prop_ms << " ms\n";
         }
+    } else if (is_malicious_controller) {
+        // ── Controller-origin TTW/BSHH (S3/S4): attacker_id here is the INNOCENT
+        //    reporting vehicle (see the REAUTH comment below), not the attacker —
+        //    so network isolation (FlowMod DROP / BlacklistBeacon) must not be
+        //    issued against it. The controller itself is already penalised via
+        //    TrustUpdateNode(ctrl_ns3_id,...) + TrustReassignController(), called
+        //    by the S3/S4-style detection functions before PemApplyMitigation
+        //    runs (Eqs. 3.39/3.42-3.43) — same mechanism the REAUTH block below
+        //    already defers to.
+        out << "  [Controller-origin] Network isolation SUPPRESSED — V" << attacker_id
+            << " is the impersonated/reporting vehicle, not the attacker;"
+               " see controller-side TrustReassignController action instead\n";
+        std::cout << "[" << scenario_tag << "][t=" << t_now
+                  << "]  MITIGATION: controller-origin — network isolation of V"
+                  << attacker_id << " SUPPRESSED (innocent reporting vehicle)\n";
     } else if (has_RSU_infrastructure) {
         // ── Algorithm 4 lines 22-23 (TTW/BSHH), Tier 1: RSU-backed FlowMod DROP ──
         out << "  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)\n"
@@ -2861,13 +2889,19 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
                   << attacker_id << "  propagation=" << prop_ms << " ms\n";
     }
 
-    // LKH session-key revocation — unconditional in both tiers (Eq. 3.18).
-    // Even during bootstrap, the cryptographic identity is revoked so the attacker
-    // cannot generate valid HMAC-authenticated beacons that pass TetaGuardFilter.
-    out << "  [LKH] Revoke-Session-Key(V" << attacker_id << "): O(log " << n_eff
-        << ") = " << lkh_depth << " KEK updates on path to LKH root\n"
-        << "  [CA]  Certificate revocation: V" << attacker_id
-        << " excluded until re-admission via consortium CA\n";
+    // LKH session-key revocation + CA certificate revocation (Eq. 3.18).
+    // Unconditional across tiers for vehicle/RSU-origin attackers, so the
+    // attacker cannot generate valid HMAC-authenticated beacons that pass
+    // TetaGuardFilter even during bootstrap. But for controller-origin
+    // scenarios attacker_id is the innocent reporting/impersonated vehicle
+    // (same reasoning as the REAUTH guard below and the branch above) — that
+    // node's session key and certificate must not be revoked.
+    if (!is_malicious_controller) {
+        out << "  [LKH] Revoke-Session-Key(V" << attacker_id << "): O(log " << n_eff
+            << ") = " << lkh_depth << " KEK updates on path to LKH root\n"
+            << "  [CA]  Certificate revocation: V" << attacker_id
+            << " excluded until re-admission via consortium CA\n";
+    }
 
     // ── Algorithm 4 lines 31-33: FLAG_REAUTH + updateTrust(v, 0) ─────────────
     // Only for vehicle/RSU-origin attackers (attacker_id here really is the
