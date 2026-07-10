@@ -400,6 +400,15 @@ static NonceCache       g_pipeline_nonce_cache __attribute__((unused)) = {};
 // every vehicle) for the live beacon sign/verify path in AttackSendDSRCBeacon()/Rx().
 static uint8_t          g_vehicle_session_keys[MAX_VEHICLES][SESSION_KEY_LEN] = {};
 static bool             g_vehicle_session_key_ready[MAX_VEHICLES] = {};
+// ── Real per-vehicle Dilithium5 IDENTITY signing keys (SK_Vi, Eq. 3.27-3.28) ──
+// Captured from kem_register_vehicle()'s sk_vi_out param at t=0 registration
+// time. This is simulation-only vehicle-side state: it mirrors "SK_Vi stays
+// at the vehicle" — only vehicle-side signing call sites (PemEmitEvent /
+// PemEmitHeartbeatEvent for genuine, non-forged observations) may read it.
+// RSU/controller code must never index this array; they only ever see
+// VehicleKeyRecord.sign_pub_key (the public half) via kem_lookup().
+static uint8_t          g_vehicle_dilithium_sk[MAX_VEHICLES][DILITHIUM5_SK_LEN] = {};
+static bool             g_vehicle_dilithium_sk_ready[MAX_VEHICLES] = {};
 // Per-receiver nonce cache for lw_mitigate()'s Eq. 3.17 check on real beacon traffic.
 static std::map<uint32_t, NonceCache> g_beacon_nonce_cache_by_receiver;
 static uint64_t         g_beacon_verify_ok_count   = 0;
@@ -550,10 +559,11 @@ static double __attribute__((unused)) TimedHaversine()
 // ── KEM fleet-management wrappers ─────────────────────────────────────────────
 // TimedKemRegister: kem_register_vehicle() — enrol a vehicle into the RSU
 // keystore so the RSU can later encapsulate to it by ID without a fresh keygen.
-static double __attribute__((unused)) TimedKemRegister(const uint8_t vid[16], uint32_t leaf_idx)
+static double __attribute__((unused)) TimedKemRegister(const uint8_t vid[16], uint32_t leaf_idx,
+                                                          uint8_t *sk_vi_out = nullptr)
 {
     auto t0 = HiResClock::now();
-    kem_register_vehicle(vid, leaf_idx);
+    kem_register_vehicle(vid, leaf_idx, sk_vi_out);
     return MicroSec(HiResClock::now() - t0).count();
 }
 
@@ -738,6 +748,36 @@ static bool PemVerifyThresholdSig(uint32_t n_reporters, uint32_t attacker_id, do
 #endif
 }
 
+// =============================================================================
+// Phase 2 — real per-reporter signed location-bound evidence (Eq. 3.27-3.28)
+// for GENUINE (non-forged) topology observations. This is separate from the
+// 9 LW detection signatures (TTW/BSHH/ME) — it exists purely to give
+// PemVerifyQuorum (Eq. 3.29-3.30, defined below) real per-reporter evidence
+// to evaluate, instead of a fabricated clone.
+//
+// Declared here (ahead of PemVerifyQuorum) purely for C++ ordering — the
+// producer, PemSignGenuineReport(), is defined much later, next to
+// PemEmitEvent(), where all its dependencies (kem_lookup, MAX_VEHICLES,
+// PEM_BEACON_INTERVAL_S, g_vehicle_dilithium_sk) are already in scope.
+// =============================================================================
+struct PemGenuineReport {
+    LocationBoundReport report;
+    double sim_time;
+};
+static std::map<std::tuple<uint32_t,uint32_t,uint32_t>, PemGenuineReport> g_pem_genuine_reports;
+
+// e_ij identifier — order-independent (min,max) so a V1-sees-V2 report and a
+// V2-sees-V1 report about the same physical link land on the same key.
+static void PemBuildLinkId(uint32_t a, uint32_t b, uint8_t link_id[8])
+{
+    uint32_t lo = (a <= b) ? a : b, hi = (a <= b) ? b : a;
+    link_id[0] = (uint8_t)((lo >> 8) & 0xFFu);
+    link_id[1] = (uint8_t)(lo & 0xFFu);
+    link_id[2] = (uint8_t)((hi >> 8) & 0xFFu);
+    link_id[3] = (uint8_t)(hi & 0xFFu);
+    link_id[4] = link_id[5] = link_id[6] = link_id[7] = 0;
+}
+
 // Real per-witness spatial evidence for VERIFY_QUORUM (Eqs. 3.29-3.30). Filled
 // from the actual mobility-model positions at the ME call site — the witness's
 // real reported position and the real link-endpoint positions, so the gate can
@@ -748,6 +788,19 @@ struct PemQuorumEvidence {
     Vector witness_pos;
     Vector link_src_pos;
     Vector link_dst_pos;
+    // Phase 3: real link identity, needed to look up genuinely-signed
+    // Phase 2 reports (g_pem_genuine_reports) for this exact physical link.
+    uint32_t link_src_id = 0;
+    uint32_t link_dst_id = 0;
+    // Phase 3: the FULL claimed-reporter set R(eij,t) for this link — every
+    // vehicle/entity that claims to have reported this link for this event,
+    // real (link_src_id/link_dst_id themselves) and fabricated alike (ME's
+    // false witnesses). Eq. 3.30's n and t = floor(n/2)+1 are computed over
+    // this set's size, not fleet size and not "count of genuinely-signed
+    // ones only" — matching "cross-checks each candidate witness" (Algorithm
+    // 4's own description of VERIFY_QUORUM) rather than admitting the link
+    // merely because SOME real vehicle once witnessed it.
+    std::vector<uint32_t> claimed_reporters;
 };
 
 // Local-Cartesian (simulation metres) -> GPS lat/lon, anchored at the same test
@@ -762,70 +815,65 @@ static void PemSimToGps(const Vector &pos, float &lat, float &lon)
     lon = (float)(kAnchorLon + pos.x / (kMPerDegLat * std::cos(lat_rad)));
 }
 
-// VERIFY_QUORUM(W_v, t) — Algorithm 4 lines 52-66 / Eqs. 3.29-3.30. Cross-checks
-// t-of-n witnesses on signature validity, range bound d(pos,eij)<=r_comm, and
-// RSSI threshold. When real position evidence is supplied (ev != nullptr), the
-// witness/link GPS coordinates and the RSSI fed into the real verify_quorum()
-// crypto-library gate are derived from the actual simulation geometry (same
-// Cost231 distance->RSSI model Stage-0 uses), so an out-of-range false witness
-// can genuinely fail this gate. Without evidence (ev == nullptr, e.g. no
-// position data available at the call site), falls back to a same-location
-// synthetic witness — structurally exercises the gate but cannot fail.
+// VERIFY_QUORUM(W_v, t) — Algorithm 4 lines 52-66 / Eqs. 3.29-3.30.
+//
+// Phase 3 rewrite: evaluates the FULL claimed-reporter set R(eij,t) for this
+// link (ev->claimed_reporters — every vehicle/entity that claims to have
+// reported it, real AND fabricated alike), matching Algorithm 4's own
+// description ("VERIFY_QUORUM cross-checks EACH CANDIDATE WITNESS") and
+// Eq. 3.30's literal set-builder {Vk : Accept_Vk(eij)=1}, rather than either
+// (a) a fabricated clone of one position signed n times with the shared
+// demo keypair (the original bug), or (b) an aggregate over only the
+// genuinely-signed subset, which would wrongly admit a link merely because
+// SOME real vehicle once witnessed it, ignoring how many OTHER claimants on
+// the same event were fabricated.
+//
+// n = |R(eij,t)| (the full claimed set, real + fake), t = floor(n/2)+1.
+// For each claimed reporter, Accept_Vk looks up whether THAT reporter has a
+// real, genuinely-signed Phase 2 LocationBoundReport for this exact link
+// (g_pem_genuine_reports) and if so runs it through verify_single_witness()
+// (Eq. 3.29: signature, spatial, RSSI). A fabricated witness (ME's false
+// V3/V4, or a malicious RSU/controller impersonating one) never has such a
+// report — Phase 2's PemSignGenuineReport only ever signs attackLabel==false
+// observations — so it fails Accept_Vk by construction, not by a
+// convenient absence check.
 static bool PemVerifyQuorum(uint32_t n_witnesses, const PemQuorumEvidence *ev,
                              uint32_t &q_out, uint32_t &t_out)
 {
-    const uint32_t t = n_witnesses / 2u + 1u;
-    t_out = t;
 #ifdef HAVE_LIBOQS
-    if (!g_crypto_ready) { q_out = n_witnesses; return true; }
-    uint8_t link_id[8] = {0,1,0,2,0,0,0,0};
-
-    float witness_lat, witness_lon, link_lat, link_lon;
-    float rssi_dbm;
-    if (ev != nullptr) {
-        const double dSrc = PemDistance2d(ev->witness_pos, ev->link_src_pos);
-        const double dDst = PemDistance2d(ev->witness_pos, ev->link_dst_pos);
-        const double d = (std::min)(dSrc, dDst);
-        const Vector &nearestEp = (dSrc <= dDst) ? ev->link_src_pos : ev->link_dst_pos;
-        PemSimToGps(ev->witness_pos, witness_lat, witness_lon);
-        PemSimToGps(nearestEp,       link_lat,    link_lon);
-        // Same synthetic Cost231 distance->RSSI model as Stage-0's ME-S3 sig[8]
-        // (PemRecordObservation), so the mitigation gate agrees with detection.
-        const double safeD = (d > 0.001) ? d : 0.001;
-        const double kCost231N = 3.75;   // matches PEM_RSSI_N_COST231 defined below
-        rssi_dbm = (float)(PemGetRssiMin() + 10.0 * kCost231N
-                            * std::log10(PemGetRcomm() / safeD));
-    } else {
-        witness_lat = link_lat = 6.9271f; witness_lon = link_lon = 79.8612f;
-        rssi_dbm = -70.0f;
+    if (!g_crypto_ready) { t_out = n_witnesses / 2u + 1u; q_out = n_witnesses; return true; }
+    if (ev == nullptr || ev->claimed_reporters.empty()) {
+        t_out = n_witnesses / 2u + 1u; q_out = 0u; return false;
     }
 
-    std::vector<LocationBoundReport> reports(n_witnesses);
-    for (uint32_t i = 0; i < n_witnesses; i++) {
-        // rid[1]=0xFE marks this as a synthetic quorum witness, distinct from
-        // any real vehicle_id (which always has rid[1]==0 — see the rid[16]={}
-        // pattern used everywhere else in this file). Without this, a synthetic
-        // witness whose rid[0] happens to match a real vehicle's byte-0 id
-        // value spuriously inherits that vehicle's CRL revocation status in
-        // cert_is_revoked() — confirmed empirically: witnesses i=12/16 (rid[0]
-        // =15/19) were rejected at Gate A because real vehicles with those same
-        // byte-0 ids had genuinely been revoked earlier in the same run.
-        uint8_t rid[16] = {}; rid[0] = (uint8_t)(3 + i); rid[1] = 0xFE;  // V3, V4, ... as witnesses
-        CertificateRecord qcert;
-        dilithium5_issue_cert(rid, g_dil_pk.data(), (uint64_t)i * 1000, &qcert);
-        create_location_bound_report(
-            link_id,
-            witness_lat, witness_lon, rssi_dbm, 10000u,
-            rid, g_dil_sk.data(), g_dil_pk.data(), &qcert,
-            &reports[i]);
-        reports[i].has_rsu_measurement   = true;
-        reports[i].rsu_measured_rssi_dbm = rssi_dbm;
+    const uint32_t n_total = (uint32_t)ev->claimed_reporters.size();
+    const uint32_t t = n_total / 2u + 1u;
+    t_out = t;
+
+    float link_lat, link_lon;
+    PemSimToGps(ev->link_src_pos, link_lat, link_lon);
+    const uint64_t recv_ms = (uint64_t)std::llround(Simulator::Now().GetSeconds() * 1000.0);
+
+    uint32_t legit_count = 0;
+    for (uint32_t reporterId : ev->claimed_reporters) {
+        const PemGenuineReport *w = nullptr;
+        auto it1 = g_pem_genuine_reports.find(
+            std::make_tuple(reporterId, ev->link_src_id, ev->link_dst_id));
+        if (it1 != g_pem_genuine_reports.end()) {
+            w = &it1->second;
+        } else {
+            auto it2 = g_pem_genuine_reports.find(
+                std::make_tuple(reporterId, ev->link_dst_id, ev->link_src_id));
+            if (it2 != g_pem_genuine_reports.end()) w = &it2->second;
+        }
+        if (w != nullptr && verify_single_witness(&w->report, link_lat, link_lon, recv_ms))
+            legit_count++;
     }
-    bool ok = verify_quorum(reports.data(), n_witnesses, t,
-                             link_lat, link_lon, 10005u);
-    q_out = ok ? n_witnesses : 0u;
-    return ok;
+
+    q_out = legit_count;
+    return legit_count >= t;
 #else
+    t_out = n_witnesses / 2u + 1u;
     q_out = n_witnesses;
     return true;
 #endif
@@ -928,8 +976,15 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
     uint8_t vid[16] = {}; vid[0] = (uint8_t)node_id;
     uint8_t session_key[SESSION_KEY_LEN], session_key2[SESSION_KEY_LEN];
 
-    // Step 0a: RSU enrols vehicle in fleet keystore (fleet management)
-    double reg_us = TimedKemRegister(vid, node_id % 16);
+    // Step 0a: RSU enrols vehicle in fleet keystore (fleet management).
+    // Capture the real SK_Vi identity key into the vehicle-side-only array
+    // so this vehicle (commonly V0, the t=0 "Session_Setup" test vehicle)
+    // has a real signing key available, same as every other vehicle
+    // registered via CryptoDeriveVehicleSessionKeys() below.
+    double reg_us = (node_id < MAX_VEHICLES)
+                     ? TimedKemRegister(vid, node_id % 16, g_vehicle_dilithium_sk[node_id])
+                     : TimedKemRegister(vid, node_id % 16);
+    if (node_id < MAX_VEHICLES) g_vehicle_dilithium_sk_ready[node_id] = true;
 
     // Step 1: vehicle generates Kyber-1024 + HQC-5 keypair + signs them
     auto t0 = HiResClock::now();
@@ -1020,15 +1075,21 @@ static void CryptoDeriveVehicleSessionKeys()
         vid[1] = (uint8_t)((i >> 8) & 0xFFu);
 
         VehicleKeyRecord *rec = kem_lookup(vid);
-        if (!rec) rec = kem_register_vehicle(vid, i);
+        // rec pre-existing here only happens for i==0 (registered earlier by
+        // MeasureKEM(0.0,0,...)'s TimedKemRegister call, which already
+        // captured g_vehicle_dilithium_sk[0]) — so only the fresh-registration
+        // branch needs to capture sk_vi itself.
+        if (!rec) rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i]);
         if (rec) {
             memcpy(g_vehicle_session_keys[i], rec->session_key, SESSION_KEY_LEN);
             g_vehicle_session_key_ready[i] = true;
+            g_vehicle_dilithium_sk_ready[i] = true;
             ok_count++;
         }
     }
     std::cout << "[KEM] Registered " << ok_count << "/" << n
-              << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).\n";
+              << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
+              << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.27-3.28).\n";
 #endif
 }
 
@@ -3867,10 +3928,30 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
 
     // node id -> most recently known position, from link_report_history plus
     // the current event and both link endpoints.
+    //
+    // FP fix (ME-S2 false-positive investigation): a report whose
+    // physical_sender_id IS one of the link's own two endpoints is a direct
+    // self-report — the endpoint vouching for its own real link — not an
+    // independent third-party witness, even when it reaches this trusted
+    // node via an RSU relay (reporter_id == rsu_id, a transport identity,
+    // not a separate physical vantage point). Adding reporter_id as its own
+    // graph node in that case creates a phantom node co-located with (or
+    // near) the reporting endpoint, inflating |P(Vi,Vj)| with a route that
+    // was never physically observed. Same structural self-report test
+    // already used elsewhere in this file (Stage-0's is_self_report_pre in
+    // teta_guard_filter.h, Stage-1's is_self_report_me2 above) — uses only
+    // physical_sender_id/link endpoint IDs, fields a real detector already
+    // has from the received report, not a simulator ground-truth oracle.
     std::map<uint32_t, Vector> nodePos;
     nodePos[event.link_src_id] = event.link_src_position;
     nodePos[event.link_dst_id] = event.link_dst_position;
-    nodePos[event.reporter_id] = event.reporter_position;
+    const bool eventIsSelfReport =
+        (event.physical_sender_id == event.link_src_id) ||
+        (event.physical_sender_id == event.link_dst_id);
+    if (!eventIsSelfReport)
+    {
+        nodePos[event.reporter_id] = event.reporter_position;
+    }
 
     std::map<std::string, std::vector<PemEvent>>::const_iterator linkIt =
         ns.link_report_history.find(linkKey);
@@ -3880,7 +3961,13 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
              it != linkIt->second.end();
              ++it)
         {
-            nodePos[it->reporter_id] = it->reporter_position;
+            const bool histIsSelfReport =
+                (it->physical_sender_id == it->link_src_id) ||
+                (it->physical_sender_id == it->link_dst_id);
+            if (!histIsSelfReport)
+            {
+                nodePos[it->reporter_id] = it->reporter_position;
+            }
         }
     }
 
@@ -5431,6 +5518,65 @@ PemCryptoPreFilter(const PemEvent& event)
     return TetaGuardCryptoFilter(event, event.reporter_id);
 }
 
+// Signs a genuine topology observation with the REPORTER'S OWN real
+// Dilithium5 identity key (g_vehicle_dilithium_sk, captured in
+// CryptoDeriveVehicleSessionKeys/MeasureKEM — Phase 1). Silently a no-op if
+// the reporter has no captured key yet, isn't a registered fleet vehicle, or
+// its cached report is still within one beacon interval of being fresh.
+static void PemSignGenuineReport(uint32_t reporterId, uint32_t linkSrcId, uint32_t linkDstId,
+                                  const Vector &reporterPosition,
+                                  const Vector &linkSrcPosition,
+                                  const Vector &linkDstPosition,
+                                  double senderTimestamp, double simTime)
+{
+#ifdef HAVE_LIBOQS
+    if (!g_crypto_ready) return;
+    if (reporterId >= MAX_VEHICLES || !g_vehicle_dilithium_sk_ready[reporterId]) return;
+
+    const auto key = std::make_tuple(reporterId, linkSrcId, linkDstId);
+    auto it = g_pem_genuine_reports.find(key);
+    if (it != g_pem_genuine_reports.end() &&
+        (simTime - it->second.sim_time) < PEM_BEACON_INTERVAL_S)
+        return;   // cached report is still fresh — no need to re-sign
+
+    uint8_t vid[16] = {};
+    vid[0] = (uint8_t)(reporterId & 0xFFu);
+    vid[1] = (uint8_t)((reporterId >> 8) & 0xFFu);
+    VehicleKeyRecord *rec = kem_lookup(vid);
+    if (!rec) return;   // not a registered fleet vehicle — no CA cert to attach
+
+    uint8_t link_id[8];
+    PemBuildLinkId(linkSrcId, linkDstId, link_id);
+
+    float reporter_lat, reporter_lon;
+    PemSimToGps(reporterPosition, reporter_lat, reporter_lon);
+
+    // RSSI at the reporter from its nearer link endpoint — same Cost231
+    // distance model Stage-0's ME-S3 signature and PemVerifyQuorum both use,
+    // so this evidence agrees with detection-side geometry.
+    const double dSrc = PemDistance2d(reporterPosition, linkSrcPosition);
+    const double dDst = PemDistance2d(reporterPosition, linkDstPosition);
+    const double dNearest = (dSrc <= dDst) ? dSrc : dDst;
+    const double safeD = (dNearest > 0.001) ? dNearest : 0.001;
+    const float rssi_dbm = (float)(PemGetRssiMin() + 10.0 * PEM_RSSI_N_COST231
+                                     * std::log10(PemGetRcomm() / safeD));
+
+    const uint64_t sender_ts_ms = (uint64_t)std::llround(senderTimestamp * 1000.0);
+
+    LocationBoundReport rpt;
+    create_location_bound_report(link_id, reporter_lat, reporter_lon, rssi_dbm,
+                                  sender_ts_ms, vid,
+                                  g_vehicle_dilithium_sk[reporterId], rec->sign_pub_key,
+                                  &rec->cert, &rpt);
+    rpt.has_rsu_measurement   = true;
+    rpt.rsu_measured_rssi_dbm = rssi_dbm;
+
+    PemGenuineReport &slot = g_pem_genuine_reports[key];
+    slot.report   = rpt;
+    slot.sim_time = simTime;
+#endif
+}
+
 static void
 PemEmitEvent(PemEventType type,
              uint32_t physicalSenderId,
@@ -5475,6 +5621,19 @@ PemEmitEvent(PemEventType type,
     event.alert_raised = false;
     event.detection_latency_ms = -1.0;
     event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;  // set by PemEvaluateEvent for topology events
+
+    // Phase 2 (Eq. 3.27-3.28): genuine, non-forged topology observations get a
+    // real Dilithium5-signed LocationBoundReport cached under the reporter's
+    // own key, for PemVerifyQuorum (Eq. 3.29-3.30) to consult later. Restricted
+    // to topology-update events and attackLabel==false — this is evidence for
+    // the location-binding quorum gate, not an input to the 9 LW detection
+    // signatures above, which are untouched by this call.
+    if (type == PEM_EVENT_TOPOLOGY_UPDATE && !attackLabel)
+    {
+        PemSignGenuineReport(reporterId, linkSrcId, linkDstId,
+                              reporterPosition, linkSrcPosition, linkDstPosition,
+                              senderTimestamp, event.sim_time);
+    }
 
     // Sign the event with whichever key the sender actually possesses before
     // Stage-0 sees it — event.message_mac is the "attached" MAC a real packet
@@ -9371,7 +9530,12 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
             attack_E_matrix.erase(k4);
             if (topology_divergence_delta > 0) topology_divergence_delta--;
         }
-        const PemQuorumEvidence me_s1_ev{v3Pos, vSrcPos, vDstPos};
+        // Full claimed-reporter set R(eij,t) for Eq. 3.30: the two real
+        // reporters plus whichever fabricated echo witnesses were injected.
+        std::vector<uint32_t> me_s1_reporters{link_src, link_dst};
+        if (emit_v3) me_s1_reporters.push_back(echo_v3);
+        if (emit_v4) me_s1_reporters.push_back(echo_v4);
+        const PemQuorumEvidence me_s1_ev{v3Pos, vSrcPos, vDstPos, link_src, link_dst, me_s1_reporters};
         std::string mit = PemApplyMitigation(echo_v3, now, "ME-S1", &me_s1_ev);
         me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
                << "  Echo reporters V" << echo_v3 << " and V" << echo_v4
@@ -9653,7 +9817,10 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
             attack_E_matrix.erase(k);
             if (topology_divergence_delta > 0) topology_divergence_delta--;
         }
-        const PemQuorumEvidence ev{aPos, v1Pos, v2Pos};
+        // Single fabricated witness (echoReporterId) alongside the two real
+        // link endpoints — full claimed-reporter set for Eq. 3.30.
+        const std::vector<uint32_t> single3_reporters{v1_id, v2_id, echoReporterId};
+        const PemQuorumEvidence ev{aPos, v1Pos, v2Pos, v1_id, v2_id, single3_reporters};
         std::string trust_single3;
         if (mode == 3 || mode == 4) {
             // Controller-origin modes: the real attacker is the controller, not
@@ -9978,7 +10145,11 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
 
     if (pem_last_alert) {
         CryptoMeasureLKH(now, rsu_id, N_Vehicles);
-        const PemQuorumEvidence me_s2_ev{me_s2_reportPos, v1Pos, v2Pos};
+        // The RSU is a single physical reporter identity even though it
+        // injects two forged claims (false_v3, false_v4) — reporter_id in
+        // both PemEmitEvent calls above is rsu_id itself.
+        const std::vector<uint32_t> me_s2_reporters{v1_id, v2_id, rsu_id};
+        const PemQuorumEvidence me_s2_ev{me_s2_reportPos, v1Pos, v2Pos, v1_id, v2_id, me_s2_reporters};
         std::string mit = PemApplyMitigation(rsu_id, now, "ME-S2", &me_s2_ev);
         me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
                << "  RSU echo injection detected; false reporters V" << false_v3
@@ -10232,7 +10403,9 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         }
         trust_s11 = ctrl_div_log_s11 + trust_s11;
         TrustRunDemotionPipeline(now);
-        const PemQuorumEvidence me_s3_ev{ctrlPos, v1Pos, v2Pos};
+        std::vector<uint32_t> me_s3_reporters{v1_id, v2_id, false_v3};
+        if (s3_have_v4) me_s3_reporters.push_back(false_v4);
+        const PemQuorumEvidence me_s3_ev{ctrlPos, v1Pos, v2Pos, v1_id, v2_id, me_s3_reporters};
         std::string mit = PemApplyMitigation(false_v3, now, "ME-S3", &me_s3_ev);
         me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
                << "  Controller internal echo fabrication detected\n"
@@ -10482,7 +10655,9 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         }
         trust_s12 = ctrl_div_log_s12 + trust_s12;
         TrustRunDemotionPipeline(now);
-        const PemQuorumEvidence me_s4_ev{ctrlPos, v1Pos, v2Pos};
+        std::vector<uint32_t> me_s4_reporters{v1_id, v2_id, false_v3};
+        if (have_v4) me_s4_reporters.push_back(false_v4);
+        const PemQuorumEvidence me_s4_ev{ctrlPos, v1Pos, v2Pos, v1_id, v2_id, me_s4_reporters};
         std::string mit = PemApplyMitigation(false_v3, now, "ME-S4", &me_s4_ev);
         me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
                << "  Controller internal echo fabrication (RSU variant) detected\n"
