@@ -1093,6 +1093,14 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
 // (HQC5_PK_LEN/SK_LEN/CT_LEN) to succeed — before that fix every call here
 // would fail with "[KEM] REJECT: keygen sig invalid" due to KemExchangeState
 // struct corruption.
+// 10 ms V2X handshake latency budget (§2.2.3/§3.4.2 area — "Session key
+// establishment uses the ML-KEM-1024 + HQC-5 hybrid key encapsulation
+// mechanism, which achieves millisecond-level handshake latency compliant
+// with the 10 ms V2X timing constraint"). Previously asserted only in the
+// document text; this instruments it as a real per-vehicle measurement
+// against the stated budget, not a throughput/registration-total figure.
+static const double KEM_HANDSHAKE_BUDGET_MS = 10.0;
+
 static void CryptoDeriveVehicleSessionKeys()
 {
 #ifdef HAVE_LIBOQS
@@ -1100,6 +1108,8 @@ static void CryptoDeriveVehicleSessionKeys()
     uint32_t n = (N_Vehicles > 0u) ? N_Vehicles : 1u;
     if (n > MAX_VEHICLES) n = MAX_VEHICLES;
     uint32_t ok_count = 0;
+    double handshake_ms_sum = 0.0, handshake_ms_max = 0.0;
+    uint32_t handshake_timed_count = 0, handshake_over_budget = 0;
     for (uint32_t i = 0; i < n; i++) {
         uint8_t vid[16] = {};
         vid[0] = (uint8_t)(i & 0xFFu);
@@ -1109,8 +1119,18 @@ static void CryptoDeriveVehicleSessionKeys()
         // rec pre-existing here only happens for i==0 (registered earlier by
         // MeasureKEM(0.0,0,...)'s TimedKemRegister call, which already
         // captured g_vehicle_dilithium_sk[0]) — so only the fresh-registration
-        // branch needs to capture sk_vi itself.
-        if (!rec) rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i]);
+        // branch needs to capture sk_vi itself. Only the fresh-registration
+        // branch is timed for the handshake-latency budget below, since a
+        // pre-existing lookup isn't a handshake.
+        if (!rec) {
+            auto __t0 = HiResClock::now();
+            rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i]);
+            const double handshake_ms = MicroSec(HiResClock::now() - __t0).count() / 1000.0;
+            handshake_ms_sum += handshake_ms;
+            if (handshake_ms > handshake_ms_max) handshake_ms_max = handshake_ms;
+            handshake_timed_count++;
+            if (handshake_ms > KEM_HANDSHAKE_BUDGET_MS) handshake_over_budget++;
+        }
         if (rec) {
             memcpy(g_vehicle_session_keys[i], rec->session_key, SESSION_KEY_LEN);
             g_vehicle_session_key_ready[i] = true;
@@ -1121,6 +1141,14 @@ static void CryptoDeriveVehicleSessionKeys()
     std::cout << "[KEM] Registered " << ok_count << "/" << n
               << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
               << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).\n";
+    if (handshake_timed_count > 0) {
+        const double avg_ms = handshake_ms_sum / (double)handshake_timed_count;
+        std::cout << "[KEM][10ms budget] " << handshake_timed_count
+                  << " handshakes timed: avg=" << avg_ms << " ms, max="
+                  << handshake_ms_max << " ms, over_budget=" << handshake_over_budget
+                  << "/" << handshake_timed_count << " (budget="
+                  << KEM_HANDSHAKE_BUDGET_MS << " ms)\n";
+    }
 #endif
 }
 
@@ -2047,6 +2075,23 @@ uint64_t pem_true_negative = 0;
 uint64_t pem_false_positive = 0;
 uint64_t pem_false_negative = 0;
 
+// ── M11: Quorum Rejection Rate (QRR), Eq. 4.19 ───────────────────────────────
+// QRR = 1 - (N_echo-pass / N_echo-attempts). N_echo-attempts = every ME
+// (family=="ME") FS-MITIGATE call whose ground truth is a genuine attack
+// injection (VERIFY_QUORUM, Eq. 3.32, is evaluated); N_echo-pass = those
+// where the forged echo satisfied the quorum and got admitted (q_out >= t_out,
+// crypto_ok==true) — the quorum-defense failure case. A blocked echo
+// (crypto_ok==false) is the quorum defense's correct-rejection / TP case;
+// per the paper's own Eq. 4.19 worked theory, QRR=1.0 for all out-of-range
+// attackers is the target/correct outcome, not a penalty. Distinct from and
+// does not replace the Stage-0 crypto-filter (pem_true_positive above) or
+// the Stage-1 LW/TGN-only "[comb]" metric (tgn_core.cc's g_comb_tp/g_comb_fn)
+// — this is a separate mitigation-stage confusion-matrix specific to ME's
+// quorum gate.
+uint64_t pem_qrr_echo_attempts = 0;
+uint64_t pem_qrr_echo_pass     = 0;   // admitted despite being forged (quorum failure)
+uint64_t pem_qrr_echo_blocked  = 0;   // correctly rejected (quorum success)
+
 double pem_last_detection_score = 0.0;
 double pem_last_auroc = 0.5;
 double pem_last_mcc = 0.0;
@@ -2072,15 +2117,17 @@ double pem_blacklist_propagation_delay_ms = 0.0;
 // Parameters from Table 3.4
 static const double TRUST_DELTA_PLUS     = 0.05;   // Δ+ correct-participation increment
 static const double TRUST_DELTA_MINUS    = 0.10;   // Δ- failure / inconsistent evidence
-static const double TRUST_TAU_MIN        = 0.10;   // τ_min eligibility floor (Eq. 3.51)
-static const double TRUST_TAU_MIN_CTRL   = 0.30;   // τ_min^C controller reassignment threshold (Eq. 3.42)
+static const double TRUST_TAU_MIN        = 0.10;   // τ_min eligibility floor (Eq. 3.42)
+static const double TRUST_TAU_MIN_CTRL   = 0.30;   // τ_min^C controller reassignment threshold (Eq. 3.44)
                                                     // matches chaincode TrustCtrlMin (trust.go) / Table 3.4
 // τ_min^gt — bootstrap qualification threshold (§3.4.11, Table 3.4).
 // An OBU must reach this trust level before its detections can trigger mitigation.
 // Distinct from TRUST_TAU_MIN_CTRL (which governs zone reassignment), even though
 // both are 0.50.  Kept separate so they can diverge if Table 3.4 is revised.
 static const double TRUST_TAU_GT_MIN    = 0.50;   // τ_min^gt = 0.50 (Table 3.4)
-// R_min — minimum detection rounds for Tier-2 OBU bootstrap (Eq. 3.44 derivation).
+// R_min — minimum detection rounds for Tier-2 OBU bootstrap.
+// This formula appears only as inline math in the source document — it is not
+// inside any numbered equation block, so no Eq. 3.XX citation applies here.
 // R_min = ⌈(τ_min^gt − τ^Tier2_init) / Δ+⌉ = ⌈(0.50 − 0.10) / 0.05⌉ = 8
 // Until R_min rounds complete, PEM Stage-1 alerts are labelled PRELIMINARY and
 // Stage-2 TGN mitigation actions (FlowMod / BlacklistBeacon) are suppressed.
@@ -2088,7 +2135,7 @@ static const double TRUST_TAU_GT_MIN    = 0.50;   // τ_min^gt = 0.50 (Table 3.4
 static const uint32_t TRUST_R_MIN       = 8u;     // R_min = 8 rounds (Table 3.4 derivation)
 static const double TRUST_TAU_TIER1_INIT = 1.00;   // τ^Tier1_init — RSU authority-vetted
 static const double TRUST_TAU_TIER2_INIT = 0.10;   // τ^Tier2_init — OBU / vehicle
-static const double TRUST_DELTA_C        = 0.20;   // Δ_C controller trust decrement (Eq. 3.39)
+static const double TRUST_DELTA_C        = 0.20;   // Δ_C controller trust decrement (Eq. 3.41)
                                                     // matches chaincode TrustDeltaCtrl (trust.go) / Table 3.4
 static const uint32_t TRUST_F            = 2u;     // f — Byzantine peers assumed (Table 3.4)
 static const uint32_t TRUST_NP           = 8u;     // n_p = 8 — active peer count (Table 3.4)
@@ -2143,6 +2190,12 @@ bool     g_ctrl_reassigned    = false;       // set when zone is reassigned
 // Stage-2 monitoring flag: prevents scheduling more than one recurring tick at a time.
 // Set to true when the first quarantine begins; the tick clears it when all quarantines end.
 static bool g_trust_stage2_armed = false;
+
+// Trecruit<=Tmin bound tracking (see TrustSelectActivePeers): first-eligible
+// timestamp per candidate node, and the previously-selected active-peer set
+// (to detect the moment a node is newly promoted into P_active).
+static std::map<uint32_t, double>  g_trust_first_eligible_at;
+static std::set<uint32_t>          g_trust_prev_active_peers;
 
 std::vector<double> pem_positive_scores;
 std::vector<double> pem_negative_scores;
@@ -2918,6 +2971,18 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
                                 ? PemVerifyQuorum(n_eff, ev, c_or_q, t_req)
                                 : PemVerifyThresholdSig(n_eff, attacker_id, t_now, c_or_q, t_req);
 
+        // M11 QRR (Eq. 4.19): every ME FS-MITIGATE call here is a genuine
+        // echo-injection attempt (attacker_id is always the real attacker at
+        // every ME call site) — crypto_ok==true means the forged echo met
+        // quorum and was admitted (N_echo-pass, the defense's failure case);
+        // crypto_ok==false means quorum correctly rejected it (N_echo-blocked,
+        // the defense's success/TP case). See pem_qrr_echo_* declaration.
+        if (family == "ME") {
+            pem_qrr_echo_attempts++;
+            if (crypto_ok) pem_qrr_echo_pass++;
+            else           pem_qrr_echo_blocked++;
+        }
+
         std::cout << "[" << scenario_tag << "][t=" << t_now
                   << "]  FS-MITIGATE gate: PBFT n=" << n_peers << " f=" << f
                   << " q_needed=" << q_needed << " -> " << (pbft_ok ? "PASS" : "FAIL")
@@ -3111,6 +3176,8 @@ static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool fl
             r.state     = TRUST_QUARANTINE;
             r.demoted_at = Simulator::Now().GetSeconds();
             TrustStage2ArmMonitor();   // §3.4.11 Stage-2: start recurring beacon-interval check
+            std::cout << "[Trust][t=" << r.demoted_at << "]  Node " << ns3_id
+                      << ": ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)\n";
         }
     } else if (correct_participation) {
         r.tau = (r.tau + TRUST_DELTA_PLUS < 1.0) ? r.tau + TRUST_DELTA_PLUS : 1.0;
@@ -3176,7 +3243,7 @@ static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
     return true;
 }
 
-// Eq. 3.41: select active peer set P_active of size n_p = 7 by trust ranking.
+// Eq. 3.43: select active peer set P_active of size n_p = 8 by trust ranking.
 // E_t^trusted = ⋃_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_{n_k}(t) — Eq. 3.46.
 //
 // Controllers (registry C, Eq. 3.37) are explicitly excluded from this candidate
@@ -3205,10 +3272,55 @@ static std::vector<uint32_t> TrustSelectActivePeers()
         if (TrustIsEligible(kv.first, is_rsu))
             cands.push_back({kv.second.tau, kv.first});
     }
+
+    // Eq. 3.42/3.43 Tier-2 promotion precondition, enforced as a hard gate:
+    // "Tier 2 peers are promoted from client OBUs only when no Tier 1 peers
+    // are reachable and at least np = 3f+1 eligible OBUs are available."
+    // When has_RSU_infrastructure is false, every candidate above is by
+    // construction an OBU (no RSU_Nodes exist to match is_rsu==true against).
+    // If fewer than TRUST_NP are eligible, none are promoted into P_active
+    // this round — Eligible(Vk) gates arg-max membership by construction per
+    // Eq. 3.42/3.43, not as an advisory check — rather than admitting an
+    // under-quorum peer set. Tier-1 (RSU-present) mode is unaffected: RSUs
+    // are authority-vetted fixed infrastructure, not subject to this
+    // OBU-promotion precondition.
+    if (!has_RSU_infrastructure && cands.size() < TRUST_NP) {
+        return {};
+    }
+
     std::sort(cands.rbegin(), cands.rend());   // descending by τ
     std::vector<uint32_t> peers;
     for (uint32_t i = 0; i < TRUST_NP && i < (uint32_t)cands.size(); i++)
         peers.push_back(cands[i].second);
+
+    // Trecruit <= Tmin bound, enforced as a verified invariant (not just a
+    // log): "the highest-ranked eligible client OBU is promoted after
+    // checkpoint synchronization, bounded by Trecruit <= Tmin" — the paper's
+    // methodology explicitly commits to verifying this in simulation. The
+    // bound already holds by construction (TrustCheckpointSynced() gates
+    // eligibility to at most one anchor interval, TRUST_ANCHOR_INTERVAL_S =
+    // floor(Tmin/Tb)*Tb <= Tmin, before TrustIsEligible can ever return true),
+    // so this assertion should never fire; it exists to make that guarantee
+    // structurally checked rather than merely assumed.
+    {
+        double now = Simulator::Now().GetSeconds();
+        for (const auto& c : cands)
+            if (!g_trust_first_eligible_at.count(c.second))
+                g_trust_first_eligible_at[c.second] = now;
+        for (uint32_t id : peers) {
+            if (!g_trust_prev_active_peers.count(id)) {
+                double first_elig = g_trust_first_eligible_at.count(id)
+                                         ? g_trust_first_eligible_at[id] : now;
+                double t_recruit = now - first_elig;
+                NS_ASSERT_MSG(t_recruit <= TRUST_TMIN_DWELL_S,
+                    "Trecruit bound violated (Eq. 3.43 promotion latency): node "
+                    << id << " took " << t_recruit << "s > Tmin="
+                    << TRUST_TMIN_DWELL_S << "s to be promoted into P_active");
+            }
+        }
+        g_trust_prev_active_peers = std::set<uint32_t>(peers.begin(), peers.end());
+    }
+
     return peers;
 }
 
@@ -4344,7 +4456,8 @@ PemWriteRunSummaryCsv()
         filename,
         "run_id,attack_scenario,attack_percentage,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,"
         "pdr_under_attack_pct,pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,"
-        "total_events,crypto_drop_mac,crypto_drop_stale,crypto_drop_nonce,crypto_drop_quorum,tp_event",
+        "total_events,crypto_drop_mac,crypto_drop_stale,crypto_drop_nonce,crypto_drop_quorum,tp_event,"
+        "qrr_echo_attempts,qrr_echo_pass,qrr_echo_blocked,qrr",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -4406,7 +4519,24 @@ PemWriteRunSummaryCsv()
     { uint64_t _mac,_stale,_nonce,_quorum;
       TetaGuardGetDropCounters(_mac,_stale,_nonce,_quorum);
       fout << _mac << "," << _stale << "," << _nonce << "," << _quorum << ","; }
-    fout << pem_true_positive << "\n";
+    fout << pem_true_positive << ",";
+
+    // M11 QRR (Eq. 4.19): QRR = 1 - (N_echo-pass / N_echo-attempts). Only
+    // meaningful for ME scenarios (pem_qrr_echo_attempts > 0); left at 1.0
+    // (vacuously "no rejections needed") for non-ME runs, matching the
+    // paper's "no echo attempts" edge case rather than reporting 0/0.
+    const double qrr = (pem_qrr_echo_attempts > 0)
+        ? (1.0 - (double)pem_qrr_echo_pass / (double)pem_qrr_echo_attempts)
+        : 1.0;
+    fout << pem_qrr_echo_attempts << "," << pem_qrr_echo_pass << ","
+         << pem_qrr_echo_blocked << "," << qrr << "\n";
+
+    if (pem_qrr_echo_attempts > 0) {
+        std::cout << "[M11][QRR] echo_attempts=" << pem_qrr_echo_attempts
+                  << " admitted(pass)=" << pem_qrr_echo_pass
+                  << " blocked=" << pem_qrr_echo_blocked
+                  << "  QRR=" << qrr << "  (Eq. 4.19; target 1.0)\n";
+    }
 }
 
 // =============================================================================
@@ -9546,62 +9676,16 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
               << " path(s) for V" << src_ns3 << "->V" << dst_ns3
               << (v3v4_linked ? "  (Path4: V3↔V4 in range)" : "")
               << "  *** ATTACK COMPLETE ***" << std::endl;
-    // Sophistication roll — ME-S1 (per echo reporter independently).
-    // Both reporters use own identity (physical=claimed) so Step 1 always passes.
-    // Step 1b location-binding (TetaGuardLocBindVerify, Eqs. 3.29-3.31) checks
-    // distance from the FORGED reporter_position to whichever single link
-    // endpoint (src or dst) is nearest that forged position — see
-    // TetaGuardLocBindVerify's closer_to_src selection in teta_guard_filter.h.
-    // Bug fix: forging to the MIDPOINT of src/dst (as before) only works when
-    // src and dst are within 2*R_COMM of each other — if the real link's own
-    // endpoints are farther apart than that (possible with independent vehicle
-    // mobility), the midpoint is > R_COMM from BOTH endpoints and every
-    // "sophisticated" echo still gets dropped at Stage-0, silently degenerating
-    // to the basic case. A real GPS-spoofing attacker would not need to know
-    // both endpoints' exact positions to average them — it only needs to claim
-    // to be near ONE endpoint (whichever is closer to its own real position,
-    // the more plausible lie), with a small jitter modelling GPS spoofing
-    // imprecision. This is realistic under the same "attacker forges its own
-    // reported position" capability already assumed for the basic path, and
-    // it is correct regardless of how far apart src/dst themselves are.
-    auto meS1SpoofNearEndpoint = [&](const Vector& realPos) -> Vector {
-        const double dSrc = std::sqrt(std::pow(realPos.x - vSrcPos.x, 2.0) + std::pow(realPos.y - vSrcPos.y, 2.0));
-        const double dDst = std::sqrt(std::pow(realPos.x - vDstPos.x, 2.0) + std::pow(realPos.y - vDstPos.y, 2.0));
-        const Vector& target = (dSrc <= dDst) ? vSrcPos : vDstPos;
-        // Draw from AttackGetRng() (already-existing shared attacker-randomization
-        // utility used elsewhere for topology/attacker selection), not a new RNG
-        // object: creating a new Ptr<UniformRandomVariable> shifts NS-3's
-        // auto-assigned stream index for every RandomVariableStream constructed
-        // afterward — including AttackGetRng()'s own lazily-constructed static —
-        // which perturbs topology/attacker selection for the WHOLE run, a far
-        // bigger and less controlled side effect than the one being avoided.
-        // AttackGetRng()'s topology-selection draws (AttackShuffleVector, called
-        // from declare_attackers() in main()) all happen before Simulator::Run()
-        // starts; this call happens later, inside a scheduled callback at
-        // t≈10s, so it only ever consumes draws AFTER topology selection has
-        // already completed — it cannot retroactively change it.
-        const double jitter = AttackGetRng()->GetValue(0.0, 50.0);   // up to 50m GPS-spoof imprecision
-        const double angle  = AttackGetRng()->GetValue(0.0, 2.0 * M_PI);
-        return Vector(target.x + jitter * std::cos(angle), target.y + jitter * std::sin(angle), 0.0);
-    };
+    // ME-S1 does not model a sophisticated/basic split (per design doc — only
+    // TTW-S2/BSHH-S2's RSU key-exfiltration scenarios model attacker
+    // sophistication; ME's defense is location-binding + quorum, Eqs. 3.29-3.32,
+    // not a signing-key mechanism a "sophistication" roll would bypass).
+    // Matches ME-S2 (see its "does not model a sophisticated/basic split"
+    // comment). Each echo reporter always submits its own real position.
     if (emit_v3)
-    {
-            const bool me_s1_v3_soph = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
-            const Vector v3ReportPos = me_s1_v3_soph ? meS1SpoofNearEndpoint(v3Pos) : v3Pos;
-                std::cout << "[ME-S1][t=" << now << "]  V" << echo_v3 << " sophistication: "
-                  << (me_s1_v3_soph ? "SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN"
-                                    : "BASIC — actual pos, may be dropped at Stage-0 locbind") << "\n";
-                PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, now, now, v3ReportPos, vSrcPos, vDstPos, true);
-        }
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v3, echo_v3, echo_v3, link_src, link_dst, now, now, v3Pos, vSrcPos, vDstPos, true);
     if (emit_v4)
-    {
-            const bool me_s1_v4_soph = (g_attacker_rng && g_attacker_rng->GetValue() < g_attacker_sophistication_prob);
-            const Vector v4ReportPos = me_s1_v4_soph ? meS1SpoofNearEndpoint(v4Pos) : v4Pos;
-        std::cout << "[ME-S1][t=" << now << "]  V" << echo_v4 << " sophistication: "
-                  << (me_s1_v4_soph ? "SOPHISTICATED — forged near-link pos → locbind BYPASSED → LW+TGN"
-                                    : "BASIC — actual pos, may be dropped at Stage-0 locbind") << "\n";
-            PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, now, now, v4ReportPos, vSrcPos, vDstPos, true);
-        }
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echo_v4, echo_v4, echo_v4, link_src, link_dst, now, now, v4Pos, vSrcPos, vDstPos, true);
 
     // Crypto latency: each echo reporter signs + controller verifies x2 + haversine x2
 #ifdef HAVE_LIBOQS
