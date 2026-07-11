@@ -29,27 +29,27 @@ Replay timing         : Option B — 2s after each pair's real SUMO break
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 19 handshakes timed: avg=34.3294 ms, max=34.8298 ms, over_budget=19/19 (budget=10 ms)
+[KEM][10ms budget] 19 handshakes timed: avg=34.6841 ms, max=35.5269 ms, over_budget=19/19 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[KEM][SimLatency][t=0.0339313] Vehicle 9 session key simulated-ready (real handshake was 33.9313 ms)
-[KEM][SimLatency][t=0.0339655] Vehicle 5 session key simulated-ready (real handshake was 33.9655 ms)
-[KEM][SimLatency][t=0.0340417] Vehicle 7 session key simulated-ready (real handshake was 34.0417 ms)
-[KEM][SimLatency][t=0.0340707] Vehicle 6 session key simulated-ready (real handshake was 34.0707 ms)
-[KEM][SimLatency][t=0.0340974] Vehicle 8 session key simulated-ready (real handshake was 34.0974 ms)
-[KEM][SimLatency][t=0.0341104] Vehicle 4 session key simulated-ready (real handshake was 34.1104 ms)
-[KEM][SimLatency][t=0.0341314] Vehicle 18 session key simulated-ready (real handshake was 34.1314 ms)
-[KEM][SimLatency][t=0.0342561] Vehicle 19 session key simulated-ready (real handshake was 34.2561 ms)
-[KEM][SimLatency][t=0.0342935] Vehicle 2 session key simulated-ready (real handshake was 34.2935 ms)
-[KEM][SimLatency][t=0.0343157] Vehicle 3 session key simulated-ready (real handshake was 34.3157 ms)
-[KEM][SimLatency][t=0.0343784] Vehicle 10 session key simulated-ready (real handshake was 34.3784 ms)
-[KEM][SimLatency][t=0.0344119] Vehicle 16 session key simulated-ready (real handshake was 34.4119 ms)
-[KEM][SimLatency][t=0.0344218] Vehicle 12 session key simulated-ready (real handshake was 34.4218 ms)
-[KEM][SimLatency][t=0.0345216] Vehicle 13 session key simulated-ready (real handshake was 34.5216 ms)
-[KEM][SimLatency][t=0.0345413] Vehicle 1 session key simulated-ready (real handshake was 34.5413 ms)
-[KEM][SimLatency][t=0.034582] Vehicle 17 session key simulated-ready (real handshake was 34.582 ms)
-[KEM][SimLatency][t=0.0346191] Vehicle 11 session key simulated-ready (real handshake was 34.6191 ms)
-[KEM][SimLatency][t=0.0347384] Vehicle 14 session key simulated-ready (real handshake was 34.7384 ms)
-[KEM][SimLatency][t=0.0348298] Vehicle 15 session key simulated-ready (real handshake was 34.8298 ms)
+[KEM][SimLatency][t=0.0341087] Vehicle 15 session key simulated-ready (real handshake was 34.1087 ms)
+[KEM][SimLatency][t=0.0341322] Vehicle 14 session key simulated-ready (real handshake was 34.1322 ms)
+[KEM][SimLatency][t=0.0341738] Vehicle 13 session key simulated-ready (real handshake was 34.1738 ms)
+[KEM][SimLatency][t=0.0342561] Vehicle 16 session key simulated-ready (real handshake was 34.2561 ms)
+[KEM][SimLatency][t=0.0343477] Vehicle 18 session key simulated-ready (real handshake was 34.3477 ms)
+[KEM][SimLatency][t=0.0344362] Vehicle 19 session key simulated-ready (real handshake was 34.4362 ms)
+[KEM][SimLatency][t=0.0344637] Vehicle 17 session key simulated-ready (real handshake was 34.4637 ms)
+[KEM][SimLatency][t=0.03468] Vehicle 8 session key simulated-ready (real handshake was 34.68 ms)
+[KEM][SimLatency][t=0.0347612] Vehicle 12 session key simulated-ready (real handshake was 34.7612 ms)
+[KEM][SimLatency][t=0.0347782] Vehicle 10 session key simulated-ready (real handshake was 34.7782 ms)
+[KEM][SimLatency][t=0.0347873] Vehicle 11 session key simulated-ready (real handshake was 34.7873 ms)
+[KEM][SimLatency][t=0.0348896] Vehicle 2 session key simulated-ready (real handshake was 34.8896 ms)
+[KEM][SimLatency][t=0.0348965] Vehicle 9 session key simulated-ready (real handshake was 34.8965 ms)
+[KEM][SimLatency][t=0.0348994] Vehicle 1 session key simulated-ready (real handshake was 34.8994 ms)
+[KEM][SimLatency][t=0.0349363] Vehicle 6 session key simulated-ready (real handshake was 34.9363 ms)
+[KEM][SimLatency][t=0.0349379] Vehicle 7 session key simulated-ready (real handshake was 34.9379 ms)
+[KEM][SimLatency][t=0.0349492] Vehicle 4 session key simulated-ready (real handshake was 34.9492 ms)
+[KEM][SimLatency][t=0.0350378] Vehicle 5 session key simulated-ready (real handshake was 35.0378 ms)
+[KEM][SimLatency][t=0.0355269] Vehicle 3 session key simulated-ready (real handshake was 35.5269 ms)
 [Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=6620903110128321795 (interval=3s)
 [BSHH-S3][t=5.000]  V15(ns3=20) --heartbeat--> Controller  Heartbeat(V15(ns3=20), t=5.000)  ACCEPTED
 [BSHH-S3][t=5.000]  V14(ns3=19) --heartbeat--> Controller  Heartbeat(V14(ns3=19), t=5.000)  ACCEPTED
@@ -124,17 +124,17 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 5
-  Avg wall-clock time: 2.341 ms
-  Max wall-clock time: 3.060 ms
+  Avg wall-clock time: 2.464 ms
+  Max wall-clock time: 2.808 ms
   Events exceeding budget: 0 / 5
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 1
-  Avg wall-clock time: 2.418 ms
-  Max wall-clock time: 2.418 ms
+  Avg wall-clock time: 2.358 ms
+  Max wall-clock time: 2.358 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 1
-  Avg wall-clock time: 4.667 ms
-  Max wall-clock time: 4.667 ms
+  Avg wall-clock time: 4.734 ms
+  Max wall-clock time: 4.734 ms
   Events exceeding 100.000 ms budget: 0 / 1  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
@@ -163,12 +163,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 1
-  Avg wall-clock time: 0.018 ms
-  Max wall-clock time: 0.018 ms
+  Avg wall-clock time: 0.019 ms
+  Max wall-clock time: 0.019 ms
   Calls exceeding budget: 0 / 1
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.341) + detection-crypto(0.000) + mitigate(2.418) + lkh-crypto(0.018) = 4.778 ms
+  beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.464) + detection-crypto(0.000) + mitigate(2.358) + lkh-crypto(0.019) = 4.841 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -180,10 +180,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.267 ms
-  Max tick wall-clock time: 0.290 ms
+  Avg tick wall-clock time: 0.268 ms
+  Max tick wall-clock time: 0.406 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.267) + beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.341) + detection-crypto(0.000) + mitigate(2.418) + lkh-crypto(0.018) = 5.044 ms
+  neighborhood(0.268) + beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.464) + detection-crypto(0.000) + mitigate(2.358) + lkh-crypto(0.019) = 5.109 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware
