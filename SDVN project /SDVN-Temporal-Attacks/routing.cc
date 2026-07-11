@@ -98,7 +98,7 @@ uint32_t comparison_detector = 0;   // 0=none  1=VeReMi  2=MBSM
 // Build with -DHAVE_LIBOQS and link -loqs to enable real PQC operations.
 #ifndef HAVE_LIBOQS
 #  pragma message("WARNING: HAVE_LIBOQS not defined — PQC (Kyber/Dilithium/HQC-5) " \
-                  "running as non-cryptographic stubs. Eqs. 3.15-3.17, 3.26-3.28 SIMULATED.")
+                  "running as non-cryptographic stubs. Eqs. 3.15-3.17, 3.28-3.30 SIMULATED.")
 #  define ALLOW_DILITHIUM_STUB
 #endif
 #pragma GCC diagnostic push
@@ -400,7 +400,7 @@ static NonceCache       g_pipeline_nonce_cache __attribute__((unused)) = {};
 // every vehicle) for the live beacon sign/verify path in AttackSendDSRCBeacon()/Rx().
 static uint8_t          g_vehicle_session_keys[MAX_VEHICLES][SESSION_KEY_LEN] = {};
 static bool             g_vehicle_session_key_ready[MAX_VEHICLES] = {};
-// ── Real per-vehicle Dilithium5 IDENTITY signing keys (SK_Vi, Eq. 3.27-3.28) ──
+// ── Real per-vehicle Dilithium5 IDENTITY signing keys (SK_Vi, Eq. 3.29-3.30) ──
 // Captured from kem_register_vehicle()'s sk_vi_out param at t=0 registration
 // time. This is simulation-only vehicle-side state: it mirrors "SK_Vi stays
 // at the vehicle" — only vehicle-side signing call sites (PemEmitEvent /
@@ -710,14 +710,14 @@ static bool PemPbftConsensusGate(uint32_t n_peers, uint32_t &f_out, uint32_t &q_
     return (sum_approve_tau / sum_active_tau) > (2.0 / 3.0);
 }
 
-// VERIFY_THRESHOLD_SIG(sigma_v) — Algorithm 4 lines 40-50 / Eq. 3.26.
+// VERIFY_THRESHOLD_SIG(sigma_v) — Algorithm 4 lines 40-50 / Eq. 3.28.
 // Counts real, individually verified ML-DSA-87(Dilithium5) threshold-domain
 // signatures (dilithium5_sign_thresh/verify_thresh, TETA_DS_THRESH-separated
 // so they cannot be replayed as ordinary beacon signatures) against
 // t = floor(n/2)+1. The signed payload is the REAL per-call event data
 // (attacker id + decision time), not a fixed placeholder, so distinct
 // mitigation events produce distinct signed messages. Without liboqs
-// (ALLOW_DILITHIUM_STUB build), Eqs. 3.26-3.28 are documented as simulated —
+// (ALLOW_DILITHIUM_STUB build), Eqs. 3.28-3.30 are documented as simulated —
 // this gate degrades to pass-through in that build configuration, consistent
 // with that documented behaviour.
 static bool PemVerifyThresholdSig(uint32_t n_reporters, uint32_t attacker_id, double t_now,
@@ -749,7 +749,7 @@ static bool PemVerifyThresholdSig(uint32_t n_reporters, uint32_t attacker_id, do
 }
 
 // =============================================================================
-// Phase 2 — real per-reporter signed location-bound evidence (Eq. 3.27-3.28)
+// Phase 2 — real per-reporter signed location-bound evidence (Eq. 3.29-3.30)
 // for GENUINE (non-forged) topology observations. This is separate from the
 // 9 LW detection signatures (TTW/BSHH/ME) — it exists purely to give
 // PemVerifyQuorum (Eq. 3.29-3.30, defined below) real per-reporter evidence
@@ -778,7 +778,7 @@ static void PemBuildLinkId(uint32_t a, uint32_t b, uint8_t link_id[8])
     link_id[4] = link_id[5] = link_id[6] = link_id[7] = 0;
 }
 
-// Real per-witness spatial evidence for VERIFY_QUORUM (Eqs. 3.29-3.30). Filled
+// Real per-witness spatial evidence for VERIFY_QUORUM (Eqs. 3.29-3.32). Filled
 // from the actual mobility-model positions at the ME call site — the witness's
 // real reported position and the real link-endpoint positions, so the gate can
 // genuinely reject a witness that is not physically near the link it claims to
@@ -815,7 +815,10 @@ static void PemSimToGps(const Vector &pos, float &lat, float &lon)
     lon = (float)(kAnchorLon + pos.x / (kMPerDegLat * std::cos(lat_rad)));
 }
 
-// VERIFY_QUORUM(W_v, t) — Algorithm 4 lines 52-66 / Eqs. 3.29-3.30.
+// VERIFY_QUORUM(W_v, t) — Algorithm 4 lines 52-66 / Eqs. 3.29-3.32 (Algorithm
+// 4 line 27 itself cites this gate specifically as Eq. 3.32, the quorum
+// condition; 3.29-3.31 are the message/signature/Accept_Vk steps this
+// function's evidence pipeline builds on the way there).
 //
 // Phase 3 rewrite: evaluates the FULL claimed-reporter set R(eij,t) for this
 // link (ev->claimed_reporters — every vehicle/entity that claims to have
@@ -931,11 +934,11 @@ static double __attribute__((unused)) TimedLkhRevoke(uint32_t n)
 }
 
 // ── Location-Binding: create report + verify_single_witness (§3.4.5) ──────────
-// Eq. 3.27: m'_Vk = eij ‖ pos_Vk ‖ RSSI_Vk←Vi ‖ τs ‖ nonce
-// Eq. 3.28: σ_Vk = Sign(SK_Vk, m'_Vk) — ML-DSA-87 (NIST FIPS 204, Dilithium5)
+// Eq. 3.29: m'_Vk = eij ‖ pos_Vk ‖ RSSI_Vk←Vi ‖ τs ‖ nonce
+// Eq. 3.30: σ_Vk = Sign(SK_Vk, m'_Vk) — ML-DSA-87 (NIST FIPS 204, Dilithium5)
 //           SK_Vk is Vk's LONG-TERM IDENTITY-BOUND SIGNING KEY (not a KEM key).
-// Eq. 3.29: Accept_Vk(eij) iff Verify(σ_Vk,PK_Vk)=1 AND d(pos_Vk,eij)≤r_comm AND RSSI≥RSSI_min
-// Eq. 3.30: Accept(eij) iff |{Vk: Accept_Vk(eij)=1}| ≥ t
+// Eq. 3.31: Accept_Vk(eij) iff Verify(σ_Vk,PK_Vk)=1 AND d(pos_Vk,eij)≤r_comm AND RSSI≥RSSI_min
+// Eq. 3.32: Accept(eij) iff |{Vk: Accept_Vk(eij)=1}| ≥ t
 // Uses create_location_bound_report() + verify_single_witness() from
 // location_binding.cc.  Returns sign+verify combined µs.
 // Each call generates a fresh nonce inside create_location_bound_report(), so
@@ -1059,11 +1062,11 @@ MeasureKEM(double sim_t, uint32_t node_id, const char *evt, bool atk)
 //     • Implemented in kem.cc (kem_vehicle_keygen / kem_rsu_encapsulate /
 //       kem_vehicle_decapsulate); measured by MeasureKEM()
 //
-//  ② ML-DSA-87 (NIST FIPS 204, liboqs Dilithium5)  →  SK_Vk / PK_Vk  (Eq. 3.28)
+//  ② ML-DSA-87 (NIST FIPS 204, liboqs Dilithium5)  →  SK_Vk / PK_Vk  (§3.3 identity keys)
 //     • Digital signature scheme — not a KEM; does NOT produce session secrets
 //     • Purpose: long-term identity-bound signing key for each vehicle Vk
-//     • Used in: Eq. 3.28 location-binding signatures σ_Vk = Sign(SK_Vk, m'_Vk)
-//                Eq. 3.26 threshold aggregate signature Verify(σ_agg, PK_agg)
+//     • Used in: Eq. 3.30 location-binding signatures σ_Vk = Sign(SK_Vk, m'_Vk)
+//                Eq. 3.28 threshold aggregate signature Verify(σ_agg, PK_agg)
 //                KEM handshake auth (vehicle signs its own KEM public key)
 //     • Implemented via dilithium5_sign / dilithium5_verify / dilithium5_thresh
 //       from .crypto_src/dilithium.cc; initialised below
@@ -1117,7 +1120,7 @@ static void CryptoDeriveVehicleSessionKeys()
     }
     std::cout << "[KEM] Registered " << ok_count << "/" << n
               << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
-              << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.27-3.28).\n";
+              << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).\n";
 #endif
 }
 
@@ -1226,7 +1229,7 @@ static void CryptoInitKeys()
         dilithium5_issue_cert(test_vid, g_dil_pk.data(), 0, &g_test_cert);
     }
     std::cout << "[CRYPTO] TETA-Guard pipeline initialised:\n"
-                 "  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28, Eq. 3.26)\n"
+                 "  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28)\n"
                  "      dilithium5_sign / dilithium5_verify / dilithium5_thresh\n"
                  "  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)\n"
                  "      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]\n"
@@ -1235,7 +1238,7 @@ static void CryptoInitKeys()
                  "  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)\n"
                  "      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n="
               << g_lkh_n_leaves << ")\n"
-                 "  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.27–3.30)\n"
+                 "  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.29–3.32)\n"
                  "      create_location_bound_report / verify_single_witness / verify_quorum\n"
                  "  [6] Haversine distance (GPS consistency gate, Eq. 3.29)\n"
                  "  All modules from .crypto_src/\n";
@@ -1972,7 +1975,7 @@ static bool g_enable_neighborhood_beaconing = true;
 //   TTW-S2  basic  = physical ≠ claimed      → Step 1 (MAC, Eq. 3.15) drops
 //   TTW-S2  soph.  = physical=claimed=V1     → Steps 1-3 pass (key compromise)
 //   BSHH-S1/S2 same pattern as TTW-S2
-//   ME-S1/S2 basic = reporter out of range   → Step 1b (locbind, Eqs.3.27-3.29) drops
+//   ME-S1/S2 basic = reporter out of range   → Step 1b (locbind, Eqs.3.29-3.31) drops
 //   ME-S1/S2 soph. = reporter pos forged near link midpoint → Step 1b passes
 static double g_attacker_sophistication_prob = 0.5;
 static Ptr<UniformRandomVariable> g_attacker_rng;   // initialised in main() before simulation
@@ -2423,14 +2426,14 @@ PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double 
 // data — but nothing here calls SubmitWitnessRecord itself; that requires
 // running the chaincode, out of scope for this session.
 //
-// Eq. 3.27/3.28 signature (Issue 3 fix): each record is signed so the
+// Eq. 3.29/3.30 signature (Issue 3 fix): each record is signed so the
 // chaincode's Eq. 3.29 Verify(sigma_Vk, PK_Vk)=1 gate can actually pass.
 // verifyMLDSA87Sig(sig, message, pubKey) on the Go side hashes the literal
 // bytes of the JSON "message" string — it does NOT re-derive that string
 // from reporter_lat/reporter_lon/rssi_from_vi_dbm/ts_ms, so the signed
 // message below is built from exactly those same four values (plus
 // vehicle_id/reporter_id/nonce for identity+freshness binding) to preserve
-// Eq. 3.27's physical-binding guarantee; do not let the two representations
+// Eq. 3.29's physical-binding guarantee; do not let the two representations
 // drift apart in any future edit. The struct-based create_location_bound_report()
 // (used elsewhere for the local C++-only verify_single_witness/verify_quorum
 // gate) is NOT reused here — it signs raw LocationBindingPayload struct bytes,
@@ -2457,7 +2460,7 @@ static std::string PemBase64Encode(const uint8_t *data, size_t len)
 
 // PemBuildWitnessJson — build a single WitnessRecord JSON object (matches
 // structs.go's WitnessRecord) from one PemBeaconEvidenceRecord, including the
-// Eq. 3.27 ML-DSA-87 signature. Factored out of PemWriteWitnessRecordsJson so
+// Eq. 3.29 ML-DSA-87 signature. Factored out of PemWriteWitnessRecordsJson so
 // the end-of-run file writer and the live PemLiveSend path (called right
 // after each of PemRecordBeaconEvidence's two log.push_back(rec) sites) share
 // one implementation. Returns empty string if rec has no reporter position
@@ -2474,7 +2477,7 @@ PemBuildWitnessJson(uint32_t reporter_id, const PemBeaconEvidenceRecord& rec)
     PemSimToGps(rec.reporter_position, reporter_lat, reporter_lon);
     const long long ts_ms = static_cast<long long>(rec.timestamp * 1000.0);
 
-    // Eq. 3.27: m'_Vk = eij || pos_Vk || RSSI_Vk<-Vi || tau_s || nonce.
+    // Eq. 3.29: m'_Vk = eij || pos_Vk || RSSI_Vk<-Vi || tau_s || nonce.
     // eij is the (reporter, vehicle) observation edge; nonce is a
     // fresh per-record random value for replay resistance.
     uint8_t nonce[16];
@@ -2867,9 +2870,10 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     const std::string family = scenario_tag.substr(0, scenario_tag.find('-'));
 
     // ── Algorithm 4 (FS-MITIGATE) gates — steps 8-11 (PBFT) and 21-27
-    //    (VERIFY_THRESHOLD_SIG for TTW/BSHH, Eq. 3.26 / VERIFY_QUORUM for ME,
-    //    Eqs. 3.29-3.30). Bypassed only during bootstrap, where mitigation is
-    //    already suppressed below regardless of the gate outcome.
+    //    (VERIFY_THRESHOLD_SIG for TTW/BSHH, Eq. 3.28 / VERIFY_QUORUM for ME,
+    //    Eq. 3.32 per Algorithm 4 line 27's own citation). Bypassed only
+    //    during bootstrap, where mitigation is already suppressed below
+    //    regardless of the gate outcome.
     if (bs_done) {
         const uint32_t n_peers = has_RSU_infrastructure
                                   ? (RSU_Nodes.GetN() > 0 ? (uint32_t)RSU_Nodes.GetN() : 1u)
@@ -2925,8 +2929,8 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
             out << "  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***\n"
                 << "  PBFT consensus (n=" << n_peers << ", f=" << f << ", need>=" << q_needed
                 << "): " << (pbft_ok ? "Pass" : "Fail") << "\n"
-                << "  " << (family == "ME" ? "VERIFY_QUORUM (Eq. 3.29-3.30)"
-                                            : "VERIFY_THRESHOLD_SIG (Eq. 3.26)")
+                << "  " << (family == "ME" ? "VERIFY_QUORUM (Eq. 3.32)"
+                                            : "VERIFY_THRESHOLD_SIG (Eq. 3.28)")
                 << ": " << c_or_q << "/" << n_eff << " valid, need t=" << t_req
                 << ": " << (crypto_ok ? "Pass" : "Fail") << "\n"
                 << "  Enforcement action suppressed; single-peer/insufficient-signature"
@@ -3336,7 +3340,10 @@ static uint32_t PemComputeDeltaThreshold()
 
     const double raw = (1.0 + tau_prop_s / PEM_BEACON_INTERVAL_S)
                         * lambdaHat * 2.0 * TTW_COMM_RANGE;
-    const uint32_t computed = (uint32_t)std::ceil(raw) + 1u;
+    // Floor, not ceil — the paper's own Table 4.1 worked example (lambda=0.02,
+    // r_comm=300, tau_prop~=Tb/10) gives raw=13.2 and states delta_thresh=14,
+    // which only matches floor(13.2)+1=14 (ceil(13.2)+1=15 does not).
+    const uint32_t computed = (uint32_t)std::floor(raw) + 1u;
     // Hard floor of 2 (report line 6778) — overrides the "+1" margin's own
     // floor of 1 (report line 4311) for sparse/low-density conditions where
     // raw collapses to ~0, so a single stray divergent edge is never enough
@@ -5490,7 +5497,7 @@ PemEvaluateEvent(PemEvent& event)
 //   • Algorithm 3 (LW-MITIGATE, §3.4.2, Fig. 3.15): HMAC + freshness + nonce only
 //     (Eqs. 3.15–3.17).  Intended for the lightweight pipeline.
 //   • Full-Stack mitigation (§3.4.4–3.4.5): threshold aggregate signatures
-//     (Eq. 3.26) and location-binding witness quorum (Eqs. 3.27–3.30).
+//     (Eq. 3.28) and location-binding witness quorum (Eqs. 3.29–3.32).
 //     Described separately from Algorithm 3.
 // PemCryptoPreFilter deliberately consolidates both into a single gate that runs
 // for every event regardless of LW/FS mode.  This is an engineering simplification,
@@ -5499,7 +5506,7 @@ PemEvaluateEvent(PemEvent& event)
 // location-binding are part of the full-stack story added on top.
 //
 // Structural mapping to Algorithm 3 (§3.4.2, Steps 1–3):
-//   Step 1 — Integrity / identity check (Eq. 3.15 / Eq. 3.26 / Eq. 3.29)
+//   Step 1 — Integrity / identity check (Eq. 3.15 / Eq. 3.28 / Eq. 3.31)
 //   Step 2 — Freshness check            (Eq. 3.16)
 //   Step 3 — Nonce novelty              (Eq. 3.17)
 //   Simulation shortcut: Steps 1–3 are approximated using ground-truth labels
@@ -5524,16 +5531,16 @@ PemEvaluateEvent(PemEvent& event)
 //
 //   BSHH — malicious vehicle / malicious RSU (S1/S2):
 //     §3.4.9: "mitigated at pre-detection stage through the threshold aggregate
-//     signature condition defined in Eq. 3.26."
-//     Eq. 3.26 is a THRESHOLD AGGREGATE SIGNATURE — NOT HMAC-SHA256 (Eq. 3.15):
+//     signature condition defined in Eq. 3.28."
+//     Eq. 3.28 is a THRESHOLD AGGREGATE SIGNATURE — NOT HMAC-SHA256 (Eq. 3.15):
 //       Verify_agg(σ_agg, PK_agg) = 1  ⟺  |{i : Verify(σ_i, msg_i, PK_Vi)=1}| ≥ t
 //     The attacker holds zero of the required t ML-DSA-87 key shares → zero valid
-//     partial signatures → far below threshold → Eq. 3.26 fails → DROPPED at Step 1.
+//     partial signatures → far below threshold → Eq. 3.28 fails → DROPPED at Step 1.
 //     §3.4.5, Eq. 3.28 explicitly specifies ML-DSA-87 (NIST FIPS 204, Dilithium5)
 //     as the signing scheme.  This is the IDENTITY / AUTHENTICATION check (Step 1),
 //     using a distinct cryptographic primitive from HMAC-SHA256 — not Eq. 3.15.
 //     In the simulation tg_crypto_drop_mac counter records Step 1 failures broadly
-//     (both Eq. 3.15 and Eq. 3.26); the "mac" name is a CSV-column legacy.
+//     (both Eq. 3.15 and Eq. 3.28); the "mac" name is a CSV-column legacy.
 //     TGN (Stage 1) never sees BSHH S1/S2 events — they are silent-dropped here.
 //
 //   ME — malicious vehicle / malicious RSU, OUT-of-range reporters (S1/S2):
@@ -5683,7 +5690,7 @@ PemEmitEvent(PemEventType type,
     event.detection_latency_ms = -1.0;
     event.rssi_reporter_dbm = PEM_SIGNAL_PLACEHOLDER;  // set by PemEvaluateEvent for topology events
 
-    // Phase 2 (Eq. 3.27-3.28): genuine, non-forged topology observations get a
+    // Phase 2 (Eq. 3.29-3.30): genuine, non-forged topology observations get a
     // real Dilithium5-signed LocationBoundReport cached under the reporter's
     // own key, for PemVerifyQuorum (Eq. 3.29-3.30) to consult later. Restricted
     // to topology-update events and attackLabel==false — this is evidence for
@@ -7189,7 +7196,7 @@ static void TTW_ActivateReplay_S1()
 // flagged/detected; only the RSU is treated as the attacker for mitigation
 // (PemApplyMitigation is always called with rsu_id, never victim_id).
 // ME-S2's "sophisticated" mode is a DIFFERENT mechanism (GPS/location-binding
-// spoofing, Eqs. 3.27-3.29 — the RSU fabricates ITS OWN reported position,
+// spoofing, Eqs. 3.29-3.31 — the RSU fabricates ITS OWN reported position,
 // not a stolen vehicle identity) and does not use this helper.
 //
 // Decide basic vs sophisticated for the three malicious-RSU scenarios (TTW-S2,
@@ -9496,7 +9503,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
               << "  *** ATTACK COMPLETE ***" << std::endl;
     // Sophistication roll — ME-S1 (per echo reporter independently).
     // Both reporters use own identity (physical=claimed) so Step 1 always passes.
-    // Step 1b location-binding (TetaGuardLocBindVerify, Eqs. 3.27-3.29) checks
+    // Step 1b location-binding (TetaGuardLocBindVerify, Eqs. 3.29-3.31) checks
     // distance from the FORGED reporter_position to whichever single link
     // endpoint (src or dst) is nearest that forged position — see
     // TetaGuardLocBindVerify's closer_to_src selection in teta_guard_filter.h.
@@ -154431,13 +154438,13 @@ static int RoutingMain(int argc, char *argv[])
 #ifndef HAVE_LIBOQS
   std::cout << "[PQC] WARNING: liboqs NOT linked. ML-KEM-1024, ML-DSA-87, HQC-5"
                " are running as NON-CRYPTOGRAPHIC STUBS.\n"
-               "       Eqs. 3.15 (HMAC), 3.16 (freshness), 3.17 (nonce), 3.26-3.28"
+               "       Eqs. 3.15 (HMAC), 3.16 (freshness), 3.17 (nonce), 3.28-3.30"
                " (threshold/aggregate signatures) are SIMULATED pass/fail logic,\n"
                "       not real cryptographic operations. Build with -DHAVE_LIBOQS"
                " and link -loqs to enable real PQC.\n";
 #else
   std::cout << "[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active"
-               " (Eqs. 3.15-3.17, 3.26-3.28).\n";
+               " (Eqs. 3.15-3.17, 3.28-3.30).\n";
 #endif
   // Crypto latency: initialise keys at simulation start, flush CSV at end
   CryptoInitKeys();
