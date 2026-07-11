@@ -28,7 +28,7 @@ Replay timing         : Option B — 2s after each pair's real SUMO break
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}).
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.27-3.28).
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [BSHH-S3][t=5.000]  V15(ns3=20) --heartbeat--> Controller  Heartbeat(V15(ns3=20), t=5.000)  ACCEPTED
 [BSHH-S3][t=5.000]  V14(ns3=19) --heartbeat--> Controller  Heartbeat(V14(ns3=19), t=5.000)  ACCEPTED
@@ -75,17 +75,17 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 5
-  Avg wall-clock time: 2.644 ms
-  Max wall-clock time: 3.203 ms
+  Avg wall-clock time: 2.460 ms
+  Max wall-clock time: 2.924 ms
   Events exceeding budget: 0 / 5
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 1
-  Avg wall-clock time: 2.487 ms
-  Max wall-clock time: 2.487 ms
+  Avg wall-clock time: 2.591 ms
+  Max wall-clock time: 2.591 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 1
-  Avg wall-clock time: 4.804 ms
-  Max wall-clock time: 4.804 ms
+  Avg wall-clock time: 4.884 ms
+  Max wall-clock time: 4.884 ms
   Events exceeding 100.000 ms budget: 0 / 1  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
@@ -119,7 +119,7 @@ LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls exceeding budget: 0 / 1
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.644) + detection-crypto(0.000) + mitigate(2.487) + lkh-crypto(0.019) = 5.150 ms
+  beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.460) + detection-crypto(0.000) + mitigate(2.591) + lkh-crypto(0.019) = 5.069 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -132,9 +132,9 @@ Maximum neighbors observed at once: 7
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
   Avg tick wall-clock time: 0.272 ms
-  Max tick wall-clock time: 0.671 ms
+  Max tick wall-clock time: 0.298 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.272) + beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.644) + detection-crypto(0.000) + mitigate(2.487) + lkh-crypto(0.019) = 5.422 ms
+  neighborhood(0.272) + beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(2.460) + detection-crypto(0.000) + mitigate(2.591) + lkh-crypto(0.019) = 5.341 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

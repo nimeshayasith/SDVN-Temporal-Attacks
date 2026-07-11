@@ -82,7 +82,9 @@
 ========================================================
   TTW ATTACK S2 COMPLETE
 ========================================================
-[t=20.550]  TTW-S2 RSU attacker  forged fresh ts=20.550  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=20.550]  [KEY-EXFIL] TTW-S2 sophistication: V20 (complicit) -> RSU V25 : session_key K_{V20,nk} + private signing key SK_V20 handed over (collusion)
+  RSU now holds V20's real credentials -> can produce messages cryptographically indistinguishable from V20's own genuine self-report
+[t=20.550]  TTW-S2 RSU attacker  forged fresh ts=20.550  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
 [t=20.550]  DETECTION + MITIGATION
   Ghost link V20<->V19 removed
   Score: 1.000

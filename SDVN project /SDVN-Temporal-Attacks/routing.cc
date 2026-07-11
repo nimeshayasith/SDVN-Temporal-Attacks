@@ -1820,6 +1820,19 @@ void WriteChannelAnalysisCsv() {
     f.close();
 }
 
+// ── Eq. 3.21 Case 3 coverage: silent-colluder test hook ─────────────────────
+// A vehicle in g_pem_silenced_vehicle_ids stops transmitting its own genuine
+// beacons (PemEmitVehicleBeacon becomes a no-op for it) once
+// Simulator::Now() >= g_pem_silence_after_s. Combined with an existing
+// sophisticated-RSU credential-bypass path (e.g. TTW-S2/BSHH-S2's stolen-key
+// forwarding), this reproduces the threat-model note's first residual case:
+// "the colluding vehicle becomes silent while the malicious RSU continues
+// impersonating it" — the vehicle then genuinely never appears in that RSU's
+// B_nk(t) (Eq. 3.46) after the silence point, so ι_v's Case 3 should fire.
+// Disabled by default (g_pem_silence_after_s < 0).
+static std::set<uint32_t> g_pem_silenced_vehicle_ids;
+static double g_pem_silence_after_s = -1.0;
+
 // Performance evaluation metrics for temporal-echo attack detection.
 static const double PEM_BEACON_BUDGET_MS = 100.0;
 static const double PEM_BEACON_INTERVAL_S = 0.100;
@@ -2180,8 +2193,8 @@ std::vector<PemEvent> pem_all_events;
 static std::deque<PemEvent> g_rsu_beacon_log;
 
 // ── Issue 12 fix — PemBeaconEvidenceRecord / B_nk(t) store for Algorithm 4's
-// getTrustedEvidence(τ_min^gt) (Eq. 3.44) and the controller-divergence check
-// δ_t = |E_C(t) △ E_trusted(t)| (Eq. 3.45), gated by δ_thresh (Eq. 3.46).
+// getTrustedEvidence(τ_min^gt) (Eq. 3.46) and the controller-divergence check
+// δ_t = |E_C(t) △ E_trusted(t)| (Eq. 3.47), gated by δ_thresh (Eq. 3.48).
 // Previously nothing populated a per-trusted-peer beacon evidence log a
 // getTrustedEvidence()-equivalent could read from, so TrustReassignController()
 // was invoked unconditionally by every controller-origin attack function
@@ -2315,7 +2328,7 @@ extern NodeContainer RSU_Nodes;
 extern NodeContainer controller_Node;
 extern NodeContainer management_Node;
 
-// Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.44). Called
+// Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.46). Called
 // unconditionally from PemEmitVehicleBeacon for every real vehicle beacon
 // broadcast, regardless of receiver range (broadcast medium), mirroring how
 // g_pem_last_beacon_time is stamped for BSHH-S3 presence above. Only ever
@@ -2353,7 +2366,7 @@ PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double 
             // placement pre-detection crypto filtering cannot reach. Gating
             // here means every consumer inherits the correct semantics for
             // free, instead of each read site needing its own range check.
-            if (false && d > PemGetRcomm())   // TEMP-DEBUG: gate disabled for isolation test
+            if (d > PemGetRcomm())
             {
                 continue;
             }
@@ -3160,7 +3173,7 @@ static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
 }
 
 // Eq. 3.41: select active peer set P_active of size n_p = 7 by trust ranking.
-// E_t^trusted = ⋃_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_{n_k}(t) — Eq. 3.44.
+// E_t^trusted = ⋃_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_{n_k}(t) — Eq. 3.46.
 //
 // Controllers (registry C, Eq. 3.37) are explicitly excluded from this candidate
 // pool — they are a distinct population from the Fabric consensus peer set
@@ -3199,7 +3212,7 @@ static std::vector<uint32_t> TrustSelectActivePeers()
 // (Algorithm 4 lines 2-7, Eqs. 3.44-3.46). See the PemBeaconEvidenceRecord /
 // g_peer_beacon_evidence comment above for what populates B_nk(t).
 
-// Eq. 3.44: E_t^trusted's peer set — P_active members whose τ_k ≥ τ_min^gt.
+// Eq. 3.46: E_t^trusted's peer set — P_active members whose τ_k ≥ τ_min^gt.
 // RSU peers are always τ=1.00 (Tier 1, authority-vetted at registration), so
 // every present RSU in P_active qualifies. The Tier-2 (no-RSU) synthetic
 // evidence bucket (TRUST_OBU_PEER_ID) qualifies once at least one real
@@ -3222,7 +3235,7 @@ static std::vector<uint32_t> TrustGetTrustedPeers()
     return peers;
 }
 
-// Eq. 3.44: E_t^trusted = ⋃_{n_k trusted} B_{n_k}(t).
+// Eq. 3.46: E_t^trusted = ⋃_{n_k trusted} B_{n_k}(t).
 static std::vector<PemBeaconEvidenceRecord> PemGetTrustedEvidence()
 {
     std::vector<PemBeaconEvidenceRecord> evidence;
@@ -3236,7 +3249,7 @@ static std::vector<PemBeaconEvidenceRecord> PemGetTrustedEvidence()
     return evidence;
 }
 
-// Eq. 3.45: δ_t = |E_C(t) △ E_trusted(t)|. An edge is "trusted-corroborated"
+// Eq. 3.47: δ_t = |E_C(t) △ E_trusted(t)|. An edge is "trusted-corroborated"
 // when the trusted evidence shows both endpoints beaconing within r_comm of
 // each other inside the same beacon interval (genuinely close together, not
 // merely both present somewhere). E_C(t) is the controller's currently-fresh
@@ -3251,7 +3264,7 @@ static std::vector<PemBeaconEvidenceRecord> PemGetTrustedEvidence()
 // (not ttw_controller_table) and ME-S3/S4 poison phantom paths rather than a
 // src/seen edge, so neither ever appears in ttw_controller_table at all. In
 // every case the controller's just-detected claim about (claim_a, claim_b)
-// IS the controller-claimed state Eq. 3.45 compares against evidence,
+// IS the controller-claimed state Eq. 3.47 compares against evidence,
 // regardless of which in-memory table happens to hold it. Pass
 // UINT32_MAX/UINT32_MAX to omit (falls back to a pure table scan).
 static uint32_t PemComputeControllerDivergenceDelta(double now,
@@ -3300,7 +3313,7 @@ static uint32_t PemComputeControllerDivergenceDelta(double now,
     return delta;
 }
 
-// Eq. 3.46: δ_thresh = ⌈(1 + τ_prop/T_b) · λ̂ · 2·r_comm⌉ + 1. τ_prop reuses
+// Eq. 3.48: δ_thresh = ⌈(1 + τ_prop/T_b) · λ̂ · 2·r_comm⌉ + 1. τ_prop reuses
 // the same hop-diameter propagation-delay estimate PemApplyMitigation already
 // computes (⌈log2(N)⌉ hops × T_b). λ̂ here is a network-wide density estimate
 // from the Issue-11-fixed g_rsu_beacon_log, distinct from ME-S1's per-link
@@ -3363,8 +3376,8 @@ PemControllerDivergenceGate(double now, const std::string& scenario_tag,
             << "  — trusted-peer evidence does not exceed the normal propagation-delay"
                " margin; controller NOT flagged, zone reassignment skipped this event.\n";
     } else {
-        out << "  [Trust] Controller-divergence CONFIRMED (Eq. 3.45): delta_t=" << delta
-            << " > delta_thresh=" << thresh << " (Eq. 3.46)\n";
+        out << "  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=" << delta
+            << " > delta_thresh=" << thresh << " (Eq. 3.48)\n";
     }
     log_out = out.str();
     return confirmed;
@@ -5799,6 +5812,14 @@ PemEmitHeartbeatEvent(uint32_t physicalSenderId,
 static void
 PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
 {
+    // Eq. 3.21 Case 3 test hook — see g_pem_silenced_vehicle_ids declaration.
+    if (g_pem_silence_after_s >= 0.0 &&
+        g_pem_silenced_vehicle_ids.count(senderId) &&
+        Simulator::Now().GetSeconds() >= g_pem_silence_after_s)
+    {
+        return;
+    }
+
     Ptr<Node> senderNode = nullptr, receiverNode = nullptr;
     for (uint32_t k = 0; k < Vehicle_Nodes.GetN(); ++k) {
         if (Vehicle_Nodes.Get(k)->GetId() == senderId)   senderNode   = Vehicle_Nodes.Get(k);
@@ -149737,6 +149758,16 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("rssi_min",
                   "Minimum RSSI threshold in dBm for ME-S3 (default -85, Table 4.7 SIM_RSSI_MIN)",
                   g_rssi_min);
+    // Eq. 3.21 Case 3 (silent colluder) test hook — see g_pem_silenced_vehicle_ids.
+    uint32_t silence_vehicle_id_cmd = UINT32_MAX;   // UINT32_MAX = none specified
+    cmd.AddValue ("silence_vehicle_id",
+                  "Case-3 test hook: vehicle ID that stops transmitting its own "
+                  "beacons after --silence_after (default: none, disabled)",
+                  silence_vehicle_id_cmd);
+    cmd.AddValue ("silence_after",
+                  "Case-3 test hook: simulation time (s) after which "
+                  "--silence_vehicle_id goes silent (default -1, disabled)",
+                  g_pem_silence_after_s);
     cmd.AddValue ("rsu_overlap_frac",
                   "Gap 16: fallback r_overlap/r_comm fraction for BSHH-S3's W_ho when "
                   "fewer than 2 RSUs are deployed (no real adjacent-RSU pair to measure "
@@ -149776,6 +149807,12 @@ static int RoutingMain(int argc, char *argv[])
                   "Default 0.5 = half sophisticated (reach LW+TGN), half basic (dropped at Stage-0).",
                   g_attacker_sophistication_prob);
     cmd.Parse (argc, argv);
+
+    // Eq. 3.21 Case 3 test hook — see g_pem_silenced_vehicle_ids declaration.
+    if (silence_vehicle_id_cmd != UINT32_MAX)
+    {
+        g_pem_silenced_vehicle_ids.insert(silence_vehicle_id_cmd);
+    }
 
     // Apply --no_kem after parsing (overrides --latency if both are given).
     if (no_kem_flag) enable_crypto_latency = 0;

@@ -515,15 +515,24 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         const uint32_t me_lmax_pre = std::max(event.link_src_id, event.link_dst_id);
         const std::string lkey_pre =
             std::to_string(me_lmin_pre) + "_" + std::to_string(me_lmax_pre);
-        // Structural (not ground-truth) self-report test: the reporter IS one of
-        // the two link endpoints, i.e. it is asserting its own directly-observed
-        // link, not vouching for a link between two other nodes. That structural
-        // fact — not event.attack_label — is what makes it an immediate witness.
-        // Third-party reports (reporter differs from both endpoints) are handled
-        // in Step 1b below and only become witnesses after passing Eq. 3.29.
+        // Structural (not ground-truth) self-report test: the CLAIMED identity
+        // (not the physical transmitter) IS one of the two link endpoints, i.e.
+        // this event asserts a directly-observed link belonging to that claimed
+        // identity, not a third party vouching for a link between two OTHER
+        // nodes. Using claimed_sender_id (not physical_sender_id) here matters:
+        // an RSU relaying V1's own genuine self-report has physical_sender_id=
+        // RSU but claimed_sender_id=V1==link_src_id — still a self-report being
+        // transported, not an independent witness claim. Checking
+        // physical_sender_id here would misclassify every RSU-relayed self-report
+        // (e.g. TTW-S2's legitimate/sophisticated-forged relay of V1's identity)
+        // as a third-party ME-style witness claim, when no such claim was ever
+        // made — TTW-S2 never asserts "I (the RSU) witnessed a link between two
+        // OTHER nodes"; it relays/forges V1's own claim about V1's own link.
+        // Third-party reports (CLAIMED identity differs from both endpoints) are
+        // handled in Step 1b below and only become witnesses after passing Eq. 3.29.
         const bool is_self_report_pre =
-            (event.physical_sender_id == event.link_src_id) ||
-            (event.physical_sender_id == event.link_dst_id);
+            (event.claimed_sender_id == event.link_src_id) ||
+            (event.claimed_sender_id == event.link_dst_id);
         if (is_self_report_pre)
         {
             state.link_witnesses[lkey_pre].insert(event.reporter_id);
@@ -585,7 +594,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // witness" membership can no longer be decided by event.attack_label — a real
     // verifier has no oracle telling it in advance which arriving report is "the
     // attack one". legit_count below is fed exclusively by (a) direct self-reports
-    // (physical_sender_id IS a link endpoint, registered unconditionally in the
+    // (claimed_sender_id IS a link endpoint, registered unconditionally in the
     // pre-registration block above — reporting your own directly-observed link is
     // definitionally not an echo) and (b) third-party reports that INDIVIDUALLY
     // pass Eq. 3.29's cryptographic + spatial + RSSI gate below (TetaGuardLocBindVerify),
@@ -593,9 +602,21 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // post-loc-bind-verify). A sophisticated in-range echo with valid keys can still
     // pass Eq. 3.29 and be counted — exactly the real-world failure mode Eq. 3.30's
     // majority quorum (not per-report crypto alone) is meant to catch.
+    //
+    // Scoping fix: gated on claimed_sender_id (not physical_sender_id) vs the
+    // link endpoints, matching the pre-registration block's fix above and for
+    // the same reason — this is Eq. 3.29's own reporter-set definition R(eij,t),
+    // "vehicles CLAIMING to have witnessed link eij" (a third-party witness
+    // assertion), not "whoever physically transmitted the packet". An RSU
+    // relaying/forging V1's own self-report (claimed_sender_id==link_src_id,
+    // e.g. TTW-S2's sophisticated key-exfiltration path) is an identity-relay
+    // event, not a witness claim about a link between two OTHER nodes — it was
+    // never in ME's domain and must reach its own designated mechanism
+    // (Eq. 3.15-3.17 HMAC/nonce, then LW+TGN/ι_v) instead of being intercepted
+    // and silently substituted here.
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
-        event.physical_sender_id != event.link_src_id &&
-        event.physical_sender_id != event.link_dst_id &&
+        event.claimed_sender_id != event.link_src_id &&
+        event.claimed_sender_id != event.link_dst_id &&
         event.physical_sender_id != 9999u)
     {
         // Ground-truth leak fix (threats-to-validity review): event.link_src_position
