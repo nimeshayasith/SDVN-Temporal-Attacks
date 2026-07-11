@@ -3793,10 +3793,22 @@ static void
 PemTrimSlidingWindow(PemNodeLWState& ns, double nowSeconds)
 {
     // §3.1.3: trim runs at each trusted node nk on its local event_window.
-    // Keep events within the larger of the two windows so BSHH-S3 (Eq. 3.7, W≈27s)
-    // can look back further than the BSHH-S1/S2 window (PEM_HEARTBEAT_WINDOW_S=0.4s).
-    const double trim_window = (g_pem_bshh3_liveness_window_s > PEM_HEARTBEAT_WINDOW_S)
+    // ns.event_window is shared by topology-update entries (TTW-S3/ME-S1,
+    // needing L_link = 2*r_comm/v_rel, Eq. 3.33/Wmax retention) and heartbeat
+    // entries (BSHH-S1/S3, needing BSHH-S3's own 2*Who-calibrated window or
+    // the base heartbeat window) — keep events within the LARGEST of all
+    // three so neither type gets evicted before its own signature's real
+    // retention need is met. Previously this omitted L_link entirely,
+    // borrowing only BSHH-S3's window (calibrated to RSU-handover duration,
+    // a different physical quantity than link lifetime) for topology-update
+    // retention too — that silently evicted genuine topology reports before
+    // TTW-S3's Eq. 3.4 cross-reporter check could ever compare a
+    // deliberately-delayed (>L_link, by TTW's own attack construction)
+    // controller replay against them, regardless of the check's own logic.
+    const double bshh_bound = (g_pem_bshh3_liveness_window_s > PEM_HEARTBEAT_WINDOW_S)
                              ? g_pem_bshh3_liveness_window_s : PEM_HEARTBEAT_WINDOW_S;
+    const double trim_window = (ttw_link_lifetime_bound > bshh_bound)
+                             ? ttw_link_lifetime_bound : bshh_bound;
     while (!ns.event_window.empty() &&
            (nowSeconds - ns.event_window.front().reception_timestamp) > trim_window)
     {
@@ -5432,8 +5444,32 @@ PemEvaluateEvent(PemEvent& event)
         }
     }
 
-    // Accumulate into this trusted node's local state (§3.1.3 per-nk state)
-    ns.event_window.push_back(event);
+    // Accumulate into this trusted node's local state (§3.1.3 per-nk state).
+    //
+    // Window-pollution fix: exclude PEM_EVENT_BEACON from ns.event_window.
+    // The paper describes W as "a sliding window of the most recent Wmax
+    // TOPOLOGY events" (Algorithm 1: "appends each incoming topology event e
+    // to the sliding window W") — not all Stage-1 traffic. ns.event_window is
+    // GLOBALLY SHARED across every vehicle/RSU/controller (PemDetectionNodeKey
+    // always returns one fixed key), and continuous-neighborhood-beaconing
+    // pushes ~780 PEM_EVENT_BEACON events/sec into it at real-network scale —
+    // W_max=~429 events (calibrated to represent ~L_link/T_b ~43s of history)
+    // was being consumed in ~2 seconds instead. That silently evicted the
+    // genuine topology reports TTW-S3's Eq. 3.4 cross-reporter check (and
+    // ME-S1's Eq. 3.8) need to compare against, well before a controller's
+    // deliberately-delayed (10s+) replay could ever be checked against them —
+    // a capacity bug, not a logic bug: sig[2]/sig[6] never had a chance to
+    // fire regardless of correctness. No code anywhere reads PEM_EVENT_BEACON
+    // entries back out of ns.event_window (verified) — density estimation
+    // uses the separate g_rsu_beacon_log, and beacon presence uses
+    // g_pem_last_beacon_time — so excluding it here loses no signal.
+    // PEM_EVENT_HEARTBEAT is kept: BSHH-S1 (Eq. 3.5) scans this same window
+    // for heartbeat entries and would silently break if heartbeats were
+    // excluded too.
+    if (event.type != PEM_EVENT_BEACON)
+    {
+        ns.event_window.push_back(event);
+    }
     ns.sender_event_history[event.claimed_sender_id].push_back(event);
     // Ground-truth leak fix (threats-to-validity review, 7th instance found):
     // previously gated on physical_sender_id == claimed_sender_id AND
@@ -7492,15 +7528,23 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    // Stage-0 already bypasses controller-origin events unconditionally
-    // (TetaGuardCryptoFilter's is_malicious_controller check), so forging
-    // sender_ts to the current time buys nothing there — it only erases the
-    // TTW-S3 cross-reporter signal (Eq. 3.4): the stale STORED timestamp is
-    // what the controller is replaying, and comparing it against the
-    // legitimate reporter's fresh timestamp (already in ns.event_window) is
-    // exactly what fires sig[2]. Mirrors BSHH-S3, which passes stored_time
-    // (not a forged-fresh value) into its detection event for the same reason.
-    double _ts3 = ttws3_packet_stored ? ttws3_stored_packet.timestamp : 0.0;
+    // Eq. 3.4 fix: use the REAL forged-fresh timestamp the attack actually
+    // applies to ttw_controller_table/attack_T_matrix (ttws3_forged_timestamp,
+    // set in TTWS3_InternalReplay from the genuine current sim time — not
+    // scenario/ground-truth metadata, the same value a real deployed detector
+    // would see arrive in the forged packet), not the stale stored value.
+    // Eq. 3.4's condition is a GAP between two reporters' claimed sender
+    // timestamps for the same link (|tau_sVa - tau_sVb| > Tb) — using the
+    // stale stored timestamp for BOTH the genuine window entry AND this
+    // event made the gap identically zero by construction (10.0 vs 10.0),
+    // so sig[2] could never fire regardless of window retention. The
+    // previous comment's reasoning had this backwards: Stage-0's
+    // is_malicious_controller bypass is unconditional either way (it
+    // doesn't inspect sender_timestamp at all), so there is no Stage-0
+    // signal to "erase" by using the real forged value here — only Stage-1's
+    // own Eq. 3.4 check depends on it, and that check needs the gap this
+    // restores.
+    double _ts3 = ttws3_forged_timestamp;
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
@@ -7677,11 +7721,12 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
     Vector v1Pos(0.0,0.0,0.0), v2Pos(0.0,0.0,0.0);
     { Ptr<Node> n = GetVehicleByNs3Id(v1_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v1Pos = m->GetPosition(); } }
     { Ptr<Node> n = GetVehicleByNs3Id(v2_id); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) v2Pos = m->GetPosition(); } }
-    // See TTWS3_RunDetection: Stage-0 already bypasses controller-origin
-    // events unconditionally, so forging sender_ts to the current time only
-    // erases the TTW-S3 cross-reporter signal (Eq. 3.4). Pass the stale
-    // STORED timestamp instead, matching BSHH-S3/S4.
-    double _ts4 = ttws4_packet_stored ? ttws4_stored_packet.timestamp : 0.0;
+    // Eq. 3.4 fix (see TTWS3_RunDetection's identical fix): use the REAL
+    // forged-fresh timestamp the attack actually applies to its own table,
+    // not the stale stored value — using the same stale value for both this
+    // event and the genuine window entry made Eq. 3.4's gap check
+    // identically zero by construction, so sig[2] could never fire.
+    double _ts4 = ttws4_forged_timestamp;
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
