@@ -1,0 +1,165 @@
+Solution at controller cleared
+[TEST-NETWORK] Using synthetic 20-vehicle/10-pair test trace (--test_network=1) instead of the real SUMO trace.
+[SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 20 positions, scheduled 60 exact position+velocity events
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/05_BSHH_S1_Malicious_Vehicle.xml
+
+========================================
+SCENARIO 05 - BSHH-S1 ATTACK CONFIGURED
+Attackers (4): V0 V1 V2 V3 
+Victim pool (16): V4 V5 V6 V7 V8 V9 V10 V11 V12 V13 V14 V15 V16 V17 V18 V19 
+Activation probability : not applied; attack_percentage controls BSHH-S1 attacker count
+Replay jitter window   : +/-0.04 s
+Support evidence prob. : 1
+Timeline (Option B — real SUMO trajectories decide the break):
+  t=5.000s   STEP 1 : V2V heartbeat exchange
+  t=5.010s   STEP 2 : Both send honest heartbeats to controller
+  t=5.050s   STEP 3 : Attacker stores captured heartbeat (t=5)
+  [per-pair] STEP 4+: Attacker replays old heartbeat 2s after its pair's real SUMO break (exceeds 300m)
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
+[CRYPTO] TETA-Guard pipeline initialised:
+  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28)
+      dilithium5_sign / dilithium5_verify / dilithium5_thresh
+  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)
+      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]
+  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
+      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
+  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=20)
+  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.29–3.32)
+      create_location_bound_report / verify_single_witness / verify_quorum
+  [6] Haversine distance (GPS consistency gate, Eq. 3.29)
+  All modules from .crypto_src/
+[CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[BSHH-S1][t=5.038]  V5 captured heartbeat for replay  Heartbeat(Sender=V22, t=5.001)
+[BSHH-S1][t=5.048]  V7 captured heartbeat for replay  Heartbeat(Sender=V24, t=4.988)
+[BSHH-S1][t=5.067]  V6 captured heartbeat for replay  Heartbeat(Sender=V21, t=5.020)
+[BSHH-S1][t=5.072]  V8 captured heartbeat for replay  Heartbeat(Sender=V23, t=4.984)
+[BSHH-S1][t=15.077]  V6 --REPLAY old heartbeat--> V21  Heartbeat(Sender=V21, t=5.020)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=15.078]  V6 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V6, claimed=V21, t=5.020)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=15.078]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
+[BSHH-S1][t=15.078]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V6  propagation=500.000 ms
+[Trust][t=15.078]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[Trust][t=15.078]  Node 6: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
+[BSHH-S1][t=15.079]  V21 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V21, t=5.020)  Controller liveness POISONED
+[BSHH-S1][t=15.091]  V8 --REPLAY old heartbeat--> V23  Heartbeat(Sender=V23, t=4.984)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=15.092]  V8 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V8, claimed=V23, t=4.984)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=15.092]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
+[BSHH-S1][t=15.092]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V8  propagation=500.000 ms
+[Trust][t=15.092]  Node 8: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
+[BSHH-S1][t=15.093]  V23 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V23, t=4.984)  Controller liveness POISONED
+[BSHH-S1][t=15.097]  V7 --REPLAY old heartbeat--> V24  Heartbeat(Sender=V24, t=4.988)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=15.098]  V7 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V7, claimed=V24, t=15.098)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=15.098]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
+[BSHH-S1][t=15.098]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V7  propagation=500.000 ms
+[Trust][t=15.098]  Node 7: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
+[BSHH-S1][t=15.099]  V24 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V24, t=4.988)  Controller liveness POISONED
+[BSHH-S1][t=15.126]  V5 --REPLAY old heartbeat--> V22  Heartbeat(Sender=V22, t=5.001)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[BSHH-S1][t=15.127]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V22, t=15.127)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=15.127]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
+[BSHH-S1][t=15.127]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V5  propagation=500.000 ms
+[Trust][t=15.127]  Node 5: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
+[BSHH-S1][t=15.128]  V22 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V22, t=5.001)  Controller liveness POISONED
+
+[CRYPTO] crypto_latency_sumo.csv written    (73 events)
+[CRYPTO] crypto_latency_summary.csv written  (17 distinct operations)
+[CRYPTO] Beacon TX signed: 4   RX verified: 4
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] Online mode — 8 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 8 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
+
+========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
+  Scenario  : 5 — BSHH-S1: Malicious Vehicle, No RSU
+  RSU mode  : WITH RSU
+  TP/TN/FP/FN : 0 / 8 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 8 / 0 / 0
+  MCC         : 0.000
+  [comb] TP/TN/FP/FN : 0 / 8 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 0.500
+  ACR         : 100.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.400  [fixed placeholder]
+  θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 288.539  [Eq. 3.22 init; validation-tuned hyperparameter]
+  W_max       : 400  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 8
+  Stage-0 blocked (attacks): 8
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
+----------------------------------------------------------
+Detect stage (crypto+LW+TGN, PemEmitEvent):
+  Events processed: 24
+  Avg wall-clock time: 1.330 ms
+  Max wall-clock time: 5.890 ms
+  Events exceeding budget: 0 / 24
+Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
+  Mitigations applied: 4
+  Avg wall-clock time: 2.673 ms
+  Max wall-clock time: 2.895 ms
+Full pipeline (detect+mitigate combined, when mitigation fired):
+  Triggered events: 4
+  Avg wall-clock time: 2.710 ms
+  Max wall-clock time: 2.934 ms
+  Events exceeding 100.000 ms budget: 0 / 4  -- full pipeline stays within the T_b budget on this hardware
+
+Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
+  Calls: 0
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
+  Calls exceeding budget: 0 / 0
+
+RSU-forward (CSMA dispatch, AttackSendRSUToController):
+  Calls: 0
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
+  Calls exceeding budget: 0 / 0
+
+Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
+  Calls: 8
+  Avg wall-clock time: 0.349 ms
+  Max wall-clock time: 0.880 ms
+  Calls exceeding budget: 0 / 8
+
+Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
+  Calls: 4
+  Avg wall-clock time: 0.297 ms
+  Max wall-clock time: 0.367 ms
+  Calls exceeding budget: 0 / 4
+
+LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
+  Calls: 4
+  Avg wall-clock time: 0.007 ms
+  Max wall-clock time: 0.021 ms
+  Calls exceeding budget: 0 / 4
+
+Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
+  beacon-send(0.000) + beacon-crypto(0.349) + rsu-forward(0.000) + detect(1.330) + detection-crypto(0.297) + mitigate(2.673) + lkh-crypto(0.007) = 4.657 ms
+  -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
+
+Continuous Neighborhood Statistics
+---------------------------------
+Candidate pairs checked: 76000
+Successful neighbor observations: 15664
+Average neighbors/vehicle: 3.916
+Maximum neighbors observed at once: 7
+
+Real-time (wall-clock) budget check — T_b=100.000 ms:
+  Ticks executed: 200
+  Avg tick wall-clock time: 0.326 ms
+  Max tick wall-clock time: 0.747 ms
+  Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
+
+Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
+  neighborhood(0.326) + beacon-send(0.000) + beacon-crypto(0.349) + rsu-forward(0.000) + detect(1.330) + detection-crypto(0.297) + mitigate(2.673) + lkh-crypto(0.007) = 4.983 ms
+  -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware
