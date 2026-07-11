@@ -574,7 +574,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
             cls_mask = tr_var >= 0
             if cls_mask.any():
                 ce_loss = nn.CrossEntropyLoss()(cls_logits[cls_mask], tr_var[cls_mask])
-                loss = bce_loss + 0.3 * ce_loss + MARGIN_LAMBDA * margin_loss
+                loss = bce_loss + args.ce_weight * ce_loss + MARGIN_LAMBDA * margin_loss
             else:
                 loss = bce_loss + MARGIN_LAMBDA * margin_loss
             loss.backward()
@@ -809,6 +809,9 @@ def main():
     ap.add_argument("--theta",    type=float, default=-1.0,
                     help="Alert threshold theta_FS. -1 = auto-select by max-MCC on "
                          "validation set (paper Section 7, default: auto)")
+    ap.add_argument("--ce_weight", type=float, default=0.3,
+                    help="Variant-classification cross-entropy loss weight "
+                         "(Table 3.2 CE weight, Eq 3.27 term ii; default: 0.3)")
     ap.add_argument("--scenario", type=int,   default=-1,
                     help="Filter to one attack_scenario; -1 = all (default: -1)")
     ap.add_argument("--output",   default="tgn_weights.bin",
