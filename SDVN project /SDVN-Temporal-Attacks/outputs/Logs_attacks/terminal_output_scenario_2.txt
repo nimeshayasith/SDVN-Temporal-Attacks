@@ -37,8 +37,36 @@ Timeline (Option B — real SUMO trajectories decide the break):
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [TTW-S2][t=10.000]  V20 --HELLO + topo--> RSU_25  <V20 sees V19, t=10.000>
 [TTW-S2][t=10.000]  V19 --HELLO + topo--> RSU_25  <V19 sees V20, t=10.000>
+[MAC-DEBUG][SIGN] claimed=20 owner=20 reporterId=20 nonceKey=85925604655 key0-3=37a3e19e
+[MAC-DEBUG][VERIFY] claimed=20 reporterId=20 nonceKey=85925604655 key0-3=37a3e19e macExp0-3=b7f1ee9c macCarried0-3=b7f1ee9c
+[MAC-DEBUG][SIGN] claimed=19 owner=19 reporterId=19 nonceKey=81630653165 key0-3=3e6130d2
+[MAC-DEBUG][VERIFY] claimed=19 reporterId=19 nonceKey=81630653165 key0-3=3e6130d2 macExp0-3=e42bea macCarried0-3=e42bea
+[MAC-DEBUG][SIGN] claimed=20 owner=20 reporterId=20 nonceKey=85925571887 key0-3=37a3e19e
+[MAC-DEBUG][VERIFY] claimed=20 reporterId=20 nonceKey=85925571887 key0-3=37a3e19e macExp0-3=133c8acd macCarried0-3=133c8acd
+[MAC-DEBUG][SIGN] claimed=19 owner=19 reporterId=19 nonceKey=81630620397 key0-3=3e6130d2
+[MAC-DEBUG][VERIFY] claimed=19 reporterId=19 nonceKey=81630620397 key0-3=3e6130d2 macExp0-3=b8abed3c macCarried0-3=b8abed3c
+[MAC-DEBUG][SIGN] claimed=15 owner=15 reporterId=15 nonceKey=64450748899 key0-3=ff821350
+[MAC-DEBUG][VERIFY] claimed=15 reporterId=15 nonceKey=64450748899 key0-3=ff821350 macExp0-3=b3ab2790 macCarried0-3=b3ab2790
 [TTW-S2][t=10.001]  V14 --HELLO + topo--> RSU_26  <V14 sees V13, t=10.000>
 [TTW-S2][t=10.001]  V13 --HELLO + topo--> RSU_26  <V13 sees V14, t=10.000>
+[MAC-DEBUG][SIGN] claimed=14 owner=14 reporterId=14 nonceKey=60155797415 key0-3=6786382d
+[MAC-DEBUG][VERIFY] claimed=14 reporterId=14 nonceKey=60155797415 key0-3=6786382d macExp0-3=e1f9891f macCarried0-3=e1f9891f
+[MAC-DEBUG][SIGN] claimed=13 owner=13 reporterId=13 nonceKey=55860845929 key0-3=f62d9e3e
+[MAC-DEBUG][VERIFY] claimed=13 reporterId=13 nonceKey=55860845929 key0-3=f62d9e3e macExp0-3=366ec3ad macCarried0-3=366ec3ad
+[MAC-DEBUG][SIGN] claimed=14 owner=14 reporterId=14 nonceKey=60155764647 key0-3=6786382d
+[MAC-DEBUG][VERIFY] claimed=14 reporterId=14 nonceKey=60155764647 key0-3=6786382d macExp0-3=31ea1627 macCarried0-3=31ea1627
+[MAC-DEBUG][SIGN] claimed=13 owner=13 reporterId=13 nonceKey=55860813161 key0-3=f62d9e3e
+[MAC-DEBUG][VERIFY] claimed=13 reporterId=13 nonceKey=55860813161 key0-3=f62d9e3e macExp0-3=dc8474c macCarried0-3=dc8474c
+[MAC-DEBUG][SIGN] claimed=9 owner=9 reporterId=9 nonceKey=38680941651 key0-3=d5254df5
+[MAC-DEBUG][VERIFY] claimed=9 reporterId=9 nonceKey=38680941651 key0-3=d5254df5 macExp0-3=3a1396e5 macCarried0-3=3a1396e5
+[MAC-DEBUG][SIGN] claimed=15 owner=15 reporterId=15 nonceKey=64450814434 key0-3=ff821350
+[MAC-DEBUG][VERIFY] claimed=15 reporterId=15 nonceKey=64450814434 key0-3=ff821350 macExp0-3=80bcf62a macCarried0-3=80bcf62a
+[MAC-DEBUG][SIGN] claimed=9 owner=9 reporterId=9 nonceKey=38681007186 key0-3=d5254df5
+[MAC-DEBUG][VERIFY] claimed=9 reporterId=9 nonceKey=38681007186 key0-3=d5254df5 macExp0-3=f1d5e11e macCarried0-3=f1d5e11e
+[MAC-DEBUG][SIGN] claimed=14 owner=14 reporterId=14 nonceKey=60155830180 key0-3=6786382d
+[MAC-DEBUG][VERIFY] claimed=14 reporterId=14 nonceKey=60155830180 key0-3=6786382d macExp0-3=1b44d1ce macCarried0-3=1b44d1ce
+[MAC-DEBUG][SIGN] claimed=8 owner=8 reporterId=8 nonceKey=34386022928 key0-3=c7725a1
+[MAC-DEBUG][VERIFY] claimed=8 reporterId=8 nonceKey=34386022928 key0-3=c7725a1 macExp0-3=48290ca macCarried0-3=48290ca
 [TTW-S2][t=10.100]  RSU_25 --aggregate forward--> Controller  [<V20 sees V19>, <V19 sees V20>]  t=10.000  ACCEPTED
 [TTW-S2][t=10.101]  RSU_26 --aggregate forward--> Controller  [<V14 sees V13>, <V13 sees V14>]  t=10.000  ACCEPTED
 Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.101s with delay 1ms
@@ -50,11 +78,15 @@ Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.
     V14 sees V13
 [TTW-S2][t=20.500]  RSU_25 --FORGED replay--> Controller  <V20 sees V19, t=20.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
 [TTW-S2][t=20.500]  RSU_26 --FORGED replay--> Controller  <V14 sees V13, t=20.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
-[TTW-S2][t=20.550]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=20.550]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[MAC-DEBUG][SIGN] claimed=20 owner=20 reporterId=25 nonceKey=85953391919 key0-3=d6786d8f
+[MAC-DEBUG][VERIFY] claimed=20 reporterId=25 nonceKey=85953391919 key0-3=d6786d8f macExp0-3=793ea7b macCarried0-3=793ea7b
 [TTW-S2][t=20.550]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
 [TTW-S2][t=20.550]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V25
 [Trust][t=20.550]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
 [TTW-S2][t=20.550]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[MAC-DEBUG][SIGN] claimed=14 owner=14 reporterId=26 nonceKey=60183584679 key0-3=c7c464ee
+[MAC-DEBUG][VERIFY] claimed=14 reporterId=26 nonceKey=60183584679 key0-3=c7c464ee macExp0-3=ed15d463 macCarried0-3=ed15d463
 [TTW-S2][t=20.550]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
 [TTW-S2][t=20.550]  MITIGATION Tier 1: FlowMod DROP -> RSU OpenFlow  attacker=V26
 
@@ -66,7 +98,7 @@ Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.
 [TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
 [TGN] DIVERGENCE(phantom): controller has V14<->V13 (t=20.500) not in E_t^trusted
 [TGN] DIVERGENCE(phantom): controller has V20<->V19 (t=20.500) not in E_t^trusted
-[TGN] Eq.3.45 δ=2 (phantom=2 stale=0 missed=0)  Eq.3.46 δ_thresh=15 (raw=13.20)
+[TGN] Eq.3.47 δ=2 (phantom=2 stale=0 missed=0)  Eq.3.48 δ_thresh=15 (raw=13.20)
 [TGN] 0 < δ ≤ δ_thresh → within propagation-delay tolerance; no controller-origin alert
 [CryptoFilter] 14 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
@@ -96,29 +128,29 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 16
-  Avg wall-clock time: 2 ms
-  Max wall-clock time: 3.3 ms
+  Avg wall-clock time: 2.1 ms
+  Max wall-clock time: 3.1 ms
   Events exceeding budget: 0 / 16
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 2
-  Avg wall-clock time: 2.7 ms
-  Max wall-clock time: 2.8 ms
+  Avg wall-clock time: 2.4 ms
+  Max wall-clock time: 2.5 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 2
-  Avg wall-clock time: 2.9 ms
+  Avg wall-clock time: 2.8 ms
   Max wall-clock time: 2.9 ms
   Events exceeding 1e+02 ms budget: 0 / 2  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 4
-  Avg wall-clock time: 0.064 ms
-  Max wall-clock time: 0.13 ms
+  Avg wall-clock time: 0.082 ms
+  Max wall-clock time: 0.15 ms
   Calls exceeding budget: 0 / 4
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 2
   Avg wall-clock time: 0.014 ms
-  Max wall-clock time: 0.019 ms
+  Max wall-clock time: 0.02 ms
   Calls exceeding budget: 0 / 2
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
@@ -135,12 +167,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 2
-  Avg wall-clock time: 0.008 ms
+  Avg wall-clock time: 0.0082 ms
   Max wall-clock time: 0.013 ms
   Calls exceeding budget: 0 / 2
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.064) + beacon-crypto(0) + rsu-forward(0.014) + detect(2) + detection-crypto(0) + mitigate(2.7) + lkh-crypto(0.008) = 4.8 ms
+  beacon-send(0.082) + beacon-crypto(0) + rsu-forward(0.014) + detect(2.1) + detection-crypto(0) + mitigate(2.4) + lkh-crypto(0.0082) = 4.6 ms
   -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -153,9 +185,9 @@ Maximum neighbors observed at once: 7
 Real-time (wall-clock) budget check — T_b=1e+02 ms:
   Ticks executed: 200
   Avg tick wall-clock time: 0.27 ms
-  Max tick wall-clock time: 0.42 ms
+  Max tick wall-clock time: 0.54 ms
   Ticks exceeding 1e+02 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.27) + beacon-send(0.064) + beacon-crypto(0) + rsu-forward(0.014) + detect(2) + detection-crypto(0) + mitigate(2.7) + lkh-crypto(0.008) = 5 ms
+  neighborhood(0.27) + beacon-send(0.082) + beacon-crypto(0) + rsu-forward(0.014) + detect(2.1) + detection-crypto(0) + mitigate(2.4) + lkh-crypto(0.0082) = 4.9 ms
   -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware

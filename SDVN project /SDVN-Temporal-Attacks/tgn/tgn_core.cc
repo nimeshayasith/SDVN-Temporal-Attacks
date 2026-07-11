@@ -768,7 +768,7 @@ struct TGNScoredEvent {
 };
 static std::vector<TGNScoredEvent> g_tgn_scored_events;
 
-// ── E_t^trusted accumulator (Eq. 3.44) ───────────────────────────────────────
+// ── E_t^trusted accumulator (Eq. 3.46) ───────────────────────────────────────
 // Events from peers with τ_k ≥ τ_min^gt (Tier 1: all RSU events; Tier 2: OBU
 // events once trust reaches TAU_MIN_GT after RMIN_BOOTSTRAP rounds).
 // Populated per-event in TGN_ProcessEventInline; empty at startup in Tier 2.
@@ -1054,7 +1054,7 @@ static void TGN_WriteEventRow(const PemEvent& e, const tgn::NodeFeatures& feat,
 }
 
 // ── TGN_BuildTrustedEvidence ─────────────────────────────────────────────────
-// Eq. 3.44: E_t^trusted = ∪_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_nk(t)
+// Eq. 3.46: E_t^trusted = ∪_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_nk(t)
 //
 // B_nk(t) = all non-BEACON PEM events whose reporter_id == n_k.
 //
@@ -1086,7 +1086,7 @@ TGN_BuildTrustedEvidence(const std::vector<PemEvent>& events)
         if (rid == 9999u) continue;   // controller excluded — it is the audit target
 
         if (N_RSUs > 0) {
-            // Tier 1: all RSU reporters have τ_k = 1 (Eq. 3.44, §3.4.11 Tier 1)
+            // Tier 1: all RSU reporters have τ_k = 1 (Eq. 3.46, §3.4.11 Tier 1)
             if (rid >= rsu_base && rid < rsu_end)
                 E_trusted.push_back(e);
         } else {
@@ -1124,17 +1124,17 @@ TGN_BuildTrustedEvidence(const std::vector<PemEvent>& events)
 }
 
 // ── TGN_CheckControllerDivergence ────────────────────────────────────────────
-// Implements Eq. 3.45 (δ = |E_t^C △ E_t^trusted|) and Eq. 3.46 (δ_thresh).
+// Implements Eq. 3.47 (δ = |E_t^C △ E_t^trusted|) and Eq. 3.48 (δ_thresh).
 //
 // E_t^C  : controller-claimed edge set — simulation proxy is attack_T_matrix,
 //          which records the forged link timestamps injected by TTW/ME attacks.
 // E_t^trusted : trusted peer evidence edge set — derived from E_trusted events.
 //
-// Eq. 3.45: δ = |E_t^C △ E_t^trusted|
+// Eq. 3.47: δ = |E_t^C △ E_t^trusted|
 //   = |{links in E_t^C but not E_t^trusted}|   (phantom / stale)
 //   + |{links in E_t^trusted but not E_t^C}|   (missed by controller)
 //
-// Eq. 3.46: δ_thresh = ⌈(1 + τ_prop/T_b) · λ · 2r_comm⌉ + 1
+// Eq. 3.48: δ_thresh = ⌈(1 + τ_prop/T_b) · λ · 2r_comm⌉ + 1
 //   τ_prop ≈ T_b/10 (propagation delay ≈ 1/10 of beacon interval)
 //   λ      = 0.02 veh/m (recommended vehicle density, §4.1)
 //   r_comm = 300 m (DSRC communication range)
@@ -1154,7 +1154,7 @@ TGN_CheckControllerDivergence(const std::vector<PemEvent>& E_trusted)
     // It represents what the controller was told to believe (E_t^C proxy).
     if (attack_T_matrix.empty()) return 0u;   // no forged entries → nothing to check
 
-    // ── Eq. 3.46: δ_thresh computation ───────────────────────────────────────
+    // ── Eq. 3.48: δ_thresh computation ───────────────────────────────────────
     // τ_prop ≈ T_b / 10  (propagation negligible vs beacon interval)
     // λ      = 0.02 veh/m  (recommended §4.1 vehicle density)
     // r_comm = TTW_COMM_RANGE = 300 m
@@ -1200,7 +1200,7 @@ TGN_CheckControllerDivergence(const std::vector<PemEvent>& E_trusted)
         ctrl_timestamps[ukey] = kv.second;
     }
 
-    // ── Eq. 3.45: symmetric difference δ = |E_t^C △ E_t^trusted| ─────────────
+    // ── Eq. 3.47: symmetric difference δ = |E_t^C △ E_t^trusted| ─────────────
     // Direction 1: links in E_t^C but not in E_t^trusted (phantom/stale)
     uint32_t n_phantom = 0, n_stale = 0;
     for (const auto& ukey : ctrl_edges) {
@@ -1235,10 +1235,10 @@ TGN_CheckControllerDivergence(const std::vector<PemEvent>& E_trusted)
 
     const uint32_t delta = (n_phantom + n_stale) + n_missed;  // |E_t^C △ E_t^trusted|
 
-    std::cout << "[TGN] Eq.3.45 δ=" << delta
+    std::cout << "[TGN] Eq.3.47 δ=" << delta
               << " (phantom=" << n_phantom << " stale=" << n_stale
               << " missed=" << n_missed << ")"
-              << "  Eq.3.46 δ_thresh=" << delta_thresh
+              << "  Eq.3.48 δ_thresh=" << delta_thresh
               << " (raw=" << std::fixed << std::setprecision(2) << delta_raw
               << std::defaultfloat << ")\n";
 
@@ -1462,7 +1462,7 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
                                                 e.reception_timestamp);
         bool tgn_alert = (tgn_score > g_tgn->GetThreshold());
 
-        // Tier 2 Eq. 3.44 — apply stricter threshold τk ≥ τmin_gt after bootstrap
+        // Tier 2 Eq. 3.46 — apply stricter threshold τk ≥ τmin_gt after bootstrap
         const bool bootstrap_done = (tier == 2) ? (round_count >= RMIN_BOOTSTRAP) : true;
 
         if (g_tgn_detail_log.is_open()) {
@@ -1781,7 +1781,7 @@ static void TGN_WriteSummary()
 // can call it before that later #include point is reached.
 static void ns3_to_gps(double x_m, double y_m, float *lat, float *lon);
 
-// Write BeaconEvidenceRecord B_nk(t) observations (Algorithm 2/4, Eq. 3.44
+// Write BeaconEvidenceRecord B_nk(t) observations (Algorithm 2/4, Eq. 3.46
 // {B_nk(t)}) as beacon_evidence.csv, columns matching what submitToFabric.js's
 // loadBeaconEvidence() parses: rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,
 // gps_lat,gps_lon,rssi_dbm.
@@ -1847,7 +1847,7 @@ static void TGN_WriteBeaconEvidenceCsv()
     std::cout << "[TGN] beacon_evidence.csv written: " << n << " observation(s)\n";
 }
 
-// Write ControllerTopologyClaim G_t^C (Eq. 3.45's E_t^C side, Flow 3) as
+// Write ControllerTopologyClaim G_t^C (Eq. 3.47's E_t^C side, Flow 3) as
 // ctrl_topo.json, matching submitToFabric.js's --ctrl_topo shape and the
 // chaincode's ControllerTopologyClaim/TopologyLink structs (structs.go:67-81):
 //   { "controller_id", "interval_ts", "links": [{"node_a","node_b","ts_ms"}] }
@@ -2130,7 +2130,7 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     }
     ++round_count;
 
-    // ── Eq. 3.44: E_t^trusted membership check ───────────────────────────────
+    // ── Eq. 3.46: E_t^trusted membership check ───────────────────────────────
     // Tier 1: all RSU reporters are in E_t^trusted (τ_k = 1 always).
     // Tier 2: this OBU's event is in E_t^trusted only once τ_k ≥ TAU_MIN_GT.
     //   τ_k = TAU_INIT_TIER2 + min(round_count, RMIN_BOOTSTRAP) × DELTA_PLUS
@@ -2276,7 +2276,7 @@ static void TGN_RunPipeline()
             TGN_SelectTrustedNodes(pem_all_events);
         }
 
-        // ── Eq. 3.44: build E_t^trusted from all events processed inline ────────
+        // ── Eq. 3.46: build E_t^trusted from all events processed inline ────────
         // This uses the final accumulated g_tgn_online_round_count values so it
         // reflects the τ_k state at end of simulation (post all inline rounds).
         {
