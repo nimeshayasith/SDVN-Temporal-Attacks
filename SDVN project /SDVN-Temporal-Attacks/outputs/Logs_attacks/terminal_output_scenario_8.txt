@@ -29,17 +29,66 @@ Replay timing         : Option B — 2s after each pair's real SUMO break
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
+[KEM][10ms budget] 19 handshakes timed: avg=34.3797 ms, max=35.2339 ms, over_budget=19/19 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[KEM][SimLatency][t=0.0337957] Vehicle 4 session key simulated-ready (real handshake was 33.7957 ms)
+[KEM][SimLatency][t=0.0340368] Vehicle 2 session key simulated-ready (real handshake was 34.0368 ms)
+[KEM][SimLatency][t=0.0340729] Vehicle 9 session key simulated-ready (real handshake was 34.0729 ms)
+[KEM][SimLatency][t=0.0340925] Vehicle 11 session key simulated-ready (real handshake was 34.0925 ms)
+[KEM][SimLatency][t=0.0341181] Vehicle 3 session key simulated-ready (real handshake was 34.1181 ms)
+[KEM][SimLatency][t=0.0341486] Vehicle 12 session key simulated-ready (real handshake was 34.1486 ms)
+[KEM][SimLatency][t=0.0341721] Vehicle 10 session key simulated-ready (real handshake was 34.1721 ms)
+[KEM][SimLatency][t=0.0342331] Vehicle 19 session key simulated-ready (real handshake was 34.2331 ms)
+[KEM][SimLatency][t=0.0342387] Vehicle 1 session key simulated-ready (real handshake was 34.2387 ms)
+[KEM][SimLatency][t=0.0342744] Vehicle 6 session key simulated-ready (real handshake was 34.2744 ms)
+[KEM][SimLatency][t=0.0343067] Vehicle 8 session key simulated-ready (real handshake was 34.3067 ms)
+[KEM][SimLatency][t=0.0343284] Vehicle 7 session key simulated-ready (real handshake was 34.3284 ms)
+[KEM][SimLatency][t=0.0345376] Vehicle 18 session key simulated-ready (real handshake was 34.5376 ms)
+[KEM][SimLatency][t=0.0345501] Vehicle 13 session key simulated-ready (real handshake was 34.5501 ms)
+[KEM][SimLatency][t=0.0347485] Vehicle 16 session key simulated-ready (real handshake was 34.7485 ms)
+[KEM][SimLatency][t=0.0347586] Vehicle 5 session key simulated-ready (real handshake was 34.7586 ms)
+[KEM][SimLatency][t=0.0347691] Vehicle 15 session key simulated-ready (real handshake was 34.7691 ms)
+[KEM][SimLatency][t=0.034799] Vehicle 17 session key simulated-ready (real handshake was 34.799 ms)
+[KEM][SimLatency][t=0.0352339] Vehicle 14 session key simulated-ready (real handshake was 35.2339 ms)
+[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=6620903110128321795 (interval=3s)
 [BSHH-S4][t=5.000]  V15(ns3=20)/V14(ns3=19) --DSRC--> RSU0(ns3=25) --CSMA--> Ctrl0(ns3=0)  HB(V15(ns3=20), t=5.000)  HB(V14(ns3=19), t=5.000)  ACCEPTED
 Current neighbor size is 0Received packet from 25 of size 12packet timestamp 5.000s with delay 1ms
 [BSHH-S4][t=5.100]  Ctrl0(ns3=0) stores stale copies (from RSU aggregate)  HB(V15(ns3=20), t=5.000)  HB(V14(ns3=19), t=5.000)  (internal replay at t=10)
+[Trust][Anchor][t=6.000] Published checkpoint seq=1 block_height=30 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=9.000] Published checkpoint seq=2 block_height=60 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=6620903110128321795 (interval=3.000s)
 [BSHH-S4][t=20.500]  Ctrl0(ns3=0) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V15(ns3=20), slot=V15(ns3=20), t=5.000)  HB(claimed=V15(ns3=20), slot=V14(ns3=19), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
+[Trust][Anchor][t=20.500] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.500s)
 [BSHH-S4][t=20.500]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=127 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
 [BSHH-S4][t=20.500]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_THRESHOLD_SIG 20/20 >= t=11 -> PASS
 [BSHH-S4][t=20.500]  MITIGATION: controller-origin — network isolation of V20 SUPPRESSED (innocent reporting vehicle)
+[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=6620903110128321795 (interval=3.000s)
 
-[CRYPTO] crypto_latency_sumo.csv written    (7 events)
-[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] crypto_latency_sumo.csv written    (26 events)
+[CRYPTO] crypto_latency_summary.csv written  (8 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
 [TGN] Online mode — 4 events already processed inline. Running secondary crypto audit...
@@ -75,17 +124,17 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 5
-  Avg wall-clock time: 2.858 ms
-  Max wall-clock time: 3.847 ms
+  Avg wall-clock time: 2.404 ms
+  Max wall-clock time: 2.919 ms
   Events exceeding budget: 0 / 5
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 1
-  Avg wall-clock time: 2.474 ms
-  Max wall-clock time: 2.474 ms
+  Avg wall-clock time: 2.682 ms
+  Max wall-clock time: 2.682 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 1
-  Avg wall-clock time: 4.775 ms
-  Max wall-clock time: 4.775 ms
+  Avg wall-clock time: 4.950 ms
+  Max wall-clock time: 4.950 ms
   Events exceeding 100.000 ms budget: 0 / 1  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
@@ -96,8 +145,8 @@ Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 1
-  Avg wall-clock time: 0.057 ms
-  Max wall-clock time: 0.057 ms
+  Avg wall-clock time: 0.023 ms
+  Max wall-clock time: 0.023 ms
   Calls exceeding budget: 0 / 1
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
@@ -114,12 +163,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 1
-  Avg wall-clock time: 0.019 ms
-  Max wall-clock time: 0.019 ms
+  Avg wall-clock time: 0.018 ms
+  Max wall-clock time: 0.018 ms
   Calls exceeding budget: 0 / 1
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.057) + detect(2.858) + detection-crypto(0.000) + mitigate(2.474) + lkh-crypto(0.019) = 5.408 ms
+  beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.023) + detect(2.404) + detection-crypto(0.000) + mitigate(2.682) + lkh-crypto(0.018) = 5.127 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -131,10 +180,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.316 ms
-  Max tick wall-clock time: 0.676 ms
+  Avg tick wall-clock time: 0.265 ms
+  Max tick wall-clock time: 0.287 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.316) + beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.057) + detect(2.858) + detection-crypto(0.000) + mitigate(2.474) + lkh-crypto(0.019) = 5.724 ms
+  neighborhood(0.265) + beacon-send(0.000) + beacon-crypto(0.000) + rsu-forward(0.023) + detect(2.404) + detection-crypto(0.000) + mitigate(2.682) + lkh-crypto(0.018) = 5.392 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

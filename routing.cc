@@ -2211,12 +2211,40 @@ struct TrustRecord {
                                    // on LKH revocation (Eq. 3.18) — a revoked node no
                                    // longer holds a valid consortium credential
     double         hw_capacity_mb;// C_Vk hardware capacity, RAM MB (Eq. 3.40 cond.2)
-    double         registered_at; // sim time this peer entered g_trust_table (§3.4.10
-                                   // anchor-checkpoint sync gate: an OBU is considered
-                                   // synced once it has been registered past one full
-                                   // anchor interval)
+    double         registered_at; // sim time this peer entered g_trust_table
+    double         synced_at_checkpoint_time; // §3.4.10: publish_time of the anchor
+                                   // checkpoint (g_anchor_checkpoints) this peer last
+                                   // synced from, or -1.0 if never synced. Set by
+                                   // TrustCheckpointSynced() against a real published
+                                   // checkpoint artifact, not an elapsed-time inference
+                                   // — enables reporting synchronization latency
+                                   // (Table 4.9's calibration method).
 };
 std::map<uint32_t, TrustRecord> g_trust_table;
+
+// ── §3.4.10 anchor checkpoint — real periodic Tier-1 production/publish ────
+// The paper describes two separate mechanisms: (1) Tier-1 peers periodically
+// PRODUCE and PUBLISH a PBFT-signed digest of the global state root every
+// floor(Tmin/Tb) blocks, and (2) Tier-2 peers must SYNC from that published
+// artifact before joining consensus. Previously only (2) existed, approximated
+// by elapsed-time-since-registration — with no actual checkpoint object, there
+// was nothing for Table 4.9's calibration method ("measure synchronisation
+// latency of newly promoted Tier-2 peers... confirm all peers reach consistent
+// ledger state") to measure against. This struct/vector is the real artifact:
+// produced by AnchorCheckpointProduce() (genuinely scheduled, self-re-firing,
+// same Simulator::Schedule pattern as TrustStage2MonitorTick), consumed by
+// TrustCheckpointSynced() below.
+struct AnchorCheckpoint {
+    double   publish_time;        // sim time this checkpoint was produced
+    uint64_t state_root_digest;   // lightweight sim-proxy digest of g_trust_table
+    uint32_t seq;                 // checkpoint identity/ordinal — "which checkpoint is this"
+    uint32_t block_height;        // §3.4.10: "committing the global state root at a fixed
+                                   // block height" — the ledger block-sequence point this
+                                   // checkpoint is a snapshot of, distinct from seq (identity
+                                   // vs. position). block_height = seq * ROUNDS under this
+                                   // codebase's 1-block=1-beacon-interval convention.
+};
+std::vector<AnchorCheckpoint> g_anchor_checkpoints;
 
 // Controller consortium C = {(C_j, τ_{C_j}, Z_j)} — Eq. 3.37
 struct ControllerRecord {
@@ -2337,6 +2365,22 @@ uint64_t pem_under_attack_snapshots = 0;
 uint64_t pem_post_mitigation_snapshots = 0;
 bool pem_event_csv_header_written = false;
 bool pem_summary_csv_header_written = false;
+
+// ── Dual-Path Conflict Resolution (§3.4.11) — shared coordination state ─────
+// "When both the LW and FS detection paths raise alerts for the same node v
+// simultaneously, the smart contract resolves the conflict by taking the
+// union of detected variants and applying the most restrictive mitigation
+// action. Specifically, node isolation (FlowMod DROP) takes precedence over
+// path invalidation..." Declared here (before the TGN include below) so both
+// PemApplyMitigation (routing.cc, LW path) and TGN_ProcessEventInline
+// (tgn_core.cc, FS path — textually inserted at the include point right
+// below, so it shares this translation unit) can read/write the same maps.
+// "Simultaneously" is operationalised as within one beacon interval
+// (PEM_BEACON_INTERVAL_S) of each other, matching every other "same round"
+// notion already used throughout this file (e.g. TrustCheckpointSynced).
+static std::map<uint32_t, double> g_dualpath_lw_alert_time;   // node -> last LW alert t
+static std::map<uint32_t, std::string> g_dualpath_lw_variant; // node -> last LW variant family
+static std::map<uint32_t, double> g_dualpath_fs_alert_time;   // node -> last FS/TGN alert t
 
 // ── TGN core (included here so PemEvent/pem_all_events are already defined) ─
 #include ".tgn_src/tgn_core.cc"
@@ -3069,6 +3113,50 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         //    topology graph, the link between the real endpoints is unaffected.
         out << "  [ME] INVALIDATE_PATHS: phantom path(s) via V" << attacker_id
             << " removed from controller topology\n";
+
+        // ── Dual-Path Conflict Resolution (§3.4.11) ──────────────────────────
+        // "When both the LW and FS detection paths raise alerts for the same
+        // node v simultaneously... node isolation (FlowMod DROP) takes
+        // precedence over path invalidation." Record this LW alert, then
+        // check whether the FS/TGN path (tgn_core.cc's TGN_ProcessEventInline)
+        // also alerted on this SAME node within one beacon interval. If so,
+        // escalate: take the union of variants and ALSO issue isolation here
+        // (not merely reroute), so a race between this ME reroute and TGN's
+        // own FlowMod/BlacklistBeacon isolation can't leave the node only
+        // rerouted-around instead of actually isolated.
+        g_dualpath_lw_alert_time[attacker_id] = t_now;
+        g_dualpath_lw_variant[attacker_id] = family;
+        bool dualpath_conflict = false;
+        {
+            auto fs_it = g_dualpath_fs_alert_time.find(attacker_id);
+            if (fs_it != g_dualpath_fs_alert_time.end() &&
+                std::fabs(t_now - fs_it->second) <= PEM_BEACON_INTERVAL_S) {
+                dualpath_conflict = true;
+                out << "  [Dual-Path Conflict Resolution] FS/TGN path also alerted V"
+                    << attacker_id << " at t=" << fs_it->second
+                    << " (within one beacon interval) — union of variants ={ME, FS-detected};"
+                       " isolation takes precedence over path invalidation (Sec 3.4.11)\n";
+                std::cout << "[" << scenario_tag << "][t=" << t_now
+                          << "]  DUAL-PATH CONFLICT: LW(ME) + FS/TGN both alerted V"
+                          << attacker_id << " -> escalating to isolation (DROP precedence)\n";
+            }
+        }
+        if (dualpath_conflict) {
+            if (has_RSU_infrastructure) {
+                out << "  [Dual-Path] FlowMod DROP -> RSU OpenFlow agent (emergency ch,"
+                       " precedence over reroute)\n";
+                std::cout << "[" << scenario_tag << "][t=" << t_now
+                          << "]  MITIGATION Tier 1: FlowMod DROP (dual-path precedence)"
+                             "  attacker=V" << attacker_id << "\n";
+            } else {
+                pem_blacklist_propagation_delay_ms = prop_ms;
+                out << "  [Dual-Path] BlacklistBeacon V2V broadcast (precedence over reroute):"
+                       " V" << attacker_id << " cert fingerprint\n";
+                std::cout << "[" << scenario_tag << "][t=" << t_now
+                          << "]  MITIGATION Tier 2: BlacklistBeacon V2V (dual-path precedence)"
+                             "  attacker=V" << attacker_id << "  propagation=" << prop_ms << " ms\n";
+            }
+        }
         if (has_RSU_infrastructure) {
             out << "  [ME] PUSH_REROUTE_EMERGENCY -> RSU OpenFlow agent (emergency ch)\n"
                 << "  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)\n";
@@ -3153,6 +3241,8 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
 
 // ── Trust management (§3.4.11) ────────────────────────────────────────────────
 
+static void AnchorCheckpointProduce();   // fwd decl — defined below, kicked off here
+
 // Initialise trust state for all nodes. Called from main() after all NodeContainers exist.
 // RSU peers: τ = τ^Tier1_init = 1.00 (authority-vetted at registration).
 // OBU/vehicles: τ = τ^Tier2_init = 0.10.
@@ -3164,36 +3254,40 @@ static void TrustInit()
     g_ctrl_table.clear();
     g_ctrl_reassigned = false;
     g_backup_ctrl_ns3_id = UINT32_MAX;
+    g_anchor_checkpoints.clear();
 
     const double now = Simulator::Now().GetSeconds();
 
     for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
         uint32_t id = RSU_Nodes.Get(i)->GetId();
         g_trust_table[id] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                              true, TRUST_HW_CAPACITY_MIN_MB, now};
+                              true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
     }
     for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
         uint32_t id = Vehicle_Nodes.Get(i)->GetId();
         // NS-3 does not model heterogeneous OBU hardware, so every vehicle is
         // assumed to meet the Cmin floor (Eq. 3.40 cond.2) at registration.
         g_trust_table[id] = {TRUST_TAU_TIER2_INIT, TRUST_ACTIVE, false, 0.0, -1.0,
-                              true, TRUST_HW_CAPACITY_MIN_MB, now};
+                              true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
     }
     // Primary controller
     if (controller_Node.GetN() > 0) {
         uint32_t cid = controller_Node.Get(0)->GetId();
         g_trust_table[cid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                               true, TRUST_HW_CAPACITY_MIN_MB, now};
+                               true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
         g_ctrl_table.push_back({cid, TRUST_TAU_TIER1_INIT, 0u});
     }
     // management_Node acts as backup controller (same CSMA LAN, distinct NS-3 node)
     if (management_Node.GetN() > 0) {
         uint32_t bid = management_Node.Get(0)->GetId();
         g_trust_table[bid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                               true, TRUST_HW_CAPACITY_MIN_MB, now};
+                               true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
         g_ctrl_table.push_back({bid, TRUST_TAU_TIER1_INIT, 1u});
         g_backup_ctrl_ns3_id = bid;
     }
+
+    // §3.4.10: kick off the real, periodic Tier-1 anchor-checkpoint producer.
+    Simulator::Schedule(Seconds(TRUST_ANCHOR_INTERVAL_S), &AnchorCheckpointProduce);
 }
 
 // Forward declarations for Stage-2 monitor (defined after TrustRunDemotionPipeline).
@@ -3238,22 +3332,69 @@ static void TrustUpdateController(uint32_t ctrl_ns3_id)
     }
 }
 
+// Lightweight sim-proxy "global state root" digest — not real cryptographic
+// hashing (matches this codebase's existing sim-proxy pattern elsewhere, e.g.
+// TetaGuardLocBindVerify's comment on simulation proxies for real primitives).
+// Folds in every peer's id/tau/state so the digest changes when trust state
+// changes, giving genuinely different published values across checkpoints.
+static uint64_t AnchorCheckpointCompute()
+{
+    uint64_t acc = 1469598103934665603ull;   // FNV offset basis
+    for (const auto& kv : g_trust_table) {
+        uint64_t v = ((uint64_t)kv.first << 32)
+                   ^ (uint64_t)(kv.second.tau * 1e6)
+                   ^ (uint64_t)kv.second.state;
+        acc = (acc ^ v) * 1099511628211ull;   // FNV prime
+    }
+    return acc;
+}
+
+// §3.4.10 producer side: Tier-1 peers periodically PRODUCE and PUBLISH a
+// PBFT-signed anchor checkpoint every floor(Tmin/Tb) blocks. Genuinely
+// scheduled, self-re-firing for the simulation lifetime — same pattern as
+// TrustStage2MonitorTick. Kicked off once from TrustInit().
+static void AnchorCheckpointProduce()
+{
+    const double now = Simulator::Now().GetSeconds();
+    const uint32_t seq = (uint32_t)g_anchor_checkpoints.size();
+    AnchorCheckpoint cp{now, AnchorCheckpointCompute(), seq,
+                        seq * TRUST_ANCHOR_INTERVAL_ROUNDS};
+    g_anchor_checkpoints.push_back(cp);
+    std::cout << "[Trust][Anchor][t=" << now << "] Published checkpoint seq="
+              << cp.seq << " block_height=" << cp.block_height
+              << " digest=" << cp.state_root_digest
+              << " (interval=" << TRUST_ANCHOR_INTERVAL_S << "s)\n";
+    if (now + TRUST_ANCHOR_INTERVAL_S < simTime)
+        Simulator::Schedule(Seconds(TRUST_ANCHOR_INTERVAL_S), &AnchorCheckpointProduce);
+}
+
 // §3.4.10: anchor-checkpoint sync gate. Tier 1 (RSU) peers are always exempt —
 // they run full Fabric peer software with complete ledger replication, so there
 // is no separate checkpoint window to sync from. Tier 2 (OBU) peers must have
 // synced from the most recent anchor checkpoint before joining consensus; this
 // is enforced UNCONDITIONALLY (matches obuHasSyncedFromRecentCheckpoint() in
 // trust.go — unlike Eq. 3.40 conditions 2/3, it is NOT bypassed in no-RSU mode).
-// Proxied here as: exempt during bootstrap (no anchor has been published yet,
-// matching the chaincode's "no checkpoint on ledger yet -> true" default), and
-// otherwise synced once the peer has been registered past one full anchor
-// interval (floor(Tmin/Tb) beacon intervals) — i.e. it had a chance to catch up
-// to the first published checkpoint since it joined.
-static bool TrustCheckpointSynced(const TrustRecord& r, bool is_rsu, double now)
+// Checked against a REAL published checkpoint artifact (g_anchor_checkpoints),
+// not elapsed time: a peer is synced once at least one checkpoint published
+// at-or-after its registration exists. On first sync, records
+// synced_at_checkpoint_time and logs the synchronization latency (publish
+// time -> sync-detected time) that Table 4.9's calibration method calls for.
+static bool TrustCheckpointSynced(TrustRecord& r, bool is_rsu, double now)
 {
     if (is_rsu) return true;
-    if (now < TRUST_ANCHOR_INTERVAL_S) return true;   // bootstrap: no anchor published yet
-    return (now - r.registered_at) >= TRUST_ANCHOR_INTERVAL_S;
+    if (g_anchor_checkpoints.empty()) return true;   // bootstrap: no anchor published yet
+    for (auto it = g_anchor_checkpoints.rbegin(); it != g_anchor_checkpoints.rend(); ++it) {
+        if (it->publish_time > now) continue;
+        if (it->publish_time < r.registered_at) break;   // no checkpoint since registration
+        if (r.synced_at_checkpoint_time < 0.0) {
+            r.synced_at_checkpoint_time = it->publish_time;
+            std::cout << "[Trust][Anchor][t=" << now << "] Peer synced from checkpoint seq="
+                      << it->seq << " (published t=" << it->publish_time
+                      << ", sync latency=" << (now - it->publish_time) << "s)\n";
+        }
+        return true;
+    }
+    return false;
 }
 
 // Eq. 3.51 / Eq. 3.40: eligibility check.
@@ -3267,7 +3408,7 @@ static bool TrustCheckpointSynced(const TrustRecord& r, bool is_rsu, double now)
 static bool TrustIsEligible(uint32_t ns3_id, bool is_rsu)
 {
     if (!g_trust_table.count(ns3_id)) return false;
-    const TrustRecord& r = g_trust_table.at(ns3_id);
+    TrustRecord& r = g_trust_table[ns3_id];
     if (r.state != TRUST_ACTIVE) return false;
     if (r.flagged)               return false;
     if (!r.cert_valid)           return false;   // Eq. 3.40 cond.1 — mandatory
@@ -8277,9 +8418,24 @@ void BSHH_S1_ForwardLegitimateHeartbeatsToController(uint32_t v1_id, uint32_t v2
        << "  " << v2Label << " -> Controller : Heartbeat(Sender="
        << v2Label << ", beacon_sending_time=" << t << ")\n\n";
     bshh_s1_pair_logs[v2_id] += ss.str();
-    
-    PemEmitHeartbeatEvent(v1_id, v1_id, t, false);
-    PemEmitHeartbeatEvent(v2_id, v2_id, t, false);
+
+    // Bug fix: this step models the SAME already-exchanged heartbeat (identical
+    // claimed_sender_id + timestamp t as STEP①'s BSHH_S1_LegitimateExchange
+    // call) reaching the controller — not a new message. Re-emitting it through
+    // PemEmitHeartbeatEvent a second time with the identical (claimed, t) pair
+    // produces an identical Eq. 3.17 nonce_key (nonce depends only on claimed
+    // identity + timestamp-slot + type + link, not on destination/reporter), so
+    // this always collides with STEP①'s already-cached nonce and gets rejected
+    // as a false replay — a genuinely benign message, dropped at Stage-0 purely
+    // because it was narrated as two steps. Since ANY Stage-0 drop triggers LKH
+    // revocation regardless of attack_label, this silently revoked BOTH
+    // vehicles' own keys ~10s before the attack even begins — and since the
+    // revocation check gates on physical_sender_id, every later event from the
+    // attacker (including a "sophisticated" hijack using a stolen key) was then
+    // dropped at that revocation check alone, never reaching the MAC/freshness/
+    // nonce checks or Stage-1/TGN at all. STEP①'s emission already registered
+    // this heartbeat with the crypto/detection pipeline; only the controller
+    // liveness table needs updating here, not a second PemEmitEvent call.
 }
 
 void BSHH_S1_ReplayOldHeartbeatToVictim(uint32_t attacker_id, uint32_t victim_id, double stored_time)

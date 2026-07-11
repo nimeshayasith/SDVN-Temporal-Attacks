@@ -29,7 +29,27 @@ Replay timing  : Option B — 2s after each pair's real SUMO break
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
+[KEM][10ms budget] 19 handshakes timed: avg=34.3433 ms, max=34.7616 ms, over_budget=19/19 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[KEM][SimLatency][t=0.033858] Vehicle 5 session key simulated-ready (real handshake was 33.858 ms)
+[KEM][SimLatency][t=0.0340017] Vehicle 4 session key simulated-ready (real handshake was 34.0017 ms)
+[KEM][SimLatency][t=0.0340562] Vehicle 6 session key simulated-ready (real handshake was 34.0562 ms)
+[KEM][SimLatency][t=0.0341152] Vehicle 9 session key simulated-ready (real handshake was 34.1152 ms)
+[KEM][SimLatency][t=0.0341332] Vehicle 3 session key simulated-ready (real handshake was 34.1332 ms)
+[KEM][SimLatency][t=0.0341801] Vehicle 1 session key simulated-ready (real handshake was 34.1801 ms)
+[KEM][SimLatency][t=0.0342583] Vehicle 19 session key simulated-ready (real handshake was 34.2583 ms)
+[KEM][SimLatency][t=0.0342738] Vehicle 2 session key simulated-ready (real handshake was 34.2738 ms)
+[KEM][SimLatency][t=0.0342771] Vehicle 8 session key simulated-ready (real handshake was 34.2771 ms)
+[KEM][SimLatency][t=0.0342973] Vehicle 16 session key simulated-ready (real handshake was 34.2973 ms)
+[KEM][SimLatency][t=0.0343776] Vehicle 10 session key simulated-ready (real handshake was 34.3776 ms)
+[KEM][SimLatency][t=0.0344661] Vehicle 7 session key simulated-ready (real handshake was 34.4661 ms)
+[KEM][SimLatency][t=0.0344782] Vehicle 15 session key simulated-ready (real handshake was 34.4782 ms)
+[KEM][SimLatency][t=0.0344909] Vehicle 17 session key simulated-ready (real handshake was 34.4909 ms)
+[KEM][SimLatency][t=0.0345134] Vehicle 18 session key simulated-ready (real handshake was 34.5134 ms)
+[KEM][SimLatency][t=0.0345861] Vehicle 13 session key simulated-ready (real handshake was 34.5861 ms)
+[KEM][SimLatency][t=0.0346713] Vehicle 14 session key simulated-ready (real handshake was 34.6713 ms)
+[KEM][SimLatency][t=0.034726] Vehicle 11 session key simulated-ready (real handshake was 34.726 ms)
+[KEM][SimLatency][t=0.0347616] Vehicle 12 session key simulated-ready (real handshake was 34.7616 ms)
 [BSHH-S2][t=2.000]  V15(ns3=20) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V15(ns3=20), t=2.000)  ACCEPTED
 [BSHH-S2][t=2.000]  V14(ns3=19) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V14(ns3=19), t=2.000)  ACCEPTED
 [BSHH-S2][t=2.001]  V9(ns3=14) --DSRC--> RSU1(ns3=26) --CSMA--> Controller  Heartbeat(V9(ns3=14), t=2.000)  ACCEPTED
@@ -38,6 +58,7 @@ Current neighbor size is 0Received packet from 26 of size 12packet timestamp 2.0
 Current neighbor size is 0Received packet from 25 of size 12packet timestamp 2.000s with delay 1ms
 [BSHH-S2][t=2.100]  RSU0(ns3=25) stored EVEN-OLDER heartbeat  Heartbeat(V15(ns3=20), t=2.000)  (second duplicate for replay at t=10)
 [BSHH-S2][t=2.101]  RSU1(ns3=26) stored EVEN-OLDER heartbeat  Heartbeat(V9(ns3=14), t=2.000)  (second duplicate for replay at t=10)
+[Trust][Anchor][t=3.000] Published checkpoint seq=0 block_height=0 digest=6620903110128321795 (interval=3.000s)
 [BSHH-S2][t=5.000]  V15(ns3=20) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V15(ns3=20), t=5.000)  ACCEPTED
 [BSHH-S2][t=5.000]  V14(ns3=19) --DSRC--> RSU0(ns3=25) --CSMA--> Controller  Heartbeat(V14(ns3=19), t=5.000)  ACCEPTED
 Current neighbor size is 0Received packet from 25 of size 12packet timestamp 5.000s with delay 1ms
@@ -46,6 +67,11 @@ Current neighbor size is 0Received packet from 25 of size 12packet timestamp 5.0
 Current neighbor size is 0Received packet from 26 of size 12packet timestamp 5.001s with delay 1ms
 [BSHH-S2][t=5.100]  RSU0(ns3=25) stored old heartbeat  Heartbeat(V15(ns3=20), t=5.000)  (replay at t=10)
 [BSHH-S2][t=5.101]  RSU1(ns3=26) stored old heartbeat  Heartbeat(V9(ns3=14), t=5.000)  (replay at t=10)
+[Trust][Anchor][t=6.000] Published checkpoint seq=1 block_height=30 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=9.000] Published checkpoint seq=2 block_height=60 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=6620903110128321795 (interval=3.000s)
+[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=6620903110128321795 (interval=3.000s)
 [BSHH-S2][t=20.400]  RSU0(ns3=25) SUPPRESSES genuine current heartbeat from V15(ns3=20) (t=20.400)  — never forwarded
 [BSHH-S2][t=20.401]  RSU1(ns3=26) SUPPRESSES genuine current heartbeat from V9(ns3=14) (t=20.400)  — never forwarded
 [BSHH-S2][t=20.500]  RSU0(ns3=25) --REPLAY old heartbeat--> Controller  Heartbeat(physical=V25, claimed=V15(ns3=20), t=5.000) [BASIC (no keys held)->Stage-0 drop]  *** ATTACK COMPLETE ***
@@ -63,9 +89,12 @@ Current neighbor size is 0Received packet from 25 of size 12packet timestamp 20.
 [Trust][t=20.501]  Node 26: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 Current neighbor size is 0Received packet from 26 of size 12packet timestamp 20.501s with delay 1ms
 Current neighbor size is 0Received packet from 26 of size 12packet timestamp 20.501s with delay 1ms
+[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=15770907217055343309 (interval=3.000s)
+[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=15770907217055343309 (interval=3.000s)
+[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=15770907217055343309 (interval=3.000s)
 
-[CRYPTO] crypto_latency_sumo.csv written    (9 events)
-[CRYPTO] crypto_latency_summary.csv written  (7 distinct operations)
+[CRYPTO] crypto_latency_sumo.csv written    (28 events)
+[CRYPTO] crypto_latency_summary.csv written  (8 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
 [CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=10  reject=0
 [TGN] Online mode — 9 events already processed inline. Running secondary crypto audit...
@@ -98,29 +127,29 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 16
-  Avg wall-clock time: 1.906 ms
-  Max wall-clock time: 3.322 ms
+  Avg wall-clock time: 1.780 ms
+  Max wall-clock time: 2.974 ms
   Events exceeding budget: 0 / 16
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 2
-  Avg wall-clock time: 7.397 ms
-  Max wall-clock time: 7.898 ms
+  Avg wall-clock time: 2.482 ms
+  Max wall-clock time: 2.589 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 2
-  Avg wall-clock time: 7.418 ms
-  Max wall-clock time: 7.909 ms
+  Avg wall-clock time: 2.488 ms
+  Max wall-clock time: 2.598 ms
   Events exceeding 100.000 ms budget: 0 / 2  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 4
-  Avg wall-clock time: 0.064 ms
-  Max wall-clock time: 0.111 ms
+  Avg wall-clock time: 0.062 ms
+  Max wall-clock time: 0.117 ms
   Calls exceeding budget: 0 / 4
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 8
-  Avg wall-clock time: 0.021 ms
-  Max wall-clock time: 0.058 ms
+  Avg wall-clock time: 0.012 ms
+  Max wall-clock time: 0.023 ms
   Calls exceeding budget: 0 / 8
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
@@ -137,12 +166,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 2
-  Avg wall-clock time: 0.031 ms
-  Max wall-clock time: 0.053 ms
+  Avg wall-clock time: 0.008 ms
+  Max wall-clock time: 0.014 ms
   Calls exceeding budget: 0 / 2
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.064) + beacon-crypto(0.000) + rsu-forward(0.021) + detect(1.906) + detection-crypto(0.000) + mitigate(7.397) + lkh-crypto(0.031) = 9.419 ms
+  beacon-send(0.062) + beacon-crypto(0.000) + rsu-forward(0.012) + detect(1.780) + detection-crypto(0.000) + mitigate(2.482) + lkh-crypto(0.008) = 4.343 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -154,10 +183,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.445 ms
-  Max tick wall-clock time: 2.981 ms
+  Avg tick wall-clock time: 0.268 ms
+  Max tick wall-clock time: 0.298 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.445) + beacon-send(0.064) + beacon-crypto(0.000) + rsu-forward(0.021) + detect(1.906) + detection-crypto(0.000) + mitigate(7.397) + lkh-crypto(0.031) = 9.864 ms
+  neighborhood(0.268) + beacon-send(0.062) + beacon-crypto(0.000) + rsu-forward(0.012) + detect(1.780) + detection-crypto(0.000) + mitigate(2.482) + lkh-crypto(0.008) = 4.611 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware
