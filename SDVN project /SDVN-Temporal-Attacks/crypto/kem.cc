@@ -457,6 +457,20 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
  *
  * Returns pointer to VehicleKeyRecord in the global store, or NULL if full.
  */
+/* Latency of just the KEM handshake proper (kem_vehicle_keygen +
+ * kem_rsu_encapsulate + kem_vehicle_decapsulate — Steps 1/3/4), excluding
+ * the one-time Dilithium5 identity-keypair generation and CA certificate
+ * issuance (Steps 0a/0b) that also happen inside kem_register_vehicle().
+ * The "millisecond-level, 10 ms V2X-compliant" claim is about this
+ * handshake specifically, not the one-time PKI bootstrap alongside it.
+ * Set by the most recent kem_register_vehicle() call; read via
+ * kem_get_last_handshake_only_ms(). */
+static double g_kem_handshake_only_ms = 0.0;
+
+double kem_get_last_handshake_only_ms(void) {
+    return g_kem_handshake_only_ms;
+}
+
 VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
                                         uint32_t lkh_leaf_index,
                                         uint8_t *sk_vi_out = nullptr) {
@@ -496,7 +510,10 @@ VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
 
     /* Step 1: Vehicle generates KEM keypair AND signs it with SK_Vi (Fix-1).
      * Pass rec->cert (just issued above) so kem_rsu_encapsulate can verify
-     * CA provenance without circular self-supplied-pk trust.             */
+     * CA provenance without circular self-supplied-pk trust.
+     * Steps 1/3/4 below are timed as the KEM handshake proper — see
+     * g_kem_handshake_only_ms comment above kem_get_last_handshake_only_ms. */
+    struct timespec __hs_t0; clock_gettime(CLOCK_MONOTONIC, &__hs_t0);
     KemExchangeState kem_state;
     kem_vehicle_keygen(&kem_state, vehicle_id, sk_vi, rec->sign_pub_key, &rec->cert);
 
@@ -513,6 +530,10 @@ VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
     /* Step 4: Vehicle decapsulates ciphertexts → vehicle derives K_{Vi,nk} */
     uint8_t vehicle_key[SESSION_KEY_LEN];
     bool ok = kem_vehicle_decapsulate(&kem_state, vehicle_key);
+    struct timespec __hs_t1; clock_gettime(CLOCK_MONOTONIC, &__hs_t1);
+    g_kem_handshake_only_ms =
+        (double)(__hs_t1.tv_sec - __hs_t0.tv_sec) * 1000.0 +
+        (double)(__hs_t1.tv_nsec - __hs_t0.tv_nsec) / 1.0e6;
 
     if (ok && memcmp(rsu_key, vehicle_key, SESSION_KEY_LEN) == 0) {
         memcpy(rec->session_key, rsu_key, SESSION_KEY_LEN);
