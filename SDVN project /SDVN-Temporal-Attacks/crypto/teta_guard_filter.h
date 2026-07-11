@@ -1,6 +1,6 @@
 /*
  * teta_guard_filter.h — Per-Trusted-Node Cryptographic Pre-Filter
- *                        Algorithm 3 (LW-MITIGATE), Eqs. 3.15–3.17 / 3.26–3.30
+ *                        Algorithm 3 (LW-MITIGATE), Eqs. 3.15–3.17 / 3.28, 3.29–3.32
  *
  * Section 3.1.3 (p.20): "Detection logic is embedded within each trusted node nk
  * (RSU or designated OBU), not in a centralised intelligence layer."
@@ -11,8 +11,8 @@
  *
  * Per-node state:
  *   • nonce_cache        — Eq. 3.17: nonce novelty, separate per verifier
- *   • link_witnesses     — Eq. 3.30: legitimate reporter set, separate per verifier
- *   • link_all_reporters — Eq. 3.30: ALL reporters (legit + in-range attackers) for
+ *   • link_witnesses     — Eq. 3.32: legitimate reporter set, separate per verifier
+ *   • link_all_reporters — Eq. 3.32: ALL reporters (legit + in-range attackers) for
  *                          computing dynamic quorum t = ⌊n/2⌋ + 1
  *
  * Included by routing.cc after PemEvent and the relevant constants are defined.
@@ -36,7 +36,7 @@
 #include <set>
 #include <string>
 
-// ── Real Eq. 3.26 threshold aggregate signature implementation ───────────────
+// ── Real Eq. 3.28 threshold aggregate signature implementation ───────────────
 // threshold_sig.cc provides vehicle_sign_report(), rsu_aggregate_reports(), and
 // verify_threshold_sig() — the actual Dilithium5 per-signer + HMAC-binding path.
 // Defining THRESHOLD_SIG_NO_MAIN suppresses its standalone main(); all Dilithium5
@@ -50,7 +50,7 @@
 #endif
 #include "threshold_sig.cc"
 
-// ── Per-reporter Dilithium5 key pairs for location-binding (Eqs. 3.27-3.28) ──
+// ── Per-reporter Dilithium5 key pairs for location-binding (Eqs. 3.29-3.30) ──
 // location_binding.cc is already included by routing.cc at line 93 (with
 // LOCATION_BINDING_NO_MAIN defined at line 78), so create_location_bound_report(),
 // verify_single_witness(), verify_quorum(), and haversine_distance_m() are already
@@ -80,9 +80,9 @@ static void ns3_to_gps(double x_m, double y_m, float *lat, float *lon) {
     *lon = (float)(BASE_LON + x_m * DEG_PER_M_LON);
 }
 
-// ── TetaGuardLocBindVerify — simulation proxy for Eqs. 3.27-3.29 ─────────────
+// ── TetaGuardLocBindVerify — simulation proxy for Eqs. 3.29-3.31 ─────────────
 // The critical property fixed here (user issue §6): position and RSSI must be
-// INSIDE the signed message (Eq. 3.27), not checked as separate runtime conditions
+// INSIDE the signed message (Eq. 3.29), not checked as separate runtime conditions
 // on unsigned metadata.  An attacker with valid keys but false metadata cannot lie
 // about pos_Vk because the signature would not match the actual signed payload.
 //
@@ -136,7 +136,7 @@ TetaGuardLocBindVerify(const PemEvent& event, double link_ep_x, double link_ep_y
     ns3_to_gps(event.reporter_position.x, event.reporter_position.y,
                &rep_lat, &rep_lon);
 
-    // Fix 5.1 (Eq. 3.29 RSSI_Vk<-Vi — "measured at Vk from endpoint Vi"):
+    // Fix 5.1 (Eq. 3.31 RSSI_Vk<-Vi — "measured at Vk from endpoint Vi"):
     // event.rssi_reporter_dbm would carry a REAL PHY-measured signal here if
     // one were available (Rx()'s MonitorSnifferRx callback does receive a
     // genuine NS-3-simulated signalNoise.signal per reception — see Rx() in
@@ -176,7 +176,7 @@ TetaGuardLocBindVerify(const PemEvent& event, double link_ep_x, double link_ep_y
     memset(rid_bytes, 0, sizeof(rid_bytes));
     snprintf((char *)rid_bytes, sizeof(rid_bytes), "V%u", rid);
 
-    // Eq. 3.27 + 3.28: bind {eij, pos_Vk, RSSI, τs, nonce} into Dilithium5 sig.
+    // Eq. 3.29 + 3.30: bind {eij, pos_Vk, RSSI, τs, nonce} into Dilithium5 sig.
     // After this call, lbr.signature is a valid ML-DSA-87 signature over
     // lbr.payload — which contains the ACTUAL reporter position and RSSI.
     LocationBoundReport lbr;
@@ -197,11 +197,11 @@ TetaGuardLocBindVerify(const PemEvent& event, double link_ep_x, double link_ep_y
     float ep_lat, ep_lon;
     ns3_to_gps(link_ep_x, link_ep_y, &ep_lat, &ep_lon);
 
-    // Eq. 3.29: Gate A (CA cert) → Gate B (cert pk) → Gate D (freshness) →
+    // Eq. 3.31: Gate A (CA cert) → Gate B (cert pk) → Gate D (freshness) →
     //           Gate E (nonce novelty) → Gate C (Dilithium5 verify) →
     //           (ii) haversine(signed_pos, link_ep) ≤ R_COMM_METERS →
     //           (iii)+(iv) rsu_measured_rssi ≥ RSSI_MIN + Friis margin
-    // All three Eq. 3.29 conditions check values FROM the signed payload (pos, RSSI)
+    // All three Eq. 3.31 conditions check values FROM the signed payload (pos, RSSI)
     // — not from unsigned PemEvent metadata.
     uint64_t recv_ms = (uint64_t)(Simulator::Now().GetSeconds() * 1000.0);
     return verify_single_witness(&lbr, ep_lat, ep_lon, recv_ms);
@@ -213,7 +213,7 @@ TetaGuardLocBindVerify(const PemEvent& event, double link_ep_x, double link_ep_y
 //   link_witnesses     : "minId_maxId" → set of legitimate reporter IDs seen so far
 //   link_all_reporters : "minId_maxId" → set of ALL reporter IDs (legit + in-range
 //                        attackers that passed the distance/RSSI check).  Used to
-//                        compute n for the dynamic quorum t = ⌊n/2⌋ + 1 (Eq. 3.30).
+//                        compute n for the dynamic quorum t = ⌊n/2⌋ + 1 (Eq. 3.32).
 //
 // The controller (reporter_id sentinel = 9999 or N_Vehicles+N_RSUs) gets its
 // own entry in this map — its nonce cache is separate from every RSU's cache.
@@ -226,14 +226,12 @@ struct TrustedNodeCryptoState {
     std::set<uint64_t>                           nonce_cache;
     std::map<std::string, std::set<uint32_t>>    link_witnesses;     // legit reporters only
     std::map<std::string, std::set<uint32_t>>    link_all_reporters; // legit + in-range attackers
-    // Eq. 3.26: per-link accumulator of real IndividualSignedReports from legitimate
-    // reporters.  Populated by vehicle_sign_report() when !attack_label events arrive.
-    // Consumed by verify_threshold_sig() in Step 1c when an attack event arrives.
-    // Capped at MAX_REPORTS_PER_RSU entries per link (AggregateReport struct limit).
-    std::map<std::string, std::vector<IndividualSignedReport>> link_signed_reports;
-    // Per-reporter key material: lazy-generated Dilithium5 keypairs keyed by reporter ID.
-    // Matches the per-reporter key pairs used in TetaGuardLocBindVerify().
-    std::map<uint32_t, LocBindKeyPair>           reporter_thresh_keys;
+    // link_signed_reports / reporter_thresh_keys (Eq. 3.28 accumulator + per-
+    // reporter Dilithium5 keys for the removed Step 1c threshold-sig gate)
+    // removed — Step 1c was a mis-layered Stage-0 duplicate of the correctly-
+    // placed post-detection PemVerifyThresholdSig (routing.cc, called from
+    // PemApplyMitigation per Algorithm 4's FS-MITIGATE dispatch). See removed-
+    // code comment further below in this function for the full rationale.
 };
 
 // Indexed by reporter_id (RSU NS-3 node ID, OBU vehicle ID, or controller ID)
@@ -412,7 +410,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // so none of the three Algorithm 3 checks can catch it.
     // Stage 1 (LW) + blockchain divergence check are the sole defences.
     //
-    // This bypass ALSO covers TetaGuardLocBindVerify (Eqs. 3.27-3.29) below, by
+    // This bypass ALSO covers TetaGuardLocBindVerify (Eqs. 3.29-3.31) below, by
     // construction: ME-S3/S4 (malicious-controller ME variants) never reach
     // Step 1b, since this function returns here first for any event where
     // is_malicious_controller is true. This is intentional, not a gap: the
@@ -476,8 +474,10 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // physical-vs-claimed key comparison produced, now via a literal
     // forged-vs-genuine MAC comparison instead of an identity-equality proxy.
     //
-    // Eq. 3.26: Verify_agg(σ_agg, PK_agg) = 0 when attacker holds 0 key shares
-    // — handled separately below (Step 1c, real Dilithium5 threshold sigs).
+    // Eq. 3.28: Verify_agg(σ_agg, PK_agg) = 0 when attacker holds 0 key shares
+    // — this is handled at the correct layer by routing.cc's PemVerifyThresholdSig
+    // (post-detection, called from PemApplyMitigation), not here at Stage-0;
+    // see the removed Step 1c comment further below for why.
     {
         uint8_t authPayload[32];
         const size_t authLen = TetaGuardBuildAuthPayload(event, nonce_key, authPayload);
@@ -493,7 +493,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     }
 
     // ── Pre-registration — benign witnesses register BEFORE Step 1b's quorum ──
-    // check (Eq. 3.30 follow-up fix). Moved out of the old post-Step-1b block
+    // check (Eq. 3.32 follow-up fix). Moved out of the old post-Step-1b block
     // below (which only ran the plain registration, never the quorum gate,
     // because it was reached only after Step 1b already returned/passed).
     // Root cause this fixes: since Step 1b now also evaluates benign ME-S1/S2
@@ -503,8 +503,8 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // so legit_count(0) < quorum_t(>=1) always failed, even for the very
     // first honest report of a link. Registering the reporter here — before
     // Step 1b runs — means a benign report counts toward its OWN quorum
-    // check (matching Eq. 3.30's set builder semantics: Vk is a member of
-    // {Vk : Accept_Vk(eij)=1} the moment it individually passes Eq. 3.29,
+    // check (matching Eq. 3.32's set builder semantics: Vk is a member of
+    // {Vk : Accept_Vk(eij)=1} the moment it individually passes Eq. 3.31,
     // not only on some later event). Attack-labelled reports are unaffected
     // — they are never added to link_witnesses (only to link_all_reporters,
     // still done inside Step 1b itself), so an attacker still cannot inflate
@@ -529,7 +529,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         // made — TTW-S2 never asserts "I (the RSU) witnessed a link between two
         // OTHER nodes"; it relays/forges V1's own claim about V1's own link.
         // Third-party reports (CLAIMED identity differs from both endpoints) are
-        // handled in Step 1b below and only become witnesses after passing Eq. 3.29.
+        // handled in Step 1b below and only become witnesses after passing Eq. 3.31.
         const bool is_self_report_pre =
             (event.claimed_sender_id == event.link_src_id) ||
             (event.claimed_sender_id == event.link_dst_id);
@@ -540,12 +540,12 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         state.link_all_reporters[lkey_pre].insert(event.reporter_id);
     }
 
-    // ── Step 1b — ME location-binding + quorum (Eqs. 3.27-3.30) ────────────────
+    // ── Step 1b — ME location-binding + quorum (Eqs. 3.29-3.32) ────────────────
     // ME echo reporters claim their own identity (physical == claimed — Step 1
     // passes) but report a link they cannot physically observe.
     //
     // Issue §6 fix: position and RSSI must be cryptographically bound INSIDE the
-    // signed message (Eq. 3.27) — not checked as separate runtime conditions on
+    // signed message (Eq. 3.29) — not checked as separate runtime conditions on
     // unsigned metadata.  The previous implementation ran a plain distance/RSSI
     // plausibility check on PemEvent fields, which an attacker with valid keys
     // could bypass by setting false position metadata without touching the signature.
@@ -553,23 +553,23 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // Fixed path via TetaGuardLocBindVerify():
     //   1. The reporter's actual NS-3 position is extracted from event.reporter_position
     //      (ground truth from MobilityModel — not attacker-modifiable metadata).
-    //   2. create_location_bound_report() (Eq. 3.27+3.28) packs that position and
+    //   2. create_location_bound_report() (Eq. 3.29+3.30) packs that position and
     //      synthetic RSSI into LocationBindingPayload and calls dilithium5_sign_locbind()
     //      — position/RSSI are now INSIDE the Dilithium5 signature.
-    //   3. verify_single_witness() (Eq. 3.29) checks Gates A/B/D/E/C, then
+    //   3. verify_single_witness() (Eq. 3.31) checks Gates A/B/D/E/C, then
     //      haversine_distance(signed_pos, link_ep) ≤ R_COMM_METERS, then
     //      rsu_measured_rssi ≥ RSSI_MIN + Friis margin — all against the signed values.
     //
     // For an out-of-range ME attacker:
     //   signed pos is far from link → gate (ii) fails → REJECTED before quorum.
     //
-    // Eq. 3.30: link eij accepted only when ≥ t = ⌊n/2⌋ + 1 reporters individually
-    // pass Eq. 3.29, where n is the total number of reporters for this link seen so
+    // Eq. 3.32: link eij accepted only when ≥ t = ⌊n/2⌋ + 1 reporters individually
+    // pass Eq. 3.31, where n is the total number of reporters for this link seen so
     // far (legitimate + in-range attackers that passed the crypto+spatial+RSSI check).
     //
     // Issue 5.2/5.3 fix: previously gated on event.attack_label==true as well, so
-    // benign witness reports never went through Eq. 3.29 location-binding or fed
-    // the Eq. 3.30 quorum reporter set — only attack-labeled echoes did. Eq. 3.29
+    // benign witness reports never went through Eq. 3.31 location-binding or fed
+    // the Eq. 3.32 quorum reporter set — only attack-labeled echoes did. Eq. 3.31
     // in the report is unconditional ("every topology observation report... is
     // accepted iff..."), so benign reports must run the same gate as attack reports.
     //
@@ -577,8 +577,10 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // attack_scenario == ME_S1/ME_S2, a run-level CLI parameter that only exists
     // in this scripted 12-scenario harness. A real/blind SUMO+NS-3 run has no such
     // label, so that gate would never fire regardless of whether a genuine
-    // out-of-range echo occurred. Replaced with the structural per-report
-    // condition already used by the threshold-sig gate below (§Eq. 3.26): does the
+    // out-of-range echo occurred. Replaced with a structural per-report
+    // condition (the same shape once also used by the now-removed Step 1c
+    // threshold-sig gate, §Eq. 3.28 — see its removed-code comment further
+    // below): does the
     // reporter differ from both link endpoints, and is it not the 9999 controller
     // sentinel. This is exactly the paper's reporter-set definition (§3.4.6,
     // Eq. 3.11 ME-S3 signature — "Vk asserts it witnessed link eij", i.e. a third
@@ -586,7 +588,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // vehicle/RSU-vs-controller scoping on structural grounds rather than on which
     // canned scenario is configured. Controller-origin fabrications (ME-S3/S4) tag
     // physical_sender_id = 9999u (see ME_S3_InjectPhantomPaths / ME_S4_InjectPhantomPaths
-    // in routing.cc), so they are still excluded here — per Eq. 3.29's own scope,
+    // in routing.cc), so they are still excluded here — per Eq. 3.31's own scope,
     // external cryptographic validation does not apply when there is no external
     // message to validate.
     //
@@ -597,15 +599,15 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // (claimed_sender_id IS a link endpoint, registered unconditionally in the
     // pre-registration block above — reporting your own directly-observed link is
     // definitionally not an echo) and (b) third-party reports that INDIVIDUALLY
-    // pass Eq. 3.29's cryptographic + spatial + RSSI gate below (TetaGuardLocBindVerify),
+    // pass Eq. 3.31's cryptographic + spatial + RSSI gate below (TetaGuardLocBindVerify),
     // registered into link_witnesses only after that gate succeeds (see below,
     // post-loc-bind-verify). A sophisticated in-range echo with valid keys can still
-    // pass Eq. 3.29 and be counted — exactly the real-world failure mode Eq. 3.30's
+    // pass Eq. 3.31 and be counted — exactly the real-world failure mode Eq. 3.32's
     // majority quorum (not per-report crypto alone) is meant to catch.
     //
     // Scoping fix: gated on claimed_sender_id (not physical_sender_id) vs the
     // link endpoints, matching the pre-registration block's fix above and for
-    // the same reason — this is Eq. 3.29's own reporter-set definition R(eij,t),
+    // the same reason — this is Eq. 3.31's own reporter-set definition R(eij,t),
     // "vehicles CLAIMING to have witnessed link eij" (a third-party witness
     // assertion), not "whoever physically transmitted the packet". An RSU
     // relaying/forging V1's own self-report (claimed_sender_id==link_src_id,
@@ -653,7 +655,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         const double ep_y = closer_to_src
             ? effectiveSrcPosLb.y : effectiveDstPosLb.y;
 
-        // Eqs. 3.27-3.29: full crypto path — position + RSSI bound in signature.
+        // Eqs. 3.29-3.31: full crypto path — position + RSSI bound in signature.
         // tg_crypto_drop_mac accumulates rejections at this gate (identity+location).
         if (!TetaGuardLocBindVerify(event, ep_x, ep_y))
         {
@@ -661,7 +663,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
             return false;
         }
 
-        // Reporter passed Eq. 3.29 (all gates including signed spatial + RSSI).
+        // Reporter passed Eq. 3.31 (all gates including signed spatial + RSSI).
         // Count it in the total reporter set for this link so that the dynamic
         // quorum t = ⌊n/2⌋ + 1 reflects all reporters, not just legitimate ones.
         const uint32_t me_lmin_a = std::min(event.link_src_id, event.link_dst_id);
@@ -669,7 +671,7 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         const std::string lkey_a  = std::to_string(me_lmin_a) + "_" + std::to_string(me_lmax_a);
         state.link_all_reporters[lkey_a].insert(event.reporter_id);
 
-        // Eq. 3.30: compute dynamic quorum t = ⌊n/2⌋ + 1
+        // Eq. 3.32: compute dynamic quorum t = ⌊n/2⌋ + 1
         const uint32_t n_total   = static_cast<uint32_t>(
             state.link_all_reporters.at(lkey_a).size());
         const uint32_t quorum_t  = (n_total / 2u) + 1u;
@@ -680,160 +682,36 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         if (legit_count < quorum_t)
         {
             tg_crypto_drop_quorum++;
-            return false;   // Eq. 3.30: legitimate witnesses < ⌊n/2⌋+1
+            return false;   // Eq. 3.32: legitimate witnesses < ⌊n/2⌋+1
         }
     }
 
-    // Eq. 3.26 (Step 1c) signed-report accumulation for THIS trusted node.
-    // link_witnesses/link_all_reporters registration for this event already
-    // happened in the pre-registration block above (before Step 1b), so it is
-    // NOT repeated here — this block now only builds the IndividualSignedReport
-    // material that verify_threshold_sig() consumes in Step 1c when an attack
-    // event arrives for the same link.
-    //
-    // Ground-truth leak fix (threats-to-validity review, 6th instance found):
-    // this previously gated on !event.attack_label — but any event that reaches
-    // this line has, by construction, already survived every real check this
-    // function performs: Step 1's HMAC/MAC verification (line ~483, unconditional
-    // for all events), and — for third-party reporters — Step 1b's location-bind
-    // + quorum gate above (which returns false and exits before this point on
-    // failure). There is no remaining structural signal left to exclude an event
-    // by other than ground truth, so a real verifier has no basis to keep a
-    // sophisticated attacker's genuinely-signed report out of this "honest
-    // reports" pool: it is, by every check the verifier can run, indistinguishable
-    // from a genuine one. Eq. 3.26 itself is defined over reports that pass
-    // Verify(sigma_i, msg_i, PK_Vi) = 1 — not over a ground-truth-benign subset.
-    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
-    {
-        const uint32_t me_lmin = std::min(event.link_src_id, event.link_dst_id);
-        const uint32_t me_lmax = std::max(event.link_src_id, event.link_dst_id);
-        const std::string lkey = std::to_string(me_lmin) + "_" + std::to_string(me_lmax);
+    // Eq. 3.28 signed-report accumulation REMOVED along with Step 1c
+    // (see removed-code comment below) — its only consumer was the Stage-0
+    // gate that was just removed for wrong-layer placement, so this was pure
+    // dead-weight overhead: a real ~1.6ms Dilithium5 sign per topology-update
+    // event (dilithium5_keygen + vehicle_sign_report) with no reader left.
 
-        // Eq. 3.26 real crypto: sign this legitimate report so the aggregate can
-        // be verified via verify_threshold_sig() in Step 1c when needed.
-        if (has_RSU_infrastructure &&
-            state.link_signed_reports[lkey].size() < MAX_REPORTS_PER_RSU)
-        {
-            // Lazy keypair generation per reporter (same pattern as LocBind keys)
-            uint32_t rid = event.reporter_id;
-            if (!state.reporter_thresh_keys.count(rid))
-            {
-                if (!g_locbind_ca_ready) { teta_ca_init(); g_locbind_ca_ready = true; }
-                LocBindKeyPair &kp = state.reporter_thresh_keys[rid];
-                dilithium5_keygen(kp.pk, kp.sk);
-                uint8_t vid_bytes[16]; memset(vid_bytes, 0, sizeof(vid_bytes));
-                snprintf((char *)vid_bytes, sizeof(vid_bytes), "V%u", rid);
-                dilithium5_issue_cert(vid_bytes, kp.pk,
-                    (uint64_t)(Simulator::Now().GetSeconds() * 1000.0), &kp.cert);
-            }
-            LocBindKeyPair &kp = state.reporter_thresh_keys[rid];
-
-            // Build a 4-byte payload encoding the link (src_id || dst_id)
-            uint8_t msg_payload[4];
-            msg_payload[0] = (uint8_t)(event.link_src_id & 0xFF);
-            msg_payload[1] = (uint8_t)((event.link_src_id >> 8) & 0xFF);
-            msg_payload[2] = (uint8_t)(event.link_dst_id & 0xFF);
-            msg_payload[3] = (uint8_t)((event.link_dst_id >> 8) & 0xFF);
-
-            uint64_t ts_ms = (uint64_t)(event.sender_timestamp * 1000.0);
-
-            // Nonce: deterministic from (reporter_id, link_key, timestamp) so the
-            // same report can't be submitted twice under a different nonce.
-            uint8_t nonce[NONCE_LEN]; memset(nonce, 0, NONCE_LEN);
-            uint32_t nonce_seed = rid ^ me_lmin ^ me_lmax ^ (uint32_t)(ts_ms & 0xFFFFFFFF);
-            memcpy(nonce, &nonce_seed, sizeof(nonce_seed));
-
-            IndividualSignedReport isr;
-            memset(&isr, 0, sizeof(isr));
-            memcpy(isr.msg_payload, msg_payload, 4);
-            isr.timestamp_ms = ts_ms;
-            memcpy(isr.nonce, nonce, NONCE_LEN);
-            memcpy(isr.pub_key, kp.pk, DILITHIUM5_PK_LEN);
-            isr.cert = kp.cert;
-            snprintf((char *)isr.vehicle_id, sizeof(isr.vehicle_id), "V%u", rid);
-            size_t sig_len_out = 0;
-            // Bug fix: sign the full zero-padded isr.msg_payload (256 bytes) —
-            // NOT the raw 4-byte local msg_payload — because verify_threshold_sig's
-            // Gate C (threshold_sig.cc) reconstructs the signed buffer using
-            // sizeof(r->msg_payload) = 256 unconditionally. Signing only 4 bytes
-            // here while Gate C verifies against 256 made every individual
-            // signature check fail by construction, for legitimate AND attack
-            // reports alike. isr.msg_payload is already the correctly zero-padded
-            // 256-byte buffer (set above via memset + memcpy of the real 4 bytes),
-            // so signing it directly matches Gate C's reconstruction exactly.
-            vehicle_sign_report(isr.msg_payload, sizeof(isr.msg_payload), ts_ms, nonce, kp.sk,
-                                isr.individual_sig, &sig_len_out);
-            state.link_signed_reports[lkey].push_back(isr);
-        }
-    }
-
-    // ── Step 1c — Threshold aggregate signature (Eq. 3.26) for RSU-relayed reports ─
-    // Eq. 3.26: Verify(σ_agg, PK_agg) = 1
-    //           ⟺ |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t
-    //           where t = max(THRESHOLD_T_FLOOR, ⌊n/2⌋ + 1)
-    //
-    // §3.4.4 scope: "For RSU-aggregated beacon reports" — the check applies ONLY
-    // when an RSU (not a vehicle, not the controller) is the physical sender.
-    // Three conditions narrow this to genuine RSU-relayed events:
-    //   (a) physical_sender ≠ link_src_id : not V1 self-reporting directly
-    //   (b) physical_sender ≠ link_dst_id : not V2 self-reporting directly
-    //   (c) physical_sender ≠ 9999u       : not a controller-internal sentinel
-    //       (TTW-S4, ME-S4 use 9999 as reporter; they reach Stage-1 for detection,
-    //        not Stage-0 drop — threshold aggregate sigs don't apply there)
-    //
-    // Real crypto path: build AggregateReport from stored IndividualSignedReports,
-    // call rsu_aggregate_reports() + verify_threshold_sig() (Gates A/B/C/D + nonce
-    // replay from threshold_sig.cc).  The attacker holds no key shares for the
-    // legitimate reporters → zero valid partial signatures → below threshold → DROP.
-    if (has_RSU_infrastructure &&
-        event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
-        event.physical_sender_id != event.link_src_id &&
-        event.physical_sender_id != event.link_dst_id &&
-        event.physical_sender_id != 9999u)
-    {
-        const uint32_t s1c_lmin = std::min(event.link_src_id, event.link_dst_id);
-        const uint32_t s1c_lmax = std::max(event.link_src_id, event.link_dst_id);
-        const std::string s1c_key =
-            std::to_string(s1c_lmin) + "_" + std::to_string(s1c_lmax);
-
-        // Also count this attacker in link_all_reporters so t = ⌊n/2⌋+1 uses the
-        // real total reporter count (Eq. 3.26 left side denominator).
-        state.link_all_reporters[s1c_key].insert(event.reporter_id);
-
-        const auto &signed_vec = state.link_signed_reports.count(s1c_key)
-            ? state.link_signed_reports.at(s1c_key)
-            : std::vector<IndividualSignedReport>{};
-
-        if (signed_vec.empty())
-        {
-            // No legitimate signed reports accumulated yet → attacker cannot
-            // satisfy any quorum (0 valid sigs < THRESHOLD_T_FLOOR = 3).
-            tg_crypto_drop_mac++;
-            return false;
-        }
-
-        // Build AggregateReport from stored legitimate IndividualSignedReports
-        AggregateReport agg;
-        memset(&agg, 0, sizeof(agg));
-        const uint32_t n_reps =
-            (uint32_t)signed_vec.size() < MAX_REPORTS_PER_RSU
-                ? (uint32_t)signed_vec.size()
-                : MAX_REPORTS_PER_RSU;
-        rsu_aggregate_reports(&agg,
-                              signed_vec.data(),
-                              n_reps);
-
-        // verify_threshold_sig() implements the full Eq. 3.26 biconditional:
-        //   Step 1: aggregate sig consistency (tamper detection)
-        //   Step 2: per-signer Dilithium5 verify, count valid ≥ t
-        // Returns THRESHOLD_SIG_PASS only when quorum is met.
-        ThresholdSigResult tsr = verify_threshold_sig(&agg);
-        if (tsr != THRESHOLD_SIG_PASS)
-        {
-            tg_crypto_drop_mac++;
-            return false;   // Eq. 3.26: |{valid σ_i}| < t — aggregate rejected
-        }
-    }
+    // ── Step 1c REMOVED — Eq. 3.28 threshold-aggregate-signature check ──────
+    // Placement fix: per Algorithm 4, VERIFY_THRESHOLD_SIG runs inside
+    // FS-MITIGATE for alpha in {TTW, BSHH} — i.e. AFTER Stage-1 (LW) + Stage-2
+    // (TGN) have already raised an alert, as a mitigation-confirmation gate
+    // ("is this node's own signing identity legitimate before we punish it"),
+    // not as a Stage-0 pre-detection filter deciding whether the event is
+    // even VISIBLE to LW+TGN. routing.cc's PemVerifyThresholdSig (called from
+    // PemApplyMitigation, family != "ME") already implements this correctly
+    // at that layer, using the paper's actual t = floor(n/2)+1 with no fixed
+    // floor constant — this Stage-0 duplicate is not needed and was
+    // structurally mis-scoped besides (see removed code: gated on
+    // physical_sender_id vs the link endpoints, the same wrong-family/
+    // wrong-layer pattern already fixed for the Step 1b ME location-binding
+    // gate above). Its practical effect: it silently intercepted TTW-S2/
+    // BSHH-S2's sophisticated (key-exfiltration) events at Stage-0 and
+    // returned false before they ever reached LW+TGN/ι_v — for any link
+    // with fewer real contributing signers than the removed
+    // THRESHOLD_T_FLOOR=3 (e.g. a normal 2-endpoint link with no
+    // third-party witnesses), this was unconditional and unrelated to
+    // whether the event was genuinely an attack.
 
     // ── Step 2 — Timestamp freshness (Eq. 3.16) ──────────────────────────────
     // Eq. 3.16: |τr − τs| ≤ Tb + ε  (ABSOLUTE VALUE — bidirectional)

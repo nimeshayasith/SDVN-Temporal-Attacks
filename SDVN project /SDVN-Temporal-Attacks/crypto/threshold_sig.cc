@@ -157,7 +157,7 @@ void vehicle_sign_report(const uint8_t *msg_payload, size_t payload_len,
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * VERIFY_THRESHOLD_SIG  (Section 5.3, Eq. 3.26)
+ * VERIFY_THRESHOLD_SIG  (Section 5.3, Eq. 3.28)
  *
  * Implements the full biconditional:
  *   Verify(σ_agg, PK_agg) = 1  ⟺  |{i : Verify(σ_i, msg_i, PK_Vi) = 1}| ≥ t
@@ -216,7 +216,7 @@ ThresholdSigResult verify_threshold_sig(const AggregateReport *report) {
      *   not duplicate that check.  See CLAUDE.md §8, signature index 6.          */
     if (threshold_t < THRESHOLD_T_FLOOR) threshold_t = THRESHOLD_T_FLOOR;
 
-    /* ── Step 1: Aggregate signature consistency check (Eq. 3.26 left side) ─
+    /* ── Step 1: Aggregate signature consistency check (Eq. 3.28 left side) ─
      * Recompute σ_agg using the same algorithm as rsu_aggregate_reports().
      * A mismatch means the RSU tampered with individual sigs post-aggregation.
      *
@@ -278,7 +278,7 @@ ThresholdSigResult verify_threshold_sig(const AggregateReport *report) {
     if (agg_diff != 0)
         return THRESHOLD_SIG_FAIL;  /* aggregate sig inconsistent — RSU tampered */
 
-    /* ── Step 2: Individual sig count ≥ t (Eq. 3.26 right side) ────────────
+    /* ── Step 2: Individual sig count ≥ t (Eq. 3.28 right side) ────────────
      * Each Verify(σ_i, msg_i, PK_Vi) is an independent Dilithium5 check.
      * Issue-1 fix: add three-gate cert check before counting a sig as valid —
      *   Gate A: CA cert must verify for this vehicle_id (CRL + CA sig check).
@@ -462,7 +462,7 @@ int main(int argc, char *argv[]) {
     const char *input  = (argc > 1) ? argv[1] : "pem_event_log.csv";
     const char *output = (argc > 2) ? argv[2] : "threshold_sig_result.csv";
 
-    printf("=== threshold_sig.cc — Dilithium5 Threshold Aggregate Sig (Eq. 3.26) ===\n");
+    printf("=== threshold_sig.cc — Dilithium5 Threshold Aggregate Sig (Eq. 3.28) ===\n");
 #ifndef HAVE_LIBOQS
     fprintf(stderr,
         "\n"
@@ -474,7 +474,7 @@ int main(int argc, char *argv[]) {
         "║    • dilithium5_sign     →  random 32-byte signature         ║\n"
         "║    • dilithium5_verify   →  always returns 0 (accepts all)  ║\n"
         "║                                                              ║\n"
-        "║  The Dilithium5 t-of-n threshold scheme (Eq. 3.26) in the   ║\n"
+        "║  The Dilithium5 t-of-n threshold scheme (Eq. 3.28) in the   ║\n"
         "║  paper is NOT executing. No Dilithium5 math runs.           ║\n"
         "║                                                              ║\n"
         "║  To enable real Dilithium5:                                 ║\n"

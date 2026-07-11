@@ -6,10 +6,10 @@
  * out-of-range reporters are detected even if they hold valid Dilithium5 keys.
  *
  * Equations implemented:
- *   Eq. 3.27  m'_{Vk} = e_ij || pos_{Vk} || RSSI_{Vk←Vi} || τ_s || nonce
- *   Eq. 3.28  σ_{Vk}  = Sign(SK_{Vk}, m'_{Vk})
- *   Eq. 3.29  Accept_{Vk}(e_ij):  (i) crypto  (ii) spatial  (iii) signal
- *   Eq. 3.30  Accept(e_ij): |{Vk : Accept_{Vk}=1}| ≥ t, t >= floor(n/2)+1
+ *   Eq. 3.29  m'_{Vk} = e_ij || pos_{Vk} || RSSI_{Vk←Vi} || τ_s || nonce
+ *   Eq. 3.30  σ_{Vk}  = Sign(SK_{Vk}, m'_{Vk})
+ *   Eq. 3.31  Accept_{Vk}(e_ij):  (i) crypto  (ii) spatial  (iii) signal
+ *   Eq. 3.32  Accept(e_ij): |{Vk : Accept_{Vk}=1}| ≥ t, t >= floor(n/2)+1
  *
  * Key function signatures (exactly as per Section 6):
  *   void create_location_bound_report(...)
@@ -157,7 +157,7 @@ void create_location_bound_report(const uint8_t       link_id[8],
                                    LocationBoundReport *out_report) {
     memset(out_report, 0, sizeof(*out_report));
 
-    /* Build m'_{Vk}  (Eq. 3.27) */
+    /* Build m'_{Vk}  (Eq. 3.29) */
     LocationBindingPayload *p = &out_report->payload;
     memcpy(p->link_id,    link_id,     8);
     p->reporter_lat        = reporter_lat;
@@ -168,7 +168,7 @@ void create_location_bound_report(const uint8_t       link_id[8],
     memcpy(p->reporter_id, reporter_id, 16);
     fill_random(p->nonce, NONCE_LEN);   /* fresh nonce per report */
 
-    /* σ_{Vk} = Sign(SK_{Vk}, m'_{Vk})  (Eq. 3.28)
+    /* σ_{Vk} = Sign(SK_{Vk}, m'_{Vk})  (Eq. 3.30)
      * Fix-7: domain-separated to prevent cross-protocol replay with threshold
      * and KEM-auth sigs that share the same Dilithium5 keypair.               */
     size_t sig_len;
@@ -183,7 +183,7 @@ void create_location_bound_report(const uint8_t       link_id[8],
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * verify_single_witness()  (Section 6.4, Eq. 3.29)
+ * verify_single_witness()  (Section 6.4, Eq. 3.31)
  *
  * Accept_{Vk}(e_ij) = 1 iff all hold, evaluated in this order:
  *   Gate A: CA cert valid, CRL clear                  (identity trust root)
@@ -302,7 +302,7 @@ bool verify_single_witness(const LocationBoundReport *report,
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * verify_quorum()  (Section 6.5, Eq. 3.30)
+ * verify_quorum()  (Section 6.5, Eq. 3.32)
  *
  * Accept(e_ij) = 1  iff  |{Vk : Accept_Vk(e_ij) = 1}| ≥ t
  *
@@ -327,7 +327,7 @@ bool verify_quorum(const LocationBoundReport *reports,
     if (n_reports > MAX_REPORTS_PER_RSU) return false;
 
     /* Enforce strict majority: t must be at least ⌊n/2⌋+1 regardless of what
-     * the caller supplied.  This is the anti-collusion requirement from Eq. 3.30. */
+     * the caller supplied.  This is the anti-collusion requirement from Eq. 3.32. */
     uint32_t min_t = (n_reports / 2) + 1;
     if (threshold_t < min_t) threshold_t = min_t;
 
@@ -391,7 +391,7 @@ int main(int argc, char *argv[]) {
     const char *input  = (argc > 1) ? argv[1] : "pem_event_log.csv";
     const char *output = (argc > 2) ? argv[2] : "location_binding_result.csv";
 
-    printf("=== location_binding.cc — Location-Binding Signatures (Eqs. 3.27-3.30) ===\n");
+    printf("=== location_binding.cc — Location-Binding Signatures (Eqs. 3.29-3.32) ===\n");
     printf("[LBS] R_COMM=%.0f m   RSSI_min=%.1f dBm\n", R_COMM_METERS, RSSI_MIN_DBM);
 
     /* Haversine self-test: same point → 0 m */

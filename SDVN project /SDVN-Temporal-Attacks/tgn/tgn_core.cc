@@ -8,11 +8,11 @@
 //   Eq. 3.16  — Timestamp freshness check           (Algorithm 3, Step 2)
 //   Eq. 3.17  — Nonce novelty check                 (Algorithm 3, Step 3)
 //   Eq. 3.20  — Node feature vector x_v definition
-//   Eq. 3.21  — Edge freshness weight A_uv(t)
-//   Eq. 3.22  — GRU temporal memory update m_v(t)
-//   Eq. 3.23  — Message-passing aggregation h_v^(l)
-//   Eq. 3.24  — Anomaly score ŷ_v = σ(w^T h_v^(L))
-//   Eq. 3.25  — Variant classification α̂_v = softmax(W_cls·h_v^(L))
+//   Eq. 3.22  — Edge freshness weight A_uv(t)
+//   Eq. 3.23  — GRU temporal memory update m_v(t)
+//   Eq. 3.24  — Message-passing aggregation h_v^(l)
+//   Eq. 3.25  — Anomaly score ŷ_v = σ(w^T h_v^(L))
+//   Eq. 3.26  — Variant classification α̂_v = softmax(W_cls·h_v^(L))
 //   Eq. 3.32  — Beacon count during link lifetime: N_beacon = ⌊L_link/T_b⌋ (§3.4.7)
 //              W_max (§3.4.3 sliding window) is set equal to N_beacon as a principled
 //              upper bound, but they are distinct concepts: N_beacon counts beacons
@@ -30,7 +30,7 @@
 //   TGN_ApplyCryptoFilter() below used to be a second, independent
 //   re-derivation of those three checks from raw PemEvent fields — notably a
 //   proxy MAC check (physical_id==claimed_id) rather than real HMAC, and no
-//   equivalent of the primary gate's Eq. 3.26-3.30 threshold-sig/location-
+//   equivalent of the primary gate's Eq. 3.28-3.32 threshold-sig/location-
 //   binding checks — so it could in principle disagree with the primary
 //   gate's real verdict. It is now a thin passthrough: every element of
 //   pem_all_events already survived the real TetaGuardCryptoFilter gate
@@ -89,9 +89,9 @@
 static const double TGN_BEACON_INTERVAL = 0.1;   // T_b (s) — IEEE 802.11p period
 
 static const int    TGN_DIM             = 32;     // embedding dimension d
-static const int    TGN_LAYERS          = 2;      // message-passing rounds L (Eq 3.23)
+static const int    TGN_LAYERS          = 2;      // message-passing rounds L (Eq 3.24)
 
-// γ — temporal decay constant (Eq. 3.21, §3.4.3).
+// γ — temporal decay constant (Eq. 3.22, §3.4.3).
 // IMPORTANT: γ is a VALIDATION-TUNED HYPERPARAMETER, not a deterministic formula.
 // The thesis (§3.4.3) states: "γ > 0 is a decay rate hyperparameter tuned on
 // validation data; it is chosen so that A_uv(t) ≈ 0.5 when the report age
@@ -107,7 +107,7 @@ static const int    TGN_LAYERS          = 2;      // message-passing rounds L (E
 // Do NOT treat this value as a thesis-specified constant.
 static double TGN_GAMMA = 310.0;
 
-// θ_FS — TGN detection threshold (Eq 3.24).
+// θ_FS — TGN detection threshold (Eq 3.25).
 // UNCALIBRATED PLACEHOLDER: 0.40 is a mid-range starting point.
 // The thesis specifies that θ_FS should be selected by maximising MCC on
 // held-out validation data.  Run tgn_train.py and use its reported θ*.
@@ -164,7 +164,7 @@ static int         g_tgn_layers_cmd  = TGN_LAYERS;
 // runs the secondary crypto filter and writes output files.
 static bool                    g_tgn_online_mode = false;
 static std::map<uint32_t, int> g_tgn_online_round_count; // per trusted_node_id
-// A3 (--static_gcn=1): freeze GRU memory (φ=0, no Eq. 3.22 gate update).
+// A3 (--static_gcn=1): freeze GRU memory (φ=0, no Eq. 3.23 gate update).
 // Message-passing still runs so spatial aggregation is preserved; only the
 // temporal recurrence that gives TGN its "T" is removed.
 // Set by routing.cc main() after cmd-line parsing via TGN_SetStaticGCN().
@@ -302,8 +302,8 @@ struct NodeFeatures {
 // Per-node GRU state.
 // Zero-initialised on first contact per Algorithm 2 (FS-DETECT).
 struct NodeState {
-    Vec    memory;           // m_v(t) — GRU hidden state (Eq 3.22)
-    Vec    embedding;        // h_v^(L) — embedding after L message-passing rounds (Eq 3.23)
+    Vec    memory;           // m_v(t) — GRU hidden state (Eq 3.23)
+    Vec    embedding;        // h_v^(L) — embedding after L message-passing rounds (Eq 3.24)
     double last_event_time;
 };
 
@@ -313,17 +313,17 @@ using AlertSet = std::vector<TGNAlert>;
 // Learnable weight matrices
 struct TGNWeights {
     int gru_input_size = 0, gru_hidden_size = 0;
-    // GRU gates (Eq 3.22): gru_input_size = dim + 6  (dim memory + 5 features + φ)
+    // GRU gates (Eq 3.23): gru_input_size = dim + 6  (dim memory + 5 features + φ)
     Mat Wz, Wr, Wn;   // input projections (dim × gru_input_size)
     Mat Uz, Ur, Un;   // recurrent projections (dim × dim)
     Vec bz, br, bn;   // biases (dim)
-    // Message-passing transforms (Eq 3.23): one per layer
+    // Message-passing transforms (Eq 3.24): one per layer
     std::vector<Mat> W_layers;   // L × (dim × dim)
     std::vector<Vec> b_layers;   // L × dim
-    // Detection head (Eq 3.24)
+    // Detection head (Eq 3.25)
     Vec    w_score;      // (dim) — anomaly score projection
-    double b_score = 0.0; // scalar bias for anomaly score (Eq 3.24)
-    // Classification head (Eq 3.25): α̂_v = softmax(W_cls · h_v^(L) + b_cls)
+    double b_score = 0.0; // scalar bias for anomaly score (Eq 3.25)
+    // Classification head (Eq 3.26): α̂_v = softmax(W_cls · h_v^(L) + b_cls)
     Mat Wcls;   // (3 × dim)  — TTW / BSHH / ME variant logits
     Vec b_cls;  // (3)
     bool loaded = false;
@@ -396,7 +396,7 @@ public:
 
     // Main entry — processes one event, returns anomaly score ŷ_v ∈ (0,1).
     // When ŷ_v > θ_FS and weights are loaded, also computes the variant
-    // classification α̂_v (Eq 3.25) and stores it in alert_variants_.
+    // classification α̂_v (Eq 3.26) and stores it in alert_variants_.
     double ProcessEvent(const NodeFeatures& feat, uint32_t link_src,
                         uint32_t link_dst, double recv_time)
     {
@@ -412,10 +412,10 @@ public:
             states_[feat.node_id] = ns;
         }
 
-        // Step 1 — GRU temporal memory update (Eq 3.22)
+        // Step 1 — GRU temporal memory update (Eq 3.23)
         UpdateNodeMemory(feat, recv_time);
 
-        // Step 2 — Build per-event adjacency with edge-freshness weights (Eq 3.21)
+        // Step 2 — Build per-event adjacency with edge-freshness weights (Eq 3.22)
         // A_uv(t) = exp(-(τ_r - τ_s) / (γ·T_b)) — Issue 8.6: T_b plateau removed
         std::unordered_map<uint32_t, std::unordered_map<uint32_t, double>> adj;
         double age_uv     = (std::max)(0.0, recv_time - feat.sender_ts_raw);
@@ -452,7 +452,7 @@ public:
             }
         }
 
-        // Step 3 — L rounds of message passing (Eq 3.23)
+        // Step 3 — L rounds of message passing (Eq 3.24)
         std::set<uint32_t> active = {feat.node_id, link_src, link_dst};
         std::unordered_map<uint32_t, Vec> H;
         for (uint32_t v : active) H[v] = states_[v].memory;
@@ -460,12 +460,12 @@ public:
             H = MessagePassingRound(H, adj, active, l);
         for (uint32_t v : active) states_[v].embedding = H[v];
 
-        // Step 4 — Anomaly score ŷ_v (Eq 3.24)
+        // Step 4 — Anomaly score ŷ_v (Eq 3.25)
         // Issues 8.8/8.9 flowchart note: The flowchart wrote w_score = sigmoid(w_cls·h+b_cls)
         // and treated a single w_cls as both the binary scorer AND the variant classifier.
         // The thesis (Eqs 3.24 and 3.25) uses TWO separate computations:
-        //   Eq 3.24: ŷ_v = σ(w_score · h_v^(L) + b_score)  ← scalar binary score
-        //   Eq 3.25: α̂_v = softmax(W_cls · h_v^(L))        ← 3-class variant distribution
+        //   Eq 3.25: ŷ_v = σ(w_score · h_v^(L) + b_score)  ← scalar binary score
+        //   Eq 3.26: α̂_v = softmax(W_cls · h_v^(L))        ← 3-class variant distribution
         // This implementation keeps them separate: Step 4 (score) and Step 5 (class).
         // Trained mode:   ŷ_v = σ(w_score · h_v^(L) + b_score)
         // Heuristic mode (no weights loaded — current operating mode):
@@ -481,7 +481,7 @@ public:
         else
             score = HeuristicScore(feat, edge_fresh);
 
-        // Step 5 — Variant classification α̂_v = softmax(W_cls·h_v^(L)) (Eq 3.25)
+        // Step 5 — Variant classification α̂_v = softmax(W_cls·h_v^(L)) (Eq 3.26)
         // Runs only when an alert fires AND weights are loaded.
         // Produces α ∈ {TTW, BSHH, ME} stored in alert_variants_ for this node.
         // In heuristic mode (weights not loaded): no model prediction is made here.
@@ -534,9 +534,9 @@ private:
         weights_.loaded  = false;
     }
 
-    // GRU memory update (Eq 3.22).
+    // GRU memory update (Eq 3.23).
     // gru_in = [m_v(t⁻) ‖ τ_dev, c_v^W, Δs_v, ρ_v, id_mis, φ]  (38 elements)
-    // φ = log(1 + Δt/T_b)  — temporal position encoding (Eq 3.22, §3.4.3)
+    // φ = log(1 + Δt/T_b)  — temporal position encoding (Eq 3.23, §3.4.3)
     // Issue 8.4 flowchart note: The flowchart wrote "GRU update: h_new = GRU(h_old, H_agg)"
     //   with no time encoding shown. φ IS computed here and concatenated into gru_in.
     //
@@ -557,7 +557,7 @@ private:
         // and set phi=0 so no time-elapsed encoding enters the feature vector.
         // The node's memory vector stays at its current value (zero for new nodes).
         // Message-passing in ProcessEvent still runs so spatial aggregation works;
-        // only the recurrence that gives TGN its "T" (Eq. 3.22) is removed.
+        // only the recurrence that gives TGN its "T" (Eq. 3.23) is removed.
         if (g_tgn_static_gcn) {
             ns.last_event_time = recv_time;  // still advance clock for edge freshness
             return;
@@ -584,7 +584,7 @@ private:
         ns.last_event_time = recv_time;
     }
 
-    // Message-passing aggregation round (Eq 3.23).
+    // Message-passing aggregation round (Eq 3.24).
     // For each v ∈ active:
     //   if N(v) ∩ active is empty: H^(l+1)[v] = H^(l)[v]  (passthrough, no transform)
     //   else: agg = mean{ A_uv × H^(l)[u] : u ∈ N(v) ∩ active }
@@ -593,7 +593,7 @@ private:
     // Full formula: h_v^(l) = ReLU(W_l · (Σ_u A_uv·h_u^(l-1) / |N(v)|) + b_l)
     // Issue 8.5 flowchart note: The flowchart omits freshness weighting A_uv ⊙ h_u.
     //   It IS implemented here: scale(Auv, hu) applies A_uv element-wise to h_u,
-    //   exactly matching Eq. 3.23's A_uv(t) ⊙ h_u^(l−1) term.
+    //   exactly matching Eq. 3.24's A_uv(t) ⊙ h_u^(l−1) term.
     // NOTE (paper departure): the paper describes N(v,t) as all topology neighbours of v.
     // This implementation uses a fixed 3-node INDUCED subgraph {reporting_node,
     // link_src, link_dst} (§3.4.3 "Neighbourhood Implementation") — a deliberate
@@ -782,7 +782,7 @@ static bool                         g_tgn_E_was_ever_nonempty = false;
 //  Finding-14 fix: this used to be a second, independent re-application of
 //  the three Algorithm 3 (LW-MITIGATE) checks, re-derived from raw PemEvent
 //  fields with a weaker MAC proxy (physical_id==claimed_id instead of real
-//  HMAC-SHA256) and no equivalent of the primary gate's Eq. 3.26-3.30
+//  HMAC-SHA256) and no equivalent of the primary gate's Eq. 3.28-3.32
 //  threshold-sig/location-binding checks — so it could in principle disagree
 //  with the real gate. The thesis's HMAC-Timestamp-Nonce section describes a
 //  single filter pass upstream of the signature detector and TGN, not two
@@ -792,7 +792,7 @@ static bool                         g_tgn_E_was_ever_nonempty = false;
 //  routing.cc::PemCryptoPreFilter() → TetaGuardCryptoFilter(), which performs
 //  the real Eq. 3.15 HMAC-SHA256 check (not a proxy), the real Eq. 3.16
 //  freshness check, and the real Eq. 3.17 nonce-novelty check, plus the
-//  Eq. 3.26-3.30 threshold-signature/location-binding checks this secondary
+//  Eq. 3.28-3.32 threshold-signature/location-binding checks this secondary
 //  pass never had. Every element already in pem_all_events survived that
 //  gate before being appended there — so there is nothing left to re-check,
 //  and TGN_ApplyCryptoFilter is now a thin passthrough that returns its
@@ -825,11 +825,11 @@ static std::vector<PemEvent> TGN_ApplyCryptoFilter(const std::vector<PemEvent>& 
 //  SECTION 7  Feature extraction (Eq 3.20 — RSU/no-RSU aware)
 // =============================================================================
 
-// Edge-freshness weight A_uv(t) (Eq 3.21).
-// Thesis Eq. 3.21: A_uv(t) = exp(-(τ_r^(t) - τ_s^(uv)) / (γ·T_b))
+// Edge-freshness weight A_uv(t) (Eq 3.22).
+// Thesis Eq. 3.22: A_uv(t) = exp(-(τ_r^(t) - τ_s^(uv)) / (γ·T_b))
 //
 // Issue 8.6 fix: Previous implementation had an extra T_b plateau
-//   (max(0, age - T_b)) which is NOT in Eq. 3.21 — removed.
+//   (max(0, age - T_b)) which is NOT in Eq. 3.22 — removed.
 // Issue 8.6 flowchart note: The flowchart omits A_uv entirely; it is
 //   present here and in ProcessEvent's adj construction, consistent with §3.4.3.
 // Guard: max(0, age) prevents A_uv > 1.0 under clock-skew.
@@ -1163,8 +1163,11 @@ TGN_CheckControllerDivergence(const std::vector<PemEvent>& E_trusted)
     const double r_comm         = (double)TTW_COMM_RANGE;
     const double delta_raw      = (1.0 + tau_prop / TGN_BEACON_INTERVAL)
                                   * lambda_veh_m * 2.0 * r_comm;
-    const uint32_t delta_thresh = (uint32_t)std::ceil(delta_raw) + 1u;
-    // With recommended parameters: ceil(1.1 · 12) + 1 = 14 + 1 = 15.
+    // Floor, not ceil — Table 4.1's own worked example states delta_thresh=14
+    // for these exact parameters, which only matches floor(13.2)+1=14
+    // (ceil(13.2)+1=15 does not).
+    const uint32_t delta_thresh = (uint32_t)std::floor(delta_raw) + 1u;
+    // With recommended parameters: floor(1.1 · 12) + 1 = floor(13.2) + 1 = 14.
 
     // Staleness threshold for per-link diagnostic (§3.4.1, Eq. 3.2/3.3):
     // controller claim timestamp must not exceed trusted evidence by > 2·T_b.
@@ -1478,7 +1481,7 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
                 << "  Physical: V" << e.physical_sender_id
                 << "  Claimed: V" << e.claimed_sender_id
                 << "  Link: V" << e.link_src_id << "<->V" << e.link_dst_id << "\n\n"
-                << "  ⑤ Eq 3.24 — TGN Score ŷ_v = " << tgn_score
+                << "  ⑤ Eq 3.25 — TGN Score ŷ_v = " << tgn_score
                 << "  θ_FS=" << g_tgn->GetThreshold()
                 << "  alert=" << (tgn_alert ? "RAISED" : "no");
             if (tgn_alert && !bootstrap_done)
@@ -1660,7 +1663,7 @@ static void TGN_InitOutputFiles()
         << "  Eq refs : 3.15(MAC) 3.16(fresh) 3.17(nonce) 3.20(feat)\n"
         << "            3.21(Auv) 3.22(GRU) 3.23(MP) 3.24(score) 3.25(class)\n"
         << "  θ_FS    : " << TGN_THETA_FS << "  [UNCALIBRATED — select by MCC max on val set]\n"
-        << "  γ       : " << TGN_GAMMA    << "  [init: L_link/(2·T_b·ln2); validation-tuned hyperparameter (§3.4.3, Eq. 3.21)]\n"
+        << "  γ       : " << TGN_GAMMA    << "  [init: L_link/(2·T_b·ln2); validation-tuned hyperparameter (§3.4.3, Eq. 3.22)]\n"
         << "  W_max   : " << TGN_WMAX     << "  [§3.4.3 sliding window = N_beacon = floor(L_link/T_b) from Eq. 3.32]\n"
         << "  RSU mode: " << (N_RSUs > 0
             ? "WITH RSU — reporter_count=claimed_sender, identity_mismatch suppressed"
@@ -1746,7 +1749,7 @@ static void TGN_WriteSummary()
 
     std::ostringstream out;
     out << std::fixed << std::setprecision(3)
-        << "\n========== TGN DETECTION SUMMARY (Eq 3.24/3.25) ==========\n"
+        << "\n========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========\n"
         << "  Scenario  : " << attack_scenario << " — " << TGN_AttackName(attack_scenario) << "\n"
         << "  RSU mode  : " << (N_RSUs > 0 ? "WITH RSU" : "NO RSU") << "\n"
         << "  TP/TN/FP/FN : " << g_tgn_tp<<" / "<<g_tgn_tn<<" / "<<g_tgn_fp<<" / "<<g_tgn_fn<<"\n"
@@ -1760,7 +1763,7 @@ static void TGN_WriteSummary()
         << "  Tdet        : " << tdet  << " ms\n"
         << "  θ_FS        : " << g_tgn_params.theta_fs << "  [fixed placeholder]\n"
         << "  θ_MCC_opt   : " << theta_opt << "  [MCC-maximising on this run's scores — §3.4.3 criterion]\n"
-        << "  γ_init      : " << g_tgn_params.gamma << "  [Eq. 3.21 init; validation-tuned hyperparameter]\n"
+        << "  γ_init      : " << g_tgn_params.gamma << "  [Eq. 3.22 init; validation-tuned hyperparameter]\n"
         << "  W_max       : " << g_tgn_params.wmax  << "  [§3.4.3 window = N_beacon (Eq. 3.32)]\n"
         << "  Events      : " << (g_tgn_tp+g_tgn_tn+g_tgn_fp+g_tgn_fn) << "\n"
         << "  Stage-0 blocked (attacks): " << g_tgn_stage0_blocked_attacks << "\n"
@@ -1891,7 +1894,7 @@ static void TGN_WriteCtrlTopoJson()
 }
 
 // Write AlertObject array (Eq 3.36) for TemporalEchoMitigator::SubmitAlert.
-// alpha is sourced from Eq 3.25 classification (stored in alert_variants_ via
+// alpha is sourced from Eq 3.26 classification (stored in alert_variants_ via
 // GetAlertVariant) when weights are loaded; falls back to scenario heuristic.
 static void TGN_WriteAlertsJson()
 {
@@ -1911,7 +1914,7 @@ static void TGN_WriteAlertsJson()
 
         // Variant alpha — two distinct sources, flagged separately.
         //
-        // Source A (weights loaded): alpha comes from Eq 3.25
+        // Source A (weights loaded): alpha comes from Eq 3.26
         //   softmax(W_cls · h_v^(L)) — a real model prediction.
         //   Values: "TTW", "BSHH", "ME".  alpha_source = "eq_3.25".
         //
@@ -1934,7 +1937,7 @@ static void TGN_WriteAlertsJson()
         bool alpha_from_model = false;
         std::string alpha = g_tgn ? g_tgn->GetAlertVariant(e.claimed_sender_id) : "";
         if (!alpha.empty()) {
-            alpha_from_model = true;  // Eq 3.25 prediction
+            alpha_from_model = true;  // Eq 3.26 prediction
         } else {
             // Scenario-ID fallback — clearly labelled as inferred, not predicted
             if      (attack_scenario >= 1  && attack_scenario <= 4)  alpha = "TTW_family";
@@ -2060,7 +2063,7 @@ static void TGN_SetStaticGCN(bool enable)
     g_tgn_static_gcn = enable;
     if (enable)
         std::cout << "[TGN] A3 static-GCN mode: GRU temporal memory frozen"
-                     " (phi=0, Eq. 3.22 disabled)\n";
+                     " (phi=0, Eq. 3.23 disabled)\n";
 }
 
 static void TGN_Init()
@@ -2331,7 +2334,7 @@ static void TGN_RunPipeline()
     }
 
     // Batch mode (TGN_Init was NOT called before simulation).
-    // Initialise γ (§3.4.3, Eq. 3.21) and W_max (§3.4.3) from L_link (Eq. 3.31, §3.4.7).
+    // Initialise γ (§3.4.3, Eq. 3.22) and W_max (§3.4.3) from L_link (Eq. 3.31, §3.4.7).
     // Always recomputed so these are consistent with the --tgn_l_link argument.
     //
     // γ — VALIDATION-TUNED HYPERPARAMETER (thesis §3.4.3):
@@ -2346,7 +2349,7 @@ static void TGN_RunPipeline()
     TGN_GAMMA = g_tgn_l_link_cmd / (2.0 * TGN_BEACON_INTERVAL * std::log(2.0));
     TGN_WMAX  = (int)(g_tgn_l_link_cmd / TGN_BEACON_INTERVAL);  // N_beacon (Eq. 3.32) used as W_max
     std::cout << "[TGN] L_link=" << g_tgn_l_link_cmd << "s (Eq. 3.31)"
-              << "  γ_init=" << TGN_GAMMA << " (Eq. 3.21, validation-tuned)"
+              << "  γ_init=" << TGN_GAMMA << " (Eq. 3.22, validation-tuned)"
               << "  W_max=" << TGN_WMAX << " (=N_beacon, §3.4.3)\n";
 
     g_tgn_params.dim      = g_tgn_dim_cmd;
@@ -2365,7 +2368,7 @@ static void TGN_RunPipeline()
             << "\n╔══════════════════════════════════════════════════════╗\n"
             << "║  TGN HEURISTIC MODE — no tgn_weights.bin provided    ║\n"
             << "║  GRU + message passing runs but with random weights.  ║\n"
-            << "║  Eq 3.25 classification disabled (no trained head).   ║\n"
+            << "║  Eq 3.26 classification disabled (no trained head).   ║\n"
             << "║  To train:                                             ║\n"
             << "║    python3 tgn/tgn_train.py tgn_events.csv            ║\n"
             << "║    then rerun with --tgn_weights=tgn_weights.bin      ║\n"
@@ -2379,7 +2382,7 @@ static void TGN_RunPipeline()
               << pem_all_events.size() << " events...\n";
     std::vector<PemEvent> filtered = TGN_ApplyCryptoFilter(pem_all_events);
 
-    // ② Algorithm 2 (FS-DETECT) — GRU + message passing + anomaly score (Eqs 3.22-3.25)
+    // ② Algorithm 2 (FS-DETECT) — GRU + message passing + anomaly score (Eqs 3.23-3.26)
     std::cout << "[TGN] Processing " << filtered.size() << " events  ("
               << (N_RSUs > 0 ? "RSU-path mode" : "direct-vehicle mode") << ")...\n";
     auto saved = pem_all_events;
