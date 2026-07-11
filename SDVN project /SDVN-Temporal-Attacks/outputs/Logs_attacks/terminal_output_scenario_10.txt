@@ -2,6 +2,7 @@ Solution at controller cleared
 [TEST-NETWORK] Using synthetic 20-vehicle/10-pair test trace (--test_network=1) instead of the real SUMO trace.
 [SUMO] Trace time offset: 0s -> waypoints shifted to NS-3 t=0
 [SUMO] Loaded 20 positions, scheduled 60 exact position+velocity events
+[TEST-NETWORK-DIAG] Overrode RSU0/RSU1 position near V9/V10 for fp=4 diagnosis.
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/10_ME_S2_Malicious_RSU.xml
 
 ========================================
@@ -31,34 +32,65 @@ SCENARIO 10 - ME-S2 ATTACK CONFIGURED
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 19 handshakes timed: avg=34.4088 ms, max=36.6673 ms, over_budget=19/19 (budget=10 ms)
+[KEM][10ms budget] 19 handshakes timed: avg=35.445 ms, max=41.6887 ms, over_budget=19/19 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[KEM][SimLatency][t=0.0338225] Vehicle 19 session key simulated-ready (real handshake was 33.8225 ms)
-[KEM][SimLatency][t=0.0338825] Vehicle 18 session key simulated-ready (real handshake was 33.8825 ms)
-[KEM][SimLatency][t=0.034052] Vehicle 8 session key simulated-ready (real handshake was 34.052 ms)
-[KEM][SimLatency][t=0.0340913] Vehicle 15 session key simulated-ready (real handshake was 34.0913 ms)
-[KEM][SimLatency][t=0.034116] Vehicle 16 session key simulated-ready (real handshake was 34.116 ms)
-[KEM][SimLatency][t=0.0341251] Vehicle 17 session key simulated-ready (real handshake was 34.1251 ms)
-[KEM][SimLatency][t=0.0341437] Vehicle 9 session key simulated-ready (real handshake was 34.1437 ms)
-[KEM][SimLatency][t=0.0341584] Vehicle 14 session key simulated-ready (real handshake was 34.1584 ms)
-[KEM][SimLatency][t=0.0342303] Vehicle 3 session key simulated-ready (real handshake was 34.2303 ms)
-[KEM][SimLatency][t=0.0342621] Vehicle 11 session key simulated-ready (real handshake was 34.2621 ms)
-[KEM][SimLatency][t=0.0343087] Vehicle 5 session key simulated-ready (real handshake was 34.3087 ms)
-[KEM][SimLatency][t=0.0344157] Vehicle 7 session key simulated-ready (real handshake was 34.4157 ms)
-[KEM][SimLatency][t=0.0344184] Vehicle 6 session key simulated-ready (real handshake was 34.4184 ms)
-[KEM][SimLatency][t=0.0344378] Vehicle 2 session key simulated-ready (real handshake was 34.4378 ms)
-[KEM][SimLatency][t=0.0344679] Vehicle 10 session key simulated-ready (real handshake was 34.4679 ms)
-[KEM][SimLatency][t=0.0345071] Vehicle 13 session key simulated-ready (real handshake was 34.5071 ms)
-[KEM][SimLatency][t=0.0347105] Vehicle 12 session key simulated-ready (real handshake was 34.7105 ms)
-[KEM][SimLatency][t=0.0349502] Vehicle 1 session key simulated-ready (real handshake was 34.9502 ms)
-[KEM][SimLatency][t=0.0366673] Vehicle 4 session key simulated-ready (real handshake was 36.6673 ms)
+[KEM][SimLatency][t=0.034392] Vehicle 18 session key simulated-ready (real handshake was 34.392 ms)
+[KEM][SimLatency][t=0.0344798] Vehicle 4 session key simulated-ready (real handshake was 34.4798 ms)
+[KEM][SimLatency][t=0.0345682] Vehicle 3 session key simulated-ready (real handshake was 34.5682 ms)
+[KEM][SimLatency][t=0.0345817] Vehicle 2 session key simulated-ready (real handshake was 34.5817 ms)
+[KEM][SimLatency][t=0.0345907] Vehicle 5 session key simulated-ready (real handshake was 34.5907 ms)
+[KEM][SimLatency][t=0.0347058] Vehicle 8 session key simulated-ready (real handshake was 34.7058 ms)
+[KEM][SimLatency][t=0.0347575] Vehicle 12 session key simulated-ready (real handshake was 34.7575 ms)
+[KEM][SimLatency][t=0.034808] Vehicle 1 session key simulated-ready (real handshake was 34.808 ms)
+[KEM][SimLatency][t=0.0348968] Vehicle 11 session key simulated-ready (real handshake was 34.8968 ms)
+[KEM][SimLatency][t=0.034908] Vehicle 10 session key simulated-ready (real handshake was 34.908 ms)
+[KEM][SimLatency][t=0.0349334] Vehicle 16 session key simulated-ready (real handshake was 34.9334 ms)
+[KEM][SimLatency][t=0.0349453] Vehicle 13 session key simulated-ready (real handshake was 34.9453 ms)
+[KEM][SimLatency][t=0.0349772] Vehicle 17 session key simulated-ready (real handshake was 34.9772 ms)
+[KEM][SimLatency][t=0.0350011] Vehicle 19 session key simulated-ready (real handshake was 35.0011 ms)
+[KEM][SimLatency][t=0.0350185] Vehicle 15 session key simulated-ready (real handshake was 35.0185 ms)
+[KEM][SimLatency][t=0.0351263] Vehicle 9 session key simulated-ready (real handshake was 35.1263 ms)
+[KEM][SimLatency][t=0.035137] Vehicle 14 session key simulated-ready (real handshake was 35.137 ms)
+[KEM][SimLatency][t=0.0399395] Vehicle 7 session key simulated-ready (real handshake was 39.9395 ms)
+[KEM][SimLatency][t=0.0416887] Vehicle 6 session key simulated-ready (real handshake was 41.6887 ms)
 [Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=6620903110128321795 (interval=3s)
 [Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=6620903110128321795 (interval=3s)
 [Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=6620903110128321795 (interval=3s)
-[ME-S2][t=10.000]  STEP①②③  V9<->V10 HELLO; vehicles report to RSU_25; RSU aggregates
-[ME-S2][t=10.001]  STEP①②③  V9<->V10 HELLO; vehicles report to RSU_26; RSU aggregates
-Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.001s with delay 1ms
-Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.000s with delay 1ms
+[DEBUG-SEND] sender=9 neighbor=25 wdi_null=0
+[DEBUG-SEND] sender=10 neighbor=25 wdi_null=0
+[DEBUG-RX] sender=9 destination_node_id=25 signal=-62.2155
+[DEBUG-RX] sender=9 destination_node_id=27 signal=-62.2155
+[DEBUG-RX] sender=9 destination_node_id=10 signal=-75.3846
+[DEBUG-RX] sender=10 destination_node_id=26 signal=-62.2115
+[DEBUG-RX] sender=10 destination_node_id=27 signal=-62.2196
+[DEBUG-RX] sender=10 destination_node_id=9 signal=-75.3886
+[DEBUG-SEND] sender=9 neighbor=26 wdi_null=0
+[DEBUG-SEND] sender=10 neighbor=26 wdi_null=0
+[DEBUG-RX] sender=9 destination_node_id=25 signal=-62.2041
+[DEBUG-RX] sender=9 destination_node_id=27 signal=-62.227
+[DEBUG-RX] sender=9 destination_node_id=10 signal=-75.396
+[DEBUG-RX] sender=10 destination_node_id=26 signal=-62.1999
+[DEBUG-RX] sender=10 destination_node_id=27 signal=-62.2312
+[DEBUG-RX] sender=10 destination_node_id=9 signal=-75.4002
+[ME-S2][t=10.002]  STEP①②③  V9<->V10 HELLO; vehicles report to RSU_25; RSU aggregates
+[DEBUG-RSSI-MISS] reporter(raw=25,resolved=25) link_src(raw=0,resolved=5) link_dst(raw=1,resolved=6) attack_label=0 map_size=6
+[DEBUG-RSSI-MISS] reporter(raw=25,resolved=25) link_src(raw=1,resolved=6) link_dst(raw=0,resolved=5) attack_label=0 map_size=6
+[DEBUG-SEND] sender=9 neighbor=10 wdi_null=0
+[DEBUG-SEND] sender=10 neighbor=9 wdi_null=0
+[DEBUG-SEND] sender=5 neighbor=6 wdi_null=0
+[DEBUG-SEND] sender=6 neighbor=5 wdi_null=0
+[DEBUG-RX] sender=10 destination_node_id=26 signal=-62.193
+[DEBUG-RX] sender=9 destination_node_id=25 signal=-62.193
+[ME-S2][t=10.003]  STEP①②③  V9<->V10 HELLO; vehicles report to RSU_26; RSU aggregates
+[DEBUG-RSSI-MISS] reporter(raw=26,resolved=26) link_src(raw=0,resolved=5) link_dst(raw=1,resolved=6) attack_label=0 map_size=6
+[DEBUG-SEND] sender=9 neighbor=10 wdi_null=0
+[DEBUG-SEND] sender=10 neighbor=9 wdi_null=0
+[DEBUG-SEND] sender=5 neighbor=6 wdi_null=0
+[DEBUG-SEND] sender=6 neighbor=5 wdi_null=0
+[DEBUG-RX] sender=10 destination_node_id=26 signal=-62.181
+[DEBUG-RX] sender=9 destination_node_id=25 signal=-62.181
+Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.003s with delay 1ms
+Current neighbor size is 0Received packet from 25 of size 12packet timestamp 10.002s with delay 1ms
 [ME-S2][t=10.100]  STEP④  RSU_25 INJECTS echo <V9 sees V10> as-if-by V5 and V6
 [ME-S2][t=10.100]  STEP⑥  Phantom: V9->V5->V10, V9->V6->V10  *** ATTACK COMPLETE ***
 [ME-S2][t=10.100]  FS-MITIGATE gate: PBFT n=10 f=3 q_needed=7 -> PASS  |  VERIFY_QUORUM 0/20 >= t=2 -> FAIL
@@ -90,20 +122,20 @@ Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.
 [CRYPTO] crypto_latency_sumo.csv written    (32 events)
 [CRYPTO] crypto_latency_summary.csv written  (8 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
-[TGN] Online mode — 8 events already processed inline. Running secondary crypto audit...
-[TGN] |E_t^trusted|=8 (Tier 1: all RSU-reported events, tau_k=1)
-[CryptoFilter] 8 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=16  reject=0
+[TGN] Online mode — 7 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=7 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 7 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
 
 ========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
   Scenario  : 10 — ME-S2: Malicious RSU
   RSU mode  : WITH RSU
-  TP/TN/FP/FN : 0 / 8 / 0 / 0
+  TP/TN/FP/FN : 0 / 7 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 8 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 7 / 0 / 0
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 0 / 8 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 0 / 4 / 3 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 0.500
   ACR         : 100.000 %
   Tdet        : -1.000 ms
@@ -111,9 +143,9 @@ Current neighbor size is 0Received packet from 26 of size 12packet timestamp 10.
   θ_MCC_opt   : 0.400  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 288.539  [Eq. 3.22 init; validation-tuned hyperparameter]
   W_max       : 400  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 8
+  Events      : 7
   Stage-0 blocked (attacks): 8
-  |E_t^trusted|  : 8
+  |E_t^trusted|  : 7
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
 
@@ -121,29 +153,29 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 16
-  Avg wall-clock time: 1.152 ms
-  Max wall-clock time: 3.028 ms
+  Avg wall-clock time: 1.113 ms
+  Max wall-clock time: 3.131 ms
   Events exceeding budget: 0 / 16
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 4
-  Avg wall-clock time: 0.008 ms
-  Max wall-clock time: 0.009 ms
-Full pipeline (detect+mitigate combined, when mitigation fired):
-  Triggered events: 4
   Avg wall-clock time: 0.011 ms
   Max wall-clock time: 0.012 ms
+Full pipeline (detect+mitigate combined, when mitigation fired):
+  Triggered events: 4
+  Avg wall-clock time: 0.014 ms
+  Max wall-clock time: 0.015 ms
   Events exceeding 100.000 ms budget: 0 / 4  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
-  Calls: 8
-  Avg wall-clock time: 0.032 ms
-  Max wall-clock time: 0.088 ms
-  Calls exceeding budget: 0 / 8
+  Calls: 12
+  Avg wall-clock time: 0.066 ms
+  Max wall-clock time: 0.155 ms
+  Calls exceeding budget: 0 / 12
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 6
-  Avg wall-clock time: 0.009 ms
-  Max wall-clock time: 0.012 ms
+  Avg wall-clock time: 0.012 ms
+  Max wall-clock time: 0.021 ms
   Calls exceeding budget: 0 / 6
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
@@ -160,12 +192,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 4
-  Avg wall-clock time: 0.005 ms
-  Max wall-clock time: 0.016 ms
+  Avg wall-clock time: 0.011 ms
+  Max wall-clock time: 0.035 ms
   Calls exceeding budget: 0 / 4
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.032) + beacon-crypto(0.000) + rsu-forward(0.009) + detect(1.152) + detection-crypto(0.000) + mitigate(0.008) + lkh-crypto(0.005) = 1.208 ms
+  beacon-send(0.066) + beacon-crypto(0.000) + rsu-forward(0.012) + detect(1.113) + detection-crypto(0.000) + mitigate(0.011) + lkh-crypto(0.011) = 1.213 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -177,10 +209,10 @@ Maximum neighbors observed at once: 7
 
 Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 0.269 ms
-  Max tick wall-clock time: 0.291 ms
+  Avg tick wall-clock time: 0.272 ms
+  Max tick wall-clock time: 0.425 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.269) + beacon-send(0.032) + beacon-crypto(0.000) + rsu-forward(0.009) + detect(1.152) + detection-crypto(0.000) + mitigate(0.008) + lkh-crypto(0.005) = 1.477 ms
+  neighborhood(0.272) + beacon-send(0.066) + beacon-crypto(0.000) + rsu-forward(0.012) + detect(1.113) + detection-crypto(0.000) + mitigate(0.011) + lkh-crypto(0.011) = 1.485 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

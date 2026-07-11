@@ -2437,6 +2437,55 @@ static std::map<uint32_t, double> g_pem_last_beacon_time;
 // of reading their live ground-truth position — closing the oracle without
 // losing detection power (positions barely drift within one beacon interval).
 static std::map<uint32_t, Vector> g_last_self_reported_position;
+// Real PHY-measured RSSI (Eq. 3.31 condition (iii), "signal plausibility"):
+// keyed by (physical sender ns-3 id, receiving ns-3 id) -> (signalNoise.signal
+// dBm, reception sim time). Populated only from Rx()'s genuine MonitorSnifferRx
+// SignalNoiseDbm parameter on real CustomDataTag1 802.11p receptions — never
+// derived from distance. A missing entry means this receiver never physically
+// received a signal from that sender at all (e.g. a fabricated ME witness that
+// never had a real link to the reported endpoint, or a controller-internal
+// replay with no radio transmission), which is itself the correct outcome for
+// a signal-plausibility check that must be independent of the claimed GPS
+// position (see PemGetRealRssi below).
+static std::map<std::pair<uint32_t,uint32_t>, std::pair<float,double> > g_real_rssi_dbm;
+
+// Looks up the most recent genuine PHY reception of senderId's beacon at
+// receiverId. Returns false (no output written) if no real reception has ever
+// been recorded for this pair — callers must treat that as "signal plausibility
+// cannot be confirmed", not fall back to a distance-derived estimate, per
+// Eq. 3.31's requirement that condition (iii) be a physically independent
+// measurement from condition (ii)'s GPS-attested-position check.
+static bool PemGetRealRssi(uint32_t senderId, uint32_t receiverId, float &outRssiDbm)
+{
+    std::map<std::pair<uint32_t,uint32_t>, std::pair<float,double> >::const_iterator it =
+        g_real_rssi_dbm.find(std::make_pair(senderId, receiverId));
+    if (it == g_real_rssi_dbm.end())
+        return false;
+    outRssiDbm = it->second.first;
+    return true;
+}
+
+// g_real_rssi_dbm is keyed by real ns-3 global node ids (Rx()'s tagd1.GetNodeId()
+// and destination_node_id are both always real global ids, since they come from
+// an actual Ptr<Node>/receiving-Phy's context, never a container index). But
+// several PemEmitEvent call sites (e.g. ME-S2/S4's RSU-relay legitimate
+// discovery) pass a Vehicle_Nodes CONTAINER index for link_src_id/link_dst_id/
+// reporter_id — the same "is this small enough to be a container index"
+// convention this file already uses pervasively elsewhere (e.g. the repeated
+// "v1_ns3 = (v1_id < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(v1_id)->GetId()
+// : v1_id" idiom). Reused here, not invented, so PemGetRealRssi's callers can
+// resolve either convention to the real id the reception map is actually
+// keyed by. Safe because RSU/controller-sentinel global ids are always
+// numerically larger than N_Vehicles in this fleet's node-creation order
+// (Vehicle_Nodes.Create() runs before RSU_Nodes.Create()), so they never
+// collide with a valid vehicle container index.
+extern NodeContainer Vehicle_Nodes;
+static uint32_t PemResolveVehicleGlobalId(uint32_t maybeIndex)
+{
+    if (maybeIndex < Vehicle_Nodes.GetN())
+        return Vehicle_Nodes.Get(maybeIndex)->GetId();
+    return maybeIndex;
+}
 // Tracks which physical_sender_ids have already had LKH revocation issued
 // so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
 static std::set<uint32_t> g_lkh_already_revoked;
@@ -5604,18 +5653,60 @@ PemEvaluateEvent(PemEvent& event)
         // Uses g_rcomm (runtime-overridable via --rcomm; default = TTW_COMM_RANGE = 300m).
         const bool positionOutOfRange = (nearestDistance > g_rcomm);
 
-        // Condition 2: Synthetic RSSI from Cost231-boundary model (Table 4.7).
-        //   RSSI(d) = g_rssi_min + 10·n_cost231·log10(g_rcomm / d)
-        //   At d = g_rcomm: RSSI = g_rssi_min (exactly at the delivery boundary).
-        //   At d < g_rcomm: RSSI > g_rssi_min (stronger, legitimate).
-        //   At d > g_rcomm: RSSI < g_rssi_min (too weak, would not deliver).
-        // Consistent with the same Cost231PropagationLossModel used by the NS-3 PHY.
-        // g_rssi_min is runtime-overridable via --rssi_min (default = -85 dBm, Table 4.7).
-        const double safeDistance = (nearestDistance > 0.001) ? nearestDistance : 0.001;
-        const double syntheticRSSI = g_rssi_min
-            + 10.0 * PEM_RSSI_N_COST231 * std::log10(g_rcomm / safeDistance);
-        event.rssi_reporter_dbm = syntheticRSSI;
-        const bool rssiTooWeak = (syntheticRSSI < g_rssi_min);
+        // Condition 2 (signal plausibility): genuine PHY-measured RSSI from
+        // Rx()'s real MonitorSnifferRx SignalNoiseDbm, NOT derived from the
+        // same distance used for condition 1 above — an attacker who spoofs
+        // condition (ii) (claimed GPS position) gains no advantage on this
+        // check, since it reflects what the receiver's radio actually heard.
+        //
+        // A self-report (reporter IS one of the link's own two endpoints) is
+        // exempt: it is asserting its own directly-observed link, not
+        // witnessing a third party over radio, so there is no "received
+        // signal from someone else" to check — condition (ii)'s distance-to-
+        // self is always 0 for the same reason.
+        const bool is_self_report_me3 =
+            (event.reporter_id == event.link_src_id) ||
+            (event.reporter_id == event.link_dst_id);
+        bool rssiTooWeak;
+        if (is_self_report_me3)
+        {
+            event.rssi_reporter_dbm = g_rssi_min;  // at-boundary sentinel; always passes
+            rssiTooWeak = false;
+        }
+        else
+        {
+            const uint32_t realLinkSrcId  = PemResolveVehicleGlobalId(event.link_src_id);
+            const uint32_t realLinkDstId  = PemResolveVehicleGlobalId(event.link_dst_id);
+            const uint32_t realReporterId = PemResolveVehicleGlobalId(event.reporter_id);
+            float rssiFromSrc = 0.0f, rssiFromDst = 0.0f;
+            const bool haveFromSrc = PemGetRealRssi(realLinkSrcId, realReporterId, rssiFromSrc);
+            const bool haveFromDst = PemGetRealRssi(realLinkDstId, realReporterId, rssiFromDst);
+            if (haveFromSrc || haveFromDst)
+            {
+                const float bestRssi = (haveFromSrc && haveFromDst)
+                    ? (rssiFromSrc > rssiFromDst ? rssiFromSrc : rssiFromDst)
+                    : (haveFromSrc ? rssiFromSrc : rssiFromDst);
+                event.rssi_reporter_dbm = bestRssi;
+                rssiTooWeak = (bestRssi < g_rssi_min);
+            }
+            else
+            {
+                // This reporter has never physically received a real 802.11p
+                // beacon from either link endpoint — a signal-plausibility
+                // check cannot be satisfied by a signal that was never
+                // actually received. Correctly fails ME's fabricated
+                // third-party witnesses and controller-internal replays
+                // (neither ever produces a real over-the-air reception).
+                event.rssi_reporter_dbm = g_rssi_min - 1.0;
+                rssiTooWeak = true;
+                std::cout << "[DEBUG-RSSI-MISS] reporter(raw=" << event.reporter_id
+                          << ",resolved=" << realReporterId << ") link_src(raw="
+                          << event.link_src_id << ",resolved=" << realLinkSrcId
+                          << ") link_dst(raw=" << event.link_dst_id << ",resolved="
+                          << realLinkDstId << ") attack_label=" << event.attack_label
+                          << " map_size=" << g_real_rssi_dbm.size() << std::endl;
+            }
+        }
 
         // A5 (--no_lbs=1): suppress this LW geometric/RSSI check (Eq. 3.11, sig[8]).
         // This is NOT the Eq. 3.28 signature — that is TetaGuardLocBindVerify's real
@@ -5966,15 +6057,36 @@ static void PemSignGenuineReport(uint32_t reporterId, uint32_t linkSrcId, uint32
     float reporter_lat, reporter_lon;
     PemSimToGps(reporterPosition, reporter_lat, reporter_lon);
 
-    // RSSI at the reporter from its nearer link endpoint — same Cost231
-    // distance model Stage-0's ME-S3 signature and PemVerifyQuorum both use,
-    // so this evidence agrees with detection-side geometry.
+    // RSSI at the reporter from its nearer link endpoint — prefer the genuine
+    // PHY-measured value (Rx()'s real MonitorSnifferRx SignalNoiseDbm) when
+    // this reporter has actually received a real beacon from that endpoint.
+    // This function only ever runs for attackLabel==false observations (see
+    // call site), so falling back to the Cost231 distance estimate when no
+    // real reception is on record yet (e.g. this evidence signer firing
+    // before the corresponding real beacon has propagated) is safe here —
+    // unlike the ME-S3 detection signature above, there is no adversarial
+    // input to this path that a fallback could be exploited through.
     const double dSrc = PemDistance2d(reporterPosition, linkSrcPosition);
     const double dDst = PemDistance2d(reporterPosition, linkDstPosition);
     const double dNearest = (dSrc <= dDst) ? dSrc : dDst;
     const double safeD = (dNearest > 0.001) ? dNearest : 0.001;
-    const float rssi_dbm = (float)(PemGetRssiMin() + 10.0 * PEM_RSSI_N_COST231
-                                     * std::log10(PemGetRcomm() / safeD));
+    float rssi_dbm;
+    const uint32_t realLinkSrcId  = PemResolveVehicleGlobalId(linkSrcId);
+    const uint32_t realLinkDstId  = PemResolveVehicleGlobalId(linkDstId);
+    const uint32_t realReporterId = PemResolveVehicleGlobalId(reporterId);
+    float realFromSrc = 0.0f, realFromDst = 0.0f;
+    const bool haveFromSrc = PemGetRealRssi(realLinkSrcId, realReporterId, realFromSrc);
+    const bool haveFromDst = PemGetRealRssi(realLinkDstId, realReporterId, realFromDst);
+    if (haveFromSrc || haveFromDst)
+    {
+        rssi_dbm = (haveFromSrc && haveFromDst) ? (realFromSrc > realFromDst ? realFromSrc : realFromDst)
+                                                 : (haveFromSrc ? realFromSrc : realFromDst);
+    }
+    else
+    {
+        rssi_dbm = (float)(PemGetRssiMin() + 10.0 * PEM_RSSI_N_COST231
+                            * std::log10(PemGetRcomm() / safeD));
+    }
 
     const uint64_t sender_ts_ms = (uint64_t)std::llround(senderTimestamp * 1000.0);
 
@@ -6936,6 +7048,16 @@ static Ptr<Node> GetVehicleByNs3Id(uint32_t ns3_id) {
     for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); i++) {
         if (Vehicle_Nodes.Get(i)->GetId() == ns3_id)
             return Vehicle_Nodes.Get(i);
+    }
+    return nullptr;
+}
+
+// Helper: look up an RSU_Nodes entry by its NS-3 node ID (mirrors
+// GetVehicleByNs3Id above; same lookup pattern AttackSendRSUToController uses).
+static Ptr<Node> GetRSUByNs3Id(uint32_t ns3_id) {
+    for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++) {
+        if (RSU_Nodes.Get(i)->GetId() == ns3_id)
+            return RSU_Nodes.Get(i);
     }
     return nullptr;
 }
@@ -10310,8 +10432,47 @@ void ME_S2_InitLog(uint32_t n_mal_rsus, uint32_t n_total_rsus)
 }
 
 
+// Real signal-plausibility fix (Eq. 3.31 condition iii): the RSU is the
+// PemEmitEvent reporter for this scenario's legitimate topology observations,
+// but until this fix it never physically received anything from V1/V2 — only
+// V1<->V2's own V2V beacon was ever sent over real 802.11p. Sends the real
+// V2R beacons here, then defers the rest of this function (event emission,
+// which now consults the real Rx()-measured RSSI) by a short delay so the
+// genuine PHY reception has actually landed in g_real_rssi_dbm by the time
+// PemEmitEvent's ME-S3 check runs — NS-3 Send() enqueues a later DES event
+// rather than completing synchronously, so without this delay the check
+// would run before the real reception it depends on ever happens.
+static void ME_S2_LegitimateDiscovery_Continue(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
+                                                uint32_t false_v3, uint32_t false_v4, double t);
+
 void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
                                 uint32_t false_v3, uint32_t false_v4, double t)
+{
+    {
+        // v1_id/v2_id here are Vehicle_Nodes CONTAINER indices (matching this
+        // function's own existing convention, e.g. its Vehicle_Nodes.Get(v1_id)
+        // calls below) — NOT ns-3 global ids. rsu_id, by contrast, is already
+        // the ns-3 global id (set by the caller from RSU_Nodes.Get(r)->GetId()).
+        // Staggered by a tiny offset (mirrors the codebase's own existing
+        // "t+0.0001*i" convention for periodic broadcasts, e.g.
+        // distributed_dsrc_data_broadcast's scheduling loop): two 802.11p
+        // broadcasts fired at literally the same simulated instant (zero
+        // elapsed time) can collide at the PHY/MAC layer, since CSMA/CA
+        // carrier-sensing has no time to separate them. Without this, V1's
+        // and V2's real beacons to the RSU can destructively interfere with
+        // each other and neither is ever received.
+        Ptr<Node> rsuNode = GetRSUByNs3Id(rsu_id);
+        if (rsuNode && v1_id < Vehicle_Nodes.GetN())
+            Simulator::Schedule(MicroSeconds(0), &AttackSendDSRCBeacon, Vehicle_Nodes.Get(v1_id), rsuNode);
+        if (rsuNode && v2_id < Vehicle_Nodes.GetN())
+            Simulator::Schedule(MicroSeconds(50), &AttackSendDSRCBeacon, Vehicle_Nodes.Get(v2_id), rsuNode);
+    }
+    Simulator::Schedule(MilliSeconds(2),
+        &ME_S2_LegitimateDiscovery_Continue, v1_id, v2_id, rsu_id, false_v3, false_v4, t);
+}
+
+static void ME_S2_LegitimateDiscovery_Continue(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
+                                                uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
     const bool s2_ld_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
@@ -10846,8 +11007,33 @@ void ME_S4_InitLog(uint32_t n_mal_ctrls, uint32_t n_total_ctrls, uint32_t n_tota
     NS_LOG_INFO("[ME-S4] Log opened: me_s4_attack_log.txt");
 }
 
+// Same real-signal-plausibility fix as ME_S2_LegitimateDiscovery above: send
+// the real V2R beacons to the RSU first, then defer the rest of this function
+// (which now relies on Rx() having already recorded a genuine reception in
+// g_real_rssi_dbm) by a short delay to respect NS-3's asynchronous Send()/Rx()
+// causality.
+static void ME_S4_VehiclesViaRSU_Continue(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
+                                           uint32_t false_v3, uint32_t false_v4, double t);
+
 void ME_S4_VehiclesViaRSU(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
                            uint32_t false_v3, uint32_t false_v4, double t)
+{
+    {
+        // Staggered (see identical comment in ME_S2_LegitimateDiscovery) to
+        // avoid two same-instant 802.11p broadcasts colliding at the PHY/MAC
+        // layer.
+        Ptr<Node> rsuNode = GetRSUByNs3Id(rsu_id);
+        if (rsuNode && v1_id < Vehicle_Nodes.GetN())
+            Simulator::Schedule(MicroSeconds(0), &AttackSendDSRCBeacon, Vehicle_Nodes.Get(v1_id), rsuNode);
+        if (rsuNode && v2_id < Vehicle_Nodes.GetN())
+            Simulator::Schedule(MicroSeconds(50), &AttackSendDSRCBeacon, Vehicle_Nodes.Get(v2_id), rsuNode);
+    }
+    Simulator::Schedule(MilliSeconds(2),
+        &ME_S4_VehiclesViaRSU_Continue, v1_id, v2_id, rsu_id, false_v3, false_v4, t);
+}
+
+static void ME_S4_VehiclesViaRSU_Continue(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
+                                           uint32_t false_v3, uint32_t false_v4, double t)
 {
     double now = Simulator::Now().GetSeconds();
     const bool s4_vr_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
@@ -122880,6 +123066,9 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     PemSimpleStageTimer __pemBeaconSendTimer(g_pem_beacon_send_stats);
 
     Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
+    std::cout << "[DEBUG-SEND] sender=" << sender_node->GetId()
+              << " neighbor=" << neighbor_node->GetId()
+              << " wdi_null=" << (wdi == nullptr) << std::endl;
     if (!wdi) return;
 
     Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
@@ -130691,6 +130880,18 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 	CustomDataTag1 tagd1;
 	if(pkt->PeekPacketTag(tagd1))
 	{
+		std::cout << "[DEBUG-RX] sender=" << tagd1.GetNodeId()
+		          << " destination_node_id=" << destination_node_id
+		          << " signal=" << signalNoise.signal << std::endl;
+		// Eq. 3.31 condition (iii), signal plausibility: record the genuine
+		// PHY-measured RSSI for this (sender -> receiver) reception, from the
+		// real MonitorSnifferRx SignalNoiseDbm parameter this function already
+		// receives — not derived from distance. Stored unconditionally (before
+		// the crypto verify below), since a real over-the-air reception is a
+		// real physical event regardless of whether its HMAC later verifies.
+		g_real_rssi_dbm[std::make_pair(tagd1.GetNodeId(), (uint32_t)destination_node_id)] =
+			std::make_pair(signalNoise.signal, Simulator::Now().GetSeconds());
+
 		// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) — real verification on
 		// receipt, mirroring AttackSendDSRCBeacon()'s real beacon_sign().
 		// lw_mitigate() is hmac_filter.cc's actual Algorithm 3 entry point;
@@ -151154,7 +151355,7 @@ static int RoutingMain(int argc, char *argv[])
   {
   	RSU_mobility.Install(RSU_Nodes);
   }
-  
+
   Ptr <Node> nd;
   NodeContainer other_stationary_LTE_nodes;
   if (N_Vehicles > 0)
