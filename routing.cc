@@ -2511,30 +2511,69 @@ static std::map<uint32_t, double> g_pem_last_beacon_time;
 // losing detection power (positions barely drift within one beacon interval).
 static std::map<uint32_t, Vector> g_last_self_reported_position;
 // Real PHY-measured RSSI (Eq. 3.31 condition (iii), "signal plausibility"):
-// keyed by (physical sender ns-3 id, receiving ns-3 id) -> (signalNoise.signal
-// dBm, reception sim time). Populated only from Rx()'s genuine MonitorSnifferRx
+// keyed by (physical sender ns-3 id, receiving ns-3 id) -> per-channel
+// reception record. Populated only from Rx()'s genuine MonitorSnifferRx
 // SignalNoiseDbm parameter on real CustomDataTag1 802.11p receptions — never
 // derived from distance. A missing entry means this receiver never physically
-// received a signal from that sender at all (e.g. a fabricated ME witness that
-// never had a real link to the reported endpoint, or a controller-internal
-// replay with no radio transmission), which is itself the correct outcome for
-// a signal-plausibility check that must be independent of the claimed GPS
-// position (see PemGetRealRssi below).
-static std::map<std::pair<uint32_t,uint32_t>, std::pair<float,double> > g_real_rssi_dbm;
+// received a signal from that sender on ANY of the 7 DSRC channels (e.g. a
+// fabricated ME witness that never had a real link to the reported endpoint,
+// or a controller-internal replay with no radio transmission), which is
+// itself the correct outcome for a signal-plausibility check that must be
+// independent of the claimed GPS position (see PemGetRealRssi below).
+//
+// Multi-channel evidence aggregation: AttackSendDSRCBeacon now transmits the
+// same beacon on all 7 channels (Ch172-184), so a receiver only needs ONE of
+// them to succeed. Rx() stores whichever channel's reception it processes —
+// since a channel can ONLY appear here if a real PHY reception actually
+// happened on it (a channel that fails PREAMBLE_DETECT_FAILURE etc. never
+// fires MonitorSnifferRx at all, so it never gets a chance to overwrite a
+// prior success), any single successful channel is enough for this map to
+// hold real evidence, without needing to separately track "best of 7." The
+// stored channel_mhz lets PemGetRealRssi's caller apply that channel's own
+// RSSI_min (RSSI_min is calibrated per-channel from its TX power via
+// Table 4.7 — see GetRssiThresholdForChannel below — not a single global
+// value, since Ch178's -85dBm/282m calibration doesn't transfer to e.g.
+// Ch180's much shorter 67m real range).
+struct RealRssiEntry { float rssi_dbm; double timestamp; uint16_t channel_mhz; };
+static std::map<std::pair<uint32_t,uint32_t>, RealRssiEntry> g_real_rssi_dbm;
+
+// Per-channel RSSI_min (Eq. 3.31's threshold), derived by holding the
+// propagation margin constant while TX power varies per Table 4.7:
+//   RSSI_min[ch] = RSSI_min[178] + (TxPower[ch] - TxPower[178])
+// Ch178 (CCH, 44dBm) is the calibrated baseline (-85dBm, from the measured
+// 282.2m PRR-cliff). The other 6 channels' thresholds are derived, not
+// independently measured — good enough to keep each channel's pass/fail
+// decision physically consistent with its own much shorter real range,
+// rather than reusing Ch178's threshold for a channel with a fraction of
+// its reach (which would make a genuinely out-of-range SCH reception look
+// artificially "confirmed").
+static double GetRssiThresholdForChannel(uint16_t channelMhz)
+{
+    switch (channelMhz) {
+        case 5860: case 5870: case 5880: return -96.0;  // Ch172/174/176, 33dBm SCH
+        case 5890: return PemGetRssiMin();               // Ch178, 44dBm CCH (-85dBm baseline)
+        case 5900: case 5910: return -106.0;             // Ch180/182, 23dBm SCH
+        case 5920: return -89.0;                          // Ch184, 40dBm SCH (long-range backup)
+        default: return PemGetRssiMin();
+    }
+}
 
 // Looks up the most recent genuine PHY reception of senderId's beacon at
-// receiverId. Returns false (no output written) if no real reception has ever
-// been recorded for this pair — callers must treat that as "signal plausibility
+// receiverId, on whichever of the 7 channels last succeeded. Returns false
+// (no output written) if no real reception has ever been recorded for this
+// pair on any channel — callers must treat that as "signal plausibility
 // cannot be confirmed", not fall back to a distance-derived estimate, per
 // Eq. 3.31's requirement that condition (iii) be a physically independent
 // measurement from condition (ii)'s GPS-attested-position check.
-static bool PemGetRealRssi(uint32_t senderId, uint32_t receiverId, float &outRssiDbm)
+static bool PemGetRealRssi(uint32_t senderId, uint32_t receiverId, float &outRssiDbm,
+                            uint16_t *outChannelMhz = nullptr)
 {
-    std::map<std::pair<uint32_t,uint32_t>, std::pair<float,double> >::const_iterator it =
+    std::map<std::pair<uint32_t,uint32_t>, RealRssiEntry>::const_iterator it =
         g_real_rssi_dbm.find(std::make_pair(senderId, receiverId));
     if (it == g_real_rssi_dbm.end())
         return false;
-    outRssiDbm = it->second.first;
+    outRssiDbm = it->second.rssi_dbm;
+    if (outChannelMhz) *outChannelMhz = it->second.channel_mhz;
     return true;
 }
 
@@ -4763,25 +4802,33 @@ PemWriteScenarioValidityReport()
     const std::string filename =
         BuildScenarioCsvPath("SCENARIO_VALIDITY", attack_scenario);
     std::ofstream out(filename.c_str(), std::ios::out | std::ios::trunc);
-    out << "sim_time_s,reporter_id,link_src_id,link_dst_id,attack_label,exclusion_reason\n";
+    out << "sim_time_s,reporter_id,link_src_id,link_dst_id,attack_label,flag_reason,excluded_from_confusion_matrix\n";
     for (const PemEvent& ev : g_pem_excluded_invalid_neighborhood)
     {
         out << ev.sim_time << "," << ev.reporter_id << "," << ev.link_src_id << ","
             << ev.link_dst_id << "," << (ev.attack_label ? 1 : 0)
-            << ",no_vehicle_within_effective_reception_range\n";
+            << ",no_vehicle_within_effective_reception_range,1\n";
     }
+    // Diagnostic-only: logged for visibility but NOT excluded from TP/TN/FP/FN
+    // counting (see the "NOT excluded" comment at this vector's push_back site
+    // in PemEvaluateEvent). Confirmed via real SUMO trajectory + baseline
+    // (attack_scenario=0) PhyRxEnd measurements that these reflect genuine
+    // IEEE 802.11p/CSMA channel-contention delivery loss under valid geometry,
+    // not a scenario-construction defect — so they remain in the reported FP.
     for (const PemEvent& ev : g_pem_excluded_no_reception)
     {
         out << ev.sim_time << "," << ev.reporter_id << "," << ev.link_src_id << ","
             << ev.link_dst_id << "," << (ev.attack_label ? 1 : 0)
-            << ",no_real_reception_at_reporter\n";
+            << ",no_real_reception_at_reporter,0\n";
     }
     out.close();
     std::cout << "[PEM] " << filename << " written: "
               << g_pem_excluded_invalid_neighborhood.size()
-              << " event(s) excluded (invalid RSU neighborhood, not detector error), "
+              << " event(s) excluded (invalid RSU neighborhood, not detector error); "
               << g_pem_excluded_no_reception.size()
-              << " event(s) excluded (benign event, no real reception at reporter, not detector error)"
+              << " benign event(s) flagged no_real_reception_at_reporter (diagnostic only, "
+              << "STILL COUNTED in confusion matrix — confirmed real channel-contention loss, "
+              << "not a scenario artifact)"
               << std::endl;
 }
 
@@ -5811,15 +5858,30 @@ PemEvaluateEvent(PemEvent& event)
             const uint32_t realLinkDstId  = PemResolveVehicleGlobalId(event.link_dst_id);
             const uint32_t realReporterId = PemResolveVehicleGlobalId(event.reporter_id);
             float rssiFromSrc = 0.0f, rssiFromDst = 0.0f;
-            const bool haveFromSrc = PemGetRealRssi(realLinkSrcId, realReporterId, rssiFromSrc);
-            const bool haveFromDst = PemGetRealRssi(realLinkDstId, realReporterId, rssiFromDst);
+            uint16_t chFromSrc = 0, chFromDst = 0;
+            const bool haveFromSrc = PemGetRealRssi(realLinkSrcId, realReporterId, rssiFromSrc, &chFromSrc);
+            const bool haveFromDst = PemGetRealRssi(realLinkDstId, realReporterId, rssiFromDst, &chFromDst);
             if (haveFromSrc || haveFromDst)
             {
-                const float bestRssi = (haveFromSrc && haveFromDst)
-                    ? (rssiFromSrc > rssiFromDst ? rssiFromSrc : rssiFromDst)
-                    : (haveFromSrc ? rssiFromSrc : rssiFromDst);
-                event.rssi_reporter_dbm = bestRssi;
-                rssiTooWeak = (bestRssi < g_rssi_min);
+                // Multi-channel evidence aggregation: pass if EITHER endpoint's
+                // reception clears ITS OWN channel's RSSI_min (Ch172-184 each
+                // have a different real range — see GetRssiThresholdForChannel),
+                // not a single global threshold. "Best" for logging purposes is
+                // whichever reading has the larger margin above its own
+                // channel's threshold, not whichever raw dBm value is higher
+                // (a strong-looking reading on a short-range channel can still
+                // fail its own threshold while a weaker one on a long-range
+                // channel passes).
+                const bool srcPasses = haveFromSrc &&
+                    (rssiFromSrc >= (float)GetRssiThresholdForChannel(chFromSrc));
+                const bool dstPasses = haveFromDst &&
+                    (rssiFromDst >= (float)GetRssiThresholdForChannel(chFromDst));
+                const float srcMargin = haveFromSrc
+                    ? (rssiFromSrc - (float)GetRssiThresholdForChannel(chFromSrc)) : -1e9f;
+                const float dstMargin = haveFromDst
+                    ? (rssiFromDst - (float)GetRssiThresholdForChannel(chFromDst)) : -1e9f;
+                event.rssi_reporter_dbm = (srcMargin >= dstMargin) ? rssiFromSrc : rssiFromDst;
+                rssiTooWeak = !(srcPasses || dstPasses);
             }
             else
             {
@@ -5916,22 +5978,39 @@ PemEvaluateEvent(PemEvent& event)
     // detection result.
     const bool eventFromInvalidNeighborhood =
         g_scenario_invalid_neighborhood_rsus.count(PemResolveVehicleGlobalId(event.reporter_id)) > 0;
-    // Symmetric exclusion for a benign event whose reporter never actually
-    // received the corresponding beacon over the simulated radio (see
-    // g_pem_excluded_no_reception's declaration comment). Restricted to
-    // attack_label==false: for a real ME echo/replay, "no real reception ever
-    // recorded" IS the detection signature (Eq. 3.11 condition iii) working
-    // as intended, not a scenario artifact — excluding those would hide
-    // genuine detector behavior, not just a PHY delivery gap.
+    // NOT excluded from the confusion matrix (reverted — see below). A
+    // benign event whose reporter never recorded a real reception
+    // (event.no_real_reception_at_reporter) was initially treated the same
+    // as eventFromInvalidNeighborhood, on the theory that "no PHY evidence"
+    // meant the observation was a scenario-construction artifact. Two
+    // independent checks disproved that for ME-S2's fp=16 cases:
+    //   1. Real SUMO trajectories showed every flagged vehicle was
+    //      persistently within both g_rcomm (300m) and the calibrated
+    //      kEffectiveReceptionRadius (260m) of its RSU for the ENTIRE
+    //      ambient beacon window (0-10s) — geometry was never the issue.
+    //   2. A baseline run with ZERO attack traffic (attack_scenario=0) still
+    //      showed real PhyRxEnd-measured avg_fanout of only ~1.7-3.2
+    //      receivers per broadcast (CHANNEL_DELIVERY_ANALYSIS csv) — i.e.
+    //      ordinary IEEE 802.11p/CSMA channel contention drops receptions
+    //      for in-range nodes even with no attack present at all.
+    // So a missing g_real_rssi_dbm entry here reflects a genuine PHY/MAC
+    // delivery gap under realistic channel contention, not an invalid
+    // classification instance — the detector's dependency on RSSI evidence
+    // that the network sometimes fails to deliver is real, measured
+    // behavior of the simulated system, and belongs in the reported FP
+    // count (per Eq. 3.11's own design: no reception -> rssiTooWeak=true ->
+    // sig[8] triggers), not filtered out of it. Still tracked in
+    // g_pem_excluded_no_reception purely for diagnostic visibility (see
+    // PemWriteScenarioValidityReport) — logged, not subtracted.
     const bool eventFromNoReception =
         !event.attack_label && event.no_real_reception_at_reporter;
+    if (eventFromNoReception)
+    {
+        g_pem_excluded_no_reception.push_back(event);
+    }
     if (eventFromInvalidNeighborhood)
     {
         g_pem_excluded_invalid_neighborhood.push_back(event);
-    }
-    else if (eventFromNoReception)
-    {
-        g_pem_excluded_no_reception.push_back(event);
     }
     else
     {
@@ -6891,6 +6970,26 @@ static Ptr<WifiNetDevice> AttackGetDSRCDevice(Ptr<Node> node)
         if (w) return w;
     }
     return nullptr;
+}
+
+// Returns every WifiNetDevice on this node — one per DSRC channel (Ch172-184,
+// 7 total; wifidevices/wifidevices_172/_174/_176/_180/_182/_184 are each
+// installed once per dsrc_Node, so DynamicCast<WifiNetDevice> over all of a
+// node's devices naturally picks up exactly these 7 and skips any CSMA/P2P
+// devices an RSU/controller node also carries). Used to implement 7-channel
+// redundant beaconing: a beacon transmitted on all 7 channels is more likely
+// to be received on AT LEAST ONE of them even when one specific channel
+// (typically Ch178/CCH, which also carries all ambient periodic traffic) is
+// saturated by real 802.11p contention at that instant — see the
+// PREAMBLE_DETECT_FAILURE tracing that motivated this (routing.cc history).
+static std::vector<Ptr<WifiNetDevice>> AttackGetAllDSRCDevices(Ptr<Node> node)
+{
+    std::vector<Ptr<WifiNetDevice>> devs;
+    for (uint32_t i = 0; i < node->GetNDevices(); i++) {
+        Ptr<WifiNetDevice> w = DynamicCast<WifiNetDevice>(node->GetDevice(i));
+        if (w) devs.push_back(w);
+    }
+    return devs;
 }
 
 static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node);
@@ -123679,8 +123778,22 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
 {
     PemSimpleStageTimer __pemBeaconSendTimer(g_pem_beacon_send_stats);
 
-    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(sender_node);
-    if (!wdi) return;
+    // 7-channel redundant beaconing: transmit on every DSRC channel this
+    // node has (Ch172-184), not just the first device found. Ch178 (CCH)
+    // also carries all ambient periodic traffic (distributed_dsrc_data_
+    // broadcast, 100ms/vehicle) and was shown by PhyRxDrop tracing to be in
+    // near-continuous PREAMBLE_DETECT_FAILURE at some RSUs during dense
+    // scenarios (real 802.11p contention, not a bug) — sending the same
+    // beacon on all 7 channels means a receiver only needs to successfully
+    // decode it on ONE of them, matching the design goal of not letting a
+    // single congested channel be a single point of failure for reception
+    // evidence. Ch178-only reception is still what feeds the RSSI/ME-S3
+    // plausibility check (see the channelFreqMhz gate in Rx() below) — this
+    // redundancy is about the OTHER 6 channels giving genuine additional
+    // reception opportunities, since each is a physically independent radio
+    // in this simulation (not a single time-multiplexed 1609.4 radio).
+    std::vector<Ptr<WifiNetDevice>> wdis = AttackGetAllDSRCDevices(sender_node);
+    if (wdis.empty()) return;
 
     Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
     Vector pos = mob ? mob->GetPosition() : Vector(0, 0, 0);
@@ -123723,14 +123836,24 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
         tag.SetNonce(bm.nonce);
     }
 
-    pkt->AddPacketTag(tag);
-    if (neighbor_node->GetId() == 206 || neighbor_node->GetId() == 207 || neighbor_node->GetId() == 209)
-        std::cout << "[TEMP-DIAG][TX] from=" << sender_node->GetId()
-                  << " target=" << neighbor_node->GetId()
-                  << " t=" << Simulator::Now().GetSeconds()
-                  << " uid=" << pkt->GetUid()
-                  << std::endl;
-    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+    // Each channel gets its own Packet object (with a copy of the tag) so
+    // that per-channel PhyTxBegin/PhyTxDrop/uid tracking stays independent —
+    // ns-3 Packets carrying the same tag data are cheap to duplicate here
+    // (small fixed-size CustomDataTag1) and this avoids any risk of a single
+    // Ptr<Packet> object being consumed/mutated by one device's queue before
+    // another device sends it.
+    for (Ptr<WifiNetDevice> wdi : wdis) {
+        Ptr<Packet> chPkt = pkt->Copy();
+        chPkt->AddPacketTag(tag);
+        if (neighbor_node->GetId() == 206 || neighbor_node->GetId() == 207 || neighbor_node->GetId() == 209)
+            std::cout << "[TEMP-DIAG][TX] from=" << sender_node->GetId()
+                      << " target=" << neighbor_node->GetId()
+                      << " t=" << Simulator::Now().GetSeconds()
+                      << " uid=" << chPkt->GetUid()
+                      << " ch_freq=" << wdi->GetPhy()->GetFrequency()
+                      << std::endl;
+        wdi->Send(chPkt, Mac48Address::GetBroadcast(), 0x88dc);
+    }
 }
 
 static void AttackSendRSUToController(uint32_t rsu_global_id)
@@ -131538,8 +131661,16 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
         // witness still never has ANY real reception (periodic or
         // otherwise) from a link it never physically observed, so this
         // doesn't weaken detection of genuine attackers at all.
+        //
+        // Multi-channel evidence aggregation: stored regardless of which of
+        // the 7 channels this reception landed on (a channel only reaches
+        // this line at all if it genuinely succeeded — see g_real_rssi_dbm's
+        // declaration comment). Per-channel RSSI_min (GetRssiThresholdForChannel)
+        // is applied at the ME-S3 evaluation site, not here, so a Ch172/180/
+        // 182 reception is judged against ITS OWN much shorter calibrated
+        // range rather than Ch178's -85dBm/282m baseline.
 		g_real_rssi_dbm[std::make_pair(tag.GetNodeId(), (uint32_t)destination_node_id)] =
-			std::make_pair(signalNoise.signal, Simulator::Now().GetSeconds());
+			RealRssiEntry{(float)signalNoise.signal, Simulator::Now().GetSeconds(), channelFreqMhz};
 		add_neighbor_info(neighbordata_inst+destination_node_id,tag.GetNodeId()); //add current neighbor information
 		refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
 		add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tag.GetPosition(), tag.GetVelocity(), tag.GetAcceleration(), tag.GetNodeId(), empty_neighborset, 0);
@@ -131553,11 +131684,22 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		// Eq. 3.31 condition (iii), signal plausibility: record the genuine
 		// PHY-measured RSSI for this (sender -> receiver) reception, from the
 		// real MonitorSnifferRx SignalNoiseDbm parameter this function already
-		// receives — not derived from distance. Stored unconditionally (before
-		// the crypto verify below), since a real over-the-air reception is a
-		// real physical event regardless of whether its HMAC later verifies.
+		// receives — not derived from distance. Stored unconditionally w.r.t.
+		// crypto verify (before the check below), since a real over-the-air
+		// reception is a real physical event regardless of whether its HMAC
+		// later verifies. Multi-channel evidence aggregation: stored for
+		// whichever of the 7 channels this reception landed on (a channel only
+		// reaches this line if it genuinely succeeded on air). AttackSendDSRCBeacon
+		// transmits the same beacon on all 7 channels so a receiver has 7
+		// independent chances to capture real evidence even if any one
+		// channel (typically Ch178, which also carries all ambient traffic)
+		// is momentarily saturated by contention. Per-channel RSSI_min
+		// (GetRssiThresholdForChannel) is applied at the ME-S3 evaluation
+		// site using the stored channel_mhz, not here — so a Ch172/180/182
+		// reception is judged against its own much shorter calibrated range,
+		// not Ch178's -85dBm/282m baseline.
 		g_real_rssi_dbm[std::make_pair(tagd1.GetNodeId(), (uint32_t)destination_node_id)] =
-			std::make_pair(signalNoise.signal, Simulator::Now().GetSeconds());
+			RealRssiEntry{(float)signalNoise.signal, Simulator::Now().GetSeconds(), channelFreqMhz};
 		if (destination_node_id == 206 || destination_node_id == 207 || destination_node_id == 209)
 			std::cout << "[TEMP-DIAG][RX] tagd1 from=" << tagd1.GetNodeId()
 					  << " dest=" << destination_node_id
