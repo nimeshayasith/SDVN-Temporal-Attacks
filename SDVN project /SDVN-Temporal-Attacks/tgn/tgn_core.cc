@@ -1493,6 +1493,18 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
             g_tgn_detail_log.flush();
         }
 
+        // Same exclusion PemEvaluateEvent applies (routing.cc, near
+        // g_scenario_invalid_neighborhood_rsus's declaration): events reported
+        // through an RSU with no physically valid local neighborhood are a
+        // scenario-construction artifact, not a genuine benign-vs-attack
+        // classification instance — TGN's own g_tgn_*/g_comb_* tallies are a
+        // separate mechanism from PEM's confusion-matrix bookkeeping and were
+        // found to still be counting these (comb fp=18 vs PEM's fp=8 on the
+        // same run — the gap was exactly the 10 excluded events), so this
+        // must be gated the same way.
+        const bool tgn_excluded_invalid_neighborhood =
+            g_scenario_invalid_neighborhood_rsus.count(PemResolveVehicleGlobalId(e.reporter_id)) > 0;
+        if (!tgn_excluded_invalid_neighborhood) {
         if (e.attack_label) {
             if (g_tgn_attack_start_time < 0.0) g_tgn_attack_start_time = e.reception_timestamp;
             if (tgn_alert) {
@@ -1517,6 +1529,7 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
         } else {
             if (tgn_alert) { if (is_ctrl) ++g_tgn_fp_ctrl; else ++g_tgn_fp_beh; }
             else           { if (is_ctrl) ++g_tgn_tn_ctrl; else ++g_tgn_tn_beh; }
+        }
         }
 
         // ── Post-alert mitigation actions ────────────────────────────────────
@@ -2164,6 +2177,12 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     bool tgn_alert  = (tgn_score > g_tgn->GetThreshold());
     const bool bootstrap_done = (tier == 2) ? (round_count >= RMIN_BOOTSTRAP) : true;
 
+    // Same exclusion as the other TGN_ProcessEventInline call site above —
+    // see its comment for why (matches PemEvaluateEvent's
+    // g_scenario_invalid_neighborhood_rsus gate in routing.cc).
+    const bool tgn_excluded_invalid_neighborhood2 =
+        g_scenario_invalid_neighborhood_rsus.count(PemResolveVehicleGlobalId(e.reporter_id)) > 0;
+    if (!tgn_excluded_invalid_neighborhood2) {
     if (e.attack_label) {
         if (g_tgn_attack_start_time < 0.0) g_tgn_attack_start_time = e.reception_timestamp;
         if (tgn_alert) {
@@ -2190,6 +2209,7 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     } else {
         if (tgn_alert) { if (is_ctrl) ++g_tgn_fp_ctrl; else ++g_tgn_fp_beh; }
         else           { if (is_ctrl) ++g_tgn_tn_ctrl; else ++g_tgn_tn_beh; }
+    }
     }
 
     if (tgn_alert && bootstrap_done) {
