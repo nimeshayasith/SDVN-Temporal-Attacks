@@ -2254,6 +2254,22 @@ struct PemEvent
     // FP/FN counting, mirroring g_scenario_invalid_neighborhood_rsus's existing
     // treatment of physically-impossible neighborhoods.
     bool no_real_reception_at_reporter = false;
+    // Phase 2 (ME-S3 controller-origin applicability guard): true unless the
+    // emitting call site explicitly marks this event as having NO genuine
+    // physical reporter behind it -- i.e. a controller-origin fabrication
+    // (TTW-S3/S4's 9999-sentinel reporter, or ME-S3/S4's/ME_Single3 mode-3/4's
+    // impersonated-identity-with-controller-position mismatch) where Eq. 3.11
+    // (ME-S3, sig[8]) is being asked to check GPS/RSSI plausibility for an
+    // event that was never actually transmitted by anyone over real radio.
+    // Using the simulator's omniscient knowledge of the impersonated
+    // identity's true position there would be a ground-truth leak (a real
+    // deployed detector never receives anything from that identity for this
+    // claim to derive a position from) -- so ME-S3 is skipped entirely for
+    // these events rather than evaluated against a placeholder/mismatched
+    // position. Does not affect ME-S1, ME-S2, or ME_Single3 modes 1/2, all
+    // confirmed to use a real, self-consistent reporterId/reporterPosition
+    // pair (see the Phase-2 planning conversation's verification table).
+    bool has_physical_reporter = true;
     // Eq. 3.20 Δs_v watermark (tgn_core.cc TGN_ExtractFeatures). UINT64_MAX
     // sentinel = "caller hasn't been wired for this yet" (BSHH/ME today) —
     // those fall back to the legacy sender_timestamp-regression check there.
@@ -2272,6 +2288,37 @@ uint64_t pem_true_positive = 0;
 uint64_t pem_true_negative = 0;
 uint64_t pem_false_positive = 0;
 uint64_t pem_false_negative = 0;
+
+// ── Controller-divergence mechanism (Eq. 3.47-3.48): independent detection
+// outcome, tracked SEPARATELY from the LW/TGN confusion matrix above.
+// Per the paper's architecture, delta-divergence (PemControllerDivergenceGate)
+// is the PRIMARY, independent detector for controller-origin attacks (TTW-S3/
+// S4, BSHH-S3/S4, ME-S3/S4) -- it must be evaluated regardless of whether the
+// LW/TGN score already crossed pem_last_alert, not merely as a mitigation gate
+// contingent on that score. Every call site is inside an attack-injection
+// function (ground truth = genuine attack), so a "confirmed" result is a true
+// positive for this mechanism and "not confirmed" is a false negative -- there
+// is currently no benign/no-attack call site for this gate, so FP/TN are not
+// tracked (would require calling the gate during baseline runs too, out of
+// scope for this fix). Feeds M2/TDRR reporting, kept distinct from
+// pem_true_positive/pem_false_negative so LW/TGN's own contribution isn't
+// conflated with the divergence mechanism's, matching the paper's 3-way
+// reporting split (LW/TGN only; divergence only; combined).
+uint64_t pem_divergence_true_positive = 0;
+uint64_t pem_divergence_false_negative = 0;
+
+// ── Combined detection outcome (LW/TGN OR divergence), the paper's third
+// reporting configuration alongside "LW/TGN only" (pem_true_positive/
+// pem_false_negative) and "divergence only" (pem_divergence_true_positive/
+// pem_divergence_false_negative). Tracked at the same 7 controller-origin
+// call sites and the same granularity as the divergence counters (once per
+// attack-injection instance, ground truth always = attack there, so no FP/TN)
+// -- an event counts as a combined true positive if EITHER mechanism caught
+// it. Exists so that suppressing ME-S3's inapplicable contribution to LW/TGN
+// (Phase 2) doesn't make the SYSTEM look worse in isolation when the
+// divergence mechanism is independently covering the same ground.
+uint64_t pem_combined_true_positive = 0;
+uint64_t pem_combined_false_negative = 0;
 
 // ── M11: Quorum Rejection Rate (QRR), Eq. 4.19 ───────────────────────────────
 // QRR = 1 - (N_echo-pass / N_echo-attempts). N_echo-attempts = every ME
@@ -3982,20 +4029,53 @@ static uint32_t PemComputeControllerDivergenceDelta(double now,
 // from the Issue-11-fixed g_rsu_beacon_log, distinct from ME-S1's per-link
 // λ̂ (PemComputeLambdaHat) since this check spans the whole controller
 // topology, not one link.
+// Phase 0 fix (divergence-threshold calibration bug, confirmed against real
+// runtime data: delta_t=1 vs delta_thresh=1639 at N=200 — a threshold two
+// orders of magnitude too large for any realistic single-attack divergence
+// to ever cross, independent of Phases 1-3). Two compounding errors in the
+// previous implementation:
+//   1. tau_prop_s used ceil(log2(N))*T_b (a multi-hop network-diameter
+//      traversal delay -- 8*T_b at N=200) where the paper's own Eq. 3.48
+//      worked example uses tau_prop ~= T_b/10 (a small physical-layer
+//      propagation MARGIN, not a hop-count delay). ~80x too large on its own.
+//   2. lambdaHat computed distinctVehicles.size()/(2*TTW_COMM_RANGE), which
+//      is mathematically guaranteed to cancel against this function's own
+//      later "* 2.0 * TTW_COMM_RANGE" -- reducing raw to
+//      (1+tau_prop_s/Tb)*distinctVehicles.size(), i.e. the threshold scaled
+//      directly and linearly with total network population instead of a
+//      bounded local density (exactly the failure mode PemComputeLambdaHat,
+//      ME-S1's correctly-scoped per-link density function, avoids by
+//      filtering to vehicles actually near a specific link).
+// kNetworkRoadLengthEstimateM: real per-segment SUMO road lengths aren't
+// tracked in this NS-3 simulation (vehicles follow a pre-generated position
+// trace, not a queried road graph), so this uses the known Colombo OSM map's
+// total perimeter (2*(2460+2377), see the RSU-grid placement comment near
+// "8x8 RSU grid... for 2460m×2377m Colombo OSM map") as an honest, documented
+// proxy for "total road network length" -- an approximation, not an exact
+// SUMO-road-length figure, but it decouples the threshold from raw
+// vehicle-count scaling and ties it to a real physical distance instead.
+// Validated against the paper's own worked example: at N=200 this gives
+// lambda_hat ~= 200/9674 ~= 0.0207/m, remarkably close to the paper's stated
+// reference lambda=0.02/m, and reproduces raw~=13.66 -> delta_thresh=14,
+// matching the paper's stated result almost exactly.
+static const double kNetworkRoadLengthEstimateM = 2.0 * (2460.0 + 2377.0);
+
 static uint32_t PemComputeDeltaThreshold()
 {
-    const uint32_t n_eff    = (N_Vehicles > 2u ? N_Vehicles : 2u);
-    const uint32_t lkh_raw  = (uint32_t)std::ceil(std::log2((double)n_eff));
-    const uint32_t est_diam = (lkh_raw > 1u ? lkh_raw : 1u);
-    const double   tau_prop_s = est_diam * PEM_BEACON_INTERVAL_S;
+    // Eq. 3.48: tau_prop is the propagation delay between vehicles, RSUs,
+    // and the controller -- a physical-layer signal delay, not a multi-hop
+    // network-diameter traversal. Matches the paper's own worked example.
+    const double tau_prop_s = PEM_BEACON_INTERVAL_S / 10.0;
 
     std::set<uint32_t> distinctVehicles;
     for (std::deque<PemEvent>::const_iterator it = g_rsu_beacon_log.begin();
          it != g_rsu_beacon_log.end(); ++it)
         distinctVehicles.insert(it->claimed_sender_id);
-    const double corridorLength = 2.0 * TTW_COMM_RANGE;
-    const double lambdaHat = (corridorLength > 0.0)
-        ? (double)distinctVehicles.size() / corridorLength : 0.0;
+    // Genuine network-wide density (vehicles/metre) -- see this function's
+    // header comment for why the previous distinctVehicles.size()/(2*r_comm)
+    // formula was self-cancelling and wrong.
+    const double lambdaHat = (kNetworkRoadLengthEstimateM > 0.0)
+        ? (double)distinctVehicles.size() / kNetworkRoadLengthEstimateM : 0.0;
 
     const double raw = (1.0 + tau_prop_s / PEM_BEACON_INTERVAL_S)
                         * lambdaHat * 2.0 * TTW_COMM_RANGE;
@@ -4287,7 +4367,8 @@ static void PemEmitEvent(PemEventType type,
                          const Vector& linkSrcPosition,
                          const Vector& linkDstPosition,
                          bool attackLabel,
-                         uint32_t macSignerIdOverride = UINT32_MAX);
+                         uint32_t macSignerIdOverride = UINT32_MAX,
+                         bool hasPhysicalReporter = true);
 static void PemEmitHeartbeatEvent(uint32_t physicalSenderId,
                                   uint32_t claimedSenderId,
                                   double senderTimestamp,
@@ -5087,7 +5168,9 @@ PemWriteRunSummaryCsv()
         "f1_ttw,f1_bshh,f1_me,f1_macro,"
         "fra,frr,"
         "fsr_attempts,fsr_success,fsr,"
-        "t_trust_ms,t_revoke_ms,t_reassign_ms",
+        "t_trust_ms,t_revoke_ms,t_reassign_ms,"
+        "divergence_tp,divergence_fn,divergence_recall,"
+        "combined_tp,combined_fn,combined_recall",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -5280,6 +5363,23 @@ PemWriteRunSummaryCsv()
         ? (pem_tau_lkh_complete - pem_first_alert_time) * 1000.0 : 0.0;
     const double tReassignMs = (pem_treassign_ms >= 0.0) ? pem_treassign_ms : 0.0;
 
+    // Divergence mechanism (Eq. 3.47-3.48): independent detection outcome,
+    // tracked separately from the LW/TGN confusion matrix above (Step 1,
+    // controller-divergence-independence fix). Every call site only runs
+    // during a genuine controller-origin attack injection, so recall here is
+    // TP/(TP+FN) with no FP/TN tracked (see pem_divergence_true_positive's
+    // declaration comment). 1.0 (vacuous) when this run has no controller-
+    // origin scenario at all (both counters stay 0).
+    const uint64_t divergenceTotal = pem_divergence_true_positive + pem_divergence_false_negative;
+    const double divergenceRecall = (divergenceTotal > 0)
+        ? (double)pem_divergence_true_positive / (double)divergenceTotal : 1.0;
+
+    // Combined (LW/TGN OR divergence): the paper's third reporting
+    // configuration. See pem_combined_true_positive's declaration comment.
+    const uint64_t combinedTotal = pem_combined_true_positive + pem_combined_false_negative;
+    const double combinedRecall = (combinedTotal > 0)
+        ? (double)pem_combined_true_positive / (double)combinedTotal : 1.0;
+
     fout << meanTopoDivergence << "," << meanTStaleMs << "," << meanPir << ","
          << tPipelineMeanMs << "," << g_pem_full_pipeline_max_ms << ","
          << g_pem_full_pipeline_over_budget_count << ","
@@ -5287,7 +5387,11 @@ PemWriteRunSummaryCsv()
          << f1_class[0] << "," << f1_class[1] << "," << f1_class[2] << "," << f1Macro << ","
          << fra << "," << frr << ","
          << pem_fsr_attempts << "," << pem_fsr_success << "," << fsr << ","
-         << tTrustMs << "," << tRevokeMs << "," << tReassignMs << "\n";
+         << tTrustMs << "," << tRevokeMs << "," << tReassignMs << ","
+         << pem_divergence_true_positive << "," << pem_divergence_false_negative << ","
+         << divergenceRecall << ","
+         << pem_combined_true_positive << "," << pem_combined_false_negative << ","
+         << combinedRecall << "\n";
 
     if (pem_qrr_echo_attempts > 0) {
         std::cout << "[M11][QRR] echo_attempts=" << pem_qrr_echo_attempts
@@ -6266,7 +6370,13 @@ PemEvaluateEvent(PemEvent& event)
         // A5 (--no_lbs=1): suppress this LW geometric/RSSI check (Eq. 3.11, sig[8]).
         // This is NOT the Eq. 3.28 signature — that is TetaGuardLocBindVerify's real
         // ML-DSA-87 sign/verify, a separate Stage-0 mechanism (see that function).
-        if (!g_abl.no_lbs && (positionOutOfRange || rssiTooWeak))
+        // Phase 2 fix: also require event.has_physical_reporter — Eq. 3.11
+        // presupposes a genuine over-the-air transmission a witness could
+        // plausibly have received; controller-origin fabrications (TTW-S3/S4,
+        // ME-S3/S4, ME_Single3 modes 3/4) never make that attempt, so this
+        // check is architecturally inapplicable to them, not merely "failing"
+        // (see PemEvent::has_physical_reporter's declaration comment).
+        if (!g_abl.no_lbs && event.has_physical_reporter && (positionOutOfRange || rssiTooWeak))
         {
             event.triggered[8] = true;
         }
@@ -6767,7 +6877,8 @@ PemEmitEvent(PemEventType type,
              const Vector& linkSrcPosition,
              const Vector& linkDstPosition,
              bool attackLabel,
-             uint32_t macSignerIdOverride)
+             uint32_t macSignerIdOverride,
+             bool hasPhysicalReporter)
 {
     PemStageTimer __pemDetectTimer(PemPipelineStage::kDetect);
 
@@ -6842,6 +6953,7 @@ PemEmitEvent(PemEventType type,
     event.link_src_position = linkSrcPosition;
     event.link_dst_position = linkDstPosition;
     event.attack_label = attackLabel;
+    event.has_physical_reporter = hasPhysicalReporter;
     event.score = 0.0;
     event.alert_raised = false;
     event.detection_latency_ms = -1.0;
@@ -8211,6 +8323,85 @@ MeSelectMutualRangePairNearRsu(uint32_t rsuGlobalId, std::vector<uint32_t> pool,
     return byRsuDist;
 }
 
+// Picks, from RSU_Nodes, whichever RSU's real position has the MOST vehicles
+// from `pool` within kEffectiveReceptionRadius at `atTime` — instead of
+// blindly using RSU_Nodes.Get(0) regardless of whether it actually has a
+// usable local neighborhood for this run/seed. A poorly-positioned RSU_0
+// forces MeSelectMutualRangePairNearRsu into its last-resort fallback (the
+// "genuinely no viable local neighborhood" case just above), which is
+// correctly excluded from the confusion matrix via
+// g_scenario_invalid_neighborhood_rsus — but that silently zeroes out the
+// scenario's true-negative sample (no benign event survives to be counted),
+// which is avoidable simply by picking a better-positioned RSU up front.
+// Does not change which RSU is treated as malicious/relaying in a way that
+// affects the attack model itself — any RSU can serve that role equally
+// validly; this only makes the resulting scenario physically realistic.
+// Falls back to RSU_Nodes.Get(0) if literally no RSU has any vehicle from
+// `pool` in range (matching prior behavior exactly in that edge case).
+static uint32_t SelectRsuWithViableNeighborhood(const std::vector<uint32_t>& pool, double atTime)
+{
+    uint32_t bestRsuId = (RSU_Nodes.GetN() > 0) ? RSU_Nodes.Get(0)->GetId() : 0u;
+    uint32_t bestCount = 0;
+    for (uint32_t r = 0; r < RSU_Nodes.GetN(); r++)
+    {
+        Ptr<Node> rsuNode = RSU_Nodes.Get(r);
+        Ptr<MobilityModel> m = rsuNode ? rsuNode->GetObject<MobilityModel>() : nullptr;
+        if (!m) continue;
+        Vector rsuPos = m->GetPosition();
+        uint32_t count = 0;
+        for (uint32_t cidx : pool)
+        {
+            if (PemDistance2d(rsuPos, TtwSumoPositionAt(cidx, atTime)) <= kEffectiveReceptionRadius)
+                count++;
+        }
+        if (count > bestCount)
+        {
+            bestCount = count;
+            bestRsuId = rsuNode->GetId();
+        }
+    }
+    return bestRsuId;
+}
+
+// Reorders `pool` so pool[0]/pool[1] are a genuine mutual-range pair (within
+// kEffectiveReceptionRadius of each other) — the no-RSU-anchor counterpart of
+// MeSelectMutualRangePairNearRsu, for ME-S1/ME-S3 (malicious vehicle/
+// malicious controller, no RSU) where there is no RSU position to anchor
+// against. Without this, the "real link" v1/v2 was picked as pool[0]/pool[1]
+// with zero distance verification, meaning it could land anywhere on the map
+// — including sparse areas where ME-S1's genuine local-density threshold
+// (Eq. 3.8) takes far longer to cross regardless of real attack activity
+// (confirmed: ME-S3 without this fix took until the 36th of 40 phantom
+// injections to first fire ME-S1, vs ME-S4's ~13th, purely from the link's
+// arbitrary map position — RSU-anchored scenarios don't have this problem
+// since RSUs sit at fixed, structured grid positions). Searches all pairs
+// for the first mutually-close one; falls back to the original (unfiltered)
+// ordering if none exists, logged rather than silently substituted —
+// matches MeSelectMutualRangePairNearRsu's own fallback discipline.
+static std::vector<uint32_t>
+SelectMutualRangePair(const std::vector<uint32_t>& pool, double atTime)
+{
+    for (size_t i = 0; i < pool.size(); i++) {
+        for (size_t j = i + 1; j < pool.size(); j++) {
+            const double d = PemDistance2d(TtwSumoPositionAt(pool[i], atTime),
+                                            TtwSumoPositionAt(pool[j], atTime));
+            if (d <= kEffectiveReceptionRadius) {
+                std::vector<uint32_t> result;
+                result.push_back(pool[i]);
+                result.push_back(pool[j]);
+                for (uint32_t cidx : pool)
+                    if (cidx != pool[i] && cidx != pool[j])
+                        result.push_back(cidx);
+                return result;
+            }
+        }
+    }
+    std::cout << "[ME][WARNING] No mutual-range pair found in pool of size " << pool.size()
+              << "  effective_range=" << kEffectiveReceptionRadius << "m"
+              << "  using unfiltered ordering (ground_truth_valid=false)" << std::endl;
+    return pool;
+}
+
 // Result of scanning a candidate attacker/victim pair's real trajectories
 // for a genuine communication-range break.
 struct TtwBreakEval {
@@ -9099,12 +9290,29 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
     // own Eq. 3.4 check depends on it, and that check needs the gap this
     // restores.
     double _ts3 = ttws3_forged_timestamp;
+    // Phase 2: hasPhysicalReporter=false — reporterId=9999 sentinel, no real
+    // over-the-air transmission (see PemEvent::has_physical_reporter comment).
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
                  _ts3,
-                 now2, v1Pos, v1Pos, v2Pos, true);
-    if (pem_last_alert) {
+                 now2, v1Pos, v1Pos, v2Pos, true, UINT32_MAX, false);
+    // Step 1 (divergence-mechanism independence): evaluate the delta-divergence
+    // gate (Algorithm 4 lines 2-7, Eq. 3.47-3.48) UNCONDITIONALLY, not only
+    // when the LW/TGN score (pem_last_alert) already crossed threshold -- per
+    // the paper's architecture this is the PRIMARY, independent detector for
+    // controller-origin attacks (see pem_divergence_true_positive's
+    // declaration comment for the full rationale).
+    const bool lwTgnAlert = pem_last_alert;
+    std::string ctrl_div_log;
+    const bool divergenceConfirmed =
+        PemControllerDivergenceGate(now2, "TTW-S3", ctrl_div_log, v1_id, v2_id, now2);
+    if (divergenceConfirmed) ++pem_divergence_true_positive;
+    else                     ++pem_divergence_false_negative;
+    if (lwTgnAlert || divergenceConfirmed) ++pem_combined_true_positive;
+    else                                   ++pem_combined_false_negative;
+
+    if (lwTgnAlert || divergenceConfirmed) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
         attack_T_matrix.erase(k);
@@ -9114,8 +9322,8 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
         // gated by Algorithm 4's δ-divergence check (lines 2-7, Eqs. 3.44-3.46).
         uint32_t ctrl_ns3 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
-        std::string trust_log, ctrl_div_log;
-        if (PemControllerDivergenceGate(now2, "TTW-S3", ctrl_div_log, v1_id, v2_id, now2)) {
+        std::string trust_log;
+        if (divergenceConfirmed) {
             TrustUpdateNode(ctrl_ns3, false, true);
             if (!g_abl.no_reassign) {
                 trust_log = TrustReassignController(ctrl_ns3, now2);
@@ -9126,7 +9334,8 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
         }
         trust_log = ctrl_div_log + trust_log;
         TrustRunDemotionPipeline(now2);
-        ttws3_log << "[t=" << now2 << "]  DETECTION + MITIGATION\n"
+        ttws3_log << "[t=" << now2 << "]  DETECTION + MITIGATION"
+                  << (lwTgnAlert ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") << "\n"
                   << "  Internal replay detected and removed\n"
                   << "  Score: " << pem_last_detection_score << "\n"
                   << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
@@ -9286,12 +9495,25 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
     // event and the genuine window entry made Eq. 3.4's gap check
     // identically zero by construction, so sig[2] could never fire.
     double _ts4 = ttws4_forged_timestamp;
+    // Phase 2: hasPhysicalReporter=false — reporterId=9999 sentinel, no real
+    // over-the-air transmission (see PemEvent::has_physical_reporter comment).
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE,
                  9999u, v1_id, 9999u,
                  v1_id, v2_id,
                  _ts4,
-                 now2, v1Pos, v1Pos, v2Pos, true);
-    if (pem_last_alert) {
+                 now2, v1Pos, v1Pos, v2Pos, true, UINT32_MAX, false);
+    // Step 1 (divergence-mechanism independence): see TTWS3_RunDetection's
+    // identical fix and pem_divergence_true_positive's declaration comment.
+    const bool lwTgnAlert_s4 = pem_last_alert;
+    std::string ctrl_div_log_s4;
+    const bool divergenceConfirmed_s4 =
+        PemControllerDivergenceGate(now2, "TTW-S4", ctrl_div_log_s4, v1_id, v2_id, now2);
+    if (divergenceConfirmed_s4) ++pem_divergence_true_positive;
+    else                        ++pem_divergence_false_negative;
+    if (lwTgnAlert_s4 || divergenceConfirmed_s4) ++pem_combined_true_positive;
+    else                                         ++pem_combined_false_negative;
+
+    if (lwTgnAlert_s4 || divergenceConfirmed_s4) {
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
         attack_T_matrix.erase(k);
@@ -9299,8 +9521,8 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
         CryptoMeasureLKH(now2, v1_id, N_Vehicles);
         uint32_t ctrl_ns3_s4 = (controller_Node.GetN() > 0)
                                ? controller_Node.Get(0)->GetId() : 9999u;
-        std::string trust_log_s4, ctrl_div_log_s4;
-        if (PemControllerDivergenceGate(now2, "TTW-S4", ctrl_div_log_s4, v1_id, v2_id, now2)) {
+        std::string trust_log_s4;
+        if (divergenceConfirmed_s4) {
             TrustUpdateNode(ctrl_ns3_s4, false, true);
             if (!g_abl.no_reassign) {
                 trust_log_s4 = TrustReassignController(ctrl_ns3_s4, now2);
@@ -9311,7 +9533,8 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
         }
         trust_log_s4 = ctrl_div_log_s4 + trust_log_s4;
         TrustRunDemotionPipeline(now2);
-        ttws4_log << "[t=" << now2 << "]  DETECTION + MITIGATION\n"
+        ttws4_log << "[t=" << now2 << "]  DETECTION + MITIGATION"
+                  << (lwTgnAlert_s4 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") << "\n"
                   << "  Internal replay (RSU variant) detected and removed\n"
                   << "  Score: " << pem_last_detection_score << "\n"
                   << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
@@ -10398,14 +10621,25 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
                      stored_time, now, zeroPos, zeroPos, zeroPos, true);
     }
 
-    if (pem_last_alert) {
+    // Step 1 (divergence-mechanism independence): see TTWS3_RunDetection's
+    // identical fix and pem_divergence_true_positive's declaration comment.
+    const bool lwTgnAlert_s7 = pem_last_alert;
+    std::string ctrl_div_log_s7;
+    const bool divergenceConfirmed_s7 =
+        PemControllerDivergenceGate(now, "BSHH-S3", ctrl_div_log_s7, v1_id, v2_id, now);
+    if (divergenceConfirmed_s7) ++pem_divergence_true_positive;
+    else                        ++pem_divergence_false_negative;
+    if (lwTgnAlert_s7 || divergenceConfirmed_s7) ++pem_combined_true_positive;
+    else                                         ++pem_combined_false_negative;
+
+    if (lwTgnAlert_s7 || divergenceConfirmed_s7) {
         bshh_controller_liveness_table.erase(v1_id);
         bshh_controller_liveness_table.erase(v2_id);
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s7 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
-        std::string trust_s7, ctrl_div_log_s7;
-        if (PemControllerDivergenceGate(now, "BSHH-S3", ctrl_div_log_s7, v1_id, v2_id, now)) {
+        std::string trust_s7;
+        if (divergenceConfirmed_s7) {
             TrustUpdateNode(ctrl_s7, false, true);
             if (!g_abl.no_reassign) {
                 trust_s7 = TrustReassignController(ctrl_s7, now);
@@ -10418,7 +10652,8 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         TrustRunDemotionPipeline(now);
         std::string mit = PemApplyMitigation(v1_id, now, "BSHH-S3");
         for (auto& p : bshh_s3_pair_logs) {
-            p.second += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION\n"
+            p.second += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION"
+                        + std::string(lwTgnAlert_s7 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") + "\n"
                         "  Controller internal HB replay detected\n"
                         "  Score: " + std::to_string(pem_last_detection_score) + "\n"
                         "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
@@ -10625,14 +10860,25 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
                      stored_time, now, zeroPos, zeroPos, zeroPos, true);
     }
 
-    if (pem_last_alert) {
+    // Step 1 (divergence-mechanism independence): see TTWS3_RunDetection's
+    // identical fix and pem_divergence_true_positive's declaration comment.
+    const bool lwTgnAlert_s8 = pem_last_alert;
+    std::string ctrl_div_log_s8;
+    const bool divergenceConfirmed_s8 =
+        PemControllerDivergenceGate(now, "BSHH-S4", ctrl_div_log_s8, v1_id, v2_id, now);
+    if (divergenceConfirmed_s8) ++pem_divergence_true_positive;
+    else                        ++pem_divergence_false_negative;
+    if (lwTgnAlert_s8 || divergenceConfirmed_s8) ++pem_combined_true_positive;
+    else                                         ++pem_combined_false_negative;
+
+    if (lwTgnAlert_s8 || divergenceConfirmed_s8) {
         bshh_controller_liveness_table.erase(v1_id);
         bshh_controller_liveness_table.erase(v2_id);
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s8 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
-        std::string trust_s8, ctrl_div_log_s8;
-        if (PemControllerDivergenceGate(now, "BSHH-S4", ctrl_div_log_s8, v1_id, v2_id, now)) {
+        std::string trust_s8;
+        if (divergenceConfirmed_s8) {
             TrustUpdateNode(ctrl_s8, false, true);
             if (!g_abl.no_reassign) {
                 trust_s8 = TrustReassignController(ctrl_s8, now);
@@ -10645,7 +10891,8 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         TrustRunDemotionPipeline(now);
         std::string mit = PemApplyMitigation(v1_id, now, "BSHH-S4");
         for (auto& p : bshh_s4_pair_logs) {
-            p.second += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION\n"
+            p.second += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION"
+                        + std::string(lwTgnAlert_s8 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") + "\n"
                         "  Controller internal HB replay (RSU variant) detected\n"
                         "  Score: " + std::to_string(pem_last_detection_score) + "\n"
                         "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
@@ -11466,15 +11713,45 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
     // mode 4, since the RSU there is legitimate and only carries real reports.
     const uint32_t echoPhysicalSender = (mode == 2) ? rsu_id : (mode == 3 || mode == 4) ? 9999u : atk_id;
     const uint32_t echoReporterId     = (mode == 2) ? rsu_id : atk_id;
+    // Phase 2: modes 3/4 (controller-origin) pass hasPhysicalReporter=false —
+    // aPos here is atk_id's own real position reused as a stand-in for
+    // echoReporterId, the same class of mismatch as ME_S3/S4_InjectPhantomPaths'
+    // ctrlPos (see PemEvent::has_physical_reporter comment). Modes 1/2 keep
+    // the default true — confirmed self-consistent reporterId/reporterPosition.
+    const bool echoHasPhysicalReporter = !(mode == 3 || mode == 4);
     for (auto& e : echoedEdges) {
         PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, echoPhysicalSender, atk_id,
                      echoReporterId,
                      e.first, e.second, t, now, aPos,
-                     MEGetVehiclePos(e.first), MEGetVehiclePos(e.second), true);
+                     MEGetVehiclePos(e.first), MEGetVehiclePos(e.second), true,
+                     UINT32_MAX, echoHasPhysicalReporter);
     }
     if (mode == 2 || mode == 4) AttackSendRSUToController(rsu_id);
 
-    if (pem_last_alert) {
+    // Step 1 (divergence-mechanism independence): for controller-origin modes
+    // (3,4) only, evaluate the divergence gate UNCONDITIONALLY — not nested
+    // inside pem_last_alert — so it can act as an independent detector per
+    // the paper's architecture (see pem_divergence_true_positive's
+    // declaration comment). Modes 1/2 (vehicle/RSU-origin) have no divergence
+    // concept — the vehicle/RSU isn't the trust anchor — so they are
+    // unaffected and still gate purely on pem_last_alert, exactly as before.
+    std::string ctrl_div_log_single3;
+    bool divergenceConfirmed_single3 = false;
+    if (mode == 3 || mode == 4) {
+        divergenceConfirmed_single3 =
+            PemControllerDivergenceGate(now, tag, ctrl_div_log_single3, v1_id, v2_id, now);
+        if (divergenceConfirmed_single3) ++pem_divergence_true_positive;
+        else                              ++pem_divergence_false_negative;
+    }
+    const bool lwTgnAlert_single3 = pem_last_alert;
+    // Combined (LW/TGN OR divergence) only tracked for controller-origin
+    // modes 3/4 — modes 1/2 have no divergence concept, see above.
+    if (mode == 3 || mode == 4) {
+        if (lwTgnAlert_single3 || divergenceConfirmed_single3) ++pem_combined_true_positive;
+        else                                                   ++pem_combined_false_negative;
+    }
+
+    if (lwTgnAlert_single3 || divergenceConfirmed_single3) {
         for (auto& e : echoedEdges) {
             std::string k = std::to_string(atk_id) + "_echo3_" + std::to_string(e.first) + "_" + std::to_string(e.second);
             ttw_controller_table.erase(k);
@@ -11496,8 +11773,7 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
             // which already call TrustReassignController themselves.
             uint32_t ctrl_single3 = (controller_Node.GetN() > 0)
                                      ? controller_Node.Get(0)->GetId() : 9999u;
-            std::string ctrl_div_log_single3;
-            if (PemControllerDivergenceGate(now, tag, ctrl_div_log_single3, v1_id, v2_id, now)) {
+            if (divergenceConfirmed_single3) {
                 TrustUpdateNode(ctrl_single3, false, true);
                 if (!g_abl.no_reassign) {
                     trust_single3 = TrustReassignController(ctrl_single3, now);
@@ -11514,7 +11790,8 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
         // must target the RSU, not the impersonated vehicle atk_id.
         const uint32_t mitigationTargetId = (mode == 2) ? echoPhysicalSender : atk_id;
         std::string mit = PemApplyMitigation(mitigationTargetId, now, tag, &ev);
-        me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
+        me_log << "[t=" << now << "]  DETECTION + MITIGATION"
+               << (lwTgnAlert_single3 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") << "\n"
                << "  Attacker V" << an << " identified; phantom entries removed\n"
                << "  Score: " << pem_last_detection_score << "\n"
                << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
@@ -12097,6 +12374,18 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v3_id), Vehicle_Nodes.Get(v4_id));
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v4_id), Vehicle_Nodes.Get(v3_id));
     }
+    // Matches ME_S1_LegitimateDiscovery's identical fix: AttackSendDSRCBeacon
+    // above is a REAL 802.11p transmission, subject to actual channel
+    // contention/collisions at full network scale, so it does not reliably
+    // populate g_rsu_beacon_log (ME-S1's Eq. 3.8 density source). This
+    // simulation-level beacon event does so deterministically whenever the
+    // pair is genuinely within kEffectiveReceptionRadius, giving controller-
+    // origin ME-S3 the same real density-evidence floor vehicle-origin
+    // ME-S1 already has (confirmed root cause of ME-S3's far slower ME-S1
+    // trigger timing vs ME-S1's own scenario, in a run with the identical
+    // vehicle count/density).
+    PemEmitVehicleBeacon(v1_id, v2_id);
+    if (s3ld_link34) PemEmitVehicleBeacon(v3_id, v4_id);
 }
 
 void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
@@ -12215,18 +12504,33 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     // feature both key on. Using 9999 for both collapsed them into a single
     // reporter, hiding the reporter-count inflation ME-S1 is meant to catch.
     // Matches the attack spec: V3 and V4 are named as distinct false witnesses.
+    // Phase 2: hasPhysicalReporter=false — reporterId=false_v3/false_v4 is a
+    // real vehicle, but reporterPosition=ctrlPos is the controller's own
+    // location, a mismatched stand-in (see PemEvent::has_physical_reporter
+    // comment) — no real over-the-air transmission underlies this claim.
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, false_v3,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
     if (s3_have_v4)
         PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, false_v4,
-                     v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                     v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
 
-    if (pem_last_alert) {
+    // Step 1 (divergence-mechanism independence): see TTWS3_RunDetection's
+    // identical fix and pem_divergence_true_positive's declaration comment.
+    const bool lwTgnAlert_s11 = pem_last_alert;
+    std::string ctrl_div_log_s11;
+    const bool divergenceConfirmed_s11 =
+        PemControllerDivergenceGate(now, "ME-S3", ctrl_div_log_s11, v1_id, v2_id, now);
+    if (divergenceConfirmed_s11) ++pem_divergence_true_positive;
+    else                         ++pem_divergence_false_negative;
+    if (lwTgnAlert_s11 || divergenceConfirmed_s11) ++pem_combined_true_positive;
+    else                                           ++pem_combined_false_negative;
+
+    if (lwTgnAlert_s11 || divergenceConfirmed_s11) {
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s11 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
-        std::string trust_s11, ctrl_div_log_s11;
-        if (PemControllerDivergenceGate(now, "ME-S3", ctrl_div_log_s11, v1_id, v2_id, now)) {
+        std::string trust_s11;
+        if (divergenceConfirmed_s11) {
             TrustUpdateNode(ctrl_s11, false, true);
             if (!g_abl.no_reassign) {
                 trust_s11 = TrustReassignController(ctrl_s11, now);
@@ -12241,7 +12545,8 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (s3_have_v4) me_s3_reporters.push_back(false_v4);
         const PemQuorumEvidence me_s3_ev{ctrlPos, v1Pos, v2Pos, v1_id, v2_id, me_s3_reporters};
         std::string mit = PemApplyMitigation(false_v3, now, "ME-S3", &me_s3_ev);
-        me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
+        me_log << "[t=" << now << "]  DETECTION + MITIGATION"
+               << (lwTgnAlert_s11 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") << "\n"
                << "  Controller internal echo fabrication detected\n"
                << "  Phantom reporters V" << false_v3 << " and V" << false_v4 << " removed\n"
                << "  Score: " << pem_last_detection_score << "\n"
@@ -12530,18 +12835,31 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     }
     // See ME_S3_InjectPhantomPaths: reporterId = false_v3/false_v4 (not the
     // 9999 sentinel) so each phantom injection counts as a distinct reporter.
+    // Phase 2: hasPhysicalReporter=false — same ctrlPos/reporterId mismatch
+    // as ME_S3_InjectPhantomPaths (see PemEvent::has_physical_reporter comment).
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, false_v3,
-                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                 v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
     if (have_v4)
         PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, false_v4,
-                     v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true);
+                     v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
 
-    if (pem_last_alert) {
+    // Step 1 (divergence-mechanism independence): see TTWS3_RunDetection's
+    // identical fix and pem_divergence_true_positive's declaration comment.
+    const bool lwTgnAlert_s12 = pem_last_alert;
+    std::string ctrl_div_log_s12;
+    const bool divergenceConfirmed_s12 =
+        PemControllerDivergenceGate(now, "ME-S4", ctrl_div_log_s12, v1_id, v2_id, now);
+    if (divergenceConfirmed_s12) ++pem_divergence_true_positive;
+    else                         ++pem_divergence_false_negative;
+    if (lwTgnAlert_s12 || divergenceConfirmed_s12) ++pem_combined_true_positive;
+    else                                           ++pem_combined_false_negative;
+
+    if (lwTgnAlert_s12 || divergenceConfirmed_s12) {
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s12 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
-        std::string trust_s12, ctrl_div_log_s12;
-        if (PemControllerDivergenceGate(now, "ME-S4", ctrl_div_log_s12, v1_id, v2_id, now)) {
+        std::string trust_s12;
+        if (divergenceConfirmed_s12) {
             TrustUpdateNode(ctrl_s12, false, true);
             if (!g_abl.no_reassign) {
                 trust_s12 = TrustReassignController(ctrl_s12, now);
@@ -12556,7 +12874,8 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (have_v4) me_s4_reporters.push_back(false_v4);
         const PemQuorumEvidence me_s4_ev{ctrlPos, v1Pos, v2Pos, v1_id, v2_id, me_s4_reporters};
         std::string mit = PemApplyMitigation(false_v3, now, "ME-S4", &me_s4_ev);
-        me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
+        me_log << "[t=" << now << "]  DETECTION + MITIGATION"
+               << (lwTgnAlert_s12 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") << "\n"
                << "  Controller internal echo fabrication (RSU variant) detected\n"
                << "  Phantom reporters V" << false_v3 << " and V" << false_v4 << " removed\n"
                << "  Score: " << pem_last_detection_score << "\n"
@@ -143501,7 +143820,58 @@ void send_LTE_data_agent(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_sou
 		cout<<"lte total packet size is "<<lte_total_packet_size<<endl;
 
 	}
-	
+
+}
+
+// ── Vehicle-to-controller direct LTE fallback ────────────────────────────────
+// When no RSU is present at all, or a vehicle is not within any RSU's real
+// calibrated reception range (kEffectiveReceptionRadius, 100m) right now, it
+// has no relay path to the controller layer through the DSRC/CSMA chain at
+// all. This tick gives it one via the existing (previously dormant, per
+// CLAUDE.md Section 19) LTE uplink -- send_LTE_data_agent -- sent to EVERY
+// controller in controller_Node (N_Controllers total, not just one), per
+// explicit design request. Runs every PEM_BEACON_INTERVAL_S, independent of
+// attack_scenario, since this is a general communication-completeness
+// property, not attack-specific.
+// apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
+// (same offset convention already used by TTW-S1..S4's app_veh_base).
+static void VehicleControllerLteFallbackTick()
+{
+    const uint32_t app_veh_base = N_Controllers + 1;
+    for (uint32_t u = 0; u < Vehicle_Nodes.GetN(); u++)
+    {
+        Ptr<Node> v = Vehicle_Nodes.Get(u);
+        Ptr<MobilityModel> vm = v->GetObject<MobilityModel>();
+        if (!vm) continue;
+        Vector vpos = vm->GetPosition();
+
+        bool inRsuRange = false;
+        for (uint32_t r = 0; r < RSU_Nodes.GetN(); r++)
+        {
+            Ptr<MobilityModel> rm = RSU_Nodes.Get(r)->GetObject<MobilityModel>();
+            if (!rm) continue;
+            if (PemDistance2d(vpos, rm->GetPosition()) <= kEffectiveReceptionRadius)
+            {
+                inRsuRange = true;
+                break;
+            }
+        }
+        if (inRsuRange) continue;   // has a real RSU relay path this tick
+
+        Ptr<SimpleUdpApplication> udp_app =
+            DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + u));
+        if (!udp_app) continue;
+
+        for (uint32_t c = 0; c < controller_Node.GetN(); c++)
+        {
+            send_LTE_data_agent(udp_app, v, controller_Node.Get(c), u);
+        }
+    }
+
+    if (Simulator::Now().GetSeconds() + PEM_BEACON_INTERVAL_S < simTime)
+    {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &VehicleControllerLteFallbackTick);
+    }
 }
 
 void begin_sending_LTE_data_agent()
@@ -153760,7 +154130,16 @@ static int RoutingMain(int argc, char *argv[])
 		apps.Add(udp_app);
 	 }
 	 apps.Start(Seconds(0.00));
-	 apps.Stop(Seconds(simTime)); 
+	 apps.Stop(Seconds(simTime));
+ }
+
+ // Vehicle-to-controller direct LTE fallback (see VehicleControllerLteFallbackTick's
+ // declaration comment) -- scheduled here since it needs `apps` (vehicle-side
+ // SimpleUdpApplication instances) already populated by the block just above.
+ // Small initial delay so mobility/RSU/vehicle placement is fully settled
+ // before the first range check.
+ if (N_Vehicles > 0) {
+     Simulator::Schedule(Seconds(0.5), &VehicleControllerLteFallbackTick);
  }
 
  //if (architecture == 0)//centralized architecture
@@ -156028,6 +156407,12 @@ static int RoutingMain(int argc, char *argv[])
       uint32_t n_echo_pairs = (uint32_t)me_echo_cidx.size() / 2;
       uint32_t n_me_groups  = (me_echo_cidx.size() >= 2 && me_real_cidx.size() >= 2) ? n_echo_pairs : 0;
 
+      // Reorder me_real_cidx so [0]/[1] are a genuine mutual-range pair (no
+      // RSU to anchor against for this no-RSU scenario) — see
+      // SelectMutualRangePair's declaration comment for why this matters.
+      if (me_real_cidx.size() >= 2) {
+          me_real_cidx = SelectMutualRangePair(me_real_cidx, 10.0);
+      }
       uint32_t v1_cidx = me_real_cidx.empty()       ? 0u : me_real_cidx[0];
       uint32_t v2_cidx = me_real_cidx.size() < 2    ? 1u : me_real_cidx[1];
 
@@ -156209,7 +156594,12 @@ static int RoutingMain(int argc, char *argv[])
       // Reorder only, so all existing size/borrow logic above and below is
       // unaffected.
       {
-          const uint32_t s2_primary_rsu_id = RSU_Nodes.Get(0)->GetId();
+          // Pick whichever RSU actually has a viable local neighborhood for
+          // this run/seed, instead of blindly using RSU_Nodes.Get(0) (see
+          // SelectRsuWithViableNeighborhood's declaration comment — a poorly-
+          // positioned RSU_0 was silently zeroing out this scenario's TN
+          // sample via the invalid-neighborhood exclusion path).
+          const uint32_t s2_primary_rsu_id = SelectRsuWithViableNeighborhood(s2_real_cidx, ME_S2_DISCOVERY_TIME);
           // s2_real_cidx[0]/[1] become the "V1<->V2 real link" — needs both
           // near the RSU AND mutually in range of each other (see
           // MeSelectMutualRangePairNearRsu's comment). Phantom reporters
@@ -156447,6 +156837,12 @@ static int RoutingMain(int argc, char *argv[])
       if (s3_phantom_cidx.size() < 2 && s3_real_cidx.size() >= 3) {
           s3_phantom_cidx.push_back(s3_real_cidx.back()); s3_real_cidx.pop_back();
       }
+      // Reorder s3_real_cidx so [0]/[1] are a genuine mutual-range pair (no
+      // RSU to anchor against for this no-RSU scenario) — see
+      // SelectMutualRangePair's declaration comment for why this matters.
+      if (s3_real_cidx.size() >= 2) {
+          s3_real_cidx = SelectMutualRangePair(s3_real_cidx, 10.0);
+      }
       uint32_t v1_id = s3_real_cidx[0];
       uint32_t v2_id = s3_real_cidx[1];
 
@@ -156537,8 +156933,13 @@ static int RoutingMain(int argc, char *argv[])
           std::cout << "[ERROR] ME-S4 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
           return 1;
       }
-      uint32_t rsu_id = RSU_Nodes.Get(0)->GetId();
       static const double ME_S4_DISCOVERY_TIME = 10.0;
+      // Pick whichever RSU actually has a viable local neighborhood for this
+      // run/seed, instead of blindly using RSU_Nodes.Get(0) (see
+      // SelectRsuWithViableNeighborhood's declaration comment — this is the
+      // same fix as ME-S2's, applied here since ME-S4 had the identical
+      // hardcoded-index-0 pattern silently zeroing out its TN sample).
+      uint32_t rsu_id = SelectRsuWithViableNeighborhood(s4_real_cidx, ME_S4_DISCOVERY_TIME);
 
       // Select which vehicles play the "real link"/"phantom reporter" roles
       // by actual proximity to the fixed RSU-in-path (rsu_id), instead of

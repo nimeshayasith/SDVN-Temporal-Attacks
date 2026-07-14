@@ -40,9 +40,9 @@
 ========================================================
 [t=13.150]  DETECTION + MITIGATION
   Internal replay detected and removed
-  Score: 0.333
+  Score: 0.222
   Latency: 50.000 ms
   [Controller-origin] Network isolation SUPPRESSED — V45 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=1  delta_thresh=1639  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 
