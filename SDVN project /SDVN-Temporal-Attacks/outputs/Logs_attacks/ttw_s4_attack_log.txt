@@ -10,40 +10,40 @@
 
 ========================================================
 
-[t=10.000]  STEP ①  V60/V96 -> RSU_205 -> Controller (legitimate aggregate)
-  <V60 sees V96, t=10.000>  ACCEPTED
-  <V96 sees V60, t=10.000>  ACCEPTED
+[t=10.000]  STEP ①  V20/V19 -> RSU_25 -> Controller (legitimate aggregate)
+  <V20 sees V19, t=10.000>  ACCEPTED
+  <V19 sees V20, t=10.000>  ACCEPTED
 
 [t=10.100]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V60 sees V96, t=10.000>
-  Link physically breaks at t≈10.7s (dist > 300.0m, real SUMO trajectory)
-  Controller WILL NOT time out this entry — will replay at t=12.7
+  Stored : <V20 sees V19, t=10.000>
+  Link physically breaks at t≈11.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=13.7
 
-[t=12.700]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
-  Stored entry  : <V60 sees V96, t=10.000>  (captured from RSU-aggregated update at t=10.000)
-  Forged packet : <V60 sees V96, t=12.700>  timestamp changed 10.000 -> 12.700
-  Forge action  : controller changes timestamp to appear current, reinserts at t=12.700 — no external packet required
+[t=13.700]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V20 sees V19, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V20 sees V19, t=13.700>  timestamp changed 10.000 -> 13.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=13.700 — no external packet required
   RSU was in original data path (V→RSU→Controller)
 
-[t=12.700]  STEP ④  TABLE POISONED (internal — no external packet)
-  Controller believes V60<->V96 was ACTIVE at t=12.700 (forged — link has since broken)
+[t=13.700]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V20<->V19 was ACTIVE at t=13.700 (forged — link has since broken)
   Physical reality : link BROKEN
   <- ATTACK SUCCESS
 
   Topology Table (after replay):
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
-  V60  ->  V96    t=12.700    YES <- FORGED
-  V96  ->  V60    t=10.000    No
+  V19  ->  V20    t=10.000    No
+  V20  ->  V19    t=13.700    YES <- FORGED
 
 ========================================================
   TTW ATTACK S4 COMPLETE
 ========================================================
-[t=12.750]  DETECTION + MITIGATION
+[t=13.750]  DETECTION + MITIGATION
   Internal replay (RSU variant) detected and removed
   Score: 0.333
   Latency: 50.000 ms
-  [Controller-origin] Network isolation SUPPRESSED — V60 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Controller-origin] Network isolation SUPPRESSED — V20 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=1  delta_thresh=1801  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  delta_t=0  delta_thresh=127  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 

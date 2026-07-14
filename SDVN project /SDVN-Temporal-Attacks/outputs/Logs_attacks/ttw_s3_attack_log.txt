@@ -11,38 +11,38 @@
 ========================================================
 
 [t=10.000]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
-  V45 -> Controller : <V45 sees V102, t=10.000>  ACCEPTED
-  V102 -> Controller : <V102 sees V45, t=10.000>  ACCEPTED
+  V45 -> Controller : <V45 sees V152, t=10.000>  ACCEPTED
+  V152 -> Controller : <V152 sees V45, t=10.000>  ACCEPTED
 
 [t=10.100]  STEP ②  CONTROLLER KEEPS STALE COPY
-  Stored : <V45 sees V102, t=10.000>
-  Link physically breaks at t≈18.1s (dist > 300.0m, real SUMO trajectory)
+  Stored : <V45 sees V152, t=10.000>
+  Link physically breaks at t≈11.1s (dist > 300.0m, real SUMO trajectory)
   Controller WILL NOT time out this entry
 
-[t=20.100]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
-  Stored entry  : <V45 sees V102, t=10.000>  (captured from legitimate update at t=10.000)
-  Forged packet : <V45 sees V102, t=20.100>  timestamp changed 10.000 -> 20.100
-  Forge action  : controller changes timestamp to appear current, reinserts at t=20.100 — no external packet required
+[t=13.100]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V45 sees V152, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V45 sees V152, t=13.100>  timestamp changed 10.000 -> 13.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=13.100 — no external packet required
 
-[t=20.100]  STEP ④  TABLE POISONED (internal — no external packet)
-  Controller believes V45<->V102 was ACTIVE at t=20.100 (forged — link has since broken)
+[t=13.100]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V45<->V152 was ACTIVE at t=13.100 (forged — link has since broken)
   Physical reality : link BROKEN
   <- ATTACK SUCCESS
 
   Topology Table (after replay):
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
-  V102  ->  V45    t=10.000    No
-  V45  ->  V102    t=20.100    YES <- FORGED
+  V152  ->  V45    t=10.000    No
+  V45  ->  V152    t=13.100    YES <- FORGED
 
 ========================================================
   TTW ATTACK S3 COMPLETE
 ========================================================
-[t=20.150]  DETECTION + MITIGATION
+[t=13.150]  DETECTION + MITIGATION
   Internal replay detected and removed
   Score: 0.333
   Latency: 50.000 ms
   [Controller-origin] Network isolation SUPPRESSED — V45 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=1  delta_thresh=1801  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  delta_t=1  delta_thresh=1639  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 
