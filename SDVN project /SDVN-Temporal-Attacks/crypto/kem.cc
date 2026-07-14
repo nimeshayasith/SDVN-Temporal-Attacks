@@ -254,9 +254,11 @@ void kem_vehicle_keygen(KemExchangeState *state,
                          const uint8_t vehicle_id[16],
                          const uint8_t dil_sk[DILITHIUM5_SK_LEN],
                          const uint8_t dil_pk[DILITHIUM5_PK_LEN],
-                         const CertificateRecord *cert) {
+                         const CertificateRecord *cert,
+                         bool hqc5_enabled = true) {
     kem_print_hybrid_mode();   /* confirm hybrid mode on first call */
     memset(state, 0, sizeof(*state));
+    state->hqc5_enabled = hqc5_enabled;
     memcpy(state->vehicle_id, vehicle_id, 16);
     memcpy(state->identity_pk,  dil_pk,     DILITHIUM5_PK_LEN);
     /* Fix-1/2 repair: copy CA cert into state so the RSU can verify
@@ -268,31 +270,42 @@ void kem_vehicle_keygen(KemExchangeState *state,
     OQS_KEM_keypair(kem_k, state->pk_kyber, state->sk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_h = OQS_KEM_new(OQS_KEM_alg_hqc_5);
-    OQS_KEM_keypair(kem_h, state->pk_hqc, state->sk_hqc);
-    OQS_KEM_free(kem_h);
+    if (hqc5_enabled) {
+        OQS_KEM *kem_h = OQS_KEM_new(OQS_KEM_alg_hqc_5);
+        OQS_KEM_keypair(kem_h, state->pk_hqc, state->sk_hqc);
+        OQS_KEM_free(kem_h);
+    }
 #else
     fill_random(state->sk_kyber, KYBER1024_SK_LEN);
-    fill_random(state->sk_hqc, HQC5_SK_LEN);
     for (size_t i = 0; i < KYBER1024_PK_LEN; i++)
         state->pk_kyber[i] = state->sk_kyber[i % KYBER1024_SK_LEN] ^ 0xABu;
-    for (size_t i = 0; i < HQC5_PK_LEN; i++)
-        state->pk_hqc[i] = state->sk_hqc[i % HQC5_SK_LEN] ^ 0xCDu;
+    /* A13 (single_kem): the HQC-5 secret/public-key simulated-byte-fill steps
+     * below are skipped entirely when hqc5_enabled=false — this is real,
+     * measurable work being omitted (not a zero-filled placeholder), so the
+     * wall-clock cost of this function genuinely drops in single-KEM mode. */
+    if (hqc5_enabled) {
+        fill_random(state->sk_hqc, HQC5_SK_LEN);
+        for (size_t i = 0; i < HQC5_PK_LEN; i++)
+            state->pk_hqc[i] = state->sk_hqc[i % HQC5_SK_LEN] ^ 0xCDu;
+    }
 #endif
 
     /* Fix-1: generate a fresh nonce and sign the keygen message */
     fill_random(state->keygen_nonce, NONCE_LEN);
 
-    /* Build message = vehicle_id || pk_kyber || pk_hqc || nonce */
+    /* Build message = vehicle_id || pk_kyber || [pk_hqc] || nonce.
+     * A13: when hqc5_enabled=false this is a genuinely smaller ML-KEM-1024-
+     * only message — pk_hqc is not appended at all, not zero-padded. */
+    const size_t kmsg_len = 16 + KYBER1024_PK_LEN + (hqc5_enabled ? HQC5_PK_LEN : 0) + NONCE_LEN;
     uint8_t kmsg[16 + KYBER1024_PK_LEN + HQC5_PK_LEN + NONCE_LEN];
     uint8_t *p = kmsg;
     memcpy(p, vehicle_id,         16);                   p += 16;
     memcpy(p, state->pk_kyber,    KYBER1024_PK_LEN);     p += KYBER1024_PK_LEN;
-    memcpy(p, state->pk_hqc,    HQC5_PK_LEN);     p += HQC5_PK_LEN;
+    if (hqc5_enabled) { memcpy(p, state->pk_hqc, HQC5_PK_LEN); p += HQC5_PK_LEN; }
     memcpy(p, state->keygen_nonce, NONCE_LEN);
 
     size_t sig_len;
-    dilithium5_sign_kem_auth(kmsg, sizeof(kmsg), dil_sk,
+    dilithium5_sign_kem_auth(kmsg, kmsg_len, dil_sk,
                               state->keygen_sig, &sig_len);
 
     state->has_ciphertext    = false;
@@ -329,15 +342,17 @@ bool kem_rsu_encapsulate(KemExchangeState *state,
      *   is authoritative; identity_pk is accepted only if it matches the cert.
      *   A MITM who substitutes their own (pk_kyber, pk_hqc, identity_pk) cannot
      *   produce a valid cert.pk_vi that the CA never issued for their keys.        */
+    const size_t kmsg_len = 16 + KYBER1024_PK_LEN
+                            + (state->hqc5_enabled ? HQC5_PK_LEN : 0) + NONCE_LEN;
     uint8_t kmsg[16 + KYBER1024_PK_LEN + HQC5_PK_LEN + NONCE_LEN];
     uint8_t *p = kmsg;
     memcpy(p, state->vehicle_id,    16);                   p += 16;
     memcpy(p, state->pk_kyber,      KYBER1024_PK_LEN);     p += KYBER1024_PK_LEN;
-    memcpy(p, state->pk_hqc,      HQC5_PK_LEN);     p += HQC5_PK_LEN;
+    if (state->hqc5_enabled) { memcpy(p, state->pk_hqc, HQC5_PK_LEN); p += HQC5_PK_LEN; }
     memcpy(p, state->keygen_nonce,  NONCE_LEN);
 
     bool sig_ok = dilithium5_verify_kem_auth(
-        kmsg, sizeof(kmsg),
+        kmsg, kmsg_len,
         state->keygen_sig, DILITHIUM5_SIG_LEN,
         state->keygen_cert.pk_vi);   /* cert-verified pk, NOT self-supplied identity_pk */
 
@@ -379,26 +394,41 @@ bool kem_rsu_encapsulate(KemExchangeState *state,
     OQS_KEM_encaps(kem_k, state->ct_kyber, ss_k, state->pk_kyber);
     OQS_KEM_free(kem_k);
 
-    OQS_KEM *kem_h = OQS_KEM_new(OQS_KEM_alg_hqc_5);
-    OQS_KEM_encaps(kem_h, state->ct_hqc, ss_h, state->pk_hqc);
-    OQS_KEM_free(kem_h);
+    if (state->hqc5_enabled) {
+        OQS_KEM *kem_h = OQS_KEM_new(OQS_KEM_alg_hqc_5);
+        OQS_KEM_encaps(kem_h, state->ct_hqc, ss_h, state->pk_hqc);
+        OQS_KEM_free(kem_h);
 
-    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018) */
-    uint8_t combined[32];
-    for (size_t i = 0; i < 32; i++)
-        combined[i] = ss_k[i] ^ ss_h[i];
-    hkdf_sha256(combined, 32, state->vehicle_id, out_session_key);  /* Fix-8: bind vehicle_id */
+        /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018) */
+        uint8_t combined[32];
+        for (size_t i = 0; i < 32; i++)
+            combined[i] = ss_k[i] ^ ss_h[i];
+        hkdf_sha256(combined, 32, state->vehicle_id, out_session_key);  /* Fix-8: bind vehicle_id */
+    } else {
+        /* A13 (single_kem): ML-KEM-1024-only session key — no HQC-5 combiner. */
+        hkdf_sha256(ss_k, KYBER1024_SS_LEN, state->vehicle_id, out_session_key);
+    }
 #else
-    uint8_t ikm[KYBER1024_PK_LEN + HQC5_PK_LEN];
-    memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
-    memcpy(ikm + KYBER1024_PK_LEN, state->pk_hqc, HQC5_PK_LEN);
-    hkdf_sha256(ikm, sizeof(ikm), state->vehicle_id, out_session_key);  /* Fix-8 */
+    /* A13 (single_kem): when hqc5_enabled=false, ikm is genuinely just
+     * pk_kyber (a smaller HKDF input), and the ct_hqc simulated-byte-fill
+     * loop below is skipped entirely — real, measurable work omitted, not a
+     * zero-filled stand-in. */
+    if (state->hqc5_enabled) {
+        uint8_t ikm[KYBER1024_PK_LEN + HQC5_PK_LEN];
+        memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
+        memcpy(ikm + KYBER1024_PK_LEN, state->pk_hqc, HQC5_PK_LEN);
+        hkdf_sha256(ikm, sizeof(ikm), state->vehicle_id, out_session_key);  /* Fix-8 */
+    } else {
+        hkdf_sha256(state->pk_kyber, KYBER1024_PK_LEN, state->vehicle_id, out_session_key);
+    }
     for (size_t i = 0; i < KYBER1024_CT_LEN; i++)
         state->ct_kyber[i] = state->pk_kyber[i % KYBER1024_PK_LEN]
                              ^ out_session_key[i % SESSION_KEY_LEN];
-    for (size_t i = 0; i < HQC5_CT_LEN; i++)
-        state->ct_hqc[i] = state->pk_hqc[i % HQC5_PK_LEN]
-                             ^ out_session_key[i % SESSION_KEY_LEN];
+    if (state->hqc5_enabled) {
+        for (size_t i = 0; i < HQC5_CT_LEN; i++)
+            state->ct_hqc[i] = state->pk_hqc[i % HQC5_PK_LEN]
+                                 ^ out_session_key[i % SESSION_KEY_LEN];
+    }
 #endif
     state->has_ciphertext = true;
     return true;
@@ -422,23 +452,34 @@ bool kem_vehicle_decapsulate(const KemExchangeState *state,
     OQS_KEM_free(kem_k);
     if (rc_k != OQS_SUCCESS) return false;
 
-    OQS_KEM *kem_h = OQS_KEM_new(OQS_KEM_alg_hqc_5);
-    OQS_STATUS rc_h = OQS_KEM_decaps(kem_h, ss_h, state->ct_hqc, state->sk_hqc);
-    OQS_KEM_free(kem_h);
-    if (rc_h != OQS_SUCCESS) return false;
+    if (state->hqc5_enabled) {
+        OQS_KEM *kem_h = OQS_KEM_new(OQS_KEM_alg_hqc_5);
+        OQS_STATUS rc_h = OQS_KEM_decaps(kem_h, ss_h, state->ct_hqc, state->sk_hqc);
+        OQS_KEM_free(kem_h);
+        if (rc_h != OQS_SUCCESS) return false;
 
-    /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
-     * Fix-8: vehicle_id bound into HKDF info (must match kem_rsu_encapsulate). */
-    uint8_t combined[32];
-    for (size_t i = 0; i < 32; i++)
-        combined[i] = ss_k[i] ^ ss_h[i];
-    hkdf_sha256(combined, 32, state->vehicle_id, out_session_key);
+        /* K_{Vi,nk} = KDF(ss_kyber ⊕ ss_saber) — XOR hybrid combiner (Giacon et al. 2018)
+         * Fix-8: vehicle_id bound into HKDF info (must match kem_rsu_encapsulate). */
+        uint8_t combined[32];
+        for (size_t i = 0; i < 32; i++)
+            combined[i] = ss_k[i] ^ ss_h[i];
+        hkdf_sha256(combined, 32, state->vehicle_id, out_session_key);
+    } else {
+        /* A13 (single_kem): ML-KEM-1024-only session key — no HQC-5 decaps. */
+        hkdf_sha256(ss_k, KYBER1024_SS_LEN, state->vehicle_id, out_session_key);
+    }
 #else
-    /* Simulated: same HKDF(pk_kyber || pk_hqc) — matches kem_rsu_encapsulate */
-    uint8_t ikm[KYBER1024_PK_LEN + HQC5_PK_LEN];
-    memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
-    memcpy(ikm + KYBER1024_PK_LEN, state->pk_hqc, HQC5_PK_LEN);
-    hkdf_sha256(ikm, sizeof(ikm), state->vehicle_id, out_session_key);  /* Fix-8 */
+    /* A13 (single_kem): when hqc5_enabled=false, ikm is genuinely just
+     * pk_kyber — the HQC-5 half of the HKDF input is omitted, not zero-filled. */
+    if (state->hqc5_enabled) {
+        /* Simulated: same HKDF(pk_kyber || pk_hqc) — matches kem_rsu_encapsulate */
+        uint8_t ikm[KYBER1024_PK_LEN + HQC5_PK_LEN];
+        memcpy(ikm,                    state->pk_kyber, KYBER1024_PK_LEN);
+        memcpy(ikm + KYBER1024_PK_LEN, state->pk_hqc, HQC5_PK_LEN);
+        hkdf_sha256(ikm, sizeof(ikm), state->vehicle_id, out_session_key);  /* Fix-8 */
+    } else {
+        hkdf_sha256(state->pk_kyber, KYBER1024_PK_LEN, state->vehicle_id, out_session_key);
+    }
 #endif
     return true;
 }
@@ -473,7 +514,8 @@ double kem_get_last_handshake_only_ms(void) {
 
 VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
                                         uint32_t lkh_leaf_index,
-                                        uint8_t *sk_vi_out = nullptr) {
+                                        uint8_t *sk_vi_out = nullptr,
+                                        bool hqc5_enabled = true) {
     if (g_keystore_count >= MAX_VEHICLES) return NULL;
 
     VehicleKeyRecord *rec = &g_keystore[g_keystore_count++];
@@ -515,7 +557,8 @@ VehicleKeyRecord *kem_register_vehicle(const uint8_t vehicle_id[16],
      * g_kem_handshake_only_ms comment above kem_get_last_handshake_only_ms. */
     struct timespec __hs_t0; clock_gettime(CLOCK_MONOTONIC, &__hs_t0);
     KemExchangeState kem_state;
-    kem_vehicle_keygen(&kem_state, vehicle_id, sk_vi, rec->sign_pub_key, &rec->cert);
+    kem_vehicle_keygen(&kem_state, vehicle_id, sk_vi, rec->sign_pub_key, &rec->cert,
+                        hqc5_enabled);
 
     /* Step 3: RSU verifies keygen sig, then encapsulates → RSU derives K_{Vi,nk} */
     uint8_t rsu_key[SESSION_KEY_LEN];
