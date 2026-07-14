@@ -203,6 +203,15 @@ typedef struct {
     uint8_t ct_kyber[KYBER1024_CT_LEN]; /* Ciphertext from RSU (Kyber-1024 component)  */
     uint8_t ct_hqc[HQC5_CT_LEN]; /* Ciphertext from RSU (HQC-5 component)         */
     bool    has_ciphertext;             /* Set true after RSU calls kem_rsu_encapsulate */
+    /* A13 ablation (single_kem): set by kem_vehicle_keygen()'s hqc5_enabled param.
+     * When false, pk_hqc/sk_hqc/ct_hqc above are left unused (all-zero from the
+     * memset in kem_vehicle_keygen) and every downstream step
+     * (kem_rsu_encapsulate/kem_vehicle_decapsulate) skips the HQC-5 work and
+     * derives K_{Vi,nk} from ML-KEM-1024 alone — a genuinely smaller message/
+     * KDF input, not a zero-filled stand-in for HQC-5. Defaults true so every
+     * existing call site that doesn't pass hqc5_enabled keeps identical hybrid
+     * behavior. */
+    bool    hqc5_enabled;
     /* Authentication of KEM public keys — Fix-1 + Fix-2 repair */
     uint8_t          vehicle_id[16];                  /* identity bound into signed msg */
     uint8_t          keygen_nonce[NONCE_LEN];         /* freshness nonce                */

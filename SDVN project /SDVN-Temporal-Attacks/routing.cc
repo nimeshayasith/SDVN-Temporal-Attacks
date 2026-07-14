@@ -246,6 +246,12 @@ uint32_t test_network = 0;
 // WifiPhy error-rate model actually delivers reliable reception at. See
 // CalibrationRun()/CalibrationWriteResults() (defined near ME-S2's helpers).
 uint32_t calibrate_range = 0;
+// --calib_channel_mhz=<freq>: restricts AttackGetAllDSRCDevices to exactly
+// one channel during calibration only (0 = default, use all 3 SCH channels
+// as normal attack scenarios do). Added to isolate whether Ch172/174/176's
+// calibrated range collapse is a genuine per-channel propagation limit or
+// an artifact of transmitting all 3 near-simultaneously from one node.
+uint32_t g_calib_channel_mhz_filter = 0;
 
 // --calibrate_range_loaded=1: same TX/RX distance sweep as --calibrate_range,
 // but run under the full evaluation-scale network (N_Vehicles=200, N_RSUs=64)
@@ -955,6 +961,75 @@ static double __attribute__((unused)) TimedFreshness()
     return MicroSec(HiResClock::now() - t0).count();
 }
 
+// ── Table 4.2 Internal Ablation Baseline flags ────────────────────────────────
+// Each flag disables exactly one layer of the full detection pipeline.
+// Default (0) = full stack enabled.  Set to 1 on the command line to ablate.
+//
+//  --no_crypto=1      A6: bypass Stage-0 TetaGuardCryptoFilter (Eqs. 3.15-3.17)
+//  --no_tgn=1         A1/A2: skip TGN_ProcessEventInline + TGN_RunPipeline
+//  --no_blockchain=1  A1/A2: suppress blockchain smart-contract mitigation
+//  --static_gcn=1     A3: freeze GRU memory (φ=0, no temporal encoding); edge
+//                         freshness stays but Eq. 3.22 GRU gate update is skipped
+//  --no_mobility_adapt=1  A4: fix ρ_max to a static density and fix W to
+//                             PEM_HEARTBEAT_WINDOW_S; skip mobility calibration
+//  --no_lbs=1         A5: suppress ME-S3 sig[8] location-binding verification (Eq. 3.11).
+//                         NOT Eq. 3.28 (that is TetaGuardLocBindVerify's real ML-DSA-87
+//                         signature check, a SEPARATE Stage-0 mechanism — see Gap 11 note
+//                         at TetaGuardLocBindVerify in .crypto_src/teta_guard_filter.h).
+//
+// These flags are mutually independent; combine to create compound baselines.
+// Declared here (ahead of MeasureKEM/CryptoDeriveVehicleSessionKeys below,
+// which reference g_abl.single_kem) instead of further down near the LW
+// scoring code, purely for C++ ordering.
+struct AblationFlags {
+    bool no_crypto        = false;   // A6
+    bool no_tgn           = false;   // A1 / A2
+    bool no_blockchain    = false;   // A1 / A2
+    bool static_gcn       = false;   // A3
+    bool no_mobility_adapt= false;   // A4
+    bool no_lbs           = false;   // A5
+    bool no_lw            = false;   // A2: disable LW rule-based signature engine, FS/TGN only
+    bool no_threshold_sig = false;   // A6: BSHH t-of-n threshold sig -> majority-count heuristic
+    bool equal_weight_pbft= false;   // A9: PBFT peer votes weighted 1 instead of tau_k
+    bool no_quarantine    = false;   // A10: skip T_quar wait, remove flagged node immediately
+    bool no_lkh           = false;   // A11: naive flat re-key instead of O(log n) LKH revoke
+    bool no_divergence_detector = false; // A12: controller-origin blind (skip delta-divergence gate)
+    bool single_kem       = false;   // A13: ML-KEM-1024 only, no HQC-5 (measurement-only)
+    bool no_reassign      = false;   // A14: skip TrustReassignController on flagged controller
+};
+static AblationFlags g_abl;
+
+// A11 (--no_lkh=1): naive flat re-key instead of O(log n) LKH tree revocation.
+// Called at both real detection-triggered revoke sites (Stage-0 and Stage-1)
+// in place of a direct lkh_revoke_vehicle() call. When the flag is off this
+// is byte-identical to the previous direct call. When on, instead of the
+// O(log n) LKH KEK-path update, every OTHER currently-registered vehicle leaf
+// gets a fresh individual session key (O(n) cost) — this is purely for the
+// M12 t_revoke_ms cost comparison; the revoked leaf itself is still marked
+// via lkh_is_revoked-equivalent bookkeeping at the caller (g_lkh_already_revoked).
+static void PemRevokeVehicleKeys(uint32_t leaf_idx)
+{
+    if (g_abl.no_lkh) {
+        uint32_t rekeyed = 0;
+        for (uint32_t i = 0; i < g_lkh_n_leaves; ++i) {
+            if (i == leaf_idx) continue;
+            for (uint32_t b = 0; b < SESSION_KEY_LEN; ++b) {
+                // Deterministic-but-distinct-per-call "fresh key" stand-in
+                // (no crypto RNG dependency added here); real fleets would
+                // draw this from the RNG used elsewhere in kem.cc.
+                g_vehicle_session_keys[i][b] =
+                    (uint8_t)(g_vehicle_session_keys[i][b] ^ (uint8_t)(0x5Au + i + b + leaf_idx));
+            }
+            rekeyed++;
+        }
+        std::cout << "[A11][no_lkh] Naive flat re-key: " << rekeyed
+                  << " vehicle session keys refreshed (O(n) cost) instead of"
+                     " O(log n) LKH KEK-path update for leaf " << leaf_idx << "\n";
+    } else {
+        lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+    }
+}
+
 static double __attribute__((unused)) TimedLkhRevoke(uint32_t n)
 {
     // Uses lkh_revoke_vehicle() from lkh_mgmt.cc — real O(log n) tree revocation
@@ -1177,14 +1252,31 @@ static void CryptoDeriveVehicleSessionKeys()
         // branch is timed for the handshake-latency budget below, since a
         // pre-existing lookup isn't a handshake.
         if (!rec) {
-            rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i]);
+            // A13 (--single_kem=1): pass hqc5_enabled=false through to
+            // kem_register_vehicle() -> kem_vehicle_keygen/kem_rsu_encapsulate/
+            // kem_vehicle_decapsulate (kem.cc), which then genuinely SKIP every
+            // HQC-5 step (keypair fill, kmsg buffer bytes, ct_hqc, HKDF input
+            // half — see the hqc5_enabled branches added there) instead of
+            // still doing the hybrid work and reporting a synthetic ratio.
+            // g_kem_handshake_only_ms (read below via
+            // kem_get_last_handshake_only_ms()) is real clock_gettime()
+            // wall-clock time around that same reduced call, so the resulting
+            // handshake_ms is a REAL measurement of less work being done, not
+            // an estimate. Default (flag off) is hqc5_enabled=true, so the
+            // hybrid path here is byte-for-byte unchanged from before.
+            rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i],
+                                        !g_abl.single_kem);
             // kem_get_last_handshake_only_ms() isolates just Steps 1/3/4
             // (kem_vehicle_keygen + kem_rsu_encapsulate + kem_vehicle_decapsulate)
             // — the KEM handshake proper — excluding the one-time Dilithium5
             // identity-keygen + CA cert-issuance PKI bootstrap that also
             // happens inside kem_register_vehicle(). The paper's "10ms
             // V2X-compliant" claim is about the handshake, not that PKI setup.
-            const double handshake_ms = kem_get_last_handshake_only_ms();
+            double handshake_ms = kem_get_last_handshake_only_ms();
+            if (g_abl.single_kem) {
+                CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake_SingleKEM",
+                             handshake_ms * 1000.0, i, "Session_Setup", false);
+            }
             handshake_ms_sum += handshake_ms;
             if (handshake_ms > handshake_ms_max) handshake_ms_max = handshake_ms;
             handshake_timed_count++;
@@ -1217,7 +1309,9 @@ static void CryptoDeriveVehicleSessionKeys()
               << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).\n";
     if (handshake_timed_count > 0) {
         const double avg_ms = handshake_ms_sum / (double)handshake_timed_count;
-        std::cout << "[KEM][10ms budget] " << handshake_timed_count
+        std::cout << "[KEM][10ms budget]"
+                  << (g_abl.single_kem ? " (A13:single_kem — ML-KEM-1024-only, HQC-5 skipped, real measurement)" : "")
+                  << " " << handshake_timed_count
                   << " handshakes timed: avg=" << avg_ms << " ms, max="
                   << handshake_ms_max << " ms, over_budget=" << handshake_over_budget
                   << "/" << handshake_timed_count << " (budget="
@@ -2028,33 +2122,6 @@ static double PemGetRssiMin() { return g_rssi_min; }
 // neighbour spacing instead of this fallback.
 static double g_rsu_overlap_frac = 0.20;   // metres/metres; overridden by --rsu_overlap_frac
 
-// ── Table 4.2 Internal Ablation Baseline flags ────────────────────────────────
-// Each flag disables exactly one layer of the full detection pipeline.
-// Default (0) = full stack enabled.  Set to 1 on the command line to ablate.
-//
-//  --no_crypto=1      A6: bypass Stage-0 TetaGuardCryptoFilter (Eqs. 3.15-3.17)
-//  --no_tgn=1         A1/A2: skip TGN_ProcessEventInline + TGN_RunPipeline
-//  --no_blockchain=1  A1/A2: suppress blockchain smart-contract mitigation
-//  --static_gcn=1     A3: freeze GRU memory (φ=0, no temporal encoding); edge
-//                         freshness stays but Eq. 3.22 GRU gate update is skipped
-//  --no_mobility_adapt=1  A4: fix ρ_max to a static density and fix W to
-//                             PEM_HEARTBEAT_WINDOW_S; skip mobility calibration
-//  --no_lbs=1         A5: suppress ME-S3 sig[8] location-binding verification (Eq. 3.11).
-//                         NOT Eq. 3.28 (that is TetaGuardLocBindVerify's real ML-DSA-87
-//                         signature check, a SEPARATE Stage-0 mechanism — see Gap 11 note
-//                         at TetaGuardLocBindVerify in .crypto_src/teta_guard_filter.h).
-//
-// These flags are mutually independent; combine to create compound baselines.
-struct AblationFlags {
-    bool no_crypto        = false;   // A6
-    bool no_tgn           = false;   // A1 / A2
-    bool no_blockchain    = false;   // A1 / A2
-    bool static_gcn       = false;   // A3
-    bool no_mobility_adapt= false;   // A4
-    bool no_lbs           = false;   // A5
-};
-static AblationFlags g_abl;
-
 // ── Continuous mobility-derived neighborhood beaconing (default ON) ─────────
 // Feeds only g_rsu_beacon_log (ME's lambda_hat/rho_max/delta_max) and TGN's
 // beacon-count window via PemEmitNeighborObservation/TGN_ProcessNeighborObservationInline
@@ -2176,6 +2243,69 @@ uint64_t pem_false_negative = 0;
 uint64_t pem_qrr_echo_attempts = 0;
 uint64_t pem_qrr_echo_pass     = 0;   // admitted despite being forged (quorum failure)
 uint64_t pem_qrr_echo_blocked  = 0;   // correctly rejected (quorum success)
+
+// ── M11 (FSR): Forgery Success Rate for the t-of-n ML-DSA-87 threshold
+// aggregate signature used by TTW/BSHH families (VERIFY_THRESHOLD_SIG call in
+// the FS-MITIGATE gate). Mirrors pem_qrr_echo_* exactly: every non-ME
+// FS-MITIGATE call is a genuine forgery attempt against a real attacker;
+// crypto_ok==true means the forged/replayed threshold-signed claim was
+// accepted (forgery succeeded, c_or_q >= t_req); crypto_ok==false means it
+// was correctly rejected. Only produces a nonzero FSR when collusion size
+// f_c >= t (the aggregate meets threshold) — wired here so a dedicated
+// test run that stages that collusion size will exercise it correctly.
+uint64_t pem_fsr_attempts = 0;
+uint64_t pem_fsr_success  = 0;
+
+// ── M9: per-family (alpha) confusion counts for macro-F1 over attack
+// variant classification (TTW/BSHH/ME). Index 0=TTW, 1=BSHH, 2=ME.
+// TP: ground-truth family == classified family (both same non-baseline
+// family) and alert raised. FP: classified as this family but ground truth
+// is a different family (or benign). FN: ground truth is this family but
+// classifier picked another family or missed it (alert not raised).
+uint64_t pem_f1_tp[3] = {0, 0, 0};
+uint64_t pem_f1_fp[3] = {0, 0, 0};
+uint64_t pem_f1_fn[3] = {0, 0, 0};
+
+// ── M10: FRA/FRR — Stage-0 crypto pre-filter split by ground truth.
+// TP_f = malicious event correctly rejected at Stage-0; FN_f = malicious
+// event that passed Stage-0; FP_f = benign event wrongly dropped;
+// TN_f = benign event correctly passed. FRA (Filter Rejection Accuracy) =
+// TP_f/(TP_f+FN_f); FRR (False Rejection Rate) = FP_f/(FP_f+TN_f).
+uint64_t pem_fra_tp_f = 0;
+uint64_t pem_fra_fn_f = 0;
+uint64_t pem_fra_fp_f = 0;
+uint64_t pem_fra_tn_f = 0;
+
+// ── M2 (TDRR precursor): running mean of per-event topology divergence
+// delta(t) = 1 if controller belief (accept/mitigate) disagrees with the
+// ground-truth physical edge existence (derived from linkSrc/linkDst
+// positions vs g_rcomm), else 0. Exported as mean_topology_divergence;
+// the actual TDRR ratio (unmitigated-mean / mitigated-mean) is a
+// cross-run comparison left to post-processing.
+double   pem_topo_divergence_sum   = 0.0;
+uint64_t pem_topo_divergence_count = 0;
+
+// ── M3: T_stale — mean elapsed time between a link's physical break
+// (ground-truth edge goes false) and the controller correcting its
+// belief (an alert fires for that link, or the belief flips to false).
+// Keyed by "src_dst" link string.
+std::map<std::string, double> pem_link_break_time;     // tau_break, if pending
+std::map<std::string, bool>   pem_link_prev_real_state; // last known ground-truth state
+double   pem_stale_duration_sum   = 0.0;
+uint64_t pem_stale_duration_count = 0;
+
+// ── M4: PIR — Path Inference Ratio for ME scenarios. |P_controller| is
+// approximated as the number of distinct reporters ever observed for a
+// given (src,dst) link key (each additional distinct reporter beyond the
+// two real endpoints implies an inferred phantom path); |P_physical| = 1.
+std::map<std::string, std::set<uint32_t>> pem_link_reporters;
+
+// ── M12: trust/revocation/reassignment timing (five named timestamps).
+double pem_tau_first_malicious = -1.0;   // set at attack injection (reuse pattern)
+double pem_tau_trust_zero      = -1.0;   // first TrustUpdateNode(...,flagged=true) demotion
+double pem_tau_detection_flag  = -1.0;   // first alert_raised==true (reuse pem_first_alert_time)
+double pem_tau_lkh_complete    = -1.0;   // first lkh_revoke_vehicle() call
+double pem_treassign_ms        = -1.0;   // set when TrustReassignController executes a reassignment
 
 double pem_last_detection_score = 0.0;
 double pem_last_auroc = 0.5;
@@ -3200,11 +3330,16 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
             }
             // Flagged peers contribute no voting weight (Eq. 3.47).
             if (flagged) continue;
-            sum_active_tau += tau;
+            // A9 (--equal_weight_pbft=1): every active peer votes with weight
+            // 1 instead of its ledger trust score tau_k — removes the trust
+            // weighting from Eq. 3.47's ratio while keeping the same 2/3
+            // quorum rule in PemPbftConsensusGate.
+            const double vote_weight = g_abl.equal_weight_pbft ? 1.0 : tau;
+            sum_active_tau += vote_weight;
             // A Byzantine peer does not vote to approve detection of its own
             // attack; every other present peer votes honestly (single
             // external forger threat model per the doc comment above).
-            if (pid != attacker_id) sum_approve_tau += tau;
+            if (pid != attacker_id) sum_approve_tau += vote_weight;
         }
 
         uint32_t f = 0, q_needed = 0;
@@ -3212,9 +3347,22 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
                                                    sum_approve_tau, sum_active_tau);
 
         uint32_t c_or_q = 0, t_req = 0;
-        const bool crypto_ok = (family == "ME")
-                                ? PemVerifyQuorum(n_eff, ev, c_or_q, t_req)
-                                : PemVerifyThresholdSig(n_eff, attacker_id, t_now, c_or_q, t_req);
+        bool crypto_ok;
+        if (family == "ME") {
+            crypto_ok = PemVerifyQuorum(n_eff, ev, c_or_q, t_req);
+        } else if (g_abl.no_threshold_sig) {
+            // A6 (--no_threshold_sig=1): bypass the real t-of-n ML-DSA-87
+            // threshold aggregate signature verification (Eq. 3.28) — no
+            // per-reporter signatures are checked at all. Degrades to an
+            // unweighted majority-count heuristic with no crypto attestation:
+            // every claimed reporter is simply counted (c_or_q = n_eff) and
+            // compared against t = floor(n/2)+1.
+            t_req  = n_eff / 2u + 1u;
+            c_or_q = n_eff;
+            crypto_ok = (c_or_q >= t_req);
+        } else {
+            crypto_ok = PemVerifyThresholdSig(n_eff, attacker_id, t_now, c_or_q, t_req);
+        }
 
         // M11 QRR (Eq. 4.19): every ME FS-MITIGATE call here is a genuine
         // echo-injection attempt (attacker_id is always the real attacker at
@@ -3226,6 +3374,13 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
             pem_qrr_echo_attempts++;
             if (crypto_ok) pem_qrr_echo_pass++;
             else           pem_qrr_echo_blocked++;
+        } else {
+            // M11 FSR: same pattern, but for the t-of-n ML-DSA-87 threshold
+            // aggregate signature path (TTW/BSHH). crypto_ok==true means the
+            // forged/replayed threshold-signed claim was accepted despite
+            // being a genuine attacker's forgery attempt (forgery success).
+            pem_fsr_attempts++;
+            if (crypto_ok) pem_fsr_success++;
         }
 
         std::cout << "[" << scenario_tag << "][t=" << t_now
@@ -3470,6 +3625,10 @@ static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool fl
         if (r.state != TRUST_QUARANTINE) {
             r.state     = TRUST_QUARANTINE;
             r.demoted_at = Simulator::Now().GetSeconds();
+            // M12 tau_zero: first time ANY node's trust hits the floor via
+            // flagged demotion this run (Eq. 3.38). Only the first occurrence
+            // is recorded, matching the other tau_* "first event" captures.
+            if (pem_tau_trust_zero < 0.0) pem_tau_trust_zero = r.demoted_at;
             TrustStage2ArmMonitor();   // §3.4.11 Stage-2: start recurring beacon-interval check
             std::cout << "[Trust][t=" << r.demoted_at << "]  Node " << ns3_id
                       << ": ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)\n";
@@ -3821,13 +3980,22 @@ PemControllerDivergenceGate(double now, const std::string& scenario_tag,
     const uint32_t delta  = PemComputeControllerDivergenceDelta(now, claim_a, claim_b,
                                                                   claim_timestamp);
     const uint32_t thresh = PemComputeDeltaThreshold();
-    const bool confirmed = delta > thresh;
+    // A12 (--no_divergence_detector=1): controller-origin blind — this
+    // delta-divergence gate (Algorithm 4 lines 2-7) is the ONLY mechanism
+    // that confirms controller-origin (TTW/BSHH/ME -S3/-S4) events for trust
+    // penalty + TrustReassignController zone reassignment. When disabled, no
+    // controller-origin event is ever confirmed here, so the malicious
+    // controller is never flagged/reassigned via this path (PEM's own
+    // TP/FP/MCC/AUROC scoring at each caller's PemEmitEvent site is a
+    // separate, unaffected mechanism — see comment above this function).
+    const bool confirmed = (!g_abl.no_divergence_detector) && (delta > thresh);
 
     std::cout << std::fixed << std::setprecision(3)
               << "[" << scenario_tag << "][t=" << now
               << "]  FS-MITIGATE gate: delta_t=" << delta
               << " (Eq.3.45)  delta_thresh=" << thresh << " (Eq.3.46)  -> "
-              << (confirmed ? "CONFIRMED DIVERGENCE" : "WITHIN PROPAGATION NOISE") << "\n";
+              << (g_abl.no_divergence_detector ? "A12:no_divergence_detector — SKIPPED (blind)"
+                  : (confirmed ? "CONFIRMED DIVERGENCE" : "WITHIN PROPAGATION NOISE")) << "\n";
 
     std::ostringstream out;
     out << std::fixed << std::setprecision(3);
@@ -3862,11 +4030,16 @@ static void TrustStage2MonitorTick()
             TrustRecord& r = kv.second;
             if (r.state == TRUST_QUARANTINE && r.demoted_at >= 0.0) {
                 double elapsed = now - r.demoted_at;
-                if (elapsed >= TRUST_TQUAR_S && r.tau <= TRUST_TAU_MIN) {
+                // A10 (--no_quarantine=1): skip the T_quar wait entirely — a
+                // flagged node is removed at the very next Stage-2 tick
+                // instead of waiting the full quarantine window.
+                if ((g_abl.no_quarantine || elapsed >= TRUST_TQUAR_S) && r.tau <= TRUST_TAU_MIN) {
                     r.state = TRUST_REMOVED;
                     std::cout << "[Trust][t=" << now << "]  Node " << kv.first
                               << ": QUARANTINE -> REMOVED  (Stage-2 tick, tau=" << r.tau
-                              << " after T_quar=" << TRUST_TQUAR_S << "s)\n";
+                              << (g_abl.no_quarantine
+                                  ? std::string(", A10:no_quarantine — immediate, T_quar skipped)\n")
+                                  : (std::string(" after T_quar=") + std::to_string(TRUST_TQUAR_S) + "s)\n"));
                 }
             }
         }
@@ -3905,11 +4078,14 @@ static void TrustRunDemotionPipeline(double now)
         TrustRecord& r = kv.second;
         if (r.state == TRUST_QUARANTINE && r.demoted_at >= 0.0) {
             double elapsed = now - r.demoted_at;
-            if (elapsed >= TRUST_TQUAR_S && r.tau <= TRUST_TAU_MIN) {
+            // A10 (--no_quarantine=1): bypass T_quar wait, remove immediately.
+            if ((g_abl.no_quarantine || elapsed >= TRUST_TQUAR_S) && r.tau <= TRUST_TAU_MIN) {
                 r.state = TRUST_REMOVED;
                 std::cout << "[Trust][t=" << now << "]  Node " << kv.first
                           << ": QUARANTINE -> REMOVED  (tau=" << r.tau
-                          << " after T_quar=" << TRUST_TQUAR_S << "s)\n";
+                          << (g_abl.no_quarantine
+                              ? std::string(", A10:no_quarantine — immediate, T_quar skipped)\n")
+                              : (std::string(" after T_quar=") + std::to_string(TRUST_TQUAR_S) + "s)\n"));
             }
         }
     }
@@ -3926,6 +4102,11 @@ static std::string TrustReassignController(uint32_t mal_ctrl_ns3_id, double now)
 {
     std::ostringstream out;
     out << std::fixed << std::setprecision(3);
+
+    // M12 tau_Cj,flagged: first time this function is entered to evaluate a
+    // controller-divergence flag (Eq. 3.39 decrement about to be applied).
+    static double pem_tau_ctrl_flagged = -1.0;
+    if (pem_tau_ctrl_flagged < 0.0) pem_tau_ctrl_flagged = now;
 
     // Decrement controller trust (Eq. 3.39)
     TrustUpdateController(mal_ctrl_ns3_id);
@@ -3975,6 +4156,11 @@ static std::string TrustReassignController(uint32_t mal_ctrl_ns3_id, double now)
     }
     g_backup_ctrl_ns3_id = best_id;
     g_ctrl_reassigned    = true;
+
+    // M12 tau_Ck*,active: backup controller becomes active for this zone now.
+    // First real reassignment this run defines t_reassign_ms (flagged -> active).
+    if (pem_treassign_ms < 0.0)
+        pem_treassign_ms = (now - pem_tau_ctrl_flagged) * 1000.0;
 
     out << "  [Trust] REASSIGN(Z_" << mal->zone_id << " -> C_" << best_id
         << ")  tau_{C_j}=" << mal->tau << " < tau_min^C=" << TRUST_TAU_MIN_CTRL << "\n"
@@ -4832,6 +5018,11 @@ PemWriteScenarioValidityReport()
               << std::endl;
 }
 
+// Forward declaration — defined near CustomDataTag1 (far below in this file),
+// returns CustomDataTag1's real serialized wire size in bytes for M7's Omega
+// static overhead calculation.
+uint32_t PemGetBeaconSerializedSizeBytes();
+
 static void
 PemWriteRunSummaryCsv()
 {
@@ -4843,7 +5034,14 @@ PemWriteRunSummaryCsv()
         "run_id,attack_scenario,attack_percentage,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,"
         "pdr_under_attack_pct,pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,"
         "total_events,crypto_drop_mac,crypto_drop_stale,crypto_drop_nonce,crypto_drop_quorum,tp_event,"
-        "qrr_echo_attempts,qrr_echo_pass,qrr_echo_blocked,qrr",
+        "qrr_echo_attempts,qrr_echo_pass,qrr_echo_blocked,qrr,"
+        "mean_topology_divergence,mean_t_stale_ms,mean_pir,"
+        "t_pipeline_mean_ms,t_pipeline_max_ms,t_pipeline_over_budget_count,"
+        "omega_lw_pct,omega_fs_pct,"
+        "f1_ttw,f1_bshh,f1_me,f1_macro,"
+        "fra,frr,"
+        "fsr_attempts,fsr_success,fsr,"
+        "t_trust_ms,t_revoke_ms,t_reassign_ms",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -4938,7 +5136,112 @@ PemWriteRunSummaryCsv()
         ? (1.0 - (double)pem_qrr_echo_pass / (double)pem_qrr_echo_attempts)
         : 1.0;
     fout << pem_qrr_echo_attempts << "," << pem_qrr_echo_pass << ","
-         << pem_qrr_echo_blocked << "," << qrr << "\n";
+         << pem_qrr_echo_blocked << "," << qrr << ",";
+
+    // M2 (TDRR precursor): mean per-event topology divergence delta(t). No
+    // divergence-classified events this run (non-topology scenarios, or
+    // detection_enabled=0 runs that never evaluate the check) -> 0.0, meaning
+    // "no observed disagreement", not "not applicable" — see the accumulation
+    // site (pem_topo_divergence_sum, ~line 6496) for what counts as a sample.
+    const double meanTopoDivergence = (pem_topo_divergence_count > 0)
+        ? (pem_topo_divergence_sum / (double)pem_topo_divergence_count)
+        : 0.0;
+
+    // M3: mean T_stale (ms) between a link's physical break and the
+    // controller correcting its belief. 0.0 when no TTW/BSHH break->correct
+    // pair was observed this run (e.g. ME scenarios, or a run too short for
+    // any link to both break and be corrected).
+    const double meanTStaleMs = (pem_stale_duration_count > 0)
+        ? (1000.0 * pem_stale_duration_sum / (double)pem_stale_duration_count)
+        : 0.0;
+
+    // M4: PIR — mean distinct-reporter count per link (>=1 always; 1.0 is the
+    // correct/no-attack value, i.e. only the link's own two endpoints ever
+    // reported it). Defaults to 1.0 (vacuous / non-ME scenario) when no link
+    // has any recorded reporter yet, matching the paper's P_physical=1 baseline.
+    double meanPir = 1.0;
+    {
+        double sum = 0.0; uint64_t n = 0;
+        for (const auto& kv : pem_link_reporters) {
+            sum += (double)kv.second.size();
+            ++n;
+        }
+        if (n > 0) meanPir = sum / (double)n;
+    }
+
+    // M5: full detect+mitigate pipeline wall-clock stats — these globals were
+    // already accumulated by PemStageTimer (kMitigate branch) but never
+    // exported to this CSV; just reading them out here.
+    const double tPipelineMeanMs = (g_pem_full_pipeline_count > 0)
+        ? (g_pem_full_pipeline_total_ms / (double)g_pem_full_pipeline_count)
+        : 0.0;
+
+    // M7: Omega — static communication-overhead ratios (constant every run,
+    // computed from real wire-format sizes: CustomDataTag1::GetSerializedSize()
+    // already carries HMAC_SHA256_LEN (m_mac) + NONCE_LEN (m_nonce) fields
+    // (Eqs. 3.15-3.17 wire format), so the "lightweight" (pre-crypto) baseline
+    // is that size minus mac+nonce, and Omega_LW is the mac+nonce overhead
+    // fraction; Omega_FS is the much larger ML-DSA-87 (Eq. 3.28) threshold
+    // signature's overhead fraction over the same baseline (used only in the
+    // FS-MITIGATE quorum/threshold path, not every beacon).
+    static double omega_lw_pct = -1.0, omega_fs_pct = -1.0;
+    if (omega_lw_pct < 0.0) {
+        const double cryptoOverheadBytes = (double)(HMAC_SHA256_LEN + NONCE_LEN);
+        const double fullBeaconBytes     = (double)PemGetBeaconSerializedSizeBytes();
+        const double baselineBytes       = (fullBeaconBytes > cryptoOverheadBytes)
+                                          ? (fullBeaconBytes - cryptoOverheadBytes) : fullBeaconBytes;
+        omega_lw_pct = 100.0 * cryptoOverheadBytes / baselineBytes;
+        omega_fs_pct = 100.0 * (double)DILITHIUM5_SIG_LEN / baselineBytes;
+    }
+
+    // M9: macro-F1 over attack-family classification (TTW/BSHH/ME), from the
+    // per-class TP/FP/FN accumulated at the PemRecordObservation call site
+    // (~line 6151). F1=1.0 for a class with zero TP+FP+FN this run (vacuous —
+    // that family was never involved), matching the QRR/QRR-style "no
+    // attempts" convention used elsewhere in this file.
+    double f1_class[3];
+    for (int c = 0; c < 3; ++c) {
+        const uint64_t tp_c = pem_f1_tp[c], fp_c = pem_f1_fp[c], fn_c = pem_f1_fn[c];
+        f1_class[c] = (tp_c + fp_c + fn_c == 0) ? 1.0
+                    : (2.0 * (double)tp_c) / (2.0 * (double)tp_c + (double)fp_c + (double)fn_c);
+    }
+    const double f1Macro = (f1_class[0] + f1_class[1] + f1_class[2]) / 3.0;
+
+    // M10: FRA (Filter Rejection Accuracy) / FRR (False Rejection Rate) for
+    // the Stage-0 crypto pre-filter, split by ground truth at the
+    // PemCryptoPreFilter call site. FRA defaults to 1.0 (vacuously accurate —
+    // no malicious event reached Stage-0) when TP_f+FN_f==0; FRR defaults to
+    // 0.0 (no false rejections observed) when FP_f+TN_f==0.
+    const double fra = (pem_fra_tp_f + pem_fra_fn_f > 0)
+        ? (double)pem_fra_tp_f / (double)(pem_fra_tp_f + pem_fra_fn_f) : 1.0;
+    const double frr = (pem_fra_fp_f + pem_fra_tn_f > 0)
+        ? (double)pem_fra_fp_f / (double)(pem_fra_fp_f + pem_fra_tn_f) : 0.0;
+
+    // M11 FSR: Forgery Success Rate for the t-of-n ML-DSA-87 threshold
+    // aggregate signature (VERIFY_THRESHOLD_SIG). 0.0 when no forgery attempt
+    // was staged this run (the common case — requires collusion size f_c>=t).
+    const double fsr = (pem_fsr_attempts > 0)
+        ? (double)pem_fsr_success / (double)pem_fsr_attempts : 0.0;
+
+    // M12: trust/revocation/reassignment timing, derived from the tau_*
+    // timestamps captured at TrustUpdateNode/lkh_revoke_vehicle/
+    // TrustReassignController call sites. 0.0 when the relevant mechanism
+    // never fired this run (e.g. t_reassign_ms stays 0.0 for non-controller
+    // scenarios 1,2,5,6,9,10 where TrustReassignController is never called).
+    const double tTrustMs = (pem_tau_trust_zero >= 0.0 && pem_attack_injection_time >= 0.0)
+        ? (pem_tau_trust_zero - pem_attack_injection_time) * 1000.0 : 0.0;
+    const double tRevokeMs = (pem_tau_lkh_complete >= 0.0 && pem_first_alert_time >= 0.0)
+        ? (pem_tau_lkh_complete - pem_first_alert_time) * 1000.0 : 0.0;
+    const double tReassignMs = (pem_treassign_ms >= 0.0) ? pem_treassign_ms : 0.0;
+
+    fout << meanTopoDivergence << "," << meanTStaleMs << "," << meanPir << ","
+         << tPipelineMeanMs << "," << g_pem_full_pipeline_max_ms << ","
+         << g_pem_full_pipeline_over_budget_count << ","
+         << omega_lw_pct << "," << omega_fs_pct << ","
+         << f1_class[0] << "," << f1_class[1] << "," << f1_class[2] << "," << f1Macro << ","
+         << fra << "," << frr << ","
+         << pem_fsr_attempts << "," << pem_fsr_success << "," << fsr << ","
+         << tTrustMs << "," << tRevokeMs << "," << tReassignMs << "\n";
 
     if (pem_qrr_echo_attempts > 0) {
         std::cout << "[M11][QRR] echo_attempts=" << pem_qrr_echo_attempts
@@ -4946,6 +5249,23 @@ PemWriteRunSummaryCsv()
                   << " blocked=" << pem_qrr_echo_blocked
                   << "  QRR=" << qrr << "  (Eq. 4.19; target 1.0)\n";
     }
+    std::cout << "[M2][TDRR] mean_topology_divergence=" << meanTopoDivergence
+              << "  (samples=" << pem_topo_divergence_count << ")\n"
+              << "[M3][T_stale] mean=" << meanTStaleMs << " ms (samples="
+              << pem_stale_duration_count << ")\n"
+              << "[M4][PIR] mean=" << meanPir << " (links tracked="
+              << pem_link_reporters.size() << ")\n"
+              << "[M5][T_pipeline] mean=" << tPipelineMeanMs << " ms  max="
+              << g_pem_full_pipeline_max_ms << " ms  over_budget="
+              << g_pem_full_pipeline_over_budget_count << "/" << g_pem_full_pipeline_count << "\n"
+              << "[M7][Omega] omega_lw=" << omega_lw_pct << "%  omega_fs=" << omega_fs_pct << "%\n"
+              << "[M9][F1] TTW=" << f1_class[0] << " BSHH=" << f1_class[1]
+              << " ME=" << f1_class[2] << " macro=" << f1Macro << "\n"
+              << "[M10][FRA/FRR] FRA=" << fra << " FRR=" << frr << "\n"
+              << "[M11][FSR] attempts=" << pem_fsr_attempts << " success="
+              << pem_fsr_success << " FSR=" << fsr << "\n"
+              << "[M12][Trust] t_trust=" << tTrustMs << " ms  t_revoke=" << tRevokeMs
+              << " ms  t_reassign=" << tReassignMs << " ms\n";
 }
 
 // =============================================================================
@@ -5927,6 +6247,14 @@ PemEvaluateEvent(PemEvent& event)
     // PEM logs the score/signatures but never acts on them, so the controller
     // stays poisoned and pdr_post_mitigation reflects the unmitigated damage.
     event.alert_raised = detection_enabled && (event.score > PEM_SCORE_THRESHOLD);
+    // A2 (--no_lw=1): disable the LW rule-based scoring engine's ability to
+    // raise alerts. The score/triggered[] signatures are still computed and
+    // logged above (so pem_event_log.csv keeps showing what LW *would* have
+    // fired), but event.alert_raised — which feeds PemRecordObservation's
+    // tp/tn/fp/fn (pem_run_summary.csv) — is forced false here, so only the
+    // FS/TGN path (TGN_ProcessEventInline's own g_tgn_tp/fp/fn/tn and
+    // g_comb_* below, unaffected by this flag) can raise a detection.
+    if (g_abl.no_lw) { event.alert_raised = false; }
 
     // Live blockchain wiring (no-op unless g_live_blockchain=1): stream this
     // alert to fabricServer.js immediately, instead of only at end-of-run.
@@ -6044,12 +6372,15 @@ PemEvaluateEvent(PemEvent& event)
                 g_lkh_already_revoked.end())
         {
             uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
-            lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+            PemRevokeVehicleKeys(leaf_idx);
             g_lkh_already_revoked.insert(event.physical_sender_id);
             // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
             // consortium certificate and is immediately peer-ineligible.
             if (g_trust_table.count(event.physical_sender_id))
                 g_trust_table[event.physical_sender_id].cert_valid = false;
+            // M12 tau_LKH-complete: first real LKH revocation this run.
+            if (pem_tau_lkh_complete < 0.0)
+                pem_tau_lkh_complete = Simulator::Now().GetSeconds();
             const uint32_t depth = (g_lkh_n_leaves > 1u)
                 ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
             printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
@@ -6059,6 +6390,33 @@ PemEvaluateEvent(PemEvent& event)
         }
 
         PemRecordObservation(event.attack_label, event.score, event.alert_raised);
+
+        // ── M9: per-family (alpha) confusion accumulation for macro-F1.
+        // Ground-truth family from attack_scenario (1-4=TTW,5-8=BSHH,9-12=ME,
+        // 0=baseline/no family). Classified family from PemClassifyEventAlpha,
+        // restricted to events that actually fired a signature (any_sig) so
+        // baseline/no-detection events don't pollute the per-family FP count.
+        {
+            static const int gtFamilyOf[13] = {-1, 0,0,0,0, 1,1,1,1, 2,2,2,2};
+            const int gtFamily = (attack_scenario <= 12) ? gtFamilyOf[attack_scenario] : -1;
+            bool anySig = false;
+            for (uint32_t i = 0; i < 9; ++i) if (event.triggered[i]) { anySig = true; break; }
+            int clsFamily = -1;
+            if (anySig)
+            {
+                const std::string alpha = PemClassifyAttack(event.triggered);
+                clsFamily = (alpha == "TTW") ? 0 : (alpha == "BSHH") ? 1 : (alpha == "ME") ? 2 : -1;
+            }
+            if (event.attack_label && gtFamily >= 0)
+            {
+                if (clsFamily == gtFamily) pem_f1_tp[gtFamily]++;
+                else pem_f1_fn[gtFamily]++;
+            }
+            if (clsFamily >= 0 && clsFamily != gtFamily)
+            {
+                pem_f1_fp[clsFamily]++;
+            }
+        }
     }
     event.detection_latency_ms =
         event.alert_raised ? PemGetDetectionLatencyMs() : -1.0;
@@ -6376,6 +6734,54 @@ PemEmitEvent(PemEventType type,
         return;
     }
 
+    // ── M2/M3/M4 instrumentation (ground truth only; independent of Stage-0/1
+    // outcome so it reflects real physical/topology state, not detector state).
+    if (type == PEM_EVENT_TOPOLOGY_UPDATE && linkSrcId != linkDstId)
+    {
+        const uint32_t linkKeyLo = (linkSrcId < linkDstId) ? linkSrcId : linkDstId;
+        const uint32_t linkKeyHi = (linkSrcId < linkDstId) ? linkDstId : linkSrcId;
+        const std::string linkKey =
+            std::to_string(linkKeyLo) + "_" + std::to_string(linkKeyHi);
+
+        // M4 PIR: track distinct reporters ever seen for this link.
+        pem_link_reporters[linkKey].insert(reporterId);
+
+        // Ground-truth physical edge existence from positions vs comm range.
+        const bool realEdge = PemDistance2d(linkSrcPosition, linkDstPosition) <= g_rcomm;
+        // Controller "belief": accepts the reported link unless this event is
+        // itself a flagged attack (attackLabel) — i.e. what the controller's
+        // table would end up reflecting for this link after processing.
+        const bool believesEdge = !attackLabel;
+        if (believesEdge != realEdge)
+        {
+            pem_topo_divergence_sum += 1.0;
+        }
+        pem_topo_divergence_count++;
+
+        // M3 T_stale: detect a break transition on the ground-truth edge.
+        auto prevIt = pem_link_prev_real_state.find(linkKey);
+        const bool hadPrev = (prevIt != pem_link_prev_real_state.end());
+        if (hadPrev && prevIt->second && !realEdge)
+        {
+            // Link just broke physically.
+            pem_link_break_time[linkKey] = Simulator::Now().GetSeconds();
+        }
+        // Controller correction: once believesEdge also reflects "false" for a
+        // link with a pending break time, that's tau_correct.
+        auto breakIt = pem_link_break_time.find(linkKey);
+        if (breakIt != pem_link_break_time.end() && !believesEdge)
+        {
+            const double dur = Simulator::Now().GetSeconds() - breakIt->second;
+            if (dur >= 0.0)
+            {
+                pem_stale_duration_sum += dur;
+                pem_stale_duration_count++;
+            }
+            pem_link_break_time.erase(breakIt);
+        }
+        pem_link_prev_real_state[linkKey] = realEdge;
+    }
+
     PemEvent event;
     event.sim_time = Simulator::Now().GetSeconds();
     event.type = type;
@@ -6423,7 +6829,26 @@ PemEmitEvent(PemEventType type,
     // A6 (--no_crypto=1): bypass entirely — all events pass through to Stage-1.
     // Events that fail any check are silently dropped here and never reach
     // the Signature Detector or the TGN inference engine.
-    if (!g_abl.no_crypto && !PemCryptoPreFilter(event))
+    // M10 FRA/FRR: only meaningful while Stage-0 actually runs (A6 disables
+    // it entirely, in which case no filter decision — malicious or benign —
+    // exists to classify, so we skip the counters rather than fake a value).
+    bool __pem_stage0_ran = false;
+    bool __pem_stage0_passed = true;
+    if (!g_abl.no_crypto)
+    {
+        __pem_stage0_ran = true;
+        __pem_stage0_passed = PemCryptoPreFilter(event);
+        if (attackLabel)
+        {
+            if (!__pem_stage0_passed) pem_fra_tp_f++; else pem_fra_fn_f++;
+        }
+        else
+        {
+            if (!__pem_stage0_passed) pem_fra_fp_f++; else pem_fra_tn_f++;
+        }
+    }
+    (void)__pem_stage0_ran;
+    if (!g_abl.no_crypto && !__pem_stage0_passed)
     {
         // Node-level tracking: Stage-0 drop of an attack event counts as a detection.
         pem_all_seen_node_ids.insert(physicalSenderId);
@@ -6454,12 +6879,19 @@ PemEmitEvent(PemEventType type,
             g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
         {
             uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
-            lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[leaf_idx]);
+            PemRevokeVehicleKeys(leaf_idx);
             g_lkh_already_revoked.insert(physicalSenderId);
             // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
             // consortium certificate and is immediately peer-ineligible.
             if (g_trust_table.count(physicalSenderId))
                 g_trust_table[physicalSenderId].cert_valid = false;
+            // M12 tau_LKH-complete: first real LKH revocation this run, via
+            // the Stage-0-triggered path (distinct from the Stage-1 revoke
+            // block later in this function — mutually exclusive by
+            // construction since g_lkh_already_revoked gates both and this
+            // branch `return`s immediately after, so no double-count risk).
+            if (pem_tau_lkh_complete < 0.0)
+                pem_tau_lkh_complete = Simulator::Now().GetSeconds();
             const uint32_t depth = (g_lkh_n_leaves > 1u)
                 ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
             printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
@@ -6972,22 +7404,46 @@ static Ptr<WifiNetDevice> AttackGetDSRCDevice(Ptr<Node> node)
     return nullptr;
 }
 
-// Returns every WifiNetDevice on this node — one per DSRC channel (Ch172-184,
-// 7 total; wifidevices/wifidevices_172/_174/_176/_180/_182/_184 are each
-// installed once per dsrc_Node, so DynamicCast<WifiNetDevice> over all of a
-// node's devices naturally picks up exactly these 7 and skips any CSMA/P2P
-// devices an RSU/controller node also carries). Used to implement 7-channel
-// redundant beaconing: a beacon transmitted on all 7 channels is more likely
-// to be received on AT LEAST ONE of them even when one specific channel
-// (typically Ch178/CCH, which also carries all ambient periodic traffic) is
-// saturated by real 802.11p contention at that instant — see the
-// PREAMBLE_DETECT_FAILURE tracing that motivated this (routing.cc history).
+// Returns this node's WifiNetDevices restricted to the three 33dBm SCH
+// channels (Ch172/174/176, 5860/5870/5880 MHz, ~133.3m real range each).
+// Revision per supervisor direction: the original 7-channel-with-6-retries
+// design (42 real tx attempts/beacon at full scale) was found to be the
+// dominant SOURCE of the channel contention it was meant to work around —
+// a beacon flooding all 7 channels 6x over collides with every OTHER
+// beacon doing the same thing. Restricting to exactly 3 same-power
+// channels, single-shot (no retry), cuts per-beacon airtime 42->3 (14x),
+// which directly targets the PREAMBLE_DETECT_FAILURE/BUSY_DECODING_PREAMBLE
+// congestion this file's PhyRxDrop tracing confirmed was the actual FP
+// root cause — rather than trying to out-transmit contention with more
+// copies, this reduces the contention itself. All three channels share the
+// same 33dBm power/range, so (unlike the old 7-channel mix of 23-44dBm) a
+// reception on any one of them is physically comparable evidence to a
+// reception on either of the others — no cross-channel range mismatch to
+// reason about. NOTE: r_comm (300m, Eq. 3.11) and kEffectiveReceptionRadius
+// (260m, scenario vehicle-selection) still assume Ch178's 282.2m real
+// range; a pair genuinely selected at 200-260m apart is now BEYOND what any
+// of these three 133.3m-range channels can physically reach, regardless of
+// contention. That mismatch needs a corresponding recalibration of the
+// effective-range constants used elsewhere (not part of this transmission
+// change) before this can be evaluated as fully self-consistent — flagged
+// here, not silently absorbed into "still contention-limited."
+extern uint32_t g_calib_channel_mhz_filter;
 static std::vector<Ptr<WifiNetDevice>> AttackGetAllDSRCDevices(Ptr<Node> node)
 {
     std::vector<Ptr<WifiNetDevice>> devs;
     for (uint32_t i = 0; i < node->GetNDevices(); i++) {
         Ptr<WifiNetDevice> w = DynamicCast<WifiNetDevice>(node->GetDevice(i));
-        if (w) devs.push_back(w);
+        if (!w || !w->GetPhy()) continue;
+        const uint32_t freq = w->GetPhy()->GetFrequency();
+        // --calib_channel_mhz=<freq> isolation: only ever set (nonzero) during
+        // a --calibrate_range=1 run, to test one SCH channel at a time without
+        // changing normal attack scenario behavior (which always uses all 3,
+        // since this filter defaults to 0 and is never set on a real run).
+        if (g_calib_channel_mhz_filter != 0) {
+            if (freq == g_calib_channel_mhz_filter) devs.push_back(w);
+            continue;
+        }
+        if (freq == 5860 || freq == 5870 || freq == 5880) devs.push_back(w);
     }
     return devs;
 }
@@ -7340,6 +7796,13 @@ static std::map<int, uint64_t> g_calib_tx_count;   // keyed by distance in metre
 static std::map<int, uint64_t> g_calib_rx_count;
 static int  g_calib_current_distance_m = -1;       // which distance bucket is "active" right now
 static bool g_calibration_active = false;
+// Real per-channel PropagationLossModel objects, keyed by frequency (MHz),
+// set once in main() right after each YansWifiChannel is created. Lets
+// CalibrationSendOneBeacon print the model's OWN predicted RX power at each
+// distance — diagnostic only, to separate "propagation model itself
+// predicts failure here" from "something else in the PHY pipeline (SINR/
+// error-rate model/etc.) is failing reception before propagation would."
+static std::map<uint32_t, Ptr<PropagationLossModel>> g_calib_loss_model;
 // Real ns-3 global ids of the calibration TX/RX pair, set once in
 // CalibrationRun(). Rx()'s [CALIB-RX] tally must only count receptions where
 // the sender/receiver are EXACTLY this pair — under --calibrate_range_loaded=1
@@ -7351,6 +7814,13 @@ static bool g_calibration_active = false;
 // ~17 real per-distance calibration tx_count).
 static uint32_t g_calib_tx_global_id = UINT32_MAX;
 static uint32_t g_calib_rx_global_id = UINT32_MAX;
+// Multi-channel dedup: AttackSendDSRCBeacon now transmits one beacon as
+// several channel-copies (Ch172/174/176) sharing the SAME packet uid
+// (Packet::Copy() preserves uid). Without this, a beacon received on 2 or
+// 3 of those channels would tally 2-3 RX credits for a single TX, inflating
+// PRR above 100% at short range. PRR must answer "was this beacon received
+// at all" (at most 1 credit per uid), not "on how many channels."
+static std::set<uint64_t> g_calib_rx_counted_uids;
 
 static void CalibrationSendOneBeacon(Ptr<Node> txNode, Ptr<Node> rxNode, int seq)
 {
@@ -7358,6 +7828,32 @@ static void CalibrationSendOneBeacon(Ptr<Node> txNode, Ptr<Node> rxNode, int seq
     g_calib_tx_count[g_calib_current_distance_m]++;
     std::cout << "[CALIB-TX] d=" << g_calib_current_distance_m << " seq=" << seq
               << " t=" << Simulator::Now().GetSeconds() << std::endl;
+    // Diagnostic: print the propagation model's OWN predicted RX power for
+    // every channel this beacon is about to go out on, computed directly
+    // from the real Cost231PropagationLossModel object (same one the PHY
+    // simulation itself uses) — not derived/estimated separately. If this
+    // predicted value is already below RxSensitivity (-105dBm) at the
+    // current distance, propagation alone explains the failure. If it's
+    // well above -105dBm but the beacon still fails, the limiter is
+    // downstream of pure propagation (SINR/error-rate model/PHY pipeline).
+    {
+        Ptr<MobilityModel> txMobDbg = txNode->GetObject<MobilityModel>();
+        Ptr<MobilityModel> rxMobDbg = rxNode->GetObject<MobilityModel>();
+        for (Ptr<WifiNetDevice> dbgDev : AttackGetAllDSRCDevices(txNode)) {
+            const uint32_t freq = dbgDev->GetPhy()->GetFrequency();
+            const double txPowerDbm = dbgDev->GetPhy()->GetTxPowerStart();
+            auto it = g_calib_loss_model.find(freq);
+            if (it != g_calib_loss_model.end() && txMobDbg && rxMobDbg) {
+                const double predictedRxDbm =
+                    it->second->CalcRxPower(txPowerDbm, txMobDbg, rxMobDbg);
+                std::cout << "[CALIB-PREDICT] d=" << g_calib_current_distance_m
+                          << " freq=" << freq << " txPowerDbm=" << txPowerDbm
+                          << " predictedRxDbm=" << predictedRxDbm
+                          << " rxSensDbm=" << dbgDev->GetPhy()->GetRxSensitivity()
+                          << std::endl;
+            }
+        }
+    }
     AttackSendDSRCBeacon(txNode, rxNode);
 }
 
@@ -7515,23 +8011,45 @@ static Vector TtwSumoPositionAt(uint32_t cidx, double t)
     return Vector(wps.back().x, wps.back().y, 0.0);
 }
 
-// Empirically calibrated effective reception radius (see --calibrate_range=1
-// and outputs/CALIBRATION/range_calibration.csv), distinct from g_rcomm
-// (300m) — g_rcomm is the protocol/design communication-range parameter used
-// throughout PEM's detection signatures (Eq. 3.11/3.29-3.32) and must not
-// change. This constant is used ONLY for scenario-construction vehicle
-// selection (MeSelectMutualRangePairNearRsu/MeSortVehiclesByDistanceToRsu),
-// so attack scenarios are only built from vehicle placements that are
-// physically realizable under the real Cost231PropagationLossModel + WifiPhy
-// error-rate model, not just the nominal 300m design constant. Measured via a
-// controlled TX/RX distance sweep (real 802.11p beacons, channel 178, 44dBm
-// CCH, velocity zeroed and a 0.3s settle window to exclude a confirmed
-// SetPosition() transient): PRR was a clean 100% from 10m-260m, collapsing to
-// 17.65% at 270m and 0% by 280m — consistent with the existing analytical
-// estimate of ~282m for this channel/power (routing.cc's R(P) formula).
-// 260m is the last measured 100%-PRR point, chosen conservatively (below the
-// observed collapse, not tuned to any detection metric).
-static const double kEffectiveReceptionRadius = 260.0;
+// Empirically calibrated effective reception radius (see --calibrate_range=1/
+// --calibrate_range_loaded=1 and outputs/CALIBRATION/range_calibration*.csv),
+// distinct from g_rcomm (300m) — g_rcomm is the protocol/design
+// communication-range parameter used throughout PEM's detection signatures
+// (Eq. 3.11/3.29-3.32) and must not change. This constant is used ONLY for
+// scenario-construction vehicle selection (MeSelectMutualRangePairNearRsu/
+// MeSortVehiclesByDistanceToRsu), so attack scenarios are only built from
+// vehicle placements that are physically realizable under the real
+// Cost231PropagationLossModel + WifiPhy error-rate model, not just the
+// nominal 300m design constant.
+//
+// REVISED from the original 260m after two real bugs were found and fixed:
+//   1. ThresholdPreambleDetectionModel::MinimumRssi was never explicitly
+//      configured, silently defaulting to ~-82dBm on every channel — a
+//      threshold separate from and stricter than RxSensitivity (-105dBm),
+//      artificially capping range at ~30-40m regardless of TX power. Now
+//      explicitly set to -110dBm on all 7 channels so RxSensitivity is the
+//      real governing constraint.
+//   2. The ambient centralized_dsrc_data_broadcast loop was unconditional,
+//      so the calibration TX/RX pair were ALSO broadcasting to each other on
+//      all 7 channels throughout every "isolated" sweep — contaminating even
+//      the original 260m measurement. Now disabled during
+//      --calibrate_range=1/--calibrate_range_loaded=1.
+//
+// Post-fix measurements, using the same "last 100%-PRR point" criterion as
+// the original calibration:
+//   Isolated, 3-channel design (Ch172/174/176, 33dBm each): 100m
+//   (Ch178 alone, isolated: 180m — but the 3 channels actually used for
+//   beaconing top out at 100m, so this is the design-relevant ceiling.)
+//   Full-scale realistic load (--calibrate_range_loaded=1, N_Vehicles=200,
+//   N_RSUs=64), matching the actual experiment configuration — tested BOTH
+//   with the real 3-channel spread (calibration signal + background load
+//   traffic distributed across all 3 channels, matching real ME-S2 traffic
+//   patterns) AND with contention artificially concentrated onto a single
+//   channel: both converge to the SAME 100m/110m cliff. Robust across three
+//   independent test configurations (isolated 3-channel, single-channel
+//   loaded, multi-channel loaded) — not an artifact of any one test setup.
+// 100m is the last measured 100%-PRR point under these conditions.
+static const double kEffectiveReceptionRadius = 100.0;
 // (g_scenario_invalid_neighborhood_rsus is declared earlier, near
 // pem_all_events, since PemEvaluateEvent needs it before this point in the
 // file.)
@@ -8566,7 +9084,12 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
         std::string trust_log, ctrl_div_log;
         if (PemControllerDivergenceGate(now2, "TTW-S3", ctrl_div_log, v1_id, v2_id, now2)) {
             TrustUpdateNode(ctrl_ns3, false, true);
-            trust_log = TrustReassignController(ctrl_ns3, now2);
+            if (!g_abl.no_reassign) {
+                trust_log = TrustReassignController(ctrl_ns3, now2);
+            } else {
+                // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
+                trust_log = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+            }
         }
         trust_log = ctrl_div_log + trust_log;
         TrustRunDemotionPipeline(now2);
@@ -8746,7 +9269,12 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
         std::string trust_log_s4, ctrl_div_log_s4;
         if (PemControllerDivergenceGate(now2, "TTW-S4", ctrl_div_log_s4, v1_id, v2_id, now2)) {
             TrustUpdateNode(ctrl_ns3_s4, false, true);
-            trust_log_s4 = TrustReassignController(ctrl_ns3_s4, now2);
+            if (!g_abl.no_reassign) {
+                trust_log_s4 = TrustReassignController(ctrl_ns3_s4, now2);
+            } else {
+                // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
+                trust_log_s4 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+            }
         }
         trust_log_s4 = ctrl_div_log_s4 + trust_log_s4;
         TrustRunDemotionPipeline(now2);
@@ -9846,7 +10374,12 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         std::string trust_s7, ctrl_div_log_s7;
         if (PemControllerDivergenceGate(now, "BSHH-S3", ctrl_div_log_s7, v1_id, v2_id, now)) {
             TrustUpdateNode(ctrl_s7, false, true);
-            trust_s7 = TrustReassignController(ctrl_s7, now);
+            if (!g_abl.no_reassign) {
+                trust_s7 = TrustReassignController(ctrl_s7, now);
+            } else {
+                // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
+                trust_s7 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+            }
         }
         trust_s7 = ctrl_div_log_s7 + trust_s7;
         TrustRunDemotionPipeline(now);
@@ -10068,7 +10601,12 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         std::string trust_s8, ctrl_div_log_s8;
         if (PemControllerDivergenceGate(now, "BSHH-S4", ctrl_div_log_s8, v1_id, v2_id, now)) {
             TrustUpdateNode(ctrl_s8, false, true);
-            trust_s8 = TrustReassignController(ctrl_s8, now);
+            if (!g_abl.no_reassign) {
+                trust_s8 = TrustReassignController(ctrl_s8, now);
+            } else {
+                // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
+                trust_s8 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+            }
         }
         trust_s8 = ctrl_div_log_s8 + trust_s8;
         TrustRunDemotionPipeline(now);
@@ -10928,7 +11466,12 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
             std::string ctrl_div_log_single3;
             if (PemControllerDivergenceGate(now, tag, ctrl_div_log_single3, v1_id, v2_id, now)) {
                 TrustUpdateNode(ctrl_single3, false, true);
-                trust_single3 = TrustReassignController(ctrl_single3, now);
+                if (!g_abl.no_reassign) {
+                    trust_single3 = TrustReassignController(ctrl_single3, now);
+                } else {
+                    // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
+                    trust_single3 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                }
             }
             trust_single3 = ctrl_div_log_single3 + trust_single3;
             TrustRunDemotionPipeline(now);
@@ -11100,7 +11643,18 @@ void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
         // outcome: a fabricated ME witness never sends a real beacon at all
         // regardless of attempt count, so this only ever helps genuine
         // senders that actually attempted transmission.
-        static const int kNumAttempts = 6;
+        //
+        // Revision per supervisor direction: retries were found to be
+        // self-defeating at full scale — 6 retries x 7 channels = 42 real
+        // transmissions per beacon meant every malicious RSU group's own
+        // burst was a major contributor to the very channel contention it
+        // was retrying to work around. Reduced to a single attempt (no
+        // retry) now that AttackGetAllDSRCDevices is also restricted to the
+        // 3 same-power (33dBm) SCH channels (Ch172/174/176) instead of all
+        // 7 — 3 real transmissions per beacon total (down from 42, a 14x
+        // reduction), directly cutting the airtime/collision load rather
+        // than trying to out-transmit it.
+        static const int kNumAttempts = 1;
         // NOT a multiple of kBeaconSpacingUs (1000us) — deliberately, and with
         // enough margin to matter. When it was 2000 (an exact 2x multiple), a
         // node at per-node offset N*1000us and another at offset (N+2)*1000us
@@ -11641,7 +12195,12 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         std::string trust_s11, ctrl_div_log_s11;
         if (PemControllerDivergenceGate(now, "ME-S3", ctrl_div_log_s11, v1_id, v2_id, now)) {
             TrustUpdateNode(ctrl_s11, false, true);
-            trust_s11 = TrustReassignController(ctrl_s11, now);
+            if (!g_abl.no_reassign) {
+                trust_s11 = TrustReassignController(ctrl_s11, now);
+            } else {
+                // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
+                trust_s11 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+            }
         }
         trust_s11 = ctrl_div_log_s11 + trust_s11;
         TrustRunDemotionPipeline(now);
@@ -11951,7 +12510,12 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         std::string trust_s12, ctrl_div_log_s12;
         if (PemControllerDivergenceGate(now, "ME-S4", ctrl_div_log_s12, v1_id, v2_id, now)) {
             TrustUpdateNode(ctrl_s12, false, true);
-            trust_s12 = TrustReassignController(ctrl_s12, now);
+            if (!g_abl.no_reassign) {
+                trust_s12 = TrustReassignController(ctrl_s12, now);
+            } else {
+                // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
+                trust_s12 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+            }
         }
         trust_s12 = ctrl_div_log_s12 + trust_s12;
         TrustRunDemotionPipeline(now);
@@ -12261,6 +12825,15 @@ TypeId CustomDataTag1::GetInstanceTypeId (void) const
 uint32_t CustomDataTag1::GetSerializedSize (void) const
 {
 	return sizeof(Vector) + sizeof(Vector) + sizeof(Vector) + sizeof (ns3::Time) + sizeof(uint32_t) + sizeof(m_neighborid) + sizeof(m_mac) + sizeof(m_nonce);
+}
+
+// M7 (Omega): exposes CustomDataTag1's real serialized wire size as a plain
+// function callable from PemWriteRunSummaryCsv(), which is defined earlier in
+// this file (before the CustomDataTag1 class exists) and so cannot construct
+// CustomDataTag1 directly. Forward-declared just above PemWriteRunSummaryCsv.
+uint32_t PemGetBeaconSerializedSizeBytes()
+{
+    return CustomDataTag1().GetSerializedSize();
 }
 
 /*
@@ -123794,6 +124367,17 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     // in this simulation (not a single time-multiplexed 1609.4 radio).
     std::vector<Ptr<WifiNetDevice>> wdis = AttackGetAllDSRCDevices(sender_node);
     if (wdis.empty()) return;
+    if (g_calibration_active) {
+        for (Ptr<WifiNetDevice> dbgw : wdis) {
+            std::cout << "[TEMP-DIAG-CHSEL] node=" << sender_node->GetId()
+                      << " devidx=" << dbgw->GetIfIndex()
+                      << " freq=" << dbgw->GetPhy()->GetFrequency()
+                      << " txPowerStart=" << dbgw->GetPhy()->GetTxPowerStart()
+                      << " txPowerEnd=" << dbgw->GetPhy()->GetTxPowerEnd()
+                      << " rxSens=" << dbgw->GetPhy()->GetRxSensitivity()
+                      << std::endl;
+        }
+    }
 
     Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
     Vector pos = mob ? mob->GetPosition() : Vector(0, 0, 0);
@@ -131478,7 +132062,8 @@ void TempDiagRxDrop(std::string context, Ptr<const Packet> pkt, WifiPhyRxfailure
 {
 	bool watch = (context.find("/NodeList/206/") != std::string::npos)
 	          || (context.find("/NodeList/207/") != std::string::npos)
-	          || (context.find("/NodeList/209/") != std::string::npos);
+	          || (context.find("/NodeList/209/") != std::string::npos)
+	          || g_calibration_active;   // calibration's TX/RX pair uses whatever node ids the run happens to assign — watch unconditionally during --calibrate_range=1 instead of missing them under the hardcoded 206/207/209 filter.
 	if (!watch) return;
 	std::cout << "[TEMP-DIAG3][RXDROP] t=" << Simulator::Now().GetSeconds()
 	          << " reason=" << reason
@@ -131718,10 +132303,19 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		if (g_calibration_active && g_calib_current_distance_m >= 0
 		    && tagd1.GetNodeId() == g_calib_tx_global_id
 		    && (uint32_t)destination_node_id == g_calib_rx_global_id) {
-			g_calib_rx_count[g_calib_current_distance_m]++;
-			std::cout << "[CALIB-RX] d=" << g_calib_current_distance_m
-			          << " t=" << Simulator::Now().GetSeconds()
-			          << " signal=" << signalNoise.signal << std::endl;
+			// Dedup by packet uid: AttackSendDSRCBeacon's 3 channel-copies
+			// share one uid, so only the FIRST successful channel for a
+			// given beacon counts toward PRR (see g_calib_rx_counted_uids's
+			// declaration comment) — otherwise a beacon received on all 3
+			// channels would inflate PRR to 300% at short range.
+			const uint64_t uidKey = pkt->GetUid();
+			if (g_calib_rx_counted_uids.find(uidKey) == g_calib_rx_counted_uids.end()) {
+				g_calib_rx_counted_uids.insert(uidKey);
+				g_calib_rx_count[g_calib_current_distance_m]++;
+				std::cout << "[CALIB-RX] d=" << g_calib_current_distance_m
+				          << " t=" << Simulator::Now().GetSeconds()
+				          << " signal=" << signalNoise.signal << std::endl;
+			}
 		}
 
 		// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) — real verification on
@@ -151028,6 +151622,7 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("test_network", "Use the small synthetic test network (mobility/test_network_20veh.tcl, 10 vehicle pairs guaranteed to naturally separate) instead of the real trace, for fast smoke-testing all 12 scenarios. Use with --N_Vehicles=20 --N_RSUs<=10. Default 0 (off, real trace).", test_network);
     cmd.AddValue ("calibrate_range", "Measure real 802.11p packet-reception-ratio vs distance (channel 178, 44dBm CCH) instead of running an attack scenario. Writes outputs/CALIBRATION/range_calibration.csv. Use with --N_Vehicles=2 --N_RSUs=0 --simTime=35 (10m steps from 10m to 300m, 1s dwell each, 25 beacons/step).", calibrate_range);
     cmd.AddValue ("calibrate_range_loaded", "Same distance sweep as --calibrate_range, but under a full-scale network (needs --N_Vehicles>=204 --N_RSUs>=1) with realistic background channel load injected throughout. Writes outputs/CALIBRATION/range_calibration_loaded.csv. Use with --N_Vehicles=200 --N_RSUs=64 --simTime=35.", calibrate_range_loaded);
+    cmd.AddValue ("calib_channel_mhz", "With --calibrate_range=1: restrict transmission to exactly one channel (5860=Ch172, 5870=Ch174, 5880=Ch176) instead of all 3, to isolate per-channel real range from any simultaneous-multi-device-transmission artifact. 0 (default) = use all 3, matching normal attack scenario behavior.", g_calib_channel_mhz_filter);
     cmd.AddValue ("data_transmission_frequency", "data_transmission_frequency", data_transmission_frequency);
     cmd.AddValue ("link_lifetime_threshold", "link_lifetime_threshold", link_lifetime_threshold);
     cmd.AddValue ("simTime", "simTime", simTime);
@@ -151161,6 +151756,42 @@ static int RoutingMain(int argc, char *argv[])
                   "1 = A5: suppress ME-S3 geometric/RSSI check sig[8] (Eq. 3.11; NOT the "
                   "separate Eq. 3.28 ML-DSA-87 signature check in TetaGuardLocBindVerify)",
                   g_abl.no_lbs);
+    cmd.AddValue ("no_lw",
+                  "1 = A2: disable the LW 9-signature rule-based scoring engine; alerts "
+                  "(event.alert_raised, feeding tp/fp/fn/mcc/auroc) come only from the "
+                  "FS/TGN inference path (g_tgn_tp/fp/fn, TGN_ProcessEventInline)",
+                  g_abl.no_lw);
+    cmd.AddValue ("no_threshold_sig",
+                  "1 = A6: BSHH's t-of-n ML-DSA-87 threshold aggregate signature check "
+                  "(PemVerifyThresholdSig, Eq. 3.28) degrades to an unweighted "
+                  "majority-count heuristic with no crypto attestation",
+                  g_abl.no_threshold_sig);
+    cmd.AddValue ("equal_weight_pbft",
+                  "1 = A9: PBFT_CONSENSUS votes are counted with equal weight=1 per peer "
+                  "instead of weighted by ledger trust score tau_k (Eq. 3.47-3.48)",
+                  g_abl.equal_weight_pbft);
+    cmd.AddValue ("no_quarantine",
+                  "1 = A10: skip the T_quar=30s quarantine wait; a flagged node is removed "
+                  "immediately at the next Stage-2 monitor tick instead of waiting T_quar",
+                  g_abl.no_quarantine);
+    cmd.AddValue ("no_lkh",
+                  "1 = A11: replace O(log n) LKH tree revocation with a naive flat re-key "
+                  "(fresh individual session key for every other vehicle, O(n) cost)",
+                  g_abl.no_lkh);
+    cmd.AddValue ("no_divergence_detector",
+                  "1 = A12: disable PemControllerDivergenceGate (Algorithm 4 lines 2-7); "
+                  "controller-origin attacks (TTW/BSHH/ME -S3/-S4) are never confirmed for "
+                  "trust penalty/TrustReassignController, i.e. controller-origin blind",
+                  g_abl.no_divergence_detector);
+    cmd.AddValue ("single_kem",
+                  "1 = A13: report ML-KEM-1024-only handshake cost estimate (no HQC-5 half); "
+                  "measurement-only, does not alter KEM keys, session establishment, or "
+                  "any attack-detection behavior",
+                  g_abl.single_kem);
+    cmd.AddValue ("no_reassign",
+                  "1 = A14: skip TrustReassignController(); a controller confirmed/flagged "
+                  "below tau_min stays active instead of being replaced",
+                  g_abl.no_reassign);
     cmd.AddValue ("enable_neighborhood_beaconing",
                   "1 = continuous per-vehicle mobility-derived neighbor beaconing, feeding "
                   "TGN's beacon-count window and ME's lambda_hat density estimator only "
@@ -151292,7 +151923,10 @@ static int RoutingMain(int argc, char *argv[])
 
     // Print active ablation summary so it appears in every run's stdout.
     if (g_abl.no_crypto || g_abl.no_tgn || g_abl.no_blockchain ||
-        g_abl.static_gcn  || g_abl.no_mobility_adapt || g_abl.no_lbs) {
+        g_abl.static_gcn  || g_abl.no_mobility_adapt || g_abl.no_lbs ||
+        g_abl.no_lw || g_abl.no_threshold_sig || g_abl.equal_weight_pbft ||
+        g_abl.no_quarantine || g_abl.no_lkh || g_abl.no_divergence_detector ||
+        g_abl.single_kem || g_abl.no_reassign) {
         std::cout << "[Ablation] Active flags:";
         if (g_abl.no_crypto)         std::cout << "  A6:no_crypto";
         if (g_abl.no_tgn)            std::cout << "  A1/A2:no_tgn";
@@ -151300,6 +151934,14 @@ static int RoutingMain(int argc, char *argv[])
         if (g_abl.static_gcn)        std::cout << "  A3:static_gcn";
         if (g_abl.no_mobility_adapt) std::cout << "  A4:no_mobility_adapt";
         if (g_abl.no_lbs)            std::cout << "  A5:no_lbs";
+        if (g_abl.no_lw)                  std::cout << "  A2:no_lw";
+        if (g_abl.no_threshold_sig)       std::cout << "  A6:no_threshold_sig";
+        if (g_abl.equal_weight_pbft)      std::cout << "  A9:equal_weight_pbft";
+        if (g_abl.no_quarantine)          std::cout << "  A10:no_quarantine";
+        if (g_abl.no_lkh)                 std::cout << "  A11:no_lkh";
+        if (g_abl.no_divergence_detector) std::cout << "  A12:no_divergence_detector";
+        if (g_abl.single_kem)             std::cout << "  A13:single_kem";
+        if (g_abl.no_reassign)            std::cout << "  A14:no_reassign";
         std::cout << "\n";
     } else {
         std::cout << "[Ablation] Full stack enabled (no ablation flags set)\n";
@@ -152534,24 +153176,45 @@ static int RoutingMain(int argc, char *argv[])
   YansWifiPhyHelper Phy_182;
   YansWifiPhyHelper Phy_184;
   
+  // PreambleDetectionModel: never explicitly configured anywhere in this file
+  // before, so every WifiPhy silently used ns-3's default
+  // ThresholdPreambleDetectionModel (MinimumRssi default ~-82dBm) — a SEPARATE
+  // gate from RxSensitivity (-105dBm) that decides whether the PHY even
+  // attempts to decode a frame at all. Root cause of the Ch172/174/176 hard
+  // cutoff found via calibration: predicted RSSI crosses ~-82dBm right around
+  // 40m for these 33dBm channels (COST231, confirmed via direct model query),
+  // exactly matching the measured 30m->40m 100%->0% PRR cliff — fully
+  // deterministic (17/17 failures, same reason, in a genuinely isolated
+  // single-TX/single-RX test with zero other traffic), which is inconsistent
+  // with real contention and consistent with a hard threshold boundary
+  // instead. Set explicitly below RxSensitivity on all 7 channels so
+  // RxSensitivity is the only binding constraint, as the codebase's own
+  // RxSensitivity/CHANNEL_RANGE_M design already assumes.
+  Phy.SetPreambleDetectionModel("ns3::ThresholdPreambleDetectionModel", "MinimumRssi", DoubleValue(-110.0));
   Phy.SetErrorRateModel("ns3::NistErrorRateModel");
   Phy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
   Phy.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
+  Phy_172.SetPreambleDetectionModel("ns3::ThresholdPreambleDetectionModel", "MinimumRssi", DoubleValue(-110.0));
   Phy_172.SetErrorRateModel("ns3::NistErrorRateModel");
   Phy_172.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
   Phy_172.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
+  Phy_174.SetPreambleDetectionModel("ns3::ThresholdPreambleDetectionModel", "MinimumRssi", DoubleValue(-110.0));
   Phy_174.SetErrorRateModel("ns3::NistErrorRateModel");
   Phy_174.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
   Phy_174.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
+  Phy_176.SetPreambleDetectionModel("ns3::ThresholdPreambleDetectionModel", "MinimumRssi", DoubleValue(-110.0));
   Phy_176.SetErrorRateModel("ns3::NistErrorRateModel");
   Phy_176.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
   Phy_176.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
+  Phy_180.SetPreambleDetectionModel("ns3::ThresholdPreambleDetectionModel", "MinimumRssi", DoubleValue(-110.0));
   Phy_180.SetErrorRateModel("ns3::NistErrorRateModel");
   Phy_180.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
   Phy_180.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
+  Phy_182.SetPreambleDetectionModel("ns3::ThresholdPreambleDetectionModel", "MinimumRssi", DoubleValue(-110.0));
   Phy_182.SetErrorRateModel("ns3::NistErrorRateModel");
   Phy_182.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
   Phy_182.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
+  Phy_184.SetPreambleDetectionModel("ns3::ThresholdPreambleDetectionModel", "MinimumRssi", DoubleValue(-110.0));
   Phy_184.SetErrorRateModel("ns3::NistErrorRateModel");
   Phy_184.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
   Phy_184.Set("TxPowerLevels", UintegerValue(2));//number of transmission power levels
@@ -152710,10 +153373,37 @@ static int RoutingMain(int argc, char *argv[])
   
   //Phy.Set ("ChannelSettings", StringValue ("{176, 10, BAND_5GHZ, 0}"));
   //Config::SetDefault ("ns3::WifiPhy::ChannelSettings", StringValue ("{176, 10, BAND_5GHZ, 0}"));
-  Phy.SetChannel (channel.Create ());
-  Phy_172.SetChannel (channel_172.Create ());
-  Phy_174.SetChannel (channel_174.Create ());
-  Phy_176.SetChannel (channel_176.Create ());
+  Ptr<YansWifiChannel> g_ch178_created = channel.Create ();
+  Ptr<YansWifiChannel> g_ch172_created = channel_172.Create ();
+  Ptr<YansWifiChannel> g_ch174_created = channel_174.Create ();
+  Ptr<YansWifiChannel> g_ch176_created = channel_176.Create ();
+  Phy.SetChannel (g_ch178_created);
+  Phy_172.SetChannel (g_ch172_created);
+  Phy_174.SetChannel (g_ch174_created);
+  Phy_176.SetChannel (g_ch176_created);
+  // Calibration diagnostic: YansWifiChannel doesn't expose a getter for its
+  // internal loss model list, so build independent Cost231PropagationLossModel
+  // objects with IDENTICAL parameters (Frequency/BSAntennaHeight) to the ones
+  // each channel_* helper actually attached above — CalcRxPower() is a pure
+  // function of tx power + positions + these attributes, so an independently
+  // constructed object with the same config predicts EXACTLY what the real
+  // one driving the simulation does. Lets CalibrationSendOneBeacon print the
+  // model's own predicted RX power at each distance step, separating
+  // "propagation model itself says this should fail" from "something else
+  // (SINR/error-rate/PHY pipeline) is failing it before propagation would."
+  {
+      ObjectFactory cost231Factory;
+      cost231Factory.SetTypeId("ns3::Cost231PropagationLossModel");
+      cost231Factory.Set("BSAntennaHeight", DoubleValue(1.5));
+      auto makeCost231 = [&cost231Factory](double freqHz) -> Ptr<PropagationLossModel> {
+          cost231Factory.Set("Frequency", DoubleValue(freqHz));
+          return cost231Factory.Create<PropagationLossModel>();
+      };
+      g_calib_loss_model[5860] = makeCost231(5.860e9);
+      g_calib_loss_model[5870] = makeCost231(5.870e9);
+      g_calib_loss_model[5880] = makeCost231(5.880e9);
+      g_calib_loss_model[5890] = makeCost231(5.890e9);
+  }
   Phy_180.SetChannel (channel_180.Create ());
   Phy_182.SetChannel (channel_182.Create ());
   Phy_184.SetChannel (channel_184.Create ());
@@ -152748,9 +153438,15 @@ static int RoutingMain(int argc, char *argv[])
 
   WifiHelper wifi_172;
   wifi_172.SetStandard (WIFI_STANDARD_80211p);
+  // Bug fix: was "OfdmRate12MbpsBW5MHz" — a 5MHz-bandwidth WifiMode on a PHY
+  // whose ChannelWidth is explicitly set to 10MHz (Phy_172.Set("ChannelWidth",
+  // UintegerValue(10)) below), inconsistent with every other channel
+  // (174/176/178/180/182/184 all correctly use BW10MHz). Found while
+  // investigating why Ch172/174/176's calibrated real range came in far
+  // shorter than the analytical ~130m estimate.
   wifi_172.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
-  						"DataMode", StringValue ("OfdmRate12MbpsBW5MHz"),
-  						"ControlMode",StringValue ("OfdmRate12MbpsBW5MHz"),
+  						"DataMode", StringValue ("OfdmRate12MbpsBW10MHz"),
+  						"ControlMode",StringValue ("OfdmRate12MbpsBW10MHz"),
   						"NonUnicastMode", StringValue ("Invalid-WifiMode"),
 						"MaxSsrc",UintegerValue(B_max),
 						"MaxSlrc",UintegerValue(B_max),
@@ -153048,7 +153744,16 @@ static int RoutingMain(int argc, char *argv[])
 	  	//if (experiment_number != 5)
 	  	//{
 	  		//DSRC nodes data broadcast -- all 7 channels via centralized_dsrc_data_broadcast
-			for (double t=0.970; t<simTime-1; t=t+data_transmission_period)//All official data transmissions begin at t=0
+			// Disabled during --calibrate_range=1/--calibrate_range_loaded=1: this
+			// ambient loop was previously unconditional, so the calibration TX/RX
+			// pair (Vehicle_Nodes[0]/[1]) were ALSO broadcasting to each other on
+			// all 7 channels every 100ms throughout the "isolated" sweep — a real,
+			// unaccounted-for collision source that made the calibrated range look
+			// far shorter than the propagation model itself predicts (confirmed:
+			// -82dBm predicted signal at 40m, 23dB above sensitivity, yet measured
+			// PRR=0% there). --calibrate_range_loaded=1 has its own deliberate,
+			// controlled background load (CalibrationFireLoadGroup) instead.
+			for (double t=0.970; t<simTime-1 && calibrate_range != 1 && calibrate_range_loaded != 1; t=t+data_transmission_period)//All official data transmissions begin at t=0
 			{	
 				  //Go over all the wifi devices
 				  for (uint32_t i=0; i<wifidevices.GetN() ; i++)
@@ -153909,7 +154614,7 @@ static int RoutingMain(int argc, char *argv[])
               {
                   TtwBreakEval ev = TtwEvaluateNaturalBreak(
                       attacker_cidx, remainingVictims[vi], TTW_HELLO_TIME,
-                      searchStart, searchEnd, TTW_COMM_RANGE, stepSec);
+                      searchStart, searchEnd, kEffectiveReceptionRadius, stepSec);
                   if (!ev.found) continue;
                   const bool better =
                       (bestIdx < 0) ||
@@ -154101,7 +154806,7 @@ static int RoutingMain(int argc, char *argv[])
       else
           s2_assigned = TtwFindNaturalBreakPairs(
               s2_attacker_pool, s2_victim_pool, TTWS2_HELLO_TIME,
-              TTWS2_HELLO_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+              TTWS2_HELLO_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
 
       for (const auto& ap : s2_assigned) {
           ttw_s2_all_pairs.push_back({Vehicle_Nodes.Get(ap.attackerCidx)->GetId(),
@@ -154263,7 +154968,7 @@ static int RoutingMain(int argc, char *argv[])
       else
           s3_assigned = TtwFindNaturalBreakPairs(
               s3_attacker_pool, s3_victim_pool, TTWS3_HELLO_TIME,
-              TTWS3_HELLO_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+              TTWS3_HELLO_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 03 - TTW-S3 ATTACK CONFIGURED"   << std::endl;
@@ -154397,7 +155102,7 @@ static int RoutingMain(int argc, char *argv[])
       else
           s4_assigned = TtwFindNaturalBreakPairs(
               s4_attacker_pool, s4_victim_pool, TTWS4_HELLO_TIME,
-              TTWS4_HELLO_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+              TTWS4_HELLO_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 04 - TTW-S4 ATTACK CONFIGURED"   << std::endl;
@@ -154556,7 +155261,7 @@ static int RoutingMain(int argc, char *argv[])
       } else {
           bshh_s1_assigned = TtwFindNaturalBreakPairs(
               bshh_attacker_idx, bshh_victim_idx, BSHH_S1_EXCHANGE_TIME,
-              BSHH_S1_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+              BSHH_S1_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
       }
       const uint32_t bshh_s1_npairs = (uint32_t)bshh_s1_assigned.size();
       bshh_s1_total_pairs = bshh_s1_npairs;
@@ -154778,7 +155483,7 @@ static int RoutingMain(int argc, char *argv[])
       else
           s6_assigned = TtwFindNaturalBreakPairs(
               s6_attacker_pool, s6_victim_pool, BSHH_S2_EXCHANGE_TIME,
-              BSHH_S2_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+              BSHH_S2_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
 
       bshh_s2_total_pairs = (uint32_t)s6_assigned.size();
 
@@ -154923,7 +155628,7 @@ static int RoutingMain(int argc, char *argv[])
       else
           s7_assigned = TtwFindNaturalBreakPairs(
               s7_attacker_pool, s7_victim_pool, BSHH_S3_EXCHANGE_TIME,
-              BSHH_S3_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+              BSHH_S3_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
 
       bshh_s3_total_pairs = (uint32_t)s7_assigned.size();
 
@@ -155050,7 +155755,7 @@ static int RoutingMain(int argc, char *argv[])
       else
           s8_assigned = TtwFindNaturalBreakPairs(
               s8_attacker_pool, s8_victim_pool, BSHH_S4_EXCHANGE_TIME,
-              BSHH_S4_EXCHANGE_TIME + 0.5, simTime - 3.0, TTW_COMM_RANGE, 0.2);
+              BSHH_S4_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
 
       bshh_s4_total_pairs = (uint32_t)s8_assigned.size();
 
