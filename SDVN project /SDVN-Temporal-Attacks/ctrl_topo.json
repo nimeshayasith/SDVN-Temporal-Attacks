@@ -1,7 +1,16 @@
 {
   "controller_id": "sdn-controller",
-  "interval_ts": 29999,
+  "interval_ts": 39999,
   "links": [
-
+    {"node_a": "V102", "node_b": "V139", "ts": 10000},
+    {"node_a": "V118", "node_b": "V94", "ts": 10000},
+    {"node_a": "V134", "node_b": "V99", "ts": 10000},
+    {"node_a": "V139", "node_b": "V115", "ts": 10000},
+    {"node_a": "V145", "node_b": "V121", "ts": 10000},
+    {"node_a": "V148", "node_b": "V48", "ts": 10000},
+    {"node_a": "V152", "node_b": "V19", "ts": 10000},
+    {"node_a": "V180", "node_b": "V183", "ts": 10000},
+    {"node_a": "V35", "node_b": "V110", "ts": 10000},
+    {"node_a": "V87", "node_b": "V60", "ts": 10000}
   ]
 }

@@ -1798,6 +1798,52 @@ std::map<std::string, TopologyPacket> ttw_controller_table;
 // DSRC communication range — matches your 802.11p Phy settings
 static const double TTW_COMM_RANGE = 300.0;
 
+// Empirically calibrated effective reception radius (see --calibrate_range=1/
+// --calibrate_range_loaded=1 and outputs/CALIBRATION/range_calibration*.csv),
+// distinct from g_rcomm/TTW_COMM_RANGE (300m) — that 300m value is the
+// protocol/design communication-range parameter used throughout PEM's
+// detection signatures (Eq. 3.11/3.29-3.32) and must not change. This
+// constant is used for (a) scenario-construction vehicle selection
+// (MeSelectMutualRangePairNearRsu/MeSortVehiclesByDistanceToRsu,
+// TtwFindNaturalBreakPairs/TtwEvaluateNaturalBreak), so attack scenarios are
+// only built from vehicle placements that are physically realizable under
+// the real Cost231PropagationLossModel + WifiPhy error-rate model, not just
+// the nominal 300m design constant; and (b) the scenario-agnostic ambient
+// reception gates (PemEmitVehicleBeacon, PemEmitNeighborObservation) that run
+// continuously regardless of attack_scenario, for the same reason — live
+// beaconing is restricted to the 3 calibrated 33dBm SCH channels
+// (Ch172/174/176, AttackGetAllDSRCDevices), so 100m is the real achievable
+// range, not 300m.
+//
+// REVISED from the original 260m after two real bugs were found and fixed:
+//   1. ThresholdPreambleDetectionModel::MinimumRssi was never explicitly
+//      configured, silently defaulting to ~-82dBm on every channel — a
+//      threshold separate from and stricter than RxSensitivity (-105dBm),
+//      artificially capping range at ~30-40m regardless of TX power. Now
+//      explicitly set to -110dBm on all 7 channels so RxSensitivity is the
+//      real governing constraint.
+//   2. The ambient centralized_dsrc_data_broadcast loop was unconditional,
+//      so the calibration TX/RX pair were ALSO broadcasting to each other on
+//      all 7 channels throughout every "isolated" sweep — contaminating even
+//      the original 260m measurement. Now disabled during
+//      --calibrate_range=1/--calibrate_range_loaded=1.
+//
+// Post-fix measurements, using the same "last 100%-PRR point" criterion as
+// the original calibration:
+//   Isolated, 3-channel design (Ch172/174/176, 33dBm each): 100m
+//   (Ch178 alone, isolated: 180m — but the 3 channels actually used for
+//   beaconing top out at 100m, so this is the design-relevant ceiling.)
+//   Full-scale realistic load (--calibrate_range_loaded=1, N_Vehicles=200,
+//   N_RSUs=64), matching the actual experiment configuration — tested BOTH
+//   with the real 3-channel spread (calibration signal + background load
+//   traffic distributed across all 3 channels, matching real ME-S2 traffic
+//   patterns) AND with contention artificially concentrated onto a single
+//   channel: both converge to the SAME 100m/110m cliff. Robust across three
+//   independent test configurations (isolated 3-channel, single-channel
+//   loaded, multi-channel loaded) — not an artifact of any one test setup.
+// 100m is the last measured 100%-PRR point under these conditions.
+static const double kEffectiveReceptionRadius = 100.0;
+
 // Log file for attack events
 std::ofstream ttw_log;
 
@@ -7043,7 +7089,17 @@ PemEmitVehicleBeacon(uint32_t senderId, uint32_t receiverId)
     const double distance =
         std::sqrt(std::pow(senderPosition.x - receiverPosition.x, 2.0) +
                   std::pow(senderPosition.y - receiverPosition.y, 2.0));
-    if (distance > TTW_COMM_RANGE)
+    // Real-radio consistency fix: this gates whether a specific ambient
+    // beacon was actually receivable, not the Eq. 3.11 protocol-level
+    // r_comm=300m design constant (that stays untouched everywhere it's
+    // used for formal signature/ground-truth-link math). Since live
+    // beaconing is now restricted to the 3 calibrated 33dBm SCH channels
+    // (Ch172/174/176, AttackGetAllDSRCDevices), the real achievable range is
+    // kEffectiveReceptionRadius (100m), not TTW_COMM_RANGE (300m) — using
+    // 300m here would let this function report a benign reception the real
+    // PHY model could never have delivered, the same class of false-positive
+    // source found and fixed for TTW-S4/BSHH scenario construction.
+    if (distance > kEffectiveReceptionRadius)
     {
         return;
     }
@@ -7096,7 +7152,17 @@ PemEmitNeighborObservation(uint32_t transmitterId, uint32_t receiverId)
     Vector transmitterPosition = transmitterMobility->GetPosition();
     Vector receiverPosition = receiverMobility->GetPosition();
 
-    if (PemDistance2d(transmitterPosition, receiverPosition) > TTW_COMM_RANGE)
+    // Same real-radio consistency fix as PemEmitVehicleBeacon above: this
+    // gates whether a specific ambient neighbor observation was actually
+    // receivable (feeds ME's lambda_hat/rho_max/delta_max density stats and
+    // TGN's beacon-count window), not the Eq. 3.11 protocol-level r_comm=300m
+    // design constant. Live beaconing is restricted to the 3 calibrated
+    // 33dBm SCH channels (Ch172/174/176), so the real achievable range is
+    // kEffectiveReceptionRadius (100m) — using 300m here would let this
+    // function count neighbors as "observed" that the real PHY model could
+    // never have delivered, systematically inflating the density estimate
+    // ME-S1's threshold is calibrated against.
+    if (PemDistance2d(transmitterPosition, receiverPosition) > kEffectiveReceptionRadius)
     {
         return false;
     }
@@ -8011,45 +8077,12 @@ static Vector TtwSumoPositionAt(uint32_t cidx, double t)
     return Vector(wps.back().x, wps.back().y, 0.0);
 }
 
-// Empirically calibrated effective reception radius (see --calibrate_range=1/
-// --calibrate_range_loaded=1 and outputs/CALIBRATION/range_calibration*.csv),
-// distinct from g_rcomm (300m) — g_rcomm is the protocol/design
-// communication-range parameter used throughout PEM's detection signatures
-// (Eq. 3.11/3.29-3.32) and must not change. This constant is used ONLY for
-// scenario-construction vehicle selection (MeSelectMutualRangePairNearRsu/
-// MeSortVehiclesByDistanceToRsu), so attack scenarios are only built from
-// vehicle placements that are physically realizable under the real
-// Cost231PropagationLossModel + WifiPhy error-rate model, not just the
-// nominal 300m design constant.
-//
-// REVISED from the original 260m after two real bugs were found and fixed:
-//   1. ThresholdPreambleDetectionModel::MinimumRssi was never explicitly
-//      configured, silently defaulting to ~-82dBm on every channel — a
-//      threshold separate from and stricter than RxSensitivity (-105dBm),
-//      artificially capping range at ~30-40m regardless of TX power. Now
-//      explicitly set to -110dBm on all 7 channels so RxSensitivity is the
-//      real governing constraint.
-//   2. The ambient centralized_dsrc_data_broadcast loop was unconditional,
-//      so the calibration TX/RX pair were ALSO broadcasting to each other on
-//      all 7 channels throughout every "isolated" sweep — contaminating even
-//      the original 260m measurement. Now disabled during
-//      --calibrate_range=1/--calibrate_range_loaded=1.
-//
-// Post-fix measurements, using the same "last 100%-PRR point" criterion as
-// the original calibration:
-//   Isolated, 3-channel design (Ch172/174/176, 33dBm each): 100m
-//   (Ch178 alone, isolated: 180m — but the 3 channels actually used for
-//   beaconing top out at 100m, so this is the design-relevant ceiling.)
-//   Full-scale realistic load (--calibrate_range_loaded=1, N_Vehicles=200,
-//   N_RSUs=64), matching the actual experiment configuration — tested BOTH
-//   with the real 3-channel spread (calibration signal + background load
-//   traffic distributed across all 3 channels, matching real ME-S2 traffic
-//   patterns) AND with contention artificially concentrated onto a single
-//   channel: both converge to the SAME 100m/110m cliff. Robust across three
-//   independent test configurations (isolated 3-channel, single-channel
-//   loaded, multi-channel loaded) — not an artifact of any one test setup.
-// 100m is the last measured 100%-PRR point under these conditions.
-static const double kEffectiveReceptionRadius = 100.0;
+// Empirically calibrated effective reception radius — see its full
+// definition and calibration history moved up to just after TTW_COMM_RANGE
+// (routing.cc ~1800), since it's now also used by scenario-agnostic ambient
+// functions (PemEmitVehicleBeacon, PemEmitNeighborObservation) defined
+// earlier in the file than this point, in addition to the scenario-
+// construction vehicle-selection helpers below.
 // (g_scenario_invalid_neighborhood_rsus is declared earlier, near
 // pem_all_events, since PemEvaluateEvent needs it before this point in the
 // file.)
@@ -25962,15 +25995,31 @@ static void AttackSendHeartbeat(Ptr<Node> physical_sender_node,
                                 double hb_timestamp,
                                 bool is_replayed)
 {
-    Ptr<WifiNetDevice> wdi = AttackGetDSRCDevice(physical_sender_node);
-    if (!wdi) return;
+    // Restricted to the same 3 calibrated SCH channels (Ch172/174/176,
+    // 5860/5870/5880 MHz, 33dBm) that AttackSendDSRCBeacon uses via
+    // AttackGetAllDSRCDevices, instead of AttackGetDSRCDevice's old
+    // "first WifiNetDevice found" behavior (device index 0 = the Ch178
+    // CCH device, installed first in main()'s wifi.Install() call —
+    // 44dBm/~282m real range, not the 33dBm/~133m range the
+    // kEffectiveReceptionRadius=100m calibration and TtwFindNaturalBreakPairs/
+    // MeSelectMutualRangePairNearRsu scenario-construction fix above assume).
+    // Sending heartbeats on Ch178 while beacons already moved to the 3-channel
+    // set was an inconsistency in the PEM evidence pipeline: this heartbeat's
+    // reception in Rx() (CustomMetaDataUnicastTag0 -> bshh_controller_liveness_table)
+    // is real-PHY-gated exactly like the beacon, so it should use the same
+    // calibrated channel set for its physical reception behavior to match.
+    std::vector<Ptr<WifiNetDevice>> wdis = AttackGetAllDSRCDevices(physical_sender_node);
+    if (wdis.empty()) return;
     (void)is_replayed;
     Ptr<Packet> pkt = Create<Packet>(0);
     CustomMetaDataUnicastTag0 tag;
     tag.SetNodeId(claimed_sender_id);
     tag.SetTimestamp(Seconds(hb_timestamp));
-    pkt->AddPacketTag(tag);
-    wdi->Send(pkt, Mac48Address::GetBroadcast(), 0x88dc);
+    for (Ptr<WifiNetDevice> wdi : wdis) {
+        Ptr<Packet> chPkt = pkt->Copy();
+        chPkt->AddPacketTag(tag);
+        wdi->Send(chPkt, Mac48Address::GetBroadcast(), 0x88dc);
+    }
 }
 
 
@@ -124351,20 +124400,22 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
 {
     PemSimpleStageTimer __pemBeaconSendTimer(g_pem_beacon_send_stats);
 
-    // 7-channel redundant beaconing: transmit on every DSRC channel this
-    // node has (Ch172-184), not just the first device found. Ch178 (CCH)
-    // also carries all ambient periodic traffic (distributed_dsrc_data_
-    // broadcast, 100ms/vehicle) and was shown by PhyRxDrop tracing to be in
-    // near-continuous PREAMBLE_DETECT_FAILURE at some RSUs during dense
-    // scenarios (real 802.11p contention, not a bug) — sending the same
-    // beacon on all 7 channels means a receiver only needs to successfully
-    // decode it on ONE of them, matching the design goal of not letting a
-    // single congested channel be a single point of failure for reception
-    // evidence. Ch178-only reception is still what feeds the RSSI/ME-S3
-    // plausibility check (see the channelFreqMhz gate in Rx() below) — this
-    // redundancy is about the OTHER 6 channels giving genuine additional
-    // reception opportunities, since each is a physically independent radio
-    // in this simulation (not a single time-multiplexed 1609.4 radio).
+    // STALE COMMENT CORRECTED: this used to transmit on all 7 DSRC channels
+    // (Ch172-184). It no longer does — AttackGetAllDSRCDevices (see its own
+    // comment above its definition) now restricts every non-calibration run
+    // to exactly the 3 same-power 33dBm SCH channels (Ch172/174/176,
+    // 5860/5870/5880 MHz, ~133.3m real range each), matching the channel set
+    // that kEffectiveReceptionRadius=100m was actually calibrated under.
+    // Ch178 (44dBm CCH, ~282m range) and Ch180/182/184 are deliberately
+    // excluded from THIS beacon send: mixing a 44dBm/282m channel in with
+    // three 33dBm/133m channels would let a receiver "confirm" a beacon from
+    // a distance the 100m calibration never accounted for, reintroducing the
+    // exact range mismatch (nominal 300m design range vs 100m measured
+    // range) this fix is meant to close. Ch178 still separately carries
+    // distributed_dsrc_data_broadcast's periodic vehicle position/velocity
+    // traffic (100ms/vehicle) — that function is untouched, since it feeds
+    // routing/mobility bookkeeping, not the PEM topology/heartbeat/ME-S3
+    // evidence pipeline this beacon feeds.
     std::vector<Ptr<WifiNetDevice>> wdis = AttackGetAllDSRCDevices(sender_node);
     if (wdis.empty()) return;
     if (g_calibration_active) {
@@ -133603,11 +133654,27 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	//   1. receiver within CHANNEL_RANGE_M[c]  (channel-specific TX power range)
 	//   2. receiver within DSRC_MAX_RANGE_M    (~300m DSRC physical limit)
 	// Since all CHANNEL_RANGE_M[c] <= DSRC_MAX_RANGE_M, condition 1 implies condition 2.
+	//
+	// Real-radio consistency fix: this function's CustomDataTag receptions feed
+	// g_real_rssi_dbm (see Rx()'s first PeekPacketTag(tag) branch) — the SAME
+	// RSSI-evidence table ME-S3's plausibility check reads. AttackSendDSRCBeacon/
+	// AttackSendHeartbeat (the attack-relevant beacon/heartbeat path) were already
+	// restricted to the 3 calibrated 33dBm SCH channels (Ch172/174/176,
+	// AttackGetAllDSRCDevices, kEffectiveReceptionRadius=100m). This ambient
+	// broadcast loop was still using all 7 channels (including Ch178's 44dBm/
+	// ~282m range), which would let g_real_rssi_dbm collect "genuine" RSSI
+	// evidence from pairs the calibrated 3-channel/100m model says shouldn't be
+	// reliably reachable — a mixed communication model. Restricted to the same
+	// 3 channels (indices 0-2: Ch172/174/176) so ALL DSRC evidence in the
+	// simulation — attack-relevant and ambient alike — comes from one
+	// consistent, calibrated radio model. ch_devs[3..6] (Ch178 CCH, 180, 182,
+	// 184) are intentionally left unused here.
+	static const int kLiveAmbientChannels = 3;
 	uint64_t cnt[7] = {0,0,0,0,0,0,0};
 	{
 		Vector myPos = posi;
 		double eff_rsq[7];
-		for (int c = 0; c < 7; c++) {
+		for (int c = 0; c < kLiveAmbientChannels; c++) {
 			double er = std::min(DSRC_MAX_RANGE_M, CHANNEL_RANGE_M[c]);
 			eff_rsq[c] = er * er;
 		}
@@ -133618,7 +133685,7 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 			Vector op = om->GetPosition();
 			double dx = myPos.x - op.x, dy = myPos.y - op.y;
 			double d2 = dx*dx + dy*dy;
-			for (int c = 0; c < 7; c++) if (d2 <= eff_rsq[c]) cnt[c]++;
+			for (int c = 0; c < kLiveAmbientChannels; c++) if (d2 <= eff_rsq[c]) cnt[c]++;
 		}
 		for (uint32_t rr = 0; rr < RSU_Nodes.GetN(); rr++) {
 			Ptr<MobilityModel> rm = RSU_Nodes.Get(rr)->GetObject<MobilityModel>();
@@ -133626,12 +133693,12 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 			Vector rp = rm->GetPosition();
 			double dx = myPos.x - rp.x, dy = myPos.y - rp.y;
 			double d2 = dx*dx + dy*dy;
-			for (int c = 0; c < 7; c++) if (d2 <= eff_rsq[c]) cnt[c]++;
+			for (int c = 0; c < kLiveAmbientChannels; c++) if (d2 <= eff_rsq[c]) cnt[c]++;
 		}
-		for (int c = 0; c < 7; c++) ch_expected_rx[c] += cnt[c];
+		for (int c = 0; c < kLiveAmbientChannels; c++) ch_expected_rx[c] += cnt[c];
 	}
 	// Gate: only transmit on channel c when cnt[c] > 0 (at least one valid receiver).
-	for (int c = 0; c < 7; c++) {
+	for (int c = 0; c < kLiveAmbientChannels; c++) {
 		if (cnt[c] == 0) continue;  // no neighbor in range — skip this channel
 		if (node_index >= ch_devs[c]->GetN()) continue;
 		Ptr<WifiNetDevice> wdi = DynamicCast<WifiNetDevice>(ch_devs[c]->Get(node_index));
