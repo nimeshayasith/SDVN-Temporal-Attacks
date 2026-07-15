@@ -29,8 +29,8 @@
   V152 -> RSU : <V152 sees V19, t=10.000>
 
 [t=10.002]  STEP ①  V2V HELLO + topology updates to RSU_209
-  V115 -> RSU : <V115 sees V139, t=10.000>
-  V139 -> RSU : <V139 sees V115, t=10.000>
+  V115 -> RSU : <V115 sees V104, t=10.000>
+  V104 -> RSU : <V104 sees V115, t=10.000>
 
 [t=10.002]  STEP ①  V2V HELLO + topology updates to RSU_210
   V99 -> RSU : <V99 sees V134, t=10.000>
@@ -49,8 +49,20 @@
   V145 -> RSU : <V145 sees V121, t=10.000>
 
 [t=10.005]  STEP ①  V2V HELLO + topology updates to RSU_214
-  V183 -> RSU : <V183 sees V180, t=10.000>
-  V180 -> RSU : <V180 sees V183, t=10.000>
+  V15 -> RSU : <V15 sees V17, t=10.000>
+  V17 -> RSU : <V17 sees V15, t=10.000>
+
+[t=10.005]  STEP ①  V2V HELLO + topology updates to RSU_215
+  V135 -> RSU : <V135 sees V137, t=10.000>
+  V137 -> RSU : <V137 sees V135, t=10.000>
+
+[t=10.005]  STEP ①  V2V HELLO + topology updates to RSU_216
+  V7 -> RSU : <V7 sees V10, t=10.000>
+  V10 -> RSU : <V10 sees V7, t=10.000>
+
+[t=10.006]  STEP ①  V2V HELLO + topology updates to RSU_217
+  V183 -> RSU : <V183 sees V186, t=10.000>
+  V186 -> RSU : <V186 sees V183, t=10.000>
 
 [t=10.100]  STEP ②  RSU_205 aggregated forward to controller
   [<V60 sees V87, t=10.000>, <V87 sees V60, t=10.000>]
@@ -69,7 +81,7 @@
   Result : ACCEPTED (legitimate aggregate)
 
 [t=10.102]  STEP ②  RSU_209 aggregated forward to controller
-  [<V115 sees V139, t=10.000>, <V139 sees V115, t=10.000>]
+  [<V115 sees V104, t=10.000>, <V104 sees V115, t=10.000>]
   Result : ACCEPTED (legitimate aggregate)
 
 [t=10.102]  STEP ②  RSU_210 aggregated forward to controller
@@ -89,7 +101,19 @@
   Result : ACCEPTED (legitimate aggregate)
 
 [t=10.104]  STEP ②  RSU_214 aggregated forward to controller
-  [<V183 sees V180, t=10.000>, <V180 sees V183, t=10.000>]
+  [<V15 sees V17, t=10.000>, <V17 sees V15, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.105]  STEP ②  RSU_215 aggregated forward to controller
+  [<V135 sees V137, t=10.000>, <V137 sees V135, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.105]  STEP ②  RSU_216 aggregated forward to controller
+  [<V7 sees V10, t=10.000>, <V10 sees V7, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.106]  STEP ②  RSU_217 aggregated forward to controller
+  [<V183 sees V186, t=10.000>, <V186 sees V183, t=10.000>]
   Result : ACCEPTED (legitimate aggregate)
 
 [t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
@@ -113,9 +137,9 @@
   Link physically breaks at t≈10.7s (dist > 300.0m, real SUMO trajectory)
 
 [t=10.202]  STEP ③  MALICIOUS RSU STORES PACKET
-  old_packet : <V115 sees V139, t=10.000>
-  Awaiting replay at t=25.700
-  Link physically breaks at t≈23.7s (dist > 300.0m, real SUMO trajectory)
+  old_packet : <V115 sees V104, t=10.000>
+  Awaiting replay at t=19.100
+  Link physically breaks at t≈17.1s (dist > 300.0m, real SUMO trajectory)
 
 [t=10.203]  STEP ③  MALICIOUS RSU STORES PACKET
   old_packet : <V99 sees V134, t=10.000>
@@ -138,9 +162,24 @@
   Link physically breaks at t≈14.3s (dist > 300.0m, real SUMO trajectory)
 
 [t=10.204]  STEP ③  MALICIOUS RSU STORES PACKET
-  old_packet : <V183 sees V180, t=10.000>
-  Awaiting replay at t=37.500
-  Link physically breaks at t≈35.5s (dist > 300.0m, real SUMO trajectory)
+  old_packet : <V15 sees V17, t=10.000>
+  Awaiting replay at t=29.000
+  Link physically breaks at t≈27.0s (dist > 300.0m, real SUMO trajectory)
+
+[t=10.205]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V135 sees V137, t=10.000>
+  Awaiting replay at t=29.000
+  Link physically breaks at t≈27.0s (dist > 300.0m, real SUMO trajectory)
+
+[t=10.206]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V7 sees V10, t=10.000>
+  Awaiting replay at t=29.000
+  Link physically breaks at t≈27.0s (dist > 300.0m, real SUMO trajectory)
+
+[t=10.206]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V183 sees V186, t=10.000>
+  Awaiting replay at t=29.000
+  Link physically breaks at t≈27.0s (dist > 300.0m, real SUMO trajectory)
 
 [t=12.502]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_210)
   Stored packet : <V99 sees V134, t=10.000>  (original RSU-aggregated observation at t=10.000)
@@ -159,30 +198,36 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V110  ->  V35    t=10.000    No
-  V115  ->  V139    t=10.000    No
+  V115  ->  V104    t=10.000    No
   V118  ->  V94    t=10.000    No
   V121  ->  V145    t=10.000    No
   V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V139  ->  V102    t=10.000    No
-  V139  ->  V115    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V19  ->  V152    t=10.000    No
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=10.000    No
   V60  ->  V87    t=10.000    No
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
   V94  ->  V118    t=10.000    No
   V99  ->  V134    t=12.500    YES <- FORGED
-[t=12.553]  TTW-S2 RSU attacker  forged fresh ts=12.553  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
-[t=12.553]  DETECTION + MITIGATION
+[t=12.502]  TTW-S2 RSU attacker  forged fresh ts=12.502  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=12.502]  DETECTION + MITIGATION
   Ghost link V99<->V134 removed
   Score: 1.000
-  Latency: 50.000 ms
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V210): O(log 200) = 8 KEK updates on path to LKH root
@@ -206,29 +251,35 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V110  ->  V35    t=10.000    No
-  V115  ->  V139    t=10.000    No
+  V115  ->  V104    t=10.000    No
   V118  ->  V94    t=10.000    No
   V121  ->  V145    t=10.000    No
   V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V139  ->  V102    t=10.000    No
-  V139  ->  V115    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V19  ->  V152    t=12.700    YES <- FORGED
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=10.000    No
   V60  ->  V87    t=10.000    No
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
   V94  ->  V118    t=10.000    No
-[t=12.752]  TTW-S2 RSU attacker  forged fresh ts=12.752  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
-[t=12.752]  DETECTION + MITIGATION
+[t=12.701]  TTW-S2 RSU attacker  forged fresh ts=12.701  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=12.701]  DETECTION + MITIGATION
   Ghost link V19<->V152 removed
   Score: 1.000
-  Latency: 50.000 ms
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V208): O(log 200) = 8 KEK updates on path to LKH root
@@ -252,30 +303,36 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V110  ->  V35    t=10.000    No
-  V115  ->  V139    t=10.000    No
+  V115  ->  V104    t=10.000    No
   V118  ->  V94    t=10.000    No
   V121  ->  V145    t=16.300    YES <- FORGED
   V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V139  ->  V102    t=10.000    No
-  V139  ->  V115    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=10.000    No
   V60  ->  V87    t=10.000    No
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
   V94  ->  V118    t=10.000    No
-[t=16.354]  [KEY-EXFIL] TTW-S2 sophistication: V121 (complicit) -> RSU V213 : session_key K_{V121,nk} + private signing key SK_V121 handed over (collusion)
+[t=16.304]  [KEY-EXFIL] TTW-S2 sophistication: V121 (complicit) -> RSU V213 : session_key K_{V121,nk} + private signing key SK_V121 handed over (collusion)
   RSU now holds V121's real credentials -> can produce messages cryptographically indistinguishable from V121's own genuine self-report
-[t=16.354]  TTW-S2 RSU attacker  forged fresh ts=16.354  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
-[t=16.354]  DETECTION + MITIGATION
+[t=16.304]  TTW-S2 RSU attacker  forged fresh ts=16.304  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=16.304]  DETECTION + MITIGATION
   Ghost link V121<->V145 removed
   Score: 0.222
-  Latency: 50.000 ms
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V213): O(log 200) = 8 KEK updates on path to LKH root
@@ -299,29 +356,35 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V110  ->  V35    t=10.000    No
-  V115  ->  V139    t=10.000    No
+  V115  ->  V104    t=10.000    No
   V118  ->  V94    t=10.000    No
   V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V139  ->  V102    t=10.000    No
-  V139  ->  V115    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=10.000    No
   V60  ->  V87    t=16.500    YES <- FORGED
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
   V94  ->  V118    t=10.000    No
-[t=16.550]  [KEY-EXFIL] TTW-S2 sophistication: V60 (complicit) -> RSU V205 : session_key K_{V60,nk} + private signing key SK_V60 handed over (collusion)
+[t=16.500]  [KEY-EXFIL] TTW-S2 sophistication: V60 (complicit) -> RSU V205 : session_key K_{V60,nk} + private signing key SK_V60 handed over (collusion)
   RSU now holds V60's real credentials -> can produce messages cryptographically indistinguishable from V60's own genuine self-report
-[t=16.550]  TTW-S2 RSU attacker  forged fresh ts=16.550  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
-[t=16.550]  DETECTION + MITIGATION
+[t=16.500]  TTW-S2 RSU attacker  forged fresh ts=16.500  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=16.500]  DETECTION + MITIGATION
   Ghost link V60<->V87 removed
   Score: 0.222
-  Latency: 50.000 ms
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V205): O(log 200) = 8 KEK updates on path to LKH root
@@ -345,31 +408,85 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V110  ->  V35    t=10.000    No
-  V115  ->  V139    t=10.000    No
+  V115  ->  V104    t=10.000    No
   V118  ->  V94    t=10.000    No
   V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V139  ->  V102    t=17.300    YES <- FORGED
-  V139  ->  V115    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=10.000    No
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
   V94  ->  V118    t=10.000    No
-[t=17.351]  TTW-S2 RSU attacker  forged fresh ts=17.351  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
-[t=17.351]  DETECTION + MITIGATION
+[t=17.301]  TTW-S2 RSU attacker  forged fresh ts=17.301  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=17.301]  DETECTION + MITIGATION
   Ghost link V139<->V102 removed
   Score: 1.000
-  Latency: 50.000 ms
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V207): O(log 200) = 8 KEK updates on path to LKH root
   [CA]  Certificate revocation: V207 excluded until re-admission via consortium CA
   [REAUTH] FLAG_REAUTH(V207): blocked from re-admission until re-authenticated
+
+[t=19.102]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_209)
+  Stored packet : <V115 sees V104, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V115 sees V104, t=19.100>  timestamp changed 10.000 -> 19.100
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=19.102
+
+[t=19.102]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_209)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=19.102]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V115<->V104 was ACTIVE at t=19.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V115  ->  V104    t=19.100    YES <- FORGED
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=10.000    No
+[t=19.102]  TTW-S2 RSU attacker  forged fresh ts=19.102  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=19.102]  DETECTION + MITIGATION
+  Ghost link V115<->V104 removed
+  Score: 1.000
+  Latency: 0.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V209): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V209 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V209): blocked from re-admission until re-authenticated
 
 [t=19.500]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_206)
   Stored packet : <V94 sees V118, t=10.000>  (original RSU-aggregated observation at t=10.000)
@@ -388,25 +505,30 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V110  ->  V35    t=10.000    No
-  V115  ->  V139    t=10.000    No
   V118  ->  V94    t=10.000    No
   V134  ->  V99    t=10.000    No
-  V139  ->  V115    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=10.000    No
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
   V94  ->  V118    t=19.500    YES <- FORGED
-[t=19.550]  TTW-S2 RSU attacker  forged fresh ts=19.550  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
-[t=19.550]  DETECTION + MITIGATION
+[t=19.500]  TTW-S2 RSU attacker  forged fresh ts=19.500  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=19.500]  DETECTION + MITIGATION
   Ghost link V94<->V118 removed
   Score: 1.000
-  Latency: 50.000 ms
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V206): O(log 200) = 8 KEK updates on path to LKH root
@@ -430,24 +552,31 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V110  ->  V35    t=21.100    YES <- FORGED
-  V115  ->  V139    t=10.000    No
   V118  ->  V94    t=10.000    No
   V134  ->  V99    t=10.000    No
-  V139  ->  V115    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=10.000    No
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
-[t=21.154]  TTW-S2 RSU attacker  forged fresh ts=21.154  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
-[t=21.154]  DETECTION + MITIGATION
+[t=21.104]  [KEY-EXFIL] TTW-S2 sophistication: V110 (complicit) -> RSU V212 : session_key K_{V110,nk} + private signing key SK_V110 handed over (collusion)
+  RSU now holds V110's real credentials -> can produce messages cryptographically indistinguishable from V110's own genuine self-report
+[t=21.104]  TTW-S2 RSU attacker  forged fresh ts=21.104  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=21.104]  DETECTION + MITIGATION
   Ghost link V110<->V35 removed
-  Score: 1.000
-  Latency: 50.000 ms
+  Score: 0.333
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V212): O(log 200) = 8 KEK updates on path to LKH root
@@ -471,41 +600,44 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
-  V115  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V118  ->  V94    t=10.000    No
   V134  ->  V99    t=10.000    No
-  V139  ->  V115    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
   V48  ->  V148    t=21.900    YES <- FORGED
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
-[t=21.953]  [KEY-EXFIL] TTW-S2 sophistication: V48 (complicit) -> RSU V211 : session_key K_{V48,nk} + private signing key SK_V48 handed over (collusion)
-  RSU now holds V48's real credentials -> can produce messages cryptographically indistinguishable from V48's own genuine self-report
-[t=21.953]  TTW-S2 RSU attacker  forged fresh ts=21.953  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
-[t=21.953]  DETECTION + MITIGATION
+[t=21.903]  TTW-S2 RSU attacker  forged fresh ts=21.903  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=21.903]  DETECTION + MITIGATION
   Ghost link V48<->V148 removed
-  Score: 0.333
-  Latency: 50.000 ms
+  Score: 1.000
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
   [LKH] Revoke-Session-Key(V211): O(log 200) = 8 KEK updates on path to LKH root
   [CA]  Certificate revocation: V211 excluded until re-admission via consortium CA
   [REAUTH] FLAG_REAUTH(V211): blocked from re-admission until re-authenticated
 
-[t=25.702]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_209)
-  Stored packet : <V115 sees V139, t=10.000>  (original RSU-aggregated observation at t=10.000)
-  Forged packet : <V115 sees V139, t=25.700>  timestamp changed 10.000 -> 25.700
-  Forge action  : RSU changes timestamp to appear current, injects to controller at t=25.702
+[t=29.005]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_214)
+  Stored packet : <V15 sees V17, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V15 sees V17, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=29.005
 
-[t=25.702]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_209)
+[t=29.005]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_214)
   Controller ACCEPTED forged packet (no timestamp-integrity protection)
 
-[t=25.702]  STEP ⑥  FAULTY ROUTING DECISION
-  Controller believes V115<->V139 was ACTIVE at t=25.700 (forged — link has since broken)
+[t=29.005]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V15<->V17 was ACTIVE at t=29.000 (forged — link has since broken)
   Physical reality : link BROKEN
   Consequence : packets routed via ghost link will be DROPPED
 
@@ -513,38 +645,45 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
-  V115  ->  V139    t=25.700    YES <- FORGED
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V118  ->  V94    t=10.000    No
   V134  ->  V99    t=10.000    No
-  V139  ->  V115    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=10.000    No
+  V15  ->  V17    t=29.000    YES <- FORGED
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
+  V7  ->  V10    t=10.000    No
   V87  ->  V60    t=10.000    No
-[t=25.752]  TTW-S2 RSU attacker  forged fresh ts=25.752  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
-[t=25.752]  DETECTION + MITIGATION
-  Ghost link V115<->V139 removed
-  Score: 1.000
-  Latency: 50.000 ms
+[t=29.005]  [KEY-EXFIL] TTW-S2 sophistication: V15 (complicit) -> RSU V214 : session_key K_{V15,nk} + private signing key SK_V15 handed over (collusion)
+  RSU now holds V15's real credentials -> can produce messages cryptographically indistinguishable from V15's own genuine self-report
+[t=29.005]  TTW-S2 RSU attacker  forged fresh ts=29.005  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=29.005]  DETECTION + MITIGATION
+  Ghost link V15<->V17 removed
+  Score: 0.222
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
-  [LKH] Revoke-Session-Key(V209): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V209 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V209): blocked from re-admission until re-authenticated
+  [LKH] Revoke-Session-Key(V214): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V214 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V214): blocked from re-admission until re-authenticated
 
-[t=37.505]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_214)
-  Stored packet : <V183 sees V180, t=10.000>  (original RSU-aggregated observation at t=10.000)
-  Forged packet : <V183 sees V180, t=37.500>  timestamp changed 10.000 -> 37.500
-  Forge action  : RSU changes timestamp to appear current, injects to controller at t=37.505
+[t=29.005]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_215)
+  Stored packet : <V135 sees V137, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V135 sees V137, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=29.005
 
-[t=37.505]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_214)
+[t=29.005]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_215)
   Controller ACCEPTED forged packet (no timestamp-integrity protection)
 
-[t=37.505]  STEP ⑥  FAULTY ROUTING DECISION
-  Controller believes V183<->V180 was ACTIVE at t=37.500 (forged — link has since broken)
+[t=29.005]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V135<->V137 was ACTIVE at t=29.000 (forged — link has since broken)
   Physical reality : link BROKEN
   Consequence : packets routed via ghost link will be DROPPED
 
@@ -552,30 +691,118 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
   V118  ->  V94    t=10.000    No
   V134  ->  V99    t=10.000    No
-  V139  ->  V115    t=10.000    No
+  V135  ->  V137    t=29.000    YES <- FORGED
+  V137  ->  V135    t=10.000    No
   V145  ->  V121    t=10.000    No
   V148  ->  V48    t=10.000    No
   V152  ->  V19    t=10.000    No
-  V180  ->  V183    t=10.000    No
-  V183  ->  V180    t=37.500    YES <- FORGED
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V87  ->  V60    t=10.000    No
+[t=29.005]  TTW-S2 RSU attacker  forged fresh ts=29.005  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=29.005]  DETECTION + MITIGATION
+  Ghost link V135<->V137 removed
+  Score: 1.000
+  Latency: 0.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V215): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V215 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V215): blocked from re-admission until re-authenticated
+
+[t=29.006]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_216)
+  Stored packet : <V7 sees V10, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V7 sees V10, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=29.006
+
+[t=29.006]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_216)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=29.006]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V7<->V10 was ACTIVE at t=29.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V7  ->  V10    t=29.000    YES <- FORGED
+  V87  ->  V60    t=10.000    No
+[t=29.006]  [KEY-EXFIL] TTW-S2 sophistication: V7 (complicit) -> RSU V216 : session_key K_{V7,nk} + private signing key SK_V7 handed over (collusion)
+  RSU now holds V7's real credentials -> can produce messages cryptographically indistinguishable from V7's own genuine self-report
+[t=29.006]  TTW-S2 RSU attacker  forged fresh ts=29.006  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=29.006]  DETECTION + MITIGATION
+  Ghost link V7<->V10 removed
+  Score: 0.333
+  Latency: 0.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V216): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V216 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V216): blocked from re-admission until re-authenticated
+
+[t=29.006]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_217)
+  Stored packet : <V183 sees V186, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V183 sees V186, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=29.006
+
+[t=29.006]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_217)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=29.006]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V183<->V186 was ACTIVE at t=29.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=29.000    YES <- FORGED
+  V186  ->  V183    t=10.000    No
   V35  ->  V110    t=10.000    No
   V87  ->  V60    t=10.000    No
 
 ========================================================
   TTW ATTACK S2 COMPLETE
 ========================================================
-[t=37.554]  [KEY-EXFIL] TTW-S2 sophistication: V183 (complicit) -> RSU V214 : session_key K_{V183,nk} + private signing key SK_V183 handed over (collusion)
-  RSU now holds V183's real credentials -> can produce messages cryptographically indistinguishable from V183's own genuine self-report
-[t=37.554]  TTW-S2 RSU attacker  forged fresh ts=37.554  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
-[t=37.554]  DETECTION + MITIGATION
-  Ghost link V183<->V180 removed
-  Score: 0.333
-  Latency: 50.000 ms
+[t=29.006]  TTW-S2 RSU attacker  forged fresh ts=29.006  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=29.006]  DETECTION + MITIGATION
+  Ghost link V183<->V186 removed
+  Score: 1.000
+  Latency: 0.000 ms
   [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
   Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
-  [LKH] Revoke-Session-Key(V214): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V214 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V214): blocked from re-admission until re-authenticated
+  [LKH] Revoke-Session-Key(V217): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V217 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V217): blocked from re-admission until re-authenticated
 
