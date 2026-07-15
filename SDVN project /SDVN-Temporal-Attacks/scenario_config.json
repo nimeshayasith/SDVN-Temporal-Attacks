@@ -1,5 +1,5 @@
 {
-  "n_rsus": 64,
-  "n_vehicles": 200,
-  "attack_scenario": 2
+  "n_rsus": 10,
+  "n_vehicles": 20,
+  "attack_scenario": 11
 }

@@ -1,0 +1,451 @@
+/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/bindings/python/wscript:321: SyntaxWarning: invalid escape sequence '\d'
+  m = re.match( "^castxml version (\d\.\d)(-)?(\w+)?", castxml_version_line)
+Interrupted 
+Fatal Python error: init_import_site: Failed to import the site module
+Python runtime state: initialized
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+Traceback (most recent call last):
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "<string>", line 5, in <module>
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<string>", line 5, in <module>
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/signal.py", line 7, in <module>
+  File "<string>", line 5, in <module>
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "<string>", line 7, in <module>
+  File "<string>", line 5, in <module>
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/base64.py", line 10, in <module>
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 10, in <module>
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 10, in <module>
+  File "<string>", line 5, in <module>
+  File "<string>", line 5, in <module>
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 9, in <module>
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "<string>", line 5, in <module>
+  File "<frozen importlib._bootstrap>", line 1176, in exec_module
+  File "/usr/lib/python3.13/signal.py", line 7, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 9, in <module>
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 8, in <module>
+  File "<string>", line 5, in <module>
+  File "<string>", line 7, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 8, in <module>
+  File "<frozen importlib._bootstrap>", line 1322, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'cPickle'
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 9, in <module>
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "/usr/lib/python3.13/traceback.py", line 9, in <module>
+Exception ignored in: <function _get_module_lock.<locals>.cb at 0x75ae173a2700>
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+  File "<frozen site>", line 79, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 8, in <module>
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+ModuleNotFoundError: No module named 'cPickle'
+  File "<frozen importlib._bootstrap>", line 1256, in _find_spec
+During handling of the above exception, another exception occurred:
+  File "/usr/lib/python3.13/traceback.py", line 9, in <module>
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+    from contextlib import suppress
+Traceback (most recent call last):
+KeyboardInterrupt
+  File "/usr/lib/python3.13/traceback.py", line 3, in <module>
+Traceback (most recent call last):
+    import _colorize
+    import _colorize
+    from contextlib import suppress
+
+  File "<frozen importlib._bootstrap>", line 1222, in __enter__
+During handling of the above exception, another exception occurred:
+
+    import warnings
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "/usr/lib/python3.13/contextlib.py", line 202, in <module>
+  File "<frozen importlib._bootstrap>", line 445, in cb
+    import textwrap
+    import textwrap
+  File "<string>", line 5, in <module>
+KeyboardInterrupt: 
+    import warnings
+    import textwrap
+    import textwrap
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "/usr/lib/python3.13/textwrap.py", line 17, in <module>
+Traceback (most recent call last):
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+KeyboardInterrupt
+
+    import textwrap
+Traceback (most recent call last):
+Traceback (most recent call last):
+    class TextWrapper:
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+    from contextlib import suppress
+  File "/usr/lib/python3.13/textwrap.py", line 17, in <module>
+  File "/usr/lib/python3.13/textwrap.py", line 17, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+    from contextlib import suppress
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+  File "/usr/lib/python3.13/warnings.py", line 207, in <module>
+    import textwrap
+    import warnings
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1322, in _find_and_load_unlocked
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "<string>", line 9, in <module>
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+    import textwrap
+  File "/usr/lib/python3.13/textwrap.py", line 78, in TextWrapper
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+KeyboardInterrupt
+  File "/usr/lib/python3.13/contextlib.py", line 775, in <module>
+    from contextlib import suppress
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+    import collections.abc
+  File "/usr/lib/python3.13/contextlib.py", line 129, in <module>
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+  File "/usr/lib/python3.13/warnings.py", line 207, in <module>
+  File "<frozen importlib._bootstrap>", line 1262, in _find_spec
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1559, in find_spec
+  File "<string>", line 9, in <module>
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+    class TextWrapper:
+    import re
+    class TextWrapper:
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+Traceback (most recent call last):
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+    wordsep_re = re.compile(r'''
+  File "/usr/lib/python3.13/collections/__init__.py", line 1351, in <module>
+  File "<frozen importlib._bootstrap_external>", line 1533, in _get_spec
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "/usr/lib/python3.13/textwrap.py", line 102, in TextWrapper
+    import textwrap
+  File "/usr/lib/python3.13/re/__init__.py", line 381, in <module>
+  File "/usr/lib/python3.13/textwrap.py", line 78, in TextWrapper
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+    import re
+  File "/usr/lib/python3.13/re/__init__.py", line 289, in compile
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1624, in find_spec
+  File "<string>", line 5, in <module>
+    import re
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+    import re
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+    wordsep_simple_re = re.compile(r'(%s+)' % whitespace)
+KeyboardInterrupt
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "/usr/lib/python3.13/re/__init__.py", line 381, in <module>
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+  File "/usr/lib/python3.13/re/__init__.py", line 125, in <module>
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "/usr/lib/python3.13/re/__init__.py", line 289, in compile
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+    import re
+  File "<frozen importlib._bootstrap_external>", line 1118, in get_code
+    wordsep_re = re.compile(r'''
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+  File "/usr/lib/python3.13/re/__init__.py", line 125, in <module>
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+  File "<frozen importlib._bootstrap_external>", line 1217, in get_data
+  File "/usr/lib/python3.13/re/__init__.py", line 289, in compile
+    import textwrap
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+    import textwrap
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+KeyboardInterrupt
+KeyboardInterrupt
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+    return _compile(pattern, flags)
+  File "/usr/lib/python3.13/re/__init__.py", line 350, in _compile
+KeyboardInterrupt
+    import copyreg
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1322, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1256, in _find_spec
+KeyboardInterrupt
+    import textwrap
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+    import re
+    import re
+  File "/usr/lib/python3.13/re/__init__.py", line 126, in <module>
+  File "/usr/lib/python3.13/re/__init__.py", line 316, in <module>
+    import enum
+    return _compile(pattern, flags)
+  File "/usr/lib/python3.13/enum.py", line 3, in <module>
+  File "/usr/lib/python3.13/re/__init__.py", line 350, in _compile
+    import enum
+    p = _compiler.compile(pattern, flags)
+    return _compile(pattern, flags)
+  File "/usr/lib/python3.13/re/_compiler.py", line 748, in compile
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "/usr/lib/python3.13/re/__init__.py", line 350, in _compile
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+    import re
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "/usr/lib/python3.13/re/__init__.py", line 125, in <module>
+    import copyreg
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1112, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1235, in path_stats
+  File "<frozen importlib._bootstrap_external>", line 152, in _path_stat
+KeyboardInterrupt
+    p = _parser.parse(p, flags)
+  File "/usr/lib/python3.13/re/_parser.py", line 980, in parse
+    from . import _compiler, _parser
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+    p = _compiler.compile(pattern, flags)
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "/usr/lib/python3.13/re/_compiler.py", line 748, in compile
+    p = _compiler.compile(pattern, flags)
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "/usr/lib/python3.13/re/_compiler.py", line 752, in compile
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+    Match = type(_compiler.compile('', 0).match(''))
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+  File "/usr/lib/python3.13/re/_compiler.py", line 748, in compile
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+KeyboardInterrupt
+    import enum
+  File "/usr/lib/python3.13/enum.py", line 3, in <module>
+    p = _parse_sub(source, state, flags & SRE_FLAG_VERBOSE, 0)
+  File "/usr/lib/python3.13/re/_parser.py", line 459, in _parse_sub
+    p = _parser.parse(p, flags)
+  File "/usr/lib/python3.13/re/_parser.py", line 980, in parse
+    itemsappend(_parse(source, state, verbose, nested + 1,
+  File "/usr/lib/python3.13/re/_parser.py", line 863, in _parse
+    code = _code(p, flags)
+  File "/usr/lib/python3.13/re/_compiler.py", line 576, in _code
+    p = _parser.parse(p, flags)
+  File "/usr/lib/python3.13/re/_parser.py", line 981, in parse
+    p = _parse_sub(source, state, sub_verbose, nested + 1)
+  File "/usr/lib/python3.13/re/_parser.py", line 459, in _parse_sub
+    def _code(p, flags):
+    p = _parse_sub(source, state, flags & SRE_FLAG_VERBOSE, 0)
+    itemsappend(_parse(source, state, verbose, nested + 1,
+KeyboardInterrupt
+  File "/usr/lib/python3.13/re/_parser.py", line 459, in _parse_sub
+  File "/usr/lib/python3.13/re/_parser.py", line 863, in _parse
+    itemsappend(_parse(source, state, verbose, nested + 1,
+    p = _parse_sub(source, state, sub_verbose, nested + 1)
+  File "/usr/lib/python3.13/re/_parser.py", line 459, in _parse_sub
+    p.state.flags = fix_flags(str, p.state.flags)
+  File "/usr/lib/python3.13/re/_parser.py", line 954, in fix_flags
+  File "/usr/lib/python3.13/re/_parser.py", line 863, in _parse
+    itemsappend(_parse(source, state, verbose, nested + 1,
+  File "/usr/lib/python3.13/re/_parser.py", line 529, in _parse
+    sourceget()
+  File "/usr/lib/python3.13/re/_parser.py", line 262, in get
+Traceback (most recent call last):
+    self.__next()
+  File "/usr/lib/python3.13/re/_parser.py", line 239, in __next
+    p = _parse_sub(source, state, sub_verbose, nested + 1)
+  File "/usr/lib/python3.13/re/_parser.py", line 459, in _parse_sub
+    def __next(self):
+KeyboardInterrupt
+    def fix_flags(src, flags):
+KeyboardInterrupt
+    itemsappend(_parse(source, state, verbose, nested + 1,
+  File "/usr/lib/python3.13/re/_parser.py", line 774, in _parse
+    p = _parse_sub(source, state, verbose, nested + 1)
+  File "/usr/lib/python3.13/re/_parser.py", line 459, in _parse_sub
+    itemsappend(_parse(source, state, verbose, nested + 1,
+  File "/usr/lib/python3.13/re/_parser.py", line 621, in _parse
+    setappend(code1)
+KeyboardInterrupt
+  File "<string>", line 5, in <module>
+    import os,sys,traceback,base64,signal
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+KeyboardInterrupt
+    import struct
+  File "/usr/lib/python3.13/struct.py", line 13, in <module>
+    _IntEnum._convert_(
+  File "/usr/lib/python3.13/enum.py", line 928, in _convert_
+    _IntEnum._convert_(
+    from functools import partial
+    from functools import partial
+  File "/usr/lib/python3.13/enum.py", line 928, in _convert_
+  File "/usr/lib/python3.13/functools.py", line 455, in <module>
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1155, in get_code
+  File "<frozen importlib._bootstrap_external>", line 784, in _compile_bytecode
+KeyboardInterrupt
+    from _struct import *
+KeyboardInterrupt
+    cls = _simple_enum(etype=cls, boundary=boundary or KEEP)(tmp_cls)
+  File "/usr/lib/python3.13/enum.py", line 1794, in convert_class
+    class _GeneratorContextManager(
+    cls = _simple_enum(etype=cls, boundary=boundary or KEEP)(tmp_cls)
+    class _OptionError(Exception):
+    class _OptionError(Exception):
+    class _AsyncGeneratorContextManager(
+  File "<frozen abc>", line 106, in __new__
+KeyboardInterrupt
+  File "/usr/lib/python3.13/enum.py", line 1901, in convert_class
+KeyboardInterrupt
+  File "<frozen abc>", line 106, in __new__
+KeyboardInterrupt
+KeyboardInterrupt
+    class nullcontext(AbstractContextManager, AbstractAsyncContextManager):
+  File "<frozen abc>", line 106, in __new__
+KeyboardInterrupt
+    if _is_dunder(name) or _is_private(cls_name, name) or _is_sunder(name) or _is_descriptor(obj):
+  File "/usr/lib/python3.13/enum.py", line 42, in _is_descriptor
+    contained._add_alias_(name)
+    hasattr(obj, '__get__') or
+  File "/usr/lib/python3.13/enum.py", line 1221, in _add_alias_
+    class UserString(_collections_abc.Sequence):
+KeyboardInterrupt
+  File "<frozen abc>", line 106, in __new__
+KeyboardInterrupt
+    self.__class__._add_member_(name, self)
+  File "/usr/lib/python3.13/enum.py", line 1071, in _add_member_
+    _CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "currsize"])
+  File "/usr/lib/python3.13/collections/__init__.py", line 427, in namedtuple
+    field_names = tuple(map(_sys.intern, field_names))
+KeyboardInterrupt
+    attr = base.__dict__.get(name)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "/usr/lib/python3.13/traceback.py", line 7, in <module>
+    import textwrap
+  File "/usr/lib/python3.13/textwrap.py", line 8, in <module>
+    import re
+  File "/usr/lib/python3.13/re/__init__.py", line 126, in <module>
+Traceback (most recent call last):
+    from . import _compiler, _parser
+  File "/usr/lib/python3.13/re/_compiler.py", line 14, in <module>
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 119, in waf_entry_point
+    from . import _parser
+  File "/usr/lib/python3.13/re/_parser.py", line 15, in <module>
+    from ._constants import *
+  File "/usr/lib/python3.13/re/_constants.py", line 23, in <module>
+    run_commands()
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 182, in run_commands
+    ctx=run_command(cmd_name)
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 173, in run_command
+    ctx.execute()
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 375, in execute
+    return execute_method(self)
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Build.py", line 90, in execute
+    self.restore()
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Build.py", line 133, in restore
+    data=cPickle.loads(data)
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Node.py", line 92, in __setstate__
+    class PatternError(Exception):
+KeyboardInterrupt
+    def __setstate__(self,data):
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/./waf", line 170, in <module>
+    Scripting.waf_entry_point(cwd, VERSION, wafdir)
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Scripting.py", line 139, in waf_entry_point
+    Logs.pprint('RED','Interrupted')
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Logs.py", line 206, in pprint
+    info('%s%s%s %s',colors(col),msg,colors.NORMAL,label,extra={'terminator':sep})
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Logs.py", line 165, in info
+    log.info(*k,**kw)
+  File "/usr/lib/python3.13/logging/__init__.py", line 1520, in info
+    self._log(INFO, msg, args, **kwargs)
+  File "/usr/lib/python3.13/logging/__init__.py", line 1665, in _log
+    self.handle(record)
+  File "/usr/lib/python3.13/logging/__init__.py", line 1681, in handle
+    self.callHandlers(record)
+  File "/usr/lib/python3.13/logging/__init__.py", line 1737, in callHandlers
+    hdlr.handle(record)
+  File "/usr/lib/python3.13/logging/__init__.py", line 1027, in handle
+    self.emit(record)
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Logs.py", line 84, in emit
+    self.emit_override(record)
+  File "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/.waf3-2.0.21-c6c9a875365426e5928462b9b74d40b5/waflib/Logs.py", line 108, in emit_override
+    logging.StreamHandler.emit(self,record)
+  File "/usr/lib/python3.13/logging/__init__.py", line 1155, in emit
+    self.flush()
+  File "/usr/lib/python3.13/logging/__init__.py", line 1137, in flush
+    self.stream.flush()
+KeyboardInterrupt
