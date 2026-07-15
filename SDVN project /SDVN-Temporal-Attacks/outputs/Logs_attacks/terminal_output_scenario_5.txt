@@ -35,207 +35,207 @@ Timeline (Option B — real SUMO trajectories decide the break):
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 199 handshakes timed: avg=37.6683 ms, max=84.4052 ms, over_budget=199/199 (budget=10 ms)
+[KEM][10ms budget] 199 handshakes timed: avg=35.5531 ms, max=101.405 ms, over_budget=199/199 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[KEM][SimLatency][t=0.034793] Vehicle 186 session key simulated-ready (real handshake was 34.793 ms)
-[KEM][SimLatency][t=0.0348898] Vehicle 1 session key simulated-ready (real handshake was 34.8898 ms)
-[KEM][SimLatency][t=0.0348919] Vehicle 185 session key simulated-ready (real handshake was 34.8919 ms)
-[KEM][SimLatency][t=0.0349064] Vehicle 134 session key simulated-ready (real handshake was 34.9064 ms)
-[KEM][SimLatency][t=0.0349588] Vehicle 189 session key simulated-ready (real handshake was 34.9588 ms)
-[KEM][SimLatency][t=0.0349632] Vehicle 184 session key simulated-ready (real handshake was 34.9632 ms)
-[KEM][SimLatency][t=0.0349962] Vehicle 135 session key simulated-ready (real handshake was 34.9962 ms)
-[KEM][SimLatency][t=0.0350053] Vehicle 187 session key simulated-ready (real handshake was 35.0053 ms)
-[KEM][SimLatency][t=0.0350061] Vehicle 136 session key simulated-ready (real handshake was 35.0061 ms)
-[KEM][SimLatency][t=0.0350116] Vehicle 191 session key simulated-ready (real handshake was 35.0116 ms)
-[KEM][SimLatency][t=0.0350652] Vehicle 3 session key simulated-ready (real handshake was 35.0652 ms)
-[KEM][SimLatency][t=0.0350656] Vehicle 188 session key simulated-ready (real handshake was 35.0656 ms)
-[KEM][SimLatency][t=0.0350757] Vehicle 190 session key simulated-ready (real handshake was 35.0757 ms)
-[KEM][SimLatency][t=0.0350933] Vehicle 145 session key simulated-ready (real handshake was 35.0933 ms)
-[KEM][SimLatency][t=0.0350999] Vehicle 141 session key simulated-ready (real handshake was 35.0999 ms)
-[KEM][SimLatency][t=0.0351248] Vehicle 2 session key simulated-ready (real handshake was 35.1248 ms)
-[KEM][SimLatency][t=0.0351532] Vehicle 8 session key simulated-ready (real handshake was 35.1532 ms)
-[KEM][SimLatency][t=0.0352078] Vehicle 4 session key simulated-ready (real handshake was 35.2078 ms)
-[KEM][SimLatency][t=0.035222] Vehicle 5 session key simulated-ready (real handshake was 35.222 ms)
-[KEM][SimLatency][t=0.0352241] Vehicle 7 session key simulated-ready (real handshake was 35.2241 ms)
-[KEM][SimLatency][t=0.0352678] Vehicle 142 session key simulated-ready (real handshake was 35.2678 ms)
-[KEM][SimLatency][t=0.0352709] Vehicle 140 session key simulated-ready (real handshake was 35.2709 ms)
-[KEM][SimLatency][t=0.0353063] Vehicle 137 session key simulated-ready (real handshake was 35.3063 ms)
-[KEM][SimLatency][t=0.0353335] Vehicle 192 session key simulated-ready (real handshake was 35.3335 ms)
-[KEM][SimLatency][t=0.0353353] Vehicle 195 session key simulated-ready (real handshake was 35.3353 ms)
-[KEM][SimLatency][t=0.0353354] Vehicle 11 session key simulated-ready (real handshake was 35.3354 ms)
-[KEM][SimLatency][t=0.035342] Vehicle 144 session key simulated-ready (real handshake was 35.342 ms)
-[KEM][SimLatency][t=0.0353598] Vehicle 143 session key simulated-ready (real handshake was 35.3598 ms)
-[KEM][SimLatency][t=0.035405] Vehicle 139 session key simulated-ready (real handshake was 35.405 ms)
-[KEM][SimLatency][t=0.0354112] Vehicle 194 session key simulated-ready (real handshake was 35.4112 ms)
-[KEM][SimLatency][t=0.0354249] Vehicle 9 session key simulated-ready (real handshake was 35.4249 ms)
-[KEM][SimLatency][t=0.0354495] Vehicle 138 session key simulated-ready (real handshake was 35.4495 ms)
-[KEM][SimLatency][t=0.0354631] Vehicle 10 session key simulated-ready (real handshake was 35.4631 ms)
-[KEM][SimLatency][t=0.0355016] Vehicle 196 session key simulated-ready (real handshake was 35.5016 ms)
-[KEM][SimLatency][t=0.035523] Vehicle 193 session key simulated-ready (real handshake was 35.523 ms)
-[KEM][SimLatency][t=0.0355635] Vehicle 198 session key simulated-ready (real handshake was 35.5635 ms)
-[KEM][SimLatency][t=0.035623] Vehicle 6 session key simulated-ready (real handshake was 35.623 ms)
-[KEM][SimLatency][t=0.0356452] Vehicle 197 session key simulated-ready (real handshake was 35.6452 ms)
-[KEM][SimLatency][t=0.0356678] Vehicle 199 session key simulated-ready (real handshake was 35.6678 ms)
-[KEM][SimLatency][t=0.0357442] Vehicle 23 session key simulated-ready (real handshake was 35.7442 ms)
-[KEM][SimLatency][t=0.03577] Vehicle 32 session key simulated-ready (real handshake was 35.77 ms)
-[KEM][SimLatency][t=0.03578] Vehicle 25 session key simulated-ready (real handshake was 35.78 ms)
-[KEM][SimLatency][t=0.0357888] Vehicle 13 session key simulated-ready (real handshake was 35.7888 ms)
-[KEM][SimLatency][t=0.0358222] Vehicle 19 session key simulated-ready (real handshake was 35.8222 ms)
-[KEM][SimLatency][t=0.0358225] Vehicle 104 session key simulated-ready (real handshake was 35.8225 ms)
-[KEM][SimLatency][t=0.0358401] Vehicle 31 session key simulated-ready (real handshake was 35.8401 ms)
-[KEM][SimLatency][t=0.0358485] Vehicle 101 session key simulated-ready (real handshake was 35.8485 ms)
-[KEM][SimLatency][t=0.0358724] Vehicle 71 session key simulated-ready (real handshake was 35.8724 ms)
-[KEM][SimLatency][t=0.0358836] Vehicle 107 session key simulated-ready (real handshake was 35.8836 ms)
-[KEM][SimLatency][t=0.0358933] Vehicle 108 session key simulated-ready (real handshake was 35.8933 ms)
-[KEM][SimLatency][t=0.035895] Vehicle 24 session key simulated-ready (real handshake was 35.895 ms)
-[KEM][SimLatency][t=0.0359069] Vehicle 29 session key simulated-ready (real handshake was 35.9069 ms)
-[KEM][SimLatency][t=0.0359115] Vehicle 15 session key simulated-ready (real handshake was 35.9115 ms)
-[KEM][SimLatency][t=0.0359126] Vehicle 103 session key simulated-ready (real handshake was 35.9126 ms)
-[KEM][SimLatency][t=0.0359136] Vehicle 102 session key simulated-ready (real handshake was 35.9136 ms)
-[KEM][SimLatency][t=0.0359163] Vehicle 52 session key simulated-ready (real handshake was 35.9163 ms)
-[KEM][SimLatency][t=0.0359279] Vehicle 156 session key simulated-ready (real handshake was 35.9279 ms)
-[KEM][SimLatency][t=0.0359286] Vehicle 37 session key simulated-ready (real handshake was 35.9286 ms)
-[KEM][SimLatency][t=0.0359319] Vehicle 20 session key simulated-ready (real handshake was 35.9319 ms)
-[KEM][SimLatency][t=0.0359441] Vehicle 21 session key simulated-ready (real handshake was 35.9441 ms)
-[KEM][SimLatency][t=0.0359498] Vehicle 54 session key simulated-ready (real handshake was 35.9498 ms)
-[KEM][SimLatency][t=0.0359513] Vehicle 100 session key simulated-ready (real handshake was 35.9513 ms)
-[KEM][SimLatency][t=0.0359565] Vehicle 49 session key simulated-ready (real handshake was 35.9565 ms)
-[KEM][SimLatency][t=0.0359666] Vehicle 80 session key simulated-ready (real handshake was 35.9666 ms)
-[KEM][SimLatency][t=0.035968] Vehicle 26 session key simulated-ready (real handshake was 35.968 ms)
-[KEM][SimLatency][t=0.0359797] Vehicle 79 session key simulated-ready (real handshake was 35.9797 ms)
-[KEM][SimLatency][t=0.0359842] Vehicle 27 session key simulated-ready (real handshake was 35.9842 ms)
-[KEM][SimLatency][t=0.0359859] Vehicle 55 session key simulated-ready (real handshake was 35.9859 ms)
-[KEM][SimLatency][t=0.035986] Vehicle 157 session key simulated-ready (real handshake was 35.986 ms)
-[KEM][SimLatency][t=0.0359894] Vehicle 40 session key simulated-ready (real handshake was 35.9894 ms)
-[KEM][SimLatency][t=0.0359965] Vehicle 92 session key simulated-ready (real handshake was 35.9965 ms)
-[KEM][SimLatency][t=0.0360059] Vehicle 93 session key simulated-ready (real handshake was 36.0059 ms)
-[KEM][SimLatency][t=0.0360077] Vehicle 69 session key simulated-ready (real handshake was 36.0077 ms)
-[KEM][SimLatency][t=0.0360087] Vehicle 30 session key simulated-ready (real handshake was 36.0087 ms)
-[KEM][SimLatency][t=0.0360112] Vehicle 28 session key simulated-ready (real handshake was 36.0112 ms)
-[KEM][SimLatency][t=0.0360176] Vehicle 43 session key simulated-ready (real handshake was 36.0176 ms)
-[KEM][SimLatency][t=0.0360225] Vehicle 106 session key simulated-ready (real handshake was 36.0225 ms)
-[KEM][SimLatency][t=0.0360226] Vehicle 81 session key simulated-ready (real handshake was 36.0226 ms)
-[KEM][SimLatency][t=0.036023] Vehicle 87 session key simulated-ready (real handshake was 36.023 ms)
-[KEM][SimLatency][t=0.0360251] Vehicle 65 session key simulated-ready (real handshake was 36.0251 ms)
-[KEM][SimLatency][t=0.0360255] Vehicle 68 session key simulated-ready (real handshake was 36.0255 ms)
-[KEM][SimLatency][t=0.0360358] Vehicle 90 session key simulated-ready (real handshake was 36.0358 ms)
-[KEM][SimLatency][t=0.036036] Vehicle 48 session key simulated-ready (real handshake was 36.036 ms)
-[KEM][SimLatency][t=0.036042] Vehicle 44 session key simulated-ready (real handshake was 36.042 ms)
-[KEM][SimLatency][t=0.0360481] Vehicle 42 session key simulated-ready (real handshake was 36.0481 ms)
-[KEM][SimLatency][t=0.0360485] Vehicle 86 session key simulated-ready (real handshake was 36.0485 ms)
-[KEM][SimLatency][t=0.0360571] Vehicle 16 session key simulated-ready (real handshake was 36.0571 ms)
-[KEM][SimLatency][t=0.0360575] Vehicle 155 session key simulated-ready (real handshake was 36.0575 ms)
-[KEM][SimLatency][t=0.0360617] Vehicle 88 session key simulated-ready (real handshake was 36.0617 ms)
-[KEM][SimLatency][t=0.0360646] Vehicle 85 session key simulated-ready (real handshake was 36.0646 ms)
-[KEM][SimLatency][t=0.0360762] Vehicle 83 session key simulated-ready (real handshake was 36.0762 ms)
-[KEM][SimLatency][t=0.0360766] Vehicle 17 session key simulated-ready (real handshake was 36.0766 ms)
-[KEM][SimLatency][t=0.036077] Vehicle 70 session key simulated-ready (real handshake was 36.077 ms)
-[KEM][SimLatency][t=0.0360853] Vehicle 59 session key simulated-ready (real handshake was 36.0853 ms)
-[KEM][SimLatency][t=0.0360884] Vehicle 66 session key simulated-ready (real handshake was 36.0884 ms)
-[KEM][SimLatency][t=0.0360892] Vehicle 60 session key simulated-ready (real handshake was 36.0892 ms)
-[KEM][SimLatency][t=0.0360899] Vehicle 95 session key simulated-ready (real handshake was 36.0899 ms)
-[KEM][SimLatency][t=0.036091] Vehicle 53 session key simulated-ready (real handshake was 36.091 ms)
-[KEM][SimLatency][t=0.0360925] Vehicle 91 session key simulated-ready (real handshake was 36.0925 ms)
-[KEM][SimLatency][t=0.0360945] Vehicle 133 session key simulated-ready (real handshake was 36.0945 ms)
-[KEM][SimLatency][t=0.0360977] Vehicle 89 session key simulated-ready (real handshake was 36.0977 ms)
-[KEM][SimLatency][t=0.0360977] Vehicle 67 session key simulated-ready (real handshake was 36.0977 ms)
-[KEM][SimLatency][t=0.0361048] Vehicle 33 session key simulated-ready (real handshake was 36.1048 ms)
-[KEM][SimLatency][t=0.0361069] Vehicle 146 session key simulated-ready (real handshake was 36.1069 ms)
-[KEM][SimLatency][t=0.03611] Vehicle 50 session key simulated-ready (real handshake was 36.11 ms)
-[KEM][SimLatency][t=0.0361177] Vehicle 39 session key simulated-ready (real handshake was 36.1177 ms)
-[KEM][SimLatency][t=0.0361296] Vehicle 38 session key simulated-ready (real handshake was 36.1296 ms)
-[KEM][SimLatency][t=0.0361317] Vehicle 72 session key simulated-ready (real handshake was 36.1317 ms)
-[KEM][SimLatency][t=0.0361356] Vehicle 35 session key simulated-ready (real handshake was 36.1356 ms)
-[KEM][SimLatency][t=0.036148] Vehicle 18 session key simulated-ready (real handshake was 36.148 ms)
-[KEM][SimLatency][t=0.0361623] Vehicle 36 session key simulated-ready (real handshake was 36.1623 ms)
-[KEM][SimLatency][t=0.0361653] Vehicle 158 session key simulated-ready (real handshake was 36.1653 ms)
-[KEM][SimLatency][t=0.0361662] Vehicle 96 session key simulated-ready (real handshake was 36.1662 ms)
-[KEM][SimLatency][t=0.0361731] Vehicle 99 session key simulated-ready (real handshake was 36.1731 ms)
-[KEM][SimLatency][t=0.036174] Vehicle 76 session key simulated-ready (real handshake was 36.174 ms)
-[KEM][SimLatency][t=0.036185] Vehicle 46 session key simulated-ready (real handshake was 36.185 ms)
-[KEM][SimLatency][t=0.0362021] Vehicle 64 session key simulated-ready (real handshake was 36.2021 ms)
-[KEM][SimLatency][t=0.0362054] Vehicle 73 session key simulated-ready (real handshake was 36.2054 ms)
-[KEM][SimLatency][t=0.0362102] Vehicle 57 session key simulated-ready (real handshake was 36.2102 ms)
-[KEM][SimLatency][t=0.0362201] Vehicle 63 session key simulated-ready (real handshake was 36.2201 ms)
-[KEM][SimLatency][t=0.0362208] Vehicle 105 session key simulated-ready (real handshake was 36.2208 ms)
-[KEM][SimLatency][t=0.0362322] Vehicle 82 session key simulated-ready (real handshake was 36.2322 ms)
-[KEM][SimLatency][t=0.0362324] Vehicle 78 session key simulated-ready (real handshake was 36.2324 ms)
-[KEM][SimLatency][t=0.0362361] Vehicle 150 session key simulated-ready (real handshake was 36.2361 ms)
-[KEM][SimLatency][t=0.0362375] Vehicle 47 session key simulated-ready (real handshake was 36.2375 ms)
-[KEM][SimLatency][t=0.0362378] Vehicle 41 session key simulated-ready (real handshake was 36.2378 ms)
-[KEM][SimLatency][t=0.0362415] Vehicle 22 session key simulated-ready (real handshake was 36.2415 ms)
-[KEM][SimLatency][t=0.0362542] Vehicle 151 session key simulated-ready (real handshake was 36.2542 ms)
-[KEM][SimLatency][t=0.0362561] Vehicle 77 session key simulated-ready (real handshake was 36.2561 ms)
-[KEM][SimLatency][t=0.0362628] Vehicle 154 session key simulated-ready (real handshake was 36.2628 ms)
-[KEM][SimLatency][t=0.0362747] Vehicle 94 session key simulated-ready (real handshake was 36.2747 ms)
-[KEM][SimLatency][t=0.0362758] Vehicle 51 session key simulated-ready (real handshake was 36.2758 ms)
-[KEM][SimLatency][t=0.036292] Vehicle 14 session key simulated-ready (real handshake was 36.292 ms)
-[KEM][SimLatency][t=0.0362957] Vehicle 58 session key simulated-ready (real handshake was 36.2957 ms)
-[KEM][SimLatency][t=0.0363014] Vehicle 74 session key simulated-ready (real handshake was 36.3014 ms)
-[KEM][SimLatency][t=0.0363033] Vehicle 62 session key simulated-ready (real handshake was 36.3033 ms)
-[KEM][SimLatency][t=0.0363048] Vehicle 148 session key simulated-ready (real handshake was 36.3048 ms)
-[KEM][SimLatency][t=0.0363051] Vehicle 45 session key simulated-ready (real handshake was 36.3051 ms)
-[KEM][SimLatency][t=0.0363282] Vehicle 34 session key simulated-ready (real handshake was 36.3282 ms)
-[KEM][SimLatency][t=0.0363307] Vehicle 84 session key simulated-ready (real handshake was 36.3307 ms)
-[KEM][SimLatency][t=0.0363374] Vehicle 75 session key simulated-ready (real handshake was 36.3374 ms)
-[KEM][SimLatency][t=0.0363399] Vehicle 56 session key simulated-ready (real handshake was 36.3399 ms)
-[KEM][SimLatency][t=0.0363415] Vehicle 97 session key simulated-ready (real handshake was 36.3415 ms)
-[KEM][SimLatency][t=0.0363697] Vehicle 61 session key simulated-ready (real handshake was 36.3697 ms)
-[KEM][SimLatency][t=0.036391] Vehicle 153 session key simulated-ready (real handshake was 36.391 ms)
-[KEM][SimLatency][t=0.0363914] Vehicle 149 session key simulated-ready (real handshake was 36.3914 ms)
-[KEM][SimLatency][t=0.0364052] Vehicle 98 session key simulated-ready (real handshake was 36.4052 ms)
-[KEM][SimLatency][t=0.0364197] Vehicle 147 session key simulated-ready (real handshake was 36.4197 ms)
-[KEM][SimLatency][t=0.0364434] Vehicle 152 session key simulated-ready (real handshake was 36.4434 ms)
-[KEM][SimLatency][t=0.0365359] Vehicle 183 session key simulated-ready (real handshake was 36.5359 ms)
-[KEM][SimLatency][t=0.0381412] Vehicle 112 session key simulated-ready (real handshake was 38.1412 ms)
-[KEM][SimLatency][t=0.0381571] Vehicle 122 session key simulated-ready (real handshake was 38.1571 ms)
-[KEM][SimLatency][t=0.0382865] Vehicle 123 session key simulated-ready (real handshake was 38.2865 ms)
-[KEM][SimLatency][t=0.0384187] Vehicle 113 session key simulated-ready (real handshake was 38.4187 ms)
-[KEM][SimLatency][t=0.0384206] Vehicle 118 session key simulated-ready (real handshake was 38.4206 ms)
-[KEM][SimLatency][t=0.0386183] Vehicle 119 session key simulated-ready (real handshake was 38.6183 ms)
-[KEM][SimLatency][t=0.0386482] Vehicle 114 session key simulated-ready (real handshake was 38.6482 ms)
-[KEM][SimLatency][t=0.0387294] Vehicle 159 session key simulated-ready (real handshake was 38.7294 ms)
-[KEM][SimLatency][t=0.0387897] Vehicle 116 session key simulated-ready (real handshake was 38.7897 ms)
-[KEM][SimLatency][t=0.0388474] Vehicle 160 session key simulated-ready (real handshake was 38.8474 ms)
-[KEM][SimLatency][t=0.0388672] Vehicle 117 session key simulated-ready (real handshake was 38.8672 ms)
-[KEM][SimLatency][t=0.0392723] Vehicle 115 session key simulated-ready (real handshake was 39.2723 ms)
-[KEM][SimLatency][t=0.0392979] Vehicle 12 session key simulated-ready (real handshake was 39.2979 ms)
-[KEM][SimLatency][t=0.0392998] Vehicle 111 session key simulated-ready (real handshake was 39.2998 ms)
-[KEM][SimLatency][t=0.0393503] Vehicle 109 session key simulated-ready (real handshake was 39.3503 ms)
-[KEM][SimLatency][t=0.039428] Vehicle 177 session key simulated-ready (real handshake was 39.428 ms)
-[KEM][SimLatency][t=0.0394984] Vehicle 129 session key simulated-ready (real handshake was 39.4984 ms)
-[KEM][SimLatency][t=0.0395274] Vehicle 126 session key simulated-ready (real handshake was 39.5274 ms)
-[KEM][SimLatency][t=0.0395359] Vehicle 161 session key simulated-ready (real handshake was 39.5359 ms)
-[KEM][SimLatency][t=0.0396713] Vehicle 121 session key simulated-ready (real handshake was 39.6713 ms)
-[KEM][SimLatency][t=0.0397455] Vehicle 130 session key simulated-ready (real handshake was 39.7455 ms)
-[KEM][SimLatency][t=0.0398524] Vehicle 168 session key simulated-ready (real handshake was 39.8524 ms)
-[KEM][SimLatency][t=0.0398802] Vehicle 162 session key simulated-ready (real handshake was 39.8802 ms)
-[KEM][SimLatency][t=0.0400182] Vehicle 124 session key simulated-ready (real handshake was 40.0182 ms)
-[KEM][SimLatency][t=0.0400269] Vehicle 167 session key simulated-ready (real handshake was 40.0269 ms)
-[KEM][SimLatency][t=0.04006] Vehicle 127 session key simulated-ready (real handshake was 40.06 ms)
-[KEM][SimLatency][t=0.0400809] Vehicle 120 session key simulated-ready (real handshake was 40.0809 ms)
-[KEM][SimLatency][t=0.0402264] Vehicle 166 session key simulated-ready (real handshake was 40.2264 ms)
-[KEM][SimLatency][t=0.0402849] Vehicle 128 session key simulated-ready (real handshake was 40.2849 ms)
-[KEM][SimLatency][t=0.0403918] Vehicle 164 session key simulated-ready (real handshake was 40.3918 ms)
-[KEM][SimLatency][t=0.0403975] Vehicle 176 session key simulated-ready (real handshake was 40.3975 ms)
-[KEM][SimLatency][t=0.0404567] Vehicle 165 session key simulated-ready (real handshake was 40.4567 ms)
-[KEM][SimLatency][t=0.0405224] Vehicle 163 session key simulated-ready (real handshake was 40.5224 ms)
-[KEM][SimLatency][t=0.0408016] Vehicle 125 session key simulated-ready (real handshake was 40.8016 ms)
-[KEM][SimLatency][t=0.040872] Vehicle 171 session key simulated-ready (real handshake was 40.872 ms)
-[KEM][SimLatency][t=0.0409202] Vehicle 173 session key simulated-ready (real handshake was 40.9202 ms)
-[KEM][SimLatency][t=0.0409556] Vehicle 172 session key simulated-ready (real handshake was 40.9556 ms)
-[KEM][SimLatency][t=0.0413939] Vehicle 175 session key simulated-ready (real handshake was 41.3939 ms)
-[KEM][SimLatency][t=0.0419834] Vehicle 170 session key simulated-ready (real handshake was 41.9834 ms)
-[KEM][SimLatency][t=0.0438033] Vehicle 110 session key simulated-ready (real handshake was 43.8033 ms)
-[KEM][SimLatency][t=0.0438688] Vehicle 180 session key simulated-ready (real handshake was 43.8688 ms)
-[KEM][SimLatency][t=0.0440435] Vehicle 174 session key simulated-ready (real handshake was 44.0435 ms)
-[KEM][SimLatency][t=0.0441802] Vehicle 131 session key simulated-ready (real handshake was 44.1802 ms)
-[KEM][SimLatency][t=0.0465692] Vehicle 178 session key simulated-ready (real handshake was 46.5692 ms)
-[KEM][SimLatency][t=0.0557535] Vehicle 179 session key simulated-ready (real handshake was 55.7535 ms)
-[KEM][SimLatency][t=0.0558227] Vehicle 169 session key simulated-ready (real handshake was 55.8227 ms)
-[KEM][SimLatency][t=0.0689101] Vehicle 181 session key simulated-ready (real handshake was 68.91 ms)
-[KEM][SimLatency][t=0.0800923] Vehicle 182 session key simulated-ready (real handshake was 80.0923 ms)
-[KEM][SimLatency][t=0.0844052] Vehicle 132 session key simulated-ready (real handshake was 84.4052 ms)
+[KEM][SimLatency][t=0.0330065] Vehicle 174 session key simulated-ready (real handshake was 33.0065 ms)
+[KEM][SimLatency][t=0.0331098] Vehicle 157 session key simulated-ready (real handshake was 33.1098 ms)
+[KEM][SimLatency][t=0.0331449] Vehicle 129 session key simulated-ready (real handshake was 33.1449 ms)
+[KEM][SimLatency][t=0.0331579] Vehicle 149 session key simulated-ready (real handshake was 33.1579 ms)
+[KEM][SimLatency][t=0.0332519] Vehicle 173 session key simulated-ready (real handshake was 33.2519 ms)
+[KEM][SimLatency][t=0.0332572] Vehicle 176 session key simulated-ready (real handshake was 33.2572 ms)
+[KEM][SimLatency][t=0.0332583] Vehicle 90 session key simulated-ready (real handshake was 33.2583 ms)
+[KEM][SimLatency][t=0.0333357] Vehicle 172 session key simulated-ready (real handshake was 33.3357 ms)
+[KEM][SimLatency][t=0.0333452] Vehicle 94 session key simulated-ready (real handshake was 33.3452 ms)
+[KEM][SimLatency][t=0.0333714] Vehicle 165 session key simulated-ready (real handshake was 33.3714 ms)
+[KEM][SimLatency][t=0.0334029] Vehicle 136 session key simulated-ready (real handshake was 33.4029 ms)
+[KEM][SimLatency][t=0.0334057] Vehicle 138 session key simulated-ready (real handshake was 33.4057 ms)
+[KEM][SimLatency][t=0.0334179] Vehicle 91 session key simulated-ready (real handshake was 33.4179 ms)
+[KEM][SimLatency][t=0.033461] Vehicle 171 session key simulated-ready (real handshake was 33.461 ms)
+[KEM][SimLatency][t=0.0334783] Vehicle 151 session key simulated-ready (real handshake was 33.4783 ms)
+[KEM][SimLatency][t=0.0334884] Vehicle 175 session key simulated-ready (real handshake was 33.4884 ms)
+[KEM][SimLatency][t=0.0335208] Vehicle 158 session key simulated-ready (real handshake was 33.5208 ms)
+[KEM][SimLatency][t=0.0335474] Vehicle 130 session key simulated-ready (real handshake was 33.5474 ms)
+[KEM][SimLatency][t=0.033552] Vehicle 153 session key simulated-ready (real handshake was 33.552 ms)
+[KEM][SimLatency][t=0.033552] Vehicle 137 session key simulated-ready (real handshake was 33.552 ms)
+[KEM][SimLatency][t=0.0335719] Vehicle 152 session key simulated-ready (real handshake was 33.5719 ms)
+[KEM][SimLatency][t=0.0335764] Vehicle 78 session key simulated-ready (real handshake was 33.5764 ms)
+[KEM][SimLatency][t=0.0335961] Vehicle 111 session key simulated-ready (real handshake was 33.5961 ms)
+[KEM][SimLatency][t=0.0335986] Vehicle 154 session key simulated-ready (real handshake was 33.5986 ms)
+[KEM][SimLatency][t=0.0336358] Vehicle 43 session key simulated-ready (real handshake was 33.6358 ms)
+[KEM][SimLatency][t=0.0336362] Vehicle 95 session key simulated-ready (real handshake was 33.6362 ms)
+[KEM][SimLatency][t=0.0336449] Vehicle 170 session key simulated-ready (real handshake was 33.6449 ms)
+[KEM][SimLatency][t=0.033673] Vehicle 150 session key simulated-ready (real handshake was 33.673 ms)
+[KEM][SimLatency][t=0.0336776] Vehicle 2 session key simulated-ready (real handshake was 33.6776 ms)
+[KEM][SimLatency][t=0.033717] Vehicle 96 session key simulated-ready (real handshake was 33.717 ms)
+[KEM][SimLatency][t=0.0337339] Vehicle 102 session key simulated-ready (real handshake was 33.7339 ms)
+[KEM][SimLatency][t=0.0337402] Vehicle 92 session key simulated-ready (real handshake was 33.7402 ms)
+[KEM][SimLatency][t=0.0337577] Vehicle 20 session key simulated-ready (real handshake was 33.7577 ms)
+[KEM][SimLatency][t=0.0337595] Vehicle 98 session key simulated-ready (real handshake was 33.7595 ms)
+[KEM][SimLatency][t=0.0337852] Vehicle 110 session key simulated-ready (real handshake was 33.7852 ms)
+[KEM][SimLatency][t=0.0337928] Vehicle 167 session key simulated-ready (real handshake was 33.7928 ms)
+[KEM][SimLatency][t=0.0338285] Vehicle 177 session key simulated-ready (real handshake was 33.8285 ms)
+[KEM][SimLatency][t=0.0338397] Vehicle 148 session key simulated-ready (real handshake was 33.8397 ms)
+[KEM][SimLatency][t=0.0338427] Vehicle 99 session key simulated-ready (real handshake was 33.8427 ms)
+[KEM][SimLatency][t=0.0338467] Vehicle 112 session key simulated-ready (real handshake was 33.8467 ms)
+[KEM][SimLatency][t=0.0338659] Vehicle 120 session key simulated-ready (real handshake was 33.8659 ms)
+[KEM][SimLatency][t=0.0338755] Vehicle 156 session key simulated-ready (real handshake was 33.8755 ms)
+[KEM][SimLatency][t=0.0338767] Vehicle 64 session key simulated-ready (real handshake was 33.8767 ms)
+[KEM][SimLatency][t=0.033878] Vehicle 128 session key simulated-ready (real handshake was 33.878 ms)
+[KEM][SimLatency][t=0.0338794] Vehicle 1 session key simulated-ready (real handshake was 33.8794 ms)
+[KEM][SimLatency][t=0.0338842] Vehicle 97 session key simulated-ready (real handshake was 33.8842 ms)
+[KEM][SimLatency][t=0.0338921] Vehicle 166 session key simulated-ready (real handshake was 33.8921 ms)
+[KEM][SimLatency][t=0.0338975] Vehicle 35 session key simulated-ready (real handshake was 33.8974 ms)
+[KEM][SimLatency][t=0.0339008] Vehicle 45 session key simulated-ready (real handshake was 33.9008 ms)
+[KEM][SimLatency][t=0.0339074] Vehicle 5 session key simulated-ready (real handshake was 33.9074 ms)
+[KEM][SimLatency][t=0.0339158] Vehicle 16 session key simulated-ready (real handshake was 33.9158 ms)
+[KEM][SimLatency][t=0.0339301] Vehicle 169 session key simulated-ready (real handshake was 33.9301 ms)
+[KEM][SimLatency][t=0.0339322] Vehicle 9 session key simulated-ready (real handshake was 33.9322 ms)
+[KEM][SimLatency][t=0.0339324] Vehicle 29 session key simulated-ready (real handshake was 33.9324 ms)
+[KEM][SimLatency][t=0.033942] Vehicle 38 session key simulated-ready (real handshake was 33.942 ms)
+[KEM][SimLatency][t=0.0339427] Vehicle 24 session key simulated-ready (real handshake was 33.9427 ms)
+[KEM][SimLatency][t=0.0339497] Vehicle 42 session key simulated-ready (real handshake was 33.9497 ms)
+[KEM][SimLatency][t=0.0339518] Vehicle 109 session key simulated-ready (real handshake was 33.9518 ms)
+[KEM][SimLatency][t=0.0339637] Vehicle 119 session key simulated-ready (real handshake was 33.9637 ms)
+[KEM][SimLatency][t=0.0339683] Vehicle 26 session key simulated-ready (real handshake was 33.9683 ms)
+[KEM][SimLatency][t=0.0339708] Vehicle 131 session key simulated-ready (real handshake was 33.9708 ms)
+[KEM][SimLatency][t=0.033974] Vehicle 101 session key simulated-ready (real handshake was 33.974 ms)
+[KEM][SimLatency][t=0.0339769] Vehicle 23 session key simulated-ready (real handshake was 33.9769 ms)
+[KEM][SimLatency][t=0.0339826] Vehicle 22 session key simulated-ready (real handshake was 33.9826 ms)
+[KEM][SimLatency][t=0.0339854] Vehicle 74 session key simulated-ready (real handshake was 33.9854 ms)
+[KEM][SimLatency][t=0.0339962] Vehicle 44 session key simulated-ready (real handshake was 33.9962 ms)
+[KEM][SimLatency][t=0.0339993] Vehicle 6 session key simulated-ready (real handshake was 33.9993 ms)
+[KEM][SimLatency][t=0.0340016] Vehicle 164 session key simulated-ready (real handshake was 34.0016 ms)
+[KEM][SimLatency][t=0.034015] Vehicle 40 session key simulated-ready (real handshake was 34.015 ms)
+[KEM][SimLatency][t=0.0340174] Vehicle 145 session key simulated-ready (real handshake was 34.0174 ms)
+[KEM][SimLatency][t=0.0340329] Vehicle 73 session key simulated-ready (real handshake was 34.0329 ms)
+[KEM][SimLatency][t=0.0340337] Vehicle 25 session key simulated-ready (real handshake was 34.0337 ms)
+[KEM][SimLatency][t=0.0340383] Vehicle 58 session key simulated-ready (real handshake was 34.0383 ms)
+[KEM][SimLatency][t=0.034043] Vehicle 63 session key simulated-ready (real handshake was 34.043 ms)
+[KEM][SimLatency][t=0.0340561] Vehicle 8 session key simulated-ready (real handshake was 34.0561 ms)
+[KEM][SimLatency][t=0.0340646] Vehicle 89 session key simulated-ready (real handshake was 34.0646 ms)
+[KEM][SimLatency][t=0.0340679] Vehicle 3 session key simulated-ready (real handshake was 34.0679 ms)
+[KEM][SimLatency][t=0.0340726] Vehicle 72 session key simulated-ready (real handshake was 34.0726 ms)
+[KEM][SimLatency][t=0.0340744] Vehicle 57 session key simulated-ready (real handshake was 34.0744 ms)
+[KEM][SimLatency][t=0.0340766] Vehicle 116 session key simulated-ready (real handshake was 34.0766 ms)
+[KEM][SimLatency][t=0.0340816] Vehicle 114 session key simulated-ready (real handshake was 34.0816 ms)
+[KEM][SimLatency][t=0.034085] Vehicle 79 session key simulated-ready (real handshake was 34.085 ms)
+[KEM][SimLatency][t=0.0340862] Vehicle 155 session key simulated-ready (real handshake was 34.0862 ms)
+[KEM][SimLatency][t=0.0340906] Vehicle 56 session key simulated-ready (real handshake was 34.0906 ms)
+[KEM][SimLatency][t=0.0340955] Vehicle 147 session key simulated-ready (real handshake was 34.0955 ms)
+[KEM][SimLatency][t=0.034106] Vehicle 27 session key simulated-ready (real handshake was 34.106 ms)
+[KEM][SimLatency][t=0.0341132] Vehicle 118 session key simulated-ready (real handshake was 34.1132 ms)
+[KEM][SimLatency][t=0.0341216] Vehicle 163 session key simulated-ready (real handshake was 34.1216 ms)
+[KEM][SimLatency][t=0.0341216] Vehicle 7 session key simulated-ready (real handshake was 34.1216 ms)
+[KEM][SimLatency][t=0.0341238] Vehicle 113 session key simulated-ready (real handshake was 34.1238 ms)
+[KEM][SimLatency][t=0.0341238] Vehicle 100 session key simulated-ready (real handshake was 34.1238 ms)
+[KEM][SimLatency][t=0.0341281] Vehicle 178 session key simulated-ready (real handshake was 34.1281 ms)
+[KEM][SimLatency][t=0.0341288] Vehicle 19 session key simulated-ready (real handshake was 34.1288 ms)
+[KEM][SimLatency][t=0.0341306] Vehicle 37 session key simulated-ready (real handshake was 34.1306 ms)
+[KEM][SimLatency][t=0.0341422] Vehicle 117 session key simulated-ready (real handshake was 34.1422 ms)
+[KEM][SimLatency][t=0.0341514] Vehicle 4 session key simulated-ready (real handshake was 34.1514 ms)
+[KEM][SimLatency][t=0.0341518] Vehicle 36 session key simulated-ready (real handshake was 34.1518 ms)
+[KEM][SimLatency][t=0.0341589] Vehicle 39 session key simulated-ready (real handshake was 34.1589 ms)
+[KEM][SimLatency][t=0.0341625] Vehicle 21 session key simulated-ready (real handshake was 34.1625 ms)
+[KEM][SimLatency][t=0.0341637] Vehicle 60 session key simulated-ready (real handshake was 34.1637 ms)
+[KEM][SimLatency][t=0.0341638] Vehicle 115 session key simulated-ready (real handshake was 34.1638 ms)
+[KEM][SimLatency][t=0.034187] Vehicle 168 session key simulated-ready (real handshake was 34.187 ms)
+[KEM][SimLatency][t=0.0342237] Vehicle 108 session key simulated-ready (real handshake was 34.2237 ms)
+[KEM][SimLatency][t=0.0342247] Vehicle 34 session key simulated-ready (real handshake was 34.2247 ms)
+[KEM][SimLatency][t=0.0342506] Vehicle 47 session key simulated-ready (real handshake was 34.2506 ms)
+[KEM][SimLatency][t=0.0342556] Vehicle 48 session key simulated-ready (real handshake was 34.2556 ms)
+[KEM][SimLatency][t=0.0342782] Vehicle 121 session key simulated-ready (real handshake was 34.2782 ms)
+[KEM][SimLatency][t=0.0342806] Vehicle 10 session key simulated-ready (real handshake was 34.2806 ms)
+[KEM][SimLatency][t=0.0342836] Vehicle 144 session key simulated-ready (real handshake was 34.2836 ms)
+[KEM][SimLatency][t=0.0342903] Vehicle 28 session key simulated-ready (real handshake was 34.2903 ms)
+[KEM][SimLatency][t=0.0342949] Vehicle 77 session key simulated-ready (real handshake was 34.2949 ms)
+[KEM][SimLatency][t=0.0343125] Vehicle 15 session key simulated-ready (real handshake was 34.3125 ms)
+[KEM][SimLatency][t=0.0343167] Vehicle 159 session key simulated-ready (real handshake was 34.3167 ms)
+[KEM][SimLatency][t=0.0343196] Vehicle 11 session key simulated-ready (real handshake was 34.3196 ms)
+[KEM][SimLatency][t=0.0343228] Vehicle 93 session key simulated-ready (real handshake was 34.3228 ms)
+[KEM][SimLatency][t=0.0343401] Vehicle 46 session key simulated-ready (real handshake was 34.3401 ms)
+[KEM][SimLatency][t=0.0343459] Vehicle 62 session key simulated-ready (real handshake was 34.3459 ms)
+[KEM][SimLatency][t=0.0343501] Vehicle 59 session key simulated-ready (real handshake was 34.3501 ms)
+[KEM][SimLatency][t=0.0343586] Vehicle 54 session key simulated-ready (real handshake was 34.3586 ms)
+[KEM][SimLatency][t=0.034363] Vehicle 55 session key simulated-ready (real handshake was 34.363 ms)
+[KEM][SimLatency][t=0.0343669] Vehicle 146 session key simulated-ready (real handshake was 34.3669 ms)
+[KEM][SimLatency][t=0.0343724] Vehicle 135 session key simulated-ready (real handshake was 34.3724 ms)
+[KEM][SimLatency][t=0.034385] Vehicle 18 session key simulated-ready (real handshake was 34.385 ms)
+[KEM][SimLatency][t=0.0343982] Vehicle 41 session key simulated-ready (real handshake was 34.3982 ms)
+[KEM][SimLatency][t=0.0344016] Vehicle 139 session key simulated-ready (real handshake was 34.4016 ms)
+[KEM][SimLatency][t=0.034409] Vehicle 199 session key simulated-ready (real handshake was 34.409 ms)
+[KEM][SimLatency][t=0.0344427] Vehicle 14 session key simulated-ready (real handshake was 34.4427 ms)
+[KEM][SimLatency][t=0.034453] Vehicle 87 session key simulated-ready (real handshake was 34.453 ms)
+[KEM][SimLatency][t=0.0344614] Vehicle 88 session key simulated-ready (real handshake was 34.4614 ms)
+[KEM][SimLatency][t=0.0344626] Vehicle 17 session key simulated-ready (real handshake was 34.4626 ms)
+[KEM][SimLatency][t=0.034498] Vehicle 30 session key simulated-ready (real handshake was 34.498 ms)
+[KEM][SimLatency][t=0.0345004] Vehicle 12 session key simulated-ready (real handshake was 34.5004 ms)
+[KEM][SimLatency][t=0.0345109] Vehicle 61 session key simulated-ready (real handshake was 34.5109 ms)
+[KEM][SimLatency][t=0.0345532] Vehicle 103 session key simulated-ready (real handshake was 34.5532 ms)
+[KEM][SimLatency][t=0.0345549] Vehicle 13 session key simulated-ready (real handshake was 34.5549 ms)
+[KEM][SimLatency][t=0.0345725] Vehicle 122 session key simulated-ready (real handshake was 34.5725 ms)
+[KEM][SimLatency][t=0.0345787] Vehicle 104 session key simulated-ready (real handshake was 34.5787 ms)
+[KEM][SimLatency][t=0.0345825] Vehicle 31 session key simulated-ready (real handshake was 34.5825 ms)
+[KEM][SimLatency][t=0.0345839] Vehicle 105 session key simulated-ready (real handshake was 34.5839 ms)
+[KEM][SimLatency][t=0.0346156] Vehicle 126 session key simulated-ready (real handshake was 34.6156 ms)
+[KEM][SimLatency][t=0.0346523] Vehicle 133 session key simulated-ready (real handshake was 34.6523 ms)
+[KEM][SimLatency][t=0.0346722] Vehicle 160 session key simulated-ready (real handshake was 34.6722 ms)
+[KEM][SimLatency][t=0.0346818] Vehicle 162 session key simulated-ready (real handshake was 34.6818 ms)
+[KEM][SimLatency][t=0.0347037] Vehicle 53 session key simulated-ready (real handshake was 34.7037 ms)
+[KEM][SimLatency][t=0.0347062] Vehicle 71 session key simulated-ready (real handshake was 34.7062 ms)
+[KEM][SimLatency][t=0.0347226] Vehicle 132 session key simulated-ready (real handshake was 34.7226 ms)
+[KEM][SimLatency][t=0.0347414] Vehicle 198 session key simulated-ready (real handshake was 34.7414 ms)
+[KEM][SimLatency][t=0.0347592] Vehicle 106 session key simulated-ready (real handshake was 34.7592 ms)
+[KEM][SimLatency][t=0.0348056] Vehicle 161 session key simulated-ready (real handshake was 34.8056 ms)
+[KEM][SimLatency][t=0.0348165] Vehicle 33 session key simulated-ready (real handshake was 34.8165 ms)
+[KEM][SimLatency][t=0.0348167] Vehicle 140 session key simulated-ready (real handshake was 34.8167 ms)
+[KEM][SimLatency][t=0.0348235] Vehicle 32 session key simulated-ready (real handshake was 34.8235 ms)
+[KEM][SimLatency][t=0.0348307] Vehicle 107 session key simulated-ready (real handshake was 34.8307 ms)
+[KEM][SimLatency][t=0.0348408] Vehicle 66 session key simulated-ready (real handshake was 34.8408 ms)
+[KEM][SimLatency][t=0.0348468] Vehicle 84 session key simulated-ready (real handshake was 34.8468 ms)
+[KEM][SimLatency][t=0.0348553] Vehicle 127 session key simulated-ready (real handshake was 34.8553 ms)
+[KEM][SimLatency][t=0.0349728] Vehicle 52 session key simulated-ready (real handshake was 34.9728 ms)
+[KEM][SimLatency][t=0.0349838] Vehicle 134 session key simulated-ready (real handshake was 34.9838 ms)
+[KEM][SimLatency][t=0.0350357] Vehicle 75 session key simulated-ready (real handshake was 35.0357 ms)
+[KEM][SimLatency][t=0.0350643] Vehicle 65 session key simulated-ready (real handshake was 35.0643 ms)
+[KEM][SimLatency][t=0.0352038] Vehicle 76 session key simulated-ready (real handshake was 35.2038 ms)
+[KEM][SimLatency][t=0.0353084] Vehicle 70 session key simulated-ready (real handshake was 35.3084 ms)
+[KEM][SimLatency][t=0.0354715] Vehicle 123 session key simulated-ready (real handshake was 35.4715 ms)
+[KEM][SimLatency][t=0.0355661] Vehicle 86 session key simulated-ready (real handshake was 35.5661 ms)
+[KEM][SimLatency][t=0.0356383] Vehicle 49 session key simulated-ready (real handshake was 35.6383 ms)
+[KEM][SimLatency][t=0.0356399] Vehicle 82 session key simulated-ready (real handshake was 35.6399 ms)
+[KEM][SimLatency][t=0.0356688] Vehicle 83 session key simulated-ready (real handshake was 35.6688 ms)
+[KEM][SimLatency][t=0.0357418] Vehicle 69 session key simulated-ready (real handshake was 35.7418 ms)
+[KEM][SimLatency][t=0.0359123] Vehicle 68 session key simulated-ready (real handshake was 35.9123 ms)
+[KEM][SimLatency][t=0.0359262] Vehicle 125 session key simulated-ready (real handshake was 35.9262 ms)
+[KEM][SimLatency][t=0.0359981] Vehicle 67 session key simulated-ready (real handshake was 35.9981 ms)
+[KEM][SimLatency][t=0.0360463] Vehicle 51 session key simulated-ready (real handshake was 36.0463 ms)
+[KEM][SimLatency][t=0.0360649] Vehicle 81 session key simulated-ready (real handshake was 36.0649 ms)
+[KEM][SimLatency][t=0.0361662] Vehicle 80 session key simulated-ready (real handshake was 36.1662 ms)
+[KEM][SimLatency][t=0.0361698] Vehicle 141 session key simulated-ready (real handshake was 36.1698 ms)
+[KEM][SimLatency][t=0.036174] Vehicle 124 session key simulated-ready (real handshake was 36.174 ms)
+[KEM][SimLatency][t=0.0363652] Vehicle 179 session key simulated-ready (real handshake was 36.3652 ms)
+[KEM][SimLatency][t=0.0369327] Vehicle 50 session key simulated-ready (real handshake was 36.9327 ms)
+[KEM][SimLatency][t=0.037215] Vehicle 143 session key simulated-ready (real handshake was 37.215 ms)
+[KEM][SimLatency][t=0.0380885] Vehicle 193 session key simulated-ready (real handshake was 38.0885 ms)
+[KEM][SimLatency][t=0.0385946] Vehicle 184 session key simulated-ready (real handshake was 38.5946 ms)
+[KEM][SimLatency][t=0.0387502] Vehicle 186 session key simulated-ready (real handshake was 38.7502 ms)
+[KEM][SimLatency][t=0.0388773] Vehicle 185 session key simulated-ready (real handshake was 38.8773 ms)
+[KEM][SimLatency][t=0.0388847] Vehicle 192 session key simulated-ready (real handshake was 38.8847 ms)
+[KEM][SimLatency][t=0.039291] Vehicle 187 session key simulated-ready (real handshake was 39.291 ms)
+[KEM][SimLatency][t=0.0393529] Vehicle 188 session key simulated-ready (real handshake was 39.3529 ms)
+[KEM][SimLatency][t=0.0395384] Vehicle 189 session key simulated-ready (real handshake was 39.5384 ms)
+[KEM][SimLatency][t=0.0395923] Vehicle 190 session key simulated-ready (real handshake was 39.5923 ms)
+[KEM][SimLatency][t=0.0396199] Vehicle 182 session key simulated-ready (real handshake was 39.6199 ms)
+[KEM][SimLatency][t=0.0397164] Vehicle 191 session key simulated-ready (real handshake was 39.7164 ms)
+[KEM][SimLatency][t=0.0397301] Vehicle 194 session key simulated-ready (real handshake was 39.7301 ms)
+[KEM][SimLatency][t=0.0397327] Vehicle 195 session key simulated-ready (real handshake was 39.7327 ms)
+[KEM][SimLatency][t=0.0398637] Vehicle 181 session key simulated-ready (real handshake was 39.8637 ms)
+[KEM][SimLatency][t=0.0401618] Vehicle 183 session key simulated-ready (real handshake was 40.1618 ms)
+[KEM][SimLatency][t=0.0412167] Vehicle 180 session key simulated-ready (real handshake was 41.2167 ms)
+[KEM][SimLatency][t=0.0460327] Vehicle 197 session key simulated-ready (real handshake was 46.0327 ms)
+[KEM][SimLatency][t=0.0717615] Vehicle 85 session key simulated-ready (real handshake was 71.7615 ms)
+[KEM][SimLatency][t=0.087293] Vehicle 142 session key simulated-ready (real handshake was 87.293 ms)
+[KEM][SimLatency][t=0.101405] Vehicle 196 session key simulated-ready (real handshake was 101.405 ms)
 lte total packet size is 228
 lte total packet size is 456
 lte total packet size is 684
@@ -126714,7 +126714,6 @@ lte total packet size is 82230736
 lte total packet size is 82231468
 lte total packet size is 82232200
 lte total packet size is 82232932
-[WARN][t=16.200] Continuous neighborhood discovery tick took 125.915 ms, exceeding the 100.000 ms beacon-interval budget (T_b) — on real hardware this pipeline would fall behind the next beacon.
 [BSHH-S1][t=16.272]  V26 --REPLAY old heartbeat--> V87  Heartbeat(Sender=V87, t=4.985)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=16.273]  V26 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V26, claimed=V87, t=16.273)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=16.273]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
@@ -153930,7 +153929,6 @@ lte total packet size is 101125292
 lte total packet size is 101126024
 lte total packet size is 101126756
 lte total packet size is 101127488
-[WARN][t=19.600] Continuous neighborhood discovery tick took 106.437 ms, exceeding the 100.000 ms beacon-interval budget (T_b) — on real hardware this pipeline would fall behind the next beacon.
 lte total packet size is 101128136
 lte total packet size is 101128784
 lte total packet size is 101129432
@@ -207533,7 +207531,6 @@ lte total packet size is 138275432
 lte total packet size is 138276248
 lte total packet size is 138277064
 lte total packet size is 138277880
-[WARN][t=26.300] Continuous neighborhood discovery tick took 121.629 ms, exceeding the 100.000 ms beacon-interval budget (T_b) — on real hardware this pipeline would fall behind the next beacon.
 lte total packet size is 138278612
 lte total packet size is 138279344
 lte total packet size is 138280076
@@ -316360,8 +316357,8 @@ lte total packet size is 217210508
 [M2][TDRR] mean_topology_divergence=0.000  (samples=0)
 [M3][T_stale] mean=0.000 ms (samples=0)
 [M4][PIR] mean=1.000 (links tracked=0)
-[M5][T_pipeline] mean=55.049 ms  max=73.723 ms  over_budget=0/11
-[M7][Omega] omega_lw=52.174%  omega_fs=5029.348%
+[M5][T_pipeline] mean=27.012 ms  max=30.391 ms  over_budget=0/11
+[M7][Omega] omega_lw=5.941%  omega_fs=572.649%
 [M9][F1] TTW=1.000 BSHH=1.000 ME=1.000 macro=1.000
 [M10][FRA/FRR] FRA=0.818 FRR=0.000
 [M11][FSR] attempts=11 success=11 FSR=1.000
@@ -316403,17 +316400,17 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 44
-  Avg wall-clock time: 3.5 ms
-  Max wall-clock time: 8.6 ms
+  Avg wall-clock time: 2.9 ms
+  Max wall-clock time: 6.1 ms
   Events exceeding budget: 0 / 44
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 11
-  Avg wall-clock time: 52 ms
-  Max wall-clock time: 68 ms
+  Avg wall-clock time: 25 ms
+  Max wall-clock time: 25 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 11
-  Avg wall-clock time: 55 ms
-  Max wall-clock time: 74 ms
+  Avg wall-clock time: 27 ms
+  Max wall-clock time: 30 ms
   Events exceeding 1e+02 ms budget: 0 / 11  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
@@ -316430,24 +316427,24 @@ RSU-forward (CSMA dispatch, AttackSendRSUToController):
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
   Calls: 22
-  Avg wall-clock time: 0.19 ms
-  Max wall-clock time: 0.45 ms
+  Avg wall-clock time: 0.1 ms
+  Max wall-clock time: 0.28 ms
   Calls exceeding budget: 0 / 22
 
 Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
   Calls: 11
-  Avg wall-clock time: 0.56 ms
-  Max wall-clock time: 0.82 ms
+  Avg wall-clock time: 0.33 ms
+  Max wall-clock time: 0.43 ms
   Calls exceeding budget: 0 / 11
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 11
-  Avg wall-clock time: 0.14 ms
-  Max wall-clock time: 1.5 ms
+  Avg wall-clock time: 0.072 ms
+  Max wall-clock time: 0.74 ms
   Calls exceeding budget: 0 / 11
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0) + beacon-crypto(0.19) + rsu-forward(0) + detect(3.5) + detection-crypto(0.56) + mitigate(52) + lkh-crypto(0.14) = 56 ms
+  beacon-send(0) + beacon-crypto(0.1) + rsu-forward(0) + detect(2.9) + detection-crypto(0.33) + mitigate(25) + lkh-crypto(0.072) = 28 ms
   -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -316459,10 +316456,10 @@ Maximum neighbors observed at once: 18
 
 Real-time (wall-clock) budget check — T_b=1e+02 ms:
   Ticks executed: 300
-  Avg tick wall-clock time: 28 ms
-  Max tick wall-clock time: 1.3e+02 ms
-  Ticks exceeding 1e+02 ms budget: 3 / 300  <-- pipeline would fall behind real beacon arrivals on this hardware
+  Avg tick wall-clock time: 21 ms
+  Max tick wall-clock time: 29 ms
+  Ticks exceeding 1e+02 ms budget: 0 / 300  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(28) + beacon-send(0) + beacon-crypto(0.19) + rsu-forward(0) + detect(3.5) + detection-crypto(0.56) + mitigate(52) + lkh-crypto(0.14) = 84 ms
+  neighborhood(21) + beacon-send(0) + beacon-crypto(0.1) + rsu-forward(0) + detect(2.9) + detection-crypto(0.33) + mitigate(25) + lkh-crypto(0.072) = 49 ms
   -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware

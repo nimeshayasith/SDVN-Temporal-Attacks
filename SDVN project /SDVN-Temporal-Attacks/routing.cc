@@ -2760,6 +2760,19 @@ static std::map<uint32_t, Vector> g_last_self_reported_position;
 struct RealRssiEntry { float rssi_dbm; double timestamp; uint16_t channel_mhz; };
 static std::map<std::pair<uint32_t,uint32_t>, RealRssiEntry> g_real_rssi_dbm;
 
+// Part B / Eq. 3.29 RSSI_{Vk<-Vi}: the reporter-self-attested per-neighbor
+// RSSI values actually carried in CustomDataTag1 beacon payloads, captured
+// here on receipt (Rx(), CustomDataTag1 CRYPTO_ACCEPT branch) keyed by
+// (reporterId=Vk, neighborId=Vi). Distinct from g_real_rssi_dbm (keyed
+// transmitter->receiver, populated directly from the real PHY SignalNoiseDbm
+// on every reception, independent of any beacon payload) — this map is what
+// a downstream Eq. 3.31 condition (iii) check could read if it wanted the
+// value as the reporter itself claims it, rather than the simulator's
+// omniscient PHY-layer truth. Not yet wired into PemEvaluateEvent/ME-S3
+// scoring (out of scope for this change — see session notes on not touching
+// already-validated detection math without a separate, deliberate task).
+static std::map<std::pair<uint32_t,uint32_t>, double> g_beacon_reported_rssi;
+
 // Per-channel RSSI_min (Eq. 3.31's threshold), derived by holding the
 // propagation margin constant while TX power varies per Table 4.7:
 //   RSSI_min[ch] = RSSI_min[178] + (TxPower[ch] - TxPower[178])
@@ -12389,7 +12402,8 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
 }
 
 void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
-                               uint32_t false_v3, uint32_t false_v4, double t)
+                               uint32_t false_v3, uint32_t false_v4, double t,
+                               uint32_t attacker_idx)
 {
     double now = Simulator::Now().GetSeconds();
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
@@ -12398,15 +12412,37 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     const bool s3_have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
     if (s3_have_v4) me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
+    // Bug fix (multi-attacking-controller edge/key collision): v1_id/v2_id/
+    // false_v3/false_v4 are identical across every attacking controller `c`
+    // in the calling loop (routing.cc's scenario-11 scheduling block), so
+    // without attacker_idx in the key, every malicious controller after the
+    // first silently overwrites the same ttw_controller_table/attack_E_matrix
+    // entry instead of contributing a distinct one — collapsing "N malicious
+    // controllers" down to "one attack replayed N times" for those two
+    // structures. topology_divergence_delta itself was never affected (it's
+    // a plain counter, not map-keyed) and neither is mcc/tp/fp (PemRecord
+    // Observation already ran before this function is ever reached — see
+    // the three-independent-metric-tracks note this session). This only
+    // fixes the divergence/trust-side bookkeeping's fidelity to n_mal_ctrl.
     std::string k3 = std::to_string(false_v3) + "_phantom_"
-                   + std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    ttw_controller_table[k3] = {false_v3, v2_id, t, true};
+                   + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                   + "_c" + std::to_string(attacker_idx);
+    // Bug fix (stale fixed timestamp): store the actual insertion time (now),
+    // not `t` (always the literal ME_S3_DISCOVERY_TIME constant passed
+    // unchanged from the scheduling loop). PemComputeControllerDivergenceDelta's
+    // freshness filter compares (now - stored_timestamp) against a 0.2s
+    // window (2*PEM_BEACON_INTERVAL_S) — with `t` frozen at 10.0, later
+    // attacking controllers' entries could read as already-stale the instant
+    // they're inserted. No effect on mcc/tp/fp (PemRecordObservation already
+    // ran before this function is reached).
+    ttw_controller_table[k3] = {false_v3, v2_id, now, true};
     attack_E_matrix.insert(k3);
     topology_divergence_delta += 1;
     if (s3_have_v4) {
         std::string k4 = std::to_string(false_v4) + "_phantom_"
-                       + std::to_string(v1_id) + "_" + std::to_string(v2_id);
-        ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+                       + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                       + "_c" + std::to_string(attacker_idx);
+        ttw_controller_table[k4] = {false_v4, v2_id, now, true};
         attack_E_matrix.insert(k4);
         topology_divergence_delta += 1;
     }
@@ -12727,7 +12763,8 @@ static void ME_S4_VehiclesViaRSU_Continue(uint32_t v1_id, uint32_t v2_id, uint32
 }
 
 void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
-                               uint32_t false_v3, uint32_t false_v4, double t)
+                               uint32_t false_v3, uint32_t false_v4, double t,
+                               uint32_t attacker_idx)
 {
     double now = Simulator::Now().GetSeconds();
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
@@ -12736,15 +12773,26 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     const bool have_v4 = (false_v4 != UINT32_MAX) && (false_v4 != false_v3);
     me_echo_reports.push_back({v1_id, v2_id, false_v3, t, true});
     if (have_v4) me_echo_reports.push_back({v1_id, v2_id, false_v4, t, true});
+    // See ME_S3_InjectPhantomPaths's matching comment: attacker_idx keeps
+    // each attacking controller's ttw_controller_table/attack_E_matrix
+    // entries distinct instead of every c > 0 silently overwriting c = 0's.
     std::string k3 = std::to_string(false_v3) + "_phantom4_"
-                   + std::to_string(v1_id) + "_" + std::to_string(v2_id);
-    ttw_controller_table[k3] = {false_v3, v2_id, t, true};
+                   + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                   + "_c" + std::to_string(attacker_idx);
+    // Bug fix (stale fixed timestamp): store `now`, not `t` (frozen at
+    // ME_S4_DISCOVERY_TIME). Material here: dt=c*0.025 means by c~4-5,
+    // (0.1+dt) already exceeds the 0.2s freshness window
+    // PemComputeControllerDivergenceDelta checks, so later attacking
+    // controllers' entries went stale the instant they were inserted. No
+    // effect on mcc/tp/fp.
+    ttw_controller_table[k3] = {false_v3, v2_id, now, true};
     attack_E_matrix.insert(k3);
     topology_divergence_delta += 1;
     if (have_v4) {
         std::string k4 = std::to_string(false_v4) + "_phantom4_"
-                       + std::to_string(v1_id) + "_" + std::to_string(v2_id);
-        ttw_controller_table[k4] = {false_v4, v2_id, t, true};
+                       + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                       + "_c" + std::to_string(attacker_idx);
+        ttw_controller_table[k4] = {false_v4, v2_id, now, true};
         attack_E_matrix.insert(k4);
         topology_divergence_delta += 1;
     }
@@ -13108,7 +13156,24 @@ public:
 	void SetAcceleration (Vector acce);
 	void SetNodeId (uint32_t node_id);
 	void SetTimestamp (Time t);
-	void SetNeighborids(uint32_t * nid);
+	// Part B (multi-neighbor beacon content): nid must point to
+	// kBeaconNeighborCapacity entries; count is how many of the leading
+	// entries are actually valid neighbor ids (index 0 is always the
+	// HMAC-signed link partner — see beacon_sign()/lw_mitigate() call sites
+	// in AttackSendDSRCBeacon()/Rx(), both of which read GetNeighborids()[0]
+	// unconditionally regardless of count).
+	void SetNeighborids(uint32_t * nid, uint32_t count);
+	uint32_t GetNeighborCount() const;
+
+	// Eq. 3.29 RSSI_{Vk<-Vi}: per-neighbor signal strength as measured
+	// locally by the sender (Vk) the last time it actually received a real
+	// transmission from that specific neighbor (Vi). rssi must point to
+	// count entries (same count/order as SetNeighborids's nid array — index
+	// j's RSSI corresponds to index j's neighbor id). kNoRssiEvidence marks
+	// "sender has no real reception on record for this neighbor yet".
+	static constexpr double kNoRssiEvidence = -999.0;
+	void SetNeighborRssi(const double * rssi, uint32_t count);
+	double GetNeighborRssiAt(uint32_t index) const;
 
 	// Algorithm 3 (LW-MITIGATE, Eqs. 3.15-3.17) wire fields — real HMAC-SHA256
 	// tag + nonce, populated by beacon_sign() in AttackSendDSRCBeacon() and
@@ -13122,6 +13187,16 @@ public:
 	CustomDataTag1();
 	CustomDataTag1(uint32_t node_id);
 	virtual ~CustomDataTag1();
+
+	// Part B: capacity of m_neighborid, independent of the shared `max1`
+	// macro (which sizes ~30 unrelated CustomMetaDataUnicastTagN1x/CustomDataTagN
+	// classes elsewhere in this file and must not change). Reuses the
+	// existing `max` (=60) per-vehicle neighbor-table cap that
+	// neighbordata_inst/getNeighborsize() already enforce everywhere else,
+	// so this tag can never be asked to carry more neighbors than the
+	// simulation already tracks per vehicle.
+	static const uint32_t kBeaconNeighborCapacity = max;
+
 private:
 
 	uint32_t m_nodeId;
@@ -13131,7 +13206,9 @@ private:
 	Vector m_currentPosition;
 	Vector m_currentVelocity;
 	Vector m_currentAcceleration;
-	uint32_t m_neighborid[max1+1];
+	uint32_t m_neighborid[kBeaconNeighborCapacity];
+	double   m_neighborRssi[kBeaconNeighborCapacity];
+	uint32_t m_neighborCount;
 	Time m_timestamp;
 	uint8_t m_mac[HMAC_SHA256_LEN];
 	uint8_t m_nonce[NONCE_LEN];
@@ -13145,12 +13222,18 @@ NS_OBJECT_ENSURE_REGISTERED (CustomDataTag1);
 CustomDataTag1::CustomDataTag1() {
 	m_timestamp = Simulator::Now();
 	m_nodeId = -1;
+	m_neighborCount = 0;
+	memset(m_neighborid, 0, sizeof(m_neighborid));
+	for (uint32_t i = 0; i < kBeaconNeighborCapacity; i++) m_neighborRssi[i] = kNoRssiEvidence;
 	memset(m_mac, 0, sizeof(m_mac));
 	memset(m_nonce, 0, sizeof(m_nonce));
 }
 CustomDataTag1::CustomDataTag1(uint32_t node_id) {
 	m_timestamp = Simulator::Now();
 	m_nodeId = node_id;
+	m_neighborCount = 0;
+	memset(m_neighborid, 0, sizeof(m_neighborid));
+	for (uint32_t i = 0; i < kBeaconNeighborCapacity; i++) m_neighborRssi[i] = kNoRssiEvidence;
 	memset(m_mac, 0, sizeof(m_mac));
 	memset(m_nonce, 0, sizeof(m_nonce));
 }
@@ -13176,7 +13259,11 @@ TypeId CustomDataTag1::GetInstanceTypeId (void) const
  
 uint32_t CustomDataTag1::GetSerializedSize (void) const
 {
-	return sizeof(Vector) + sizeof(Vector) + sizeof(Vector) + sizeof (ns3::Time) + sizeof(uint32_t) + sizeof(m_neighborid) + sizeof(m_mac) + sizeof(m_nonce);
+	// Part B: m_neighborCount is now serialized too (one extra uint32_t)
+	// alongside the widened m_neighborid array (kBeaconNeighborCapacity
+	// entries instead of max1+1=2), plus the parallel Eq. 3.29
+	// RSSI_{Vk<-Vi} array (one double per neighbor slot).
+	return sizeof(Vector) + sizeof(Vector) + sizeof(Vector) + sizeof (ns3::Time) + sizeof(uint32_t) + sizeof(m_neighborid) + sizeof(m_neighborRssi) + sizeof(uint32_t) + sizeof(m_mac) + sizeof(m_nonce);
 }
 
 // M7 (Omega): exposes CustomDataTag1's real serialized wire size as a plain
@@ -13214,10 +13301,15 @@ void CustomDataTag1::Serialize (TagBuffer i) const
 	i.WriteDouble (m_currentAcceleration.y);
 	i.WriteDouble (m_currentAcceleration.z);
 	
-	for (uint32_t j=0;j<max1;j++)
+	for (uint32_t j=0;j<kBeaconNeighborCapacity;j++)
 	{
 		i.WriteU32(m_neighborid[j]);
 	}
+	for (uint32_t j=0;j<kBeaconNeighborCapacity;j++)
+	{
+		i.WriteDouble(m_neighborRssi[j]);
+	}
+	i.WriteU32(m_neighborCount);
 
 	//Then we store the node ID
 	i.WriteU32(m_nodeId);
@@ -13258,10 +13350,15 @@ void CustomDataTag1::Deserialize (TagBuffer i)
 	m_currentAcceleration.y = i.ReadDouble();
 	m_currentAcceleration.z = i.ReadDouble();
 	
-	for (uint32_t j=0;j<max1;j++)
+	for (uint32_t j=0;j<kBeaconNeighborCapacity;j++)
 	{
 		m_neighborid[j] = i.ReadU32();
 	}
+	for (uint32_t j=0;j<kBeaconNeighborCapacity;j++)
+	{
+		m_neighborRssi[j] = i.ReadDouble();
+	}
+	m_neighborCount = i.ReadU32();
 
 	//Finally, we extract the node id
 	m_nodeId = i.ReadU32();
@@ -13328,17 +13425,47 @@ void CustomDataTag1::SetTimestamp(Time t) {
 	m_timestamp = t;
 }
 
-void CustomDataTag1::SetNeighborids(uint32_t * nid)
+void CustomDataTag1::SetNeighborids(uint32_t * nid, uint32_t count)
 {
-	for(uint32_t i =0; i<max1;i++)
+	uint32_t clamped = (count <= kBeaconNeighborCapacity) ? count : kBeaconNeighborCapacity;
+	for(uint32_t i = 0; i < clamped; i++)
 	{
 		m_neighborid[i] = *(nid+i);
 	}
+	for(uint32_t i = clamped; i < kBeaconNeighborCapacity; i++)
+	{
+		m_neighborid[i] = 0;
+	}
+	m_neighborCount = clamped;
 }
 
 uint32_t * CustomDataTag1::GetNeighborids()
 {
 	return m_neighborid;
+}
+
+uint32_t CustomDataTag1::GetNeighborCount() const
+{
+	return m_neighborCount;
+}
+
+void CustomDataTag1::SetNeighborRssi(const double * rssi, uint32_t count)
+{
+	uint32_t clamped = (count <= kBeaconNeighborCapacity) ? count : kBeaconNeighborCapacity;
+	for(uint32_t i = 0; i < clamped; i++)
+	{
+		m_neighborRssi[i] = *(rssi+i);
+	}
+	for(uint32_t i = clamped; i < kBeaconNeighborCapacity; i++)
+	{
+		m_neighborRssi[i] = kNoRssiEvidence;
+	}
+}
+
+double CustomDataTag1::GetNeighborRssiAt(uint32_t index) const
+{
+	if (index >= kBeaconNeighborCapacity) return kNoRssiEvidence;
+	return m_neighborRssi[index];
 }
 
 void CustomDataTag1::GetMac(uint8_t out[HMAC_SHA256_LEN]) const
@@ -124715,6 +124842,40 @@ bool X_nodes[total_size+2];
     }
   }
 
+// Part B (multi-neighbor beacon content): real-time observed-neighbor set for
+// `sender_node`, geometric (position-based), same kEffectiveReceptionRadius
+// convention already used by SelectMutualRangePair/MeSelectMutualRangePairNearRsu
+// (Section 1.3/1.9 of the session handoff doc) for "is this pair genuinely in
+// range right now". Scans Vehicle_Nodes only, per the "each vehicle's beacon"
+// scope of this request — does not add RSU_Nodes as neighbor-list entries.
+// `mustIncludeId` (the existing scripted neighbor_node passed by attack
+// scheduling code) is always placed at index 0 so the HMAC link_id signed in
+// AttackSendDSRCBeacon/verified in Rx() (both read GetNeighborids()[0]) is
+// unchanged from before this fix. Capped at CustomDataTag1::kBeaconNeighborCapacity.
+static std::vector<uint32_t> PemGetLiveVehicleNeighborIds(Ptr<Node> sender_node, uint32_t mustIncludeId)
+{
+    std::vector<uint32_t> out;
+    out.push_back(mustIncludeId);
+
+    Ptr<MobilityModel> senderMob = sender_node->GetObject<MobilityModel>();
+    if (!senderMob) return out;
+    Vector senderPos = senderMob->GetPosition();
+    uint32_t senderId = sender_node->GetId();
+
+    for (uint32_t i = 0; i < Vehicle_Nodes.GetN() && out.size() < CustomDataTag1::kBeaconNeighborCapacity; i++) {
+        Ptr<Node> cand = Vehicle_Nodes.Get(i);
+        uint32_t candId = cand->GetId();
+        if (candId == senderId || candId == mustIncludeId) continue;
+
+        Ptr<MobilityModel> candMob = cand->GetObject<MobilityModel>();
+        if (!candMob) continue;
+        if (PemDistance2d(senderPos, candMob->GetPosition()) > kEffectiveReceptionRadius) continue;
+
+        out.push_back(candId);
+    }
+    return out;
+}
+
 static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
 {
     PemSimpleStageTimer __pemBeaconSendTimer(g_pem_beacon_send_stats);
@@ -124755,11 +124916,26 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     Vector acc(0, 0, 0);
     Ptr<Packet> pkt = Create<Packet>(0);
     CustomDataTag1 tag;
-    uint32_t nid_arr[max1 + 1] = {};
-    nid_arr[0] = neighbor_node->GetId();
+    std::vector<uint32_t> liveNeighbors = PemGetLiveVehicleNeighborIds(sender_node, neighbor_node->GetId());
+    uint32_t nid_arr[CustomDataTag1::kBeaconNeighborCapacity] = {};
+    double rssi_arr[CustomDataTag1::kBeaconNeighborCapacity];
+    uint32_t nid_count = (uint32_t)liveNeighbors.size();
+    for (uint32_t k = 0; k < nid_count; k++) {
+        nid_arr[k] = liveNeighbors[k];
+        // Eq. 3.29 RSSI_{Vk<-Vi}: sender's own last real-reception evidence
+        // FROM this neighbor (g_real_rssi_dbm is keyed transmitter->receiver,
+        // so "what sender_node measured hearing from liveNeighbors[k]" is the
+        // (liveNeighbors[k] -> sender_node) entry). No fabricated distance
+        // model — only genuine prior PHY receptions populate this, matching
+        // the same-evidence-only convention the ME-S3 signature check already
+        // uses on g_real_rssi_dbm directly (see PemEvaluateEvent, ~line 6319).
+        auto it = g_real_rssi_dbm.find(std::make_pair(liveNeighbors[k], sender_node->GetId()));
+        rssi_arr[k] = (it != g_real_rssi_dbm.end()) ? (double)it->second.rssi_dbm : CustomDataTag1::kNoRssiEvidence;
+    }
 
     tag.SetNodeId(sender_node->GetId());
-    tag.SetNeighborids(nid_arr);
+    tag.SetNeighborids(nid_arr, nid_count);
+    tag.SetNeighborRssi(rssi_arr, nid_count);
     tag.SetPosition(pos);
     tag.SetVelocity(vel);
     tag.SetAcceleration(acc);
@@ -132751,8 +132927,22 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		if (vr == CRYPTO_ACCEPT) {
 			add_neighbor_info(neighbordata_inst+destination_node_id,tagd1.GetNodeId()); //add current neighbor information
 			refresh_neighbors(neighbordata_inst+destination_node_id);//remove old neighbors
-			add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd1.GetPosition(), tagd1.GetVelocity(), tagd1.GetAcceleration(), tagd1.GetNodeId(), tagd1.GetNeighborids(), 1);
+			add_received_data_at_nodes(data_at_nodes_inst+destination_node_id, tagd1.GetPosition(), tagd1.GetVelocity(), tagd1.GetAcceleration(), tagd1.GetNodeId(), tagd1.GetNeighborids(), tagd1.GetNeighborCount());
 			refresh_data_at_nodes(data_at_nodes_inst+destination_node_id);
+
+			// Eq. 3.29: capture the reporter's self-attested per-neighbor
+			// RSSI values from this verified beacon (see g_beacon_reported_rssi
+			// declaration comment).
+			{
+				uint32_t *reportedNids = tagd1.GetNeighborids();
+				uint32_t reportedCount = tagd1.GetNeighborCount();
+				for (uint32_t k = 0; k < reportedCount; k++) {
+					double rv = tagd1.GetNeighborRssiAt(k);
+					if (rv != CustomDataTag1::kNoRssiEvidence) {
+						g_beacon_reported_rssi[std::make_pair(tagd1.GetNodeId(), reportedNids[k])] = rv;
+					}
+				}
+			}
 		}
 		// SUPPRESSED: std::cout << "Received data broadcasted packet from "<< tagd1.GetNodeId()<<"to node "<<destination_node_id <<"of size "<<tagd1.GetSerializedSize()<<" at position "<< tagd1.GetPosition()<<"with velocity "<<tagd1.GetVelocity()<<"with acceleration "<<tagd1.GetAcceleration()<<"packet timestamp "<< tagd1.GetTimestamp().GetSeconds()<<"s "<<"with delay "<< Now().GetMicroSeconds()-tagd1.GetTimestamp().GetMicroSeconds()<<"us"<<std::endl;
 	}
@@ -133635,7 +133825,7 @@ void dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32_t node_inde
 				break;
 			case 1:
 				tag1.SetNodeId(nid);
-				tag1.SetNeighborids(neighborid);
+				tag1.SetNeighborids(neighborid, 1);
 				tag1.SetPosition(posi);
 				tag1.SetVelocity(current_velocity);
 				tag1.SetAcceleration(acceleration);
@@ -156870,13 +157060,13 @@ static int RoutingMain(int argc, char *argv[])
           for (uint32_t p = 0; p + 1 < s3_phantom_cidx.size(); p += 2) {
               Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt + p * 0.001),
                   &ME_S3_InjectPhantomPaths, v1_id, v2_id,
-                  s3_phantom_cidx[p], s3_phantom_cidx[p + 1], ME_S3_DISCOVERY_TIME);
+                  s3_phantom_cidx[p], s3_phantom_cidx[p + 1], ME_S3_DISCOVERY_TIME, c);
           }
           if (s3_phantom_cidx.size() % 2 == 1) {
               uint32_t last_p = s3_phantom_cidx.back();
               Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt + (s3_phantom_cidx.size() - 1) * 0.001),
                   &ME_S3_InjectPhantomPaths, v1_id, v2_id,
-                  last_p, last_p, ME_S3_DISCOVERY_TIME);
+                  last_p, last_p, ME_S3_DISCOVERY_TIME, c);
           }
       }
       if (N_Vehicles > 1) {
@@ -157035,13 +157225,13 @@ static int RoutingMain(int argc, char *argv[])
           for (uint32_t p = 0; p + 1 < s4_phantom_cidx.size(); p += 2) {
               Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt + p * 0.001),
                   &ME_S4_InjectPhantomPaths, v1_id, v2_id,
-                  s4_phantom_cidx[p], s4_phantom_cidx[p + 1], ME_S4_DISCOVERY_TIME);
+                  s4_phantom_cidx[p], s4_phantom_cidx[p + 1], ME_S4_DISCOVERY_TIME, c);
           }
           if (s4_phantom_cidx.size() % 2 == 1) {
               uint32_t last_p = s4_phantom_cidx.back();
               Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt + (s4_phantom_cidx.size() - 1) * 0.001),
                   &ME_S4_InjectPhantomPaths, v1_id, v2_id,
-                  last_p, last_p, ME_S4_DISCOVERY_TIME);
+                  last_p, last_p, ME_S4_DISCOVERY_TIME, c);
           }
       }
       if (N_Vehicles > 1) {
