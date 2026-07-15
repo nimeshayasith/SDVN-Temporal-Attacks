@@ -3454,8 +3454,29 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
 
         uint32_t c_or_q = 0, t_req = 0;
         bool crypto_ok;
-        if (family == "ME") {
+        // Bug fix: Algorithm 4 lines 15-20 (v=controller) and 25-29 (alpha=ME)
+        // are mutually-exclusive branches — a controller-origin ME attack
+        // (TTW/BSHH-S3/S4's is_malicious_controller flag is family-agnostic
+        // and applies equally to ME-S3/S4) must take the controller branch
+        // and never reaches VERIFY_QUORUM at all in the algorithm's own
+        // pseudocode. VERIFY_QUORUM checks for a genuine forged/echoed
+        // witness packet from vehicle/RSU-origin false witnesses — structurally
+        // inapplicable to controller-origin ME, where the controller fabricated
+        // the claim purely internally with no external witnesses to verify
+        // ("no external packet sent" — see ME_S3_InjectPhantomPaths's own log).
+        // Divergence (PemControllerDivergenceGate) already independently
+        // confirmed the attack before this function was even called; re-
+        // litigating that via witness quorum here is redundant and, per the
+        // observed "2/200 >= t=3" pattern, structurally near-impossible to
+        // pass once 2+ phantom witnesses are used (only the real link's 2
+        // genuine endpoints can ever have real signed evidence) — silently
+        // discarding correctly-confirmed detections. Bypass: default true,
+        // no VERIFY_QUORUM performed.
+        const bool ran_verify_quorum = (family == "ME" && !is_malicious_controller);
+        if (ran_verify_quorum) {
             crypto_ok = PemVerifyQuorum(n_eff, ev, c_or_q, t_req);
+        } else if (family == "ME" && is_malicious_controller) {
+            crypto_ok = true;
         } else if (g_abl.no_threshold_sig) {
             // A6 (--no_threshold_sig=1): bypass the real t-of-n ML-DSA-87
             // threshold aggregate signature verification (Eq. 3.28) — no
@@ -3476,11 +3497,15 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         // quorum and was admitted (N_echo-pass, the defense's failure case);
         // crypto_ok==false means quorum correctly rejected it (N_echo-blocked,
         // the defense's success/TP case). See pem_qrr_echo_* declaration.
-        if (family == "ME") {
+        // Bug fix: only count QRR attempts when VERIFY_QUORUM actually ran —
+        // a bypassed controller-origin ME call has no real echo-forgery
+        // attempt to measure (crypto_ok=true there is a bypass default, not
+        // a genuine quorum admission) and must not inflate N_echo-pass.
+        if (ran_verify_quorum) {
             pem_qrr_echo_attempts++;
             if (crypto_ok) pem_qrr_echo_pass++;
             else           pem_qrr_echo_blocked++;
-        } else {
+        } else if (family != "ME") {
             // M11 FSR: same pattern, but for the t-of-n ML-DSA-87 threshold
             // aggregate signature path (TTW/BSHH). crypto_ok==true means the
             // forged/replayed threshold-signed claim was accepted despite
@@ -3489,22 +3514,36 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
             if (crypto_ok) pem_fsr_success++;
         }
 
-        std::cout << "[" << scenario_tag << "][t=" << t_now
-                  << "]  FS-MITIGATE gate: PBFT n=" << n_peers << " f=" << f
-                  << " q_needed=" << q_needed << " -> " << (pbft_ok ? "PASS" : "FAIL")
-                  << "  |  " << (family == "ME" ? "VERIFY_QUORUM" : "VERIFY_THRESHOLD_SIG")
-                  << " " << c_or_q << "/" << n_eff << " >= t=" << t_req
-                  << " -> " << (crypto_ok ? "PASS" : "FAIL") << "\n";
+        if (family == "ME" && is_malicious_controller) {
+            std::cout << "[" << scenario_tag << "][t=" << t_now
+                      << "]  FS-MITIGATE gate: PBFT n=" << n_peers << " f=" << f
+                      << " q_needed=" << q_needed << " -> " << (pbft_ok ? "PASS" : "FAIL")
+                      << "  |  VERIFY_QUORUM SKIPPED (Algorithm 4 v=controller branch —"
+                         " controller-origin ME never reaches the alpha=ME witness-quorum"
+                         " check)\n";
+        } else {
+            std::cout << "[" << scenario_tag << "][t=" << t_now
+                      << "]  FS-MITIGATE gate: PBFT n=" << n_peers << " f=" << f
+                      << " q_needed=" << q_needed << " -> " << (pbft_ok ? "PASS" : "FAIL")
+                      << "  |  " << (family == "ME" ? "VERIFY_QUORUM" : "VERIFY_THRESHOLD_SIG")
+                      << " " << c_or_q << "/" << n_eff << " >= t=" << t_req
+                      << " -> " << (crypto_ok ? "PASS" : "FAIL") << "\n";
+        }
 
         if (!pbft_ok || !crypto_ok) {
             out << "  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***\n"
                 << "  PBFT consensus (n=" << n_peers << ", f=" << f << ", need>=" << q_needed
-                << "): " << (pbft_ok ? "Pass" : "Fail") << "\n"
-                << "  " << (family == "ME" ? "VERIFY_QUORUM (Eq. 3.32)"
-                                            : "VERIFY_THRESHOLD_SIG (Eq. 3.28)")
-                << ": " << c_or_q << "/" << n_eff << " valid, need t=" << t_req
-                << ": " << (crypto_ok ? "Pass" : "Fail") << "\n"
-                << "  Enforcement action suppressed; single-peer/insufficient-signature"
+                << "): " << (pbft_ok ? "Pass" : "Fail") << "\n";
+            if (family == "ME" && is_malicious_controller) {
+                out << "  VERIFY_QUORUM: SKIPPED (controller-origin ME — Algorithm 4"
+                       " v=controller branch)\n";
+            } else {
+                out << "  " << (family == "ME" ? "VERIFY_QUORUM (Eq. 3.32)"
+                                                : "VERIFY_THRESHOLD_SIG (Eq. 3.28)")
+                    << ": " << c_or_q << "/" << n_eff << " valid, need t=" << t_req
+                    << ": " << (crypto_ok ? "Pass" : "Fail") << "\n";
+            }
+            out << "  Enforcement action suppressed; single-peer/insufficient-signature"
                    " evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)\n";
             std::cout << "[" << scenario_tag << "][t=" << t_now
                       << "]  FS-MITIGATE ABORTED (gate failed)  attacker=V" << attacker_id << "\n";
@@ -3529,7 +3568,14 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
                   << "]  PRELIMINARY DETECTION (bootstrap round " << rounds_elapsed
                   << "/" << TRUST_R_MIN << ")  attacker=V" << attacker_id
                   << "  mitigation SUPPRESSED\n";
-    } else if (family == "ME") {
+    } else if (family == "ME" && !is_malicious_controller) {
+        // Bug fix (dispatch order): controller-origin ME (is_malicious_
+        // controller==true) must route to the is_malicious_controller branch
+        // below (Algorithm 4's v=controller path), not here — this branch is
+        // exclusively the alpha=ME vehicle/RSU-origin path (lines 25-29).
+        // Previously `family == "ME"` alone was checked first, unconditionally
+        // shadowing the is_malicious_controller branch for ME-S3/S4 even on
+        // the rare occasion crypto_ok passed by chance.
         // ── Algorithm 4 lines 25-29: ME gets INVALIDATE_PATHS + reroute,
         //    not a blanket FlowMod DROP — the false witness only poisoned the
         //    topology graph, the link between the real endpoints is unaffected.
@@ -12591,6 +12637,32 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     else                                           ++pem_combined_false_negative;
 
     if (lwTgnAlert_s11 || divergenceConfirmed_s11) {
+        // Bug fix (missing delta decrement): ME_S3_InjectPhantomPaths never
+        // had ANY topology_divergence_delta-- anywhere in this function —
+        // unlike every TTW/BSHH controller-origin detection function (e.g.
+        // TTWS3_InternalReplay), which erases its poisoned table entry and
+        // restores delta by 1 as soon as detection is confirmed (matching
+        // this same lwTgnAlert||divergenceConfirmed condition, independent
+        // of whether PemApplyMitigation's own enforcement gate below
+        // succeeds). Without this, delta only ever grew for ME-S3, all run
+        // long, regardless of detection/mitigation outcome. Keys recomputed
+        // identically to the insertion above (attacker_idx-qualified).
+        {
+            const std::string k3_restore = std::to_string(false_v3) + "_phantom_"
+                                          + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                                          + "_c" + std::to_string(attacker_idx);
+            ttw_controller_table.erase(k3_restore);
+            attack_E_matrix.erase(k3_restore);
+            if (topology_divergence_delta > 0) topology_divergence_delta--;
+        }
+        if (s3_have_v4) {
+            const std::string k4_restore = std::to_string(false_v4) + "_phantom_"
+                                          + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                                          + "_c" + std::to_string(attacker_idx);
+            ttw_controller_table.erase(k4_restore);
+            attack_E_matrix.erase(k4_restore);
+            if (topology_divergence_delta > 0) topology_divergence_delta--;
+        }
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s11 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
@@ -12932,6 +13004,25 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     else                                           ++pem_combined_false_negative;
 
     if (lwTgnAlert_s12 || divergenceConfirmed_s12) {
+        // Bug fix (missing delta decrement) — see ME_S3_InjectPhantomPaths's
+        // matching comment. Keys recomputed identically to the insertion
+        // above (attacker_idx-qualified, "_phantom4_" key format).
+        {
+            const std::string k3_restore = std::to_string(false_v3) + "_phantom4_"
+                                          + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                                          + "_c" + std::to_string(attacker_idx);
+            ttw_controller_table.erase(k3_restore);
+            attack_E_matrix.erase(k3_restore);
+            if (topology_divergence_delta > 0) topology_divergence_delta--;
+        }
+        if (have_v4) {
+            const std::string k4_restore = std::to_string(false_v4) + "_phantom4_"
+                                          + std::to_string(v1_id) + "_" + std::to_string(v2_id)
+                                          + "_c" + std::to_string(attacker_idx);
+            ttw_controller_table.erase(k4_restore);
+            attack_E_matrix.erase(k4_restore);
+            if (topology_divergence_delta > 0) topology_divergence_delta--;
+        }
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s12 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
