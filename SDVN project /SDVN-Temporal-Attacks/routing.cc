@@ -4331,6 +4331,47 @@ static void TrustRunDemotionPipeline(double now)
     NS_LOG_INFO("[Trust] P_active rebuilt: " << peers.size() << " eligible peers");
 }
 
+// A single confirmed controller-divergence event is within normal detection
+// noise (propagation delay, one stale beacon) — revoking on the first hit
+// would quarantine controllers over transient disagreement. Require this many
+// INDEPENDENT confirmed-divergence calls for the SAME malicious controller
+// before it is actually revoked (flagged + reassigned).
+// Runtime-configurable (not a compile-time constant): --ctrl_revoke_confirm_count
+// on the command line, so real-system runs after model training can sweep this
+// without a rebuild-per-value. Declared near the other attack parameters
+// (see CommandLine.AddValue registration in main()); defaulted here for any
+// code path that runs before CommandLine::Parse().
+uint32_t g_ctrl_revoke_confirm_count = 5u;
+
+// ctrl_ns3_id -> count of confirmed-divergence calls seen so far (resets are
+// not needed: once a controller crosses the threshold it is quarantined and
+// CtrlIsRevoked() below short-circuits all further attack-function activity
+// for it, so the streak never needs to be reused for that id again).
+static std::map<uint32_t, uint32_t> g_ctrl_divergence_streak;
+
+// Once a controller has been flagged/quarantined by TrustUpdateNode, it is
+// revoked — no further attack events can originate from it. Every
+// controller-origin attack helper (TTW-S3/S4, BSHH-S3/S4, ME-S3/S4, and the
+// shared ME single3 path) must check this FIRST and bail out before doing
+// anything (no forged packet, no PemEmitEvent, no log line) — a revoked
+// controller physically cannot act.
+static bool CtrlIsRevoked(uint32_t ctrl_ns3_id)
+{
+    auto it = g_trust_table.find(ctrl_ns3_id);
+    return it != g_trust_table.end() &&
+           (it->second.state == TRUST_QUARANTINE || it->second.state == TRUST_REMOVED);
+}
+
+// Records one confirmed-divergence event for ctrl_ns3_id; returns true only
+// on the call that reaches CTRL_DIVERGENCE_CONFIRM_THRESHOLD, i.e. only that
+// call should actually flag/reassign the controller.
+static bool CtrlRegisterConfirmedDivergence(uint32_t ctrl_ns3_id)
+{
+    uint32_t& streak = g_ctrl_divergence_streak[ctrl_ns3_id];
+    ++streak;
+    return streak >= g_ctrl_revoke_confirm_count;
+}
+
 // Eqs. 3.42–3.43: reassign zone from compromised controller to backup.
 // Also broadcasts ControllerRevokedBeacon in no-RSU mode.
 // Returns a log string to append to the scenario log file.
@@ -9611,7 +9652,7 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
         uint32_t ctrl_ns3 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_log;
-        if (divergenceConfirmed) {
+        if (divergenceConfirmed && CtrlRegisterConfirmedDivergence(ctrl_ns3)) {
             TrustUpdateNode(ctrl_ns3, false, true);
             if (!g_abl.no_reassign) {
                 trust_log = TrustReassignController(ctrl_ns3, now2);
@@ -9830,7 +9871,7 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
         uint32_t ctrl_ns3_s4 = (controller_Node.GetN() > 0)
                                ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_log_s4;
-        if (divergenceConfirmed_s4) {
+        if (divergenceConfirmed_s4 && CtrlRegisterConfirmedDivergence(ctrl_ns3_s4)) {
             TrustUpdateNode(ctrl_ns3_s4, false, true);
             if (!g_abl.no_reassign) {
                 trust_log_s4 = TrustReassignController(ctrl_ns3_s4, now2);
@@ -10984,7 +11025,7 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         uint32_t ctrl_s7 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_s7;
-        if (divergenceConfirmed_s7) {
+        if (divergenceConfirmed_s7 && CtrlRegisterConfirmedDivergence(ctrl_s7)) {
             TrustUpdateNode(ctrl_s7, false, true);
             if (!g_abl.no_reassign) {
                 trust_s7 = TrustReassignController(ctrl_s7, now);
@@ -11238,7 +11279,7 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         uint32_t ctrl_s8 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_s8;
-        if (divergenceConfirmed_s8) {
+        if (divergenceConfirmed_s8 && CtrlRegisterConfirmedDivergence(ctrl_s8)) {
             TrustUpdateNode(ctrl_s8, false, true);
             if (!g_abl.no_reassign) {
                 trust_s8 = TrustReassignController(ctrl_s8, now);
@@ -12153,7 +12194,7 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
             // which already call TrustReassignController themselves.
             uint32_t ctrl_single3 = (controller_Node.GetN() > 0)
                                      ? controller_Node.Get(0)->GetId() : 9999u;
-            if (divergenceConfirmed_single3) {
+            if (divergenceConfirmed_single3 && CtrlRegisterConfirmedDivergence(ctrl_single3)) {
                 TrustUpdateNode(ctrl_single3, false, true);
                 if (!g_abl.no_reassign) {
                     trust_single3 = TrustReassignController(ctrl_single3, now);
@@ -13000,7 +13041,7 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         uint32_t ctrl_s11 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_s11;
-        if (divergenceConfirmed_s11) {
+        if (divergenceConfirmed_s11 && CtrlRegisterConfirmedDivergence(ctrl_s11)) {
             TrustUpdateNode(ctrl_s11, false, true);
             if (!g_abl.no_reassign) {
                 trust_s11 = TrustReassignController(ctrl_s11, now);
@@ -13382,7 +13423,7 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         uint32_t ctrl_s12 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_s12;
-        if (divergenceConfirmed_s12) {
+        if (divergenceConfirmed_s12 && CtrlRegisterConfirmedDivergence(ctrl_s12)) {
             TrustUpdateNode(ctrl_s12, false, true);
             if (!g_abl.no_reassign) {
                 trust_s12 = TrustReassignController(ctrl_s12, now);
@@ -152764,6 +152805,11 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("attack_percentage",
                   "Percentage (0-100) of vehicle nodes that behave as attackers",
                   attack_percentage);
+    cmd.AddValue ("ctrl_revoke_confirm_count",
+                  "Number of INDEPENDENT confirmed controller-divergence events required "
+                  "before a malicious controller (TTW/BSHH/ME -S3/-S4) is actually revoked "
+                  "(flagged + zone reassigned). Default 5 — sweepable post-training.",
+                  g_ctrl_revoke_confirm_count);
     cmd.AddValue ("Random",
                   "0=deterministic first-N attacker vehicle selection, 1=random attacker vehicle selection",
                   Random);
