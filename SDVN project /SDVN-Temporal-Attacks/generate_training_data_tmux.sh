@@ -175,6 +175,12 @@ for SCENARIO in 0 0r 1 2 3 4 5 6 7 8 9 10 11 12; do
         rm -f tgn_events.csv tgn_alerts.json
 
         # Run routing (tgn_core.cc is included inside routing.cc)
+        # Full output saved to a per-run log (diagnostic — the old "| tail -5"
+        # discarded everything needed to tell "zero events generated" apart
+        # from "generated fine, just a short tail"). tee still shows the last
+        # 5 lines on screen so normal usage is unchanged.
+        mkdir -p "$OUTDIR/run_logs"
+        RUN_LOG="$OUTDIR/run_logs/scenario${SCENARIO}_seed${SEED}.log"
         if ./waf --run "scratch/routing \
                 --simTime=${SIM_TIME} \
                 --N_Vehicles=${N_VEHICLES} \
@@ -184,7 +190,12 @@ for SCENARIO in 0 0r 1 2 3 4 5 6 7 8 9 10 11 12; do
                 --mobility_scenario=${MOBILITY_SCENARIO} \
                 --maxspeed=${MAXSPEED} \
                 --skip_npfads=1 \
-                --RngRun=${SEED}" 2>&1 | tail -5; then
+                --RngRun=${SEED}" > "$RUN_LOG" 2>&1; then
+            tail -5 "$RUN_LOG"
+            if grep -qE "\[ERROR\]|Aborting" "$RUN_LOG"; then
+                echo "   [WARN] run exited 0 but printed an [ERROR]/Aborting line — see $RUN_LOG"
+                grep -E "\[ERROR\]|Aborting" "$RUN_LOG"
+            fi
 
             if [ -f "tgn_events.csv" ]; then
                 # Append to all_events.csv (header only once)
@@ -196,6 +207,10 @@ for SCENARIO in 0 0r 1 2 3 4 5 6 7 8 9 10 11 12; do
                 fi
                 LINES=$(wc -l < tgn_events.csv)
                 echo "   → appended ${LINES} lines to all_events.csv"
+                if [ "$LINES" -le 1 ]; then
+                    echo "   [WARN] tgn_events.csv had ONLY the header — zero real events this run."
+                    echo "          See $RUN_LOG for the full simulation output."
+                fi
 
                 # Save per-scenario copy (safe across sessions — seed in filename)
                 cp tgn_events.csv "$OUTDIR/scenario${SCENARIO}_seed${SEED}_events.csv"

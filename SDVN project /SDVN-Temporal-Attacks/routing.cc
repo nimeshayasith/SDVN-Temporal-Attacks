@@ -2307,6 +2307,29 @@ uint64_t pem_false_negative = 0;
 uint64_t pem_divergence_true_positive = 0;
 uint64_t pem_divergence_false_negative = 0;
 
+// ── Per-episode capture metric (added per user request, distinct from the
+// per-attempt divergence_recall above). divergence_recall measures each
+// individual fabrication attempt independently — inherently noisy for a
+// cumulative-threshold accumulator, since the first delta_thresh-ish
+// attempts of ANY episode are mathematically guaranteed to read "within
+// propagation noise" regardless of detector quality (that's how
+// accumulation works, not a detection failure). This metric instead
+// answers the operational question: was the attacker's episode eventually
+// caught and shut off, and how fast/after how many attempts? "Caught"
+// is defined as TrustReassignController() actually reaching its quarantine
+// branch (real revocation), not merely PemControllerDivergenceGate
+// returning confirmed=true — a confirmed divergence that somehow didn't
+// lead to revocation would not count as "caught" here, matching the
+// end-to-end guarantee the post-revocation-rejection fix is meant to
+// provide. g_divergence_gate_call_count is incremented once per
+// PemControllerDivergenceGate call (any scenario, any family) so
+// pem_episode_attempts_before_caught reflects "how many divergence
+// evaluations happened before this run's controller was first revoked."
+static uint32_t g_divergence_gate_call_count = 0;
+static bool     pem_episode_caught = false;
+static double   pem_episode_caught_time_s = -1.0;
+static uint32_t pem_episode_attempts_before_caught = 0;
+
 // ── Combined detection outcome (LW/TGN OR divergence), the paper's third
 // reporting configuration alongside "LW/TGN only" (pem_true_positive/
 // pem_false_negative) and "divergence only" (pem_divergence_true_positive/
@@ -3784,6 +3807,29 @@ static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool fl
             TrustStage2ArmMonitor();   // §3.4.11 Stage-2: start recurring beacon-interval check
             std::cout << "[Trust][t=" << r.demoted_at << "]  Node " << ns3_id
                       << ": ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)\n";
+
+            // Bug fix (episode_caught never firing): this — not
+            // TrustReassignController's internal quarantine branch — is the
+            // actual point where r.flagged transitions to true, which is
+            // exactly what the post-revocation-rejection check
+            // (g_trust_table[ctrl].flagged) reads. TrustReassignController's
+            // own quarantine branch requires tau to ALSO cross
+            // TRUST_TAU_MIN_CTRL (which can take multiple Eq. 3.39
+            // decrements/confirmations) and a valid backup controller to
+            // exist — a stricter, separate condition that a single-
+            // confirmation run may never reach, even though the controller
+            // was already correctly flagged and is already being rejected
+            // by every later attempt. Scoped to controller entities only
+            // (g_ctrl_table) — TrustUpdateNode is shared with vehicle-origin
+            // REAUTH flagging (TTW-S1 etc.), which must not set this.
+            bool isControllerEntity = false;
+            for (const auto& c : g_ctrl_table)
+                if (c.ctrl_ns3_id == ns3_id) { isControllerEntity = true; break; }
+            if (isControllerEntity && !pem_episode_caught) {
+                pem_episode_caught = true;
+                pem_episode_caught_time_s = r.demoted_at;
+                pem_episode_attempts_before_caught = g_divergence_gate_call_count;
+            }
         }
     } else if (correct_participation) {
         r.tau = (r.tau + TRUST_DELTA_PLUS < 1.0) ? r.tau + TRUST_DELTA_PLUS : 1.0;
@@ -4162,6 +4208,11 @@ PemControllerDivergenceGate(double now, const std::string& scenario_tag,
                              uint32_t claim_a = UINT32_MAX, uint32_t claim_b = UINT32_MAX,
                              double claim_timestamp = 0.0)
 {
+    // Per-episode metric bookkeeping — see g_divergence_gate_call_count's
+    // declaration comment. Counts every divergence evaluation regardless of
+    // outcome, so pem_episode_attempts_before_caught reflects the true
+    // attempt count leading up to capture.
+    ++g_divergence_gate_call_count;
     const uint32_t delta  = PemComputeControllerDivergenceDelta(now, claim_a, claim_b,
                                                                   claim_timestamp);
     const uint32_t thresh = PemComputeDeltaThreshold();
@@ -4341,6 +4392,23 @@ static std::string TrustReassignController(uint32_t mal_ctrl_ns3_id, double now)
     }
     g_backup_ctrl_ns3_id = best_id;
     g_ctrl_reassigned    = true;
+
+    // Per-episode metric secondary/fallback capture — the PRIMARY capture
+    // point is now inside TrustUpdateNode (its r.flagged=true transition),
+    // since that fires immediately on the first confirmed divergence and is
+    // exactly what the post-revocation-rejection check reads. This function
+    // requires the STRICTER additional condition tau < TRUST_TAU_MIN_CTRL
+    // (possibly needing multiple confirmations) plus a valid backup
+    // controller, so it can genuinely be reached AFTER TrustUpdateNode
+    // already flagged the controller in an earlier call this same episode —
+    // the `!pem_episode_caught` guard makes this a no-op in that case, only
+    // filling in the (rare) scenario where this path fires without
+    // TrustUpdateNode having done so first.
+    if (!pem_episode_caught) {
+        pem_episode_caught = true;
+        pem_episode_caught_time_s = now;
+        pem_episode_attempts_before_caught = g_divergence_gate_call_count;
+    }
 
     // M12 tau_Ck*,active: backup controller becomes active for this zone now.
     // First real reassignment this run defines t_reassign_ms (flagged -> active).
@@ -5229,7 +5297,8 @@ PemWriteRunSummaryCsv()
         "fsr_attempts,fsr_success,fsr,"
         "t_trust_ms,t_revoke_ms,t_reassign_ms,"
         "divergence_tp,divergence_fn,divergence_recall,"
-        "combined_tp,combined_fn,combined_recall",
+        "combined_tp,combined_fn,combined_recall,"
+        "episode_caught,episode_time_to_caught_ms,episode_attempts_before_caught",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -5450,7 +5519,17 @@ PemWriteRunSummaryCsv()
          << pem_divergence_true_positive << "," << pem_divergence_false_negative << ","
          << divergenceRecall << ","
          << pem_combined_true_positive << "," << pem_combined_false_negative << ","
-         << combinedRecall << "\n";
+         << combinedRecall << ","
+         // Per-episode capture metric — see pem_episode_caught's declaration
+         // comment. "Caught" = TrustReassignController() actually reached
+         // its quarantine branch (real revocation), not merely a confirmed
+         // divergence gate result. 0 attempts/-1ms when the controller was
+         // never revoked this run (either a non-controller-origin scenario,
+         // or an episode that ran to completion without crossing tau_min^C).
+         << (pem_episode_caught ? 1 : 0) << ","
+         << ((pem_episode_caught && pem_attack_injection_time >= 0.0)
+                ? (1000.0 * (pem_episode_caught_time_s - pem_attack_injection_time)) : -1.0) << ","
+         << pem_episode_attempts_before_caught << "\n";
 
     if (pem_qrr_echo_attempts > 0) {
         std::cout << "[M11][QRR] echo_attempts=" << pem_qrr_echo_attempts
@@ -6340,13 +6419,34 @@ PemEvaluateEvent(PemEvent& event)
         // information no real witness could have. Falls back to the event's
         // own field only for the (t≈0) edge case where an endpoint hasn't yet
         // broadcast a single beacon in this run.
+        // Bug fix: resolve link_src_id/link_dst_id the same way the RSSI
+        // check just below already does (PemResolveVehicleGlobalId) before
+        // looking them up in g_last_self_reported_position, which is keyed
+        // by REAL ns-3 global ids (populated from sender_node->GetId() on
+        // genuine beacon transmission). Callers that pass a raw Vehicle_Nodes
+        // container index for link_src_id/link_dst_id (e.g. ME-S4's RSU-relay
+        // path, which — unlike ME-S3's self-report path — cannot set
+        // reporter_id equal to the link endpoint, so it also can't rely on
+        // the is_self_report_me3 exemption above) previously looked up the
+        // WRONG vehicle's position whenever that raw index happened to
+        // collide with a different vehicle's real global id (container index
+        // and global id diverge whenever any non-vehicle node — controllers,
+        // management — is created before Vehicle_Nodes), or missed the map
+        // entirely and silently fell back to event.link_src_position. Either
+        // way, a genuinely real, in-range benign RSU-relayed report could
+        // spuriously fail positionOutOfRange and trigger sig[8] (ME-S3) —
+        // confirmed against a live run (V144<->V71 via RSU_248, both
+        // trivially in range and with strong -22dBm real RSSI evidence,
+        // still flagged alert_raised=1 before this fix).
+        const uint32_t resolvedLinkSrcId = PemResolveVehicleGlobalId(event.link_src_id);
+        const uint32_t resolvedLinkDstId = PemResolveVehicleGlobalId(event.link_dst_id);
         const Vector& effectiveSrcPos =
-            g_last_self_reported_position.count(event.link_src_id)
-                ? g_last_self_reported_position.at(event.link_src_id)
+            g_last_self_reported_position.count(resolvedLinkSrcId)
+                ? g_last_self_reported_position.at(resolvedLinkSrcId)
                 : event.link_src_position;
         const Vector& effectiveDstPos =
-            g_last_self_reported_position.count(event.link_dst_id)
-                ? g_last_self_reported_position.at(event.link_dst_id)
+            g_last_self_reported_position.count(resolvedLinkDstId)
+                ? g_last_self_reported_position.at(resolvedLinkDstId)
                 : event.link_dst_position;
         const double distanceToSrc = PemDistance2d(event.reporter_position,
                                                    effectiveSrcPos);
@@ -6633,8 +6733,25 @@ PemEvaluateEvent(PemEvent& event)
             }
         }
     }
+    // Bug fix (detection_latency_ms frozen across every row): previously
+    // reused PemGetDetectionLatencyMs() — a RUN-LEVEL, set-once value
+    // (pem_first_alert_time - pem_attack_injection_time, frozen at the very
+    // first detection this run) — for every single event row, so every
+    // later alert in the same run reported the identical stale number
+    // instead of ITS OWN latency (confirmed: 19 distinct TTW-S4 detections
+    // spanning t=12.5-39s all showed the same frozen value). Each event
+    // already carries its own sender_timestamp (when the reported/forged
+    // content claims to be from) and reception_timestamp (when it was
+    // actually evaluated) — using their per-event difference here gives a
+    // genuine per-row measurement instead of a run-wide constant. Can be
+    // negative for a genuinely future-forged timestamp (e.g. TTW's replay
+    // claiming a later time than it was actually evaluated) — left
+    // unclamped since that sign is itself real diagnostic information about
+    // the forgery, not an error condition.
     event.detection_latency_ms =
-        event.alert_raised ? PemGetDetectionLatencyMs() : -1.0;
+        event.alert_raised
+            ? 1000.0 * (event.reception_timestamp - event.sender_timestamp)
+            : -1.0;
 
     if (attack_scenario == ME_S1_MAL_VEH_NO_RSU &&
         event.type == PEM_EVENT_TOPOLOGY_UPDATE &&
@@ -8572,6 +8689,80 @@ TtwFindNaturalBreakPairs(const std::vector<uint32_t>& attackerPool,
     return assigned;
 }
 
+// BSHH pair-selection: unlike TTW, BSHH's attack premise (a stored heartbeat
+// replayed later under the victim's identity) never requires the attacker-
+// victim LINK itself to break — only that the attacker genuinely captured a
+// real heartbeat from the victim at the exchange time and can still transmit
+// its impersonation later. Requiring a later break (the TTW-shaped search)
+// over-constrains BSHH and is why many requested attackers went unmatched.
+// This only needs mutual range AT the exchange time — real SUMO positions,
+// no break required — so nearly every attacker with any real neighbor at
+// that moment gets matched. Reuses TtwAssignedPair; breakTime is set to
+// atTime (not a real break) purely so downstream code's existing
+// `replayTime = pair.breakTime + margin` computation is unchanged.
+static std::vector<TtwAssignedPair>
+TtwFindMutualRangePairs(const std::vector<uint32_t>& attackerPool,
+                        std::vector<uint32_t> victimPool,   // copy — drained as victims are claimed
+                        double atTime, double commRange)
+{
+    std::vector<TtwAssignedPair> assigned;
+    for (uint32_t attackerCidx : attackerPool)
+    {
+        int bestIdx = -1;
+        double bestDist = -1.0;
+        for (size_t vi = 0; vi < victimPool.size(); vi++)
+        {
+            if (victimPool[vi] == attackerCidx) continue;  // never pair a node with itself
+            const double d = PemDistance2d(TtwSumoPositionAt(attackerCidx, atTime),
+                                            TtwSumoPositionAt(victimPool[vi], atTime));
+            if (d > commRange) continue;
+            if (bestIdx < 0 || d < bestDist) { bestIdx = (int)vi; bestDist = d; }
+        }
+        if (bestIdx < 0) continue;  // genuinely no vehicle in range at all — caller logs/skips
+        uint32_t victimCidx = victimPool[(size_t)bestIdx];
+        victimPool.erase(victimPool.begin() + bestIdx);
+        assigned.push_back({attackerCidx, victimCidx, atTime});
+    }
+    return assigned;
+}
+
+// TTW fallback pair-selection: for attackers the genuine natural-break search
+// (TtwFindNaturalBreakPairs / TTW-S1's own inline copy) left unmatched —
+// 200 vehicles over a short simTime simply may not produce enough genuine
+// 100m-crossing breaks to cover every requested attacker. Still requires a
+// REAL in-range victim at helloTime (never fabricates positions or motion) —
+// only drops the requirement that the SAME pair's real trajectory later
+// crosses commRange within the search window. The resulting pair replays at
+// a fixed late nominalBreakTime using whatever the pair's real distance
+// genuinely is then (the calling scenario's own log honestly reports
+// in-range vs out-of-range at that point — this function doesn't fabricate
+// that outcome, just guarantees the attacker gets a scheduled attempt).
+static std::vector<TtwAssignedPair>
+TtwFindFallbackPairs(const std::vector<uint32_t>& unmatchedAttackers,
+                     std::vector<uint32_t> remainingVictims,   // copy — drained as victims are claimed
+                     double helloTime, double nominalBreakTime, double commRange)
+{
+    std::vector<TtwAssignedPair> assigned;
+    for (uint32_t attackerCidx : unmatchedAttackers)
+    {
+        int bestIdx = -1;
+        double bestDist = -1.0;
+        for (size_t vi = 0; vi < remainingVictims.size(); vi++)
+        {
+            if (remainingVictims[vi] == attackerCidx) continue;
+            const double d = PemDistance2d(TtwSumoPositionAt(attackerCidx, helloTime),
+                                            TtwSumoPositionAt(remainingVictims[vi], helloTime));
+            if (d > commRange) continue;  // still a real, in-range HELLO exchange — never fabricated
+            if (bestIdx < 0 || d < bestDist) { bestIdx = (int)vi; bestDist = d; }
+        }
+        if (bestIdx < 0) continue;  // truly no in-range victim left at all for this attacker
+        uint32_t victimCidx = remainingVictims[(size_t)bestIdx];
+        remainingVictims.erase(remainingVictims.begin() + bestIdx);
+        assigned.push_back({attackerCidx, victimCidx, nominalBreakTime});
+    }
+    return assigned;
+}
+
 void TTW_InitLog()
 {
     ttw_log.open(BuildLogPath("ttw_attack_scenario4.txt"), std::ios::out | std::ios::trunc);
@@ -8931,12 +9122,18 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     ttw_log.flush();
 
     // latency=3: detection already scheduled by TTW_L3_AI_End (end of inject chain)
-    // latency=0/1/2: schedule detection here
+    // latency=0/1/2: run detection here
+    // Bug fix (Tdet always exactly TTW_DETECTION_DELAY_MS=50ms): previously
+    // scheduled at a fixed artificial wait regardless of actual detection
+    // behavior, so pem_first_alert_time - pem_attack_injection_time always
+    // came out to exactly 50ms whenever detection succeeded (the normal
+    // case) — a scripted constant, not a real measurement. Evaluate
+    // synchronously instead, matching how BSHH/ME already call their
+    // detection/divergence checks inline right after injection — Tdet now
+    // reflects the genuine simulated-time gap between injection and
+    // evaluation (near-zero here, consistent with BSHH/ME's own numbers).
     if (enable_crypto_latency != 3) {
-        double extra_us = g_crypto_inject_delay ? g_crypto_pending_delay_us : 0.0;
-        Time det_delay = MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS))
-                         + MicroSeconds(static_cast<int64_t>(extra_us));
-        Simulator::Schedule(det_delay, &TTW_RunReplayDetection, src_id, dst_id, dist);
+        TTW_RunReplayDetection(src_id, dst_id, dist);
     }
 }
 
@@ -9346,7 +9543,10 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
               << " --FORGED replay--> Controller"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
               << "  (stored=" << stored_ts2 << ")  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***" << std::endl;
-    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS2_RunDetection, rsu_id, v1_id, v2_id);
+    // Bug fix (Tdet always exactly 50ms) — see TTW_RunReplayDetection's
+    // matching comment. Evaluate synchronously instead of after a fixed
+    // artificial wait.
+    TTWS2_RunDetection(rsu_id, v1_id, v2_id);
 }
 
 // =============================================================================
@@ -9509,6 +9709,23 @@ void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time,
 void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 {
     double now = Simulator::Now().GetSeconds();
+    // Bug fix (post-revocation attempts still landing) — see
+    // ME_S3_InjectPhantomPaths's matching comment. Same single-entity
+    // convention applies here (controller_Node.Get(0) is "the" malicious
+    // controller for every selected pair in this scenario).
+    {
+        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
+            ttws3_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
+                      << " already revoked/quarantined; submission dropped by network"
+                         " (Algorithm 4 REVOKE_CTRL_CRED)\n";
+            std::cout << "[TTW-S3][t=" << now << "]  Attempt <V" << v1_id << " sees V" << v2_id
+                      << "> REJECTED — controller already revoked" << std::endl;
+            ttws3_log.flush();
+            return;
+        }
+    }
     if (!ttws3_packet_stored) {
         NS_LOG_WARN("[TTW-S3] No stored packet!");
         return;
@@ -9564,7 +9781,10 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "[TTW-S3][t=" << now << "]  Controller --TIMESTAMP FORGE + REINSERTION--> own table"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
               << "  (stored=" << stored_ts3 << ")  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
-    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS3_RunDetection, v1_id, v2_id);
+    // Bug fix (Tdet always exactly 50ms) — see TTW_RunReplayDetection's
+    // matching comment. Evaluate synchronously instead of after a fixed
+    // artificial wait.
+    TTWS3_RunDetection(v1_id, v2_id);
 }
 
 // =============================================================================
@@ -9709,6 +9929,21 @@ void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time,
 void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 {
     double now = Simulator::Now().GetSeconds();
+    // Bug fix (post-revocation attempts still landing) — see
+    // ME_S3_InjectPhantomPaths's matching comment.
+    {
+        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
+            ttws4_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
+                      << " already revoked/quarantined; submission dropped by network"
+                         " (Algorithm 4 REVOKE_CTRL_CRED)\n";
+            std::cout << "[TTW-S4][t=" << now << "]  Attempt <V" << v1_id << " sees V" << v2_id
+                      << "> REJECTED — controller already revoked" << std::endl;
+            ttws4_log.flush();
+            return;
+        }
+    }
     if (!ttws4_packet_stored) {
         NS_LOG_WARN("[TTW-S4-new] No stored packet!");
         return;
@@ -9765,7 +10000,10 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "[TTW-S4][t=" << now << "]  Controller --TIMESTAMP FORGE + REINSERTION (RSU path)--> own table"
               << "  <V" << v1_id << " sees V" << v2_id << ", t=" << forged_time << ">"
               << "  (stored=" << stored_ts4 << ")  TABLE POISONED  *** ATTACK COMPLETE ***" << std::endl;
-    Simulator::Schedule(MilliSeconds(static_cast<int64_t>(TTW_DETECTION_DELAY_MS)), &TTWS4_RunDetection, v1_id, v2_id);
+    // Bug fix (Tdet always exactly 50ms) — see TTW_RunReplayDetection's
+    // matching comment. Evaluate synchronously instead of after a fixed
+    // artificial wait.
+    TTWS4_RunDetection(v1_id, v2_id);
 }
 
 // ── BSHH L3 chain definitions ─────────────────────────────────────────────────
@@ -10631,6 +10869,25 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     const std::string v1Label   = GetVehicleLogLabel(v1_id);
     const std::string v2Label   = GetVehicleLogLabel(v2_id);
 
+    // Bug fix (post-revocation attempts still landing) — see
+    // ME_S3_InjectPhantomPaths's matching comment. ctrl_idx is only a
+    // per-pair log label (GetControllerLogLabel) — every pair's replay is
+    // attributed to the same single trust-tracked entity, controller_Node.
+    // Get(0), so once that's revoked ALL later pairs' attempts (regardless
+    // of ctrl_idx) must be rejected too.
+    {
+        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
+            bshh_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
+                     << " already revoked/quarantined; submission dropped by network"
+                        " (Algorithm 4 REVOKE_CTRL_CRED)\n";
+            std::cout << "[BSHH-S3][t=" << now << "]  Attempt " << ctrlLabel
+                      << " REJECTED — controller already revoked" << std::endl;
+            bshh_log.flush();
+            return;
+        }
+    }
     if (!bshh_heartbeat_stored) {
         NS_LOG_WARN("[BSHH-S3] No stored heartbeats!");
         return;
@@ -10877,6 +11134,21 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     const std::string v1Label   = GetVehicleLogLabel(v1_id);
     const std::string v2Label   = GetVehicleLogLabel(v2_id);
 
+    // Bug fix (post-revocation attempts still landing) — see
+    // BSHH_S3_InternalReplay's matching comment.
+    {
+        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
+            bshh_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
+                     << " already revoked/quarantined; submission dropped by network"
+                        " (Algorithm 4 REVOKE_CTRL_CRED)\n";
+            std::cout << "[BSHH-S4][t=" << now << "]  Attempt " << ctrlLabel
+                      << " REJECTED — controller already revoked" << std::endl;
+            bshh_log.flush();
+            return;
+        }
+    }
     if (!bshh_heartbeat_stored) {
         NS_LOG_WARN("[BSHH-S4] No stored heartbeats!");
         return;
@@ -11721,6 +11993,26 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
                            uint32_t atk_id, double t, int mode, uint32_t rsu_id)
 {
     double now = Simulator::Now().GetSeconds();
+    // Bug fix (post-revocation attempts still landing) — see
+    // ME_S3_InjectPhantomPaths's matching comment. Only applies to
+    // controller-origin modes (3=ME-S3, 4=ME-S4) — modes 1/2 (vehicle/RSU
+    // attacker) have no controller-trust concept at all (see this
+    // function's own "modes 1/2 have no divergence concept" comments
+    // further down), so the check must not gate those.
+    if (mode == 3 || mode == 4) {
+        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
+            me_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
+                   << " already revoked/quarantined; submission dropped by network"
+                      " (Algorithm 4 REVOKE_CTRL_CRED)\n";
+            std::cout << "[" << (mode == 3 ? "ME-S3" : "ME-S4") << "][t=" << now
+                      << "]  Attempt via V" << atk_id
+                      << " REJECTED — controller already revoked" << std::endl;
+            me_log.flush();
+            return;
+        }
+    }
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -12481,6 +12773,36 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                                uint32_t attacker_idx)
 {
     double now = Simulator::Now().GetSeconds();
+    // Bug fix (post-revocation attempts still landing): every "attacking
+    // controller" in this scenario resolves to the SAME entity
+    // (controller_Node.Get(0) — see ctrl_s11 below), so once the first
+    // confirmed divergence quarantines/revokes it (TrustReassignController
+    // sets g_trust_table[...].flagged=true), every LATER scheduled pool
+    // injection previously still fabricated entries, scored normally, and
+    // redundantly re-triggered TrustUpdateController/TrustReassignController
+    // on an already-revoked controller. Per Algorithm 4's REVOKE_CTRL_CRED —
+    // a revoked controller's later submissions are rejected by the network,
+    // not re-evaluated as fresh detection opportunities. Attempt still
+    // "happens" (a real attacker keeps trying) but has no effect: no
+    // ttw_controller_table/attack_E_matrix entry, no divergence_delta
+    // change, no PemEmitEvent (not a fresh ground-truth detection instance —
+    // the network structurally already rejected it, mirroring how a
+    // revoked vehicle's beacon is dropped by the LKH check in Rx() before
+    // ever reaching PEM's scoring).
+    {
+        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
+            me_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
+                   << " already revoked/quarantined; submission dropped by network"
+                      " (Algorithm 4 REVOKE_CTRL_CRED)\n";
+            std::cout << "[ME-S3][t=" << now << "]  Attempt via V" << false_v3
+                      << (((false_v4 != UINT32_MAX) && (false_v4 != false_v3)) ? " and V" + std::to_string(false_v4) : "")
+                      << " REJECTED — controller already revoked" << std::endl;
+            me_log.flush();
+            return;
+        }
+    }
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -12621,13 +12943,24 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     // comment) — no real over-the-air transmission underlies this claim.
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, false_v3,
                  v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
-    if (s3_have_v4)
+    // Bug fix: pem_last_alert is a single global, overwritten by each
+    // PemEmitEvent/PemEvaluateEvent call — capture V3's outcome here, before
+    // V4's call (if any) overwrites it, instead of reading the global only
+    // once after both calls (which silently dropped V3's alert whenever V3
+    // and V4 disagreed). Each event still gets its own correct, independent
+    // PemRecordObservation() call regardless — this only affects the
+    // combined_tp/fn bookkeeping below, not tp/fn/mcc.
+    const bool alert_v3_s11 = pem_last_alert;
+    bool alert_v4_s11 = false;
+    if (s3_have_v4) {
         PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, false_v4,
                      v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
+        alert_v4_s11 = pem_last_alert;
+    }
 
     // Step 1 (divergence-mechanism independence): see TTWS3_RunDetection's
     // identical fix and pem_divergence_true_positive's declaration comment.
-    const bool lwTgnAlert_s11 = pem_last_alert;
+    const bool lwTgnAlert_s11 = alert_v3_s11 || alert_v4_s11;
     std::string ctrl_div_log_s11;
     const bool divergenceConfirmed_s11 =
         PemControllerDivergenceGate(now, "ME-S3", ctrl_div_log_s11, v1_id, v2_id, now);
@@ -12868,6 +13201,22 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                                uint32_t attacker_idx)
 {
     double now = Simulator::Now().GetSeconds();
+    // Bug fix (post-revocation attempts still landing) — see
+    // ME_S3_InjectPhantomPaths's matching comment.
+    {
+        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
+            me_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
+                   << " already revoked/quarantined; submission dropped by network"
+                      " (Algorithm 4 REVOKE_CTRL_CRED)\n";
+            std::cout << "[ME-S4][t=" << now << "]  Attempt via V" << false_v3
+                      << (((false_v4 != UINT32_MAX) && (false_v4 != false_v3)) ? " and V" + std::to_string(false_v4) : "")
+                      << " REJECTED — controller already revoked" << std::endl;
+            me_log.flush();
+            return;
+        }
+    }
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -12988,13 +13337,19 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     // as ME_S3_InjectPhantomPaths (see PemEvent::has_physical_reporter comment).
     PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v3, false_v3,
                  v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
-    if (have_v4)
+    // Bug fix: see ME_S3_InjectPhantomPaths's matching comment — capture each
+    // call's alert before the next call overwrites the pem_last_alert global.
+    const bool alert_v3_s12 = pem_last_alert;
+    bool alert_v4_s12 = false;
+    if (have_v4) {
         PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, 9999u, false_v4, false_v4,
                      v1_id, v2_id, t, now, ctrlPos, v1Pos, v2Pos, true, UINT32_MAX, false);
+        alert_v4_s12 = pem_last_alert;
+    }
 
     // Step 1 (divergence-mechanism independence): see TTWS3_RunDetection's
     // identical fix and pem_divergence_true_positive's declaration comment.
-    const bool lwTgnAlert_s12 = pem_last_alert;
+    const bool lwTgnAlert_s12 = alert_v3_s12 || alert_v4_s12;
     std::string ctrl_div_log_s12;
     const bool divergenceConfirmed_s12 =
         PemControllerDivergenceGate(now, "ME-S4", ctrl_div_log_s12, v1_id, v2_id, now);
@@ -153414,6 +153769,37 @@ static int RoutingMain(int argc, char *argv[])
 //   }
 //   update_mobility();
 
+  // Bug fix (silent trace-loading failure): each mobility_scenario only has
+  // SUMO trace files for a fixed, discrete set of maxspeed values (urban:
+  // 0/10/20/30/40/50/60 only — no 70/80/90/100 traces exist on disk; rural:
+  // 0-100 step 10; highway: 0/10/30/50/70/90/110/130/150/170/190/210+).
+  // Previously, any maxspeed outside that scenario's set silently left
+  // trace_file empty, and this WHOLE trace-loading block below was just
+  // skipped with no message — g_sumo_trace_loaded stayed false, vehicles
+  // never moved from their initial placement, and every position-dependent
+  // scenario (TTW-S1..S4, BSHH-S1..S4, which all pick attacker/victim pairs
+  // via real SUMO positions) silently produced zero attack events for the
+  // ENTIRE run, with the only trace being a generic "no natural link break"
+  // message deep in each scenario's own log — not an obvious root cause.
+  // Confirmed: --mobility_scenario=0 (urban, the code default) with
+  // --maxspeed=80 (NOT the actual code default, which is 60 — see maxspeed's
+  // declaration comment "urban SUMO traces available up to 60 kmph") hit
+  // exactly this silent failure. Fail loudly instead.
+  if (routing_test == false && trace_file.empty())
+  {
+      std::cout << "[ERROR] No SUMO trace file available for mobility_scenario="
+                << mobility_scenario << " maxspeed=" << maxspeed << " km/h.\n"
+                << "        Valid --maxspeed values: mobility_scenario=0 (urban): "
+                   "0,10,20,30,40,50,60 only (default is 60, not 80)\n"
+                << "                                  mobility_scenario=1 (rural): "
+                   "0,10,20,...,100 (step 10)\n"
+                << "                                  mobility_scenario=2 (highway): "
+                   "0,10,30,50,70,90,110,130,150,170,190,210,...\n"
+                << "        Aborting instead of silently running with zero real "
+                   "vehicle positions/movement." << std::endl;
+      return 1;
+  }
+
   // Load SUMO positions and schedule exact position snaps at every waypoint so
   // NetAnim shows vehicles following the real SUMO road-network paths.
   //
@@ -155355,9 +155741,9 @@ static int RoutingMain(int argc, char *argv[])
           // exceeds TTW_COMM_RANGE. attacker_idx is NEVER expanded — only
           // victim assignment is decided here. Each victim is claimed by at
           // most one attacker (removed from the pool once assigned).
-          struct TtwAssignedPair { uint32_t attackerCidx; uint32_t victimCidx; double breakTime; };
           std::vector<TtwAssignedPair> assignedPairs;
           std::vector<uint32_t> remainingVictims = victim_idx;
+          std::vector<uint32_t> unmatchedAttackers;   // bug fix — see fallback below
           const double searchStart = TTW_HELLO_TIME + 0.5;
           const double searchEnd   = simTime - 3.0;   // leaves room for replay + 50ms detection
           const double stepSec     = 0.2;
@@ -155383,12 +155769,38 @@ static int RoutingMain(int argc, char *argv[])
               if (bestIdx < 0)
               {
                   std::cout << "[TTW-S1] no natural link break found for attacker V" << attacker_cidx
-                            << " in the assigned victim pool — skipping" << std::endl;
+                            << " in the assigned victim pool — trying fallback pairing" << std::endl;
+                  unmatchedAttackers.push_back(attacker_cidx);
                   continue;
               }
               uint32_t victim_cidx = remainingVictims[(size_t)bestIdx];
               remainingVictims.erase(remainingVictims.begin() + bestIdx);
               assignedPairs.push_back({attacker_cidx, victim_cidx, best.breakTime});
+          }
+
+          // Bug fix (attack_percentage attacker undercount): every attacker
+          // the genuine break search above couldn't match gets a fallback
+          // pairing here — still a real, in-range victim at HELLO time (never
+          // fabricated), just without requiring that SAME pair's trajectory
+          // to later cross kEffectiveReceptionRadius within the search
+          // window. Guarantees every requested attacker gets scheduled
+          // instead of silently vanishing when 200 vehicles over a short
+          // simTime don't produce enough genuine breaks to cover them all.
+          if (!unmatchedAttackers.empty())
+          {
+              std::vector<TtwAssignedPair> fallback = TtwFindFallbackPairs(
+                  unmatchedAttackers, remainingVictims, TTW_HELLO_TIME, searchEnd,
+                  kEffectiveReceptionRadius);
+              for (const auto& fp : fallback)
+              {
+                  std::cout << "[TTW-S1] fallback pairing: V" << fp.attackerCidx
+                            << " <-> V" << fp.victimCidx
+                            << " (no genuine break found; replaying at t=" << fp.breakTime
+                            << " using real position then)" << std::endl;
+                  auto it = std::find(remainingVictims.begin(), remainingVictims.end(), fp.victimCidx);
+                  if (it != remainingVictims.end()) remainingVictims.erase(it);
+                  assignedPairs.push_back(fp);
+              }
           }
 
           if (assignedPairs.empty())
@@ -155559,10 +155971,35 @@ static int RoutingMain(int argc, char *argv[])
       if (!g_sumo_trace_loaded)
           std::cout << "[TTW-S2] no SUMO trace loaded — cannot determine a natural link break; "
                        "attack skipped" << std::endl;
-      else
+      else {
           s2_assigned = TtwFindNaturalBreakPairs(
               s2_attacker_pool, s2_victim_pool, TTWS2_HELLO_TIME,
               TTWS2_HELLO_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+
+          // Bug fix (attack_percentage attacker undercount) — see
+          // TtwFindFallbackPairs's declaration comment. Every requested
+          // malicious RSU that the genuine break search left unmatched gets
+          // a fallback pairing here instead of silently vanishing.
+          std::set<uint32_t> s2_matchedAttackers, s2_claimedVictims;
+          for (const auto& ap : s2_assigned) {
+              s2_matchedAttackers.insert(ap.attackerCidx);
+              s2_claimedVictims.insert(ap.victimCidx);
+          }
+          std::vector<uint32_t> s2_unmatched, s2_remaining;
+          for (uint32_t a : s2_attacker_pool) if (!s2_matchedAttackers.count(a)) s2_unmatched.push_back(a);
+          for (uint32_t v : s2_victim_pool)   if (!s2_claimedVictims.count(v))   s2_remaining.push_back(v);
+          if (!s2_unmatched.empty()) {
+              std::vector<TtwAssignedPair> s2_fallback = TtwFindFallbackPairs(
+                  s2_unmatched, s2_remaining, TTWS2_HELLO_TIME, simTime - 3.0, kEffectiveReceptionRadius);
+              for (const auto& fp : s2_fallback) {
+                  std::cout << "[TTW-S2] fallback pairing: V" << fp.attackerCidx
+                            << " <-> V" << fp.victimCidx
+                            << " (no genuine break found; replaying at t=" << fp.breakTime
+                            << " using real position then)" << std::endl;
+                  s2_assigned.push_back(fp);
+              }
+          }
+      }
 
       for (const auto& ap : s2_assigned) {
           ttw_s2_all_pairs.push_back({Vehicle_Nodes.Get(ap.attackerCidx)->GetId(),
@@ -155731,10 +156168,33 @@ static int RoutingMain(int argc, char *argv[])
       if (!g_sumo_trace_loaded)
           std::cout << "[TTW-S3] no SUMO trace loaded — cannot determine a natural link break; "
                        "attack skipped" << std::endl;
-      else
+      else {
           s3_assigned = TtwFindNaturalBreakPairs(
               s3_attacker_pool, s3_victim_pool, TTWS3_HELLO_TIME,
               TTWS3_HELLO_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+
+          // Bug fix (attack_percentage attacker undercount) — see
+          // TtwFindFallbackPairs's declaration comment.
+          std::set<uint32_t> s3_matchedAttackers, s3_claimedVictims;
+          for (const auto& ap : s3_assigned) {
+              s3_matchedAttackers.insert(ap.attackerCidx);
+              s3_claimedVictims.insert(ap.victimCidx);
+          }
+          std::vector<uint32_t> s3_unmatched, s3_remaining;
+          for (uint32_t a : s3_attacker_pool) if (!s3_matchedAttackers.count(a)) s3_unmatched.push_back(a);
+          for (uint32_t v : s3_victim_pool)   if (!s3_claimedVictims.count(v))   s3_remaining.push_back(v);
+          if (!s3_unmatched.empty()) {
+              std::vector<TtwAssignedPair> s3_fallback = TtwFindFallbackPairs(
+                  s3_unmatched, s3_remaining, TTWS3_HELLO_TIME, simTime - 3.0, kEffectiveReceptionRadius);
+              for (const auto& fp : s3_fallback) {
+                  std::cout << "[TTW-S3] fallback pairing: V" << fp.attackerCidx
+                            << " <-> V" << fp.victimCidx
+                            << " (no genuine break found; replaying at t=" << fp.breakTime
+                            << " using real position then)" << std::endl;
+                  s3_assigned.push_back(fp);
+              }
+          }
+      }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 03 - TTW-S3 ATTACK CONFIGURED"   << std::endl;
@@ -155870,10 +156330,33 @@ static int RoutingMain(int argc, char *argv[])
       if (!g_sumo_trace_loaded)
           std::cout << "[TTW-S4] no SUMO trace loaded — cannot determine a natural link break; "
                        "attack skipped" << std::endl;
-      else
+      else {
           s4_assigned = TtwFindNaturalBreakPairs(
               s4_attacker_pool, s4_victim_pool, TTWS4_HELLO_TIME,
               TTWS4_HELLO_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+
+          // Bug fix (attack_percentage attacker undercount) — see
+          // TtwFindFallbackPairs's declaration comment.
+          std::set<uint32_t> s4_matchedAttackers, s4_claimedVictims;
+          for (const auto& ap : s4_assigned) {
+              s4_matchedAttackers.insert(ap.attackerCidx);
+              s4_claimedVictims.insert(ap.victimCidx);
+          }
+          std::vector<uint32_t> s4_unmatched, s4_remaining;
+          for (uint32_t a : s4_attacker_pool) if (!s4_matchedAttackers.count(a)) s4_unmatched.push_back(a);
+          for (uint32_t v : s4_victim_pool)   if (!s4_claimedVictims.count(v))   s4_remaining.push_back(v);
+          if (!s4_unmatched.empty()) {
+              std::vector<TtwAssignedPair> s4_fallback = TtwFindFallbackPairs(
+                  s4_unmatched, s4_remaining, TTWS4_HELLO_TIME, simTime - 3.0, kEffectiveReceptionRadius);
+              for (const auto& fp : s4_fallback) {
+                  std::cout << "[TTW-S4] fallback pairing: V" << fp.attackerCidx
+                            << " <-> V" << fp.victimCidx
+                            << " (no genuine break found; replaying at t=" << fp.breakTime
+                            << " using real position then)" << std::endl;
+                  s4_assigned.push_back(fp);
+              }
+          }
+      }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 04 - TTW-S4 ATTACK CONFIGURED"   << std::endl;
@@ -156018,21 +156501,26 @@ static int RoutingMain(int argc, char *argv[])
       static const double BSHH_S1_VICTIM_FORWARD_TIME = 10.010;
       static const double BSHH_S1_HIJACK_TIME         = 10.020;
 
-      // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
-      // search TTW-S1 uses) for pairs that are in range at the exchange time
-      // and later genuinely exceed TTW_COMM_RANGE, instead of forcing a lane
-      // geometry the SUMO waypoint schedule would silently overwrite and then
-      // replaying on a fixed 5s->10s clock regardless of real separation. The
-      // replay/hijack/victim-forward timestamps below are derived from each
-      // pair's real breakTime instead of a fixed absolute replay time.
+      // Bug fix (BSHH doesn't need a physical break): BSHH's attack premise
+      // (a stored heartbeat replayed later under the victim's identity) only
+      // requires the attacker to have genuinely captured a real heartbeat
+      // from the victim at the exchange time — unlike TTW, it never requires
+      // the attacker-victim LINK itself to later break. Requiring a later
+      // break (TtwFindNaturalBreakPairs, TTW-shaped) over-constrained BSHH
+      // and silently dropped many requested attackers who had a perfectly
+      // valid real neighbor at exchange time but whose real trajectory
+      // happened not to separate afterward. TtwFindMutualRangePairs only
+      // needs mutual range AT the exchange time (still real SUMO positions,
+      // never fabricated) — breakTime is set to the exchange time itself, so
+      // the replay/hijack/victim-forward timestamps below (which add a fixed
+      // margin on top of pair.breakTime) are unaffected.
       std::vector<TtwAssignedPair> bshh_s1_assigned;
       if (!g_sumo_trace_loaded) {
-          std::cout << "[BSHH-S1] no SUMO trace loaded — cannot determine a natural link break; "
+          std::cout << "[BSHH-S1] no SUMO trace loaded — cannot determine vehicle positions; "
                        "attack skipped" << std::endl;
       } else {
-          bshh_s1_assigned = TtwFindNaturalBreakPairs(
-              bshh_attacker_idx, bshh_victim_idx, BSHH_S1_EXCHANGE_TIME,
-              BSHH_S1_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+          bshh_s1_assigned = TtwFindMutualRangePairs(
+              bshh_attacker_idx, bshh_victim_idx, BSHH_S1_EXCHANGE_TIME, kEffectiveReceptionRadius);
       }
       const uint32_t bshh_s1_npairs = (uint32_t)bshh_s1_assigned.size();
       bshh_s1_total_pairs = bshh_s1_npairs;
@@ -156247,14 +156735,16 @@ static int RoutingMain(int argc, char *argv[])
           s6_victim_pool.begin(),
           s6_victim_pool.begin() + std::min((size_t)n_malicious_rsus2, s6_victim_pool.size()));
 
+      // Bug fix (BSHH doesn't need a physical break) — see BSHH-S1's matching
+      // comment. Switched from TtwFindNaturalBreakPairs to
+      // TtwFindMutualRangePairs (mutual range at exchange time only).
       std::vector<TtwAssignedPair> s6_assigned;
       if (!g_sumo_trace_loaded)
-          std::cout << "[BSHH-S2] no SUMO trace loaded — cannot determine a natural link break; "
+          std::cout << "[BSHH-S2] no SUMO trace loaded — cannot determine vehicle positions; "
                        "attack skipped" << std::endl;
       else
-          s6_assigned = TtwFindNaturalBreakPairs(
-              s6_attacker_pool, s6_victim_pool, BSHH_S2_EXCHANGE_TIME,
-              BSHH_S2_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+          s6_assigned = TtwFindMutualRangePairs(
+              s6_attacker_pool, s6_victim_pool, BSHH_S2_EXCHANGE_TIME, kEffectiveReceptionRadius);
 
       bshh_s2_total_pairs = (uint32_t)s6_assigned.size();
 
@@ -156398,14 +156888,15 @@ static int RoutingMain(int argc, char *argv[])
           s7_victim_pool.begin(),
           s7_victim_pool.begin() + std::min((size_t)s7_pool_target, s7_victim_pool.size()));
 
+      // Bug fix (BSHH doesn't need a physical break) — see BSHH-S1's matching
+      // comment.
       std::vector<TtwAssignedPair> s7_assigned;
       if (!g_sumo_trace_loaded)
-          std::cout << "[BSHH-S3] no SUMO trace loaded — cannot determine a natural link break; "
+          std::cout << "[BSHH-S3] no SUMO trace loaded — cannot determine vehicle positions; "
                        "attack skipped" << std::endl;
       else
-          s7_assigned = TtwFindNaturalBreakPairs(
-              s7_attacker_pool, s7_victim_pool, BSHH_S3_EXCHANGE_TIME,
-              BSHH_S3_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+          s7_assigned = TtwFindMutualRangePairs(
+              s7_attacker_pool, s7_victim_pool, BSHH_S3_EXCHANGE_TIME, kEffectiveReceptionRadius);
 
       bshh_s3_total_pairs = (uint32_t)s7_assigned.size();
 
@@ -156538,14 +157029,17 @@ static int RoutingMain(int argc, char *argv[])
           s8_victim_pool.begin(),
           s8_victim_pool.begin() + std::min((size_t)s8_pool_target, s8_victim_pool.size()));
 
+      // Bug fix (BSHH doesn't need a physical break) — see BSHH-S1's matching
+      // comment. s8_pool_target is already capped at RSU_Nodes.GetN() (the
+      // per-pair loop below indexes RSU_Nodes.Get(ci) directly with no
+      // bounds check), so that safety property is unaffected by this switch.
       std::vector<TtwAssignedPair> s8_assigned;
       if (!g_sumo_trace_loaded)
-          std::cout << "[BSHH-S4] no SUMO trace loaded — cannot determine a natural link break; "
+          std::cout << "[BSHH-S4] no SUMO trace loaded — cannot determine vehicle positions; "
                        "attack skipped" << std::endl;
       else
-          s8_assigned = TtwFindNaturalBreakPairs(
-              s8_attacker_pool, s8_victim_pool, BSHH_S4_EXCHANGE_TIME,
-              BSHH_S4_EXCHANGE_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+          s8_assigned = TtwFindMutualRangePairs(
+              s8_attacker_pool, s8_victim_pool, BSHH_S4_EXCHANGE_TIME, kEffectiveReceptionRadius);
 
       bshh_s4_total_pairs = (uint32_t)s8_assigned.size();
 

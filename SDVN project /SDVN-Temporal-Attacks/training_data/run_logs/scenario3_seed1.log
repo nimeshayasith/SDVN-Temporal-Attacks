@@ -1,3 +1,18 @@
+/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/bindings/python/wscript:321: SyntaxWarning: invalid escape sequence '\d'
+  m = re.match( "^castxml version (\d\.\d)(-)?(\w+)?", castxml_version_line)
+Waf: Entering directory `/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/build'
+Waf: Leaving directory `/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/build'
+'build' finished successfully (0.238s)
+AnimationInterface WARNING:Node:207 Does not have a mobility model. Use SetConstantPosition if it is stationary
+AnimationInterface WARNING:Node:207 Does not have a mobility model. Use SetConstantPosition if it is stationary
+[TTW-S3] Log opened: ttw_s3_attack_log.txt
+[AttackerModel] Sophistication probability: 0.5 (each S1/S2 injection independently rolls ‚Äî 0=all basic, 1=all sophisticated)
+[PEM] BSHH-S3 liveness W=7.2s  RSSI_min=-85 dBm  W_max=429 events
+[Ablation] Full stack enabled (no ablation flags set)
+[declare_attackers] scenario=3  pct=20  Random=0  N_Vehicles=200
+  TTW  nodes=20  controllers=1
+  BSHH nodes=0  controllers=0
+  ME   nodes=0  controllers=0
 Solution at controller cleared
 [SUMO] Peak-activity alignment: trace_t0=332s -> 101 vehicles active in the 30s sim window (was ~few at raw t=0)
 [SUMO] Trace time offset: 332s -> waypoints shifted to NS-3 t=0
@@ -43,6 +58,7 @@ Timeline (Option B ‚Äî real SUMO trajectories decide the break):
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked ‚Äî ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
+[LKH] Tree built: n=200  depth=8  nodes=512
 [CRYPTO] TETA-Guard pipeline initialised:
   [1] ML-DSA-87 / Dilithium5  ‚Äî SK_Vk long-term signing keys (Eq. 3.28)
       dilithium5_sign / dilithium5_verify / dilithium5_thresh
@@ -56,7 +72,209 @@ Timeline (Option B ‚Äî real SUMO trajectories decide the break):
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
+[KEM] Hybrid mode: Kyber-1024 (lattice/Module-LWE, Level 5) + HQC-5 (code-based/syndrome-decoding, Level 5) ‚Äî full two-assumption hybrid active.
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=e583288c
 [CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=a7864d37
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=08066ea8
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=fc2dd3a2
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=295a6c28
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=b93d8706
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=45aa3ce0
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=7858c3e7
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=aebe2926
+[KEM] V	  handshake OK  cert_valid=YES  K[0..3]=9e57da51
+[KEM] V
+  handshake OK  cert_valid=YES  K[0..3]=342f6a2f
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=878bd37a
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=d507204c
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=b2210f31
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=838a8876
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=e1bf4d25
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=36685692
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=4fb6c541
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=abb5df5c
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=ad79071c
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=00fc3df2
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=331fae5f
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=299d842e
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=52fda507
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=20411fc4
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=6a35f235
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=ec69c443
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=53c7372f
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=c5975db3
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=0760761a
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=b3cda79a
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=1245c4f1
+[KEM] V   handshake OK  cert_valid=YES  K[0..3]=7c6bf1d9
+[KEM] V!  handshake OK  cert_valid=YES  K[0..3]=be3bfdf1
+[KEM] V"  handshake OK  cert_valid=YES  K[0..3]=d6001679
+[KEM] V#  handshake OK  cert_valid=YES  K[0..3]=65d237e4
+[KEM] V$  handshake OK  cert_valid=YES  K[0..3]=9ebe8ee2
+[KEM] V%  handshake OK  cert_valid=YES  K[0..3]=8f629897
+[KEM] V&  handshake OK  cert_valid=YES  K[0..3]=c2672e95
+[KEM] V'  handshake OK  cert_valid=YES  K[0..3]=a42335bb
+[KEM] V(  handshake OK  cert_valid=YES  K[0..3]=64bbb0a7
+[KEM] V)  handshake OK  cert_valid=YES  K[0..3]=5113041c
+[KEM] V*  handshake OK  cert_valid=YES  K[0..3]=65242f97
+[KEM] V+  handshake OK  cert_valid=YES  K[0..3]=65a95871
+[KEM] V,  handshake OK  cert_valid=YES  K[0..3]=26eef292
+[KEM] V-  handshake OK  cert_valid=YES  K[0..3]=335922a3
+[KEM] V.  handshake OK  cert_valid=YES  K[0..3]=e26b83df
+[KEM] V/  handshake OK  cert_valid=YES  K[0..3]=25adf9c0
+[KEM] V0  handshake OK  cert_valid=YES  K[0..3]=e8b16b66
+[KEM] V1  handshake OK  cert_valid=YES  K[0..3]=34e6702b
+[KEM] V2  handshake OK  cert_valid=YES  K[0..3]=f144efc9
+[KEM] V3  handshake OK  cert_valid=YES  K[0..3]=4dcb01e6
+[KEM] V4  handshake OK  cert_valid=YES  K[0..3]=e8424fb4
+[KEM] V5  handshake OK  cert_valid=YES  K[0..3]=54cf57df
+[KEM] V6  handshake OK  cert_valid=YES  K[0..3]=f0828cca
+[KEM] V7  handshake OK  cert_valid=YES  K[0..3]=3f5cbc43
+[KEM] V8  handshake OK  cert_valid=YES  K[0..3]=dda4d6ce
+[KEM] V9  handshake OK  cert_valid=YES  K[0..3]=d4818f9e
+[KEM] V:  handshake OK  cert_valid=YES  K[0..3]=1557b6ef
+[KEM] V;  handshake OK  cert_valid=YES  K[0..3]=f4a59537
+[KEM] V<  handshake OK  cert_valid=YES  K[0..3]=aa94581a
+[KEM] V=  handshake OK  cert_valid=YES  K[0..3]=871f93df
+[KEM] V>  handshake OK  cert_valid=YES  K[0..3]=3501b89c
+[KEM] V?  handshake OK  cert_valid=YES  K[0..3]=824db2f2
+[KEM] V@  handshake OK  cert_valid=YES  K[0..3]=cc5d5ce3
+[KEM] VA  handshake OK  cert_valid=YES  K[0..3]=1deac7c2
+[KEM] VB  handshake OK  cert_valid=YES  K[0..3]=c884e32f
+[KEM] VC  handshake OK  cert_valid=YES  K[0..3]=9b309dd7
+[KEM] VD  handshake OK  cert_valid=YES  K[0..3]=405816ce
+[KEM] VE  handshake OK  cert_valid=YES  K[0..3]=64ddc887
+[KEM] VF  handshake OK  cert_valid=YES  K[0..3]=fd5b5c63
+[KEM] VG  handshake OK  cert_valid=YES  K[0..3]=d077062e
+[KEM] VH  handshake OK  cert_valid=YES  K[0..3]=229f1e6b
+[KEM] VI  handshake OK  cert_valid=YES  K[0..3]=c387bb8c
+[KEM] VJ  handshake OK  cert_valid=YES  K[0..3]=6d806d62
+[KEM] VK  handshake OK  cert_valid=YES  K[0..3]=664415aa
+[KEM] VL  handshake OK  cert_valid=YES  K[0..3]=fade0654
+[KEM] VM  handshake OK  cert_valid=YES  K[0..3]=78162829
+[KEM] VN  handshake OK  cert_valid=YES  K[0..3]=37eee02e
+[KEM] VO  handshake OK  cert_valid=YES  K[0..3]=6b1e9073
+[KEM] VP  handshake OK  cert_valid=YES  K[0..3]=8a011f50
+[KEM] VQ  handshake OK  cert_valid=YES  K[0..3]=f2583385
+[KEM] VR  handshake OK  cert_valid=YES  K[0..3]=f190bb06
+[KEM] VS  handshake OK  cert_valid=YES  K[0..3]=a50cf0f0
+[KEM] VT  handshake OK  cert_valid=YES  K[0..3]=2a61ca20
+[KEM] VU  handshake OK  cert_valid=YES  K[0..3]=40f91aac
+[KEM] VV  handshake OK  cert_valid=YES  K[0..3]=b56c47fc
+[KEM] VW  handshake OK  cert_valid=YES  K[0..3]=d1103864
+[KEM] VX  handshake OK  cert_valid=YES  K[0..3]=d5898cb3
+[KEM] VY  handshake OK  cert_valid=YES  K[0..3]=a3109b7f
+[KEM] VZ  handshake OK  cert_valid=YES  K[0..3]=19837ec6
+[KEM] V[  handshake OK  cert_valid=YES  K[0..3]=e75bb82f
+[KEM] V\  handshake OK  cert_valid=YES  K[0..3]=e8685f43
+[KEM] V]  handshake OK  cert_valid=YES  K[0..3]=1b203843
+[KEM] V^  handshake OK  cert_valid=YES  K[0..3]=53e6ce11
+[KEM] V_  handshake OK  cert_valid=YES  K[0..3]=d09256a9
+[KEM] V`  handshake OK  cert_valid=YES  K[0..3]=1961f2e2
+[KEM] Va  handshake OK  cert_valid=YES  K[0..3]=20a2bcf0
+[KEM] Vb  handshake OK  cert_valid=YES  K[0..3]=b6214ba0
+[KEM] Vc  handshake OK  cert_valid=YES  K[0..3]=5c50139d
+[KEM] Vd  handshake OK  cert_valid=YES  K[0..3]=e5409582
+[KEM] Ve  handshake OK  cert_valid=YES  K[0..3]=52a4c22e
+[KEM] Vf  handshake OK  cert_valid=YES  K[0..3]=802e4728
+[KEM] Vg  handshake OK  cert_valid=YES  K[0..3]=35e55bc6
+[KEM] Vh  handshake OK  cert_valid=YES  K[0..3]=d63508f2
+[KEM] Vi  handshake OK  cert_valid=YES  K[0..3]=a9430905
+[KEM] Vj  handshake OK  cert_valid=YES  K[0..3]=f2e816fe
+[KEM] Vk  handshake OK  cert_valid=YES  K[0..3]=b38170e6
+[KEM] Vl  handshake OK  cert_valid=YES  K[0..3]=fc4643dd
+[KEM] Vm  handshake OK  cert_valid=YES  K[0..3]=f2ccbb23
+[KEM] Vn  handshake OK  cert_valid=YES  K[0..3]=f0857f0f
+[KEM] Vo  handshake OK  cert_valid=YES  K[0..3]=95823125
+[KEM] Vp  handshake OK  cert_valid=YES  K[0..3]=a7dce62c
+[KEM] Vq  handshake OK  cert_valid=YES  K[0..3]=0e570847
+[KEM] Vr  handshake OK  cert_valid=YES  K[0..3]=765cacfb
+[KEM] Vs  handshake OK  cert_valid=YES  K[0..3]=09b86e42
+[KEM] Vt  handshake OK  cert_valid=YES  K[0..3]=a129e584
+[KEM] Vu  handshake OK  cert_valid=YES  K[0..3]=1b09cd06
+[KEM] Vv  handshake OK  cert_valid=YES  K[0..3]=18522dec
+[KEM] Vw  handshake OK  cert_valid=YES  K[0..3]=58eead3b
+[KEM] Vx  handshake OK  cert_valid=YES  K[0..3]=2750eb73
+[KEM] Vy  handshake OK  cert_valid=YES  K[0..3]=888d8642
+[KEM] Vz  handshake OK  cert_valid=YES  K[0..3]=31d8644b
+[KEM] V{  handshake OK  cert_valid=YES  K[0..3]=3a0a103d
+[KEM] V|  handshake OK  cert_valid=YES  K[0..3]=89df8063
+[KEM] V}  handshake OK  cert_valid=YES  K[0..3]=8940e9a5
+[KEM] V~  handshake OK  cert_valid=YES  K[0..3]=ab7b5ee5
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=758ea712
+[KEM] VÄ  handshake OK  cert_valid=YES  K[0..3]=d9ebf95b
+[KEM] VÅ  handshake OK  cert_valid=YES  K[0..3]=b11e3f18
+[KEM] VÇ  handshake OK  cert_valid=YES  K[0..3]=37afc5f9
+[KEM] VÉ  handshake OK  cert_valid=YES  K[0..3]=cc5dca5e
+[KEM] VÑ  handshake OK  cert_valid=YES  K[0..3]=5bbe3a31
+[KEM] VÖ  handshake OK  cert_valid=YES  K[0..3]=41f12005
+[KEM] VÜ  handshake OK  cert_valid=YES  K[0..3]=ace7611c
+[KEM] Vá  handshake OK  cert_valid=YES  K[0..3]=7188a53e
+[KEM] Và  handshake OK  cert_valid=YES  K[0..3]=9ddfa6c0
+[KEM] Vâ  handshake OK  cert_valid=YES  K[0..3]=dcef3c5d
+[KEM] Vä  handshake OK  cert_valid=YES  K[0..3]=408b0393
+[KEM] Vã  handshake OK  cert_valid=YES  K[0..3]=48c66cd7
+[KEM] Vå  handshake OK  cert_valid=YES  K[0..3]=0ee9e82f
+[KEM] Vç  handshake OK  cert_valid=YES  K[0..3]=3ff1e20c
+[KEM] Vé  handshake OK  cert_valid=YES  K[0..3]=5793ba12
+[KEM] Vè  handshake OK  cert_valid=YES  K[0..3]=f4906ea2
+[KEM] Vê  handshake OK  cert_valid=YES  K[0..3]=34f82e5e
+[KEM] Vë  handshake OK  cert_valid=YES  K[0..3]=d8f3eb51
+[KEM] Ví  handshake OK  cert_valid=YES  K[0..3]=11781822
+[KEM] Vì  handshake OK  cert_valid=YES  K[0..3]=023885ce
+[KEM] Vî  handshake OK  cert_valid=YES  K[0..3]=56586b2d
+[KEM] Vï  handshake OK  cert_valid=YES  K[0..3]=0e71aa2d
+[KEM] Vñ  handshake OK  cert_valid=YES  K[0..3]=69aa97ea
+[KEM] Vó  handshake OK  cert_valid=YES  K[0..3]=50009fad
+[KEM] Vò  handshake OK  cert_valid=YES  K[0..3]=8bbd9610
+[KEM] Vô  handshake OK  cert_valid=YES  K[0..3]=430bb822
+[KEM] Vö  handshake OK  cert_valid=YES  K[0..3]=2c5318a5
+[KEM] Võ  handshake OK  cert_valid=YES  K[0..3]=76d0d771
+[KEM] Vú  handshake OK  cert_valid=YES  K[0..3]=5f39ae4d
+[KEM] Vù  handshake OK  cert_valid=YES  K[0..3]=e5301ac2
+[KEM] Vû  handshake OK  cert_valid=YES  K[0..3]=7f978cb1
+[KEM] Vü  handshake OK  cert_valid=YES  K[0..3]=e0fdf1b8
+[KEM] V†  handshake OK  cert_valid=YES  K[0..3]=113abc29
+[KEM] V°  handshake OK  cert_valid=YES  K[0..3]=9750f4fb
+[KEM] V¢  handshake OK  cert_valid=YES  K[0..3]=f9cbe01d
+[KEM] V£  handshake OK  cert_valid=YES  K[0..3]=c1545ecc
+[KEM] V§  handshake OK  cert_valid=YES  K[0..3]=2113dfd2
+[KEM] V•  handshake OK  cert_valid=YES  K[0..3]=306df1e1
+[KEM] V¶  handshake OK  cert_valid=YES  K[0..3]=4c4f2b66
+[KEM] Vß  handshake OK  cert_valid=YES  K[0..3]=7a2d7793
+[KEM] V®  handshake OK  cert_valid=YES  K[0..3]=1b58b2c4
+[KEM] V©  handshake OK  cert_valid=YES  K[0..3]=b2b3ddec
+[KEM] V™  handshake OK  cert_valid=YES  K[0..3]=6ed75c44
+[KEM] V´  handshake OK  cert_valid=YES  K[0..3]=19896e5e
+[KEM] V¨  handshake OK  cert_valid=YES  K[0..3]=307eef01
+[KEM] V≠  handshake OK  cert_valid=YES  K[0..3]=d3fdc81d
+[KEM] VÆ  handshake OK  cert_valid=YES  K[0..3]=8c53c7bf
+[KEM] VØ  handshake OK  cert_valid=YES  K[0..3]=dfef5bcd
+[KEM] V∞  handshake OK  cert_valid=YES  K[0..3]=5855c8a9
+[KEM] V±  handshake OK  cert_valid=YES  K[0..3]=46670665
+[KEM] V≤  handshake OK  cert_valid=YES  K[0..3]=6b7326f6
+[KEM] V≥  handshake OK  cert_valid=YES  K[0..3]=87783802
+[KEM] V¥  handshake OK  cert_valid=YES  K[0..3]=025779cf
+[KEM] Vµ  handshake OK  cert_valid=YES  K[0..3]=0a46d024
+[KEM] V∂  handshake OK  cert_valid=YES  K[0..3]=c1f0404e
+[KEM] V∑  handshake OK  cert_valid=YES  K[0..3]=57b4c8ff
+[KEM] V∏  handshake OK  cert_valid=YES  K[0..3]=ea9ea8a6
+[KEM] Vπ  handshake OK  cert_valid=YES  K[0..3]=7b435a3b
+[KEM] V∫  handshake OK  cert_valid=YES  K[0..3]=92c44d3a
+[KEM] Vª  handshake OK  cert_valid=YES  K[0..3]=7887318d
+[KEM] Vº  handshake OK  cert_valid=YES  K[0..3]=4c63e27b
+[KEM] VΩ  handshake OK  cert_valid=YES  K[0..3]=524b5670
+[KEM] Væ  handshake OK  cert_valid=YES  K[0..3]=48b9abd8
+[KEM] Vø  handshake OK  cert_valid=YES  K[0..3]=a51a02e2
+[KEM] V¿  handshake OK  cert_valid=YES  K[0..3]=99581597
+[KEM] V¡  handshake OK  cert_valid=YES  K[0..3]=0797094b
+[KEM] V¬  handshake OK  cert_valid=YES  K[0..3]=436c093b
+[KEM] V√  handshake OK  cert_valid=YES  K[0..3]=650f5605
+[KEM] Vƒ  handshake OK  cert_valid=YES  K[0..3]=60fd84e0
+[KEM] V≈  handshake OK  cert_valid=YES  K[0..3]=5beb184b
+[KEM] V∆  handshake OK  cert_valid=YES  K[0..3]=92076745
+[KEM] V«  handshake OK  cert_valid=YES  K[0..3]=c1b832e4
 [KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
 [KEM][10ms budget] 199 handshakes timed: avg=36.2203 ms, max=82.6492 ms, over_budget=199/199 (budget=10 ms)
 [TGN] TGN_Init() ‚Äî online mode ‚Äî L_link=43  Œ≥_init=310.179  W_max=430
@@ -13813,6 +14031,4 @@ lte total packet size is 7058620
 lte total packet size is 7059520
 lte total packet size is 7060336
 lte total packet size is 7061152
-lte total packet size is 7061968
-lte total packet size is 7062784
-lte total packet size is 7063012
+lte total packet size
