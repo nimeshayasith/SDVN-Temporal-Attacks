@@ -155605,26 +155605,36 @@ static int RoutingMain(int argc, char *argv[])
       TTWS3_InitLog();
       is_malicious_controller = true;
 
-      // attack_percentage controls how many controllers are malicious.
-      // Each malicious controller poisons one victim pair.
+      // attack_percentage controls how many controllers are malicious
+      // (n_malicious_ctrl3 — display/coloring only, see below).
       uint32_t n_malicious_ctrl3 = (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
       if (n_malicious_ctrl3 < 1u)                       n_malicious_ctrl3 = 1u;
       if (n_malicious_ctrl3 > controller_Node.GetN())   n_malicious_ctrl3 = controller_Node.GetN();
       if (n_malicious_ctrl3 > N_Vehicles / 2)           n_malicious_ctrl3 = N_Vehicles / 2;
 
+      // Bug fix: victim-pair pool count used to be tied 1:1 to
+      // n_malicious_ctrl3 (controller_Node.GetN() is typically small, e.g. 4),
+      // capping TTW-S3 at a handful of events per run regardless of network
+      // size. Decoupled to a fixed pool (kControllerOriginVictimPoolSize=20,
+      // matching ME-S3/S4's identity-pool size) so a malicious controller
+      // internally poisons many pairs, not just one — n_malicious_ctrl3
+      // itself still solely reflects attack_percentage's intended meaning
+      // ("fraction of controllers compromised") for display/coloring below.
+      static const uint32_t kControllerOriginVictimPoolSize = 20;
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
-      // search TTW-S1 uses) for n_malicious_ctrl3 disjoint vehicle pairs that
-      // are in range at HELLO time and later genuinely exceed TTW_COMM_RANGE.
-      // Previously this forced consecutive-index pairs onto a scripted lane
-      // geometry that the SUMO waypoint schedule silently overwrote, so the
-      // controller's internal replay always claimed a "physical link break"
-      // that was never actually verified against real vehicle movement.
+      // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
+      // HELLO time and later genuinely exceed TTW_COMM_RANGE. Previously this
+      // forced consecutive-index pairs onto a scripted lane geometry that the
+      // SUMO waypoint schedule silently overwrote, so the controller's
+      // internal replay always claimed a "physical link break" that was
+      // never actually verified against real vehicle movement.
       std::vector<uint32_t> s3_victim_pool;
       for (uint32_t k = 0; k < N_Vehicles; k++) s3_victim_pool.push_back(k);
       AttackShuffleVector(s3_victim_pool);
+      const uint32_t s3_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
       std::vector<uint32_t> s3_attacker_pool(
           s3_victim_pool.begin(),
-          s3_victim_pool.begin() + std::min((size_t)n_malicious_ctrl3, s3_victim_pool.size()));
+          s3_victim_pool.begin() + std::min((size_t)s3_pool_target, s3_victim_pool.size()));
 
       std::vector<TtwAssignedPair> s3_assigned;
       if (!g_sumo_trace_loaded)
@@ -155739,26 +155749,31 @@ static int RoutingMain(int argc, char *argv[])
       is_malicious_controller = true;
       uint32_t rsu_id4 = RSU_Nodes.Get(0)->GetId();
 
-      // attack_percentage controls how many controllers are malicious.
-      // Each malicious controller poisons one victim pair via the RSU path.
+      // attack_percentage controls how many controllers are malicious
+      // (n_malicious_ctrl4 — display/coloring only, see below).
       uint32_t n_malicious_ctrl4 = (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
       if (n_malicious_ctrl4 < 1u)                       n_malicious_ctrl4 = 1u;
       if (n_malicious_ctrl4 > controller_Node.GetN())   n_malicious_ctrl4 = controller_Node.GetN();
       if (n_malicious_ctrl4 > N_Vehicles / 2)           n_malicious_ctrl4 = N_Vehicles / 2;
 
+      // Bug fix: decoupled victim-pair pool count from n_malicious_ctrl4 (see
+      // matching comment in the TTW-S3 block above) — fixed pool size instead
+      // of a handful tied to controller_Node.GetN().
+      static const uint32_t kControllerOriginVictimPoolSize = 20;
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
-      // search TTW-S1 uses) for n_malicious_ctrl4 disjoint vehicle pairs that
-      // are in range at HELLO time and later genuinely exceed TTW_COMM_RANGE.
-      // Previously this forced consecutive-index pairs onto a scripted lane
-      // geometry that the SUMO waypoint schedule silently overwrote, so the
-      // controller's internal replay always claimed a "physical link break"
-      // that was never actually verified against real vehicle movement.
+      // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
+      // HELLO time and later genuinely exceed TTW_COMM_RANGE. Previously this
+      // forced consecutive-index pairs onto a scripted lane geometry that the
+      // SUMO waypoint schedule silently overwrote, so the controller's
+      // internal replay always claimed a "physical link break" that was
+      // never actually verified against real vehicle movement.
       std::vector<uint32_t> s4_victim_pool;
       for (uint32_t k = 0; k < N_Vehicles; k++) s4_victim_pool.push_back(k);
       AttackShuffleVector(s4_victim_pool);
+      const uint32_t s4_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
       std::vector<uint32_t> s4_attacker_pool(
           s4_victim_pool.begin(),
-          s4_victim_pool.begin() + std::min((size_t)n_malicious_ctrl4, s4_victim_pool.size()));
+          s4_victim_pool.begin() + std::min((size_t)s4_pool_target, s4_victim_pool.size()));
 
       std::vector<TtwAssignedPair> s4_assigned;
       if (!g_sumo_trace_loaded)
@@ -156268,23 +156283,29 @@ static int RoutingMain(int argc, char *argv[])
 
       static const double BSHH_S3_EXCHANGE_TIME = 5.0;
 
+      // attack_percentage-derived n_malicious_ctrl3b is display/coloring only
+      // (see matching comment in the TTW-S3 block).
       uint32_t n_malicious_ctrl3b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
       if (n_malicious_ctrl3b < 1u)                      n_malicious_ctrl3b = 1u;
       if (n_malicious_ctrl3b > controller_Node.GetN()) n_malicious_ctrl3b = controller_Node.GetN();
       if (n_malicious_ctrl3b > N_Vehicles / 2)          n_malicious_ctrl3b = N_Vehicles / 2;
 
+      // Bug fix: decoupled victim-pair pool count from n_malicious_ctrl3b —
+      // fixed pool size instead of a handful tied to controller_Node.GetN().
+      static const uint32_t kControllerOriginVictimPoolSize = 20;
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
-      // search TTW-S1 uses) for n_malicious_ctrl3b disjoint vehicle pairs that
-      // are in range at the exchange time and later genuinely exceed
-      // TTW_COMM_RANGE, instead of forcing a lane geometry the SUMO waypoint
-      // schedule would silently overwrite and replaying on a fixed clock.
+      // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
+      // the exchange time and later genuinely exceed TTW_COMM_RANGE, instead
+      // of forcing a lane geometry the SUMO waypoint schedule would silently
+      // overwrite and replaying on a fixed clock.
       std::vector<uint32_t> s7_victim_pool;
       for (uint32_t k = 0; k < N_Vehicles; k++) s7_victim_pool.push_back(k);
       AttackShuffleVector(s7_victim_pool);
+      const uint32_t s7_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
       std::vector<uint32_t> s7_attacker_pool(
           s7_victim_pool.begin(),
-          s7_victim_pool.begin() + std::min((size_t)n_malicious_ctrl3b, s7_victim_pool.size()));
+          s7_victim_pool.begin() + std::min((size_t)s7_pool_target, s7_victim_pool.size()));
 
       std::vector<TtwAssignedPair> s7_assigned;
       if (!g_sumo_trace_loaded)
@@ -156394,6 +156415,10 @@ static int RoutingMain(int argc, char *argv[])
 
       static const double BSHH_S4_EXCHANGE_TIME = 5.0;
 
+      // attack_percentage-derived n_malicious_ctrl4b is display/coloring only
+      // (see matching comment in the TTW-S3 block). Its RSU_Nodes.GetN() cap
+      // stays — unrelated to attack_percentage scoping, it reflects the real
+      // hardware limit on distinct RSUs available.
       uint32_t n_malicious_ctrl4b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
       if (n_malicious_ctrl4b < 1u)                      n_malicious_ctrl4b = 1u;
@@ -156401,17 +156426,26 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl4b > N_Vehicles / 2)          n_malicious_ctrl4b = N_Vehicles / 2;
       if (n_malicious_ctrl4b > RSU_Nodes.GetN())        n_malicious_ctrl4b = RSU_Nodes.GetN();
 
+      // Bug fix: decoupled victim-pair pool count from n_malicious_ctrl4b —
+      // fixed pool size instead of a handful tied to controller_Node.GetN().
+      // Still capped by RSU_Nodes.GetN(): the per-pair loop below indexes
+      // RSU_Nodes.Get(ci) directly by pair index with no bounds check
+      // (rsu_ns3 = RSU_Nodes.Get(ci)->GetId()), so pair count must never
+      // exceed the real RSU count.
+      static const uint32_t kControllerOriginVictimPoolSize = 20;
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
-      // search TTW-S1 uses) for n_malicious_ctrl4b disjoint vehicle pairs that
-      // are in range at the exchange time and later genuinely exceed
-      // TTW_COMM_RANGE, instead of forcing a lane geometry the SUMO waypoint
-      // schedule would silently overwrite and replaying on a fixed clock.
+      // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
+      // the exchange time and later genuinely exceed TTW_COMM_RANGE, instead
+      // of forcing a lane geometry the SUMO waypoint schedule would silently
+      // overwrite and replaying on a fixed clock.
       std::vector<uint32_t> s8_victim_pool;
       for (uint32_t k = 0; k < N_Vehicles; k++) s8_victim_pool.push_back(k);
       AttackShuffleVector(s8_victim_pool);
+      uint32_t s8_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
+      if (s8_pool_target > RSU_Nodes.GetN()) s8_pool_target = RSU_Nodes.GetN();
       std::vector<uint32_t> s8_attacker_pool(
           s8_victim_pool.begin(),
-          s8_victim_pool.begin() + std::min((size_t)n_malicious_ctrl4b, s8_victim_pool.size()));
+          s8_victim_pool.begin() + std::min((size_t)s8_pool_target, s8_victim_pool.size()));
 
       std::vector<TtwAssignedPair> s8_assigned;
       if (!g_sumo_trace_loaded)
