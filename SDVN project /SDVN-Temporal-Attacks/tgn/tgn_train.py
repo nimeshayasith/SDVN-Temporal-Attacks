@@ -39,6 +39,7 @@ import math
 import os
 import struct
 import sys
+import time
 
 import numpy as np
 
@@ -408,7 +409,8 @@ def compute_metrics(labels: np.ndarray, scores: np.ndarray, theta: float):
         auc = roc_auc_score(labels, scores)
     except ValueError:
         auc = 0.5
-    return tp, tn, fp, fn, mcc, auc
+    acc = (tp + tn) / len(labels) if len(labels) > 0 else 0.0
+    return tp, tn, fp, fn, mcc, auc, acc
 
 
 # ---------------------------------------------------------------------------
@@ -590,7 +592,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
 
                 # Use 0.5 for display; early stopping uses best MCC over full theta sweep.
                 monitor_theta = 0.5 if args.theta < 0 else args.theta
-                tp, tn, fp, fn, mcc, auc = compute_metrics(va_l, va_scores, monitor_theta)
+                tp, tn, fp, fn, mcc, auc, acc = compute_metrics(va_l, va_scores, monitor_theta)
 
                 # Find best val_MCC across all thresholds (the criterion we actually care about)
                 best_mcc_this_epoch = -1.0
@@ -616,7 +618,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
                 print(f"  Epoch {epoch:4d}/{args.epochs}  loss={loss.item():.4f}"
                       f"  bce={bce_loss.item():.4f}{gap_str}"
                       f"  val_MCC@0.5={mcc:.3f}  val_bestMCC={best_mcc_this_epoch:.3f}"
-                      f"  (θ={best_th_this_epoch:.3f})  val_AUROC={auc:.3f}"
+                      f"  (θ={best_th_this_epoch:.3f})  val_AUROC={auc:.3f}  val_ACC={acc:.3f}"
                       f"  TP={tp} TN={tn} FP={fp} FN={fn}")
 
                 # Primary key: best val_MCC; secondary key: val_AUROC (tiebreaker for equal MCC)
@@ -742,21 +744,41 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
 
     # Test evaluation
     a, b = slices["test"]
-    te_f  = tt(feats[a:b])
-    te_n  = tt(nids[a:b],  torch.int64)
-    te_ls = tt(lsrcs[a:b], torch.int64)
-    te_ld = tt(ldsts[a:b], torch.int64)
-    te_fr = tt(fresh[a:b])
-    te_l  = labels[a:b]
+    te_f   = tt(feats[a:b])
+    te_n   = tt(nids[a:b],  torch.int64)
+    te_ls  = tt(lsrcs[a:b], torch.int64)
+    te_ld  = tt(ldsts[a:b], torch.int64)
+    te_fr  = tt(fresh[a:b])
+    te_l   = labels[a:b]
+    te_var = variant_label[a:b]
 
     model.eval()
     with torch.no_grad():
-        te_scores = torch.sigmoid(
-            model.forward_sequence(te_f, te_n, te_ls, te_ld, te_fr)[0]).cpu().numpy()
+        te_bin_logits, te_cls_logits = model.forward_sequence(te_f, te_n, te_ls, te_ld, te_fr)
+        te_scores = torch.sigmoid(te_bin_logits).cpu().numpy()
+        te_cls_pred = te_cls_logits.argmax(dim=1).cpu().numpy()
 
-    tp, tn, fp, fn, mcc, auc = compute_metrics(te_l, te_scores, args.theta)
-    print(f"\n[TGN] Test  MCC={mcc:.3f}  AUROC={auc:.3f}  "
+    tp, tn, fp, fn, mcc, auc, acc = compute_metrics(te_l, te_scores, args.theta)
+    print(f"\n[TGN] Test  MCC={mcc:.3f}  AUROC={auc:.3f}  ACC={acc:.3f}  "
           f"TP={tp} TN={tn} FP={fp} FN={fn}")
+
+    # Variant (TTW/BSHH/ME) classification head — Section 4.7 / metric M9.
+    # Only meaningful on attack rows (variant_label >= 0; benign rows are -1
+    # and excluded, same as the training-time CE loss mask).
+    var_mask = te_var >= 0
+    if var_mask.sum() > 0:
+        var_true = te_var[var_mask]
+        var_pred = te_cls_pred[var_mask]
+        var_acc  = float((var_true == var_pred).mean())
+        try:
+            from sklearn.metrics import f1_score
+            var_f1_macro = float(f1_score(var_true, var_pred, average="macro", zero_division=0))
+        except Exception:
+            var_f1_macro = float("nan")
+        print(f"[TGN] Test variant classifier (TTW/BSHH/ME)  "
+              f"ACC={var_acc:.3f}  F1_macro={var_f1_macro:.3f}  n={int(var_mask.sum())}")
+    else:
+        print("[TGN] Test variant classifier: no attack rows in test split — skipped")
 
     return model
 
@@ -816,7 +838,18 @@ def main():
                     help="Filter to one attack_scenario; -1 = all (default: -1)")
     ap.add_argument("--output",   default="tgn_weights.bin",
                     help="Output binary file (default: tgn_weights.bin)")
+    ap.add_argument("--seed",     type=int,   default=-1,
+                    help="Random seed for weight init/restarts/split-tiebreaks. "
+                         "-1 = unseeded (default; non-reproducible across runs, "
+                         "matching prior behavior).")
     args = ap.parse_args()
+
+    if args.seed >= 0:
+        torch.manual_seed(args.seed)
+        np.random.seed(args.seed)
+        print(f"[TGN] Seed fixed: {args.seed}")
+    else:
+        print("[TGN] No seed fixed (--seed not passed) — runs are not reproducible.")
 
     # γ calibration: γ = (L_link/2) / (T_b · ln2)  — Eq 9.3
     if args.gamma < 0:
@@ -876,7 +909,11 @@ def main():
             print(f"        scenario {int(sc):2d}: {len(grp):5d} events "
                   f"({n_a} attack, {len(grp)-n_a} benign)")
 
+    train_start = time.time()
     model = train(df, args)
+    train_elapsed_s = time.time() - train_start
+    print(f"[TGN] Wall-clock training time: {train_elapsed_s:.1f}s "
+          f"({train_elapsed_s/60.0:.2f} min)")
     export_weights(model, args.output)
 
     print(f"\n[TGN] Complete.  Deploy with (use the SAME simTime/N_Vehicles/mobility_scenario")

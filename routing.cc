@@ -6498,24 +6498,48 @@ PemEvaluateEvent(PemEvent& event)
         // Eq. 3.11 — ME-S3: reporter position is outside communication range of
         // the reported link endpoints OR synthetic RSSI is below signal floor.
         //   V_k ∈ R(e_ij) ∧ (d(pos_Vk, e_ij) > r_comm  ∨  RSSI_Vk < RSSI_min)
+        //
+        // Self-report exemption — a node reporting its OWN directly-observed
+        // link (physical_sender_id is one of the link's own two endpoints) is
+        // asserting a firsthand observation, not witnessing a third party's
+        // link over radio (Section 3.11's threat model: ME's reporter
+        // population R(e_ij,t) is built from third-party witnesses like V3/V4
+        // echoing a V1-V2 link, never V1/V2 themselves). There is no "distance
+        // to the link" or "received signal from someone else" question to ask
+        // for a firsthand report at all, so BOTH conditions are exempt, not
+        // just the RSSI one.
+        //
+        // Bug fix: this must key on physical_sender_id (matching
+        // is_self_report_me2's identical exemption a few lines above — the
+        // established convention in this file, and in teta_guard_filter.h's
+        // matching ME quorum witness-set exemption), NOT reporter_id.
+        // reporter_id legitimately means something different in RSU-relay
+        // scenarios (TTW-S4/ME-S4/BSHH-S4): e.g. TTWS4_VehiclesToRSU emits
+        // PemEmitEvent(..., v1_id, v1_id, rsu_id, v1_id, v2_id, ...) — a
+        // genuine V1-self-report relayed via the RSU — where reporter_id is
+        // the RSU (a legitimate aggregation identity), not the vehicle making
+        // the claim. Keying the self-report test on reporter_id therefore
+        // missed every RSU-relayed firsthand report, misclassifying it as a
+        // third-party witness claim and evaluating the physical-consistency
+        // check against the RSU's own RSSI/position — which a relaying RSU
+        // has no reason to satisfy for a link between two OTHER vehicles,
+        // producing exactly the false positives seen in TTW-S4 (e.g. V94/V118
+        // mutual HELLO exchange flagged as ME-S3, sig[8]).
+        const bool is_self_report_me3 =
+            (event.physical_sender_id == event.link_src_id) ||
+            (event.physical_sender_id == event.link_dst_id);
+
         // Condition 1: GPS-attested position is outside communication range.
         // Uses g_rcomm (runtime-overridable via --rcomm; default = TTW_COMM_RANGE = 300m).
-        const bool positionOutOfRange = (nearestDistance > g_rcomm);
+        // Exempt for self-reports (see above) — distance-to-self is always 0.
+        const bool positionOutOfRange = !is_self_report_me3 && (nearestDistance > g_rcomm);
 
         // Condition 2 (signal plausibility): genuine PHY-measured RSSI from
         // Rx()'s real MonitorSnifferRx SignalNoiseDbm, NOT derived from the
         // same distance used for condition 1 above — an attacker who spoofs
         // condition (ii) (claimed GPS position) gains no advantage on this
         // check, since it reflects what the receiver's radio actually heard.
-        //
-        // A self-report (reporter IS one of the link's own two endpoints) is
-        // exempt: it is asserting its own directly-observed link, not
-        // witnessing a third party over radio, so there is no "received
-        // signal from someone else" to check — condition (ii)'s distance-to-
-        // self is always 0 for the same reason.
-        const bool is_self_report_me3 =
-            (event.reporter_id == event.link_src_id) ||
-            (event.reporter_id == event.link_dst_id);
+        // Exempt for self-reports for the same reason as condition 1.
         bool rssiTooWeak;
         if (is_self_report_me3)
         {

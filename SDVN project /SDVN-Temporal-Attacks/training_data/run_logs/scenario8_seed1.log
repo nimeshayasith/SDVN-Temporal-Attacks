@@ -1,3 +1,18 @@
+/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/bindings/python/wscript:321: SyntaxWarning: invalid escape sequence '\d'
+  m = re.match( "^castxml version (\d\.\d)(-)?(\w+)?", castxml_version_line)
+Waf: Entering directory `/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/build'
+Waf: Leaving directory `/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/build'
+'build' finished successfully (0.188s)
+AnimationInterface WARNING:Node:271 Does not have a mobility model. Use SetConstantPosition if it is stationary
+AnimationInterface WARNING:Node:271 Does not have a mobility model. Use SetConstantPosition if it is stationary
+[BSHH-S4] Log opened: bshh_s4_attack_log.txt
+[AttackerModel] Sophistication probability: 0.5 (each S1/S2 injection independently rolls ‚Äî 0=all basic, 1=all sophisticated)
+[PEM] BSHH-S3 liveness W=7.2s  RSSI_min=-85 dBm  W_max=429 events
+[Ablation] Full stack enabled (no ablation flags set)
+[declare_attackers] scenario=8  pct=20  Random=0  N_Vehicles=200
+  TTW  nodes=0  controllers=0
+  BSHH nodes=20  controllers=1
+  ME   nodes=0  controllers=0
 Solution at controller cleared
 [SUMO] Peak-activity alignment: trace_t0=332s -> 101 vehicles active in the 30s sim window (was ~few at raw t=0)
 [SUMO] Trace time offset: 332s -> waypoints shifted to NS-3 t=0
@@ -14,6 +29,7 @@ Replay timing         : Option B ‚Äî 2s after each pair's real SUMO break
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked ‚Äî ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
+[LKH] Tree built: n=200  depth=8  nodes=512
 [CRYPTO] TETA-Guard pipeline initialised:
   [1] ML-DSA-87 / Dilithium5  ‚Äî SK_Vk long-term signing keys (Eq. 3.28)
       dilithium5_sign / dilithium5_verify / dilithium5_thresh
@@ -27,209 +43,411 @@ Replay timing         : Option B ‚Äî 2s after each pair's real SUMO break
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
+[KEM] Hybrid mode: Kyber-1024 (lattice/Module-LWE, Level 5) + HQC-5 (code-based/syndrome-decoding, Level 5) ‚Äî full two-assumption hybrid active.
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=d26dacc3
 [CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=c3906525
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=84b4630e
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=043e9ae2
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=de17b299
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=79b992e5
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=2c8859e8
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=8bee1f78
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=ea1f3a8e
+[KEM] V	  handshake OK  cert_valid=YES  K[0..3]=7eefea3e
+[KEM] V
+  handshake OK  cert_valid=YES  K[0..3]=cc80ff2d
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=572bc014
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=6850ddd4
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=a0a5c2cf
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=6b142dfd
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=1b82d02e
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=fec6f7ab
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=78d30e1c
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=ca174d2f
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=567b129b
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=a914e235
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=bbdc8014
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=68238e81
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=15048f4b
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=a445f702
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=e07f8869
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=2d7d2df5
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=88cf52d8
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=fa4e8896
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=ccc246e3
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=7f04bf9a
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=e4890b2c
+[KEM] V   handshake OK  cert_valid=YES  K[0..3]=623fc059
+[KEM] V!  handshake OK  cert_valid=YES  K[0..3]=f4411a0b
+[KEM] V"  handshake OK  cert_valid=YES  K[0..3]=a5bc989c
+[KEM] V#  handshake OK  cert_valid=YES  K[0..3]=af26e864
+[KEM] V$  handshake OK  cert_valid=YES  K[0..3]=55c00eb9
+[KEM] V%  handshake OK  cert_valid=YES  K[0..3]=405d2fa6
+[KEM] V&  handshake OK  cert_valid=YES  K[0..3]=14465bc5
+[KEM] V'  handshake OK  cert_valid=YES  K[0..3]=cc79457b
+[KEM] V(  handshake OK  cert_valid=YES  K[0..3]=162ba3cd
+[KEM] V)  handshake OK  cert_valid=YES  K[0..3]=7976f8a8
+[KEM] V*  handshake OK  cert_valid=YES  K[0..3]=5a486027
+[KEM] V+  handshake OK  cert_valid=YES  K[0..3]=530051fa
+[KEM] V,  handshake OK  cert_valid=YES  K[0..3]=a3c5e342
+[KEM] V-  handshake OK  cert_valid=YES  K[0..3]=c542d1d6
+[KEM] V.  handshake OK  cert_valid=YES  K[0..3]=42e5eed4
+[KEM] V/  handshake OK  cert_valid=YES  K[0..3]=0dcc91a5
+[KEM] V0  handshake OK  cert_valid=YES  K[0..3]=039a3880
+[KEM] V1  handshake OK  cert_valid=YES  K[0..3]=f96f9396
+[KEM] V2  handshake OK  cert_valid=YES  K[0..3]=67ae64ca
+[KEM] V3  handshake OK  cert_valid=YES  K[0..3]=e1b5661a
+[KEM] V4  handshake OK  cert_valid=YES  K[0..3]=50985226
+[KEM] V5  handshake OK  cert_valid=YES  K[0..3]=9a1cec90
+[KEM] V6  handshake OK  cert_valid=YES  K[0..3]=e69b6f51
+[KEM] V7  handshake OK  cert_valid=YES  K[0..3]=e23a4ef5
+[KEM] V8  handshake OK  cert_valid=YES  K[0..3]=7b093de6
+[KEM] V9  handshake OK  cert_valid=YES  K[0..3]=ab948233
+[KEM] V:  handshake OK  cert_valid=YES  K[0..3]=d43ff717
+[KEM] V;  handshake OK  cert_valid=YES  K[0..3]=c173e061
+[KEM] V<  handshake OK  cert_valid=YES  K[0..3]=75d03944
+[KEM] V=  handshake OK  cert_valid=YES  K[0..3]=1d0bd558
+[KEM] V>  handshake OK  cert_valid=YES  K[0..3]=16ba7a4c
+[KEM] V?  handshake OK  cert_valid=YES  K[0..3]=d72c1902
+[KEM] V@  handshake OK  cert_valid=YES  K[0..3]=8c279088
+[KEM] VA  handshake OK  cert_valid=YES  K[0..3]=765285d6
+[KEM] VB  handshake OK  cert_valid=YES  K[0..3]=d49fd9e5
+[KEM] VC  handshake OK  cert_valid=YES  K[0..3]=26be0a9f
+[KEM] VD  handshake OK  cert_valid=YES  K[0..3]=f1077b10
+[KEM] VE  handshake OK  cert_valid=YES  K[0..3]=a0841a8b
+[KEM] VF  handshake OK  cert_valid=YES  K[0..3]=ba6d0df2
+[KEM] VG  handshake OK  cert_valid=YES  K[0..3]=090296a0
+[KEM] VH  handshake OK  cert_valid=YES  K[0..3]=77e00817
+[KEM] VI  handshake OK  cert_valid=YES  K[0..3]=7a493f48
+[KEM] VJ  handshake OK  cert_valid=YES  K[0..3]=dbdcca79
+[KEM] VK  handshake OK  cert_valid=YES  K[0..3]=dc8e6bbe
+[KEM] VL  handshake OK  cert_valid=YES  K[0..3]=fb1afefe
+[KEM] VM  handshake OK  cert_valid=YES  K[0..3]=957eca3d
+[KEM] VN  handshake OK  cert_valid=YES  K[0..3]=076a242d
+[KEM] VO  handshake OK  cert_valid=YES  K[0..3]=2a573ae6
+[KEM] VP  handshake OK  cert_valid=YES  K[0..3]=3d94b3ef
+[KEM] VQ  handshake OK  cert_valid=YES  K[0..3]=50a8229b
+[KEM] VR  handshake OK  cert_valid=YES  K[0..3]=593ef82e
+[KEM] VS  handshake OK  cert_valid=YES  K[0..3]=4b5e8c16
+[KEM] VT  handshake OK  cert_valid=YES  K[0..3]=b6a00312
+[KEM] VU  handshake OK  cert_valid=YES  K[0..3]=f1ad068d
+[KEM] VV  handshake OK  cert_valid=YES  K[0..3]=71f47c20
+[KEM] VW  handshake OK  cert_valid=YES  K[0..3]=63549843
+[KEM] VX  handshake OK  cert_valid=YES  K[0..3]=4129bed5
+[KEM] VY  handshake OK  cert_valid=YES  K[0..3]=d08c069f
+[KEM] VZ  handshake OK  cert_valid=YES  K[0..3]=8dbae396
+[KEM] V[  handshake OK  cert_valid=YES  K[0..3]=144e475f
+[KEM] V\  handshake OK  cert_valid=YES  K[0..3]=659b5908
+[KEM] V]  handshake OK  cert_valid=YES  K[0..3]=1559b647
+[KEM] V^  handshake OK  cert_valid=YES  K[0..3]=245ff7b8
+[KEM] V_  handshake OK  cert_valid=YES  K[0..3]=bc32495e
+[KEM] V`  handshake OK  cert_valid=YES  K[0..3]=b8442574
+[KEM] Va  handshake OK  cert_valid=YES  K[0..3]=b3de645e
+[KEM] Vb  handshake OK  cert_valid=YES  K[0..3]=6fab261b
+[KEM] Vc  handshake OK  cert_valid=YES  K[0..3]=79ca07bc
+[KEM] Vd  handshake OK  cert_valid=YES  K[0..3]=803efd94
+[KEM] Ve  handshake OK  cert_valid=YES  K[0..3]=b09529fa
+[KEM] Vf  handshake OK  cert_valid=YES  K[0..3]=1c903ee3
+[KEM] Vg  handshake OK  cert_valid=YES  K[0..3]=69c9c761
+[KEM] Vh  handshake OK  cert_valid=YES  K[0..3]=d8fa9cef
+[KEM] Vi  handshake OK  cert_valid=YES  K[0..3]=b0fc5fb6
+[KEM] Vj  handshake OK  cert_valid=YES  K[0..3]=fb062837
+[KEM] Vk  handshake OK  cert_valid=YES  K[0..3]=1762d91a
+[KEM] Vl  handshake OK  cert_valid=YES  K[0..3]=04d9d53a
+[KEM] Vm  handshake OK  cert_valid=YES  K[0..3]=f2f5c66c
+[KEM] Vn  handshake OK  cert_valid=YES  K[0..3]=f6abd9c5
+[KEM] Vo  handshake OK  cert_valid=YES  K[0..3]=329f8c86
+[KEM] Vp  handshake OK  cert_valid=YES  K[0..3]=f3a14543
+[KEM] Vq  handshake OK  cert_valid=YES  K[0..3]=b9e3d6ac
+[KEM] Vr  handshake OK  cert_valid=YES  K[0..3]=0b9c0ee2
+[KEM] Vs  handshake OK  cert_valid=YES  K[0..3]=5390e299
+[KEM] Vt  handshake OK  cert_valid=YES  K[0..3]=1eef6b72
+[KEM] Vu  handshake OK  cert_valid=YES  K[0..3]=d5ff74f2
+[KEM] Vv  handshake OK  cert_valid=YES  K[0..3]=3e3544ed
+[KEM] Vw  handshake OK  cert_valid=YES  K[0..3]=92cbb32f
+[KEM] Vx  handshake OK  cert_valid=YES  K[0..3]=2d8de246
+[KEM] Vy  handshake OK  cert_valid=YES  K[0..3]=64796e28
+[KEM] Vz  handshake OK  cert_valid=YES  K[0..3]=b1d68e26
+[KEM] V{  handshake OK  cert_valid=YES  K[0..3]=5e0cb33e
+[KEM] V|  handshake OK  cert_valid=YES  K[0..3]=4b1ec148
+[KEM] V}  handshake OK  cert_valid=YES  K[0..3]=bde4b8c5
+[KEM] V~  handshake OK  cert_valid=YES  K[0..3]=15065105
+[KEM] V  handshake OK  cert_valid=YES  K[0..3]=33d9ef9a
+[KEM] VÄ  handshake OK  cert_valid=YES  K[0..3]=ac16f07b
+[KEM] VÅ  handshake OK  cert_valid=YES  K[0..3]=292067f5
+[KEM] VÇ  handshake OK  cert_valid=YES  K[0..3]=c40a791a
+[KEM] VÉ  handshake OK  cert_valid=YES  K[0..3]=18e1b089
+[KEM] VÑ  handshake OK  cert_valid=YES  K[0..3]=2e417ea4
+[KEM] VÖ  handshake OK  cert_valid=YES  K[0..3]=095a611d
+[KEM] VÜ  handshake OK  cert_valid=YES  K[0..3]=e2b5cc64
+[KEM] Vá  handshake OK  cert_valid=YES  K[0..3]=1d5fca3c
+[KEM] Và  handshake OK  cert_valid=YES  K[0..3]=5e5c08cb
+[KEM] Vâ  handshake OK  cert_valid=YES  K[0..3]=a19028d9
+[KEM] Vä  handshake OK  cert_valid=YES  K[0..3]=90c4d495
+[KEM] Vã  handshake OK  cert_valid=YES  K[0..3]=f0c7484e
+[KEM] Vå  handshake OK  cert_valid=YES  K[0..3]=a4d87ed3
+[KEM] Vç  handshake OK  cert_valid=YES  K[0..3]=2493191c
+[KEM] Vé  handshake OK  cert_valid=YES  K[0..3]=2ea1f7f7
+[KEM] Vè  handshake OK  cert_valid=YES  K[0..3]=aa4262f8
+[KEM] Vê  handshake OK  cert_valid=YES  K[0..3]=f45e2f5e
+[KEM] Vë  handshake OK  cert_valid=YES  K[0..3]=2466dc19
+[KEM] Ví  handshake OK  cert_valid=YES  K[0..3]=167fc63b
+[KEM] Vì  handshake OK  cert_valid=YES  K[0..3]=3cdcfa09
+[KEM] Vî  handshake OK  cert_valid=YES  K[0..3]=c67811a1
+[KEM] Vï  handshake OK  cert_valid=YES  K[0..3]=b6f7b362
+[KEM] Vñ  handshake OK  cert_valid=YES  K[0..3]=890adfa7
+[KEM] Vó  handshake OK  cert_valid=YES  K[0..3]=ccf25e8f
+[KEM] Vò  handshake OK  cert_valid=YES  K[0..3]=493f9685
+[KEM] Vô  handshake OK  cert_valid=YES  K[0..3]=04d5ba8c
+[KEM] Vö  handshake OK  cert_valid=YES  K[0..3]=79dd650c
+[KEM] Võ  handshake OK  cert_valid=YES  K[0..3]=51edd3d7
+[KEM] Vú  handshake OK  cert_valid=YES  K[0..3]=99529d57
+[KEM] Vù  handshake OK  cert_valid=YES  K[0..3]=b4d8f792
+[KEM] Vû  handshake OK  cert_valid=YES  K[0..3]=4a87b135
+[KEM] Vü  handshake OK  cert_valid=YES  K[0..3]=05f1a938
+[KEM] V†  handshake OK  cert_valid=YES  K[0..3]=b1da3fe2
+[KEM] V°  handshake OK  cert_valid=YES  K[0..3]=2e7f0ae2
+[KEM] V¢  handshake OK  cert_valid=YES  K[0..3]=c969b6b2
+[KEM] V£  handshake OK  cert_valid=YES  K[0..3]=927db3fd
+[KEM] V§  handshake OK  cert_valid=YES  K[0..3]=f9e80989
+[KEM] V•  handshake OK  cert_valid=YES  K[0..3]=e353860a
+[KEM] V¶  handshake OK  cert_valid=YES  K[0..3]=6b675e95
+[KEM] Vß  handshake OK  cert_valid=YES  K[0..3]=8a0de6a8
+[KEM] V®  handshake OK  cert_valid=YES  K[0..3]=15ddf365
+[KEM] V©  handshake OK  cert_valid=YES  K[0..3]=1dd5a14f
+[KEM] V™  handshake OK  cert_valid=YES  K[0..3]=366dc7f7
+[KEM] V´  handshake OK  cert_valid=YES  K[0..3]=593015a7
+[KEM] V¨  handshake OK  cert_valid=YES  K[0..3]=d2616c95
+[KEM] V≠  handshake OK  cert_valid=YES  K[0..3]=e8ec2a04
+[KEM] VÆ  handshake OK  cert_valid=YES  K[0..3]=8bd6846d
+[KEM] VØ  handshake OK  cert_valid=YES  K[0..3]=094d8120
+[KEM] V∞  handshake OK  cert_valid=YES  K[0..3]=d5094c5b
+[KEM] V±  handshake OK  cert_valid=YES  K[0..3]=2c4b7da6
+[KEM] V≤  handshake OK  cert_valid=YES  K[0..3]=c7db4368
+[KEM] V≥  handshake OK  cert_valid=YES  K[0..3]=0ed0d441
+[KEM] V¥  handshake OK  cert_valid=YES  K[0..3]=fc3c8d3e
+[KEM] Vµ  handshake OK  cert_valid=YES  K[0..3]=592f1c45
+[KEM] V∂  handshake OK  cert_valid=YES  K[0..3]=dce896b8
+[KEM] V∑  handshake OK  cert_valid=YES  K[0..3]=e08258e0
+[KEM] V∏  handshake OK  cert_valid=YES  K[0..3]=225f7dbf
+[KEM] Vπ  handshake OK  cert_valid=YES  K[0..3]=68b445dc
+[KEM] V∫  handshake OK  cert_valid=YES  K[0..3]=7cbfa035
+[KEM] Vª  handshake OK  cert_valid=YES  K[0..3]=b31b1d25
+[KEM] Vº  handshake OK  cert_valid=YES  K[0..3]=7528fa1e
+[KEM] VΩ  handshake OK  cert_valid=YES  K[0..3]=78788fcf
+[KEM] Væ  handshake OK  cert_valid=YES  K[0..3]=4c76a2e2
+[KEM] Vø  handshake OK  cert_valid=YES  K[0..3]=3e69661d
+[KEM] V¿  handshake OK  cert_valid=YES  K[0..3]=3cf550e2
+[KEM] V¡  handshake OK  cert_valid=YES  K[0..3]=76489899
+[KEM] V¬  handshake OK  cert_valid=YES  K[0..3]=974ce8f6
+[KEM] V√  handshake OK  cert_valid=YES  K[0..3]=d84854dc
+[KEM] Vƒ  handshake OK  cert_valid=YES  K[0..3]=5f8bccf4
+[KEM] V≈  handshake OK  cert_valid=YES  K[0..3]=19f232a3
+[KEM] V∆  handshake OK  cert_valid=YES  K[0..3]=4d5ec607
+[KEM] V«  handshake OK  cert_valid=YES  K[0..3]=dba222ee
 [KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 199 handshakes timed: avg=42.7685 ms, max=107.651 ms, over_budget=199/199 (budget=10 ms)
+[KEM][10ms budget] 199 handshakes timed: avg=36.0795 ms, max=100.311 ms, over_budget=199/199 (budget=10 ms)
 [TGN] TGN_Init() ‚Äî online mode ‚Äî L_link=43  Œ≥_init=310.179  W_max=430
-[KEM][SimLatency][t=0.0346977] Vehicle 140 session key simulated-ready (real handshake was 34.6977 ms)
-[KEM][SimLatency][t=0.0347408] Vehicle 115 session key simulated-ready (real handshake was 34.7408 ms)
-[KEM][SimLatency][t=0.0347418] Vehicle 118 session key simulated-ready (real handshake was 34.7418 ms)
-[KEM][SimLatency][t=0.0347429] Vehicle 122 session key simulated-ready (real handshake was 34.7429 ms)
-[KEM][SimLatency][t=0.034748] Vehicle 126 session key simulated-ready (real handshake was 34.748 ms)
-[KEM][SimLatency][t=0.0347563] Vehicle 124 session key simulated-ready (real handshake was 34.7563 ms)
-[KEM][SimLatency][t=0.0347713] Vehicle 108 session key simulated-ready (real handshake was 34.7713 ms)
-[KEM][SimLatency][t=0.0347715] Vehicle 127 session key simulated-ready (real handshake was 34.7715 ms)
-[KEM][SimLatency][t=0.0347772] Vehicle 128 session key simulated-ready (real handshake was 34.7772 ms)
-[KEM][SimLatency][t=0.0347798] Vehicle 121 session key simulated-ready (real handshake was 34.7798 ms)
-[KEM][SimLatency][t=0.0347917] Vehicle 103 session key simulated-ready (real handshake was 34.7917 ms)
-[KEM][SimLatency][t=0.0347954] Vehicle 120 session key simulated-ready (real handshake was 34.7954 ms)
-[KEM][SimLatency][t=0.0348011] Vehicle 123 session key simulated-ready (real handshake was 34.8011 ms)
-[KEM][SimLatency][t=0.0348024] Vehicle 4 session key simulated-ready (real handshake was 34.8024 ms)
-[KEM][SimLatency][t=0.0348186] Vehicle 119 session key simulated-ready (real handshake was 34.8186 ms)
-[KEM][SimLatency][t=0.0348374] Vehicle 116 session key simulated-ready (real handshake was 34.8374 ms)
-[KEM][SimLatency][t=0.0348377] Vehicle 52 session key simulated-ready (real handshake was 34.8377 ms)
-[KEM][SimLatency][t=0.0348475] Vehicle 2 session key simulated-ready (real handshake was 34.8475 ms)
-[KEM][SimLatency][t=0.0348506] Vehicle 104 session key simulated-ready (real handshake was 34.8506 ms)
-[KEM][SimLatency][t=0.0348516] Vehicle 5 session key simulated-ready (real handshake was 34.8516 ms)
-[KEM][SimLatency][t=0.0348633] Vehicle 3 session key simulated-ready (real handshake was 34.8633 ms)
-[KEM][SimLatency][t=0.0348869] Vehicle 136 session key simulated-ready (real handshake was 34.8869 ms)
-[KEM][SimLatency][t=0.0348919] Vehicle 24 session key simulated-ready (real handshake was 34.8919 ms)
-[KEM][SimLatency][t=0.0348953] Vehicle 109 session key simulated-ready (real handshake was 34.8953 ms)
-[KEM][SimLatency][t=0.0348996] Vehicle 33 session key simulated-ready (real handshake was 34.8996 ms)
-[KEM][SimLatency][t=0.0349075] Vehicle 135 session key simulated-ready (real handshake was 34.9075 ms)
-[KEM][SimLatency][t=0.0349094] Vehicle 17 session key simulated-ready (real handshake was 34.9094 ms)
-[KEM][SimLatency][t=0.03491] Vehicle 10 session key simulated-ready (real handshake was 34.91 ms)
-[KEM][SimLatency][t=0.0349149] Vehicle 9 session key simulated-ready (real handshake was 34.9149 ms)
-[KEM][SimLatency][t=0.0349205] Vehicle 23 session key simulated-ready (real handshake was 34.9205 ms)
-[KEM][SimLatency][t=0.034921] Vehicle 125 session key simulated-ready (real handshake was 34.921 ms)
-[KEM][SimLatency][t=0.0349239] Vehicle 55 session key simulated-ready (real handshake was 34.9239 ms)
-[KEM][SimLatency][t=0.0349279] Vehicle 26 session key simulated-ready (real handshake was 34.9279 ms)
-[KEM][SimLatency][t=0.034928] Vehicle 63 session key simulated-ready (real handshake was 34.928 ms)
-[KEM][SimLatency][t=0.034929] Vehicle 18 session key simulated-ready (real handshake was 34.929 ms)
-[KEM][SimLatency][t=0.0349309] Vehicle 8 session key simulated-ready (real handshake was 34.9309 ms)
-[KEM][SimLatency][t=0.0349336] Vehicle 107 session key simulated-ready (real handshake was 34.9336 ms)
-[KEM][SimLatency][t=0.0349353] Vehicle 25 session key simulated-ready (real handshake was 34.9353 ms)
-[KEM][SimLatency][t=0.034941] Vehicle 35 session key simulated-ready (real handshake was 34.941 ms)
-[KEM][SimLatency][t=0.0349425] Vehicle 32 session key simulated-ready (real handshake was 34.9425 ms)
-[KEM][SimLatency][t=0.0349438] Vehicle 141 session key simulated-ready (real handshake was 34.9438 ms)
-[KEM][SimLatency][t=0.0349441] Vehicle 51 session key simulated-ready (real handshake was 34.9441 ms)
-[KEM][SimLatency][t=0.0349511] Vehicle 1 session key simulated-ready (real handshake was 34.9511 ms)
-[KEM][SimLatency][t=0.0349563] Vehicle 137 session key simulated-ready (real handshake was 34.9563 ms)
-[KEM][SimLatency][t=0.0349589] Vehicle 66 session key simulated-ready (real handshake was 34.9589 ms)
-[KEM][SimLatency][t=0.0349642] Vehicle 13 session key simulated-ready (real handshake was 34.9642 ms)
-[KEM][SimLatency][t=0.0349645] Vehicle 112 session key simulated-ready (real handshake was 34.9645 ms)
-[KEM][SimLatency][t=0.0349663] Vehicle 19 session key simulated-ready (real handshake was 34.9663 ms)
-[KEM][SimLatency][t=0.0349779] Vehicle 45 session key simulated-ready (real handshake was 34.9779 ms)
-[KEM][SimLatency][t=0.0349783] Vehicle 114 session key simulated-ready (real handshake was 34.9783 ms)
-[KEM][SimLatency][t=0.0349811] Vehicle 54 session key simulated-ready (real handshake was 34.9811 ms)
-[KEM][SimLatency][t=0.0349839] Vehicle 27 session key simulated-ready (real handshake was 34.9839 ms)
-[KEM][SimLatency][t=0.0349844] Vehicle 46 session key simulated-ready (real handshake was 34.9844 ms)
-[KEM][SimLatency][t=0.0349867] Vehicle 6 session key simulated-ready (real handshake was 34.9867 ms)
-[KEM][SimLatency][t=0.0349877] Vehicle 106 session key simulated-ready (real handshake was 34.9877 ms)
-[KEM][SimLatency][t=0.0349907] Vehicle 50 session key simulated-ready (real handshake was 34.9907 ms)
-[KEM][SimLatency][t=0.0349968] Vehicle 14 session key simulated-ready (real handshake was 34.9968 ms)
-[KEM][SimLatency][t=0.0350017] Vehicle 47 session key simulated-ready (real handshake was 35.0017 ms)
-[KEM][SimLatency][t=0.0350038] Vehicle 53 session key simulated-ready (real handshake was 35.0038 ms)
-[KEM][SimLatency][t=0.0350082] Vehicle 34 session key simulated-ready (real handshake was 35.0082 ms)
-[KEM][SimLatency][t=0.0350263] Vehicle 73 session key simulated-ready (real handshake was 35.0263 ms)
-[KEM][SimLatency][t=0.0350291] Vehicle 65 session key simulated-ready (real handshake was 35.0291 ms)
-[KEM][SimLatency][t=0.0350318] Vehicle 74 session key simulated-ready (real handshake was 35.0318 ms)
-[KEM][SimLatency][t=0.0350354] Vehicle 113 session key simulated-ready (real handshake was 35.0354 ms)
-[KEM][SimLatency][t=0.0350413] Vehicle 22 session key simulated-ready (real handshake was 35.0413 ms)
-[KEM][SimLatency][t=0.0350416] Vehicle 111 session key simulated-ready (real handshake was 35.0416 ms)
-[KEM][SimLatency][t=0.0350441] Vehicle 29 session key simulated-ready (real handshake was 35.044 ms)
-[KEM][SimLatency][t=0.0350442] Vehicle 44 session key simulated-ready (real handshake was 35.0442 ms)
-[KEM][SimLatency][t=0.0350462] Vehicle 40 session key simulated-ready (real handshake was 35.0462 ms)
-[KEM][SimLatency][t=0.0350464] Vehicle 43 session key simulated-ready (real handshake was 35.0464 ms)
-[KEM][SimLatency][t=0.0350505] Vehicle 16 session key simulated-ready (real handshake was 35.0505 ms)
-[KEM][SimLatency][t=0.0350593] Vehicle 110 session key simulated-ready (real handshake was 35.0593 ms)
-[KEM][SimLatency][t=0.0350632] Vehicle 15 session key simulated-ready (real handshake was 35.0632 ms)
-[KEM][SimLatency][t=0.0350717] Vehicle 20 session key simulated-ready (real handshake was 35.0717 ms)
-[KEM][SimLatency][t=0.0350757] Vehicle 117 session key simulated-ready (real handshake was 35.0757 ms)
-[KEM][SimLatency][t=0.0350828] Vehicle 31 session key simulated-ready (real handshake was 35.0828 ms)
-[KEM][SimLatency][t=0.0350847] Vehicle 28 session key simulated-ready (real handshake was 35.0847 ms)
-[KEM][SimLatency][t=0.0350893] Vehicle 56 session key simulated-ready (real handshake was 35.0893 ms)
-[KEM][SimLatency][t=0.0350914] Vehicle 142 session key simulated-ready (real handshake was 35.0914 ms)
-[KEM][SimLatency][t=0.0350926] Vehicle 21 session key simulated-ready (real handshake was 35.0926 ms)
-[KEM][SimLatency][t=0.0351012] Vehicle 41 session key simulated-ready (real handshake was 35.1012 ms)
-[KEM][SimLatency][t=0.0351175] Vehicle 67 session key simulated-ready (real handshake was 35.1176 ms)
-[KEM][SimLatency][t=0.0351192] Vehicle 30 session key simulated-ready (real handshake was 35.1192 ms)
-[KEM][SimLatency][t=0.0351215] Vehicle 158 session key simulated-ready (real handshake was 35.1215 ms)
-[KEM][SimLatency][t=0.0351349] Vehicle 36 session key simulated-ready (real handshake was 35.1349 ms)
-[KEM][SimLatency][t=0.0351462] Vehicle 39 session key simulated-ready (real handshake was 35.1462 ms)
-[KEM][SimLatency][t=0.0351731] Vehicle 37 session key simulated-ready (real handshake was 35.1731 ms)
-[KEM][SimLatency][t=0.0351832] Vehicle 57 session key simulated-ready (real handshake was 35.1832 ms)
-[KEM][SimLatency][t=0.0351858] Vehicle 72 session key simulated-ready (real handshake was 35.1858 ms)
-[KEM][SimLatency][t=0.0351862] Vehicle 157 session key simulated-ready (real handshake was 35.1862 ms)
-[KEM][SimLatency][t=0.035187] Vehicle 49 session key simulated-ready (real handshake was 35.187 ms)
-[KEM][SimLatency][t=0.0352002] Vehicle 145 session key simulated-ready (real handshake was 35.2002 ms)
-[KEM][SimLatency][t=0.0352074] Vehicle 159 session key simulated-ready (real handshake was 35.2074 ms)
-[KEM][SimLatency][t=0.0352074] Vehicle 11 session key simulated-ready (real handshake was 35.2074 ms)
-[KEM][SimLatency][t=0.0352217] Vehicle 70 session key simulated-ready (real handshake was 35.2217 ms)
-[KEM][SimLatency][t=0.0352301] Vehicle 60 session key simulated-ready (real handshake was 35.2301 ms)
-[KEM][SimLatency][t=0.0352345] Vehicle 76 session key simulated-ready (real handshake was 35.2345 ms)
-[KEM][SimLatency][t=0.0352359] Vehicle 69 session key simulated-ready (real handshake was 35.2359 ms)
-[KEM][SimLatency][t=0.0352465] Vehicle 147 session key simulated-ready (real handshake was 35.2465 ms)
-[KEM][SimLatency][t=0.0352489] Vehicle 58 session key simulated-ready (real handshake was 35.2489 ms)
-[KEM][SimLatency][t=0.0352525] Vehicle 146 session key simulated-ready (real handshake was 35.2525 ms)
-[KEM][SimLatency][t=0.0352525] Vehicle 64 session key simulated-ready (real handshake was 35.2525 ms)
-[KEM][SimLatency][t=0.0352617] Vehicle 59 session key simulated-ready (real handshake was 35.2617 ms)
-[KEM][SimLatency][t=0.0352704] Vehicle 71 session key simulated-ready (real handshake was 35.2704 ms)
-[KEM][SimLatency][t=0.0352738] Vehicle 75 session key simulated-ready (real handshake was 35.2738 ms)
-[KEM][SimLatency][t=0.035333] Vehicle 160 session key simulated-ready (real handshake was 35.333 ms)
-[KEM][SimLatency][t=0.0353484] Vehicle 102 session key simulated-ready (real handshake was 35.3484 ms)
-[KEM][SimLatency][t=0.0353576] Vehicle 7 session key simulated-ready (real handshake was 35.3576 ms)
-[KEM][SimLatency][t=0.0354159] Vehicle 68 session key simulated-ready (real handshake was 35.4159 ms)
-[KEM][SimLatency][t=0.0354423] Vehicle 144 session key simulated-ready (real handshake was 35.4423 ms)
-[KEM][SimLatency][t=0.0354648] Vehicle 48 session key simulated-ready (real handshake was 35.4648 ms)
-[KEM][SimLatency][t=0.0354874] Vehicle 42 session key simulated-ready (real handshake was 35.4874 ms)
-[KEM][SimLatency][t=0.03576] Vehicle 129 session key simulated-ready (real handshake was 35.76 ms)
-[KEM][SimLatency][t=0.0359496] Vehicle 12 session key simulated-ready (real handshake was 35.9496 ms)
-[KEM][SimLatency][t=0.0361086] Vehicle 105 session key simulated-ready (real handshake was 36.1086 ms)
-[KEM][SimLatency][t=0.0371128] Vehicle 77 session key simulated-ready (real handshake was 37.1128 ms)
-[KEM][SimLatency][t=0.0375573] Vehicle 38 session key simulated-ready (real handshake was 37.5573 ms)
-[KEM][SimLatency][t=0.0385144] Vehicle 148 session key simulated-ready (real handshake was 38.5144 ms)
-[KEM][SimLatency][t=0.0398938] Vehicle 155 session key simulated-ready (real handshake was 39.8938 ms)
-[KEM][SimLatency][t=0.0418824] Vehicle 87 session key simulated-ready (real handshake was 41.8824 ms)
-[KEM][SimLatency][t=0.0419996] Vehicle 97 session key simulated-ready (real handshake was 41.9996 ms)
-[KEM][SimLatency][t=0.0420631] Vehicle 89 session key simulated-ready (real handshake was 42.0631 ms)
-[KEM][SimLatency][t=0.0420655] Vehicle 88 session key simulated-ready (real handshake was 42.0655 ms)
-[KEM][SimLatency][t=0.042108] Vehicle 85 session key simulated-ready (real handshake was 42.108 ms)
-[KEM][SimLatency][t=0.0421356] Vehicle 134 session key simulated-ready (real handshake was 42.1356 ms)
-[KEM][SimLatency][t=0.042274] Vehicle 91 session key simulated-ready (real handshake was 42.274 ms)
-[KEM][SimLatency][t=0.042306] Vehicle 81 session key simulated-ready (real handshake was 42.306 ms)
-[KEM][SimLatency][t=0.0423584] Vehicle 82 session key simulated-ready (real handshake was 42.3584 ms)
-[KEM][SimLatency][t=0.0423674] Vehicle 99 session key simulated-ready (real handshake was 42.3674 ms)
-[KEM][SimLatency][t=0.0423832] Vehicle 84 session key simulated-ready (real handshake was 42.3832 ms)
-[KEM][SimLatency][t=0.0423856] Vehicle 94 session key simulated-ready (real handshake was 42.3856 ms)
-[KEM][SimLatency][t=0.0423894] Vehicle 156 session key simulated-ready (real handshake was 42.3894 ms)
-[KEM][SimLatency][t=0.0423979] Vehicle 86 session key simulated-ready (real handshake was 42.3979 ms)
-[KEM][SimLatency][t=0.0424163] Vehicle 98 session key simulated-ready (real handshake was 42.4163 ms)
-[KEM][SimLatency][t=0.0425378] Vehicle 90 session key simulated-ready (real handshake was 42.5378 ms)
-[KEM][SimLatency][t=0.0426391] Vehicle 92 session key simulated-ready (real handshake was 42.6391 ms)
-[KEM][SimLatency][t=0.0426549] Vehicle 83 session key simulated-ready (real handshake was 42.6549 ms)
-[KEM][SimLatency][t=0.0426994] Vehicle 95 session key simulated-ready (real handshake was 42.6994 ms)
-[KEM][SimLatency][t=0.0428237] Vehicle 96 session key simulated-ready (real handshake was 42.8237 ms)
-[KEM][SimLatency][t=0.0428548] Vehicle 93 session key simulated-ready (real handshake was 42.8548 ms)
-[KEM][SimLatency][t=0.0429471] Vehicle 79 session key simulated-ready (real handshake was 42.9471 ms)
-[KEM][SimLatency][t=0.0432627] Vehicle 143 session key simulated-ready (real handshake was 43.2627 ms)
-[KEM][SimLatency][t=0.0434495] Vehicle 78 session key simulated-ready (real handshake was 43.4495 ms)
-[KEM][SimLatency][t=0.0437776] Vehicle 80 session key simulated-ready (real handshake was 43.7776 ms)
-[KEM][SimLatency][t=0.0449705] Vehicle 61 session key simulated-ready (real handshake was 44.9705 ms)
-[KEM][SimLatency][t=0.0454036] Vehicle 62 session key simulated-ready (real handshake was 45.4036 ms)
-[KEM][SimLatency][t=0.0461589] Vehicle 138 session key simulated-ready (real handshake was 46.1589 ms)
-[KEM][SimLatency][t=0.046226] Vehicle 130 session key simulated-ready (real handshake was 46.226 ms)
-[KEM][SimLatency][t=0.0500651] Vehicle 101 session key simulated-ready (real handshake was 50.0651 ms)
-[KEM][SimLatency][t=0.0504575] Vehicle 161 session key simulated-ready (real handshake was 50.4575 ms)
-[KEM][SimLatency][t=0.0505885] Vehicle 163 session key simulated-ready (real handshake was 50.5885 ms)
-[KEM][SimLatency][t=0.0509662] Vehicle 162 session key simulated-ready (real handshake was 50.9662 ms)
-[KEM][SimLatency][t=0.0526189] Vehicle 139 session key simulated-ready (real handshake was 52.6189 ms)
-[KEM][SimLatency][t=0.0575256] Vehicle 179 session key simulated-ready (real handshake was 57.5256 ms)
-[KEM][SimLatency][t=0.0577059] Vehicle 131 session key simulated-ready (real handshake was 57.7059 ms)
-[KEM][SimLatency][t=0.0577948] Vehicle 180 session key simulated-ready (real handshake was 57.7948 ms)
-[KEM][SimLatency][t=0.057813] Vehicle 178 session key simulated-ready (real handshake was 57.813 ms)
-[KEM][SimLatency][t=0.0578907] Vehicle 164 session key simulated-ready (real handshake was 57.8907 ms)
-[KEM][SimLatency][t=0.0578927] Vehicle 132 session key simulated-ready (real handshake was 57.8927 ms)
-[KEM][SimLatency][t=0.0579103] Vehicle 168 session key simulated-ready (real handshake was 57.9103 ms)
-[KEM][SimLatency][t=0.0579119] Vehicle 170 session key simulated-ready (real handshake was 57.9119 ms)
-[KEM][SimLatency][t=0.0579142] Vehicle 177 session key simulated-ready (real handshake was 57.9142 ms)
-[KEM][SimLatency][t=0.0579178] Vehicle 169 session key simulated-ready (real handshake was 57.9178 ms)
-[KEM][SimLatency][t=0.0579192] Vehicle 166 session key simulated-ready (real handshake was 57.9192 ms)
-[KEM][SimLatency][t=0.057923] Vehicle 165 session key simulated-ready (real handshake was 57.923 ms)
-[KEM][SimLatency][t=0.0579703] Vehicle 172 session key simulated-ready (real handshake was 57.9703 ms)
-[KEM][SimLatency][t=0.0579777] Vehicle 181 session key simulated-ready (real handshake was 57.9777 ms)
-[KEM][SimLatency][t=0.0580348] Vehicle 176 session key simulated-ready (real handshake was 58.0348 ms)
-[KEM][SimLatency][t=0.0580792] Vehicle 171 session key simulated-ready (real handshake was 58.0792 ms)
-[KEM][SimLatency][t=0.0580809] Vehicle 167 session key simulated-ready (real handshake was 58.0809 ms)
-[KEM][SimLatency][t=0.0581007] Vehicle 175 session key simulated-ready (real handshake was 58.1007 ms)
-[KEM][SimLatency][t=0.0581631] Vehicle 133 session key simulated-ready (real handshake was 58.1631 ms)
-[KEM][SimLatency][t=0.0581801] Vehicle 174 session key simulated-ready (real handshake was 58.1801 ms)
-[KEM][SimLatency][t=0.0581896] Vehicle 182 session key simulated-ready (real handshake was 58.1896 ms)
-[KEM][SimLatency][t=0.0582017] Vehicle 173 session key simulated-ready (real handshake was 58.2017 ms)
-[KEM][SimLatency][t=0.0583215] Vehicle 183 session key simulated-ready (real handshake was 58.3215 ms)
-[KEM][SimLatency][t=0.0583544] Vehicle 184 session key simulated-ready (real handshake was 58.3544 ms)
-[KEM][SimLatency][t=0.0585722] Vehicle 154 session key simulated-ready (real handshake was 58.5722 ms)
-[KEM][SimLatency][t=0.0585998] Vehicle 186 session key simulated-ready (real handshake was 58.5998 ms)
-[KEM][SimLatency][t=0.0586094] Vehicle 151 session key simulated-ready (real handshake was 58.6094 ms)
-[KEM][SimLatency][t=0.0586102] Vehicle 185 session key simulated-ready (real handshake was 58.6102 ms)
-[KEM][SimLatency][t=0.0586793] Vehicle 152 session key simulated-ready (real handshake was 58.6793 ms)
-[KEM][SimLatency][t=0.0587958] Vehicle 153 session key simulated-ready (real handshake was 58.7958 ms)
-[KEM][SimLatency][t=0.0588328] Vehicle 149 session key simulated-ready (real handshake was 58.8328 ms)
-[KEM][SimLatency][t=0.0588669] Vehicle 150 session key simulated-ready (real handshake was 58.8669 ms)
-[KEM][SimLatency][t=0.0618714] Vehicle 187 session key simulated-ready (real handshake was 61.8714 ms)
-[KEM][SimLatency][t=0.0657331] Vehicle 191 session key simulated-ready (real handshake was 65.7331 ms)
-[KEM][SimLatency][t=0.0657654] Vehicle 194 session key simulated-ready (real handshake was 65.7654 ms)
-[KEM][SimLatency][t=0.0660499] Vehicle 193 session key simulated-ready (real handshake was 66.0499 ms)
-[KEM][SimLatency][t=0.0661871] Vehicle 197 session key simulated-ready (real handshake was 66.1871 ms)
-[KEM][SimLatency][t=0.0662289] Vehicle 188 session key simulated-ready (real handshake was 66.2289 ms)
-[KEM][SimLatency][t=0.066309] Vehicle 199 session key simulated-ready (real handshake was 66.309 ms)
-[KEM][SimLatency][t=0.0663418] Vehicle 196 session key simulated-ready (real handshake was 66.3418 ms)
-[KEM][SimLatency][t=0.0663557] Vehicle 190 session key simulated-ready (real handshake was 66.3557 ms)
-[KEM][SimLatency][t=0.0663785] Vehicle 192 session key simulated-ready (real handshake was 66.3785 ms)
-[KEM][SimLatency][t=0.0666773] Vehicle 198 session key simulated-ready (real handshake was 66.6773 ms)
-[KEM][SimLatency][t=0.0666891] Vehicle 189 session key simulated-ready (real handshake was 66.6891 ms)
-[KEM][SimLatency][t=0.0672277] Vehicle 195 session key simulated-ready (real handshake was 67.2277 ms)
-[KEM][SimLatency][t=0.107651] Vehicle 100 session key simulated-ready (real handshake was 107.651 ms)
+[KEM][SimLatency][t=0.0332938] Vehicle 5 session key simulated-ready (real handshake was 33.2938 ms)
+[KEM][SimLatency][t=0.0336543] Vehicle 8 session key simulated-ready (real handshake was 33.6543 ms)
+[KEM][SimLatency][t=0.0338446] Vehicle 7 session key simulated-ready (real handshake was 33.8446 ms)
+[KEM][SimLatency][t=0.0338972] Vehicle 6 session key simulated-ready (real handshake was 33.8972 ms)
+[KEM][SimLatency][t=0.0339905] Vehicle 129 session key simulated-ready (real handshake was 33.9905 ms)
+[KEM][SimLatency][t=0.0340214] Vehicle 61 session key simulated-ready (real handshake was 34.0214 ms)
+[KEM][SimLatency][t=0.0340566] Vehicle 4 session key simulated-ready (real handshake was 34.0566 ms)
+[KEM][SimLatency][t=0.0340744] Vehicle 178 session key simulated-ready (real handshake was 34.0744 ms)
+[KEM][SimLatency][t=0.0341148] Vehicle 194 session key simulated-ready (real handshake was 34.1148 ms)
+[KEM][SimLatency][t=0.0341179] Vehicle 91 session key simulated-ready (real handshake was 34.1179 ms)
+[KEM][SimLatency][t=0.0341499] Vehicle 9 session key simulated-ready (real handshake was 34.1499 ms)
+[KEM][SimLatency][t=0.0341623] Vehicle 181 session key simulated-ready (real handshake was 34.1623 ms)
+[KEM][SimLatency][t=0.0341746] Vehicle 90 session key simulated-ready (real handshake was 34.1746 ms)
+[KEM][SimLatency][t=0.0341777] Vehicle 183 session key simulated-ready (real handshake was 34.1777 ms)
+[KEM][SimLatency][t=0.0342102] Vehicle 195 session key simulated-ready (real handshake was 34.2102 ms)
+[KEM][SimLatency][t=0.0342149] Vehicle 196 session key simulated-ready (real handshake was 34.2149 ms)
+[KEM][SimLatency][t=0.0342154] Vehicle 177 session key simulated-ready (real handshake was 34.2154 ms)
+[KEM][SimLatency][t=0.034227] Vehicle 86 session key simulated-ready (real handshake was 34.227 ms)
+[KEM][SimLatency][t=0.0342302] Vehicle 48 session key simulated-ready (real handshake was 34.2302 ms)
+[KEM][SimLatency][t=0.0342323] Vehicle 107 session key simulated-ready (real handshake was 34.2323 ms)
+[KEM][SimLatency][t=0.0342477] Vehicle 51 session key simulated-ready (real handshake was 34.2477 ms)
+[KEM][SimLatency][t=0.0342483] Vehicle 49 session key simulated-ready (real handshake was 34.2483 ms)
+[KEM][SimLatency][t=0.0342538] Vehicle 197 session key simulated-ready (real handshake was 34.2538 ms)
+[KEM][SimLatency][t=0.034259] Vehicle 89 session key simulated-ready (real handshake was 34.259 ms)
+[KEM][SimLatency][t=0.0342913] Vehicle 182 session key simulated-ready (real handshake was 34.2913 ms)
+[KEM][SimLatency][t=0.0342935] Vehicle 81 session key simulated-ready (real handshake was 34.2935 ms)
+[KEM][SimLatency][t=0.0342959] Vehicle 10 session key simulated-ready (real handshake was 34.2959 ms)
+[KEM][SimLatency][t=0.0343021] Vehicle 104 session key simulated-ready (real handshake was 34.3021 ms)
+[KEM][SimLatency][t=0.0343221] Vehicle 102 session key simulated-ready (real handshake was 34.3221 ms)
+[KEM][SimLatency][t=0.0343347] Vehicle 42 session key simulated-ready (real handshake was 34.3347 ms)
+[KEM][SimLatency][t=0.0343665] Vehicle 199 session key simulated-ready (real handshake was 34.3665 ms)
+[KEM][SimLatency][t=0.034373] Vehicle 82 session key simulated-ready (real handshake was 34.373 ms)
+[KEM][SimLatency][t=0.0343829] Vehicle 103 session key simulated-ready (real handshake was 34.3829 ms)
+[KEM][SimLatency][t=0.0344032] Vehicle 47 session key simulated-ready (real handshake was 34.4032 ms)
+[KEM][SimLatency][t=0.0344168] Vehicle 65 session key simulated-ready (real handshake was 34.4168 ms)
+[KEM][SimLatency][t=0.0344182] Vehicle 179 session key simulated-ready (real handshake was 34.4182 ms)
+[KEM][SimLatency][t=0.0344361] Vehicle 71 session key simulated-ready (real handshake was 34.4361 ms)
+[KEM][SimLatency][t=0.0344392] Vehicle 180 session key simulated-ready (real handshake was 34.4392 ms)
+[KEM][SimLatency][t=0.0344439] Vehicle 145 session key simulated-ready (real handshake was 34.4439 ms)
+[KEM][SimLatency][t=0.0344462] Vehicle 198 session key simulated-ready (real handshake was 34.4462 ms)
+[KEM][SimLatency][t=0.0344471] Vehicle 69 session key simulated-ready (real handshake was 34.4471 ms)
+[KEM][SimLatency][t=0.0344481] Vehicle 17 session key simulated-ready (real handshake was 34.4481 ms)
+[KEM][SimLatency][t=0.0344533] Vehicle 15 session key simulated-ready (real handshake was 34.4533 ms)
+[KEM][SimLatency][t=0.0344561] Vehicle 130 session key simulated-ready (real handshake was 34.4561 ms)
+[KEM][SimLatency][t=0.0344581] Vehicle 106 session key simulated-ready (real handshake was 34.4581 ms)
+[KEM][SimLatency][t=0.034462] Vehicle 64 session key simulated-ready (real handshake was 34.462 ms)
+[KEM][SimLatency][t=0.0344744] Vehicle 11 session key simulated-ready (real handshake was 34.4744 ms)
+[KEM][SimLatency][t=0.0344775] Vehicle 120 session key simulated-ready (real handshake was 34.4775 ms)
+[KEM][SimLatency][t=0.0344799] Vehicle 50 session key simulated-ready (real handshake was 34.4799 ms)
+[KEM][SimLatency][t=0.0344834] Vehicle 24 session key simulated-ready (real handshake was 34.4834 ms)
+[KEM][SimLatency][t=0.0344843] Vehicle 16 session key simulated-ready (real handshake was 34.4843 ms)
+[KEM][SimLatency][t=0.0344871] Vehicle 72 session key simulated-ready (real handshake was 34.4871 ms)
+[KEM][SimLatency][t=0.0344894] Vehicle 55 session key simulated-ready (real handshake was 34.4894 ms)
+[KEM][SimLatency][t=0.0345039] Vehicle 189 session key simulated-ready (real handshake was 34.5039 ms)
+[KEM][SimLatency][t=0.0345051] Vehicle 92 session key simulated-ready (real handshake was 34.5051 ms)
+[KEM][SimLatency][t=0.0345062] Vehicle 190 session key simulated-ready (real handshake was 34.5062 ms)
+[KEM][SimLatency][t=0.0345083] Vehicle 83 session key simulated-ready (real handshake was 34.5083 ms)
+[KEM][SimLatency][t=0.0345263] Vehicle 43 session key simulated-ready (real handshake was 34.5263 ms)
+[KEM][SimLatency][t=0.0345307] Vehicle 53 session key simulated-ready (real handshake was 34.5307 ms)
+[KEM][SimLatency][t=0.0345403] Vehicle 109 session key simulated-ready (real handshake was 34.5403 ms)
+[KEM][SimLatency][t=0.0345428] Vehicle 41 session key simulated-ready (real handshake was 34.5428 ms)
+[KEM][SimLatency][t=0.0345528] Vehicle 73 session key simulated-ready (real handshake was 34.5528 ms)
+[KEM][SimLatency][t=0.03456] Vehicle 99 session key simulated-ready (real handshake was 34.56 ms)
+[KEM][SimLatency][t=0.034566] Vehicle 108 session key simulated-ready (real handshake was 34.566 ms)
+[KEM][SimLatency][t=0.0345737] Vehicle 66 session key simulated-ready (real handshake was 34.5737 ms)
+[KEM][SimLatency][t=0.0345815] Vehicle 54 session key simulated-ready (real handshake was 34.5815 ms)
+[KEM][SimLatency][t=0.0345864] Vehicle 184 session key simulated-ready (real handshake was 34.5864 ms)
+[KEM][SimLatency][t=0.0345926] Vehicle 70 session key simulated-ready (real handshake was 34.5926 ms)
+[KEM][SimLatency][t=0.0346098] Vehicle 52 session key simulated-ready (real handshake was 34.6098 ms)
+[KEM][SimLatency][t=0.0346202] Vehicle 131 session key simulated-ready (real handshake was 34.6202 ms)
+[KEM][SimLatency][t=0.0346347] Vehicle 193 session key simulated-ready (real handshake was 34.6347 ms)
+[KEM][SimLatency][t=0.034638] Vehicle 105 session key simulated-ready (real handshake was 34.638 ms)
+[KEM][SimLatency][t=0.0346572] Vehicle 2 session key simulated-ready (real handshake was 34.6572 ms)
+[KEM][SimLatency][t=0.0346647] Vehicle 74 session key simulated-ready (real handshake was 34.6647 ms)
+[KEM][SimLatency][t=0.0346709] Vehicle 101 session key simulated-ready (real handshake was 34.6709 ms)
+[KEM][SimLatency][t=0.0346954] Vehicle 23 session key simulated-ready (real handshake was 34.6954 ms)
+[KEM][SimLatency][t=0.0346985] Vehicle 18 session key simulated-ready (real handshake was 34.6985 ms)
+[KEM][SimLatency][t=0.0347028] Vehicle 118 session key simulated-ready (real handshake was 34.7028 ms)
+[KEM][SimLatency][t=0.0347092] Vehicle 63 session key simulated-ready (real handshake was 34.7092 ms)
+[KEM][SimLatency][t=0.0347164] Vehicle 117 session key simulated-ready (real handshake was 34.7164 ms)
+[KEM][SimLatency][t=0.0347186] Vehicle 38 session key simulated-ready (real handshake was 34.7186 ms)
+[KEM][SimLatency][t=0.0347319] Vehicle 85 session key simulated-ready (real handshake was 34.7319 ms)
+[KEM][SimLatency][t=0.0347319] Vehicle 119 session key simulated-ready (real handshake was 34.7319 ms)
+[KEM][SimLatency][t=0.0347321] Vehicle 185 session key simulated-ready (real handshake was 34.7321 ms)
+[KEM][SimLatency][t=0.0347507] Vehicle 67 session key simulated-ready (real handshake was 34.7507 ms)
+[KEM][SimLatency][t=0.0347527] Vehicle 46 session key simulated-ready (real handshake was 34.7527 ms)
+[KEM][SimLatency][t=0.0347564] Vehicle 127 session key simulated-ready (real handshake was 34.7564 ms)
+[KEM][SimLatency][t=0.0347591] Vehicle 186 session key simulated-ready (real handshake was 34.7591 ms)
+[KEM][SimLatency][t=0.0347624] Vehicle 98 session key simulated-ready (real handshake was 34.7624 ms)
+[KEM][SimLatency][t=0.0347648] Vehicle 87 session key simulated-ready (real handshake was 34.7648 ms)
+[KEM][SimLatency][t=0.0347673] Vehicle 80 session key simulated-ready (real handshake was 34.7673 ms)
+[KEM][SimLatency][t=0.0347736] Vehicle 84 session key simulated-ready (real handshake was 34.7736 ms)
+[KEM][SimLatency][t=0.0347783] Vehicle 68 session key simulated-ready (real handshake was 34.7783 ms)
+[KEM][SimLatency][t=0.0347811] Vehicle 100 session key simulated-ready (real handshake was 34.7811 ms)
+[KEM][SimLatency][t=0.0347887] Vehicle 57 session key simulated-ready (real handshake was 34.7887 ms)
+[KEM][SimLatency][t=0.0347901] Vehicle 151 session key simulated-ready (real handshake was 34.7901 ms)
+[KEM][SimLatency][t=0.0347926] Vehicle 111 session key simulated-ready (real handshake was 34.7926 ms)
+[KEM][SimLatency][t=0.0347939] Vehicle 40 session key simulated-ready (real handshake was 34.7939 ms)
+[KEM][SimLatency][t=0.0347989] Vehicle 122 session key simulated-ready (real handshake was 34.7989 ms)
+[KEM][SimLatency][t=0.0348026] Vehicle 125 session key simulated-ready (real handshake was 34.8026 ms)
+[KEM][SimLatency][t=0.0348034] Vehicle 75 session key simulated-ready (real handshake was 34.8034 ms)
+[KEM][SimLatency][t=0.0348053] Vehicle 141 session key simulated-ready (real handshake was 34.8053 ms)
+[KEM][SimLatency][t=0.0348115] Vehicle 187 session key simulated-ready (real handshake was 34.8115 ms)
+[KEM][SimLatency][t=0.0348119] Vehicle 88 session key simulated-ready (real handshake was 34.8119 ms)
+[KEM][SimLatency][t=0.0348145] Vehicle 58 session key simulated-ready (real handshake was 34.8145 ms)
+[KEM][SimLatency][t=0.034815] Vehicle 138 session key simulated-ready (real handshake was 34.815 ms)
+[KEM][SimLatency][t=0.034817] Vehicle 143 session key simulated-ready (real handshake was 34.817 ms)
+[KEM][SimLatency][t=0.0348181] Vehicle 94 session key simulated-ready (real handshake was 34.8181 ms)
+[KEM][SimLatency][t=0.0348267] Vehicle 132 session key simulated-ready (real handshake was 34.8267 ms)
+[KEM][SimLatency][t=0.034829] Vehicle 115 session key simulated-ready (real handshake was 34.829 ms)
+[KEM][SimLatency][t=0.0348398] Vehicle 59 session key simulated-ready (real handshake was 34.8398 ms)
+[KEM][SimLatency][t=0.0348413] Vehicle 44 session key simulated-ready (real handshake was 34.8413 ms)
+[KEM][SimLatency][t=0.0348532] Vehicle 123 session key simulated-ready (real handshake was 34.8532 ms)
+[KEM][SimLatency][t=0.0348612] Vehicle 56 session key simulated-ready (real handshake was 34.8612 ms)
+[KEM][SimLatency][t=0.0348663] Vehicle 22 session key simulated-ready (real handshake was 34.8663 ms)
+[KEM][SimLatency][t=0.0348766] Vehicle 150 session key simulated-ready (real handshake was 34.8766 ms)
+[KEM][SimLatency][t=0.0348844] Vehicle 93 session key simulated-ready (real handshake was 34.8844 ms)
+[KEM][SimLatency][t=0.0348854] Vehicle 110 session key simulated-ready (real handshake was 34.8854 ms)
+[KEM][SimLatency][t=0.0348886] Vehicle 19 session key simulated-ready (real handshake was 34.8886 ms)
+[KEM][SimLatency][t=0.0348898] Vehicle 146 session key simulated-ready (real handshake was 34.8898 ms)
+[KEM][SimLatency][t=0.0348968] Vehicle 21 session key simulated-ready (real handshake was 34.8968 ms)
+[KEM][SimLatency][t=0.0349031] Vehicle 1 session key simulated-ready (real handshake was 34.9031 ms)
+[KEM][SimLatency][t=0.0349073] Vehicle 191 session key simulated-ready (real handshake was 34.9073 ms)
+[KEM][SimLatency][t=0.0349131] Vehicle 114 session key simulated-ready (real handshake was 34.9131 ms)
+[KEM][SimLatency][t=0.0349184] Vehicle 79 session key simulated-ready (real handshake was 34.9184 ms)
+[KEM][SimLatency][t=0.0349187] Vehicle 77 session key simulated-ready (real handshake was 34.9187 ms)
+[KEM][SimLatency][t=0.034922] Vehicle 12 session key simulated-ready (real handshake was 34.922 ms)
+[KEM][SimLatency][t=0.0349289] Vehicle 124 session key simulated-ready (real handshake was 34.9289 ms)
+[KEM][SimLatency][t=0.034931] Vehicle 20 session key simulated-ready (real handshake was 34.931 ms)
+[KEM][SimLatency][t=0.0349719] Vehicle 60 session key simulated-ready (real handshake was 34.9719 ms)
+[KEM][SimLatency][t=0.0349772] Vehicle 133 session key simulated-ready (real handshake was 34.9772 ms)
+[KEM][SimLatency][t=0.0349914] Vehicle 134 session key simulated-ready (real handshake was 34.9914 ms)
+[KEM][SimLatency][t=0.0349975] Vehicle 139 session key simulated-ready (real handshake was 34.9975 ms)
+[KEM][SimLatency][t=0.0350028] Vehicle 147 session key simulated-ready (real handshake was 35.0028 ms)
+[KEM][SimLatency][t=0.035011] Vehicle 76 session key simulated-ready (real handshake was 35.011 ms)
+[KEM][SimLatency][t=0.0350119] Vehicle 39 session key simulated-ready (real handshake was 35.0119 ms)
+[KEM][SimLatency][t=0.035016] Vehicle 116 session key simulated-ready (real handshake was 35.016 ms)
+[KEM][SimLatency][t=0.0350187] Vehicle 97 session key simulated-ready (real handshake was 35.0187 ms)
+[KEM][SimLatency][t=0.035024] Vehicle 113 session key simulated-ready (real handshake was 35.024 ms)
+[KEM][SimLatency][t=0.0350529] Vehicle 14 session key simulated-ready (real handshake was 35.0529 ms)
+[KEM][SimLatency][t=0.0350634] Vehicle 149 session key simulated-ready (real handshake was 35.0634 ms)
+[KEM][SimLatency][t=0.035071] Vehicle 148 session key simulated-ready (real handshake was 35.071 ms)
+[KEM][SimLatency][t=0.0350768] Vehicle 121 session key simulated-ready (real handshake was 35.0768 ms)
+[KEM][SimLatency][t=0.0351085] Vehicle 126 session key simulated-ready (real handshake was 35.1085 ms)
+[KEM][SimLatency][t=0.0351304] Vehicle 188 session key simulated-ready (real handshake was 35.1304 ms)
+[KEM][SimLatency][t=0.0351566] Vehicle 135 session key simulated-ready (real handshake was 35.1566 ms)
+[KEM][SimLatency][t=0.0351872] Vehicle 140 session key simulated-ready (real handshake was 35.1872 ms)
+[KEM][SimLatency][t=0.0352279] Vehicle 37 session key simulated-ready (real handshake was 35.2279 ms)
+[KEM][SimLatency][t=0.0352317] Vehicle 3 session key simulated-ready (real handshake was 35.2317 ms)
+[KEM][SimLatency][t=0.0352576] Vehicle 136 session key simulated-ready (real handshake was 35.2576 ms)
+[KEM][SimLatency][t=0.0352815] Vehicle 142 session key simulated-ready (real handshake was 35.2815 ms)
+[KEM][SimLatency][t=0.0352894] Vehicle 137 session key simulated-ready (real handshake was 35.2894 ms)
+[KEM][SimLatency][t=0.0356294] Vehicle 96 session key simulated-ready (real handshake was 35.6294 ms)
+[KEM][SimLatency][t=0.0358289] Vehicle 45 session key simulated-ready (real handshake was 35.8289 ms)
+[KEM][SimLatency][t=0.0358716] Vehicle 95 session key simulated-ready (real handshake was 35.8716 ms)
+[KEM][SimLatency][t=0.0358812] Vehicle 62 session key simulated-ready (real handshake was 35.8812 ms)
+[KEM][SimLatency][t=0.0359472] Vehicle 78 session key simulated-ready (real handshake was 35.9472 ms)
+[KEM][SimLatency][t=0.0362042] Vehicle 192 session key simulated-ready (real handshake was 36.2042 ms)
+[KEM][SimLatency][t=0.0362802] Vehicle 128 session key simulated-ready (real handshake was 36.2802 ms)
+[KEM][SimLatency][t=0.0363207] Vehicle 161 session key simulated-ready (real handshake was 36.3207 ms)
+[KEM][SimLatency][t=0.0363793] Vehicle 163 session key simulated-ready (real handshake was 36.3793 ms)
+[KEM][SimLatency][t=0.0364632] Vehicle 144 session key simulated-ready (real handshake was 36.4632 ms)
+[KEM][SimLatency][t=0.03647] Vehicle 176 session key simulated-ready (real handshake was 36.47 ms)
+[KEM][SimLatency][t=0.0365125] Vehicle 165 session key simulated-ready (real handshake was 36.5125 ms)
+[KEM][SimLatency][t=0.0365143] Vehicle 13 session key simulated-ready (real handshake was 36.5143 ms)
+[KEM][SimLatency][t=0.036576] Vehicle 112 session key simulated-ready (real handshake was 36.576 ms)
+[KEM][SimLatency][t=0.0367469] Vehicle 156 session key simulated-ready (real handshake was 36.7469 ms)
+[KEM][SimLatency][t=0.0367786] Vehicle 173 session key simulated-ready (real handshake was 36.7786 ms)
+[KEM][SimLatency][t=0.0370178] Vehicle 26 session key simulated-ready (real handshake was 37.0178 ms)
+[KEM][SimLatency][t=0.0370398] Vehicle 31 session key simulated-ready (real handshake was 37.0398 ms)
+[KEM][SimLatency][t=0.0371468] Vehicle 25 session key simulated-ready (real handshake was 37.1468 ms)
+[KEM][SimLatency][t=0.0371654] Vehicle 164 session key simulated-ready (real handshake was 37.1654 ms)
+[KEM][SimLatency][t=0.0371856] Vehicle 157 session key simulated-ready (real handshake was 37.1856 ms)
+[KEM][SimLatency][t=0.0372313] Vehicle 172 session key simulated-ready (real handshake was 37.2313 ms)
+[KEM][SimLatency][t=0.0372916] Vehicle 155 session key simulated-ready (real handshake was 37.2916 ms)
+[KEM][SimLatency][t=0.0376591] Vehicle 32 session key simulated-ready (real handshake was 37.6591 ms)
+[KEM][SimLatency][t=0.0376708] Vehicle 34 session key simulated-ready (real handshake was 37.6708 ms)
+[KEM][SimLatency][t=0.0377174] Vehicle 154 session key simulated-ready (real handshake was 37.7174 ms)
+[KEM][SimLatency][t=0.0377585] Vehicle 162 session key simulated-ready (real handshake was 37.7585 ms)
+[KEM][SimLatency][t=0.0377593] Vehicle 27 session key simulated-ready (real handshake was 37.7593 ms)
+[KEM][SimLatency][t=0.0377812] Vehicle 166 session key simulated-ready (real handshake was 37.7812 ms)
+[KEM][SimLatency][t=0.0378088] Vehicle 33 session key simulated-ready (real handshake was 37.8088 ms)
+[KEM][SimLatency][t=0.037955] Vehicle 170 session key simulated-ready (real handshake was 37.955 ms)
+[KEM][SimLatency][t=0.0379997] Vehicle 153 session key simulated-ready (real handshake was 37.9997 ms)
+[KEM][SimLatency][t=0.0381188] Vehicle 158 session key simulated-ready (real handshake was 38.1188 ms)
+[KEM][SimLatency][t=0.0382669] Vehicle 171 session key simulated-ready (real handshake was 38.2669 ms)
+[KEM][SimLatency][t=0.0385972] Vehicle 30 session key simulated-ready (real handshake was 38.5972 ms)
+[KEM][SimLatency][t=0.0393046] Vehicle 152 session key simulated-ready (real handshake was 39.3046 ms)
+[KEM][SimLatency][t=0.0403506] Vehicle 169 session key simulated-ready (real handshake was 40.3506 ms)
+[KEM][SimLatency][t=0.0407056] Vehicle 160 session key simulated-ready (real handshake was 40.7056 ms)
+[KEM][SimLatency][t=0.0411663] Vehicle 168 session key simulated-ready (real handshake was 41.1663 ms)
+[KEM][SimLatency][t=0.0411997] Vehicle 167 session key simulated-ready (real handshake was 41.1997 ms)
+[KEM][SimLatency][t=0.0413275] Vehicle 159 session key simulated-ready (real handshake was 41.3275 ms)
+[KEM][SimLatency][t=0.0419174] Vehicle 28 session key simulated-ready (real handshake was 41.9174 ms)
+[KEM][SimLatency][t=0.0421627] Vehicle 29 session key simulated-ready (real handshake was 42.1627 ms)
+[KEM][SimLatency][t=0.0611191] Vehicle 35 session key simulated-ready (real handshake was 61.1191 ms)
+[KEM][SimLatency][t=0.0632049] Vehicle 174 session key simulated-ready (real handshake was 63.2049 ms)
+[KEM][SimLatency][t=0.0675816] Vehicle 36 session key simulated-ready (real handshake was 67.5816 ms)
+[KEM][SimLatency][t=0.100311] Vehicle 175 session key simulated-ready (real handshake was 100.311 ms)
 lte total packet size is 228
 lte total packet size is 456
 lte total packet size is 684
@@ -14051,7 +14269,9 @@ lte total packet size is 6513668
 lte total packet size is 6514064
 lte total packet size is 6514460
 lte total packet size is 6514856
-lte total packet size is 6515252
+lte total pack
+
+et size is 6515252
 lte total packet size is 6515648
 lte total packet size is 6516044
 lte total packet size is 6516440
@@ -14133,7 +14353,15 @@ lte total packet size is 6552692
 Current neighbor size is 0Received packet from 205 of size 12packet timestamp 5.000s with delay 1ms
 Current neighbor size is 0Received packet from 207 of size 12packet timestamp 5.002s with delay 1ms
 [BSHH-S4][t=5.003]  V14(ns3=19)/V51(ns3=56) --DSRC--> RSU3(ns3=208) --CSMA--> Ctrl3(ns3=3)  HB(V14(ns3=19), t=5.000)  HB(V51(ns3=56), t=5.000)  ACCEPTED
-[BSHH-S4][t=5.004]  V110(ns3=115)/V108(ns3=113) --DSRC--> RSU4(ns3=209) --CSMA--> Ctrl4(?)  HB(V110(ns3=115), t=5.000)  HB(V108(ns3=113), t=5.000)  ACCEPTED
+[BSHH-S4][t=5.004]  V110(ns3=115)/V108(ns3=113) --DSRC--> RSU4(ns3=209) --CSMA--> Ctrl4(
+
+
+
+
+
+
+
+?)  HB(V110(ns3=115), t=5.000)  HB(V108(ns3=113), t=5.000)  ACCEPTED
 [TEMP-DIAG3][RXDROP] t=5.004 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
 [TEMP-DIAG3][RXDROP] t=5.004 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
 [TEMP-DIAG3][RXDROP] t=5.004 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
@@ -14170,7 +14398,17 @@ Current neighbor size is 0Received packet from 212 of size 12packet timestamp 5.
 Current neighbor size is 0Received packet from 218 of size 12packet timestamp 5.013s with delay 1ms
 [BSHH-S4][t=5.014]  V66(ns3=71)/V146(ns3=151) --DSRC--> RSU14(ns3=219) --CSMA--> Ctrl14(?)  HB(V66(ns3=71), t=5.000)  HB(V146(ns3=151), t=5.000)  ACCEPTED
 Current neighbor size is 0Received packet from 210 of size 12packet timestamp 5.005s with delay 1ms
-[BSHH-S4][t=5.015]  V21(ns3=26)/V79(ns3=84) --DSRC--> RSU15(ns3=220) --CSMA--> Ctrl15(?)  HB(V21(ns3=26), t=5.000)  HB(V79(ns3=84), t=5.000)  ACCEPTED
+[BSHH-S4][t=5.015]  V21(n
+
+
+
+
+
+
+
+
+
+s3=26)/V79(ns3=84) --DSRC--> RSU15(ns3=220) --CSMA--> Ctrl15(?)  HB(V21(ns3=26), t=5.000)  HB(V79(ns3=84), t=5.000)  ACCEPTED
 Current neighbor size is 0Received packet from 213 of size 12packet timestamp 5.008s with delay 1ms
 Current neighbor size is 0Received packet from 214 of size 12packet timestamp 5.009s with delay 1ms
 [TEMP-DIAG][RX] tagd1 from=89 dest=206 t=5.015 uid=369397 signal=-42.206
@@ -20463,7 +20701,8 @@ lte total packet size is 9518620
 lte total packet size is 9519016
 lte total packet size is 9519412
 lte total packet size is 9519808
-[TEMP-DIAG3][RXDROP] t=6.973 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=6.973 reason=PREAMBLE_DETECT_FAIL[BSHH-S4] t=7s  Ctrl0(ns3=0) (RSU variant) replayed stale HBs
+URE context=/NodeList/209/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
 [TEMP-DIAG3][RXDROP] t=6.973 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
 [TEMP-DIAG3][RXDROP] t=6.973 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
 [TEMP-DIAG3][RXDROP] t=6.979 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
@@ -20491,6 +20730,218 @@ lte total packet size is 9519808
 [TEMP-DIAG3][RXDROP] t=6.991 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
 [TEMP-DIAG3][RXDROP] t=6.991 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
 [BSHH-S4][t=7.000]  Ctrl0(ns3=0) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V55(ns3=60), slot=V55(ns3=60), t=5.000)  HB(claimed=V55(ns3=60), slot=V57(ns3=62), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[CRL] cert_revoke_vehicle: «
+[LKH] mark_key_revoked: «
+[LKH] Revoking « (leaf=454)
+[LKH] KEK updates: 8  (O(log n), n=200)
+[LKH] Distributing KEK updates to non-revoked vehicles:
+[LKH]   node=0  kek=f13b...  rcpt=198 (    ...)
+[LKH]   node=1  kek=ce86...  rcpt=127 (    ...)
+[LKH]   node=2  kek=6e52...  rcpt=71 (Ä Å Ç É ...)
+[LKH]   node=3  kek=f93b...  rcpt=63 (    ...)
+[LKH]   node=4  kek=d000...  rcpt=64 (@ A B C ...)
+[LKH]   node=5  kek=c769...  rcpt=64 (Ä Å Ç É ...)
+[LKH]   node=6  kek=f6e3...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=7  kek=d03f...  rcpt=31 (    ...)
+[LKH]   node=8  kek=c2fe...  rcpt=32 (  ! " # ...)
+[LKH]   node=9  kek=b30d...  rcpt=32 (@ A B C ...)
+[LKH]   node=10  kek=3cde...  rcpt=32 (` a b c ...)
+[LKH]   node=11  kek=61f0...  rcpt=32 (Ä Å Ç É ...)
+[LKH]   node=12  kek=d119...  rcpt=32 († ° ¢ £ ...)
+[LKH]   node=13  kek=946f...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=15  kek=7c69...  rcpt=15 (    ...)
+[LKH]   node=16  kek=48d3...  rcpt=16 (    ...)
+[LKH]   node=17  kek=2967...  rcpt=16 (  ! " # ...)
+[LKH]   node=18  kek=7008...  rcpt=16 (0 1 2 3 ...)
+[LKH]   node=19  kek=717d...  rcpt=16 (@ A B C ...)
+[LKH]   node=20  kek=ac95...  rcpt=16 (P Q R S ...)
+[LKH]   node=21  kek=0fd3...  rcpt=16 (` a b c ...)
+[LKH]   node=22  kek=2d22...  rcpt=16 (p q r s ...)
+[LKH]   node=23  kek=34b7...  rcpt=16 (Ä Å Ç É ...)
+[LKH]   node=24  kek=5685...  rcpt=16 (ê ë í ì ...)
+[LKH]   node=25  kek=d84f...  rcpt=16 († ° ¢ £ ...)
+[LKH]   node=26  kek=f52e...  rcpt=16 (∞ ± ≤ ≥ ...)
+[LKH]   node=27  kek=0478...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=31  kek=88ac...  rcpt=7 (    ...)
+[LKH]   node=32  kek=7428...  rcpt=8 ( 	 
+  ...)
+[LKH]   node=33  kek=24d3...  rcpt=8 (    ...)
+[LKH]   node=34  kek=b4f9...  rcpt=8 (    ...)
+[LKH]   node=35  kek=0b0c...  rcpt=8 (  ! " # ...)
+[LKH]   node=36  kek=7149...  rcpt=8 (( ) * + ...)
+[LKH]   node=37  kek=83ce...  rcpt=8 (0 1 2 3 ...)
+[LKH]   node=38  kek=c17e...  rcpt=8 (8 9 : ; ...)
+[LKH]   node=39  kek=6f87...  rcpt=8 (@ A B C ...)
+[LKH]   node=40  kek=e5ba...  rcpt=8 (H I J K ...)
+[LKH]   node=41  kek=ba93...  rcpt=8 (P Q R S ...)
+[LKH]   node=42  kek=85e4...  rcpt=8 (X Y Z [ ...)
+[LKH]   node=43  kek=1bf4...  rcpt=8 (` a b c ...)
+[LKH]   node=44  kek=e754...  rcpt=8 (h i j k ...)
+[LKH]   node=45  kek=68b6...  rcpt=8 (p q r s ...)
+[LKH]   node=46  kek=14ec...  rcpt=8 (x y z { ...)
+[LKH]   node=47  kek=5a5f...  rcpt=8 (Ä Å Ç É ...)
+[LKH]   node=48  kek=a71c...  rcpt=8 (à â ä ã ...)
+[LKH]   node=49  kek=d7c9...  rcpt=8 (ê ë í ì ...)
+[LKH]   node=50  kek=fd42...  rcpt=8 (ò ô ö õ ...)
+[LKH]   node=51  kek=c16d...  rcpt=8 († ° ¢ £ ...)
+[LKH]   node=52  kek=6083...  rcpt=8 (® © ™ ´ ...)
+[LKH]   node=53  kek=287c...  rcpt=8 (∞ ± ≤ ≥ ...)
+[LKH]   node=54  kek=a029...  rcpt=8 (∏ π ∫ ª ...)
+[LKH]   node=55  kek=2ed2...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=63  kek=c948...  rcpt=3 (   )
+[LKH]   node=64  kek=7789...  rcpt=4 (    )
+[LKH]   node=65  kek=2ae3...  rcpt=4 ( 	 
+  )
+[LKH]   node=66  kek=7f8b...  rcpt=4 (    )
+[LKH]   node=67  kek=367c...  rcpt=4 (    )
+[LKH]   node=68  kek=a955...  rcpt=4 (    )
+[LKH]   node=69  kek=1feb...  rcpt=4 (    )
+[LKH]   node=70  kek=2863...  rcpt=4 (    )
+[LKH]   node=71  kek=052d...  rcpt=4 (  ! " # )
+[LKH]   node=72  kek=13eb...  rcpt=4 ($ % & ' )
+[LKH]   node=73  kek=60d8...  rcpt=4 (( ) * + )
+[LKH]   node=74  kek=982b...  rcpt=4 (, - . / )
+[LKH]   node=75  kek=ab2b...  rcpt=4 (0 1 2 3 )
+[LKH]   node=76  kek=eb05...  rcpt=4 (4 5 6 7 )
+[LKH]   node=77  kek=f48e...  rcpt=4 (8 9 : ; )
+[LKH]   node=78  kek=29eb...  rcpt=4 (< = > ? )
+[LKH]   node=79  kek=a653...  rcpt=4 (@ A B C )
+[LKH]   node=80  kek=06e2...  rcpt=4 (D E F G )
+[LKH]   node=81  kek=3ad4...  rcpt=4 (H I J K )
+[LKH]   node=82  kek=3be9...  rcpt=4 (L M N O )
+[LKH]   node=83  kek=8fa6...  rcpt=4 (P Q R S )
+[LKH]   node=84  kek=9001...  rcpt=4 (T U V W )
+[LKH]   node=85  kek=49d5...  rcpt=4 (X Y Z [ )
+[LKH]   node=86  kek=29ad...  rcpt=4 (\ ] ^ _ )
+[LKH]   node=87  kek=b546...  rcpt=4 (` a b c )
+[LKH]   node=88  kek=e0fa...  rcpt=4 (d e f g )
+[LKH]   node=89  kek=ed39...  rcpt=4 (h i j k )
+[LKH]   node=90  kek=022c...  rcpt=4 (l m n o )
+[LKH]   node=91  kek=9b18...  rcpt=4 (p q r s )
+[LKH]   node=92  kek=7113...  rcpt=4 (t u v w )
+[LKH]   node=93  kek=c2d2...  rcpt=4 (x y z { )
+[LKH]   node=94  kek=eed2...  rcpt=4 (| } ~  )
+[LKH]   node=95  kek=b450...  rcpt=4 (Ä Å Ç É )
+[LKH]   node=96  kek=cda8...  rcpt=4 (Ñ Ö Ü á )
+[LKH]   node=97  kek=74d6...  rcpt=4 (à â ä ã )
+[LKH]   node=98  kek=da72...  rcpt=4 (å ç é è )
+[LKH]   node=99  kek=d430...  rcpt=4 (ê ë í ì )
+[LKH]   node=100  kek=e3d2...  rcpt=4 (î ï ñ ó )
+[LKH]   node=101  kek=2367...  rcpt=4 (ò ô ö õ )
+[LKH]   node=102  kek=7339...  rcpt=4 (ú ù û ü )
+[LKH]   node=103  kek=c9bd...  rcpt=4 († ° ¢ £ )
+[LKH]   node=104  kek=e8be...  rcpt=4 (§ • ¶ ß )
+[LKH]   node=105  kek=cfb5...  rcpt=4 (® © ™ ´ )
+[LKH]   node=106  kek=5816...  rcpt=4 (¨ ≠ Æ Ø )
+[LKH]   node=107  kek=7038...  rcpt=4 (∞ ± ≤ ≥ )
+[LKH]   node=108  kek=c602...  rcpt=4 (¥ µ ∂ ∑ )
+[LKH]   node=109  kek=9cc2...  rcpt=4 (∏ π ∫ ª )
+[LKH]   node=110  kek=1bb7...  rcpt=4 (º Ω æ ø )
+[LKH]   node=111  kek=8a40...  rcpt=4 (¿ ¡ ¬ √ )
+[LKH]   node=112  kek=6f9a...  rcpt=3 (ƒ ≈ ∆ )
+[LKH]   node=127  kek=238c...  rcpt=1 ( )
+[LKH]   node=128  kek=dc79...  rcpt=2 (  )
+[LKH]   node=129  kek=a8d9...  rcpt=2 (  )
+[LKH]   node=130  kek=0ac0...  rcpt=2 (  )
+[LKH]   node=131  kek=bd85...  rcpt=2 ( 	 )
+[LKH]   node=132  kek=8d74...  rcpt=2 (
+  )
+[LKH]   node=133  kek=cce1...  rcpt=2 (  )
+[LKH]   node=134  kek=e3d1...  rcpt=2 (  )
+[LKH]   node=135  kek=d5ac...  rcpt=2 (  )
+[LKH]   node=136  kek=e8b4...  rcpt=2 (  )
+[LKH]   node=137  kek=25d3...  rcpt=2 (  )
+[LKH]   node=138  kek=0c7c...  rcpt=2 (  )
+[LKH]   node=139  kek=cce3...  rcpt=2 (  )
+[LKH]   node=140  kek=3321...  rcpt=2 (  )
+[LKH]   node=141  kek=b7b3...  rcpt=2 (  )
+[LKH]   node=142  kek=1c83...  rcpt=2 (  )
+[LKH]   node=143  kek=abc4...  rcpt=2 (  ! )
+[LKH]   node=144  kek=1f88...  rcpt=2 (" # )
+[LKH]   node=145  kek=8876...  rcpt=2 ($ % )
+[LKH]   node=146  kek=7b65...  rcpt=2 (& ' )
+[LKH]   node=147  kek=915d...  rcpt=2 (( ) )
+[LKH]   node=148  kek=c9de...  rcpt=2 (* + )
+[LKH]   node=149  kek=90f1...  rcpt=2 (, - )
+[LKH]   node=150  kek=cef7...  rcpt=2 (. / )
+[LKH]   node=151  kek=c0af...  rcpt=2 (0 1 )
+[LKH]   node=152  kek=ea3f...  rcpt=2 (2 3 )
+[LKH]   node=153  kek=44db...  rcpt=2 (4 5 )
+[LKH]   node=154  kek=fe78...  rcpt=2 (6 7 )
+[LKH]   node=155  kek=4829...  rcpt=2 (8 9 )
+[LKH]   node=156  kek=e580...  rcpt=2 (: ; )
+[LKH]   node=157  kek=4fc7...  rcpt=2 (< = )
+[LKH]   node=158  kek=55c2...  rcpt=2 (> ? )
+[LKH]   node=159  kek=7a0f...  rcpt=2 (@ A )
+[LKH]   node=160  kek=8ccf...  rcpt=2 (B C )
+[LKH]   node=161  kek=2f34...  rcpt=2 (D E )
+[LKH]   node=162  kek=13f1...  rcpt=2 (F G )
+[LKH]   node=163  kek=b51c...  rcpt=2 (H I )
+[LKH]   node=164  kek=e727...  rcpt=2 (J K )
+[LKH]   node=165  kek=1b84...  rcpt=2 (L M )
+[LKH]   node=166  kek=4c1f...  rcpt=2 (N O )
+[LKH]   node=167  kek=74b9...  rcpt=2 (P Q )
+[LKH]   node=168  kek=3e3d...  rcpt=2 (R S )
+[LKH]   node=169  kek=d81a...  rcpt=2 (T U )
+[LKH]   node=170  kek=703e...  rcpt=2 (V W )
+[LKH]   node=171  kek=f600...  rcpt=2 (X Y )
+[LKH]   node=172  kek=8d9f...  rcpt=2 (Z [ )
+[LKH]   node=173  kek=0045...  rcpt=2 (\ ] )
+[LKH]   node=174  kek=7e37...  rcpt=2 (^ _ )
+[LKH]   node=175  kek=fdaf...  rcpt=2 (` a )
+[LKH]   node=176  kek=d3af...  rcpt=2 (b c )
+[LKH]   node=177  kek=a09f...  rcpt=2 (d e )
+[LKH]   node=178  kek=817a...  rcpt=2 (f g )
+[LKH]   node=179  kek=c58c...  rcpt=2 (h i )
+[LKH]   node=180  kek=af9d...  rcpt=2 (j k )
+[LKH]   node=181  kek=0087...  rcpt=2 (l m )
+[LKH]   node=182  kek=2640...  rcpt=2 (n o )
+[LKH]   node=183  kek=b694...  rcpt=2 (p q )
+[LKH]   node=184  kek=c242...  rcpt=2 (r s )
+[LKH]   node=185  kek=4717...  rcpt=2 (t u )
+[LKH]   node=186  kek=626f...  rcpt=2 (v w )
+[LKH]   node=187  kek=dc89...  rcpt=2 (x y )
+[LKH]   node=188  kek=ec87...  rcpt=2 (z { )
+[LKH]   node=189  kek=4b60...  rcpt=2 (| } )
+[LKH]   node=190  kek=a4d4...  rcpt=2 (~  )
+[LKH]   node=191  kek=df41...  rcpt=2 (Ä Å )
+[LKH]   node=192  kek=e282...  rcpt=2 (Ç É )
+[LKH]   node=193  kek=7218...  rcpt=2 (Ñ Ö )
+[LKH]   node=194  kek=2de6...  rcpt=2 (Ü á )
+[LKH]   node=195  kek=c9b9...  rcpt=2 (à â )
+[LKH]   node=196  kek=bfb1...  rcpt=2 (ä ã )
+[LKH]   node=197  kek=14a2...  rcpt=2 (å ç )
+[LKH]   node=198  kek=be2c...  rcpt=2 (é è )
+[LKH]   node=199  kek=3e47...  rcpt=2 (ê ë )
+[LKH]   node=200  kek=5b9b...  rcpt=2 (í ì )
+[LKH]   node=201  kek=fdf7...  rcpt=2 (î ï )
+[LKH]   node=202  kek=4ae5...  rcpt=2 (ñ ó )
+[LKH]   node=203  kek=921e...  rcpt=2 (ò ô )
+[LKH]   node=204  kek=2f21...  rcpt=2 (ö õ )
+[LKH]   node=205  kek=ccd1...  rcpt=2 (ú ù )
+[LKH]   node=206  kek=9fbb...  rcpt=2 (û ü )
+[LKH]   node=207  kek=af06...  rcpt=2 († ° )
+[LKH]   node=208  kek=2fc2...  rcpt=2 (¢ £ )
+[LKH]   node=209  kek=13e5...  rcpt=2 (§ • )
+[LKH]   node=210  kek=eec5...  rcpt=2 (¶ ß )
+[LKH]   node=211  kek=ba73...  rcpt=2 (® © )
+[LKH]   node=212  kek=8b93...  rcpt=2 (™ ´ )
+[LKH]   node=213  kek=b4ae...  rcpt=2 (¨ ≠ )
+[LKH]   node=214  kek=976c...  rcpt=2 (Æ Ø )
+[LKH]   node=215  kek=fc04...  rcpt=2 (∞ ± )
+[LKH]   node=216  kek=88d9...  rcpt=2 (≤ ≥ )
+[LKH]   node=217  kek=56ba...  rcpt=2 (¥ µ )
+[LKH]   node=218  kek=c722...  rcpt=2 (∂ ∑ )
+[LKH]   node=219  kek=7903...  rcpt=2 (∏ π )
+[LKH]   node=220  kek=f2d7...  rcpt=2 (∫ ª )
+[LKH]   node=221  kek=31b9...  rcpt=2 (º Ω )
+[LKH]   node=222  kek=a0d0...  rcpt=2 (æ ø )
+[LKH]   node=223  kek=b3ba...  rcpt=2 (¿ ¡ )
+[LKH]   node=224  kek=8327...  rcpt=2 (¬ √ )
+[LKH]   node=225  kek=1125...  rcpt=2 (ƒ ≈ )
+[LKH]   node=226  kek=e8c6...  rcpt=1 (∆ )
+[LKH] Total KEK distribution messages: 202
+[LKH][t=7.000] Revoked V9999 (leaf 199) ‚Äî O(log 200)=8 KEK updates (Eq. 3.18)
 [Trust][Anchor][t=7.000] Peer synced from checkpoint seq=1 (published t=6.000, sync latency=1.000s)
 [Trust][Anchor][t=7.000] Peer synced from checkpoint seq=1 (published t=6.000, sync latency=1.000s)
 [Trust][Anchor][t=7.000] Peer synced from checkpoint seq=1 (published t=6.000, sync latency=1.000s)
@@ -20692,6 +21143,218 @@ lte total packet size is 9519808
 [Trust][Anchor][t=7.000] Peer synced from checkpoint seq=1 (published t=6.000, sync latency=1.000s)
 [Trust][Anchor][t=7.000] Peer synced from checkpoint seq=1 (published t=6.000, sync latency=1.000s)
 [BSHH-S4][t=7.000]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[CRL] cert_revoke_vehicle: ?
+[LKH] mark_key_revoked: ?
+[LKH] Revoking ? (leaf=318)
+[LKH] KEK updates: 8  (O(log n), n=200)
+[LKH] Distributing KEK updates to non-revoked vehicles:
+[LKH]   node=0  kek=7781...  rcpt=197 (    ...)
+[LKH]   node=1  kek=4e87...  rcpt=126 (    ...)
+[LKH]   node=2  kek=6e52...  rcpt=71 (Ä Å Ç É ...)
+[LKH]   node=3  kek=ad5e...  rcpt=62 (    ...)
+[LKH]   node=4  kek=d000...  rcpt=64 (@ A B C ...)
+[LKH]   node=5  kek=c769...  rcpt=64 (Ä Å Ç É ...)
+[LKH]   node=6  kek=f6e3...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=7  kek=d03f...  rcpt=31 (    ...)
+[LKH]   node=8  kek=47d9...  rcpt=31 (  ! " # ...)
+[LKH]   node=9  kek=b30d...  rcpt=32 (@ A B C ...)
+[LKH]   node=10  kek=3cde...  rcpt=32 (` a b c ...)
+[LKH]   node=11  kek=61f0...  rcpt=32 (Ä Å Ç É ...)
+[LKH]   node=12  kek=d119...  rcpt=32 († ° ¢ £ ...)
+[LKH]   node=13  kek=946f...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=15  kek=7c69...  rcpt=15 (    ...)
+[LKH]   node=16  kek=48d3...  rcpt=16 (    ...)
+[LKH]   node=17  kek=2967...  rcpt=16 (  ! " # ...)
+[LKH]   node=18  kek=c9b5...  rcpt=15 (0 1 2 3 ...)
+[LKH]   node=19  kek=717d...  rcpt=16 (@ A B C ...)
+[LKH]   node=20  kek=ac95...  rcpt=16 (P Q R S ...)
+[LKH]   node=21  kek=0fd3...  rcpt=16 (` a b c ...)
+[LKH]   node=22  kek=2d22...  rcpt=16 (p q r s ...)
+[LKH]   node=23  kek=34b7...  rcpt=16 (Ä Å Ç É ...)
+[LKH]   node=24  kek=5685...  rcpt=16 (ê ë í ì ...)
+[LKH]   node=25  kek=d84f...  rcpt=16 († ° ¢ £ ...)
+[LKH]   node=26  kek=f52e...  rcpt=16 (∞ ± ≤ ≥ ...)
+[LKH]   node=27  kek=0478...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=31  kek=88ac...  rcpt=7 (    ...)
+[LKH]   node=32  kek=7428...  rcpt=8 ( 	 
+  ...)
+[LKH]   node=33  kek=24d3...  rcpt=8 (    ...)
+[LKH]   node=34  kek=b4f9...  rcpt=8 (    ...)
+[LKH]   node=35  kek=0b0c...  rcpt=8 (  ! " # ...)
+[LKH]   node=36  kek=7149...  rcpt=8 (( ) * + ...)
+[LKH]   node=37  kek=83ce...  rcpt=8 (0 1 2 3 ...)
+[LKH]   node=38  kek=bb49...  rcpt=7 (8 9 : ; ...)
+[LKH]   node=39  kek=6f87...  rcpt=8 (@ A B C ...)
+[LKH]   node=40  kek=e5ba...  rcpt=8 (H I J K ...)
+[LKH]   node=41  kek=ba93...  rcpt=8 (P Q R S ...)
+[LKH]   node=42  kek=85e4...  rcpt=8 (X Y Z [ ...)
+[LKH]   node=43  kek=1bf4...  rcpt=8 (` a b c ...)
+[LKH]   node=44  kek=e754...  rcpt=8 (h i j k ...)
+[LKH]   node=45  kek=68b6...  rcpt=8 (p q r s ...)
+[LKH]   node=46  kek=14ec...  rcpt=8 (x y z { ...)
+[LKH]   node=47  kek=5a5f...  rcpt=8 (Ä Å Ç É ...)
+[LKH]   node=48  kek=a71c...  rcpt=8 (à â ä ã ...)
+[LKH]   node=49  kek=d7c9...  rcpt=8 (ê ë í ì ...)
+[LKH]   node=50  kek=fd42...  rcpt=8 (ò ô ö õ ...)
+[LKH]   node=51  kek=c16d...  rcpt=8 († ° ¢ £ ...)
+[LKH]   node=52  kek=6083...  rcpt=8 (® © ™ ´ ...)
+[LKH]   node=53  kek=287c...  rcpt=8 (∞ ± ≤ ≥ ...)
+[LKH]   node=54  kek=a029...  rcpt=8 (∏ π ∫ ª ...)
+[LKH]   node=55  kek=2ed2...  rcpt=7 (¿ ¡ ¬ √ ...)
+[LKH]   node=63  kek=c948...  rcpt=3 (   )
+[LKH]   node=64  kek=7789...  rcpt=4 (    )
+[LKH]   node=65  kek=2ae3...  rcpt=4 ( 	 
+  )
+[LKH]   node=66  kek=7f8b...  rcpt=4 (    )
+[LKH]   node=67  kek=367c...  rcpt=4 (    )
+[LKH]   node=68  kek=a955...  rcpt=4 (    )
+[LKH]   node=69  kek=1feb...  rcpt=4 (    )
+[LKH]   node=70  kek=2863...  rcpt=4 (    )
+[LKH]   node=71  kek=052d...  rcpt=4 (  ! " # )
+[LKH]   node=72  kek=13eb...  rcpt=4 ($ % & ' )
+[LKH]   node=73  kek=60d8...  rcpt=4 (( ) * + )
+[LKH]   node=74  kek=982b...  rcpt=4 (, - . / )
+[LKH]   node=75  kek=ab2b...  rcpt=4 (0 1 2 3 )
+[LKH]   node=76  kek=eb05...  rcpt=4 (4 5 6 7 )
+[LKH]   node=77  kek=f48e...  rcpt=4 (8 9 : ; )
+[LKH]   node=78  kek=82e4...  rcpt=3 (< = > )
+[LKH]   node=79  kek=a653...  rcpt=4 (@ A B C )
+[LKH]   node=80  kek=06e2...  rcpt=4 (D E F G )
+[LKH]   node=81  kek=3ad4...  rcpt=4 (H I J K )
+[LKH]   node=82  kek=3be9...  rcpt=4 (L M N O )
+[LKH]   node=83  kek=8fa6...  rcpt=4 (P Q R S )
+[LKH]   node=84  kek=9001...  rcpt=4 (T U V W )
+[LKH]   node=85  kek=49d5...  rcpt=4 (X Y Z [ )
+[LKH]   node=86  kek=29ad...  rcpt=4 (\ ] ^ _ )
+[LKH]   node=87  kek=b546...  rcpt=4 (` a b c )
+[LKH]   node=88  kek=e0fa...  rcpt=4 (d e f g )
+[LKH]   node=89  kek=ed39...  rcpt=4 (h i j k )
+[LKH]   node=90  kek=022c...  rcpt=4 (l m n o )
+[LKH]   node=91  kek=9b18...  rcpt=4 (p q r s )
+[LKH]   node=92  kek=7113...  rcpt=4 (t u v w )
+[LKH]   node=93  kek=c2d2...  rcpt=4 (x y z { )
+[LKH]   node=94  kek=eed2...  rcpt=4 (| } ~  )
+[LKH]   node=95  kek=b450...  rcpt=4 (Ä Å Ç É )
+[LKH]   node=96  kek=cda8...  rcpt=4 (Ñ Ö Ü á )
+[LKH]   node=97  kek=74d6...  rcpt=4 (à â ä ã )
+[LKH]   node=98  kek=da72...  rcpt=4 (å ç é è )
+[LKH]   node=99  kek=d430...  rcpt=4 (ê ë í ì )
+[LKH]   node=100  kek=e3d2...  rcpt=4 (î ï ñ ó )
+[LKH]   node=101  kek=2367...  rcpt=4 (ò ô ö õ )
+[LKH]   node=102  kek=7339...  rcpt=4 (ú ù û ü )
+[LKH]   node=103  kek=c9bd...  rcpt=4 († ° ¢ £ )
+[LKH]   node=104  kek=e8be...  rcpt=4 (§ • ¶ ß )
+[LKH]   node=105  kek=cfb5...  rcpt=4 (® © ™ ´ )
+[LKH]   node=106  kek=5816...  rcpt=4 (¨ ≠ Æ Ø )
+[LKH]   node=107  kek=7038...  rcpt=4 (∞ ± ≤ ≥ )
+[LKH]   node=108  kek=c602...  rcpt=4 (¥ µ ∂ ∑ )
+[LKH]   node=109  kek=9cc2...  rcpt=4 (∏ π ∫ ª )
+[LKH]   node=110  kek=1bb7...  rcpt=4 (º Ω æ ø )
+[LKH]   node=111  kek=8a40...  rcpt=4 (¿ ¡ ¬ √ )
+[LKH]   node=112  kek=6f9a...  rcpt=3 (ƒ ≈ ∆ )
+[LKH]   node=127  kek=238c...  rcpt=1 ( )
+[LKH]   node=128  kek=dc79...  rcpt=2 (  )
+[LKH]   node=129  kek=a8d9...  rcpt=2 (  )
+[LKH]   node=130  kek=0ac0...  rcpt=2 (  )
+[LKH]   node=131  kek=bd85...  rcpt=2 ( 	 )
+[LKH]   node=132  kek=8d74...  rcpt=2 (
+  )
+[LKH]   node=133  kek=cce1...  rcpt=2 (  )
+[LKH]   node=134  kek=e3d1...  rcpt=2 (  )
+[LKH]   node=135  kek=d5ac...  rcpt=2 (  )
+[LKH]   node=136  kek=e8b4...  rcpt=2 (  )
+[LKH]   node=137  kek=25d3...  rcpt=2 (  )
+[LKH]   node=138  kek=0c7c...  rcpt=2 (  )
+[LKH]   node=139  kek=cce3...  rcpt=2 (  )
+[LKH]   node=140  kek=3321...  rcpt=2 (  )
+[LKH]   node=141  kek=b7b3...  rcpt=2 (  )
+[LKH]   node=142  kek=1c83...  rcpt=2 (  )
+[LKH]   node=143  kek=abc4...  rcpt=2 (  ! )
+[LKH]   node=144  kek=1f88...  rcpt=2 (" # )
+[LKH]   node=145  kek=8876...  rcpt=2 ($ % )
+[LKH]   node=146  kek=7b65...  rcpt=2 (& ' )
+[LKH]   node=147  kek=915d...  rcpt=2 (( ) )
+[LKH]   node=148  kek=c9de...  rcpt=2 (* + )
+[LKH]   node=149  kek=90f1...  rcpt=2 (, - )
+[LKH]   node=150  kek=cef7...  rcpt=2 (. / )
+[LKH]   node=151  kek=c0af...  rcpt=2 (0 1 )
+[LKH]   node=152  kek=ea3f...  rcpt=2 (2 3 )
+[LKH]   node=153  kek=44db...  rcpt=2 (4 5 )
+[LKH]   node=154  kek=fe78...  rcpt=2 (6 7 )
+[LKH]   node=155  kek=4829...  rcpt=2 (8 9 )
+[LKH]   node=156  kek=e580...  rcpt=2 (: ; )
+[LKH]   node=157  kek=4fc7...  rcpt=2 (< = )
+[LKH]   node=158  kek=9f0e...  rcpt=1 (> )
+[LKH]   node=159  kek=7a0f...  rcpt=2 (@ A )
+[LKH]   node=160  kek=8ccf...  rcpt=2 (B C )
+[LKH]   node=161  kek=2f34...  rcpt=2 (D E )
+[LKH]   node=162  kek=13f1...  rcpt=2 (F G )
+[LKH]   node=163  kek=b51c...  rcpt=2 (H I )
+[LKH]   node=164  kek=e727...  rcpt=2 (J K )
+[LKH]   node=165  kek=1b84...  rcpt=2 (L M )
+[LKH]   node=166  kek=4c1f...  rcpt=2 (N O )
+[LKH]   node=167  kek=74b9...  rcpt=2 (P Q )
+[LKH]   node=168  kek=3e3d...  rcpt=2 (R S )
+[LKH]   node=169  kek=d81a...  rcpt=2 (T U )
+[LKH]   node=170  kek=703e...  rcpt=2 (V W )
+[LKH]   node=171  kek=f600...  rcpt=2 (X Y )
+[LKH][Trust] P_active rebuilt: 8 eligible peers
+   node=172  kek=8d9f...  rcpt=2 (Z [ )
+[LKH]   node=173  kek=0045...  rcpt=2 (\ ] )
+[LKH]   node=174  kek=7e37...  rcpt=2 (^ _ )
+[LKH]   node=175  kek=fdaf...  rcpt=2 (` a )
+[LKH]   node=176  kek=d3af...  rcpt=2 (b c )
+[LKH]   node=177  kek=a09f...  rcpt=2 (d e )
+[LKH]   node=178  kek=817a...  rcpt=2 (f g )
+[LKH]   node=179  kek=c58c...  rcpt=2 (h i )
+[LKH]   node=180  kek=af9d...  rcpt=2 (j k )
+[LKH]   node=181  kek=0087...  rcpt=2 (l m )
+[LKH]   node=182  kek=2640...  rcpt=2 (n o )
+[LKH]   node=183  kek=b694...  rcpt=2 (p q )
+[LKH]   node=184  kek=c242...  rcpt=2 (r s )
+[LKH]   node=185  kek=4717...  rcpt=2 (t u )
+[LKH]   node=186  kek=626f...  rcpt=2 (v w )
+[LKH]   node=187  kek=dc89...  rcpt=2 (x y )
+[LKH]   node=188  kek=ec87...  rcpt=2 (z { )
+[LKH]   node=189  kek=4b60...  rcpt=2 (| } )
+[LKH]   node=190  kek=a4d4...  rcpt=2 (~  )
+[LKH]   node=191  kek=df41...  rcpt=2 (Ä Å )
+[LKH]   node=192  kek=e282...  rcpt=2 (Ç É )
+[LKH]   node=193  kek=7218...  rcpt=2 (Ñ Ö )
+[LKH]   node=194  kek=2de6...  rcpt=2 (Ü á )
+[LKH]   node=195  kek=c9b9...  rcpt=2 (à â )
+[LKH]   node=196  kek=bfb1...  rcpt=2 (ä ã )
+[LKH]   node=197  kek=14a2...  rcpt=2 (å ç )
+[LKH]   node=198  kek=be2c...  rcpt=2 (é è )
+[LKH]   node=199  kek=3e47...  rcpt=2 (ê ë )
+[LKH]   node=200  kek=5b9b...  rcpt=2 (í ì )
+[LKH]   node=201  kek=fdf7...  rcpt=2 (î ï )
+[LKH]   node=202  kek=4ae5...  rcpt=2 (ñ ó )
+[LKH]   node=203  kek=921e...  rcpt=2 (ò ô )
+[LKH]   node=204  kek=2f21...  rcpt=2 (ö õ )
+[LKH]   node=205  kek=ccd1...  rcpt=2 (ú ù )
+[LKH]   node=206  kek=9fbb...  rcpt=2 (û ü )
+[LKH]   node=207  kek=af06...  rcpt=2 († ° )
+[LKH]   node=208  kek=2fc2...  rcpt=2 (¢ £ )
+[LKH]   node=209  kek=13e5...  rcpt=2 (§ • )
+[LKH]   node=210  kek=eec5...  rcpt=2 (¶ ß )
+[LKH]   node=211  kek=ba73...  rcpt=2 (® © )
+[LKH]   node=212  kek=8b93...  rcpt=2 (™ ´ )
+[LKH]   node=213  kek=b4ae...  rcpt=2 (¨ ≠ )
+[LKH]   node=214  kek=976c...  rcpt=2 (Æ Ø )
+[LKH]   node=215  kek=fc04...  rcpt=2 (∞ ± )
+[LKH]   node=216  kek=88d9...  rcpt=2 (≤ ≥ )
+[LKH]   node=217  kek=56ba...  rcpt=2 (¥ µ )
+[LKH]   node=218  kek=c722...  rcpt=2 (∂ ∑ )
+[LKH]   node=219  kek=7903...  rcpt=2 (∏ π )
+[LKH]   node=220  kek=f2d7...  rcpt=2 (∫ ª )
+[LKH]   node=221  kek=31b9...  rcpt=2 (º Ω )
+[LKH]   node=222  kek=a0d0...  rcpt=2 (æ ø )
+[LKH]   node=223  kek=b3ba...  rcpt=2 (¿ ¡ )
+[LKH]   node=224  kek=8327...  rcpt=2 (¬ √ )
+[LKH]   node=225  kek=1125...  rcpt=2 (ƒ ≈ )
+[LKH]   node=226  kek=e8c6...  rcpt=1 (∆ )
+[LKH] Total KEK distribution messages: 202
 [BSHH-S4][t=7.000]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.000]  MITIGATION: controller-origin ‚Äî network isolation of V60 SUPPRESSED (innocent reporting vehicle)
 lte total packet size is 9520456
@@ -20982,84 +21645,141 @@ lte total packet size is 9672504
 lte total packet size is 9672900
 lte total packet size is 9673296
 lte total packet size is 9673692
-lte total packet size is 9674088
+lte total packet size is 967408[BSHH-S4] t=7.001s  Ctrl1(ns3=1) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.002s  Ctrl2(ns3=2) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.003s  Ctrl3(ns3=3) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.004s  Ctrl4(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.005s  Ctrl5(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.006s  Ctrl6(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.007s  Ctrl7(?) (RSU variant) replayed stale HBs
+8
 lte total packet size is 9674484
 lte total packet size is 9674880
 lte total packet size is 9675276
 [BSHH-S4][t=7.001]  Ctrl1(ns3=1) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V89(ns3=94), slot=V89(ns3=94), t=5.000)  HB(claimed=V89(ns3=94), slot=V86(ns3=91), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.001]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.001]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.001]  MITIGATION: controller-origin ‚Äî network isolation of V94 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.002]  Ctrl2(ns3=2) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V134(ns3=139), slot=V134(ns3=139), t=5.000)  HB(claimed=V134(ns3=139), slot=V97(ns3=102), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.002]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.002]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.002]  MITIGATION: controller-origin ‚Äî network isolation of V139 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.003]  Ctrl3(ns3=3) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V14(ns3=19), slot=V14(ns3=19), t=5.000)  HB(claimed=V14(ns3=19), slot=V51(ns3=56), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.003]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.003]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.003]  MITIGATION: controller-origin ‚Äî network isolation of V19 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.004]  Ctrl4(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V110(ns3=115), slot=V110(ns3=115), t=5.000)  HB(claimed=V110(ns3=115), slot=V108(ns3=113), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.004]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.004]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.004]  MITIGATION: controller-origin ‚Äî network isolation of V115 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.005]  Ctrl5(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V94(ns3=99), slot=V94(ns3=99), t=5.000)  HB(claimed=V94(ns3=99), slot=V99(ns3=104), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.005]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.005]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.005]  MITIGATION: controller-origin ‚Äî network isolation of V99 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.006]  Ctrl6(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V43(ns3=48), slot=V43(ns3=48), t=5.000)  HB(claimed=V43(ns3=48), slot=V41(ns3=46), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.006]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.006]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.006]  MITIGATION: controller-origin ‚Äî network isolation of V48 SUPPRESSED (innocent reporting vehicle)
-[BSHH-S4][t=7.007]  Ctrl7(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V105(ns3=110), slot=V105(ns3=110), t=5.000)  HB(claimed=V105(ns3=110), slot=V113(ns3=118), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[BSHH-S4][t=7.007]  Ctrl7(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V105(ns3=110), [Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.008s  Ctrl8(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.009s  Ctrl9(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.01s  Ctrl10(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.011s  Ctrl11(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.012s  Ctrl12(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.013s  Ctrl13(?) (RSU variant) replayed stale HBs
+slot=V105(ns3=110), t=5.000)  HB(claimed=V105(ns3=110), slot=V113(ns3=118), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.007]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.007]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.007]  MITIGATION: controller-origin ‚Äî network isolation of V110 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.008]  Ctrl8(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V10(ns3=15), slot=V10(ns3=15), t=5.000)  HB(claimed=V10(ns3=15), slot=V12(ns3=17), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.008]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.008]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.008]  MITIGATION: controller-origin ‚Äî network isolation of V15 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.009]  Ctrl9(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V130(ns3=135), slot=V130(ns3=135), t=5.000)  HB(claimed=V130(ns3=135), slot=V132(ns3=137), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.009]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.009]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.009]  MITIGATION: controller-origin ‚Äî network isolation of V135 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.010]  Ctrl10(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V116(ns3=121), slot=V116(ns3=121), t=5.000)  HB(claimed=V116(ns3=121), slot=V196(ns3=201), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.010]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.010]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.010]  MITIGATION: controller-origin ‚Äî network isolation of V121 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.011]  Ctrl11(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V2(ns3=7), slot=V2(ns3=7), t=5.000)  HB(claimed=V2(ns3=7), slot=V5(ns3=10), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.011]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.011]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.011]  MITIGATION: controller-origin ‚Äî network isolation of V7 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.012]  Ctrl12(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V178(ns3=183), slot=V178(ns3=183), t=5.000)  HB(claimed=V178(ns3=183), slot=V181(ns3=186), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.012]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.012]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.012]  MITIGATION: controller-origin ‚Äî network isolation of V183 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.013]  Ctrl13(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V157(ns3=162), slot=V157(ns3=162), t=5.000)  HB(claimed=V157(ns3=162), slot=V191(ns3=196), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
-[BSHH-S4][t=7.013]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=7.013]  FS-MITIGATE gate: delta_[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.014s  Ctrl14(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.015s  Ctrl15(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.016s  Ctrl16(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.017s  Ctrl17(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.018s  Ctrl18(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+[BSHH-S4] t=7.019s  Ctrl19(?) (RSU variant) replayed stale HBs
+[Trust] P_active rebuilt: 8 eligible peers
+t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.013]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.013]  MITIGATION: controller-origin ‚Äî network isolation of V162 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.014]  Ctrl14(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V66(ns3=71), slot=V66(ns3=71), t=5.000)  HB(claimed=V66(ns3=71), slot=V146(ns3=151), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.014]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.014]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.014]  MITIGATION: controller-origin ‚Äî network isolation of V71 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.015]  Ctrl15(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V21(ns3=26), slot=V21(ns3=26), t=5.000)  HB(claimed=V21(ns3=26), slot=V79(ns3=84), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.015]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.015]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.015]  MITIGATION: controller-origin ‚Äî network isolation of V26 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.016]  Ctrl16(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V154(ns3=159), slot=V154(ns3=159), t=5.000)  HB(claimed=V154(ns3=159), slot=V173(ns3=178), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.016]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.016]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.016]  MITIGATION: controller-origin ‚Äî network isolation of V159 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.017]  Ctrl17(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V96(ns3=101), slot=V96(ns3=101), t=5.000)  HB(claimed=V96(ns3=101), slot=V162(ns3=167), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.017]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.017]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.017]  MITIGATION: controller-origin ‚Äî network isolation of V101 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.018]  Ctrl18(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V42(ns3=47), slot=V42(ns3=47), t=5.000)  HB(claimed=V42(ns3=47), slot=V164(ns3=169), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.018]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.018]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.018]  MITIGATION: controller-origin ‚Äî network isolation of V47 SUPPRESSED (innocent reporting vehicle)
 [BSHH-S4][t=7.019]  Ctrl19(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V17(ns3=22), slot=V17(ns3=22), t=5.000)  HB(claimed=V17(ns3=22), slot=V19(ns3=24), t=5.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
 [BSHH-S4][t=7.019]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=2 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[LKH] Vehicle not found: ?
 [BSHH-S4][t=7.019]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S4][t=7.019]  MITIGATION: controller-origin ‚Äî network isolation of V22 SUPPRESSED (innocent reporting vehicle)
 [TEMP-DIAG3][RXDROP] t=7.073 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
@@ -89303,7 +90023,13 @@ lte total packet size is 44149812
 lte total packet size is 44150964
 lte total packet size is 44152116
 lte total packet size is 44153268
-lte total packet size is 44154168
+lte total packet size i[PEM] tgn_alerts.json written: 1 attacker(s) ‚Üí /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../tgn_alerts.json
+[PEM] beacon_evidence.csv written: 20 row(s) ‚Üí /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../beacon_evidence.csv
+[PEM] ctrl_topo.json written -> /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../ctrl_topo.json
+[PEM] vehicle_macs.json written -> /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../vehicle_macs.json
+[PEM] scenario_config.json written -> /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../scenario_config.json (N_RSUs=64, N_Vehicles=200)
+[PEM] witness_records.json written: 134 entries (0 skipped, no-RSU synthetic bucket) -> /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/../witness_records.json
+s 44154168
 lte total packet size is 44155068
 lte total packet size is 44155968
 lte total packet size is 44156868
@@ -89335,7 +90061,7 @@ lte total packet size is 44171412
 [M2][TDRR] mean_topology_divergence=0.000  (samples=0)
 [M3][T_stale] mean=0.000 ms (samples=0)
 [M4][PIR] mean=1.000 (links tracked=0)
-[M5][T_pipeline] mean=30.904 ms  max=34.455 ms  over_budget=0/20
+[M5][T_pipeline] mean=28.049 ms  max=30.259 ms  over_budget=0/20
 [M7][Omega] omega_lw=5.941%  omega_fs=572.649%
 [M9][F1] TTW=1.000 BSHH=1.000 ME=1.000 macro=1.000
 [M10][FRA/FRR] FRA=0.000 FRR=0.000
@@ -89352,7 +90078,7 @@ lte total packet size is 44171412
 [TGN] tgn_alerts.json written: 40 alert(s) ‚Üí tgn_alerts.json
 [TGN] beacon_evidence.csv written: 20 observation(s)
 [TGN] ctrl_topo.json written: 0 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 ¬ß3.4.3, Alg2 line 23) ‚Äî Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/tgn_gen_runs/s8_seed1/submitToFabric_dispatch.log)
+[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 ¬ß3.4.3, Alg2 line 23) ‚Äî Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
 
 ========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
   Scenario  : 8 ‚Äî BSHH-S4: Malicious Controller, With RSU
@@ -89379,29 +90105,29 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 100
-  Avg wall-clock time: 5.754 ms
-  Max wall-clock time: 10.216 ms
+  Avg wall-clock time: 4.147 ms
+  Max wall-clock time: 6.939 ms
   Events exceeding budget: 0 / 100
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 20
-  Avg wall-clock time: 25.407 ms
-  Max wall-clock time: 26.676 ms
+  Avg wall-clock time: 24.363 ms
+  Max wall-clock time: 26.137 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 20
-  Avg wall-clock time: 30.904 ms
-  Max wall-clock time: 34.455 ms
+  Avg wall-clock time: 28.049 ms
+  Max wall-clock time: 30.259 ms
   Events exceeding 100.000 ms budget: 0 / 20  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 38
-  Avg wall-clock time: 0.301 ms
-  Max wall-clock time: 0.424 ms
+  Avg wall-clock time: 0.169 ms
+  Max wall-clock time: 0.248 ms
   Calls exceeding budget: 0 / 38
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 20
-  Avg wall-clock time: 0.014 ms
-  Max wall-clock time: 0.033 ms
+  Avg wall-clock time: 0.009 ms
+  Max wall-clock time: 0.020 ms
   Calls exceeding budget: 0 / 20
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
@@ -89418,12 +90144,12 @@ Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 20
-  Avg wall-clock time: 0.044 ms
-  Max wall-clock time: 0.726 ms
+  Avg wall-clock time: 0.025 ms
+  Max wall-clock time: 0.411 ms
   Calls exceeding budget: 0 / 20
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.301) + beacon-crypto(0.000) + rsu-forward(0.014) + detect(5.754) + detection-crypto(0.000) + mitigate(25.407) + lkh-crypto(0.044) = 31.519 ms
+  beacon-send(0.169) + beacon-crypto(0.000) + rsu-forward(0.009) + detect(4.147) + detection-crypto(0.000) + mitigate(24.363) + lkh-crypto(0.025) = 28.713 ms
   -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -89435,10 +90161,10 @@ Maximum neighbors observed at once: 17
 
 Real-time (wall-clock) budget check ‚Äî T_b=100.000 ms:
   Ticks executed: 200
-  Avg tick wall-clock time: 24.524 ms
-  Max tick wall-clock time: 87.828 ms
+  Avg tick wall-clock time: 20.114 ms
+  Max tick wall-clock time: 23.422 ms
   Ticks exceeding 100.000 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(24.524) + beacon-send(0.301) + beacon-crypto(0.000) + rsu-forward(0.014) + detect(5.754) + detection-crypto(0.000) + mitigate(25.407) + lkh-crypto(0.044) = 56.043 ms
+  neighborhood(20.114) + beacon-send(0.169) + beacon-crypto(0.000) + rsu-forward(0.009) + detect(4.147) + detection-crypto(0.000) + mitigate(24.363) + lkh-crypto(0.025) = 48.827 ms
   -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

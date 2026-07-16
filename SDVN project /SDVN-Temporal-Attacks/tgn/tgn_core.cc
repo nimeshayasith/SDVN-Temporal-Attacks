@@ -352,6 +352,17 @@ public:
         int dim, layers;
         f.read(reinterpret_cast<char*>(&dim),    sizeof(int));
         f.read(reinterpret_cast<char*>(&layers), sizeof(int));
+        // Defensive bounds check: a wrong/corrupt/truncated file (e.g. the
+        // path resolved somewhere unintended) can hand back garbage dim/layers
+        // values here, which would otherwise propagate into vector allocations
+        // below (M.assign(r, Vec(c))) and crash with std::length_error instead
+        // of failing gracefully like the "file not found" branch above does.
+        if (!f || dim <= 0 || dim > 4096 || layers <= 0 || layers > 64) {
+            std::cerr << "[TGN] Weight file '" << path
+                      << "' has invalid header (dim=" << dim << " layers=" << layers
+                      << ") — refusing to load; using heuristic scoring.\n";
+            return false;
+        }
         params_.dim = dim; params_.layers = layers;
         InitWeightsRandom();
 
@@ -729,8 +740,47 @@ static std::map<uint32_t, std::map<PemEventType, std::map<uint32_t, double>>> g_
 // ME) are untouched — TGN_ExtractFeatures falls back to the legacy
 // g_tgn_last_sender_ts path for them exactly as before.
 static std::map<uint32_t, std::map<uint32_t, uint64_t>> g_tgn_last_claimed_seq;
-static std::map<uint32_t, std::map<std::string, std::set<uint32_t>>> g_tgn_link_reporters;
+// rho_v (Eq. 3.8/3.20): "the reporter count for links adjacent to v" is a
+// per-LINK aggregate — the count of distinct vehicles claiming to have
+// witnessed e_ij — not a quantity scoped to whichever single node happens to
+// be tagged as "reporter"/"trusted evaluator" on one event. Deliberately
+// UNSCOPED by trusted_node_id (unlike g_tgn_beacon_windows/g_tgn_last_sender_ts
+// below, which genuinely are per-observer "independent local view" state,
+// Section 3.1.3) — every claim about a given link, whether it arrived via a
+// vehicle-origin, RSU-origin, or controller-origin path, accumulates into the
+// SAME reporter set for that link. Scoping this by observer identity was the
+// root cause of ME-S1/S2/S3/S4 all showing reporter_count stuck at 1: each
+// attacking vehicle/phantom-witness is its own "reporter_id", so a per-
+// observer map fragmented every attacker's claim into its own isolated
+// bucket, and could never see that N different reporters exist for the same
+// link. Keyed by the LINK, normalised so direction doesn't fragment it
+// further (see TGN_LinkKey below) -> set of distinct reporter identities.
+static std::map<std::string, std::set<uint32_t>> g_tgn_link_reporters;
 static std::map<uint32_t, std::map<uint32_t, std::vector<double>>>   g_tgn_beacon_windows;
+
+// Direction-normalised link key: e_ij and e_ji must map to the SAME entry,
+// or a benign mutual HELLO exchange (V1 reports src=1,dst=2; V2 reports
+// src=2,dst=1) would silently fragment into two separate reporter sets,
+// reintroducing exactly the under-counting this fix exists to remove.
+static std::string TGN_LinkKey(uint32_t a, uint32_t b)
+{
+    return (a < b) ? (std::to_string(a) + "_" + std::to_string(b))
+                   : (std::to_string(b) + "_" + std::to_string(a));
+}
+
+// Controller-origin TTW fix: last time THIS trusted node received a genuine
+// PHYSICAL (non-controller-sentinel) observation of a given edge. A malicious
+// controller's re-inserted claim always forges sender_timestamp to look
+// current relative to its own reception_timestamp — that is the whole point
+// of the attack — so tau_dev's normal (recv-claimed_ts)/T_b formula and the
+// legacy sender_timestamp seq_gap fallback are BOTH structurally blind to it
+// (see g_tgn_last_claimed_seq's declaration comment for the seq_gap half of
+// this). The real anomaly is the GAP between the controller's fresh-looking
+// re-assertion and the last time a physically-verifiable node actually
+// corroborated that same edge — which this map exists to track. Populated
+// only by genuine physical events (physical_sender_id != 9999u); read only
+// for controller-sentinel events.
+static std::map<uint32_t, std::map<std::string, double>> g_tgn_last_trusted_edge_obs;
 
 static uint64_t g_tgn_tp = 0, g_tgn_tn = 0, g_tgn_fp = 0, g_tgn_fn = 0;
 // Combined-layer metric: alert = (LW signature detector OR TGN score) fired.
@@ -847,9 +897,52 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     tgn::NodeFeatures f;
     f.node_id        = e.claimed_sender_id;
     f.sender_ts_raw  = e.sender_timestamp;
-    // τ_dev = clip((recv − τ_s) / T_b, −50, 50).  Fresh packet → ≈0; TTW replay → large positive.
-    f.tau_dev = std::max(-50.0, std::min(50.0,
-                  (e.reception_timestamp - e.sender_timestamp) / TGN_BEACON_INTERVAL));
+
+    // τ_dev — Eq 3.20. Two structurally different cases:
+    //
+    //   Vehicle/RSU-origin (physical_sender_id != 9999): the normal formula.
+    //   clip((recv − τ_s) / T_b, −50, 50).  Fresh packet → ≈0; TTW replay → large positive.
+    //
+    //   Controller-origin (physical_sender_id == 9999, TTW-S3/S4 / ME-S3/S4):
+    //   the normal formula is structurally blind here — the controller always
+    //   forges sender_timestamp to look fresh relative to its own
+    //   reception_timestamp (that IS the attack), so (recv-claimed_ts)/T_b
+    //   comes out ≈0 by construction, same as a genuinely fresh update. The
+    //   legacy seq_gap fallback is equally blind for the same reason (see
+    //   g_tgn_last_claimed_seq's declaration comment). The real anomaly for a
+    //   malicious controller isn't in the event's own internal timestamps —
+    //   it's the gap between this claim and the last time a REAL physical
+    //   node corroborated this same edge. So for controller-sentinel
+    //   TOPOLOGY_UPDATE events, tau_dev is redefined as that gap instead:
+    //   (recv_time - last_trusted_edge_obs_time) / T_b. No entry yet (edge
+    //   never physically corroborated by this trusted node) defaults to 0 —
+    //   treated as unknown/not-yet-suspicious rather than an automatic alert,
+    //   to avoid false positives on legitimately new edges.
+    if (e.physical_sender_id == 9999u && e.type == PEM_EVENT_TOPOLOGY_UPDATE)
+    {
+        const std::string edgeKey = std::to_string(e.link_src_id) + "_" + std::to_string(e.link_dst_id);
+        auto& obsMap = g_tgn_last_trusted_edge_obs[trusted_node_id];
+        auto obsIt = obsMap.find(edgeKey);
+        const double lastTrustedObs = (obsIt != obsMap.end()) ? obsIt->second : e.reception_timestamp;
+        f.tau_dev = std::max(-50.0, std::min(50.0,
+                      (e.reception_timestamp - lastTrustedObs) / TGN_BEACON_INTERVAL));
+    }
+    else
+    {
+        f.tau_dev = std::max(-50.0, std::min(50.0,
+                      (e.reception_timestamp - e.sender_timestamp) / TGN_BEACON_INTERVAL));
+        // Record this as a genuine physical corroboration of the edge, for any
+        // future controller-sentinel claim about the same edge to compare
+        // against. Only real (non-controller) topology observations count as
+        // trusted corroboration — an RSU-forwarded but physically-sourced
+        // report still qualifies (physical_sender_id is the RSU/vehicle that
+        // actually transmitted it, never 9999 for a genuine report).
+        if (e.type == PEM_EVENT_TOPOLOGY_UPDATE)
+        {
+            const std::string edgeKey = std::to_string(e.link_src_id) + "_" + std::to_string(e.link_dst_id);
+            g_tgn_last_trusted_edge_obs[trusted_node_id][edgeKey] = e.reception_timestamp;
+        }
+    }
 
     // c_v^W — beacon count in sliding window of size W_max (§3.4.3).
     // W_max = N_beacon = ⌊L_link/T_b⌋ (Eq. 3.32 value, §3.4.7 concept).
@@ -911,11 +1004,14 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
         && (e.physical_sender_id >= rsu_base)
         && (e.physical_sender_id <  rsu_base + (uint32_t)N_RSUs);
 
-    // ρ_v — distinct reporters for this link (ME signal, Eq 3.20)
+    // ρ_v — distinct reporters for this link (ME signal, Eq 3.8/3.20). Global,
+    // per-link count (see g_tgn_link_reporters' declaration comment) — NOT
+    // scoped to trusted_node_id. Direction-normalised (TGN_LinkKey) so a
+    // mutual e_ij/e_ji HELLO exchange doesn't fragment into two link buckets.
     //   No RSU : track reporter_id (distinct physical vehicles that echoed the link)
     //   With RSU: track claimed_sender_id (RSU injects false claimed senders in ME-S2)
-    std::string lkey = std::to_string(e.link_src_id) + "_" + std::to_string(e.link_dst_id);
-    auto& link_reporters = g_tgn_link_reporters[trusted_node_id][lkey];
+    const std::string lkey = TGN_LinkKey(e.link_src_id, e.link_dst_id);
+    auto& link_reporters = g_tgn_link_reporters[lkey];
     link_reporters.insert(physical_is_rsu ? e.claimed_sender_id : e.reporter_id);
     f.reporter_count = (double)link_reporters.size();
 
@@ -935,9 +1031,28 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     //     holding a vehicle's credentials cannot make itself appear in that
     //     vehicle's own genuine transmission log without the vehicle having
     //     actually transmitted in range.
-    //   Case 4 (controller sentinel, physical_sender_id==9999): controller-
-    //     origin events (TTW-S3/S4, ME-S3/S4) are internal replay/fabrication,
-    //     not identity impersonation -> 0, unchanged from before.
+    //   Case 4 (controller sentinel, physical_sender_id==9999): split by event
+    //     type, since "identity mismatch" means something different for a
+    //     fabricated OBSERVATION (TTW/ME) vs a fabricated LIVENESS CLAIM (BSHH):
+    //       - TTW/ME (TOPOLOGY_UPDATE): the controller fabricates an edge
+    //         observation, not an identity — unchanged, -> 0. (ρ_v/tau_dev
+    //         above already carry the real controller-origin TTW/ME signal.)
+    //       - BSHH (HEARTBEAT): the controller reactivates a stale heartbeat,
+    //         asserting claimed_sender_id is CURRENTLY alive. That claim can
+    //         be checked against this trusted node's own physical beacon
+    //         evidence for that same node (f.beacon_count, computed above,
+    //         from g_tgn_beacon_windows — populated ONLY by real PEM_EVENT_
+    //         BEACON receptions, entirely independent of the controller).
+    //         If the controller asserts liveness but this node has heard
+    //         ~zero real beacons from claimed_sender_id recently, that
+    //         mismatch (claimed-alive vs. physically-silent) IS the
+    //         controller-origin BSHH signature -> 1. A previous version of
+    //         this branch unconditionally returned 0 for ALL controller-
+    //         sentinel events, which meant BSHH-S3/S4 could never trip ι_v
+    //         at all — there being only one (correctly-attributed) physical
+    //         sender and no second sender, there was never a "collision" for
+    //         the old Case-1-style logic to find; this absence-based check
+    //         is the second branch that case was missing.
     //
     // g_peer_beacon_evidence is now range-gated at the WRITE site
     // (PemRecordBeaconEvidence, routing.cc) — every entry it holds is
@@ -947,7 +1062,8 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     // redundant distance check is needed here.
     if (e.physical_sender_id == 9999u)
     {
-        f.identity_mismatch = 0.0;   // Case 4
+        f.identity_mismatch = (e.type == PEM_EVENT_HEARTBEAT && f.beacon_count < 1.0)
+                               ? 1.0 : 0.0;   // Case 4
     }
     else if (physical_is_rsu)
     {
@@ -1435,12 +1551,16 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
     if (!g_tgn || node_events.empty()) return;
 
     // Per-node feature extraction state — independent local view.
-    // Now keyed by trusted_node_id (see g_tgn_* declarations); clearing this
+    // Keyed by trusted_node_id (see g_tgn_* declarations); clearing this
     // node's own slot is defensive (each node is only ever processed once
     // per run) but keeps the "independent view per node" guarantee explicit.
     g_tgn_last_sender_ts[trusted_node_id].clear();
-    g_tgn_link_reporters[trusted_node_id].clear();
     g_tgn_beacon_windows[trusted_node_id].clear();
+    // g_tgn_link_reporters is deliberately NOT cleared here — see its
+    // declaration comment. It's a global per-link reporter count (rho_v),
+    // not observer-scoped state, so clearing it per-node would wipe out
+    // other trusted nodes' already-accumulated view of the same link's
+    // reporter set — exactly the fragmentation this fix removes.
 
     const char* tier_label = (tier == 1) ? "Tier1-RSU" : "Tier2-OBU";
     const char* mitig_mode = (tier == 1) ? "FlowMod"   : "BlacklistBeacon";
@@ -2109,7 +2229,24 @@ static void TGN_ProcessEventInline(const PemEvent& e)
 {
     if (!g_tgn || !g_tgn_events_csv.is_open()) return;
 
-    const uint32_t trusted_node_id = e.reporter_id;
+    // For a real vehicle/RSU-origin report, reporter_id is a genuine physical
+    // node that can legitimately act as its own trusted evaluator (Tier-2 OBU
+    // / Tier-1 RSU self-consistency, Section 3.1.3's "independent local
+    // view"). For controller-origin events (TTW/BSHH/ME -S3/-S4), reporter_id
+    // is instead the fabricated witness identity itself, which is not a real
+    // trusted observer at all — bucketing all controller-origin claims under
+    // the 9999 sentinel (consistent with this function's own pre-existing
+    // flagged-nodes exemption below, "trusted_node_id != 9999u", which
+    // already treated 9999 as always-eligible) gives them a single, sensible
+    // shared observer identity for the genuinely observer-scoped features
+    // (beacon_count/c_v^W, seq_gap/Delta_s_v, and the controller-origin
+    // last-trusted-edge-observation gap feeding tau_dev). NOTE: rho_v
+    // (reporter_count) no longer depends on trusted_node_id at all — see
+    // g_tgn_link_reporters' declaration comment — so this fix is not what
+    // makes rho_v accumulate; it only matters for the other three features.
+    // Vehicle/RSU-origin events (physical_sender_id != 9999) are unaffected.
+    const uint32_t trusted_node_id =
+        (e.physical_sender_id == 9999u) ? 9999u : e.reporter_id;
     const int tier = (N_RSUs > 0) ? 1 : 2;
     const char* tier_label = (tier == 1) ? "Tier1-RSU" : "Tier2-OBU";
     const char* mitig_mode = (tier == 1) ? "FlowMod"   : "BlacklistBeacon";
