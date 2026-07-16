@@ -8117,21 +8117,37 @@ void declare_attackers()
     // n_mal_veh formula meant e.g. --attack_percentage=100 on ME-S3/S4 marked
     // ALL N_Vehicles "malicious", leaving zero real vehicles for the required
     // real V1<->V2 link ("[ERROR] ME-S4 needs at least 2 non-malicious
-    // vehicles..."). Fixed at a constant pool of 20 identities (clamped so at
-    // least 2 real vehicles always remain) for these variants, independent of
-    // attack_percentage, so the malicious controller has enough distinct
-    // forged identities to generate a meaningful volume of events rather than
-    // being starved to 1-2, or consuming the whole vehicle pool at high
-    // attack_percentage.
+    // vehicles...").
+    //
+    // Calibration fix (density-scaling gap, see CALIBRATION_VALUES.md §4):
+    // this pool was originally a FIXED constant of 20 identities regardless
+    // of N_Vehicles. That silently broke ME-S1's Eq. 3.8 density-adaptive
+    // signature (sig[6]) at large fleet sizes: the paper's own Experiment 3
+    // (RQ4, network scalability) holds attacker fraction alpha_atk=0.20
+    // CONSTANT as N grows (40 attackers at N=200, not a fixed ~20), so the
+    // absolute phantom-identity count must scale with N_Vehicles too, or the
+    // attacker-to-ambient-density ratio silently drops below the paper's own
+    // validated operating point as the fleet grows (confirmed: 0/20 flagged
+    // at N=200 with the old fixed-20 pool, vs 9/10 flagged at N=20 with the
+    // same code — a scale/calibration gap, not a detection-logic bug).
+    // Proportional formula: (N_Vehicles * attack_percentage / 100) / 2 —
+    // chosen to keep existing runs' behavior unchanged at the tool's default
+    // N_Vehicles=200/attack_percentage=20 (still yields 20, matching the old
+    // hardcoded constant exactly), while now genuinely scaling up/down with
+    // fleet size and attack_percentage for every other configuration.
+    // Floor of 2 keeps small-N/low-percentage runs from starving to 0-1
+    // phantom identities (mirrors the old constant's own safety intent).
     const bool is_controller_origin_only_scenario =
         (attack_scenario == TTW_S3_MAL_CTRL_NO_RSU  || attack_scenario == TTW_S4_MAL_CTRL_WITH_RSU  ||
          attack_scenario == BSHH_S3_MAL_CTRL_NO_RSU || attack_scenario == BSHH_S4_MAL_CTRL_WITH_RSU ||
          attack_scenario == ME_S3_MAL_CTRL_NO_RSU   || attack_scenario == ME_S4_MAL_CTRL_WITH_RSU);
     uint32_t n_mal_veh;
     if (is_controller_origin_only_scenario) {
-        static const uint32_t kControllerOriginPhantomPoolSize = 20;
         const uint32_t safeMax = (N_Vehicles > 2) ? (N_Vehicles - 2) : 0;
-        n_mal_veh = (kControllerOriginPhantomPoolSize <= safeMax) ? kControllerOriginPhantomPoolSize : safeMax;
+        uint32_t proportionalPoolSize = (uint32_t)std::round(
+            (N_Vehicles * attack_percentage / 100.0) / 2.0);
+        if (proportionalPoolSize < 2u) proportionalPoolSize = 2u;
+        n_mal_veh = (proportionalPoolSize <= safeMax) ? proportionalPoolSize : safeMax;
     } else {
         n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
         if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
