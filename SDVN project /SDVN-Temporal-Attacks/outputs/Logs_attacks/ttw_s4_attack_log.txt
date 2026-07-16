@@ -461,3 +461,658 @@
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
   delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 
+[t=15.505]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V159 sees V178, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V159 sees V178, t=15.500>  timestamp changed 10.000 -> 15.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=15.505 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=15.505]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V159<->V178 was ACTIVE at t=15.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V115  ->  V104    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V159  ->  V178    t=15.500    YES <- FORGED
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V47  ->  V71    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V60  ->  V87    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=10.000    No
+[t=15.505]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V159 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=16.304]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V121 sees V145, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V121 sees V145, t=16.300>  timestamp changed 10.000 -> 16.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=16.304 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=16.304]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V121<->V145 was ACTIVE at t=16.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V115  ->  V104    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V121  ->  V145    t=16.300    YES <- FORGED
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V47  ->  V71    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V60  ->  V87    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=10.000    No
+[t=16.304]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V121 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=16.500]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V60 sees V87, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V60 sees V87, t=16.500>  timestamp changed 10.000 -> 16.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=16.500 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=16.500]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V60<->V87 was ACTIVE at t=16.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V115  ->  V104    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V47  ->  V71    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V60  ->  V87    t=16.500    YES <- FORGED
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=10.000    No
+[t=16.500]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V60 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=17.301]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V139 sees V102, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V139 sees V102, t=17.300>  timestamp changed 10.000 -> 17.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=17.301 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=17.301]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V139<->V102 was ACTIVE at t=17.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V115  ->  V104    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=17.300    YES <- FORGED
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V47  ->  V71    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=10.000    No
+[t=17.301]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V139 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=17.906]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V47 sees V71, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V47 sees V71, t=17.900>  timestamp changed 10.000 -> 17.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=17.906 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=17.906]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V47<->V71 was ACTIVE at t=17.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V115  ->  V104    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V47  ->  V71    t=17.900    YES <- FORGED
+  V48  ->  V148    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=10.000    No
+[t=17.906]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V47 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=19.102]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V115 sees V104, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V115 sees V104, t=19.100>  timestamp changed 10.000 -> 19.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=19.102 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=19.102]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V115<->V104 was ACTIVE at t=19.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V115  ->  V104    t=19.100    YES <- FORGED
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=10.000    No
+[t=19.102]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V115 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=19.500]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V94 sees V118, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V94 sees V118, t=19.500>  timestamp changed 10.000 -> 19.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=19.500 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=19.500]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V94<->V118 was ACTIVE at t=19.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+  V94  ->  V118    t=19.500    YES <- FORGED
+[t=19.500]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V94 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=21.104]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V110 sees V35, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V110 sees V35, t=21.100>  timestamp changed 10.000 -> 21.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=21.104 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=21.104]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V110<->V35 was ACTIVE at t=21.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V110  ->  V35    t=21.100    YES <- FORGED
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V48  ->  V148    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+[t=21.104]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V110 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=21.903]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V48 sees V148, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V48 sees V148, t=21.900>  timestamp changed 10.000 -> 21.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=21.903 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=21.903]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V48<->V148 was ACTIVE at t=21.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V48  ->  V148    t=21.900    YES <- FORGED
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+[t=21.903]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V48 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=29.007]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V15 sees V17, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V15 sees V17, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=29.007 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=29.007]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V15<->V17 was ACTIVE at t=29.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V15  ->  V17    t=29.000    YES <- FORGED
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+[t=29.007]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V15 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=29.008]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V135 sees V137, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V135 sees V137, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=29.008 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=29.008]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V135<->V137 was ACTIVE at t=29.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V135  ->  V137    t=29.000    YES <- FORGED
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+[t=29.008]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V135 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=29.008]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V7 sees V10, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V7 sees V10, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=29.008 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=29.008]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V7<->V10 was ACTIVE at t=29.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V7  ->  V10    t=29.000    YES <- FORGED
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+[t=29.008]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V7 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=29.009]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V183 sees V186, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V183 sees V186, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=29.009 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=29.009]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V183<->V186 was ACTIVE at t=29.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V183  ->  V186    t=29.000    YES <- FORGED
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=10.000    No
+  V35  ->  V110    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+[t=29.009]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V183 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=29.009]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V26 sees V84, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V26 sees V84, t=29.000>  timestamp changed 10.000 -> 29.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=29.009 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=29.009]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V26<->V84 was ACTIVE at t=29.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V139    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V10  ->  V7    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V134  ->  V99    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V145  ->  V121    t=10.000    No
+  V148  ->  V48    t=10.000    No
+  V152  ->  V19    t=10.000    No
+  V169  ->  V71    t=10.000    No
+  V178  ->  V159    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V186  ->  V183    t=10.000    No
+  V26  ->  V84    t=29.000    YES <- FORGED
+  V35  ->  V110    t=10.000    No
+  V71  ->  V47    t=10.000    No
+  V84  ->  V26    t=10.000    No
+  V87  ->  V60    t=10.000    No
+
+========================================================
+  TTW ATTACK S4 COMPLETE
+========================================================
+[t=29.009]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V26 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=1  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
