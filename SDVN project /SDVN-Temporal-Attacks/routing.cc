@@ -2579,6 +2579,16 @@ struct PemNodeLWState {
     // a correct distributed implementation of the controller-centric notation.
     std::map<uint32_t, double>                   last_authentic_beacon_reception;
     std::map<std::string, double>                previous_path_counts;
+    // ME-S1 growth-rate companion (Option 2, mirrors ME-S2/Eq. 3.9's
+    // previous_path_counts + delta_max design, applied to reporter_count
+    // instead of path count): last-observed |R(e_ij,t)| for this link, so
+    // sig[6] can also fire on a sudden BURST of new reporters within one
+    // beacon interval, not only on the absolute cumulative count clearing
+    // rho_max. Catches the attack earlier in a still-accumulating sequence
+    // (a jump of e.g. 10 new phantom reporters in one interval is anomalous
+    // regardless of what the running total is yet), without weakening
+    // rho_max's own false-positive guard for legitimately dense benign links.
+    std::map<std::string, double>                previous_reporter_counts;
 };
 static std::map<uint32_t, PemNodeLWState> g_pem_node_lw_state;
 
@@ -6350,7 +6360,39 @@ PemEvaluateEvent(PemEvent& event)
         // Reporter count exceeds the expected linear-density bound (Eq. 3.8).
         const std::set<uint32_t> reporters = PemCollectReportersForLink(event, ns);
         const uint32_t rhoMax = PemComputeRhoMaxForLink(event, ns);
-        if (reporters.size() > rhoMax)
+        bool rhoMaxExceeded = reporters.size() > rhoMax;
+
+        // Growth-rate companion (Option 2 — mirrors ME-S2/Eq. 3.9's identical
+        // "sudden inflation within one beacon interval" pattern, applied to
+        // reporter_count instead of path count; see previous_reporter_counts'
+        // declaration comment). Catches a burst of new reporters early in a
+        // still-accumulating attack sequence, before the CUMULATIVE count
+        // clears rho_max — sig[6] alone is a cumulative threshold, so every
+        // event before that crossing point is, correctly, not yet anomalous
+        // on that basis alone; this adds the complementary "how fast is it
+        // growing" signal Eq. 3.8 doesn't by itself capture.
+        const std::string me1LinkKey = PemGetLinkKey(event.link_src_id, event.link_dst_id);
+        const double previousReporterCount = ns.previous_reporter_counts[me1LinkKey];
+        const double deltaMaxGrowth = PemComputeDeltaMax(event, ns);
+        if (previousReporterCount > 0.0 &&
+            (static_cast<double>(reporters.size()) - previousReporterCount) > deltaMaxGrowth)
+        {
+            rhoMaxExceeded = true;
+        }
+        // Baseline updates ONLY on self-reports (identical gating to
+        // ME-S2/is_self_report_me2 below) — keeps the baseline fixed at the
+        // last genuinely-legitimate observation, so third-party echoes
+        // accumulate against a STABLE reference instead of ratcheting the
+        // baseline up themselves and hiding their own growth.
+        const bool is_self_report_me1 =
+            (event.physical_sender_id == event.link_src_id) ||
+            (event.physical_sender_id == event.link_dst_id);
+        if (is_self_report_me1)
+        {
+            ns.previous_reporter_counts[me1LinkKey] = static_cast<double>(reporters.size());
+        }
+
+        if (rhoMaxExceeded)
         {
             event.triggered[6] = true;
         }
@@ -6498,24 +6540,48 @@ PemEvaluateEvent(PemEvent& event)
         // Eq. 3.11 — ME-S3: reporter position is outside communication range of
         // the reported link endpoints OR synthetic RSSI is below signal floor.
         //   V_k ∈ R(e_ij) ∧ (d(pos_Vk, e_ij) > r_comm  ∨  RSSI_Vk < RSSI_min)
+        //
+        // Self-report exemption — a node reporting its OWN directly-observed
+        // link (physical_sender_id is one of the link's own two endpoints) is
+        // asserting a firsthand observation, not witnessing a third party's
+        // link over radio (Section 3.11's threat model: ME's reporter
+        // population R(e_ij,t) is built from third-party witnesses like V3/V4
+        // echoing a V1-V2 link, never V1/V2 themselves). There is no "distance
+        // to the link" or "received signal from someone else" question to ask
+        // for a firsthand report at all, so BOTH conditions are exempt, not
+        // just the RSSI one.
+        //
+        // Bug fix: this must key on physical_sender_id (matching
+        // is_self_report_me2's identical exemption a few lines above — the
+        // established convention in this file, and in teta_guard_filter.h's
+        // matching ME quorum witness-set exemption), NOT reporter_id.
+        // reporter_id legitimately means something different in RSU-relay
+        // scenarios (TTW-S4/ME-S4/BSHH-S4): e.g. TTWS4_VehiclesToRSU emits
+        // PemEmitEvent(..., v1_id, v1_id, rsu_id, v1_id, v2_id, ...) — a
+        // genuine V1-self-report relayed via the RSU — where reporter_id is
+        // the RSU (a legitimate aggregation identity), not the vehicle making
+        // the claim. Keying the self-report test on reporter_id therefore
+        // missed every RSU-relayed firsthand report, misclassifying it as a
+        // third-party witness claim and evaluating the physical-consistency
+        // check against the RSU's own RSSI/position — which a relaying RSU
+        // has no reason to satisfy for a link between two OTHER vehicles,
+        // producing exactly the false positives seen in TTW-S4 (e.g. V94/V118
+        // mutual HELLO exchange flagged as ME-S3, sig[8]).
+        const bool is_self_report_me3 =
+            (event.physical_sender_id == event.link_src_id) ||
+            (event.physical_sender_id == event.link_dst_id);
+
         // Condition 1: GPS-attested position is outside communication range.
         // Uses g_rcomm (runtime-overridable via --rcomm; default = TTW_COMM_RANGE = 300m).
-        const bool positionOutOfRange = (nearestDistance > g_rcomm);
+        // Exempt for self-reports (see above) — distance-to-self is always 0.
+        const bool positionOutOfRange = !is_self_report_me3 && (nearestDistance > g_rcomm);
 
         // Condition 2 (signal plausibility): genuine PHY-measured RSSI from
         // Rx()'s real MonitorSnifferRx SignalNoiseDbm, NOT derived from the
         // same distance used for condition 1 above — an attacker who spoofs
         // condition (ii) (claimed GPS position) gains no advantage on this
         // check, since it reflects what the receiver's radio actually heard.
-        //
-        // A self-report (reporter IS one of the link's own two endpoints) is
-        // exempt: it is asserting its own directly-observed link, not
-        // witnessing a third party over radio, so there is no "received
-        // signal from someone else" to check — condition (ii)'s distance-to-
-        // self is always 0 for the same reason.
-        const bool is_self_report_me3 =
-            (event.reporter_id == event.link_src_id) ||
-            (event.reporter_id == event.link_dst_id);
+        // Exempt for self-reports for the same reason as condition 1.
         bool rssiTooWeak;
         if (is_self_report_me3)
         {
@@ -8093,21 +8159,37 @@ void declare_attackers()
     // n_mal_veh formula meant e.g. --attack_percentage=100 on ME-S3/S4 marked
     // ALL N_Vehicles "malicious", leaving zero real vehicles for the required
     // real V1<->V2 link ("[ERROR] ME-S4 needs at least 2 non-malicious
-    // vehicles..."). Fixed at a constant pool of 20 identities (clamped so at
-    // least 2 real vehicles always remain) for these variants, independent of
-    // attack_percentage, so the malicious controller has enough distinct
-    // forged identities to generate a meaningful volume of events rather than
-    // being starved to 1-2, or consuming the whole vehicle pool at high
-    // attack_percentage.
+    // vehicles...").
+    //
+    // Calibration fix (density-scaling gap, see CALIBRATION_VALUES.md §4):
+    // this pool was originally a FIXED constant of 20 identities regardless
+    // of N_Vehicles. That silently broke ME-S1's Eq. 3.8 density-adaptive
+    // signature (sig[6]) at large fleet sizes: the paper's own Experiment 3
+    // (RQ4, network scalability) holds attacker fraction alpha_atk=0.20
+    // CONSTANT as N grows (40 attackers at N=200, not a fixed ~20), so the
+    // absolute phantom-identity count must scale with N_Vehicles too, or the
+    // attacker-to-ambient-density ratio silently drops below the paper's own
+    // validated operating point as the fleet grows (confirmed: 0/20 flagged
+    // at N=200 with the old fixed-20 pool, vs 9/10 flagged at N=20 with the
+    // same code — a scale/calibration gap, not a detection-logic bug).
+    // Proportional formula: (N_Vehicles * attack_percentage / 100) / 2 —
+    // chosen to keep existing runs' behavior unchanged at the tool's default
+    // N_Vehicles=200/attack_percentage=20 (still yields 20, matching the old
+    // hardcoded constant exactly), while now genuinely scaling up/down with
+    // fleet size and attack_percentage for every other configuration.
+    // Floor of 2 keeps small-N/low-percentage runs from starving to 0-1
+    // phantom identities (mirrors the old constant's own safety intent).
     const bool is_controller_origin_only_scenario =
         (attack_scenario == TTW_S3_MAL_CTRL_NO_RSU  || attack_scenario == TTW_S4_MAL_CTRL_WITH_RSU  ||
          attack_scenario == BSHH_S3_MAL_CTRL_NO_RSU || attack_scenario == BSHH_S4_MAL_CTRL_WITH_RSU ||
          attack_scenario == ME_S3_MAL_CTRL_NO_RSU   || attack_scenario == ME_S4_MAL_CTRL_WITH_RSU);
     uint32_t n_mal_veh;
     if (is_controller_origin_only_scenario) {
-        static const uint32_t kControllerOriginPhantomPoolSize = 20;
         const uint32_t safeMax = (N_Vehicles > 2) ? (N_Vehicles - 2) : 0;
-        n_mal_veh = (kControllerOriginPhantomPoolSize <= safeMax) ? kControllerOriginPhantomPoolSize : safeMax;
+        uint32_t proportionalPoolSize = (uint32_t)std::round(
+            (N_Vehicles * attack_percentage / 100.0) / 2.0);
+        if (proportionalPoolSize < 2u) proportionalPoolSize = 2u;
+        n_mal_veh = (proportionalPoolSize <= safeMax) ? proportionalPoolSize : safeMax;
     } else {
         n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
         if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
@@ -9642,10 +9724,33 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
     else                                   ++pem_combined_false_negative;
 
     if (lwTgnAlert || divergenceConfirmed) {
+        // Table cleanup / delta decrement is a DETECTION-side correction (this
+        // specific entry was just confirmed and should stop poisoning the
+        // record), not a stateful mitigation action — runs unconditionally,
+        // regardless of revoked status, per the divergence_tp/fn precedent
+        // above (Eq. 3.47's delta comparison is a running/end-of-run
+        // comparison, not something that should understate the true
+        // attempted-attack surface just because the controller was already
+        // caught earlier in the run).
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
         attack_T_matrix.erase(k);
         if (topology_divergence_delta > 0) topology_divergence_delta--;
+
+        // Option 2: everything below is a genuinely stateful MITIGATION
+        // action (new LKH revoke, trust reassignment, FlowMod/BlacklistBeacon)
+        // — skip only these if the controller is already revoked (see
+        // ME_S3_InjectPhantomPaths's matching comment).
+        const uint32_t ctrlCheckId3 = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        const bool ctrlAlreadyRevoked3 =
+            g_trust_table.count(ctrlCheckId3) && g_trust_table.at(ctrlCheckId3).flagged;
+        if (ctrlAlreadyRevoked3) {
+            ttws3_log << "[t=" << now2 << "]  Controller C_" << ctrlCheckId3
+                      << " already revoked/quarantined — detection recorded, "
+                         "no new mitigation action taken\n";
+            ttws3_log.flush();
+        } else {
         CryptoMeasureLKH(now2, v1_id, N_Vehicles);
         // Controller-origin: reassign zone to backup controller (Eqs. 3.42-3.43),
         // gated by Algorithm 4's δ-divergence check (lines 2-7, Eqs. 3.44-3.46).
@@ -9671,6 +9776,7 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
                   << PemApplyMitigation(v1_id, now2, "TTW-S3")
                   << trust_log << "\n";
         ttws3_log.flush();
+        }
     }
 }
 
@@ -9750,23 +9856,11 @@ void TTWS3_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time,
 void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 {
     double now = Simulator::Now().GetSeconds();
-    // Bug fix (post-revocation attempts still landing) — see
-    // ME_S3_InjectPhantomPaths's matching comment. Same single-entity
-    // convention applies here (controller_Node.Get(0) is "the" malicious
-    // controller for every selected pair in this scenario).
-    {
-        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
-                                    ? controller_Node.Get(0)->GetId() : 9999u;
-        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
-            ttws3_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
-                      << " already revoked/quarantined; submission dropped by network"
-                         " (Algorithm 4 REVOKE_CTRL_CRED)\n";
-            std::cout << "[TTW-S3][t=" << now << "]  Attempt <V" << v1_id << " sees V" << v2_id
-                      << "> REJECTED — controller already revoked" << std::endl;
-            ttws3_log.flush();
-            return;
-        }
-    }
+    // Option 2 (detection/mitigation split) — see ME_S3_InjectPhantomPaths's
+    // matching comment. A revoked controller's later attempts still need to
+    // reach TTWS3_RunDetection (PemEmitEvent + the divergence gate) so
+    // detection-side features/counters are recorded; only that function's
+    // own mitigation-relevant actions are gated on already-revoked status.
     if (!ttws3_packet_stored) {
         NS_LOG_WARN("[TTW-S3] No stored packet!");
         return;
@@ -9863,10 +9957,25 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
     else                                         ++pem_combined_false_negative;
 
     if (lwTgnAlert_s4 || divergenceConfirmed_s4) {
+        // Table cleanup — detection-side correction, unconditional (see
+        // TTWS3_RunDetection's matching comment).
         const std::string k = std::to_string(v1_id) + "_" + std::to_string(v2_id);
         ttw_controller_table.erase(k);
         attack_T_matrix.erase(k);
         if (topology_divergence_delta > 0) topology_divergence_delta--;
+
+        // Option 2: mitigation-relevant actions only — see TTWS3_RunDetection's
+        // matching comment.
+        const uint32_t ctrlCheckId4 = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        const bool ctrlAlreadyRevoked4 =
+            g_trust_table.count(ctrlCheckId4) && g_trust_table.at(ctrlCheckId4).flagged;
+        if (ctrlAlreadyRevoked4) {
+            ttws4_log << "[t=" << now2 << "]  Controller C_" << ctrlCheckId4
+                      << " already revoked/quarantined — detection recorded, "
+                         "no new mitigation action taken\n";
+            ttws4_log.flush();
+        } else {
         CryptoMeasureLKH(now2, v1_id, N_Vehicles);
         uint32_t ctrl_ns3_s4 = (controller_Node.GetN() > 0)
                                ? controller_Node.Get(0)->GetId() : 9999u;
@@ -9890,6 +9999,7 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
                   << PemApplyMitigation(v1_id, now2, "TTW-S4")
                   << trust_log_s4 << "\n";
         ttws4_log.flush();
+        }
     }
 }
 
@@ -9970,21 +10080,10 @@ void TTWS4_StorePacketInternal(uint32_t v1_id, uint32_t v2_id, double obs_time,
 void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
 {
     double now = Simulator::Now().GetSeconds();
-    // Bug fix (post-revocation attempts still landing) — see
-    // ME_S3_InjectPhantomPaths's matching comment.
-    {
-        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
-                                    ? controller_Node.Get(0)->GetId() : 9999u;
-        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
-            ttws4_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
-                      << " already revoked/quarantined; submission dropped by network"
-                         " (Algorithm 4 REVOKE_CTRL_CRED)\n";
-            std::cout << "[TTW-S4][t=" << now << "]  Attempt <V" << v1_id << " sees V" << v2_id
-                      << "> REJECTED — controller already revoked" << std::endl;
-            ttws4_log.flush();
-            return;
-        }
-    }
+    // Option 2 (detection/mitigation split) — see ME_S3_InjectPhantomPaths's
+    // matching comment. Detection-side actions (PemEmitEvent + divergence
+    // gate, inside TTWS4_RunDetection) run unconditionally; only that
+    // function's mitigation-relevant actions are gated on revoked status.
     if (!ttws4_packet_stored) {
         NS_LOG_WARN("[TTW-S4-new] No stored packet!");
         return;
@@ -10910,25 +11009,13 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     const std::string v1Label   = GetVehicleLogLabel(v1_id);
     const std::string v2Label   = GetVehicleLogLabel(v2_id);
 
-    // Bug fix (post-revocation attempts still landing) — see
-    // ME_S3_InjectPhantomPaths's matching comment. ctrl_idx is only a
-    // per-pair log label (GetControllerLogLabel) — every pair's replay is
-    // attributed to the same single trust-tracked entity, controller_Node.
-    // Get(0), so once that's revoked ALL later pairs' attempts (regardless
-    // of ctrl_idx) must be rejected too.
-    {
-        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
-                                    ? controller_Node.Get(0)->GetId() : 9999u;
-        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
-            bshh_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
-                     << " already revoked/quarantined; submission dropped by network"
-                        " (Algorithm 4 REVOKE_CTRL_CRED)\n";
-            std::cout << "[BSHH-S3][t=" << now << "]  Attempt " << ctrlLabel
-                      << " REJECTED — controller already revoked" << std::endl;
-            bshh_log.flush();
-            return;
-        }
-    }
+    // Option 2 (detection/mitigation split) — see ME_S3_InjectPhantomPaths's
+    // matching comment. ctrl_idx is only a per-pair log label
+    // (GetControllerLogLabel); every pair's replay is attributed to the same
+    // single trust-tracked entity (controller_Node.Get(0)). Detection-side
+    // actions (PemEmitHeartbeatEvent/PemEmitEvent, divergence gate) below run
+    // unconditionally; only the mitigation-relevant block further down is
+    // gated on already-revoked status.
     if (!bshh_heartbeat_stored) {
         NS_LOG_WARN("[BSHH-S3] No stored heartbeats!");
         return;
@@ -11019,8 +11106,23 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     else                                         ++pem_combined_false_negative;
 
     if (lwTgnAlert_s7 || divergenceConfirmed_s7) {
+        // Liveness-table cleanup — detection-side correction, unconditional
+        // (see TTWS3_RunDetection's matching comment).
         bshh_controller_liveness_table.erase(v1_id);
         bshh_controller_liveness_table.erase(v2_id);
+
+        // Option 2: mitigation-relevant actions only — see TTWS3_RunDetection's
+        // matching comment.
+        const uint32_t ctrlCheckId7 = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        const bool ctrlAlreadyRevoked7 =
+            g_trust_table.count(ctrlCheckId7) && g_trust_table.at(ctrlCheckId7).flagged;
+        if (ctrlAlreadyRevoked7) {
+            for (auto& p : bshh_s3_pair_logs) {
+                p.second += "[t=" + std::to_string(now) + "]  Controller C_" + std::to_string(ctrlCheckId7)
+                            + " already revoked/quarantined — detection recorded, no new mitigation action taken\n";
+            }
+        } else {
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s7 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
@@ -11044,6 +11146,7 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
                         "  Score: " + std::to_string(pem_last_detection_score) + "\n"
                         "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
                         + mit + trust_s7 + "\n";
+        }
         }
     }
 }
@@ -11175,21 +11278,10 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     const std::string v1Label   = GetVehicleLogLabel(v1_id);
     const std::string v2Label   = GetVehicleLogLabel(v2_id);
 
-    // Bug fix (post-revocation attempts still landing) — see
-    // BSHH_S3_InternalReplay's matching comment.
-    {
-        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
-                                    ? controller_Node.Get(0)->GetId() : 9999u;
-        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
-            bshh_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
-                     << " already revoked/quarantined; submission dropped by network"
-                        " (Algorithm 4 REVOKE_CTRL_CRED)\n";
-            std::cout << "[BSHH-S4][t=" << now << "]  Attempt " << ctrlLabel
-                      << " REJECTED — controller already revoked" << std::endl;
-            bshh_log.flush();
-            return;
-        }
-    }
+    // Option 2 (detection/mitigation split) — see ME_S3_InjectPhantomPaths's
+    // matching comment. Detection-side actions run unconditionally below;
+    // only the mitigation-relevant block further down is gated on
+    // already-revoked status.
     if (!bshh_heartbeat_stored) {
         NS_LOG_WARN("[BSHH-S4] No stored heartbeats!");
         return;
@@ -11273,8 +11365,23 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     else                                         ++pem_combined_false_negative;
 
     if (lwTgnAlert_s8 || divergenceConfirmed_s8) {
+        // Liveness-table cleanup — detection-side correction, unconditional
+        // (see TTWS3_RunDetection's matching comment).
         bshh_controller_liveness_table.erase(v1_id);
         bshh_controller_liveness_table.erase(v2_id);
+
+        // Option 2: mitigation-relevant actions only — see TTWS3_RunDetection's
+        // matching comment.
+        const uint32_t ctrlCheckId8 = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        const bool ctrlAlreadyRevoked8 =
+            g_trust_table.count(ctrlCheckId8) && g_trust_table.at(ctrlCheckId8).flagged;
+        if (ctrlAlreadyRevoked8) {
+            for (auto& p : bshh_s4_pair_logs) {
+                p.second += "[t=" + std::to_string(now) + "]  Controller C_" + std::to_string(ctrlCheckId8)
+                            + " already revoked/quarantined — detection recorded, no new mitigation action taken\n";
+            }
+        } else {
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s8 = (controller_Node.GetN() > 0)
                            ? controller_Node.Get(0)->GetId() : 9999u;
@@ -11298,6 +11405,7 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
                         "  Score: " + std::to_string(pem_last_detection_score) + "\n"
                         "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
                         + mit + trust_s8 + "\n";
+        }
         }
     }
 }
@@ -12034,26 +12142,16 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
                            uint32_t atk_id, double t, int mode, uint32_t rsu_id)
 {
     double now = Simulator::Now().GetSeconds();
-    // Bug fix (post-revocation attempts still landing) — see
-    // ME_S3_InjectPhantomPaths's matching comment. Only applies to
-    // controller-origin modes (3=ME-S3, 4=ME-S4) — modes 1/2 (vehicle/RSU
-    // attacker) have no controller-trust concept at all (see this
-    // function's own "modes 1/2 have no divergence concept" comments
-    // further down), so the check must not gate those.
-    if (mode == 3 || mode == 4) {
-        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
-                                    ? controller_Node.Get(0)->GetId() : 9999u;
-        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
-            me_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
-                   << " already revoked/quarantined; submission dropped by network"
-                      " (Algorithm 4 REVOKE_CTRL_CRED)\n";
-            std::cout << "[" << (mode == 3 ? "ME-S3" : "ME-S4") << "][t=" << now
-                      << "]  Attempt via V" << atk_id
-                      << " REJECTED — controller already revoked" << std::endl;
-            me_log.flush();
-            return;
-        }
-    }
+    // Option 2 (detection/mitigation split) — see ME_S3_InjectPhantomPaths's
+    // matching comment. Only meaningful for controller-origin modes (3=ME-S3,
+    // 4=ME-S4) — modes 1/2 (vehicle/RSU attacker) have no controller-trust
+    // concept at all. Computed here (not gating anything yet) so detection-
+    // side actions (PemEmitEvent, divergence gate) below run unconditionally;
+    // only the mitigation-relevant block further down checks it.
+    const bool ctrlAlreadyRevoked_single3 =
+        (mode == 3 || mode == 4) &&
+        g_trust_table.count((controller_Node.GetN() > 0) ? controller_Node.Get(0)->GetId() : 9999u) &&
+        g_trust_table.at((controller_Node.GetN() > 0) ? controller_Node.Get(0)->GetId() : 9999u).flagged;
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -12173,12 +12271,23 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
     }
 
     if (lwTgnAlert_single3 || divergenceConfirmed_single3) {
+        // Table cleanup — detection-side correction, unconditional (see
+        // TTWS3_RunDetection's matching comment). Applies to all modes.
         for (auto& e : echoedEdges) {
             std::string k = std::to_string(atk_id) + "_echo3_" + std::to_string(e.first) + "_" + std::to_string(e.second);
             ttw_controller_table.erase(k);
             attack_E_matrix.erase(k);
             if (topology_divergence_delta > 0) topology_divergence_delta--;
         }
+        // Option 2: mitigation-relevant actions only — see TTWS3_RunDetection's
+        // matching comment. ctrlAlreadyRevoked_single3 is always false for
+        // modes 1/2 (no controller-trust concept), so this only actually
+        // skips anything for already-revoked controller-origin modes 3/4.
+        if (ctrlAlreadyRevoked_single3) {
+            me_log << "[t=" << now << "]  Controller already revoked/quarantined — "
+                      "detection recorded, no new mitigation action taken\n";
+            me_log.flush();
+        } else {
         // Single fabricated witness (echoReporterId) alongside the two real
         // link endpoints — full claimed-reporter set for Eq. 3.30.
         const std::vector<uint32_t> single3_reporters{v1_id, v2_id, echoReporterId};
@@ -12219,6 +12328,7 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
                << "  delta after mitigation: " << topology_divergence_delta << "\n"
                << mit << trust_single3 << "\n";
         me_log.flush();
+        }
     }
 }
 
@@ -12814,35 +12924,31 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                                uint32_t attacker_idx)
 {
     double now = Simulator::Now().GetSeconds();
-    // Bug fix (post-revocation attempts still landing): every "attacking
-    // controller" in this scenario resolves to the SAME entity
-    // (controller_Node.Get(0) — see ctrl_s11 below), so once the first
-    // confirmed divergence quarantines/revokes it (TrustReassignController
-    // sets g_trust_table[...].flagged=true), every LATER scheduled pool
-    // injection previously still fabricated entries, scored normally, and
-    // redundantly re-triggered TrustUpdateController/TrustReassignController
-    // on an already-revoked controller. Per Algorithm 4's REVOKE_CTRL_CRED —
-    // a revoked controller's later submissions are rejected by the network,
-    // not re-evaluated as fresh detection opportunities. Attempt still
-    // "happens" (a real attacker keeps trying) but has no effect: no
-    // ttw_controller_table/attack_E_matrix entry, no divergence_delta
-    // change, no PemEmitEvent (not a fresh ground-truth detection instance —
-    // the network structurally already rejected it, mirroring how a
-    // revoked vehicle's beacon is dropped by the LKH check in Rx() before
-    // ever reaching PEM's scoring).
-    {
-        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
-                                    ? controller_Node.Get(0)->GetId() : 9999u;
-        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
-            me_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
-                   << " already revoked/quarantined; submission dropped by network"
-                      " (Algorithm 4 REVOKE_CTRL_CRED)\n";
-            std::cout << "[ME-S3][t=" << now << "]  Attempt via V" << false_v3
-                      << (((false_v4 != UINT32_MAX) && (false_v4 != false_v3)) ? " and V" + std::to_string(false_v4) : "")
-                      << " REJECTED — controller already revoked" << std::endl;
-            me_log.flush();
-            return;
-        }
+    // Option 2 (detection/mitigation split, see CALIBRATION_VALUES.md /
+    // session notes on the paper's own pipeline order: record observation ->
+    // extract features -> score -> log -> (if flagged) mitigate). A revoked
+    // controller's later submissions must still be RECORDED for detection
+    // purposes (reporter_count/Eq. 3.8 density needs the full attempted
+    // reporter set to ever be visible) — only the MITIGATION-relevant
+    // consequences (new LKH revoke, TrustReassignController, PemApplyMitigation,
+    // and the routing-table cleanup that undoes the poisoning) are actually
+    // blocked once the controller is already revoked. Previously this entire
+    // function early-returned here, which meant a controller revoked after
+    // its first few confirmed divergences silently erased the evidence trail
+    // for every later phantom reporter — capping reporter_count at whatever
+    // had registered before revocation, regardless of how large the
+    // configured phantom pool was (confirmed: reporter_count topped out at a
+    // similar value whether the pool held 20 or 40 identities, because
+    // revocation timing didn't scale with pool size either).
+    const uint32_t ctrlCheckId_s11 = (controller_Node.GetN() > 0)
+                                ? controller_Node.Get(0)->GetId() : 9999u;
+    const bool ctrlAlreadyRevoked_s11 =
+        g_trust_table.count(ctrlCheckId_s11) && g_trust_table.at(ctrlCheckId_s11).flagged;
+    if (ctrlAlreadyRevoked_s11) {
+        me_log << "[t=" << now << "]  Controller C_" << ctrlCheckId_s11
+               << " already revoked/quarantined — submission still recorded for "
+                  "detection purposes, but no new mitigation action will be taken "
+                  "(Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)\n";
     }
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
@@ -13016,10 +13122,10 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         // unlike every TTW/BSHH controller-origin detection function (e.g.
         // TTWS3_InternalReplay), which erases its poisoned table entry and
         // restores delta by 1 as soon as detection is confirmed (matching
-        // this same lwTgnAlert||divergenceConfirmed condition, independent
-        // of whether PemApplyMitigation's own enforcement gate below
-        // succeeds). Without this, delta only ever grew for ME-S3, all run
-        // long, regardless of detection/mitigation outcome. Keys recomputed
+        // this same lwTgnAlert||divergenceConfirmed condition). Table
+        // cleanup is a DETECTION-side correction, not a mitigation action —
+        // runs unconditionally regardless of revoked status (see
+        // TTWS3_RunDetection's matching comment). Keys recomputed
         // identically to the insertion above (attacker_idx-qualified).
         {
             const std::string k3_restore = std::to_string(false_v3) + "_phantom_"
@@ -13037,6 +13143,11 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
             attack_E_matrix.erase(k4_restore);
             if (topology_divergence_delta > 0) topology_divergence_delta--;
         }
+        // Option 2: everything below this point is a MITIGATION-relevant
+        // consequence (LKH revoke, trust reassignment, FlowMod/BlacklistBeacon
+        // enforcement) — skip it once the controller is already revoked, so a
+        // revoked controller can't trigger new mitigation actions.
+        if (!ctrlAlreadyRevoked_s11) {
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s11 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
@@ -13064,6 +13175,7 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
                << mit << trust_s11 << "\n";
         me_log.flush();
+        }
     }
 }
 
@@ -13242,22 +13354,10 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                                uint32_t attacker_idx)
 {
     double now = Simulator::Now().GetSeconds();
-    // Bug fix (post-revocation attempts still landing) — see
-    // ME_S3_InjectPhantomPaths's matching comment.
-    {
-        const uint32_t ctrlCheckId = (controller_Node.GetN() > 0)
-                                    ? controller_Node.Get(0)->GetId() : 9999u;
-        if (g_trust_table.count(ctrlCheckId) && g_trust_table.at(ctrlCheckId).flagged) {
-            me_log << "[t=" << now << "]  ATTEMPT REJECTED — controller C_" << ctrlCheckId
-                   << " already revoked/quarantined; submission dropped by network"
-                      " (Algorithm 4 REVOKE_CTRL_CRED)\n";
-            std::cout << "[ME-S4][t=" << now << "]  Attempt via V" << false_v3
-                      << (((false_v4 != UINT32_MAX) && (false_v4 != false_v3)) ? " and V" + std::to_string(false_v4) : "")
-                      << " REJECTED — controller already revoked" << std::endl;
-            me_log.flush();
-            return;
-        }
-    }
+    // Option 2 (detection/mitigation split) — see ME_S3_InjectPhantomPaths's
+    // matching comment. Detection-side actions (PemEmitEvent, divergence
+    // gate) below run unconditionally; only the mitigation-relevant block
+    // further down is gated on already-revoked status.
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -13401,7 +13501,9 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
 
     if (lwTgnAlert_s12 || divergenceConfirmed_s12) {
         // Bug fix (missing delta decrement) — see ME_S3_InjectPhantomPaths's
-        // matching comment. Keys recomputed identically to the insertion
+        // matching comment. Table cleanup is a DETECTION-side correction,
+        // unconditional regardless of revoked status (see TTWS3_RunDetection's
+        // matching comment). Keys recomputed identically to the insertion
         // above (attacker_idx-qualified, "_phantom4_" key format).
         {
             const std::string k3_restore = std::to_string(false_v3) + "_phantom4_"
@@ -13419,6 +13521,18 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
             attack_E_matrix.erase(k4_restore);
             if (topology_divergence_delta > 0) topology_divergence_delta--;
         }
+        // Option 2: mitigation-relevant actions only — see TTWS3_RunDetection's
+        // matching comment.
+        const uint32_t ctrlCheckId12 = (controller_Node.GetN() > 0)
+                                    ? controller_Node.Get(0)->GetId() : 9999u;
+        const bool ctrlAlreadyRevoked12 =
+            g_trust_table.count(ctrlCheckId12) && g_trust_table.at(ctrlCheckId12).flagged;
+        if (ctrlAlreadyRevoked12) {
+            me_log << "[t=" << now << "]  Controller C_" << ctrlCheckId12
+                   << " already revoked/quarantined — detection recorded, "
+                      "no new mitigation action taken\n";
+            me_log.flush();
+        } else {
         CryptoMeasureLKH(now, false_v3, N_Vehicles);
         uint32_t ctrl_s12 = (controller_Node.GetN() > 0)
                             ? controller_Node.Get(0)->GetId() : 9999u;
@@ -13446,6 +13560,7 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
                << mit << trust_s12 << "\n";
         me_log.flush();
+        }
     }
 }
 
