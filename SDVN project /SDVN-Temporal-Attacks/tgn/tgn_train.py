@@ -462,6 +462,16 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     variant_label = np.where((sc >= 1)  & (sc <= 4),  0,
                     np.where((sc >= 5)  & (sc <= 8),  1,
                     np.where((sc >= 9)  & (sc <= 12), 2, -1))).astype(np.int64)
+    # --variant_exclude_me: ME-family rows (scenarios 9-12) are excluded from
+    # the variant-classification head's CE loss entirely (set to -1, same
+    # sentinel as benign), collapsing it to an effective TTW-vs-BSHH 2-way
+    # classifier. Does NOT touch is_attack/binary detection labels or ME's
+    # own rows in the main detection loss — only removes ME from the variant
+    # head's training signal. Use when ME-family variant events are too few/
+    # structurally different (e.g. only controller-origin ME contributes any
+    # events at all) for a reliable 3-way split.
+    if args.variant_exclude_me:
+        variant_label = np.where(variant_label == 2, -1, variant_label)
 
     n_tr = len(train_idx)
     n_va = len(val_idx)
@@ -531,9 +541,16 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
         # gets a larger weight that exactly compensates the imbalance.
         n_atk_tr = int(tr_l.sum().item())
         n_ben_tr = int((tr_l == 0).sum().item())
-        pw_val   = float(n_ben_tr) / max(1, n_atk_tr)
+        # --pos_weight_override: sweep an explicit value instead of the exact
+        # train-split ratio. The dynamic ratio is the correct default, but a
+        # small/imbalanced dataset's exact ratio isn't necessarily the value
+        # that best trades recall vs. precision — worth sweeping independently
+        # on the validation set rather than assuming the ratio is optimal.
+        pw_val   = args.pos_weight_override if args.pos_weight_override > 0 \
+                   else float(n_ben_tr) / max(1, n_atk_tr)
         pos_wt   = torch.tensor([pw_val], device=device)
-        print(f"       pos_weight = {pw_val:.2f}  ({n_ben_tr} benign / {n_atk_tr} attack in train)")
+        print(f"       pos_weight = {pw_val:.2f}  ({n_ben_tr} benign / {n_atk_tr} attack in train)"
+              + ("  [override]" if args.pos_weight_override > 0 else "  [dynamic ratio]"))
         crit   = nn.BCEWithLogitsLoss(pos_weight=pos_wt)
         optim_ = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
         sched  = optim.lr_scheduler.CosineAnnealingLR(optim_, T_max=args.epochs)
@@ -842,6 +859,16 @@ def main():
                     help="Random seed for weight init/restarts/split-tiebreaks. "
                          "-1 = unseeded (default; non-reproducible across runs, "
                          "matching prior behavior).")
+    ap.add_argument("--pos_weight_override", type=float, default=-1.0,
+                    help="Override BCEWithLogitsLoss pos_weight instead of using the "
+                         "dynamic train-split benign/attack ratio. -1 = use dynamic "
+                         "ratio (default). Sweep e.g. 4.5-6.0 to trade recall vs. "
+                         "precision independently of the exact dataset ratio.")
+    ap.add_argument("--variant_exclude_me", action="store_true",
+                    help="Exclude ME-family rows (scenarios 9-12) from the variant "
+                         "classification head's CE loss (set to -1, same as benign), "
+                         "collapsing it to an effective TTW-vs-BSHH 2-way classifier. "
+                         "Does not affect binary detection (is_attack) training/scoring.")
     args = ap.parse_args()
 
     if args.seed >= 0:
