@@ -1766,7 +1766,31 @@ static std::string TGN_AttackName(uint32_t s)
 
 static void TGN_InitOutputFiles()
 {
-    g_tgn_events_csv.open("tgn_events.csv");
+    // Bug fix (parallel scenario runs corrupting each other's dataset):
+    // this used to open a bare "tgn_events.csv" — a fixed relative path
+    // shared by every scenario/seed. Two scenarios run in parallel (from
+    // the same or different working directories, since ./waf --run's cwd
+    // is the ns-3.35 root regardless) would truncate/interleave each
+    // other's rows. Scenario-namespaced via BuildScenarioCsvPath, exactly
+    // like PEM_EVENT_LOG/PEM_RUN_SUMMARY already are, so concurrent runs
+    // are safe. generate_training_data*.sh's per-scenario copy step still
+    // works unchanged since it looks for a file named "tgn_events.csv" —
+    // see the matching note there if you update the path scheme.
+    //
+    // Bug fix (baseline-with-RSU collides with baseline-no-RSU): both
+    // "scenario 0" (no RSU) and "scenario 0r" (with RSU) pass the SAME
+    // attack_scenario=0 to the binary — GetScenarioOutputName only keys off
+    // attack_scenario, so both would target the identical
+    // 00_Baseline_No_Attack.csv file if run concurrently (or sequentially
+    // without an explicit rename step in between). Since N_RSUs is the only
+    // thing that actually differs between them, fold it into the filename
+    // here specifically for the TGN_EVENTS folder.
+    std::string tgnEventsFilename =
+        (attack_scenario == 0 && N_RSUs > 0)
+            ? (std::string(OUTPUT_ROOT_DIR) + "/TGN_EVENTS/00_Baseline_With_RSU.csv")
+            : BuildScenarioCsvPath("TGN_EVENTS", attack_scenario);
+    EnsureScenarioOutputDir("TGN_EVENTS");
+    g_tgn_events_csv.open(tgnEventsFilename.c_str());
     // TRAINING LABEL GUARDRAIL (Issue 9):
     // When writing tgn_train.py, use the 'is_attack' column as the label.
     // Do NOT use 'tgn_alert' as the training label.

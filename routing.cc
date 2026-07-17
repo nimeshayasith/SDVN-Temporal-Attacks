@@ -8886,6 +8886,58 @@ TtwFindFallbackPairs(const std::vector<uint32_t>& unmatchedAttackers,
     return assigned;
 }
 
+// Repeated-attack extension (TTW-S1/S2, BSHH-S1/S2): a single malicious
+// entity (vehicle or RSU "slot" k, 0 <= k < nSlots) can genuinely have
+// attacked MORE THAN ONE real victim pair over the course of the
+// simulation — the original single-round pairing only ever gave each slot
+// its first/best match, then stopped. This runs the SAME single-round
+// pairing function (natural-break OR mutual-range, whichever the caller
+// passes) repeatedly against the shrinking, still-real, still-SUMO-position
+// -checked victim pool: each round, a fresh shuffled candidate pool of size
+// nSlots is drawn from whatever vehicles remain unclaimed, matched via the
+// caller's pairingFn (identical genuine-position logic as a single round,
+// nothing fabricated), and round r's k-th pair is appended to slot k's list.
+// Stops when a round finds zero pairs (pool exhausted or genuinely no more
+// matches) or maxRounds is reached (safety cap against runaway simulation
+// setup time). Returns one vector of TtwAssignedPair per slot — slot k's
+// vector holds every distinct real pair found for it across all rounds, in
+// the real chronological order they were found (each entry's breakTime is
+// itself a genuine SUMO-derived value from that round's search, never
+// synthesized).
+static std::vector<std::vector<TtwAssignedPair>>
+TtwFindRepeatedPairs(uint32_t nSlots,
+                     std::vector<uint32_t> victimPool,
+                     uint32_t maxRounds,
+                     const std::function<std::vector<TtwAssignedPair>(
+                         const std::vector<uint32_t>& attackers,
+                         const std::vector<uint32_t>& victims)>& pairingFn)
+{
+    std::vector<std::vector<TtwAssignedPair>> perSlot(nSlots);
+    for (uint32_t round = 0; round < maxRounds; round++)
+    {
+        if (victimPool.size() < 2 || nSlots == 0) break;
+
+        std::vector<uint32_t> attackerCandidates = victimPool;
+        AttackShuffleVector(attackerCandidates);
+        if (attackerCandidates.size() > nSlots) attackerCandidates.resize(nSlots);
+
+        std::vector<TtwAssignedPair> roundPairs = pairingFn(attackerCandidates, victimPool);
+        if (roundPairs.empty()) break;   // no genuine progress this round -> stop repeating
+
+        std::set<uint32_t> claimedThisRound;
+        for (const auto& p : roundPairs) claimedThisRound.insert(p.victimCidx);
+
+        for (uint32_t k = 0; k < roundPairs.size() && k < nSlots; k++)
+            perSlot[k].push_back(roundPairs[k]);
+
+        std::vector<uint32_t> nextPool;
+        for (uint32_t v : victimPool)
+            if (!claimedThisRound.count(v)) nextPool.push_back(v);
+        victimPool.swap(nextPool);
+    }
+    return perSlot;
+}
+
 void TTW_InitLog()
 {
     ttw_log.open(BuildLogPath("ttw_attack_scenario4.txt"), std::ios::out | std::ios::trunc);
@@ -10497,7 +10549,19 @@ void BSHH_S1_AttackerHijacksOldHeartbeatToController(uint32_t attacker_id, uint3
     
     HeartbeatPacket forged = {victim_id, attacker_id, stored_time, true};
     bshh_controller_liveness_table[victim_id] = forged;
-    
+
+    // Bug fix (negative tdet_ms): STEP 6 (this function) fires BEFORE STEP 5
+    // (BSHH_S1_VictimForwardsOldHeartbeatToController) — see that function's
+    // comment for why. But only STEP 5 used to set pem_attack_injection_time,
+    // so the FIRST attack packet actually submitted to the controller (this
+    // one) could trigger an LW/TGN alert before injection_time was ever
+    // recorded, making tdet_ms = (first_alert_time - injection_time) go
+    // negative. Set it here too, guarded the same way, so injection_time
+    // always reflects whichever attack packet genuinely arrives first.
+    if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
+    pem_attack_active = true;
+    pem_mitigation_active = false;
+
     std::stringstream ss;
     ss << "[t=" << now << "]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER\n"
        << "  Attacker/physical_sender : " << attackerLabel << "\n"
@@ -155897,72 +155961,141 @@ static int RoutingMain(int argc, char *argv[])
       }
       else
       {
-          // ── Discover, for each fixed attacker, the best-scoring victim whose
-          // real trajectory starts in-range at HELLO time and later genuinely
-          // exceeds TTW_COMM_RANGE. attacker_idx is NEVER expanded — only
-          // victim assignment is decided here. Each victim is claimed by at
-          // most one attacker (removed from the pool once assigned).
+          // Repeated-attack extension: each fixed attacker vehicle can
+          // genuinely inject MORE THAN ONE forged replay over the run,
+          // against a DIFFERENT real victim each time — the original code
+          // only ran attacker_idx through the natural-break search once.
+          // attacker_idx itself is still never expanded/changed; only how
+          // many times each of its members gets to search+replay changes.
+          // Each round uses its own real HELLO time (kept in
+          // assignedHelloTimes, parallel to assignedPairs) — the HELLO
+          // exchange is NOT pinned to t=10s; it's whichever real moment a
+          // given attacker/victim pair is genuinely in range at, sampled
+          // densely across the whole run (every ~5s) rather than a handful
+          // of widely-spaced fixed slots, so an encounter is caught close to
+          // whenever it actually happens rather than only at coarse
+          // checkpoints.
+          const double s1RepeatSpacing = 5.0;
+          const uint32_t kMaxRepeatRoundsS1 =
+              (simTime > 20.0) ? (uint32_t)((simTime - 15.0) / s1RepeatSpacing) : 1;
+
           std::vector<TtwAssignedPair> assignedPairs;
-          std::vector<uint32_t> remainingVictims = victim_idx;
-          std::vector<uint32_t> unmatchedAttackers;   // bug fix — see fallback below
-          const double searchStart = TTW_HELLO_TIME + 0.5;
-          const double searchEnd   = simTime - 3.0;   // leaves room for replay + 50ms detection
-          const double stepSec     = 0.2;
+          std::vector<double>          assignedHelloTimes;
+          std::vector<uint32_t>        remainingVictims = victim_idx;
+          // Bug fix (attackers silently never injecting at all): attackers
+          // with zero real in-range victim at round 0's HELLO time were
+          // previously only ever offered ONE fallback attempt (round 0), so
+          // an attacker that's geometrically isolated at t=10 specifically
+          // — but comes within range of SOME vehicle later, as real mobility
+          // naturally brings vehicles together — permanently never got
+          // scheduled. Track every attacker that has NEVER succeeded (via
+          // natural break OR fallback) in ANY round so far, and keep
+          // offering it a fallback attempt at EVERY later round's HELLO
+          // time too, instead of giving up after round 0.
+          std::set<uint32_t> neverMatched(attacker_idx.begin(), attacker_idx.end());
 
-          for (uint32_t attacker_cidx : attacker_idx)
+          for (uint32_t round = 0; round < kMaxRepeatRoundsS1; round++)
           {
-              int bestIdx = -1;
-              TtwBreakEval best;
-              for (size_t vi = 0; vi < remainingVictims.size(); vi++)
+              if (remainingVictims.size() < 1 || attacker_idx.empty()) break;
+              const double helloTimeR = TTW_HELLO_TIME + round * s1RepeatSpacing;
+              const double searchStart = helloTimeR + 0.5;
+              const double searchEnd   = simTime - 3.0;   // leaves room for replay + 50ms detection
+              const double stepSec     = 0.2;
+              if (searchStart >= searchEnd) break;
+
+              std::vector<uint32_t> unmatchedAttackers;
+              bool anyMatchedThisRound = false;
+
+              // Coverage fix: attackers that have NEVER been scheduled even
+              // once go first each round, so they get first pick of this
+              // round's shrinking shared victim pool — otherwise attackers
+              // who already succeeded earlier keep consuming the pool for
+              // repeat attacks while never-matched ones starve.
+              std::vector<uint32_t> orderedAttackers;
+              for (uint32_t a : attacker_idx) if (neverMatched.count(a))  orderedAttackers.push_back(a);
+              for (uint32_t a : attacker_idx) if (!neverMatched.count(a)) orderedAttackers.push_back(a);
+
+              for (uint32_t attacker_cidx : orderedAttackers)
               {
-                  TtwBreakEval ev = TtwEvaluateNaturalBreak(
-                      attacker_cidx, remainingVictims[vi], TTW_HELLO_TIME,
-                      searchStart, searchEnd, kEffectiveReceptionRadius, stepSec);
-                  if (!ev.found) continue;
-                  const bool better =
-                      (bestIdx < 0) ||
-                      (ev.brokenDuration > best.brokenDuration) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist > best.maxDist) ||
-                      (ev.brokenDuration == best.brokenDuration && ev.maxDist == best.maxDist
-                       && ev.breakTime < best.breakTime);
-                  if (better) { bestIdx = (int)vi; best = ev; }
+                  int bestIdx = -1;
+                  TtwBreakEval best;
+                  for (size_t vi = 0; vi < remainingVictims.size(); vi++)
+                  {
+                      TtwBreakEval ev = TtwEvaluateNaturalBreak(
+                          attacker_cidx, remainingVictims[vi], helloTimeR,
+                          searchStart, searchEnd, kEffectiveReceptionRadius, stepSec);
+                      if (!ev.found) continue;
+                      const bool better =
+                          (bestIdx < 0) ||
+                          (ev.brokenDuration > best.brokenDuration) ||
+                          (ev.brokenDuration == best.brokenDuration && ev.maxDist > best.maxDist) ||
+                          (ev.brokenDuration == best.brokenDuration && ev.maxDist == best.maxDist
+                           && ev.breakTime < best.breakTime);
+                      if (better) { bestIdx = (int)vi; best = ev; }
+                  }
+                  if (bestIdx < 0)
+                  {
+                      if (round == 0)
+                          std::cout << "[TTW-S1] no natural link break found for attacker V" << attacker_cidx
+                                    << " in round " << round << " — trying fallback pairing" << std::endl;
+                      unmatchedAttackers.push_back(attacker_cidx);
+                      continue;
+                  }
+                  uint32_t victim_cidx = remainingVictims[(size_t)bestIdx];
+                  remainingVictims.erase(remainingVictims.begin() + bestIdx);
+                  assignedPairs.push_back({attacker_cidx, victim_cidx, best.breakTime});
+                  assignedHelloTimes.push_back(helloTimeR);
+                  anyMatchedThisRound = true;
+                  neverMatched.erase(attacker_cidx);
               }
-              if (bestIdx < 0)
+
+              // Bug fix (attack_percentage attacker undercount): every
+              // attacker that has NEVER been scheduled even once so far
+              // (not just this round's unmatched — see neverMatched above)
+              // gets a fallback pairing attempt at THIS round's HELLO time —
+              // still a real, in-range victim then (never fabricated), just
+              // without requiring that SAME pair's trajectory to later cross
+              // kEffectiveReceptionRadius. Retried every round (not just
+              // round 0) so an attacker with no real neighbor at t=10
+              // specifically still gets caught once real mobility brings it
+              // near someone later in the run.
+              std::vector<uint32_t> stillNeverMatched;
+              for (uint32_t a : unmatchedAttackers)
+                  if (neverMatched.count(a)) stillNeverMatched.push_back(a);
+              if (!stillNeverMatched.empty())
               {
-                  std::cout << "[TTW-S1] no natural link break found for attacker V" << attacker_cidx
-                            << " in the assigned victim pool — trying fallback pairing" << std::endl;
-                  unmatchedAttackers.push_back(attacker_cidx);
-                  continue;
+                  std::vector<TtwAssignedPair> fallback = TtwFindFallbackPairs(
+                      stillNeverMatched, remainingVictims, helloTimeR, searchEnd,
+                      kEffectiveReceptionRadius);
+                  for (const auto& fp : fallback)
+                  {
+                      std::cout << "[TTW-S1] fallback pairing (round " << round << "): V" << fp.attackerCidx
+                                << " <-> V" << fp.victimCidx
+                                << " (no genuine break found; replaying at t=" << fp.breakTime
+                                << " using real position then)" << std::endl;
+                      auto it = std::find(remainingVictims.begin(), remainingVictims.end(), fp.victimCidx);
+                      if (it != remainingVictims.end()) remainingVictims.erase(it);
+                      assignedPairs.push_back(fp);
+                      assignedHelloTimes.push_back(helloTimeR);
+                      anyMatchedThisRound = true;
+                      neverMatched.erase(fp.attackerCidx);
+                  }
               }
-              uint32_t victim_cidx = remainingVictims[(size_t)bestIdx];
-              remainingVictims.erase(remainingVictims.begin() + bestIdx);
-              assignedPairs.push_back({attacker_cidx, victim_cidx, best.breakTime});
+
+              // Stop early only once the shared victim pool is truly empty —
+              // NOT merely because this specific round matched nothing,
+              // since a round producing zero matches doesn't mean a LATER
+              // round (different real HELLO time, different real positions)
+              // can't still catch a neverMatched attacker.
+              (void)anyMatchedThisRound;
+              if (remainingVictims.empty()) break;
           }
 
-          // Bug fix (attack_percentage attacker undercount): every attacker
-          // the genuine break search above couldn't match gets a fallback
-          // pairing here — still a real, in-range victim at HELLO time (never
-          // fabricated), just without requiring that SAME pair's trajectory
-          // to later cross kEffectiveReceptionRadius within the search
-          // window. Guarantees every requested attacker gets scheduled
-          // instead of silently vanishing when 200 vehicles over a short
-          // simTime don't produce enough genuine breaks to cover them all.
-          if (!unmatchedAttackers.empty())
-          {
-              std::vector<TtwAssignedPair> fallback = TtwFindFallbackPairs(
-                  unmatchedAttackers, remainingVictims, TTW_HELLO_TIME, searchEnd,
-                  kEffectiveReceptionRadius);
-              for (const auto& fp : fallback)
-              {
-                  std::cout << "[TTW-S1] fallback pairing: V" << fp.attackerCidx
-                            << " <-> V" << fp.victimCidx
-                            << " (no genuine break found; replaying at t=" << fp.breakTime
-                            << " using real position then)" << std::endl;
-                  auto it = std::find(remainingVictims.begin(), remainingVictims.end(), fp.victimCidx);
-                  if (it != remainingVictims.end()) remainingVictims.erase(it);
-                  assignedPairs.push_back(fp);
-              }
-          }
+          for (size_t api = 0; api < assignedPairs.size(); api++)
+              std::cout << "[TTW-S1] V" << assignedPairs[api].attackerCidx
+                        << " <-> V" << assignedPairs[api].victimCidx
+                        << "  (hello t=" << assignedHelloTimes[api]
+                        << "s, real break at t=" << assignedPairs[api].breakTime << "s)" << std::endl;
 
           if (assignedPairs.empty())
           {
@@ -155978,17 +156111,23 @@ static int RoutingMain(int argc, char *argv[])
 
               double minReplayTime = -1.0;
 
-              for (const auto& pair : assignedPairs)
+              for (size_t api = 0; api < assignedPairs.size(); api++)
               {
+                  const auto& pair        = assignedPairs[api];
                   uint32_t attacker_cidx  = pair.attackerCidx;
                   uint32_t victim_cidx    = pair.victimCidx;
                   const double breakTime  = pair.breakTime;
+                  // This pair's own real HELLO time — round 0 uses the
+                  // original TTW_HELLO_TIME (10.0); later rounds (repeated
+                  // attacks on a different real victim) use their own,
+                  // genuinely later, HELLO time.
+                  const double helloTimeR = assignedHelloTimes[api];
 
                   const bool corroboratedVictimReport =
                       AttackRoll(attack_support_evidence_probability);
                   const double storeJitter  = AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
                   const double replayJitter = AttackSampleSignedJitter(attack_time_jitter_s);
-                  const double storeTime = 10.200 + storeJitter;
+                  const double storeTime = helloTimeR + 0.200 + storeJitter;
                   double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S + replayJitter;
                   if (replayTime <= breakTime) replayTime = breakTime + 0.1;
                   if (replayTime >= simTime)   replayTime = simTime - 0.5;
@@ -155998,6 +156137,10 @@ static int RoutingMain(int argc, char *argv[])
                   uint32_t vic_ns3 = Vehicle_Nodes.Get(victim_cidx)->GetId();
 
                   // Register attacker->victim pair for the pipeline intercept
+                  // (last round wins for this attacker — the pipeline
+                  // intercept for TTW_ActivateReplay_S1 tracks the most
+                  // recently scheduled pair per attacker; each pair's own
+                  // TTW_ReplayAttack call below still injects independently).
                   ttw_s1_attacker_victim_map[mal_ns3] = vic_ns3;
 
                   // apps layout: [ctrl_0..ctrl_{N_Controllers-1}, management, veh_0, veh_1, ...]
@@ -156007,10 +156150,10 @@ static int RoutingMain(int argc, char *argv[])
                   Ptr<SimpleUdpApplication> app_victim =
                       DynamicCast<SimpleUdpApplication>(apps.Get(app_veh_base + victim_cidx));
 
-                  // STEP 1 — V2V HELLO exchange at t=10
-                  Simulator::Schedule(Seconds(10.000), &TTW_SendHelloBeacon,
+                  // STEP 1 — V2V HELLO exchange at this pair's own real hello time
+                  Simulator::Schedule(Seconds(helloTimeR), &TTW_SendHelloBeacon,
                       Vehicle_Nodes.Get(victim_cidx),   Vehicle_Nodes.Get(attacker_cidx));
-                  Simulator::Schedule(Seconds(10.001), &TTW_SendHelloBeacon,
+                  Simulator::Schedule(Seconds(helloTimeR + 0.001), &TTW_SendHelloBeacon,
                       Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx));
 
                   // Fix: PemEmitVehicleBeacon takes real ns-3 GLOBAL IDs (see
@@ -156022,9 +156165,9 @@ static int RoutingMain(int argc, char *argv[])
                   // never find its own beacon record except by coincidental
                   // cross-vehicle ID collision — this was the confirmed root
                   // cause of TTW-S1's structural false negatives.
-                  Simulator::Schedule(Seconds(10.000), &PemEmitVehicleBeacon,
+                  Simulator::Schedule(Seconds(helloTimeR), &PemEmitVehicleBeacon,
                       vic_ns3, mal_ns3);
-                  Simulator::Schedule(Seconds(10.001), &PemEmitVehicleBeacon,
+                  Simulator::Schedule(Seconds(helloTimeR + 0.001), &PemEmitVehicleBeacon,
                       mal_ns3, vic_ns3);
 
                   // Consistency fix: use the same global IDs as the rest of
@@ -156033,26 +156176,26 @@ static int RoutingMain(int argc, char *argv[])
                   // wasn't causing wrong-vehicle lookups, but mixing cidx here
                   // with global IDs everywhere else in TTW-S1 was still an
                   // inconsistency worth closing while fixing the beacon bug.
-                  Simulator::Schedule(Seconds(10.020), &PemEmitVehicleHeartbeat,
-                      mal_ns3, mal_ns3, 10.020, false);
+                  Simulator::Schedule(Seconds(helloTimeR + 0.020), &PemEmitVehicleHeartbeat,
+                      mal_ns3, mal_ns3, helloTimeR + 0.020, false);
                   if (corroboratedVictimReport)
                   {
-                      Simulator::Schedule(Seconds(10.030), &PemEmitVehicleHeartbeat,
-                          vic_ns3, vic_ns3, 10.030, false);
+                      Simulator::Schedule(Seconds(helloTimeR + 0.030), &PemEmitVehicleHeartbeat,
+                          vic_ns3, vic_ns3, helloTimeR + 0.030, false);
                   }
 
                   // STEP 2 — Legitimate topology updates -> controller
-                  Simulator::Schedule(Seconds(10.100), &TTW_SendTopologyUpdate,
-                      Vehicle_Nodes.Get(attacker_cidx), vic_ns3, 10.0);
+                  Simulator::Schedule(Seconds(helloTimeR + 0.100), &TTW_SendTopologyUpdate,
+                      Vehicle_Nodes.Get(attacker_cidx), vic_ns3, helloTimeR);
                   if (corroboratedVictimReport)
                   {
-                      Simulator::Schedule(Seconds(10.101), &TTW_SendTopologyUpdate,
-                          Vehicle_Nodes.Get(victim_cidx), mal_ns3, 10.0);
+                      Simulator::Schedule(Seconds(helloTimeR + 0.101), &TTW_SendTopologyUpdate,
+                          Vehicle_Nodes.Get(victim_cidx), mal_ns3, helloTimeR);
                   }
 
                   // STEP 3 — Attacker stores old packet
                   Simulator::Schedule(Seconds(storeTime), &TTW_StorePacket,
-                      mal_ns3, vic_ns3, 10.0, breakTime);
+                      mal_ns3, vic_ns3, helloTimeR, breakTime);
 
                   // STEPS 4+5+6 — Replay attack after the REAL discovered break
                   Simulator::Schedule(Seconds(replayTime), &TTW_ReplayAttack,
@@ -156060,13 +156203,13 @@ static int RoutingMain(int argc, char *argv[])
                       mal_ns3, vic_ns3, replayTime, breakTime);
 
                   // NetAnim visual packets
-                  Simulator::Schedule(Seconds(10.000), &send_LTE_routing_data_alone,
+                  Simulator::Schedule(Seconds(helloTimeR), &send_LTE_routing_data_alone,
                       app_victim,   Vehicle_Nodes.Get(victim_cidx),
                       Vehicle_Nodes.Get(attacker_cidx), victim_cidx);
-                  Simulator::Schedule(Seconds(10.005), &send_LTE_routing_data_alone,
+                  Simulator::Schedule(Seconds(helloTimeR + 0.005), &send_LTE_routing_data_alone,
                       app_attacker, Vehicle_Nodes.Get(attacker_cidx),
                       Vehicle_Nodes.Get(victim_cidx),   attacker_cidx);
-                  Simulator::Schedule(Seconds(10.100), &send_LTE_routing_data_alone,
+                  Simulator::Schedule(Seconds(helloTimeR + 0.100), &send_LTE_routing_data_alone,
                       app_attacker, Vehicle_Nodes.Get(attacker_cidx),
                       controller_Node.Get(0), attacker_cidx);
                   if (corroboratedVictimReport)
@@ -156124,43 +156267,66 @@ static int RoutingMain(int argc, char *argv[])
       std::vector<uint32_t> s2_victim_pool;
       for (uint32_t k = 0; k < N_Vehicles; k++) s2_victim_pool.push_back(k);
       AttackShuffleVector(s2_victim_pool);
-      std::vector<uint32_t> s2_attacker_pool(
-          s2_victim_pool.begin(),
-          s2_victim_pool.begin() + std::min((size_t)n_malicious_rsus, s2_victim_pool.size()));
 
-      std::vector<TtwAssignedPair> s2_assigned;
+      // Repeated-attack extension: each malicious RSU (slot 0..n_malicious_rsus-1)
+      // can genuinely intercept MORE THAN ONE real vehicle-pair HELLO exchange
+      // over the simulation, not just its first match — see
+      // TtwFindRepeatedPairs's declaration comment. Every round still checks
+      // real SUMO positions via TtwFindNaturalBreakPairs (+ the same per-round
+      // fallback TTW-S2 already had), just repeated against the shrinking pool
+      // instead of stopping after one pass. Rounds are spaced every ~5s
+      // across the whole run (not a handful of coarse slots) so a HELLO
+      // exchange is caught close to whenever it genuinely happens, not
+      // pinned to any fixed instant. A round naturally stops early once no
+      // new genuine pairs are found (pool exhausted or no more real
+      // matches).
+      const double s2RepeatSpacing = 5.0;
+      const uint32_t kMaxRepeatRounds =
+          (simTime > 20.0) ? (uint32_t)((simTime - 15.0) / s2RepeatSpacing) : 1;
+      uint32_t s2RoundCounter = 0;
+      auto s2_pairingFn = [&](const std::vector<uint32_t>& attackers,
+                              const std::vector<uint32_t>& victims) -> std::vector<TtwAssignedPair> {
+          const double thisHello = TTWS2_HELLO_TIME + s2RoundCounter * s2RepeatSpacing;
+          s2RoundCounter++;
+          std::vector<TtwAssignedPair> pairs = TtwFindNaturalBreakPairs(
+              attackers, victims, thisHello,
+              thisHello + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+          std::set<uint32_t> matchedA, claimedV;
+          for (const auto& p : pairs) { matchedA.insert(p.attackerCidx); claimedV.insert(p.victimCidx); }
+          std::vector<uint32_t> unmatched, remaining;
+          for (uint32_t a : attackers) if (!matchedA.count(a)) unmatched.push_back(a);
+          for (uint32_t v : victims)   if (!claimedV.count(v))  remaining.push_back(v);
+          if (!unmatched.empty()) {
+              std::vector<TtwAssignedPair> fb = TtwFindFallbackPairs(
+                  unmatched, remaining, thisHello, simTime - 3.0, kEffectiveReceptionRadius);
+              for (const auto& fp : fb) pairs.push_back(fp);
+          }
+          return pairs;
+      };
+
+      std::vector<std::vector<TtwAssignedPair>> s2_perRsu(n_malicious_rsus);
       if (!g_sumo_trace_loaded)
           std::cout << "[TTW-S2] no SUMO trace loaded — cannot determine a natural link break; "
                        "attack skipped" << std::endl;
       else {
-          s2_assigned = TtwFindNaturalBreakPairs(
-              s2_attacker_pool, s2_victim_pool, TTWS2_HELLO_TIME,
-              TTWS2_HELLO_TIME + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
-
-          // Bug fix (attack_percentage attacker undercount) — see
-          // TtwFindFallbackPairs's declaration comment. Every requested
-          // malicious RSU that the genuine break search left unmatched gets
-          // a fallback pairing here instead of silently vanishing.
-          std::set<uint32_t> s2_matchedAttackers, s2_claimedVictims;
-          for (const auto& ap : s2_assigned) {
-              s2_matchedAttackers.insert(ap.attackerCidx);
-              s2_claimedVictims.insert(ap.victimCidx);
-          }
-          std::vector<uint32_t> s2_unmatched, s2_remaining;
-          for (uint32_t a : s2_attacker_pool) if (!s2_matchedAttackers.count(a)) s2_unmatched.push_back(a);
-          for (uint32_t v : s2_victim_pool)   if (!s2_claimedVictims.count(v))   s2_remaining.push_back(v);
-          if (!s2_unmatched.empty()) {
-              std::vector<TtwAssignedPair> s2_fallback = TtwFindFallbackPairs(
-                  s2_unmatched, s2_remaining, TTWS2_HELLO_TIME, simTime - 3.0, kEffectiveReceptionRadius);
-              for (const auto& fp : s2_fallback) {
-                  std::cout << "[TTW-S2] fallback pairing: V" << fp.attackerCidx
-                            << " <-> V" << fp.victimCidx
-                            << " (no genuine break found; replaying at t=" << fp.breakTime
-                            << " using real position then)" << std::endl;
-                  s2_assigned.push_back(fp);
-              }
-          }
+          s2_perRsu = TtwFindRepeatedPairs(n_malicious_rsus, s2_victim_pool, kMaxRepeatRounds, s2_pairingFn);
+          for (uint32_t ri = 0; ri < s2_perRsu.size(); ri++)
+              for (const auto& ap : s2_perRsu[ri])
+                  std::cout << "[TTW-S2] RSU slot " << ri << ": V" << ap.attackerCidx
+                            << " <-> V" << ap.victimCidx << "  (real break at t="
+                            << ap.breakTime << "s)" << std::endl;
       }
+
+      // Flattened view for logging/back-compat with code below that still
+      // wants a single ordered pair list (s2_assigned's old role) — now each
+      // RSU slot can contribute more than one entry.
+      std::vector<TtwAssignedPair> s2_assigned;
+      std::vector<uint32_t> s2_assignedRsuSlot;   // parallel array: which RSU slot each s2_assigned entry belongs to
+      for (uint32_t ri = 0; ri < s2_perRsu.size(); ri++)
+          for (const auto& ap : s2_perRsu[ri]) {
+              s2_assigned.push_back(ap);
+              s2_assignedRsuSlot.push_back(ri);
+          }
 
       for (const auto& ap : s2_assigned) {
           ttw_s2_all_pairs.push_back({Vehicle_Nodes.Get(ap.attackerCidx)->GetId(),
@@ -156169,10 +156335,10 @@ static int RoutingMain(int argc, char *argv[])
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 02 - TTW-S2 ATTACK CONFIGURED"   << std::endl;
-      std::cout << "Malicious RSUs : " << s2_assigned.size() << " / " << N_RSUs << std::endl;
+      std::cout << "Malicious RSUs : " << n_malicious_rsus << " / " << N_RSUs << std::endl;
       std::cout << "Victim pairs   (" << s2_assigned.size() << "):" << std::endl;
       for (size_t ri = 0; ri < s2_assigned.size(); ri++)
-          std::cout << "  RSU_" << RSU_Nodes.Get(ri)->GetId()
+          std::cout << "  RSU_" << RSU_Nodes.Get(s2_assignedRsuSlot[ri])->GetId()
                     << "  ->  V" << Vehicle_Nodes.Get(s2_assigned[ri].attackerCidx)->GetId()
                     << " <-> V" << Vehicle_Nodes.Get(s2_assigned[ri].victimCidx)->GetId()
                     << "  (real break at t=" << s2_assigned[ri].breakTime << "s)" << std::endl;
@@ -156194,7 +156360,8 @@ static int RoutingMain(int argc, char *argv[])
 
       for (uint32_t pi = 0; pi < (uint32_t)s2_assigned.size(); pi++)
       {
-          uint32_t rsu_id        = RSU_Nodes.Get(pi)->GetId(); // pi-th RSU is malicious
+          uint32_t rsuSlot       = s2_assignedRsuSlot[pi]; // which malicious RSU this pair belongs to
+          uint32_t rsu_id        = RSU_Nodes.Get(rsuSlot)->GetId();
           uint32_t vA_cidx       = s2_assigned[pi].attackerCidx;
           uint32_t vB_cidx       = s2_assigned[pi].victimCidx;
           uint32_t vA            = Vehicle_Nodes.Get(vA_cidx)->GetId();
@@ -156210,12 +156377,16 @@ static int RoutingMain(int argc, char *argv[])
           // RSU pi: placed at the real midpoint of the pair's position at
           // HELLO time (RSUs aren't SUMO-driven, so this placement is durable
           // — unlike the vehicle nudge it replaces, which never was).
-          if (pi < RSU_Nodes.GetN()) {
+          // Note: with repeated attacks, later rounds for the same RSU will
+          // re-place it at that round's pair midpoint too — RSUs aren't
+          // SUMO-driven so this is a harmless repositioning, matching
+          // whichever pair is about to be replayed most recently scheduled.
+          if (rsuSlot < RSU_Nodes.GetN()) {
               Vector posA = TtwSumoPositionAt(vA_cidx, TTWS2_HELLO_TIME);
               Vector posB = TtwSumoPositionAt(vB_cidx, TTWS2_HELLO_TIME);
               Ptr<ConstantVelocityMobilityModel> m_rsu =
                   DynamicCast<ConstantVelocityMobilityModel>(
-                      RSU_Nodes.Get(pi)->GetObject<MobilityModel>());
+                      RSU_Nodes.Get(rsuSlot)->GetObject<MobilityModel>());
               if (m_rsu) {
                   m_rsu->SetPosition(Vector((posA.x + posB.x) / 2.0, (posA.y + posB.y) / 2.0, 0.0));
                   m_rsu->SetVelocity(Vector(0.0, 0.0, 0.0));
@@ -156264,10 +156435,10 @@ static int RoutingMain(int argc, char *argv[])
           }
 
           // Mark this malicious RSU red in NetAnim
-          anim.UpdateNodeColor(RSU_Nodes.Get(pi), 255, 0, 0);
-          anim.UpdateNodeSize(RSU_Nodes.Get(pi)->GetId(), 38.0, 38.0);
-          anim.UpdateNodeDescription(RSU_Nodes.Get(pi),
-              "RSU-" + std::to_string(pi) + "-Attacker");
+          anim.UpdateNodeColor(RSU_Nodes.Get(rsuSlot), 255, 0, 0);
+          anim.UpdateNodeSize(RSU_Nodes.Get(rsuSlot)->GetId(), 38.0, 38.0);
+          anim.UpdateNodeDescription(RSU_Nodes.Get(rsuSlot),
+              "RSU-" + std::to_string(rsuSlot) + "-Attacker");
       }
 
       if (!s2_assigned.empty()) {
@@ -156304,12 +156475,20 @@ static int RoutingMain(int argc, char *argv[])
       // Bug fix: victim-pair pool count used to be tied 1:1 to
       // n_malicious_ctrl3 (controller_Node.GetN() is typically small, e.g. 4),
       // capping TTW-S3 at a handful of events per run regardless of network
-      // size. Decoupled to a fixed pool (kControllerOriginVictimPoolSize=20,
-      // matching ME-S3/S4's identity-pool size) so a malicious controller
+      // size. Decoupled from n_malicious_ctrl3 so a malicious controller
       // internally poisons many pairs, not just one — n_malicious_ctrl3
       // itself still solely reflects attack_percentage's intended meaning
       // ("fraction of controllers compromised") for display/coloring below.
-      static const uint32_t kControllerOriginVictimPoolSize = 20;
+      // Calibration fix (matches declare_attackers()'s identical fix for
+      // ME-S3/S4's phantom pool, see CALIBRATION_VALUES.md §4): this pool
+      // was a FIXED constant of 20 regardless of N_Vehicles/attack_percentage,
+      // capping TTW-S3's event volume the same way ME-S3/S4's was before that
+      // fix. Made proportional here too, same formula, for the same reason —
+      // more attack_percentage/N_Vehicles should mean more poisoned pairs.
+      const uint32_t kControllerOriginVictimPoolSize = [&]{
+          uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
+          return (p < 2u) ? 2u : p;
+      }();
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
       // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
       // HELLO time and later genuinely exceed TTW_COMM_RANGE. Previously this
@@ -156469,9 +156648,12 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl4 > N_Vehicles / 2)           n_malicious_ctrl4 = N_Vehicles / 2;
 
       // Bug fix: decoupled victim-pair pool count from n_malicious_ctrl4 (see
-      // matching comment in the TTW-S3 block above) — fixed pool size instead
-      // of a handful tied to controller_Node.GetN().
-      static const uint32_t kControllerOriginVictimPoolSize = 20;
+      // matching comment in the TTW-S3 block above) — proportional pool size
+      // instead of a handful tied to controller_Node.GetN().
+      const uint32_t kControllerOriginVictimPoolSize = [&]{
+          uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
+          return (p < 2u) ? 2u : p;
+      }();
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
       // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
       // HELLO time and later genuinely exceed TTW_COMM_RANGE. Previously this
@@ -156675,13 +156857,55 @@ static int RoutingMain(int argc, char *argv[])
       // never fabricated) — breakTime is set to the exchange time itself, so
       // the replay/hijack/victim-forward timestamps below (which add a fixed
       // margin on top of pair.breakTime) are unaffected.
+      // Repeated-attack extension (mirrors TTW-S1/BSHH-S2): each fixed
+      // attacker vehicle can genuinely capture-and-replay MORE THAN ONE real
+      // victim's heartbeat over the simulation, at different, later,
+      // genuinely-real exchange times — never fabricating positions, just
+      // re-running the same real mutual-range check at later points in the
+      // run against a shrinking, shared victim pool (a victim used by one
+      // attacker in one round isn't reused by another attacker/round).
+      const double bshhS1RepeatSpacing = 5.0;
+      const uint32_t kMaxRepeatRoundsBshhS1 =
+          (simTime > 20.0) ? (uint32_t)((simTime - 15.0) / bshhS1RepeatSpacing) : 1;
+
       std::vector<TtwAssignedPair> bshh_s1_assigned;
+      std::vector<uint32_t> bshh_s1_remainingVictims = bshh_victim_idx;
+      // Coverage fix (mirrors TTW-S1): attackers that have never been
+      // scheduled even once get first pick of each round's shared victim
+      // pool, so they're not starved out by attackers who already succeeded
+      // earlier and keep taking repeat slots.
+      std::set<uint32_t> bshh_s1_neverMatched(bshh_attacker_idx.begin(), bshh_attacker_idx.end());
       if (!g_sumo_trace_loaded) {
           std::cout << "[BSHH-S1] no SUMO trace loaded — cannot determine vehicle positions; "
                        "attack skipped" << std::endl;
       } else {
-          bshh_s1_assigned = TtwFindMutualRangePairs(
-              bshh_attacker_idx, bshh_victim_idx, BSHH_S1_EXCHANGE_TIME, kEffectiveReceptionRadius);
+          for (uint32_t round = 0; round < kMaxRepeatRoundsBshhS1; round++) {
+              if (bshh_s1_remainingVictims.empty() || bshh_attacker_idx.empty()) break;
+              const double atTime = BSHH_S1_EXCHANGE_TIME + round * bshhS1RepeatSpacing;
+              if (atTime >= simTime - 5.0) break;
+
+              std::vector<uint32_t> orderedAttackers;
+              for (uint32_t a : bshh_attacker_idx) if (bshh_s1_neverMatched.count(a))  orderedAttackers.push_back(a);
+              for (uint32_t a : bshh_attacker_idx) if (!bshh_s1_neverMatched.count(a)) orderedAttackers.push_back(a);
+
+              std::vector<TtwAssignedPair> roundPairs = TtwFindMutualRangePairs(
+                  orderedAttackers, bshh_s1_remainingVictims, atTime, kEffectiveReceptionRadius);
+              std::set<uint32_t> claimedThisRound;
+              for (const auto& p : roundPairs) {
+                  claimedThisRound.insert(p.victimCidx);
+                  bshh_s1_assigned.push_back(p);
+                  bshh_s1_neverMatched.erase(p.attackerCidx);
+                  std::cout << "[BSHH-S1] V" << p.attackerCidx << " <-> V" << p.victimCidx
+                            << "  (real exchange at t=" << p.breakTime << "s)" << std::endl;
+              }
+              std::vector<uint32_t> nextPool;
+              for (uint32_t v : bshh_s1_remainingVictims)
+                  if (!claimedThisRound.count(v)) nextPool.push_back(v);
+              bshh_s1_remainingVictims.swap(nextPool);
+              // Keep trying later rounds even if this one found nothing —
+              // a different real time may still catch a never-matched
+              // attacker — stopping only once the shared pool is empty.
+          }
       }
       const uint32_t bshh_s1_npairs = (uint32_t)bshh_s1_assigned.size();
       bshh_s1_total_pairs = bshh_s1_npairs;
@@ -156727,8 +156951,14 @@ static int RoutingMain(int argc, char *argv[])
               DynamicCast<SimpleUdpApplication>(apps.Get(bshh_s1_app_veh_base + vic_cidx));
 
           const double dt = (double)a * 0.001;
+          // breakTime carries THIS pair's own real exchange time (round 0 =
+          // the original BSHH_S1_EXCHANGE_TIME; later rounds = a genuinely
+          // later real mutual-range exchange — see the repeated-attack
+          // round loop above). forwardTime/storeTime/hijackTime/
+          // victimForwardTime below all self-correct via AttackMax against
+          // this growing base, so they don't need separate per-round bases.
           const double exchangeObservedTime =
-              BSHH_S1_EXCHANGE_TIME + AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
+              breakTime + AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
           const double exchangeTime = exchangeObservedTime + dt;
           const double forwardTime =
               AttackMax(exchangeTime + 0.001,
@@ -156892,26 +157122,67 @@ static int RoutingMain(int argc, char *argv[])
       std::vector<uint32_t> s6_victim_pool;
       for (uint32_t k = 0; k < N_Vehicles; k++) s6_victim_pool.push_back(k);
       AttackShuffleVector(s6_victim_pool);
-      std::vector<uint32_t> s6_attacker_pool(
-          s6_victim_pool.begin(),
-          s6_victim_pool.begin() + std::min((size_t)n_malicious_rsus2, s6_victim_pool.size()));
 
-      // Bug fix (BSHH doesn't need a physical break) — see BSHH-S1's matching
-      // comment. Switched from TtwFindNaturalBreakPairs to
-      // TtwFindMutualRangePairs (mutual range at exchange time only).
-      std::vector<TtwAssignedPair> s6_assigned;
+      // Repeated-attack extension (mirrors TTW-S2's TtwFindRepeatedPairs use):
+      // each malicious RSU can genuinely intercept MORE THAN ONE real
+      // vehicle-pair heartbeat exchange over the simulation. Each round picks
+      // a different, later "exchange time" and re-runs the real mutual-range
+      // check (+ the same per-round fallback BSHH-S2 already had) at THAT
+      // time — never fabricating positions, just sampling real SUMO
+      // trajectories at genuinely different points in the run. The chosen
+      // round's atTime is carried through in TtwAssignedPair::breakTime,
+      // which is exactly what the scheduling loop below already reads to
+      // compute this pair's own exchange/store/replay timestamps.
+      const double kBshhRepeatSpacing = 5.0;
+      const uint32_t kMaxRepeatRoundsBshh =
+          (simTime > 20.0) ? (uint32_t)((simTime - 15.0) / kBshhRepeatSpacing) : 1;
+      uint32_t s6_roundCounter = 0;
+      auto s6_pairingFn = [&](const std::vector<uint32_t>& attackers,
+                              const std::vector<uint32_t>& victims) -> std::vector<TtwAssignedPair> {
+          const double atTime = BSHH_S2_EXCHANGE_TIME + s6_roundCounter * kBshhRepeatSpacing;
+          s6_roundCounter++;
+          if (atTime >= simTime - 5.0) return {};
+          std::vector<TtwAssignedPair> pairs = TtwFindMutualRangePairs(
+              attackers, victims, atTime, kEffectiveReceptionRadius);
+          std::set<uint32_t> matchedA, claimedV;
+          for (const auto& p : pairs) { matchedA.insert(p.attackerCidx); claimedV.insert(p.victimCidx); }
+          std::vector<uint32_t> unmatched, remaining;
+          for (uint32_t a : attackers) if (!matchedA.count(a)) unmatched.push_back(a);
+          for (uint32_t v : victims)   if (!claimedV.count(v))  remaining.push_back(v);
+          if (!unmatched.empty()) {
+              std::vector<TtwAssignedPair> fb = TtwFindFallbackPairs(
+                  unmatched, remaining, atTime, atTime, kEffectiveReceptionRadius);
+              for (const auto& fp : fb) pairs.push_back(fp);
+          }
+          return pairs;
+      };
+
+      std::vector<std::vector<TtwAssignedPair>> s6_perRsu(n_malicious_rsus2);
       if (!g_sumo_trace_loaded)
           std::cout << "[BSHH-S2] no SUMO trace loaded — cannot determine vehicle positions; "
                        "attack skipped" << std::endl;
-      else
-          s6_assigned = TtwFindMutualRangePairs(
-              s6_attacker_pool, s6_victim_pool, BSHH_S2_EXCHANGE_TIME, kEffectiveReceptionRadius);
+      else {
+          s6_perRsu = TtwFindRepeatedPairs(n_malicious_rsus2, s6_victim_pool, kMaxRepeatRoundsBshh, s6_pairingFn);
+          for (uint32_t ri = 0; ri < s6_perRsu.size(); ri++)
+              for (const auto& ap : s6_perRsu[ri])
+                  std::cout << "[BSHH-S2] RSU slot " << ri << ": V" << ap.attackerCidx
+                            << " <-> V" << ap.victimCidx << "  (real exchange at t="
+                            << ap.breakTime << "s)" << std::endl;
+      }
+
+      std::vector<TtwAssignedPair> s6_assigned;
+      std::vector<uint32_t> s6_assignedRsuSlot;
+      for (uint32_t ri = 0; ri < s6_perRsu.size(); ri++)
+          for (const auto& ap : s6_perRsu[ri]) {
+              s6_assigned.push_back(ap);
+              s6_assignedRsuSlot.push_back(ri);
+          }
 
       bshh_s2_total_pairs = (uint32_t)s6_assigned.size();
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 06 - BSHH-S2 ATTACK CONFIGURED" << std::endl;
-      std::cout << "Malicious RSUs : " << s6_assigned.size() << " / " << N_RSUs << std::endl;
+      std::cout << "Malicious RSUs : " << n_malicious_rsus2 << " / " << N_RSUs << std::endl;
       std::cout << "Victim pairs   : " << s6_assigned.size() << std::endl;
       std::cout << "Stored HB time : t=" << BSHH_S2_EXCHANGE_TIME << " (from legitimate exchange)" << std::endl;
       std::cout << "Replay timing  : Option B — " << TTW_S1_REPLAY_MARGIN_S
@@ -156923,25 +157194,33 @@ static int RoutingMain(int argc, char *argv[])
       for (uint32_t ri = 0; ri < s6_assigned.size(); ri++) {
           uint32_t vA_cidx = s6_assigned[ri].attackerCidx;
           uint32_t vB_cidx = s6_assigned[ri].victimCidx;
-          const double breakTime = s6_assigned[ri].breakTime;
+          // With repeated attacks, breakTime now carries THIS round's own
+          // real exchange time (see s6_pairingFn above), not always the
+          // original fixed BSHH_S2_EXCHANGE_TIME constant.
+          const double exchangeTime = s6_assigned[ri].breakTime;
+          const double earlierExchangeTime = exchangeTime - (BSHH_S2_EXCHANGE_TIME - BSHH_S2_EARLIER_EXCHANGE_TIME);
+          uint32_t rsuSlot = s6_assignedRsuSlot[ri];
 
           uint32_t vA_ns3 = Vehicle_Nodes.Get(vA_cidx)->GetId();
           uint32_t vB_ns3 = Vehicle_Nodes.Get(vB_cidx)->GetId();
-          uint32_t rsu_ns3 = RSU_Nodes.Get(ri)->GetId();
+          uint32_t rsu_ns3 = RSU_Nodes.Get(rsuSlot)->GetId();
 
-          double replayTime = breakTime + TTW_S1_REPLAY_MARGIN_S;
-          if (replayTime <= breakTime) replayTime = breakTime + 0.1;
+          double replayTime = exchangeTime + TTW_S1_REPLAY_MARGIN_S;
+          if (replayTime <= exchangeTime) replayTime = exchangeTime + 0.1;
           if (replayTime >= simTime)   replayTime = simTime - 0.5;
           const double suppressTime = replayTime - 0.1;
 
           // RSU placed at the real midpoint of the pair's position at the
           // exchange time (RSUs aren't SUMO-driven, so this placement is
           // durable — unlike the vehicle nudge it replaces, which never was).
-          if (ri < RSU_Nodes.GetN()) {
-              Vector posA = TtwSumoPositionAt(vA_cidx, BSHH_S2_EXCHANGE_TIME);
-              Vector posB = TtwSumoPositionAt(vB_cidx, BSHH_S2_EXCHANGE_TIME);
+          // With repeats, later rounds re-place the same RSU at that round's
+          // midpoint — harmless since RSUs have no physical mobility of
+          // their own to disturb.
+          if (rsuSlot < RSU_Nodes.GetN()) {
+              Vector posA = TtwSumoPositionAt(vA_cidx, exchangeTime);
+              Vector posB = TtwSumoPositionAt(vB_cidx, exchangeTime);
               Ptr<ConstantVelocityMobilityModel> mR = DynamicCast<ConstantVelocityMobilityModel>(
-                  RSU_Nodes.Get(ri)->GetObject<MobilityModel>());
+                  RSU_Nodes.Get(rsuSlot)->GetObject<MobilityModel>());
               if (mR) { mR->SetPosition(Vector((posA.x + posB.x) / 2.0, (posA.y + posB.y) / 2.0, 0.0));
                         mR->SetVelocity(Vector(0.0, 0.0, 0.0)); }
           }
@@ -156953,33 +157232,33 @@ static int RoutingMain(int argc, char *argv[])
 
           const double dt = (double)ri * 0.001;
 
-          // Earlier legitimate exchange (t=2) — captured as the "even-older"
-          // duplicate, genuinely distinct from the t=5 one below (thesis
-          // scenario 6: RSU injects an old stored heartbeat PLUS a second,
-          // even-older duplicate).
-          Simulator::Schedule(Seconds(BSHH_S2_EARLIER_EXCHANGE_TIME + dt),
-              &BSHH_S2_LegitimateExchange, vA_ns3, vB_ns3, rsu_ns3, BSHH_S2_EARLIER_EXCHANGE_TIME);
-          Simulator::Schedule(Seconds(BSHH_S2_EARLIER_EXCHANGE_TIME + 0.1 + dt),
-              &BSHH_S2_StoreEvenOlderHeartbeat, rsu_ns3, vA_ns3, BSHH_S2_EARLIER_EXCHANGE_TIME);
+          // Earlier legitimate exchange — captured as the "even-older"
+          // duplicate, genuinely distinct from the main exchange below
+          // (thesis scenario 6: RSU injects an old stored heartbeat PLUS a
+          // second, even-older duplicate).
+          Simulator::Schedule(Seconds(earlierExchangeTime + dt),
+              &BSHH_S2_LegitimateExchange, vA_ns3, vB_ns3, rsu_ns3, earlierExchangeTime);
+          Simulator::Schedule(Seconds(earlierExchangeTime + 0.1 + dt),
+              &BSHH_S2_StoreEvenOlderHeartbeat, rsu_ns3, vA_ns3, earlierExchangeTime);
 
-          Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt),
-              &BSHH_S2_LegitimateExchange, vA_ns3, vB_ns3, rsu_ns3, BSHH_S2_EXCHANGE_TIME);
-          // Store AFTER exchange (t=5.1), not at t=0
-          Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + 0.1 + dt),
-              &BSHH_S2_StoreOldHeartbeat, rsu_ns3, vA_ns3, BSHH_S2_EXCHANGE_TIME);
+          Simulator::Schedule(Seconds(exchangeTime + dt),
+              &BSHH_S2_LegitimateExchange, vA_ns3, vB_ns3, rsu_ns3, exchangeTime);
+          // Store AFTER exchange, not at t=0
+          Simulator::Schedule(Seconds(exchangeTime + 0.1 + dt),
+              &BSHH_S2_StoreOldHeartbeat, rsu_ns3, vA_ns3, exchangeTime);
           // Victim's genuine current heartbeat arrives just before replay —
           // the malicious RSU suppresses it rather than forwarding it honestly.
           Simulator::Schedule(Seconds(suppressTime + dt),
               &BSHH_S2_SuppressCurrentHeartbeat, rsu_ns3, vA_ns3, suppressTime);
           Simulator::Schedule(Seconds(replayTime + dt),
-              &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, BSHH_S2_EXCHANGE_TIME);
+              &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
 
           // NetAnim visual packets
           if (app_vA && app_vB) {
-              Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt),
+              Simulator::Schedule(Seconds(exchangeTime + dt),
                   &send_LTE_routing_data_alone, app_vA,
                   Vehicle_Nodes.Get(vA_cidx), Vehicle_Nodes.Get(vB_cidx), vA_cidx);
-              Simulator::Schedule(Seconds(BSHH_S2_EXCHANGE_TIME + dt + 0.005),
+              Simulator::Schedule(Seconds(exchangeTime + dt + 0.005),
                   &send_LTE_routing_data_alone, app_vB,
                   Vehicle_Nodes.Get(vB_cidx), controller_Node.Get(0), vB_cidx);
               Simulator::Schedule(Seconds(replayTime + dt),
@@ -156998,11 +157277,11 @@ static int RoutingMain(int argc, char *argv[])
               anim.UpdateNodeDescription(Vehicle_Nodes.Get(vB_cidx),
                   ("V" + std::to_string(vB_cidx) + "-Normal").c_str());
           }
-          if (ri < RSU_Nodes.GetN()) {
-              anim.UpdateNodeColor(RSU_Nodes.Get(ri), 255, 0, 0);
-              anim.UpdateNodeSize(RSU_Nodes.Get(ri)->GetId(), 38.0, 38.0);
-              anim.UpdateNodeDescription(RSU_Nodes.Get(ri),
-                  ("RSU" + std::to_string(ri) + "-Attacker").c_str());
+          if (rsuSlot < RSU_Nodes.GetN()) {
+              anim.UpdateNodeColor(RSU_Nodes.Get(rsuSlot), 255, 0, 0);
+              anim.UpdateNodeSize(RSU_Nodes.Get(rsuSlot)->GetId(), 38.0, 38.0);
+              anim.UpdateNodeDescription(RSU_Nodes.Get(rsuSlot),
+                  ("RSU" + std::to_string(rsuSlot) + "-Attacker").c_str());
           }
       }
       for (uint32_t ci = 0; ci < controller_Node.GetN(); ci++)
@@ -157034,8 +157313,11 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl3b > N_Vehicles / 2)          n_malicious_ctrl3b = N_Vehicles / 2;
 
       // Bug fix: decoupled victim-pair pool count from n_malicious_ctrl3b —
-      // fixed pool size instead of a handful tied to controller_Node.GetN().
-      static const uint32_t kControllerOriginVictimPoolSize = 20;
+      // proportional pool size instead of a handful tied to controller_Node.GetN().
+      const uint32_t kControllerOriginVictimPoolSize = [&]{
+          uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
+          return (p < 2u) ? 2u : p;
+      }();
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
       // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
       // the exchange time and later genuinely exceed TTW_COMM_RANGE, instead
@@ -157170,12 +157452,16 @@ static int RoutingMain(int argc, char *argv[])
       if (n_malicious_ctrl4b > RSU_Nodes.GetN())        n_malicious_ctrl4b = RSU_Nodes.GetN();
 
       // Bug fix: decoupled victim-pair pool count from n_malicious_ctrl4b —
-      // fixed pool size instead of a handful tied to controller_Node.GetN().
+      // proportional pool size instead of a handful tied to controller_Node.GetN().
       // Still capped by RSU_Nodes.GetN(): the per-pair loop below indexes
       // RSU_Nodes.Get(ci) directly by pair index with no bounds check
       // (rsu_ns3 = RSU_Nodes.Get(ci)->GetId()), so pair count must never
       // exceed the real RSU count.
-      static const uint32_t kControllerOriginVictimPoolSize = 20;
+      const uint32_t kControllerOriginVictimPoolSize = [&]{
+          uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
+          p = (p < 2u) ? 2u : p;
+          return (RSU_Nodes.GetN() > 0 && p > RSU_Nodes.GetN()) ? (uint32_t)RSU_Nodes.GetN() : p;
+      }();
       // Option B: search real SUMO trajectories (TtwFindNaturalBreakPairs, same
       // search TTW-S1 uses) for disjoint vehicle pairs that are in range at
       // the exchange time and later genuinely exceed TTW_COMM_RANGE, instead
@@ -157878,6 +158164,15 @@ static int RoutingMain(int argc, char *argv[])
                   last_p, last_p, ME_S3_DISCOVERY_TIME, c);
           }
       }
+
+      // Reverted: repeating ME_S3_LegitimateDiscovery at 5s-spaced intervals
+      // for the SAME link was intended to add more benign (TN) events, but
+      // it actually causes false positives — sig[2] (TTW-S3: "same link
+      // reported... timestamp gap > beacon interval") fires on the >1s gap
+      // between successive re-observations of the same link, since that
+      // signature assumes sub-second periodic beaconing, not a scripted
+      // multi-second re-discovery. Confirmed via pem_event_log.csv (fp went
+      // 0 -> 16 with this call in place, all mislabeled TTW-S3). Removed.
       if (N_Vehicles > 1) {
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 150, 255);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Real");
@@ -158043,6 +158338,11 @@ static int RoutingMain(int argc, char *argv[])
                   last_p, last_p, ME_S4_DISCOVERY_TIME, c);
           }
       }
+
+      // Reverted — see ME-S3's identical revert comment. Repeating
+      // ME_S4_VehiclesViaRSU for the same link at 5s-spaced intervals causes
+      // sig[2] (TTW-S3) false positives instead of clean TN, since that
+      // signature assumes sub-second periodic beaconing.
       if (N_Vehicles > 1) {
           anim.UpdateNodeColor(Vehicle_Nodes.Get(v1_id), 0, 150, 255);
           anim.UpdateNodeDescription(Vehicle_Nodes.Get(v1_id), "V1-Real");
