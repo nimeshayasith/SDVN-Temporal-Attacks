@@ -6429,9 +6429,34 @@ PemEvaluateEvent(PemEvent& event)
         {
             // Eq. 3.5 — BSHH-S1: two heartbeats claim the same identity but
             // originate from different physical senders within the window.
+            // A PEM_HEARTBEAT_WINDOW_S (0.4s) time bound was tried and
+            // reverted here: it fixed a false positive (a stale forged
+            // heartbeat from an earlier, unrelated attack round still
+            // sitting in the window, falsely flagging a much-later benign
+            // self-report for the same reused victim identity) but broke
+            // genuine detection too — BSHH-S1's own real hijack legitimately
+            // arrives TTW_S1_REPLAY_MARGIN_S (2.0s) or more after the
+            // original heartbeat it's supposed to conflict with, well
+            // outside a 0.4s bound (confirmed tp=0/fn=33 via smoke test).
+            //
+            // Bug fix (narrower, doesn't touch the true-positive path): the
+            // false-positive case's conflicting `it` entry is specifically
+            // one that was ITSELF already a confirmed detection
+            // (it->alert_raised == true) — the very attack that got caught
+            // earlier. Once revoked (Eq. 3.40 — confirmed elsewhere every
+            // caught RSU/vehicle only ever gets exactly one successful
+            // attack before permanent lockout), that identity can't forge
+            // anything further; a later benign self-report claiming the
+            // same identity isn't a new, still-live threat to flag against
+            // an already-resolved incident. The true-positive case's `it`
+            // entry is the ORIGINAL LEGITIMATE heartbeat (attack_label=false,
+            // never itself flagged, alert_raised=false) — excluding only
+            // already-confirmed entries leaves that comparison untouched,
+            // so real hijack detection still fires exactly as before.
             if (it->type == PEM_EVENT_HEARTBEAT &&
                 it->physical_sender_id != event.physical_sender_id &&
-                it->claimed_sender_id == event.claimed_sender_id)
+                it->claimed_sender_id == event.claimed_sender_id &&
+                !it->alert_raised)
             {
                 event.triggered[3] = true;
                 break;
@@ -155980,7 +156005,14 @@ static int RoutingMain(int argc, char *argv[])
               if (remainingVictims.size() < 1 || attacker_idx.empty()) break;
               const double helloTimeR = TTW_HELLO_TIME + round * s1RepeatSpacing;
               const double searchStart = helloTimeR + 0.5;
-              const double searchEnd   = simTime - 3.0;   // leaves room for replay + 50ms detection
+              // Bug fix (all rounds' replays clustering near simTime-3): see
+              // TTW-S2's identical fix. Bound this round's own search/
+              // fallback window to a reasonable multiple of the round
+              // spacing instead of the global simTime-3, so later rounds'
+              // attacks replay close to when that round actually started
+              // rather than every round funneling onto nearly the same
+              // late timestamp.
+              const double searchEnd   = std::min(simTime - 3.0, helloTimeR + s1RepeatSpacing * 3.0);
               const double stepSec     = 0.2;
               if (searchStart >= searchEnd) break;
 
@@ -156269,9 +156301,20 @@ static int RoutingMain(int argc, char *argv[])
                               const std::vector<uint32_t>& victims) -> std::vector<TtwAssignedPair> {
           const double thisHello = TTWS2_HELLO_TIME + s2RoundCounter * s2RepeatSpacing;
           s2RoundCounter++;
+          // Bug fix (all rounds' replays clustering at ~simTime-3): both the
+          // natural-break search window and the fallback's nominalBreakTime
+          // used to extend all the way to the GLOBAL simTime-3 regardless of
+          // which round this was, so a sparse/small-scale SUMO trace (few
+          // genuine separations before the very end) pushed almost every
+          // round's attack — round 0 through the last — onto nearly the same
+          // late timestamp instead of spreading naturally across the run.
+          // Bound this round's own window to a reasonable multiple of the
+          // round spacing instead, so each round's pairs replay close to
+          // when that round actually started.
+          const double roundSearchEnd = std::min(simTime - 3.0, thisHello + s2RepeatSpacing * 3.0);
           std::vector<TtwAssignedPair> pairs = TtwFindNaturalBreakPairs(
               attackers, victims, thisHello,
-              thisHello + 0.5, simTime - 3.0, kEffectiveReceptionRadius, 0.2);
+              thisHello + 0.5, roundSearchEnd, kEffectiveReceptionRadius, 0.2);
           std::set<uint32_t> matchedA, claimedV;
           for (const auto& p : pairs) { matchedA.insert(p.attackerCidx); claimedV.insert(p.victimCidx); }
           std::vector<uint32_t> unmatched, remaining;
@@ -156279,7 +156322,7 @@ static int RoutingMain(int argc, char *argv[])
           for (uint32_t v : victims)   if (!claimedV.count(v))  remaining.push_back(v);
           if (!unmatched.empty()) {
               std::vector<TtwAssignedPair> fb = TtwFindFallbackPairs(
-                  unmatched, remaining, thisHello, simTime - 3.0, kEffectiveReceptionRadius);
+                  unmatched, remaining, thisHello, roundSearchEnd, kEffectiveReceptionRadius);
               for (const auto& fp : fb) pairs.push_back(fp);
           }
           return pairs;
