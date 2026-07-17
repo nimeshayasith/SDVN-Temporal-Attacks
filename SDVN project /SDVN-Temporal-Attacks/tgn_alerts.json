@@ -1,4 +1,14 @@
 [
-  {"v_id":"V11","alpha":"BSHH","y_hat":0.111111,"t_alert":10024,"interval_ts_ms":10024,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
-  {"v_id":"V13","alpha":"BSHH","y_hat":0.111111,"t_alert":10023,"interval_ts_ms":10023,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0}
+  {"v_id":"V105","alpha":"BSHH","y_hat":0.111111,"t_alert":17002,"interval_ts_ms":17002,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V106","alpha":"BSHH","y_hat":0.111111,"t_alert":12011,"interval_ts_ms":12011,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V107","alpha":"BSHH","y_hat":0.111111,"t_alert":7019,"interval_ts_ms":7019,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V108","alpha":"BSHH","y_hat":0.111111,"t_alert":7027,"interval_ts_ms":7027,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V109","alpha":"BSHH","y_hat":0.111111,"t_alert":27039,"interval_ts_ms":27039,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V110","alpha":"BSHH","y_hat":0.111111,"t_alert":17044,"interval_ts_ms":17044,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V111","alpha":"BSHH","y_hat":0.111111,"t_alert":27052,"interval_ts_ms":27052,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V112","alpha":"BSHH","y_hat":0.111111,"t_alert":7054,"interval_ts_ms":7054,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V113","alpha":"BSHH","y_hat":0.111111,"t_alert":27062,"interval_ts_ms":27062,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V114","alpha":"BSHH","y_hat":0.111111,"t_alert":7063,"interval_ts_ms":7063,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V115","alpha":"BSHH","y_hat":0.111111,"t_alert":12067,"interval_ts_ms":12067,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V116","alpha":"BSHH","y_hat":0.111111,"t_alert":7069,"interval_ts_ms":7069,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0}
 ]
