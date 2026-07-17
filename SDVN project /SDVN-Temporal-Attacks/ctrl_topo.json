@@ -1,7 +1,32 @@
 {
   "controller_id": "sdn-controller",
-  "interval_ts": 29999,
+  "interval_ts": 59999,
   "links": [
-
+    {"node_a": "V10", "node_b": "V6", "ts": 10000},
+    {"node_a": "V11", "node_b": "V18", "ts": 10000},
+    {"node_a": "V13", "node_b": "V30", "ts": 10000},
+    {"node_a": "V15", "node_b": "V20", "ts": 10000},
+    {"node_a": "V16", "node_b": "V23", "ts": 10000},
+    {"node_a": "V17", "node_b": "V20", "ts": 10000},
+    {"node_a": "V20", "node_b": "V12", "ts": 10000},
+    {"node_a": "V22", "node_b": "V18", "ts": 10000},
+    {"node_a": "V24", "node_b": "V22", "ts": 10000},
+    {"node_a": "V26", "node_b": "V43", "ts": 10000},
+    {"node_a": "V27", "node_b": "V11", "ts": 10000},
+    {"node_a": "V29", "node_b": "V31", "ts": 10000},
+    {"node_a": "V31", "node_b": "V29", "ts": 59000},
+    {"node_a": "V31", "node_b": "V34", "ts": 10000},
+    {"node_a": "V34", "node_b": "V25", "ts": 10000},
+    {"node_a": "V34", "node_b": "V31", "ts": 59000},
+    {"node_a": "V36", "node_b": "V42", "ts": 10000},
+    {"node_a": "V37", "node_b": "V42", "ts": 10000},
+    {"node_a": "V38", "node_b": "V41", "ts": 10000},
+    {"node_a": "V39", "node_b": "V28", "ts": 10000},
+    {"node_a": "V41", "node_b": "V44", "ts": 10000},
+    {"node_a": "V42", "node_b": "V14", "ts": 10000},
+    {"node_a": "V5", "node_b": "V8", "ts": 10000},
+    {"node_a": "V7", "node_b": "V6", "ts": 10000},
+    {"node_a": "V8", "node_b": "V6", "ts": 10000},
+    {"node_a": "V9", "node_b": "V20", "ts": 10000}
   ]
 }

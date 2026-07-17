@@ -3721,6 +3721,29 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
             << ") = " << lkh_depth << " KEK updates on path to LKH root\n"
             << "  [CA]  Certificate revocation: V" << attacker_id
             << " excluded until re-admission via consortium CA\n";
+        // Bug fix: this text used to describe a revocation that never
+        // actually happened — the real PemRevokeVehicleKeys() call only
+        // ever lived at two OTHER, ungated sites (a raw Stage-0 crypto drop,
+        // and a raw Stage-1 single-alert check), both removed since they
+        // fired revocation without the PBFT consensus/R_min gate this
+        // function already enforces above. This is now the one and only
+        // place LKH revocation actually executes — reached only after a
+        // real alert made it here AND (when bootstrap is complete) PBFT
+        // consensus + threshold-sig/quorum verification both passed.
+        if (g_lkh_ready &&
+            g_lkh_already_revoked.size() < g_lkh_n_leaves &&
+            g_lkh_already_revoked.find(attacker_id) == g_lkh_already_revoked.end())
+        {
+            uint32_t leaf_idx = attacker_id % g_lkh_n_leaves;
+            PemRevokeVehicleKeys(leaf_idx);
+            g_lkh_already_revoked.insert(attacker_id);
+            // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
+            // consortium certificate and is immediately peer-ineligible.
+            if (g_trust_table.count(attacker_id))
+                g_trust_table[attacker_id].cert_valid = false;
+            if (pem_tau_lkh_complete < 0.0)
+                pem_tau_lkh_complete = Simulator::Now().GetSeconds();
+        }
     }
 
     // ── Algorithm 4 lines 31-33: FLAG_REAUTH + updateTrust(v, 0) ─────────────
@@ -6778,39 +6801,21 @@ PemEvaluateEvent(PemEvent& event)
         {
             pem_false_positive_nodes.insert(event.physical_sender_id);
         }
-        // Ground-truth leak fix (threats-to-validity review, 8th instance found —
-        // same class as the Stage-0 revocation fix above): LKH revocation is a real
-        // mitigation ACTION, and previously only fired when event.attack_label was
-        // ALSO true — i.e. only for true positives. A real controller has no way to
-        // check ground truth before deciding whether to revoke; it only has its own
-        // alert. Moving this outside the attack_label branch means it now fires on
-        // event.alert_raised alone, matching a real deployment: false positives get
-        // revoked too, exactly as they would in reality (an accurately modelled
-        // consequence, not a bug — see ME-S2's fp=2 case for where this now bites).
-        if (event.alert_raised &&
-            g_lkh_ready &&
-            g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-            g_lkh_already_revoked.find(event.physical_sender_id) ==
-                g_lkh_already_revoked.end())
-        {
-            uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
-            PemRevokeVehicleKeys(leaf_idx);
-            g_lkh_already_revoked.insert(event.physical_sender_id);
-            // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
-            // consortium certificate and is immediately peer-ineligible.
-            if (g_trust_table.count(event.physical_sender_id))
-                g_trust_table[event.physical_sender_id].cert_valid = false;
-            // M12 tau_LKH-complete: first real LKH revocation this run.
-            if (pem_tau_lkh_complete < 0.0)
-                pem_tau_lkh_complete = Simulator::Now().GetSeconds();
-            const uint32_t depth = (g_lkh_n_leaves > 1u)
-                ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
-            printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
-                   " (Eq. 3.18)\n",
-                   Simulator::Now().GetSeconds(),
-                   event.physical_sender_id, leaf_idx, g_lkh_n_leaves, depth);
-        }
-
+        // Bug fix (duplicate, ungated revocation): this used to call
+        // PemRevokeVehicleKeys() directly off event.alert_raised alone,
+        // bypassing PemApplyMitigation()'s already-correct gated pipeline
+        // entirely (PemIsBootstrapComplete R_min check + Eq. 3.47
+        // trust-weighted PBFT quorum vote, both implemented there — see
+        // that function's body). A single alert firing here revoked the
+        // sender immediately, with no bootstrap floor and no consensus
+        // check, then permanently blocked every later event from that same
+        // identity (repeated-attack scenarios especially) regardless of
+        // whether a real deployment's consensus would ever have approved
+        // revoking it. LKH revocation now only ever happens through
+        // PemApplyMitigation(), called by each scenario's own detection
+        // function after this alert (matching the documented
+        // "PemEmitEvent(...); if (pem_last_alert) { ... PemApplyMitigation(...); }"
+        // pattern used at all ~14 call sites).
         PemRecordObservation(event.attack_label, event.score, event.alert_raised);
 
         // ── M9: per-family (alpha) confusion accumulation for macro-F1.
@@ -7291,57 +7296,33 @@ PemEmitEvent(PemEventType type,
     (void)__pem_stage0_ran;
     if (!g_abl.no_crypto && !__pem_stage0_passed)
     {
-        // Node-level tracking: Stage-0 drop of an attack event counts as a detection.
-        pem_all_seen_node_ids.insert(physicalSenderId);
+        // Bug fix (crypto pre-filter rejections counted as tp/tn/detection
+        // events): a Stage-0 crypto drop is a pre-filter rejection, not a
+        // Signature Detector/TGN detection — per Fig. 3.1, the Pre-Detection
+        // Cryptographic Filter's only job is to stop non-authenticatable
+        // traffic from ever reaching the detection engine, and it is
+        // upstream of, and structurally distinct from, "flagged by LW or FS
+        // detector." It should not contribute to the reported tp/tn/fp/fn
+        // confusion matrix (that's the LW/FS detector's own performance),
+        // should not populate the per-node detected/false-positive tracking
+        // sets those counts derive from, and should never reach
+        // PemRecordObservation/set pem_last_alert (which would let it
+        // trigger PemApplyMitigation as if it were a real Stage-1 alert —
+        // the same premature-revocation bug fixed above, from a different
+        // angle). Stage-0-specific metrics remain: crypto_drop_mac/stale/
+        // nonce/quorum (already counted above via PemCryptoPreFilter) and
+        // the M10 FRA/FRR counters (pem_fra_tp_f/fn_f/fp_f/tn_f, also
+        // already counted above) are legitimate, separately-reported
+        // crypto-layer accuracy metrics — those are untouched by this fix.
+        // These two are diagnostic-only, not confusion-matrix contributions:
+        // a plain descriptive tally (TGN's own end-of-run summary text) and
+        // TGN's own separate tier-2 downstream-exclusion bookkeeping.
         if (attackLabel)
         {
-            pem_actual_attacker_nodes.insert(physicalSenderId);
-            pem_detected_attacker_nodes.insert(physicalSenderId);
-            PemCryptoRegisterDetection(physicalSenderId, reporterId);
             g_tgn_stage0_blocked_attacks++;
             g_tgn_flagged_nodes.insert(physicalSenderId);
         }
-        // Ground-truth leak fix (threats-to-validity review, 8th instance found):
-        // LKH revocation — a real mitigation ACTION, not a scoring statistic —
-        // previously only fired inside the `if (attackLabel)` branch above. A
-        // real controller has no ground-truth oracle telling it whether a
-        // message it just rejected at Stage 0 genuinely came from an attacker;
-        // it only knows "this message failed crypto verification" (Eqs.
-        // 3.15-3.17). That rejection itself is the only real signal available,
-        // so revocation now fires for ANY Stage-0 drop, matching what an actual
-        // deployment would do — including the (accurately modelled) consequence
-        // that a benign sender whose message spuriously fails verification
-        // (clock skew, packet loss, corruption) gets revoked too, exactly as it
-        // would in reality. The TP/FP/FN bookkeeping above remains ground-truth
-        // gated, since that is legitimate offline-evaluation labeling, not a
-        // detection or mitigation decision.
-        if (g_lkh_ready &&
-            g_lkh_already_revoked.size() < g_lkh_n_leaves &&
-            g_lkh_already_revoked.find(physicalSenderId) == g_lkh_already_revoked.end())
-        {
-            uint32_t leaf_idx = physicalSenderId % g_lkh_n_leaves;
-            PemRevokeVehicleKeys(leaf_idx);
-            g_lkh_already_revoked.insert(physicalSenderId);
-            // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
-            // consortium certificate and is immediately peer-ineligible.
-            if (g_trust_table.count(physicalSenderId))
-                g_trust_table[physicalSenderId].cert_valid = false;
-            // M12 tau_LKH-complete: first real LKH revocation this run, via
-            // the Stage-0-triggered path (distinct from the Stage-1 revoke
-            // block later in this function — mutually exclusive by
-            // construction since g_lkh_already_revoked gates both and this
-            // branch `return`s immediately after, so no double-count risk).
-            if (pem_tau_lkh_complete < 0.0)
-                pem_tau_lkh_complete = Simulator::Now().GetSeconds();
-            const uint32_t depth = (g_lkh_n_leaves > 1u)
-                ? (uint32_t)std::ceil(std::log2((double)g_lkh_n_leaves)) : 0u;
-            printf("[LKH][t=%.3f] Revoked V%u (leaf %u) — O(log %u)=%u KEK updates"
-                   " (Eq. 3.18, Stage-0 detection)\n",
-                   Simulator::Now().GetSeconds(),
-                   physicalSenderId, leaf_idx, g_lkh_n_leaves, depth);
-        }
-        PemRecordObservation(attackLabel, 1.0, attackLabel);
-        return;  // silent drop — no alert label, no ledger entry, no FlowMod
+        return;  // silent drop — no confusion-matrix contribution, no alert, no ledger entry, no FlowMod
     }
 
     // Stage 1 — Signature Detector (Algorithm 1, Eq. 3.12).
