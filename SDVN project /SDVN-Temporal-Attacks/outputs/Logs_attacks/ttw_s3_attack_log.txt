@@ -1,0 +1,1433 @@
+========================================================
+  TTW Attack S3 — Malicious Controller, No RSU         
+========================================================
+
+  t=10    ①  V2V HELLO + legitimate updates to controller
+  t=10    ②  Controller stores legitimately + keeps copy <V1 sees V2, t=10>
+  t=15        Link breaks physically
+  t=20    ③  Controller forges timestamp t=10→t=20, reinserts into database
+  t=20    ④  Controller table poisoned (no external packet)
+
+========================================================
+
+[t=10.000]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V45 -> Controller : <V45 sees V152, t=10.000>  ACCEPTED
+  V152 -> Controller : <V152 sees V45, t=10.000>  ACCEPTED
+
+[t=10.001]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V87 -> Controller : <V87 sees V43, t=10.000>  ACCEPTED
+  V43 -> Controller : <V43 sees V87, t=10.000>  ACCEPTED
+
+[t=10.001]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V93 -> Controller : <V93 sees V144, t=10.000>  ACCEPTED
+  V144 -> Controller : <V144 sees V93, t=10.000>  ACCEPTED
+
+[t=10.002]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V90 -> Controller : <V90 sees V165, t=10.000>  ACCEPTED
+  V165 -> Controller : <V165 sees V90, t=10.000>  ACCEPTED
+
+[t=10.002]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V144 -> Controller : <V144 sees V93, t=10.000>  ACCEPTED
+  V93 -> Controller : <V93 sees V144, t=10.000>  ACCEPTED
+
+[t=10.002]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V61 -> Controller : <V61 sees V174, t=10.000>  ACCEPTED
+  V174 -> Controller : <V174 sees V61, t=10.000>  ACCEPTED
+
+[t=10.003]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V173 -> Controller : <V173 sees V64, t=10.000>  ACCEPTED
+  V64 -> Controller : <V64 sees V173, t=10.000>  ACCEPTED
+
+[t=10.004]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V81 -> Controller : <V81 sees V153, t=10.000>  ACCEPTED
+  V153 -> Controller : <V153 sees V81, t=10.000>  ACCEPTED
+
+[t=10.004]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V172 -> Controller : <V172 sees V71, t=10.000>  ACCEPTED
+  V71 -> Controller : <V71 sees V172, t=10.000>  ACCEPTED
+
+[t=10.005]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V102 -> Controller : <V102 sees V139, t=10.000>  ACCEPTED
+  V139 -> Controller : <V139 sees V102, t=10.000>  ACCEPTED
+
+[t=10.005]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V118 -> Controller : <V118 sees V35, t=10.000>  ACCEPTED
+  V35 -> Controller : <V35 sees V118, t=10.000>  ACCEPTED
+
+[t=10.005]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V56 -> Controller : <V56 sees V148, t=10.000>  ACCEPTED
+  V148 -> Controller : <V148 sees V56, t=10.000>  ACCEPTED
+
+[t=10.006]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V115 -> Controller : <V115 sees V102, t=10.000>  ACCEPTED
+  V102 -> Controller : <V102 sees V115, t=10.000>  ACCEPTED
+
+[t=10.007]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V110 -> Controller : <V110 sees V97, t=10.000>  ACCEPTED
+  V97 -> Controller : <V97 sees V110, t=10.000>  ACCEPTED
+
+[t=10.007]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V195 -> Controller : <V195 sees V147, t=10.000>  ACCEPTED
+  V147 -> Controller : <V147 sees V195, t=10.000>  ACCEPTED
+
+[t=10.008]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V133 -> Controller : <V133 sees V149, t=10.000>  ACCEPTED
+  V149 -> Controller : <V149 sees V133, t=10.000>  ACCEPTED
+
+[t=10.008]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V162 -> Controller : <V162 sees V24, t=10.000>  ACCEPTED
+  V24 -> Controller : <V24 sees V162, t=10.000>  ACCEPTED
+
+[t=10.008]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V59 -> Controller : <V59 sees V123, t=10.000>  ACCEPTED
+  V123 -> Controller : <V123 sees V59, t=10.000>  ACCEPTED
+
+[t=10.009]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V149 -> Controller : <V149 sees V133, t=10.000>  ACCEPTED
+  V133 -> Controller : <V133 sees V149, t=10.000>  ACCEPTED
+
+[t=10.009]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V5 -> Controller : <V5 sees V8, t=10.000>  ACCEPTED
+  V8 -> Controller : <V8 sees V5, t=10.000>  ACCEPTED
+
+[t=10.010]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V109 -> Controller : <V109 sees V111, t=10.000>  ACCEPTED
+  V111 -> Controller : <V111 sees V109, t=10.000>  ACCEPTED
+
+[t=10.011]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V111 -> Controller : <V111 sees V109, t=10.000>  ACCEPTED
+  V109 -> Controller : <V109 sees V111, t=10.000>  ACCEPTED
+
+[t=10.011]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V197 -> Controller : <V197 sees V193, t=10.000>  ACCEPTED
+  V193 -> Controller : <V193 sees V197, t=10.000>  ACCEPTED
+
+[t=10.011]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V116 -> Controller : <V116 sees V204, t=10.000>  ACCEPTED
+  V204 -> Controller : <V204 sees V116, t=10.000>  ACCEPTED
+
+[t=10.012]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V122 -> Controller : <V122 sees V58, t=10.000>  ACCEPTED
+  V58 -> Controller : <V58 sees V122, t=10.000>  ACCEPTED
+
+[t=10.012]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V54 -> Controller : <V54 sees V185, t=10.000>  ACCEPTED
+  V185 -> Controller : <V185 sees V54, t=10.000>  ACCEPTED
+
+[t=10.013]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V132 -> Controller : <V132 sees V135, t=10.000>  ACCEPTED
+  V135 -> Controller : <V135 sees V132, t=10.000>  ACCEPTED
+
+[t=10.014]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V36 -> Controller : <V36 sees V37, t=10.000>  ACCEPTED
+  V37 -> Controller : <V37 sees V36, t=10.000>  ACCEPTED
+
+[t=10.014]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V70 -> Controller : <V70 sees V192, t=10.000>  ACCEPTED
+  V192 -> Controller : <V192 sees V70, t=10.000>  ACCEPTED
+
+[t=10.014]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V13 -> Controller : <V13 sees V34, t=10.000>  ACCEPTED
+  V34 -> Controller : <V34 sees V13, t=10.000>  ACCEPTED
+
+[t=10.015]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V29 -> Controller : <V29 sees V31, t=10.000>  ACCEPTED
+  V31 -> Controller : <V31 sees V29, t=10.000>  ACCEPTED
+
+[t=10.015]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V193 -> Controller : <V193 sees V197, t=10.000>  ACCEPTED
+  V197 -> Controller : <V197 sees V193, t=10.000>  ACCEPTED
+
+[t=10.016]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V23 -> Controller : <V23 sees V75, t=10.000>  ACCEPTED
+  V75 -> Controller : <V75 sees V23, t=10.000>  ACCEPTED
+
+[t=10.017]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V135 -> Controller : <V135 sees V137, t=10.000>  ACCEPTED
+  V137 -> Controller : <V137 sees V135, t=10.000>  ACCEPTED
+
+[t=10.017]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V141 -> Controller : <V141 sees V143, t=10.000>  ACCEPTED
+  V143 -> Controller : <V143 sees V141, t=10.000>  ACCEPTED
+
+[t=10.018]  STEP ①  V2V HELLO + LEGITIMATE TOPOLOGY UPDATES
+  V15 -> Controller : <V15 sees V17, t=10.000>  ACCEPTED
+  V17 -> Controller : <V17 sees V15, t=10.000>  ACCEPTED
+
+[t=10.100]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V45 sees V152, t=10.000>
+  Link physically breaks at t≈11.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.101]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V87 sees V43, t=10.000>
+  Link physically breaks at t≈12.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.101]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V93 sees V144, t=10.000>
+  Link physically breaks at t≈22.9s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.101]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V90 sees V165, t=10.000>
+  Link physically breaks at t≈14.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.102]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V144 sees V93, t=10.000>
+  Link physically breaks at t≈22.9s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.102]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V61 sees V174, t=10.000>
+  Link physically breaks at t≈20.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.103]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V173 sees V64, t=10.000>
+  Link physically breaks at t≈30.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.104]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V81 sees V153, t=10.000>
+  Link physically breaks at t≈16.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.104]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V172 sees V71, t=10.000>
+  Link physically breaks at t≈16.3s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.104]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V102 sees V139, t=10.000>
+  Link physically breaks at t≈15.3s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.105]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V118 sees V35, t=10.000>
+  Link physically breaks at t≈17.3s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.105]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V56 sees V148, t=10.000>
+  Link physically breaks at t≈19.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.106]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V115 sees V102, t=10.000>
+  Link physically breaks at t≈15.3s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.107]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V110 sees V97, t=10.000>
+  Link physically breaks at t≈19.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.107]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V195 sees V147, t=10.000>
+  Link physically breaks at t≈10.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.107]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V133 sees V149, t=10.000>
+  Link physically breaks at t≈18.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.108]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V162 sees V24, t=10.000>
+  Link physically breaks at t≈10.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.108]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V59 sees V123, t=10.000>
+  Link physically breaks at t≈11.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.109]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V149 sees V133, t=10.000>
+  Link physically breaks at t≈18.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.110]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V5 sees V8, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.110]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V109 sees V111, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.111]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V111 sees V109, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.111]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V197 sees V193, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.111]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V116 sees V204, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.112]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V122 sees V58, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.113]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V54 sees V185, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.113]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V132 sees V135, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.114]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V36 sees V37, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.114]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V70 sees V192, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.114]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V13 sees V34, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.115]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V29 sees V31, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.116]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V193 sees V197, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.116]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V23 sees V75, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.117]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V135 sees V137, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.117]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V141 sees V143, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=10.117]  STEP ②  CONTROLLER KEEPS STALE COPY
+  Stored : <V15 sees V17, t=10.000>
+  Link physically breaks at t≈37.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry
+
+[t=12.507]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V195 sees V147, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V195 sees V147, t=12.500>  timestamp changed 10.000 -> 12.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=12.507 — no external packet required
+
+[t=12.507]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V195<->V147 was ACTIVE at t=12.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V102  ->  V139    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V195  ->  V147    t=12.500    YES <- FORGED
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V45  ->  V152    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V59  ->  V123    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V87  ->  V43    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=12.507]  DETECTION + MITIGATION
+  Internal replay detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V195 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=274 > delta_thresh=13 (Eq. 3.48)
+
+[t=12.508]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V162 sees V24, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V162 sees V24, t=12.500>  timestamp changed 10.000 -> 12.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=12.508 — no external packet required
+
+[t=12.508]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V162<->V24 was ACTIVE at t=12.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V102  ->  V139    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V162  ->  V24    t=12.500    YES <- FORGED
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V45  ->  V152    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V59  ->  V123    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V87  ->  V43    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=12.508]  DETECTION + MITIGATION
+  Internal replay detected and removed
+  Score: 0.111
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V162 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=272 > delta_thresh=13 (Eq. 3.48)
+
+[t=13.100]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V45 sees V152, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V45 sees V152, t=13.100>  timestamp changed 10.000 -> 13.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=13.100 — no external packet required
+
+[t=13.100]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V45<->V152 was ACTIVE at t=13.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V102  ->  V139    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V45  ->  V152    t=13.100    YES <- FORGED
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V59  ->  V123    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V87  ->  V43    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=13.100]  DETECTION + MITIGATION
+  Internal replay detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V45 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=274 > delta_thresh=13 (Eq. 3.48)
+
+[t=13.709]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V59 sees V123, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V59 sees V123, t=13.700>  timestamp changed 10.000 -> 13.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=13.709 — no external packet required
+
+[t=13.709]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V59<->V123 was ACTIVE at t=13.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V102  ->  V139    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V59  ->  V123    t=13.700    YES <- FORGED
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V87  ->  V43    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=13.709]  DETECTION + MITIGATION
+  Internal replay detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V59 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=274 > delta_thresh=13 (Eq. 3.48)
+
+[t=14.501]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V87 sees V43, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V87 sees V43, t=14.500>  timestamp changed 10.000 -> 14.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=14.501 — no external packet required
+
+[t=14.501]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V87<->V43 was ACTIVE at t=14.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V102  ->  V139    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V87  ->  V43    t=14.500    YES <- FORGED
+  V8  ->  V5    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=14.501]  DETECTION + MITIGATION
+  Internal replay detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V87 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=274 > delta_thresh=13 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=16.102]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V90 sees V165, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V90 sees V165, t=16.100>  timestamp changed 10.000 -> 16.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=16.102 — no external packet required
+
+[t=16.102]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V90<->V165 was ACTIVE at t=16.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V102  ->  V139    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V90  ->  V165    t=16.100    YES <- FORGED
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=16.102]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=17.305]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V102 sees V139, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V102 sees V139, t=17.300>  timestamp changed 10.000 -> 17.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=17.305 — no external packet required
+
+[t=17.305]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V102<->V139 was ACTIVE at t=17.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V102  ->  V139    t=17.300    YES <- FORGED
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=17.305]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=17.306]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V115 sees V102, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V115 sees V102, t=17.300>  timestamp changed 10.000 -> 17.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=17.306 — no external packet required
+
+[t=17.306]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V115<->V102 was ACTIVE at t=17.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V115  ->  V102    t=17.300    YES <- FORGED
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=17.306]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=18.104]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V81 sees V153, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V81 sees V153, t=18.100>  timestamp changed 10.000 -> 18.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=18.104 — no external packet required
+
+[t=18.104]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V81<->V153 was ACTIVE at t=18.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V81  ->  V153    t=18.100    YES <- FORGED
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=18.104]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=18.304]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V172 sees V71, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V172 sees V71, t=18.300>  timestamp changed 10.000 -> 18.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=18.304 — no external packet required
+
+[t=18.304]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V172<->V71 was ACTIVE at t=18.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V172  ->  V71    t=18.300    YES <- FORGED
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=18.304]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=19.305]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V118 sees V35, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V118 sees V35, t=19.300>  timestamp changed 10.000 -> 19.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=19.305 — no external packet required
+
+[t=19.305]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V118<->V35 was ACTIVE at t=19.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V118  ->  V35    t=19.300    YES <- FORGED
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=19.305]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=20.508]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V133 sees V149, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V133 sees V149, t=20.500>  timestamp changed 10.000 -> 20.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=20.508 — no external packet required
+
+[t=20.508]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V133<->V149 was ACTIVE at t=20.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V133  ->  V149    t=20.500    YES <- FORGED
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=20.508]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=20.509]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V149 sees V133, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V149 sees V133, t=20.500>  timestamp changed 10.000 -> 20.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=20.509 — no external packet required
+
+[t=20.509]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V149<->V133 was ACTIVE at t=20.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V149  ->  V133    t=20.500    YES <- FORGED
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=20.509]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=21.107]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V110 sees V97, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V110 sees V97, t=21.100>  timestamp changed 10.000 -> 21.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=21.107 — no external packet required
+
+[t=21.107]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V110<->V97 was ACTIVE at t=21.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V110  ->  V97    t=21.100    YES <- FORGED
+  V111  ->  V109    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=10.000    No
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=21.107]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=21.706]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION
+  Stored entry  : <V56 sees V148, t=10.000>  (captured from legitimate update at t=10.000)
+  Forged packet : <V56 sees V148, t=21.700>  timestamp changed 10.000 -> 21.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=21.706 — no external packet required
+
+[t=21.706]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V56<->V148 was ACTIVE at t=21.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V102  ->  V115    t=10.000    No
+  V109  ->  V111    t=10.000    No
+  V111  ->  V109    t=10.000    No
+  V116  ->  V204    t=10.000    No
+  V122  ->  V58    t=10.000    No
+  V123  ->  V59    t=10.000    No
+  V132  ->  V135    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V135  ->  V137    t=10.000    No
+  V137  ->  V135    t=10.000    No
+  V139  ->  V102    t=10.000    No
+  V13  ->  V34    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V144  ->  V93    t=10.000    No
+  V147  ->  V195    t=10.000    No
+  V148  ->  V56    t=10.000    No
+  V152  ->  V45    t=10.000    No
+  V153  ->  V81    t=10.000    No
+  V15  ->  V17    t=10.000    No
+  V165  ->  V90    t=10.000    No
+  V173  ->  V64    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V17  ->  V15    t=10.000    No
+  V185  ->  V54    t=10.000    No
+  V192  ->  V70    t=10.000    No
+  V193  ->  V197    t=10.000    No
+  V197  ->  V193    t=10.000    No
+  V204  ->  V116    t=10.000    No
+  V23  ->  V75    t=10.000    No
+  V24  ->  V162    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V34  ->  V13    t=10.000    No
+  V35  ->  V118    t=10.000    No
+  V36  ->  V37    t=10.000    No
+  V37  ->  V36    t=10.000    No
+  V43  ->  V87    t=10.000    No
+  V54  ->  V185    t=10.000    No
+  V56  ->  V148    t=21.700    YES <- FORGED
+  V58  ->  V122    t=10.000    No
+  V5  ->  V8    t=10.000    No
+  V61  ->  V174    t=10.000    No
+  V64  ->  V173    t=10.000    No
+  V70  ->  V192    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V75  ->  V23    t=10.000    No
+  V8  ->  V5    t=10.000    No
+  V93  ->  V144    t=10.000    No
+  V97  ->  V110    t=10.000    No
+[t=21.706]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
