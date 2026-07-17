@@ -397292,3 +397292,366 @@ lte total packet size is 185665148
 lte total packet size is 185665880
 lte total packet size is 185666612
 lte total packet size is 185667344
+lte total packet size is 185668076
+lte total packet size is 185668724
+lte total packet size is 185669372
+lte total packet size is 185670020
+lte total packet size is 185670668
+lte total packet size is 185670980
+lte total packet size is 185671292
+lte total packet size is 185671604
+lte total packet size is 185671916
+lte total packet size is 185672648
+lte total packet size is 185673380
+lte total packet size is 185674112
+lte total packet size is 185674844
+lte total packet size is 185675408
+lte total packet size is 185675972
+lte total packet size is 185676536
+lte total packet size is 185677100
+lte total packet size is 185677580
+lte total packet size is 185678060
+lte total packet size is 185678540
+lte total packet size is 185679020
+lte total packet size is 185679880
+lte total packet size is 185680740
+lte total packet size is 185681600
+lte total packet size is 185682460
+lte total packet size is 185682940
+lte total packet size is 185683420
+lte total packet size is 185683900
+lte total packet size is 185684380
+lte total packet size is 185684776
+lte total packet size is 185685172
+lte total packet size is 185685568
+lte total packet size is 185685964
+lte total packet size is 185686444
+lte total packet size is 185686924
+lte total packet size is 185687404
+lte total packet size is 185687884
+lte total packet size is 185688196
+lte total packet size is 185688508
+lte total packet size is 185688820
+lte total packet size is 185689132
+lte total packet size is 185689444
+lte total packet size is 185689756
+lte total packet size is 185690068
+lte total packet size is 185690380
+lte total packet size is 185690692
+lte total packet size is 185691004
+lte total packet size is 185691316
+lte total packet size is 185691628
+lte total packet size is 185692048
+lte total packet size is 185692468
+lte total packet size is 185692888
+lte total packet size is 185693308
+lte total packet size is 185693704
+lte total packet size is 185694100
+lte total packet size is 185694496
+lte total packet size is 185694892
+lte total packet size is 185695288
+lte total packet size is 185695684
+lte total packet size is 185696080
+lte total packet size is 185696476
+lte total packet size is 185696896
+lte total packet size is 185697316
+lte total packet size is 185697736
+lte total packet size is 185698156
+lte total packet size is 185698576
+lte total packet size is 185698996
+lte total packet size is 185699416
+lte total packet size is 185699836
+lte total packet size is 185700148
+lte total packet size is 185700460
+lte total packet size is 185700772
+lte total packet size is 185701084
+lte total packet size is 185701504
+lte total packet size is 185701924
+lte total packet size is 185702344
+lte total packet size is 185702764
+lte total packet size is 185703184
+lte total packet size is 185703604
+lte total packet size is 185704024
+lte total packet size is 185704444
+lte total packet size is 185704776
+lte total packet size is 185705108
+lte total packet size is 185705440
+lte total packet size is 185705772
+lte total packet size is 185706192
+lte total packet size is 185706612
+lte total packet size is 185707032
+lte total packet size is 185707452
+lte total packet size is 185707932
+lte total packet size is 185708412
+lte total packet size is 185708892
+lte total packet size is 185709372
+lte total packet size is 185709768
+lte total packet size is 185710164
+lte total packet size is 185710560
+lte total packet size is 185710956
+lte total packet size is 185711464
+lte total packet size is 185711972
+lte total packet size is 185712480
+lte total packet size is 185712988
+lte total packet size is 185713384
+lte total packet size is 185713780
+lte total packet size is 185714176
+lte total packet size is 185714572
+lte total packet size is 185714884
+lte total packet size is 185715196
+lte total packet size is 185715508
+lte total packet size is 185715820
+lte total packet size is 185716216
+lte total packet size is 185716612
+lte total packet size is 185717008
+lte total packet size is 185717404
+lte total packet size is 185717800
+lte total packet size is 185718196
+lte total packet size is 185718592
+lte total packet size is 185718988
+lte total packet size is 185719384
+lte total packet size is 185719780
+lte total packet size is 185720176
+lte total packet size is 185720572
+lte total packet size is 185720884
+lte total packet size is 185721196
+lte total packet size is 185721508
+lte total packet size is 185721820
+lte total packet size is 185722384
+lte total packet size is 185722948
+lte total packet size is 185723512
+lte total packet size is 185724076
+lte total packet size is 185724388
+lte total packet size is 185724700
+lte total packet size is 185725012
+lte total packet size is 185725324
+lte total packet size is 185726056
+lte total packet size is 185726788
+lte total packet size is 185727520
+lte total packet size is 185728252
+lte total packet size is 185728564
+lte total packet size is 185728876
+lte total packet size is 185729188
+lte total packet size is 185729500
+lte total packet size is 185730232
+lte total packet size is 185730964
+lte total packet size is 185731696
+lte total packet size is 185732428
+lte total packet size is 185732740
+lte total packet size is 185733052
+lte total packet size is 185733364
+lte total packet size is 185733676
+lte total packet size is 185734008
+lte total packet size is 185734340
+lte total packet size is 185734672
+lte total packet size is 185735004
+lte total packet size is 185735316
+lte total packet size is 185735628
+lte total packet size is 185735940
+lte total packet size is 185736252
+lte total packet size is 185736648
+lte total packet size is 185737044
+lte total packet size is 185737440
+lte total packet size is 185737836
+lte total packet size is 185738484
+lte total packet size is 185739132
+lte total packet size is 185739780
+lte total packet size is 185740428
+[TEMP-DIAG3][RXDROP] t=117.874 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.874 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.874 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.877 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.877 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.877 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.878 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.878 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.878 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.879 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.881 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.882 reason=RXING context=/NodeList/206/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.882 reason=RXING context=/NodeList/206/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.882 reason=RXING context=/NodeList/206/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.883 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.883 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.883 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/209/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.888 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.888 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.888 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.891 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/8/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.891 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/6/$ns3::WifiNetDevice/Phy/PhyRxDrop
+[TEMP-DIAG3][RXDROP] t=117.891 reason=PREAMBLE_DETECT_FAILURE context=/NodeList/207/DeviceList/7/$ns3::WifiNetDevice/Phy/PhyRxDrop
+lte total packet size is 185740992
+lte total packet size is 185741556
+lte total packet size is 185742120
+lte total packet size is 185742684
+lte total packet size is 185743248
+lte total packet size is 185743812
+lte total packet size is 185744376
+lte total packet size is 185744940
+lte total packet size is 185745504
+lte total packet size is 185746068
+lte total packet size is 185746632
+lte total packet size is 185747196
+lte total packet size is 185747508
+lte total packet size is 185747820
+lte total packet size is 185748132
+lte total packet size is 185748444
+lte total packet size is 185749008
+lte total packet size is 185749572
+lte total packet size is 185750136
+lte total packet size is 185750700
+lte total packet size is 185751264
+lte total packet size is 185751828
+lte total packet size is 185752392
+lte total packet size is 185752956
+lte total packet size is 185753436
+lte total packet size is 185753916
+lte total packet size is 185754396
+lte total packet size is 185754876
+lte total packet size is 185755188
+lte total packet size is 185755500
+lte total packet size is 185755812
+lte total packet size is 185756124
+lte total packet size is 185756604
+lte total packet size is 185757084
+lte total packet size is 185757564
+lte total packet size is 185758044
+lte total packet size is 185758608
+lte total packet size is 185759172
+lte total packet size is 185759736
+lte total packet size is 185760300
+lte total packet size is 185760780
+lte total packet size is 185761260
+lte total packet size is 185761740
+lte total packet size is 185762220
+lte total packet size is 185762700
+lte total packet size is 185763180
+lte total packet size is 185763660
+lte total packet size is 185764140
+lte total packet size is 185764872
+lte total packet size is 185765604
+lte total packet size is 185766336
+lte total packet size is 185767068
+lte total packet size is 185767380
+lte total packet size is 185767692
+lte total packet size is 185768004
+lte total packet size is 185768316
+lte total packet size is 185768796
+lte total packet size is 185769276
+lte total packet size is 185769756
+lte total packet size is 185770236
+lte total packet size is 185770968
+lte total packet size is 185771700
+lte total packet size is 185772432
+lte total packet size is 185773164
+lte total packet size is 185773644
+lte total packet size is 185774124
+lte total packet size is 185774604
+lte total packet size is 185775084
+lte total packet size is 185775564
+lte total packet size is 185776044
+lte total packet size is 185776524
+lte total packet size is 185777004
+lte total packet size is 185777316
+lte total packet size is 185777628
+lte total packet size is 185777940
+lte total packet size is 185778252
+lte total packet size is 185778816
+lte total packet size is 185779380
+lte total packet size is 185779944
+lte total packet size is 185780508
+lte total packet size is 185780988
+lte total packet size is 185781468
+lte total packet size is 185781948
+lte total packet size is 185782428
+lte total packet size is 185783160
+lte total packet size is 185783892
+lte total packet size is 185784624
+lte total packet size is 185785356
+lte total packet size is 185785836
+lte total packet size is 185786316
+lte total packet size is 185786796
+lte total packet size is 185787276
+lte total packet size is 185787588
+lte total packet size is 185787900
+lte total packet size is 185788212
+lte total packet size is 185788524
+lte total packet size is 185789004
+lte total packet size is 185789484
+lte total packet size is 185789964
+lte total packet size is 185790444
+lte total packet size is 185790924
+lte total packet size is 185791404
+lte total packet size is 185791884
+lte total packet size is 185792364
+lte total packet size is 185792760
+lte total packet size is 185793156
+lte total packet size is 185793552
+lte total packet size is 185793948
+lte total packet size is 185794428
+lte total packet size is 185794908
+lte total packet size is 185795388
+lte total packet size is 185795868
+lte total packet size is 185796516
+lte total packet size is 185797164
+lte total packet size is 185797812
+lte total packet size is 185798460
+lte total packet size is 185798940
+lte total packet size is 185799420
+lte total packet size is 185799900
+lte total packet size is 185800380
+lte total packet size is 185800860
+lte total packet size is 185801340
+lte total packet size is 185801820
+lte total packet size is 185802300
+lte total packet size is 185802632
+lte total packet size is 185802964
+lte total packet size is 185803296
+lte total packet size is 185803628
+lte total packet size is 185803940
+lte total packet size is 185804252
+lte total packet size is 185804564
+lte total packet size is 185804876
+lte total packet size is 185805440
+lte total packet size is 185806004
+lte total packet size is 185806568
+lte total packet size is 185807132
+lte total packet size is 185807612
+lte total packet size is 185808092
+lte total packet size is 185808572
+lte total packet size is 185809052
+lte total packet size is 185809364
+lte total packet size is 185809676
+lte total packet size is 185809988
+lte total packet size is 185810300
+lte total packet size is 185811032
+lte total packet size is 185811764
+lte total packet size is 185812496
+lte total packet size is 185813228
+lte total packet size is 185814044
+lte total packet size is 185814860
+lte total packet size is 185815676
+lte total packet size is 185816492
+lte total packet size is 185817224
+lte total packet size is 185817956
+lte total packet size is 185818688
+lte total packet size is 185819420
+lte total packet size is 185820068
+lte total packet size is 185820716
+lte total packet size is 
