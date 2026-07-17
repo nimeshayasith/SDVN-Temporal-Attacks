@@ -48,7 +48,7 @@ OUTPUT="tgn_weights.bin"
 SKIP_TRAINING=0
 APPEND=0            # if 1, do not wipe all_events.csv before starting
 MOBILITY_SCENARIO=0   # 0=urban, 1=rural, 2=highway
-MAXSPEED=80           # km/h — must match SUMO trace file
+MAXSPEED=60           # km/h — must match SUMO trace file (only urban/60kmph trace exists)
 
 # ── Parse args ───────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do

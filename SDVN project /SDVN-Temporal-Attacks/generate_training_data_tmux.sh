@@ -44,8 +44,11 @@ OUTPUT="tgn_weights.bin"
 SKIP_TRAINING=1        # default: skip training, just collect data
 APPEND=0               # if 1, preserve existing all_events.csv (for multi-seed runs)
 MOBILITY_SCENARIO=0    # 0=urban, 1=rural, 2=highway
-MAXSPEED=80            # km/h — must match SUMO trace file
+MAXSPEED=60            # km/h — must match SUMO trace file (only urban/60kmph trace exists)
 OUTDIR_OVERRIDE=""     # if set, overrides default training_data/ output folder
+ATTACK_PERCENTAGE=40           # matches the paper's Experiment 3 alpha_atk=0.20 operating point at this scale (CALIBRATION_VALUES.md §4)
+ATTACKER_SOPHISTICATION=0.5    # default 50/50 basic/sophisticated roll, not forced
+ATTACK_ACTIVATION_PROBABILITY=1.0
 
 # ── Parse args ───────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -62,6 +65,9 @@ while [[ $# -gt 0 ]]; do
         --do_training)       SKIP_TRAINING=0;        shift ;;
         --append)            APPEND=1;               shift ;;
         --outdir)            OUTDIR_OVERRIDE="$2";   shift 2 ;;
+        --attack_percentage) ATTACK_PERCENTAGE="$2"; shift 2 ;;
+        --attacker_sophistication) ATTACKER_SOPHISTICATION="$2"; shift 2 ;;
+        --attack_activation_probability) ATTACK_ACTIVATION_PROBABILITY="$2"; shift 2 ;;
         *) echo "[ERROR] Unknown argument: $1"; exit 1 ;;
     esac
 done
@@ -77,6 +83,9 @@ echo "  N_Vehicles        : $N_VEHICLES"
 echo "  mobility_scenario : $MOBILITY_SCENARIO  (0=urban 1=rural 2=highway)"
 echo "  maxspeed          : ${MAXSPEED} km/h"
 echo "  Seeds             : $SEEDS"
+echo "  attack_percentage : ${ATTACK_PERCENTAGE}%"
+echo "  sophistication    : ${ATTACKER_SOPHISTICATION}"
+echo "  activation_prob   : ${ATTACK_ACTIVATION_PROBABILITY}"
 echo "  Skip training     : $SKIP_TRAINING"
 echo "  Output            : $OUTPUT"
 echo "================================================================"
@@ -189,6 +198,9 @@ for SCENARIO in 0 0r 1 2 3 4 5 6 7 8 9 10 11 12; do
                 --attack_scenario=${SCENARIO_ID} \
                 --mobility_scenario=${MOBILITY_SCENARIO} \
                 --maxspeed=${MAXSPEED} \
+                --attack_percentage=${ATTACK_PERCENTAGE} \
+                --attacker_sophistication=${ATTACKER_SOPHISTICATION} \
+                --attack_activation_probability=${ATTACK_ACTIVATION_PROBABILITY} \
                 --skip_npfads=1 \
                 --RngRun=${SEED}" > "$RUN_LOG" 2>&1; then
             tail -5 "$RUN_LOG"
