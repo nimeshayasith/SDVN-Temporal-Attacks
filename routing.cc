@@ -6366,10 +6366,24 @@ PemEvaluateEvent(PemEvent& event)
             // (link_src=8,link_dst=5) describe the SAME physical link eij —
             // compare via linkKey (PemGetLinkKey already min/max-normalizes),
             // not raw link_src_id/link_dst_id equality.
+            // Bug fix (proactive — same class as sig[3]/sig[4]'s confirmed
+            // fixes, not yet independently reproduced at this scale):
+            // exclude a prior window entry that was itself already a
+            // confirmed attack (it->alert_raised == true) from serving as
+            // the "conflicting reporter" baseline here. TTW-S1/S2's
+            // repeated-attack rounds reuse the shared victim pool across
+            // rounds, so the same link (src,dst pair) can recur — a
+            // now-resolved, already-caught forged report shouldn't make a
+            // LATER, unrelated legitimate reporter's real observation of
+            // that same link look newly suspicious. The genuine TTW-S3
+            // detection is unaffected: it always compares the incoming
+            // forged/replayed event against the ORIGINAL legitimate report
+            // still sitting in the window, which was never itself flagged.
             if (it->type == PEM_EVENT_TOPOLOGY_UPDATE &&
                 it->reporter_id != event.reporter_id &&
                 PemGetLinkKey(it->link_src_id, it->link_dst_id) == linkKey &&
-                std::abs(it->sender_timestamp - event.sender_timestamp) > PEM_BEACON_INTERVAL_S)
+                std::abs(it->sender_timestamp - event.sender_timestamp) > PEM_BEACON_INTERVAL_S &&
+                !it->alert_raised)
             {
                 // Eq. 3.4 — TTW-S3: two distinct reporters for the same link
                 // carry sender timestamps separated by more than one beacon
@@ -6470,7 +6484,17 @@ PemEvaluateEvent(PemEvent& event)
             const PemEvent& previousHeartbeat = hbIt->second.back();
             // Eq. 3.6 — BSHH-S2: heartbeat sender_timestamp is less than the
             // most recent known timestamp for this identity — out-of-order replay.
-            if (event.sender_timestamp < previousHeartbeat.sender_timestamp)
+            // Bug fix (same class as sig[3]'s fix above): if the most recent
+            // recorded heartbeat for this identity was itself an already-
+            // confirmed attack (alert_raised == true — e.g. a forged replay
+            // from an earlier round that reused this same victim identity,
+            // already caught and revoked), it shouldn't stand as the ordering
+            // baseline for a later, genuinely-legitimate report. A once-
+            // revoked identity's forged timestamp is stale/resolved evidence,
+            // not a live reference point real ambient traffic must stay
+            // "in order" relative to.
+            if (event.sender_timestamp < previousHeartbeat.sender_timestamp &&
+                !previousHeartbeat.alert_raised)
             {
                 event.triggered[4] = true;
             }
