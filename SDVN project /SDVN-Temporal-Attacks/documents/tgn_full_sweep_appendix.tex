@@ -1,0 +1,105 @@
+\section{Full TGN Hyperparameter Sweep — 18 Configurations}
+\label{app:tgn-full-sweep}
+
+This appendix gives the complete 18-configuration hyperparameter/
+architecture sweep summarised in
+\S\ref{sec:tgn-offline-validation-v2} (Table~\ref{tab:tgn-val2-sweep-condensed}
+gives only the top validation-MCC candidates in the main text). All
+configurations were trained on the same 300\,s/2361-event dataset
+(Table~\ref{tab:tgn-val2-dataset}), 400 epochs per restart attempt, up to
+5 restarts per configuration, restart target val~MCC~$\geq 0.975$.
+Configurations are ranked by \textbf{validation MCC} (the pre-registered
+selection criterion), with validation AUROC as the printed tie-break
+column; test-set metrics are given alongside for completeness but were
+not used for ranking. "Seed" is blank for runs where no seed was fixed
+(these are not independently reproducible).
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Full 18-configuration hyperparameter sweep, 300\,s dataset, 400 epochs/attempt, ranked by validation MCC.}
+\label{tab:tgn-val2-sweep-full}
+\begin{tabular}{@{}llrrrrrrl@{}}
+\toprule
+$d$ & Config detail & Seed & Val MCC & Val AUROC & Test MCC & Test AUROC & Test ACC & Variant F1 \\
+\midrule
+32  & pos\_weight=4.5                                & --  & 0.932 & 0.973 & 0.877 & 0.946 & 0.959 & 0.617 \\
+32  & variant\_exclude\_me (2-way head)$^{\dagger}$   & --  & 0.932 & 0.957 & 0.885 & 0.938 & 0.962 & 0.524 \\
+128 & pos\_weight=6.0, ce\_weight=0.5 (\textbf{winner}) & 100 & 0.932 & 0.952 & 0.868 & 0.938 & 0.956 & 0.606 \\
+64  & pos\_weight=5.5                                 & --  & 0.932 & 0.949 & 0.826 & 0.939 & 0.943 & 0.589 \\
+64  & pos\_weight=6.0                                 & --  & 0.932 & 0.948 & 0.822 & 0.920 & 0.940 & 0.605 \\
+32  & pos\_weight=5.5                                 & --  & 0.923 & 0.930 & 0.842 & 0.969 & 0.948 & 0.634 \\
+128 & pos\_weight=4.5                                 & --  & 0.924 & --    & 0.768 & 0.922 & 0.918 & 0.620 \\
+32  & baseline, no override (400 ep.)                 & --  & 0.916 & 0.940 & 0.837 & 0.970 & 0.943 & 0.634 \\
+32  & pos\_weight=6.0                                 & --  & 0.915 & 0.931 & 0.828 & 0.931 & 0.943 & 0.606 \\
+128 & pos\_weight=6.0, ce\_weight=0.15                 & 100 & 0.906 & 0.921 & 0.859 & 0.953 & 0.954 & \textbf{0.673} \\
+128 & pos\_weight=6.0 (no ce override)                 & --  & 0.906 & 0.927 & 0.877 & 0.945 & 0.959 & 0.581 \\
+128 & baseline, no override (auto pos\_weight)         & --  & 0.906 & 0.927 & 0.877 & 0.945 & 0.959 & 0.581 \\
+128 & pos\_weight=6.0, $\gamma$=250 override            & 100 & 0.923 & 0.927 & 0.843 & 0.920 & 0.948 & 0.579 \\
+128 & pos\_weight=6.0, $L_{\text{link}}$=60 override    & 100 & 0.923 & 0.927 & 0.843 & 0.920 & 0.948 & 0.579 \\
+128 & pos\_weight=6.0 (reference for above overrides)   & 100 & 0.923 & 0.927 & 0.843 & 0.920 & 0.948 & 0.579 \\
+64  & pos\_weight=4.5                                 & --  & 0.923 & --    & 0.809 & 0.905 & 0.937 & 0.613 \\
+64  & baseline, no override                           & --  & 0.923 & --    & 0.818 & 0.916 & 0.940 & 0.607 \\
+128 & layers=3, lr=5e-4, pos\_weight=7.0 (combined)     & 100 & 0.537 & --    & 0.467 & 0.764 & 0.820 & 0.280 \\
+\bottomrule
+\end{tabular}
+
+\vspace{2mm}
+{\footnotesize $^{\dagger}$Variant F1 for the ME-exclusion ablation is
+computed over $n=334$ rows under a 2-way (TTW+BSHH vs.\ ME) target, not
+directly comparable to the 3-way F1 of the other rows.}
+\end{table}
+
+\paragraph{Note on duplicate-looking rows.}
+The three rows for "pos\_weight=6.0 ($\gamma$/$L_{\text{link}}$ overrides
+and their reference run)" report numerically identical metrics by design
+— this is the finding discussed in \S\ref{sec:tgn-offline-validation-v2}
+(swept-dimension finding 5): overriding $\gamma$ and $L_{\text{link}}$ at
+seed=100 produced bit-identical downstream training outcomes to the
+un-overridden baseline at the same seed, despite the override values
+being confirmed to take effect (verified via each run's printed
+$\gamma$/$L_{\text{link}}$/$W_{\max}$ header). This is retained as
+evidence, not merged into one row, so the reader can see the reference
+and both override outcomes side by side.
+
+\bigskip
+Table~\ref{tab:tgn-val2-seeds-full} reproduces the 10-seed reproducibility
+check (main text Table~\ref{tab:tgn-val2-seeds}) in full for reference,
+including the resulting confusion-matrix counts.
+
+\begin{table}[htbp]
+\centering
+\caption{10-seed reproducibility check, $d$=128, pos\_weight=6.0, default \texttt{ce\_weight}=0.3, 400 epochs — full detail.}
+\label{tab:tgn-val2-seeds-full}
+\begin{tabular}{@{}lrrrrrrrl@{}}
+\toprule
+Seed & Val MCC & Test MCC & Test AUROC & Test ACC & TP & TN & FP & FN & Variant F1 \\
+\midrule
+100 & 0.923 & 0.843 & 0.920 & 0.948 & 66 & 281 & 6  & 13 & 0.579 \\
+2   & 0.914 & 0.862 & 0.937 & 0.954 & 70 & 279 & 8  & 9  & 0.602 \\
+3   & 0.915 & 0.861 & 0.925 & 0.954 & 62 & 287 & 0  & 17 & 0.567 \\
+55  & 0.906 & 0.860 & 0.944 & 0.954 & 67 & 282 & 5  & 12 & 0.635 \\
+77  & 0.906 & 0.842 & 0.937 & 0.948 & 65 & 282 & 5  & 14 & 0.602 \\
+7   & 0.914 & 0.836 & 0.937 & 0.945 & 67 & 279 & 8  & 12 & 0.606 \\
+1   & 0.914 & 0.835 & 0.920 & 0.945 & 66 & 280 & 7  & 13 & 0.638 \\
+13  & 0.914 & 0.833 & 0.936 & 0.943 & 70 & 275 & 12 & 9  & 0.574 \\
+42  & 0.914 & 0.826 & 0.931 & 0.943 & 65 & 280 & 7  & 14 & 0.614 \\
+21  & 0.914 & 0.802 & 0.914 & 0.934 & 64 & 278 & 9  & 15 & 0.601 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Reconciling the run count.}
+28 total training runs were performed for this campaign: the 18
+configurations in Table~\ref{tab:tgn-val2-sweep-full} above, plus the 10
+seeds in Table~\ref{tab:tgn-val2-seeds-full}. Three of the 18
+sweep rows (the $\gamma$ override, the $L_{\text{link}}$ override, and
+their seed=100 reference) and one of the 10 seed-check rows (seed=100)
+all correspond to the \emph{same} underlying $d$=128/pos\_weight=6.0
+configuration at seed=100 without the \texttt{ce\_weight} override —
+these are reported from independent log files
+(\texttt{tgn\_log\_dim128\_pw6\_gamma250.log},
+\texttt{tgn\_log\_dim128\_pw6\_llink60.log}, and
+\texttt{tgn\_log\_best\_seed100.log} respectively) and are not the same
+training run reused three times; their identical metrics are the finding
+itself, not a labelling artefact.
