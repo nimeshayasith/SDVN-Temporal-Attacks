@@ -252,7 +252,7 @@ peer:
             # peer.gossip.orgleader being false, the peer's ledger may lag behind
             # the rest of the peers and will never catch up due to state transfer
             # being disabled.
-            enabled: false
+            enabled: true
             # checkInterval interval to check whether peer is lagging behind enough to
             # request blocks via state transfer from another peer.
             checkInterval: 10s
