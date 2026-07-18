@@ -2133,6 +2133,120 @@ static void TGN_WriteAlertsJson()
     std::cout << "[TGN] tgn_alerts.json written: " << cnt << " alert(s)"
               << " → " << "tgn_alerts.json\n";
 
+    // Fix B (TRUST_LAYER_FIXES_AND_BLOCKCHAIN_GAP.md #7): individual_sig_evidence.json
+    // for the TTW/BSHH threshold-signature path (Eq. 3.26/3.27, verifyThresholdSig
+    // on the Go side). Mirrors PemWriteWitnessRecordsJson's precedent exactly:
+    // same shared g_dil_sk/g_dil_pk keypair (this project's already-accepted
+    // simplification for JSON-bridge evidence — the chaincode's verifyMLDSA87Sig
+    // only checks signature validity/count, not per-signer key distinctness, so
+    // this is consistent with how Fix A/witness_records.json already ships),
+    // same canonical colon-delimited ASCII message (not raw struct bytes, so it
+    // round-trips through a JSON string field), same plain dilithium5_sign (not
+    // the _thresh domain-separated variant, since the Go side has no concept of
+    // TETA_DS_THRESH and would reject that signature).
+    //
+    // One IndividualSigEvidence record is written per (TTW/BSHH alert x active
+    // peer) pair — n = number of active peers, matching thresholdT = n/2+1 on
+    // both the C++ PemVerifyThresholdSig gate and the chaincode's Mitigate call.
+    // ME alerts are excluded here; they use witness_records.json/SubmitWitnessRecord
+    // (Fix A) instead, per the paper's per-variant cryptographic placement (Table 3.4).
+    {
+        static const char* kActivePeers[] = {
+            "peer0.rsu1.tetaguard.net", "peer0.rsu2.tetaguard.net",
+            "peer0.rsu3.tetaguard.net", "peer0.rsu4.tetaguard.net",
+            "peer0.rsu5.tetaguard.net"
+        };
+        static const size_t kNumActivePeers = 5;
+
+        std::ofstream sf("individual_sig_evidence.json");
+        sf << std::fixed << std::setprecision(6) << "[\n";
+        bool sfirst = true; size_t scnt = 0;
+
+        for (const auto& pr : g_tgn_scored_events) {
+            const PemEvent& e = pr.event;
+            double sc = pr.score;
+            if (sc <= g_tgn->GetThreshold()) continue;
+
+            std::string alpha = g_tgn ? g_tgn->GetAlertVariant(e.claimed_sender_id) : "";
+            // Normalise the same way submitToFabric.js's normaliseVariant does,
+            // so this writer's TTW/BSHH filter matches what actually gets
+            // submitted as detEvents.attack_variant.
+            bool is_ttw_bshh = (alpha.rfind("TTW", 0) == 0) || (alpha.rfind("BSHH", 0) == 0);
+            if (alpha.empty()) {
+                // Scenario-ID fallback path (see TGN_WriteAlertsJson above).
+                if (attack_scenario >= 1 && attack_scenario <= 8) is_ttw_bshh = true;
+            }
+            if (!is_ttw_bshh) continue;
+
+            const int64_t ts_ms = (int64_t)(e.reception_timestamp * 1000.0);
+
+            for (size_t pi = 0; pi < kNumActivePeers; ++pi) {
+                uint8_t nonce[16];
+                RAND_bytes(nonce, sizeof(nonce));
+                std::ostringstream nonce_hex;
+                nonce_hex << std::hex << std::setfill('0');
+                for (uint8_t b : nonce) nonce_hex << std::setw(2) << (int)b;
+
+                std::ostringstream msg;
+                msg << "V" << e.claimed_sender_id << ":" << kActivePeers[pi] << ":"
+                    << ts_ms << ":" << nonce_hex.str();
+                const std::string message = msg.str();
+
+                std::string sig_b64, pub_b64;
+#ifdef HAVE_LIBOQS
+                if (g_crypto_ready && !g_dil_sk.empty() && !g_dil_pk.empty()) {
+                    uint8_t sig_out[DILITHIUM5_SIG_LEN];
+                    size_t  sig_len = 0;
+                    dilithium5_sign(reinterpret_cast<const uint8_t*>(message.data()),
+                                     message.size(), g_dil_sk.data(), sig_out, &sig_len);
+                    std::vector<uint8_t> sig_b64_buf(((sig_len + 2) / 3) * 4 + 1);
+                    int sig_out_len = EVP_EncodeBlock(sig_b64_buf.data(), sig_out,
+                                                       static_cast<int>(sig_len));
+                    sig_b64 = std::string(reinterpret_cast<char*>(sig_b64_buf.data()),
+                                          sig_out_len > 0 ? static_cast<size_t>(sig_out_len) : 0);
+                    std::vector<uint8_t> pub_b64_buf(((g_dil_pk.size() + 2) / 3) * 4 + 1);
+                    int pub_out_len = EVP_EncodeBlock(pub_b64_buf.data(), g_dil_pk.data(),
+                                                       static_cast<int>(g_dil_pk.size()));
+                    pub_b64 = std::string(reinterpret_cast<char*>(pub_b64_buf.data()),
+                                          pub_out_len > 0 ? static_cast<size_t>(pub_out_len) : 0);
+                } else {
+                    static bool warned = false;
+                    if (!warned) {
+                        NS_LOG_UNCOND("[TGN] individual_sig_evidence.json: signing keys "
+                                      "not ready (--latency=0?) — records will be written "
+                                      "UNSIGNED (signature/pub_key empty).");
+                        warned = true;
+                    }
+                }
+#else
+                {
+                    static bool warned = false;
+                    if (!warned) {
+                        NS_LOG_UNCOND("[TGN] individual_sig_evidence.json: built without "
+                                      "HAVE_LIBOQS — records will be written UNSIGNED.");
+                        warned = true;
+                    }
+                }
+#endif
+
+                if (!sfirst) sf << ",\n";
+                sfirst = false;
+                sf << "  {\n"
+                   << "    \"vehicle_id\": \"V" << e.claimed_sender_id << "\",\n"
+                   << "    \"signer_id\": \"" << kActivePeers[pi] << "\",\n"
+                   << "    \"signature\": \"" << sig_b64 << "\",\n"
+                   << "    \"message\": \"" << message << "\",\n"
+                   << "    \"pub_key\": \"" << pub_b64 << "\",\n"
+                   << "    \"ts_ms\": " << ts_ms << "\n"
+                   << "  }";
+                ++scnt;
+            }
+        }
+        sf << "\n]\n"; sf.close();
+        std::cout << "[TGN] individual_sig_evidence.json written: " << scnt
+                   << " record(s) → individual_sig_evidence.json\n";
+    }
+
     // Gap 2 — Algorithm 2, line 23: SUBMITTOFABRIC(nk, A, B_nk(t))
     // Each trusted node submits its alert set A and beacon evidence B_nk(t)
     // to its local Fabric peer via the emergency channel.
@@ -2153,6 +2267,7 @@ static void TGN_WriteAlertsJson()
         const std::string alerts_path    = std::string(cwd) + "/tgn_alerts.json";
         const std::string evidence_path  = std::string(cwd) + "/beacon_evidence.csv";
         const std::string ctrl_topo_path = std::string(cwd) + "/ctrl_topo.json";
+        const std::string sig_evidence_path = std::string(cwd) + "/individual_sig_evidence.json";
 
         // Beacon evidence B_nk(t) and the controller's topology claim G_t^C
         // must exist before dispatch so --evidence/--ctrl_topo point at real,
@@ -2183,6 +2298,7 @@ static void TGN_WriteAlertsJson()
                         + " --alerts \"" + alerts_path + "\""
                         + " --evidence \"" + evidence_path + "\""
                         + " --ctrl_topo \"" + ctrl_topo_path + "\""
+                        + " --individual_sig_evidence \"" + sig_evidence_path + "\""
                         + " --tier " + std::to_string(N_RSUs > 0 ? 1 : 2)
                         + (N_RSUs == 0 ? " --no_rsu" : "")
                         + " >> \"" + dispatch_log + "\" 2>&1 &";
