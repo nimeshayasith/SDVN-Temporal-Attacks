@@ -71,6 +71,12 @@ x-peer-env: &peer-env
   CORE_PEER_GOSSIP_USELEADERELECTION: "true"
   CORE_PEER_GOSSIP_ORGLEADER: "false"
   CORE_PEER_PROFILE_ENABLED: "false"
+  # Fix: image's baked-in core.yaml ships gossip.state.enabled=false, which
+  # disables anti-entropy block replication — any peer that misses blocks
+  # while stopped/restarting can never catch up via gossip. This env var
+  # overrides that default network-wide (Viper maps CORE_PEER_GOSSIP_STATE_*
+  # to peer.gossip.state.* regardless of core.yaml on disk).
+  CORE_PEER_GOSSIP_STATE_ENABLED: "true"
   CORE_CHAINCODE_EXECUTETIMEOUT: 300s
   CORE_LEDGER_STATE_STATEDATABASE: CouchDB
   TETA_SIMULATION_MODE: "1"
