@@ -20,9 +20,23 @@
  * Usage:
  *   node submitToFabric.js [--alerts tgn_alerts_crypto.json] [--evidence beacon_evidence.csv]
  *   node submitToFabric.js --alerts tgn_alerts_crypto.json --ctrl_topo ctrl_topo.json
+ *   node submitToFabric.js --alerts tgn_alerts.json --witness_records witness_records.json
  *
  * BC-4: --evidence accepts beacon_evidence.csv (crypto pipeline output) directly.
  *   CSV columns: rsu_id,interval_ts_ms,vehicle_id,sender_ts_ms,gps_lat,gps_lon,rssi_dbm
+ *
+ * Fix A (TRUST_LAYER_FIXES_AND_BLOCKCHAIN_GAP.md #7): --witness_records loads the
+ * ME-quorum evidence array routing.cc's PemWriteWitnessRecordsJson() writes and
+ * submits each record via SubmitWitnessRecord before the Mitigate call, so
+ * verifyQuorum() on the chaincode side has real witnesses to find instead of
+ * always seeing zero (permanent QUORUM_FAIL).
+ *
+ * Fix B (same doc): --individual_sig_evidence loads the TTW/BSHH threshold-signature
+ * evidence array tgn_core.cc's TGN_WriteAlertsJson() now also writes
+ * (individual_sig_evidence.json) and submits each record via
+ * SubmitIndividualSigEvidence before the Mitigate call, so verifyThresholdSig()
+ * has real signatures to count instead of always seeing zero (permanent
+ * THRESHOLD_SIG_FAIL).
  *
  * Prerequisites:
  *   - Fabric network running (docker-compose -f ../network/docker-compose-teta.yaml up -d)
@@ -104,7 +118,9 @@ async function submitToFabric(
     beaconEvidence,
     beaconInterval,
     ctrlTopo = null,
-    noRSUMode = false
+    noRSUMode = false,
+    witnessRecords = [],
+    sigEvidence = []
 ) {
     const gateway = new Gateway();
     try {
@@ -255,7 +271,18 @@ async function submitToFabric(
                 `links=${claim.links.length}`);
         }
 
-        // ── Resolve channel peer list (used for threshold and periodic selection) ──
+        // ── Resolve channel peer list (used ONLY for endorsement targeting) ────
+        // Bug fix: this used to also seed RSU_PEERS/nPeers below (the PBFT
+        // approving-peer set and threshold), which silently collapsed both to
+        // whatever's in connection-profile.json's single-peer endorsement-target
+        // list (currently just peer0.rsu3, kept minimal to dodge MVCC conflicts
+        // from lagged peers — see the gateway.connect() comment above). That
+        // starved collectApprovingPeers() down to 1 real approving peer against
+        // an 8-peer active set (5 RSU @ trust=1.0 + up to 3 OBU), so
+        // checkPBFTTrustWeight's sumApprove/sumActive could never clear 2/3
+        // (Eq. 3.49) regardless of how much real evidence was submitted.
+        // channelPeers must stay endorsement-target-only; RSU_PEERS/OBU_PEERS
+        // below are now always the fixed, full on-chain-registered peer sets.
         const channelPeers = connProfileRaw.channels
             && connProfileRaw.channels[CHANNEL]
             && connProfileRaw.channels[CHANNEL].peers
@@ -270,7 +297,7 @@ async function submitToFabric(
 
         // ── Full Mitigate call (if alerts exist) ──────────────────────────────
         if (alertSet.length > 0) {
-            const RSU_PEERS = channelPeers.length > 0 ? channelPeers : [
+            const RSU_PEERS = [
                 'peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
                 'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
                 'peer0.rsu5.tetaguard.net'
@@ -292,18 +319,93 @@ async function submitToFabric(
                 return alpha; // CTRL_ORIGIN or unknown — pass through unchanged
             };
 
+            // Fix A (TRUST_LAYER_FIXES_AND_BLOCKCHAIN_GAP.md #7): witness_records.json's
+            // ts_ms values come from routing.cc's own observation clock and have no
+            // relationship to the alert_ts_ms values synthesized below (t_alert +
+            // idx*1000 + pIdx) — they're two independently generated files. getWitnesses()
+            // only finds witnesses inside [alertTS-Tb, alertTS+Tb] (Tb=100ms), so a
+            // vehicle's witness ts_ms is looked up here and used to override its ME
+            // alert's alert_ts_ms, keeping both within that window at submission time.
+            const witnessTsByVehicle = new Map();
+            for (const w of witnessRecords) {
+                if (w && w.vehicle_id != null && !witnessTsByVehicle.has(w.vehicle_id)) {
+                    witnessTsByVehicle.set(w.vehicle_id, w.ts_ms);
+                }
+            }
+
+            // Fix B: same timing problem as Fix A above, but for
+            // getSignatureEvidence()'s [alertTS-Tb, alertTS+Tb] window against
+            // individual_sig_evidence.json's own ts_ms values (also routing.cc's
+            // observation clock, also independent of the alert_ts_ms synthesized
+            // below).
+            const sigTsByVehicle = new Map();
+            for (const s of sigEvidence) {
+                if (s && s.vehicle_id != null && !sigTsByVehicle.has(s.vehicle_id)) {
+                    sigTsByVehicle.set(s.vehicle_id, s.ts_ms);
+                }
+            }
+
             const detEvents = alertSet.flatMap((a, idx) =>
-                allRSUPeers.map((pid, pIdx) => ({
-                    peer_id:        pid,
-                    vehicle_id:     a.v_id,
-                    attack_variant: normaliseVariant(a.alpha),
-                    anomaly_score:  a.y_hat,
-                    triggered_sigs: sTrigsToMask(a.S_trig),
-                    alert_ts_ms:    a.t_alert + idx * 1000 + pIdx,
-                    from_lw_path:   a.from_lw_path || false,
-                    from_fs_path:   true,
-                }))
+                allRSUPeers.map((pid, pIdx) => {
+                    const variant = normaliseVariant(a.alpha);
+                    const witnessTs = variant === 'ME' ? witnessTsByVehicle.get(a.v_id) : undefined;
+                    const sigTs = (variant === 'TTW' || variant === 'BSHH')
+                        ? sigTsByVehicle.get(a.v_id) : undefined;
+                    const alignedTs = witnessTs != null ? witnessTs
+                        : (sigTs != null ? sigTs : undefined);
+                    return {
+                        peer_id:        pid,
+                        vehicle_id:     a.v_id,
+                        attack_variant: variant,
+                        anomaly_score:  a.y_hat,
+                        triggered_sigs: sTrigsToMask(a.S_trig),
+                        alert_ts_ms:    alignedTs != null ? alignedTs : a.t_alert + idx * 1000 + pIdx,
+                        from_lw_path:   a.from_lw_path || false,
+                        from_fs_path:   true,
+                    };
+                })
             );
+
+            // ── Submit ME-quorum witness evidence before Mitigate reads it ────────
+            // Must run before the Mitigate call below: getWitnesses() queries the
+            // ledger at Mitigate-invocation time, so records submitted afterward
+            // would not yet exist for verifyQuorum() to find.
+            if (witnessRecords.length > 0) {
+                let witnessOK = 0, witnessFail = 0;
+                for (const w of witnessRecords) {
+                    try {
+                        await submitTransactionWithRetry(contract,
+                            'SubmitWitnessRecord',
+                            JSON.stringify(w)
+                        );
+                        witnessOK++;
+                    } catch (e) {
+                        witnessFail++;
+                    }
+                }
+                console.log(`[Fabric] Flow 2a ✓  SubmitWitnessRecord  ` +
+                    `submitted=${witnessOK}  failed=${witnessFail}  (of ${witnessRecords.length})`);
+            }
+
+            // ── Submit TTW/BSHH threshold-sig evidence before Mitigate reads it ───
+            // Same timing requirement as the witness loop above: getSignatureEvidence()
+            // is queried inside the same Mitigate invocation, so this must complete first.
+            if (sigEvidence.length > 0) {
+                let sigOK = 0, sigFail = 0;
+                for (const s of sigEvidence) {
+                    try {
+                        await submitTransactionWithRetry(contract,
+                            'SubmitIndividualSigEvidence',
+                            JSON.stringify(s)
+                        );
+                        sigOK++;
+                    } catch (e) {
+                        sigFail++;
+                    }
+                }
+                console.log(`[Fabric] Flow 2b ✓  SubmitIndividualSigEvidence  ` +
+                    `submitted=${sigOK}  failed=${sigFail}  (of ${sigEvidence.length})`);
+            }
 
             const ctrlClaim = ctrlTopo || {
                 controller_id: 'sdn-controller',
@@ -312,8 +414,10 @@ async function submitToFabric(
             };
 
             // SF-02 FIX: thresholdT = n/2+1 where n = number of active Fabric peers.
-            // channelPeers is resolved above (before Flow 2 loop).
-            const nPeers     = channelPeers.length || 5; // fallback to 5 (fixed TETA-Guard network)
+            // Bug fix: must match allRSUPeers.length (the real approving-peer set
+            // size), not channelPeers.length (the 1-peer endorsement-target list) —
+            // see the comment above channelPeers' declaration.
+            const nPeers     = allRSUPeers.length;
             const thresholdT = String(Math.floor(nPeers / 2) + 1);
 
             await submitTransactionWithRetry(contract,
@@ -332,14 +436,15 @@ async function submitToFabric(
         // post-mitigation — so quarantined RSU peers are moved to REMOVED as
         // soon as their monitoring window elapses, even when no attack fires.
         try {
-            // Binary mode: pass only the tier-appropriate peer list
+            // Binary mode: pass only the tier-appropriate peer list. Same fix as
+            // above — must be the fixed, full on-chain-registered peer set, not
+            // the 1-peer endorsement-target channelPeers list.
             const allPeerIDs = noRSUMode
                 ? ['peer0.obu1.tetaguard.net', 'peer0.obu2.tetaguard.net',
                    'peer0.obu3.tetaguard.net']
-                : (channelPeers.length > 0 ? channelPeers
-                   : ['peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
-                      'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
-                      'peer0.rsu5.tetaguard.net']);
+                : ['peer0.rsu1.tetaguard.net', 'peer0.rsu2.tetaguard.net',
+                   'peer0.rsu3.tetaguard.net', 'peer0.rsu4.tetaguard.net',
+                   'peer0.rsu5.tetaguard.net'];
             const activePeers = await submitTransactionWithRetry(contract,
                 'PeriodicPeerReSelection',
                 JSON.stringify(allPeerIDs)
@@ -522,6 +627,40 @@ function loadBeaconEvidence(evidencePath) {
     return { observations: firstGroup };
 }
 
+// Fix A (TRUST_LAYER_FIXES_AND_BLOCKCHAIN_GAP.md #7): loads witness_records.json,
+// the ME-quorum evidence routing.cc already writes (PemWriteWitnessRecordsJson)
+// but that no client script ever submitted, leaving verifyQuorum() permanently
+// starved (0 witnesses < thresholdT, always FAIL). Mirrors loadBeaconEvidence's
+// existing tolerate-missing-file pattern.
+function loadWitnessRecords(witnessPath) {
+    if (!witnessPath || !fs.existsSync(witnessPath)) {
+        return [];
+    }
+    try {
+        const records = JSON.parse(fs.readFileSync(witnessPath, 'utf8'));
+        return Array.isArray(records) ? records : [];
+    } catch (e) {
+        console.error(`[WARN] Could not parse witness records ${witnessPath}: ${e.message}`);
+        return [];
+    }
+}
+
+// Fix B (TRUST_LAYER_FIXES_AND_BLOCKCHAIN_GAP.md #7): loads individual_sig_evidence.json,
+// the TTW/BSHH threshold-signature evidence routing.cc now writes (mirrors
+// loadWitnessRecords' pattern exactly).
+function loadIndividualSigEvidence(sigEvidencePath) {
+    if (!sigEvidencePath || !fs.existsSync(sigEvidencePath)) {
+        return [];
+    }
+    try {
+        const records = JSON.parse(fs.readFileSync(sigEvidencePath, 'utf8'));
+        return Array.isArray(records) ? records : [];
+    } catch (e) {
+        console.error(`[WARN] Could not parse individual sig evidence ${sigEvidencePath}: ${e.message}`);
+        return [];
+    }
+}
+
 // ─── CLI entry point ─────────────────────────────────────────────────────────
 
 async function main() {
@@ -529,6 +668,8 @@ async function main() {
     let alertsPath   = 'tgn_alerts_crypto.json';  // BC-1: crypto-verified alerts only
     let evidencePath = null;
     let ctrlTopoPath = null;
+    let witnessPath  = null;
+    let sigEvidencePath = null;
     let nodeID       = PEER_ID;
     let noRSUMode    = false;  // set true for scenarios without RSU infrastructure
 
@@ -536,6 +677,8 @@ async function main() {
         if (args[i] === '--alerts'   && args[i+1]) alertsPath   = args[++i];
         if (args[i] === '--evidence' && args[i+1]) evidencePath = args[++i];
         if (args[i] === '--ctrl_topo'&& args[i+1]) ctrlTopoPath = args[++i];
+        if (args[i] === '--witness_records' && args[i+1]) witnessPath = args[++i];
+        if (args[i] === '--individual_sig_evidence' && args[i+1]) sigEvidencePath = args[++i];
         if (args[i] === '--node_id'  && args[i+1]) nodeID       = args[++i];
         if (args[i] === '--no_rsu')                noRSUMode    = true;
     }
@@ -556,13 +699,23 @@ async function main() {
 
     const beaconEvidence = loadBeaconEvidence(evidencePath);  // BC-4: handles .csv and .json
 
+    const witnessRecords = loadWitnessRecords(witnessPath);  // Fix A: ME-quorum evidence
+    if (witnessRecords.length > 0) {
+        console.log(`[Bridge] Loaded ${witnessRecords.length} witness record(s) from '${witnessPath}'`);
+    }
+
+    const sigEvidence = loadIndividualSigEvidence(sigEvidencePath);  // Fix B: TTW/BSHH threshold-sig evidence
+    if (sigEvidence.length > 0) {
+        console.log(`[Bridge] Loaded ${sigEvidence.length} individual sig evidence record(s) from '${sigEvidencePath}'`);
+    }
+
     const ctrlTopo = ctrlTopoPath && fs.existsSync(ctrlTopoPath)
         ? JSON.parse(fs.readFileSync(ctrlTopoPath, 'utf8'))
         : null;
 
     const beaconInterval = alerts.length > 0 ? alerts[0].t_alert : Date.now();
 
-    await submitToFabric(nodeID, alerts, beaconEvidence, beaconInterval, ctrlTopo, noRSUMode);
+    await submitToFabric(nodeID, alerts, beaconEvidence, beaconInterval, ctrlTopo, noRSUMode, witnessRecords, sigEvidence);
 }
 
 main().catch(err => {

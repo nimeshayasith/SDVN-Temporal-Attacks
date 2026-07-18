@@ -396,6 +396,27 @@ func monitorAndRemovePeer(ctx contractapi.TransactionContextInterface, peerID st
 	return nil
 }
 
+// AdminDeregisterPeer permanently removes a peer's TRUST record from the
+// consensus candidate pool without implying any misconduct — unlike
+// ZeroTrust/DemotePeerToClient (which require a backing detection event and
+// exist specifically to penalise confirmed malicious behaviour), this makes
+// no accusation and requires none. It exists solely for administrative
+// cleanup of peers registered outside a deployment's canonical topology
+// (e.g. ad-hoc test registrations never intended to compete for consensus
+// slots), so the ledger's audit trail is never misrepresented by attaching a
+// fabricated "detection" to an innocent peer just to remove it.
+// After this call, loadAllPeerIDs()'s TRUST:* range scan no longer returns
+// the peer, so it no longer occupies a selectPeers() np-slot (Eq. 3.43).
+func (t *TemporalEchoMitigator) AdminDeregisterPeer(
+	ctx contractapi.TransactionContextInterface,
+	peerID string,
+) error {
+	if peerID == "" {
+		return fmt.Errorf("AdminDeregisterPeer: peerID is required")
+	}
+	return ctx.GetStub().DelState("TRUST:" + peerID)
+}
+
 // DemotePeerToClient is the public chaincode function for the demotion pipeline.
 // Called by a trusted node — an RSU, or a Tier 2 OBU with RSU-equivalent
 // standing (τ ≥ τminGT, not flagged) — when a consortium peer is confirmed
