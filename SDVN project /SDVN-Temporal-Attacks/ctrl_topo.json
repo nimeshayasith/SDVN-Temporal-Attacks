@@ -2,6 +2,23 @@
   "controller_id": "sdn-controller",
   "interval_ts": 39999,
   "links": [
-
+    {"node_a": "V11", "node_b": "V11", "ts": 9985},
+    {"node_a": "V13", "node_b": "V13", "ts": 25014},
+    {"node_a": "V14", "node_b": "V14", "ts": 20003},
+    {"node_a": "V16", "node_b": "V16", "ts": 4995},
+    {"node_a": "V18", "node_b": "V18", "ts": 5002},
+    {"node_a": "V22", "node_b": "V22", "ts": 5002},
+    {"node_a": "V23", "node_b": "V23", "ts": 4995},
+    {"node_a": "V24", "node_b": "V24", "ts": 9985},
+    {"node_a": "V25", "node_b": "V25", "ts": 20004},
+    {"node_a": "V27", "node_b": "V27", "ts": 5003},
+    {"node_a": "V29", "node_b": "V29", "ts": 10009},
+    {"node_a": "V30", "node_b": "V30", "ts": 25014},
+    {"node_a": "V31", "node_b": "V31", "ts": 14998},
+    {"node_a": "V32", "node_b": "V32", "ts": 20003},
+    {"node_a": "V34", "node_b": "V34", "ts": 4982},
+    {"node_a": "V36", "node_b": "V36", "ts": 9993},
+    {"node_a": "V37", "node_b": "V37", "ts": 14994},
+    {"node_a": "V42", "node_b": "V42", "ts": 4989}
   ]
 }

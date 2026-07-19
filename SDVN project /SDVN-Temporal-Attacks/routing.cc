@@ -6315,14 +6315,38 @@ PemEvaluateEvent(PemEvent& event)
 
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE)
     {
-        std::map<std::string, double>::iterator firstSeenIt =
-            ns.link_first_recorded_time.find(linkKey);
-        if (firstSeenIt != ns.link_first_recorded_time.end() &&
-            (event.reception_timestamp - firstSeenIt->second) > ttw_link_lifetime_bound)
+        // PDF-consistency fix: the paper's own §3.4.4 prose defines TTW-S1 as
+        // Eq. 3.2, Δ_k = τ_r^(k) − τ_s^(k) > T_b + ε (per-message reception-vs-
+        // sender-timestamp staleness) — but Algorithm 1's own EVAL_SIG
+        // pseudocode implements k=1 as 1[(t − t_first^{e_ij}) > L_link] (link-
+        // age since first observation), also tagged "Eq. 3.2". These are two
+        // different formulas sharing one equation number — a PDF-internal
+        // inconsistency, not a transcription slip on one side only. The block
+        // below (link-age version, matching the Algorithm 1 pseudocode) is kept
+        // for reference but disabled; the active implementation now follows
+        // the prose definition instead, per explicit instruction to treat the
+        // prose formula as authoritative.
+        //
+        // std::map<std::string, double>::iterator firstSeenIt =
+        //     ns.link_first_recorded_time.find(linkKey);
+        // if (firstSeenIt != ns.link_first_recorded_time.end() &&
+        //     (event.reception_timestamp - firstSeenIt->second) > ttw_link_lifetime_bound)
+        // {
+        //     event.triggered[0] = true;
+        // }
+
+        // Eq. 3.2 — TTW-S1 (prose definition): Δ_k = τ_r − τ_s > T_b + ε.
+        // A per-message check, not a link-lifetime check: this beacon's
+        // reception timestamp minus its own embedded sender timestamp exceeds
+        // one beacon interval plus propagation tolerance, indicating the
+        // timestamp was forged/replayed rather than freshly generated.
+        // PEM_PROPAGATION_EPSILON_S is the same canonical ε already used for
+        // Eq. 3.16's identical T_b+ε freshness bound (kept in sync with
+        // teta_guard_types.h's PROPAGATION_TOL_MS), so both formulas share one
+        // physical epsilon value as the paper intends.
+        if ((event.reception_timestamp - event.sender_timestamp) >
+            (PEM_BEACON_INTERVAL_S + PEM_PROPAGATION_EPSILON_S))
         {
-            // Eq. 3.2 — TTW-S1: the controller is still receiving support for a
-            // link whose active topology state has outlived the mobility-derived
-            // lifetime bound L_link (Eq. 3.31, §3.4.7: L_link = 2·r_comm / v_rel).
             event.triggered[0] = true;
         }
     }
