@@ -345,17 +345,36 @@ async function submitToFabric(
                 }
             }
 
+            // Bug fix: tgn_alerts.json's v_id is a bare numeric string ("16"), but
+            // both witness_records.json and individual_sig_evidence.json store
+            // vehicle_id with a "V" prefix ("V16") — the same convention
+            // PemBuildWitnessJson already used before this session, which the new
+            // individual_sig_evidence.json writer matched deliberately for
+            // consistency. Without normalising here, both witnessTsByVehicle/
+              // sigTsByVehicle lookups silently missed every time (always fell
+            // through to the fallback timestamp), AND detEvents.vehicle_id itself
+            // never matched what getSignatureEvidence()/getWitnesses() query for
+            // on the chaincode side — so verifyThresholdSig()/verifyQuorum() could
+            // never find the evidence regardless of timing, in every single
+            // Mitigate call all session. canonicalVID() makes the "V" prefix
+            // idempotent so it's safe to call on already-prefixed input too.
+            const canonicalVID = (id) => {
+                const s = String(id);
+                return s.startsWith('V') ? s : ('V' + s);
+            };
+
             const detEvents = alertSet.flatMap((a, idx) =>
                 allRSUPeers.map((pid, pIdx) => {
                     const variant = normaliseVariant(a.alpha);
-                    const witnessTs = variant === 'ME' ? witnessTsByVehicle.get(a.v_id) : undefined;
+                    const vid = canonicalVID(a.v_id);
+                    const witnessTs = variant === 'ME' ? witnessTsByVehicle.get(vid) : undefined;
                     const sigTs = (variant === 'TTW' || variant === 'BSHH')
-                        ? sigTsByVehicle.get(a.v_id) : undefined;
+                        ? sigTsByVehicle.get(vid) : undefined;
                     const alignedTs = witnessTs != null ? witnessTs
                         : (sigTs != null ? sigTs : undefined);
                     return {
                         peer_id:        pid,
-                        vehicle_id:     a.v_id,
+                        vehicle_id:     vid,
                         attack_variant: variant,
                         anomaly_score:  a.y_hat,
                         triggered_sigs: sTrigsToMask(a.S_trig),
