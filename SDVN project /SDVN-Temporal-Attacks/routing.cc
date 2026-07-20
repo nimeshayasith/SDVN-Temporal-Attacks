@@ -2711,6 +2711,15 @@ static std::map<uint32_t, double> g_dualpath_fs_alert_time;   // node -> last FS
 // include point.
 static uint32_t PemResolveVehicleGlobalId(uint32_t maybeIndex);
 
+// Forward-declared so tgn_core.cc's TGN_ExtractFeatures can reuse the LW
+// layer's already-populated per-edge first-observation time
+// (g_pem_node_lw_state[...].link_first_recorded_time) as an orthogonal,
+// attacker-uncontrolled input to the TGN's tau_dev feature for vehicle/RSU-
+// origin events -- mirroring the controller-origin (physical_sender_id==9999)
+// redefinition already present in that function. Both definitions live later
+// in this file, after the include point.
+static std::string PemGetLinkKey(uint32_t srcId, uint32_t dstId);
+
 // ── TGN core (included here so PemEvent/pem_all_events are already defined) ─
 #include ".tgn_src/tgn_core.cc"
 
@@ -2908,7 +2917,16 @@ extern NodeContainer management_Node;
 static void
 PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double now)
 {
-    static const double kEvidenceWindowS = 5.0;   // retain last 5s of evidence per peer
+    // Eq. 3.21's Bnk(t) is scoped to "interval t" (~PEM_BEACON_INTERVAL_S),
+    // not an arbitrary multi-second history. The prior 5.0s window let a
+    // sophisticated malicious RSU (BSHH-S2, stolen victim session key) forge
+    // a fresh-timestamped heartbeat while a real beacon from seconds earlier
+    // was still "seen" here, so Case 2 (legitimate forwarding) wrongly fired
+    // and identity_mismatch stayed 0 for a credential-theft replay it should
+    // have caught via Case 3. Tightened to 3x the beacon interval (300ms) —
+    // precedented elsewhere in this file (see PEM_BEACON_INTERVAL_S usages)
+    // — to keep the PDF's per-interval semantics while tolerating jitter.
+    static const double kEvidenceWindowS = 3.0 * PEM_BEACON_INTERVAL_S;
 
     if (RSU_Nodes.GetN() > 0)
     {
@@ -6321,19 +6339,25 @@ PemEvaluateEvent(PemEvent& event)
         // pseudocode implements k=1 as 1[(t − t_first^{e_ij}) > L_link] (link-
         // age since first observation), also tagged "Eq. 3.2". These are two
         // different formulas sharing one equation number — a PDF-internal
-        // inconsistency, not a transcription slip on one side only. The block
-        // below (link-age version, matching the Algorithm 1 pseudocode) is kept
-        // for reference but disabled; the active implementation now follows
-        // the prose definition instead, per explicit instruction to treat the
-        // prose formula as authoritative.
+        // inconsistency, not a transcription slip on one side only.
         //
-        // std::map<std::string, double>::iterator firstSeenIt =
-        //     ns.link_first_recorded_time.find(linkKey);
-        // if (firstSeenIt != ns.link_first_recorded_time.end() &&
-        //     (event.reception_timestamp - firstSeenIt->second) > ttw_link_lifetime_bound)
-        // {
-        //     event.triggered[0] = true;
-        // }
+        // Follow-up fix: TTW_ReplayAttack unconditionally forges
+        // sender_timestamp = now(), which makes the prose per-message check
+        // below trivially zero (age = |now-now| = 0) for the actual attack it
+        // is named for -- the attacker controls both timestamps that formula
+        // compares. The link-age check compares against something the
+        // attacker does NOT control (how long this link has existed since
+        // first observation), so it is re-enabled here as an additional,
+        // orthogonal OR-condition on the same signature rather than left
+        // disabled. ns.link_first_recorded_time is already populated
+        // unconditionally elsewhere, so this adds no bookkeeping cost.
+        std::map<std::string, double>::iterator firstSeenIt =
+            ns.link_first_recorded_time.find(linkKey);
+        if (firstSeenIt != ns.link_first_recorded_time.end() &&
+            (event.reception_timestamp - firstSeenIt->second) > ttw_link_lifetime_bound)
+        {
+            event.triggered[0] = true;
+        }
 
         // Eq. 3.2 — TTW-S1 (prose definition): Δ_k = τ_r − τ_s > T_b + ε.
         // A per-message check, not a link-lifetime check: this beacon's
@@ -6466,35 +6490,38 @@ PemEvaluateEvent(PemEvent& event)
              ++it)
         {
             // Eq. 3.5 — BSHH-S1: two heartbeats claim the same identity but
-            // originate from different physical senders within the window.
-            // A PEM_HEARTBEAT_WINDOW_S (0.4s) time bound was tried and
-            // reverted here: it fixed a false positive (a stale forged
-            // heartbeat from an earlier, unrelated attack round still
-            // sitting in the window, falsely flagging a much-later benign
-            // self-report for the same reused victim identity) but broke
-            // genuine detection too — BSHH-S1's own real hijack legitimately
-            // arrives TTW_S1_REPLAY_MARGIN_S (2.0s) or more after the
-            // original heartbeat it's supposed to conflict with, well
-            // outside a 0.4s bound (confirmed tp=0/fn=33 via smoke test).
+            // originate from different physical senders, with near-
+            // simultaneous reception (tauRVa ~= tauRVb per the PDF's own
+            // "same observation window W" reading of Eq. 3.5) — not merely
+            // "both still present somewhere in the unbounded event_window".
             //
-            // Bug fix (narrower, doesn't touch the true-positive path): the
-            // false-positive case's conflicting `it` entry is specifically
-            // one that was ITSELF already a confirmed detection
-            // (it->alert_raised == true) — the very attack that got caught
-            // earlier. Once revoked (Eq. 3.40 — confirmed elsewhere every
-            // caught RSU/vehicle only ever gets exactly one successful
-            // attack before permanent lockout), that identity can't forge
-            // anything further; a later benign self-report claiming the
-            // same identity isn't a new, still-live threat to flag against
-            // an already-resolved incident. The true-positive case's `it`
-            // entry is the ORIGINAL LEGITIMATE heartbeat (attack_label=false,
-            // never itself flagged, alert_raised=false) — excluding only
-            // already-confirmed entries leaves that comparison untouched,
-            // so real hijack detection still fires exactly as before.
+            // A PEM_HEARTBEAT_WINDOW_S (0.4s) time bound was tried and
+            // reverted here: it fixed one false positive but broke genuine
+            // detection too, since BSHH-S1's own real hijack legitimately
+            // arrives TTW_S1_REPLAY_MARGIN_S (2.0s) after the original
+            // heartbeat it conflicts with — outside a 0.4s bound (confirmed
+            // tp=0/fn=33 via smoke test).
+            //
+            // The `!it->alert_raised` guard added after that revert only
+            // covers the sub-case where the stale entry was ITSELF already
+            // a CONFIRMED detection. It does not cover an undetected/missed
+            // attack heartbeat (attack_label=true but alert_raised=false --
+            // i.e. one of this signature's own false negatives) lingering
+            // in the window for many seconds until a much later, unrelated
+            // benign self-report for the same claimed identity arrives and
+            // spuriously matches it (confirmed empirically: real gaps of
+            // ~4.9s and ~9.9s between the stale entry and the false-positive
+            // self-report, vs. a genuine hijack's ~2.0s gap). Restoring a
+            // proximity bound -- sized to comfortably cover the true 2.0s
+            // gap with headroom, while excluding the observed ~5-10s stale
+            // collisions -- closes this without repeating the too-tight
+            // 0.4s regression.
+            static const double kBshhS1ProximityWindowS = 2.0 * TTW_S1_REPLAY_MARGIN_S; // 4.0s
             if (it->type == PEM_EVENT_HEARTBEAT &&
                 it->physical_sender_id != event.physical_sender_id &&
                 it->claimed_sender_id == event.claimed_sender_id &&
-                !it->alert_raised)
+                !it->alert_raised &&
+                std::fabs(event.reception_timestamp - it->reception_timestamp) <= kBshhS1ProximityWindowS)
             {
                 event.triggered[3] = true;
                 break;
@@ -8015,6 +8042,27 @@ void declare_attack_states()
     present_ttw_attack_controllers   = false;
     present_bshh_attack_controllers  = false;
     present_me_attack_controllers    = false;
+
+    // Combined mode (scenario 13): activate all three families' node/
+    // controller attack presence at once. This is additional validation
+    // infrastructure (not itself PDF-specified) built to stress-test the
+    // PDF-specified TGN 3-way variant classifier (Eq. 3.26/3.27) under
+    // conditions where the detector cannot assume which family it's
+    // facing -- every individual attack algorithm below (Eq 3.2, 3.6, 3.7,
+    // 3.20-3.27, etc.) is completely unmodified; only attacker/victim pool
+    // selection is partitioned (see declare_attackers()) so the three
+    // families don't collide over the same vehicle/controller IDs.
+    if (attack_scenario == 13)
+    {
+        present_ttw_attack_nodes        = true;
+        present_bshh_attack_nodes       = true;
+        present_me_attack_nodes         = true;
+        present_ttw_attack_controllers  = true;
+        present_bshh_attack_controllers = true;
+        present_me_attack_controllers   = true;
+        has_RSU_infrastructure = true;
+        return;
+    }
 
     // TTW family (scenarios 1–4)
     if (attack_scenario >= TTW_S1_MAL_VEH_NO_RSU &&
@@ -153749,11 +153797,20 @@ static int RoutingMain(int argc, char *argv[])
   	{
 		  ltehelper = CreateObject<LteHelper> ();
 		  ltehelper->SetAttribute("FadingModel",StringValue("ns3::TraceFadingLossModel"));
+		  // Absolute path (was a bare relative string) -- relative resolution
+		  // depends on the process's cwd, which breaks under
+		  // `./waf --cwd=<other dir>` (used to isolate parallel dataset-
+		  // generation runs from clobbering each other's output files). The
+		  // SUMO mobility trace paths a few hundred lines below already use
+		  // absolute paths for the same reason; this brings the fading trace
+		  // path in line with that existing precedent.
+		  const std::string fadingTracePath =
+		      "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/src/lte/model/fading-traces/fading_trace_EVA_60kmph.fad";
 		  std::ifstream TraceFile;
-		  TraceFile.open("src/lte/model/fading-traces/fading_trace_EVA_60kmph.fad", std::ifstream::in);
+		  TraceFile.open(fadingTracePath, std::ifstream::in);
 		  if(TraceFile.good())
 		  {
-		  	ltehelper->SetFadingModelAttribute("TraceFilename", StringValue("src/lte/model/fading-traces/fading_trace_EVA_60kmph.fad"));
+		  	ltehelper->SetFadingModelAttribute("TraceFilename", StringValue(fadingTracePath));
 		  }
 		  
 		  ltehelper->SetFadingModelAttribute("TraceLength",TimeValue(Seconds(10.0)));

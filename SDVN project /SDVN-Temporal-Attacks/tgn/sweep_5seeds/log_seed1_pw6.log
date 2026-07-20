@@ -1,0 +1,132 @@
+[TGN] Seed fixed: 1
+[TGN] L_link=43.0s  gamma=310.2  W_max=430
+[TGN] Loaded 7751 rows from '../training_data/sim60_ap60_3seeds_events.csv'
+      Attack events: 2089  Benign events: 5662
+[TGN] After BEACON filter: 7751 rows
+
+[TGN] Events per attack_scenario:
+        scenario  1:   891 events (149 attack, 742 benign)
+        scenario  2:  1520 events (52 attack, 1468 benign)
+        scenario  3:   815 events (163 attack, 652 benign)
+        scenario  4:   800 events (160 attack, 640 benign)
+        scenario  5:   431 events (67 attack, 364 benign)
+        scenario  6:  1188 events (136 attack, 1052 benign)
+        scenario  7:   652 events (326 attack, 326 benign)
+        scenario  8:   632 events (316 attack, 316 benign)
+        scenario  9:     6 events (0 attack, 6 benign)
+        scenario 10:    60 events (0 attack, 60 benign)
+        scenario 11:   384 events (360 attack, 24 benign)
+        scenario 12:   372 events (360 attack, 12 benign)
+[TGN] Device: cuda
+       train:  5417 events  (1458 attack, 3959 benign)
+       val  :  1162 events  (312 attack, 850 benign)
+       test :  1172 events  (319 attack, 853 benign)
+       pos_weight = 6.00  (3959 benign / 1458 attack in train)  [override]
+
+[TGN] Training attempt 1/5: dim=128 layers=2 epochs=200 lr=0.001 theta=-1.0
+
+  Epoch   20/200  loss=1.2348  bce=0.9315  gap=0.308  mrgn=0.042  val_MCC@0.5=0.476  val_bestMCC=0.650  (θ=0.615)  val_AUROC=0.839  val_ACC=0.738  TP=259 TN=598 FP=252 FN=53
+  Epoch   40/200  loss=0.7900  bce=0.5601  gap=0.563  mrgn=0.000  val_MCC@0.5=0.578  val_bestMCC=0.764  (θ=0.731)  val_AUROC=0.834  val_ACC=0.823  TP=238 TN=718 FP=132 FN=74
+  Epoch   60/200  loss=0.5311  bce=0.3276  gap=0.719  mrgn=0.000  val_MCC@0.5=0.763  val_bestMCC=0.828  (θ=0.697)  val_AUROC=0.921  val_ACC=0.905  TP=264 TN=788 FP=62 FN=48
+  Epoch   80/200  loss=0.3692  bce=0.1846  gap=0.837  mrgn=0.000  val_MCC@0.5=0.803  val_bestMCC=0.847  (θ=0.724)  val_AUROC=0.941  val_ACC=0.923  TP=263 TN=810 FP=40 FN=49
+  Epoch  100/200  loss=0.2816  bce=0.1125  gap=0.900  mrgn=0.000  val_MCC@0.5=0.834  val_bestMCC=0.855  (θ=0.625)  val_AUROC=0.953  val_ACC=0.935  TP=267 TN=820 FP=30 FN=45
+  Epoch  120/200  loss=0.2334  bce=0.0766  gap=0.931  mrgn=0.000  val_MCC@0.5=0.862  val_bestMCC=0.867  (θ=0.465)  val_AUROC=0.958  val_ACC=0.947  TP=268 TN=832 FP=18 FN=44
+  Epoch  140/200  loss=0.2046  bce=0.0571  gap=0.949  mrgn=0.000  val_MCC@0.5=0.864  val_bestMCC=0.869  (θ=0.398)  val_AUROC=0.959  val_ACC=0.948  TP=268 TN=833 FP=17 FN=44
+  Epoch  160/200  loss=0.1907  bce=0.0483  gap=0.957  mrgn=0.000  val_MCC@0.5=0.866  val_bestMCC=0.871  (θ=0.379)  val_AUROC=0.960  val_ACC=0.948  TP=268 TN=834 FP=16 FN=44
+  Epoch  180/200  loss=0.1856  bce=0.0452  gap=0.959  mrgn=0.000  val_MCC@0.5=0.866  val_bestMCC=0.871  (θ=0.350)  val_AUROC=0.960  val_ACC=0.948  TP=268 TN=834 FP=16 FN=44
+  Epoch  200/200  loss=0.1848  bce=0.0447  gap=0.960  mrgn=0.000  val_MCC@0.5=0.866  val_bestMCC=0.871  (θ=0.348)  val_AUROC=0.960  val_ACC=0.948  TP=268 TN=834 FP=16 FN=44
+
+[TGN] Best checkpoint: epoch=180  val_bestMCC=0.871  val_AUROC=0.960
+[TGN] Restart check: val_bestMCC=0.871 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 1/4 — val_bestMCC=0.871 < target=0.975. Re-initialising model.
+       pos_weight = 6.00  (3959 benign / 1458 attack in train)  [override]
+
+[TGN] Training attempt 2/5: dim=128 layers=2 epochs=200 lr=0.001 theta=-1.0
+
+  Epoch   20/200  loss=1.2765  bce=0.9676  gap=0.296  mrgn=0.054  val_MCC@0.5=0.408  val_bestMCC=0.589  (θ=0.637)  val_AUROC=0.823  val_ACC=0.678  TP=263 TN=525 FP=325 FN=49
+  Epoch   40/200  loss=0.8378  bce=0.6104  gap=0.528  mrgn=0.000  val_MCC@0.5=0.417  val_bestMCC=0.763  (θ=0.734)  val_AUROC=0.821  val_ACC=0.716  TP=240 TN=592 FP=258 FN=72
+  Epoch   60/200  loss=0.5598  bce=0.3549  gap=0.706  mrgn=0.000  val_MCC@0.5=0.688  val_bestMCC=0.800  (θ=0.723)  val_AUROC=0.907  val_ACC=0.870  TP=261 TN=750 FP=100 FN=51
+  Epoch   80/200  loss=0.4155  bce=0.2256  gap=0.808  mrgn=0.000  val_MCC@0.5=0.771  val_bestMCC=0.824  (θ=0.798)  val_AUROC=0.947  val_ACC=0.906  TP=274 TN=779 FP=71 FN=38
+  Epoch  100/200  loss=0.3176  bce=0.1444  gap=0.868  mrgn=0.000  val_MCC@0.5=0.787  val_bestMCC=0.837  (θ=0.676)  val_AUROC=0.953  val_ACC=0.914  TP=274 TN=788 FP=62 FN=38
+  Epoch  120/200  loss=0.2638  bce=0.1022  gap=0.904  mrgn=0.000  val_MCC@0.5=0.831  val_bestMCC=0.849  (θ=0.610)  val_AUROC=0.957  val_ACC=0.933  TP=279 TN=805 FP=45 FN=33
+  Epoch  140/200  loss=0.2434  bce=0.0870  gap=0.926  mrgn=0.000  val_MCC@0.5=0.832  val_bestMCC=0.859  (θ=0.585)  val_AUROC=0.959  val_ACC=0.933  TP=280 TN=804 FP=46 FN=32
+  Epoch  160/200  loss=0.2264  bce=0.0746  gap=0.930  mrgn=0.000  val_MCC@0.5=0.828  val_bestMCC=0.865  (θ=0.632)  val_AUROC=0.960  val_ACC=0.931  TP=280 TN=802 FP=48 FN=32
+  Epoch  180/200  loss=0.2196  bce=0.0700  gap=0.936  mrgn=0.000  val_MCC@0.5=0.828  val_bestMCC=0.861  (θ=0.611)  val_AUROC=0.959  val_ACC=0.931  TP=280 TN=802 FP=48 FN=32
+  Epoch  200/200  loss=0.2185  bce=0.0693  gap=0.936  mrgn=0.000  val_MCC@0.5=0.828  val_bestMCC=0.861  (θ=0.613)  val_AUROC=0.959  val_ACC=0.931  TP=280 TN=802 FP=48 FN=32
+
+[TGN] Best checkpoint: epoch=160  val_bestMCC=0.865  val_AUROC=0.960
+[TGN] Restart check: val_bestMCC=0.865 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 2/4 — val_bestMCC=0.865 < target=0.975. Re-initialising model.
+       pos_weight = 6.00  (3959 benign / 1458 attack in train)  [override]
+
+[TGN] Training attempt 3/5: dim=128 layers=2 epochs=200 lr=0.001 theta=-1.0
+
+  Epoch   20/200  loss=1.4133  bce=1.0648  gap=0.239  mrgn=0.111  val_MCC@0.5=0.545  val_bestMCC=0.630  (θ=0.553)  val_AUROC=0.860  val_ACC=0.776  TP=269 TN=633 FP=217 FN=43
+  Epoch   40/200  loss=0.8662  bce=0.6331  gap=0.525  mrgn=0.000  val_MCC@0.5=0.528  val_bestMCC=0.760  (θ=0.708)  val_AUROC=0.835  val_ACC=0.786  TP=247 TN=666 FP=184 FN=65
+  Epoch   60/200  loss=0.6822  bce=0.4686  gap=0.670  mrgn=0.000  val_MCC@0.5=0.632  val_bestMCC=0.785  (θ=0.699)  val_AUROC=0.861  val_ACC=0.846  TP=249 TN=734 FP=116 FN=63
+  Epoch   80/200  loss=0.5050  bce=0.3024  gap=0.746  mrgn=0.000  val_MCC@0.5=0.790  val_bestMCC=0.826  (θ=0.708)  val_AUROC=0.919  val_ACC=0.917  TP=265 TN=801 FP=49 FN=47
+  Epoch  100/200  loss=0.3668  bce=0.1817  gap=0.837  mrgn=0.000  val_MCC@0.5=0.816  val_bestMCC=0.869  (θ=0.659)  val_AUROC=0.945  val_ACC=0.928  TP=271 TN=807 FP=43 FN=41
+  Epoch  120/200  loss=0.2796  bce=0.1100  gap=0.898  mrgn=0.000  val_MCC@0.5=0.834  val_bestMCC=0.878  (θ=0.614)  val_AUROC=0.951  val_ACC=0.935  TP=276 TN=810 FP=40 FN=36
+  Epoch  140/200  loss=0.2460  bce=0.0845  gap=0.923  mrgn=0.000  val_MCC@0.5=0.838  val_bestMCC=0.885  (θ=0.608)  val_AUROC=0.951  val_ACC=0.936  TP=274 TN=814 FP=36 FN=38
+  Epoch  160/200  loss=0.2277  bce=0.0716  gap=0.934  mrgn=0.000  val_MCC@0.5=0.846  val_bestMCC=0.882  (θ=0.600)  val_AUROC=0.951  val_ACC=0.940  TP=275 TN=817 FP=33 FN=37
+  Epoch  180/200  loss=0.2207  bce=0.0668  gap=0.938  mrgn=0.000  val_MCC@0.5=0.867  val_bestMCC=0.880  (θ=0.618)  val_AUROC=0.951  val_ACC=0.948  TP=275 TN=827 FP=23 FN=37
+  Epoch  200/200  loss=0.2196  bce=0.0660  gap=0.939  mrgn=0.000  val_MCC@0.5=0.867  val_bestMCC=0.882  (θ=0.564)  val_AUROC=0.951  val_ACC=0.948  TP=275 TN=827 FP=23 FN=37
+
+[TGN] Best checkpoint: epoch=140  val_bestMCC=0.885  val_AUROC=0.951
+[TGN] Restart check: val_bestMCC=0.885 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 3/4 — val_bestMCC=0.885 < target=0.975. Re-initialising model.
+       pos_weight = 6.00  (3959 benign / 1458 attack in train)  [override]
+
+[TGN] Training attempt 4/5: dim=128 layers=2 epochs=200 lr=0.001 theta=-1.0
+
+  Epoch   20/200  loss=1.5022  bce=1.1351  gap=0.186  mrgn=0.164  val_MCC@0.5=0.489  val_bestMCC=0.518  (θ=0.545)  val_AUROC=0.826  val_ACC=0.744  TP=262 TN=602 FP=248 FN=50
+  Epoch   40/200  loss=0.9063  bce=0.6709  gap=0.489  mrgn=0.000  val_MCC@0.5=0.526  val_bestMCC=0.748  (θ=0.740)  val_AUROC=0.803  val_ACC=0.799  TP=228 TN=701 FP=149 FN=84
+  Epoch   60/200  loss=0.6417  bce=0.4368  gap=0.659  mrgn=0.000  val_MCC@0.5=0.644  val_bestMCC=0.777  (θ=0.630)  val_AUROC=0.842  val_ACC=0.861  TP=227 TN=774 FP=76 FN=85
+  Epoch   80/200  loss=0.4730  bce=0.2801  gap=0.785  mrgn=0.000  val_MCC@0.5=0.777  val_bestMCC=0.814  (θ=0.553)  val_AUROC=0.896  val_ACC=0.915  TP=234 TN=829 FP=21 FN=78
+  Epoch  100/200  loss=0.3778  bce=0.1958  gap=0.827  mrgn=0.000  val_MCC@0.5=0.807  val_bestMCC=0.829  (θ=0.526)  val_AUROC=0.925  val_ACC=0.926  TP=244 TN=832 FP=18 FN=68
+  Epoch  120/200  loss=0.3134  bce=0.1419  gap=0.872  mrgn=0.000  val_MCC@0.5=0.840  val_bestMCC=0.842  (θ=0.477)  val_AUROC=0.928  val_ACC=0.938  TP=248 TN=842 FP=8 FN=64
+  Epoch  140/200  loss=0.2660  bce=0.1032  gap=0.908  mrgn=0.000  val_MCC@0.5=0.842  val_bestMCC=0.847  (θ=0.443)  val_AUROC=0.930  val_ACC=0.939  TP=248 TN=843 FP=7 FN=64
+  Epoch  160/200  loss=0.2423  bce=0.0849  gap=0.925  mrgn=0.000  val_MCC@0.5=0.838  val_bestMCC=0.842  (θ=0.440)  val_AUROC=0.929  val_ACC=0.937  TP=247 TN=842 FP=8 FN=65
+  Epoch  180/200  loss=0.2338  bce=0.0786  gap=0.930  mrgn=0.000  val_MCC@0.5=0.833  val_bestMCC=0.842  (θ=0.386)  val_AUROC=0.930  val_ACC=0.935  TP=245 TN=842 FP=8 FN=67
+  Epoch  200/200  loss=0.2325  bce=0.0776  gap=0.930  mrgn=0.000  val_MCC@0.5=0.833  val_bestMCC=0.842  (θ=0.384)  val_AUROC=0.930  val_ACC=0.935  TP=245 TN=842 FP=8 FN=67
+
+[TGN] Best checkpoint: epoch=140  val_bestMCC=0.847  val_AUROC=0.930
+[TGN] Restart check: val_bestMCC=0.847 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 4/4 — val_bestMCC=0.847 < target=0.975. Re-initialising model.
+       pos_weight = 6.00  (3959 benign / 1458 attack in train)  [override]
+
+[TGN] Training attempt 5/5: dim=128 layers=2 epochs=200 lr=0.001 theta=-1.0
+
+  Epoch   20/200  loss=1.5088  bce=1.1535  gap=0.224  mrgn=0.126  val_MCC@0.5=0.501  val_bestMCC=0.517  (θ=0.474)  val_AUROC=0.809  val_ACC=0.759  TP=256 TN=626 FP=224 FN=56
+  Epoch   40/200  loss=0.8902  bce=0.6560  gap=0.489  mrgn=0.000  val_MCC@0.5=0.449  val_bestMCC=0.762  (θ=0.907)  val_AUROC=0.834  val_ACC=0.728  TP=250 TN=596 FP=254 FN=62
+  Epoch   60/200  loss=0.7027  bce=0.4953  gap=0.586  mrgn=0.000  val_MCC@0.5=0.660  val_bestMCC=0.823  (θ=0.743)  val_AUROC=0.907  val_ACC=0.853  TP=264 TN=727 FP=123 FN=48
+  Epoch   80/200  loss=0.4574  bce=0.2671  gap=0.778  mrgn=0.000  val_MCC@0.5=0.774  val_bestMCC=0.816  (θ=0.733)  val_AUROC=0.917  val_ACC=0.912  TP=255 TN=805 FP=45 FN=57
+  Epoch  100/200  loss=0.3156  bce=0.1469  gap=0.869  mrgn=0.000  val_MCC@0.5=0.821  val_bestMCC=0.857  (θ=0.680)  val_AUROC=0.944  val_ACC=0.930  TP=265 TN=816 FP=34 FN=47
+  Epoch  120/200  loss=0.2440  bce=0.0897  gap=0.917  mrgn=0.000  val_MCC@0.5=0.838  val_bestMCC=0.867  (θ=0.661)  val_AUROC=0.950  val_ACC=0.937  TP=267 TN=822 FP=28 FN=45
+  Epoch  140/200  loss=0.2113  bce=0.0661  gap=0.939  mrgn=0.000  val_MCC@0.5=0.838  val_bestMCC=0.869  (θ=0.541)  val_AUROC=0.951  val_ACC=0.937  TP=268 TN=821 FP=29 FN=44
+  Epoch  160/200  loss=0.1973  bce=0.0563  gap=0.947  mrgn=0.000  val_MCC@0.5=0.834  val_bestMCC=0.866  (θ=0.587)  val_AUROC=0.952  val_ACC=0.935  TP=268 TN=819 FP=31 FN=44
+  Epoch  180/200  loss=0.1923  bce=0.0530  gap=0.950  mrgn=0.000  val_MCC@0.5=0.855  val_bestMCC=0.866  (θ=0.531)  val_AUROC=0.951  val_ACC=0.944  TP=268 TN=829 FP=21 FN=44
+  Epoch  200/200  loss=0.1915  bce=0.0525  gap=0.951  mrgn=0.000  val_MCC@0.5=0.855  val_bestMCC=0.866  (θ=0.533)  val_AUROC=0.951  val_ACC=0.944  TP=268 TN=829 FP=21 FN=44
+
+[TGN] Best checkpoint: epoch=140  val_bestMCC=0.869  val_AUROC=0.951
+[TGN] Restart check: val_bestMCC=0.869 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+[TGN] Max restarts (5) reached. Proceeding with global best (val_bestMCC=0.885).
+[TGN] Global best restored: epoch=140  val_bestMCC=0.885  val_AUROC=0.951
+[TGN] Optimal theta_FS = 0.608  (val_MCC=0.885  theta_plateau=0.608  gap=N/A  method=plateau_mid [no val separation gap])
+
+[TGN] Test  MCC=0.901  AUROC=0.952  ACC=0.961  TP=276 TN=850 FP=3 FN=43
+[TGN] Test variant classifier (TTW/BSHH/ME)  ACC=0.610  F1_macro=0.683  n=1172
+[TGN] Wall-clock training time: 3985.4s (66.42 min)
+[TGN] Weights saved to 'sweep_5seeds/tgn_weights_seed1_pw6.bin'  (1076264 bytes, dim=128 layers=2)
+
+[TGN] Complete.  Deploy with (use the SAME simTime/N_Vehicles/mobility_scenario
+                 as the data generation runs to avoid train/eval mismatch):
+  ./waf --run "scratch/routing --simTime=<N> --N_Vehicles=<N> \
+               --mobility_scenario=<N> --maxspeed=<N> \
+               --attack_scenario=1 --tgn_weights=sweep_5seeds/tgn_weights_seed1_pw6.bin \
+               --tgn_theta=0.61 --tgn_l_link=43.0"
+  # Also pass: --tgn_dim=128 --tgn_layers=2
