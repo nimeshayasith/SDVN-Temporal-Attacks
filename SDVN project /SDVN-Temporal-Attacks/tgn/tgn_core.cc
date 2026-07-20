@@ -929,8 +929,30 @@ static tgn::NodeFeatures TGN_ExtractFeatures(const PemEvent& e, uint32_t trusted
     }
     else
     {
+        // Reverted: an earlier attempt folded a link-age term
+        // ((recv - link_first_recorded_time - L_link)/T_b) into this formula
+        // via max(msgDev, linkAgeDev), reasoning that TTW_ReplayAttack's
+        // unconditional sender_timestamp=now() forging makes msgDev alone
+        // blind to vehicle/RSU-origin TTW-S1 the same way it's blind for the
+        // controller-origin case above. That reasoning missed something the
+        // PDF is explicit about: L_link = 2*r_comm/v_rel is a WORST-CASE
+        // bound assuming maximum relative velocity (§3.4.4), so genuinely
+        // co-moving/platooning vehicles legitimately exceed it with no
+        // attack involved -- which is exactly why Eq. 3.2's link-age check
+        // is only one soft, corroborated vote (w_k=0.15) among nine in the
+        // LW layer, never a standalone rule. Folding the same raw quantity
+        // into tau_dev as a hard max()-override turned a corroborated soft
+        // vote into an uncorroborated hard override on the single most
+        // heavily-weighted TGN feature -- confirmed empirically: retraining
+        // on a 2-seed dataset (more genuine long-duration links sampled)
+        // measurably regressed test MCC and TTW-S4's own FN rate versus the
+        // original single-formula version. Reverted to the literal Eq. 3.20
+        // formula; the LW layer's own re-enabled link-age OR-condition
+        // (PemEvaluateEvent, sig[0]) still carries this signal correctly,
+        // scoped as a soft vote where it belongs.
         f.tau_dev = std::max(-50.0, std::min(50.0,
                       (e.reception_timestamp - e.sender_timestamp) / TGN_BEACON_INTERVAL));
+
         // Record this as a genuine physical corroboration of the edge, for any
         // future controller-sentinel claim about the same edge to compare
         // against. Only real (non-controller) topology observations count as
@@ -1166,7 +1188,8 @@ static void TGN_WriteEventRow(const PemEvent& e, const tgn::NodeFeatures& feat,
         << feat.seq_gap << "," << feat.reporter_count << ","
         << feat.identity_mismatch << "," << sig_str() << ","
         << e.score << "," << (e.alert_raised?1:0) << ","
-        << tgn_score << "," << (tgn_alert?1:0) << "," << (e.attack_label?1:0) << "\n";
+        << tgn_score << "," << (tgn_alert?1:0) << "," << (e.attack_label?1:0) << ","
+        << PemResolveOriginScenario(e) << "\n";
 }
 
 // ── TGN_BuildTrustedEvidence ─────────────────────────────────────────────────
@@ -1805,7 +1828,15 @@ static void TGN_InitOutputFiles()
         << "physical_sender_id,claimed_sender_id,link_src_id,link_dst_id,"
         << "claimed_ts_s,recv_time_s,rx_delay_s,edge_freshness,"
         << "beacon_count,seq_gap,reporter_count,identity_mismatch,pem_signatures,"
-        << "pem_score,pem_alert,tgn_score,tgn_alert,is_attack\n";
+        << "pem_score,pem_alert,tgn_score,tgn_alert,is_attack,origin_scenario\n";
+    // origin_scenario (new trailing column): for attack_scenario==13
+    // (combined mode) this carries the event's TRUE originating 1-12
+    // sub-scenario, recovered via PemResolveOriginScenario -- needed so the
+    // TGN's 3-way variant classifier (tgn_train.py) can train/evaluate on
+    // its actual family instead of the uninformative top-level "13" value.
+    // For every single-scenario run this just repeats attack_scenario,
+    // identical to the existing column -- purely additive, no behavior
+    // change for existing single-scenario datasets.
     // NOTE: 'tgn_alert' appears before 'is_attack' intentionally — so it can't
     // be confused for the last/label column when loading the CSV positionally.
 

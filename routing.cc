@@ -136,10 +136,11 @@ GetScenarioOutputName(uint32_t scenario)
         "09_ME_S1_Malicious_Vehicles",
         "10_ME_S2_Malicious_RSU",
         "11_ME_S3_Malicious_Controller_No_RSU",
-        "12_ME_S4_Malicious_Controller_With_RSU"
+        "12_ME_S4_Malicious_Controller_With_RSU",
+        "13_COMBINED_All_Scenarios"
     };
 
-    const uint32_t safe_scenario = (scenario <= 12) ? scenario : 0;
+    const uint32_t safe_scenario = (scenario <= 13) ? scenario : 0;
     return scenario_names[safe_scenario];
 }
 
@@ -2284,6 +2285,22 @@ struct PemEvent
     uint8_t message_mac[HMAC_SHA256_LEN] = {};
 };
 
+// Forward-declared (defined later, near PemBuildEventCsvRow) so tgn_core.cc
+// (included below) can also resolve each event's true originating family
+// for its own TGN_EVENTS CSV output / variant-classifier training data.
+static uint32_t PemResolveOriginScenario(const struct PemEvent& event);
+
+// Combined mode (attack_scenario==13) only: maps a vehicle ID to the exact
+// 1-12 sub-scenario it was assigned to as an attacker/witness (populated by
+// Scenario13_VehicleSlice, defined later in this file). Used to recover
+// each PEM event's true originating family for CSV output and TGN
+// variant-classifier training, without needing to thread a new parameter
+// through every one of the dozens of individual attack-injection call
+// sites. Empty (and unused) for every single-scenario run. Declared here
+// (ahead of Scenario13_VehicleSlice's own definition) so PemBuildEventCsvRow
+// can read it.
+static std::map<uint32_t, uint32_t> g_scenario13_vehicle_origin;
+
 uint64_t pem_true_positive = 0;
 uint64_t pem_true_negative = 0;
 uint64_t pem_false_positive = 0;
@@ -2711,6 +2728,15 @@ static std::map<uint32_t, double> g_dualpath_fs_alert_time;   // node -> last FS
 // include point.
 static uint32_t PemResolveVehicleGlobalId(uint32_t maybeIndex);
 
+// Forward-declared so tgn_core.cc's TGN_ExtractFeatures can reuse the LW
+// layer's already-populated per-edge first-observation time
+// (g_pem_node_lw_state[...].link_first_recorded_time) as an orthogonal,
+// attacker-uncontrolled input to the TGN's tau_dev feature for vehicle/RSU-
+// origin events -- mirroring the controller-origin (physical_sender_id==9999)
+// redefinition already present in that function. Both definitions live later
+// in this file, after the include point.
+static std::string PemGetLinkKey(uint32_t srcId, uint32_t dstId);
+
 // ── TGN core (included here so PemEvent/pem_all_events are already defined) ─
 #include ".tgn_src/tgn_core.cc"
 
@@ -2908,7 +2934,16 @@ extern NodeContainer management_Node;
 static void
 PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double now)
 {
-    static const double kEvidenceWindowS = 5.0;   // retain last 5s of evidence per peer
+    // Eq. 3.21's Bnk(t) is scoped to "interval t" (~PEM_BEACON_INTERVAL_S),
+    // not an arbitrary multi-second history. The prior 5.0s window let a
+    // sophisticated malicious RSU (BSHH-S2, stolen victim session key) forge
+    // a fresh-timestamped heartbeat while a real beacon from seconds earlier
+    // was still "seen" here, so Case 2 (legitimate forwarding) wrongly fired
+    // and identity_mismatch stayed 0 for a credential-theft replay it should
+    // have caught via Case 3. Tightened to 3x the beacon interval (300ms) —
+    // precedented elsewhere in this file (see PEM_BEACON_INTERVAL_S usages)
+    // — to keep the PDF's per-interval semantics while tolerating jitter.
+    static const double kEvidenceWindowS = 3.0 * PEM_BEACON_INTERVAL_S;
 
     if (RSU_Nodes.GetN() > 0)
     {
@@ -3435,6 +3470,27 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     // family: "TTW"/"BSHH"/"ME" — used both by the Algorithm 4 gate below and
     // by the ME-specific enforcement text (IDENTIFY_VARIANT, Alg. 4 line 14).
     const std::string family = scenario_tag.substr(0, scenario_tag.find('-'));
+
+    // Combined-mode (attack_scenario==13) fix: the global `is_malicious_
+    // controller` flag is set once during scenario SETUP (main(), before the
+    // simulation runs any events) by whichever controller-origin scenario
+    // block executes -- in single-scenario runs there's only ever one such
+    // block, so the global stays correctly scoped for the whole run. In
+    // combined mode, multiple controller-origin AND vehicle/RSU-origin
+    // scenarios are active simultaneously, so once ANY controller-origin
+    // block sets the global true, it silently stays true for every
+    // subsequent PemApplyMitigation call for the REST of the run --
+    // including calls for genuinely vehicle/RSU-origin scenarios (e.g.
+    // TTW-S1), wrongly suppressing their LKH/REAUTH mitigation (sites
+    // below). scenario_tag already reliably encodes the exact scenario
+    // ("FAMILY-SXX"), so derive a per-call replacement from it instead of
+    // trusting the global -- this shadows every `is_malicious_controller`
+    // read below within this function only; the global itself and every
+    // other (single-scenario) caller/behavior are untouched.
+    const bool is_malicious_controller =
+        (scenario_tag == "TTW-S3"  || scenario_tag == "TTW-S4"  ||
+         scenario_tag == "BSHH-S3" || scenario_tag == "BSHH-S4" ||
+         scenario_tag == "ME-S3"   || scenario_tag == "ME-S4");
 
     // ── Algorithm 4 (FS-MITIGATE) gates — steps 8-11 (PBFT) and 21-27
     //    (VERIFY_THRESHOLD_SIG for TTW/BSHH, Eq. 3.28 / VERIFY_QUORUM for ME,
@@ -5139,11 +5195,30 @@ PemWriteCsvHeaderIfNeeded(const std::string& filename,
     alreadyWritten = true;
 }
 
+// Combined mode: resolves an event's TRUE originating 1-12 scenario from
+// its claimed_sender_id via g_scenario13_vehicle_origin (populated by
+// Scenario13_VehicleSlice). Falls back to the plain attack_scenario global
+// for every single-scenario run (map empty) or if the id wasn't found
+// (e.g. a controller-origin event with no vehicle-slice mapping) -- so
+// legacy behavior is unchanged whenever attack_scenario != 13.
+static uint32_t
+PemResolveOriginScenario(const PemEvent& event)
+{
+    if (attack_scenario != 13) return attack_scenario;
+    auto it = g_scenario13_vehicle_origin.find(event.claimed_sender_id);
+    if (it != g_scenario13_vehicle_origin.end()) return it->second;
+    it = g_scenario13_vehicle_origin.find(event.physical_sender_id);
+    if (it != g_scenario13_vehicle_origin.end()) return it->second;
+    return 0; // unresolved (e.g. controller-origin/no vehicle-slice mapping)
+}
+
 // PemBuildEventCsvRow — build one pem_event_log.csv row (the exact column
 // layout crypto_pipeline.cc's load_pem()/csv_col() already parses, documented
 // there as columns 0-21). Factored out of PemWriteEventCsv so the file writer
 // and the live wire protocol (PemLiveSend's "E:" lines, see PemEvaluateEvent)
 // build this from one place. No trailing newline — callers own that.
+// origin_scenario is appended as a NEW trailing column 22 -- append-only, so
+// any positional parser reading columns 0-21 is unaffected.
 static std::string
 PemBuildEventCsvRow(const PemEvent& event)
 {
@@ -5169,7 +5244,8 @@ PemBuildEventCsvRow(const PemEvent& event)
         << event.link_src_position.y << ","
         << event.link_dst_position.x << ","
         << event.link_dst_position.y << ","
-        << event.rssi_reporter_dbm;
+        << event.rssi_reporter_dbm << ","
+        << PemResolveOriginScenario(event);
     return row.str();
 }
 
@@ -5183,7 +5259,7 @@ PemWriteEventCsv(const PemEvent& event)
         "sim_time_s,event_type,physical_sender_id,claimed_sender_id,reporter_id,link_src_id,link_dst_id,"
         "sender_timestamp_s,reception_timestamp_s,attack_label,triggered_signatures,score,alert_raised,"
         "phase,detection_latency_ms,reporter_x,reporter_y,link_src_x,link_src_y,link_dst_x,link_dst_y,"
-        "rssi_reporter_dbm",
+        "rssi_reporter_dbm,origin_scenario",
         pem_event_csv_header_written);
 
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
@@ -6321,19 +6397,25 @@ PemEvaluateEvent(PemEvent& event)
         // pseudocode implements k=1 as 1[(t − t_first^{e_ij}) > L_link] (link-
         // age since first observation), also tagged "Eq. 3.2". These are two
         // different formulas sharing one equation number — a PDF-internal
-        // inconsistency, not a transcription slip on one side only. The block
-        // below (link-age version, matching the Algorithm 1 pseudocode) is kept
-        // for reference but disabled; the active implementation now follows
-        // the prose definition instead, per explicit instruction to treat the
-        // prose formula as authoritative.
+        // inconsistency, not a transcription slip on one side only.
         //
-        // std::map<std::string, double>::iterator firstSeenIt =
-        //     ns.link_first_recorded_time.find(linkKey);
-        // if (firstSeenIt != ns.link_first_recorded_time.end() &&
-        //     (event.reception_timestamp - firstSeenIt->second) > ttw_link_lifetime_bound)
-        // {
-        //     event.triggered[0] = true;
-        // }
+        // Follow-up fix: TTW_ReplayAttack unconditionally forges
+        // sender_timestamp = now(), which makes the prose per-message check
+        // below trivially zero (age = |now-now| = 0) for the actual attack it
+        // is named for -- the attacker controls both timestamps that formula
+        // compares. The link-age check compares against something the
+        // attacker does NOT control (how long this link has existed since
+        // first observation), so it is re-enabled here as an additional,
+        // orthogonal OR-condition on the same signature rather than left
+        // disabled. ns.link_first_recorded_time is already populated
+        // unconditionally elsewhere, so this adds no bookkeeping cost.
+        std::map<std::string, double>::iterator firstSeenIt =
+            ns.link_first_recorded_time.find(linkKey);
+        if (firstSeenIt != ns.link_first_recorded_time.end() &&
+            (event.reception_timestamp - firstSeenIt->second) > ttw_link_lifetime_bound)
+        {
+            event.triggered[0] = true;
+        }
 
         // Eq. 3.2 — TTW-S1 (prose definition): Δ_k = τ_r − τ_s > T_b + ε.
         // A per-message check, not a link-lifetime check: this beacon's
@@ -6466,35 +6548,38 @@ PemEvaluateEvent(PemEvent& event)
              ++it)
         {
             // Eq. 3.5 — BSHH-S1: two heartbeats claim the same identity but
-            // originate from different physical senders within the window.
-            // A PEM_HEARTBEAT_WINDOW_S (0.4s) time bound was tried and
-            // reverted here: it fixed a false positive (a stale forged
-            // heartbeat from an earlier, unrelated attack round still
-            // sitting in the window, falsely flagging a much-later benign
-            // self-report for the same reused victim identity) but broke
-            // genuine detection too — BSHH-S1's own real hijack legitimately
-            // arrives TTW_S1_REPLAY_MARGIN_S (2.0s) or more after the
-            // original heartbeat it's supposed to conflict with, well
-            // outside a 0.4s bound (confirmed tp=0/fn=33 via smoke test).
+            // originate from different physical senders, with near-
+            // simultaneous reception (tauRVa ~= tauRVb per the PDF's own
+            // "same observation window W" reading of Eq. 3.5) — not merely
+            // "both still present somewhere in the unbounded event_window".
             //
-            // Bug fix (narrower, doesn't touch the true-positive path): the
-            // false-positive case's conflicting `it` entry is specifically
-            // one that was ITSELF already a confirmed detection
-            // (it->alert_raised == true) — the very attack that got caught
-            // earlier. Once revoked (Eq. 3.40 — confirmed elsewhere every
-            // caught RSU/vehicle only ever gets exactly one successful
-            // attack before permanent lockout), that identity can't forge
-            // anything further; a later benign self-report claiming the
-            // same identity isn't a new, still-live threat to flag against
-            // an already-resolved incident. The true-positive case's `it`
-            // entry is the ORIGINAL LEGITIMATE heartbeat (attack_label=false,
-            // never itself flagged, alert_raised=false) — excluding only
-            // already-confirmed entries leaves that comparison untouched,
-            // so real hijack detection still fires exactly as before.
+            // A PEM_HEARTBEAT_WINDOW_S (0.4s) time bound was tried and
+            // reverted here: it fixed one false positive but broke genuine
+            // detection too, since BSHH-S1's own real hijack legitimately
+            // arrives TTW_S1_REPLAY_MARGIN_S (2.0s) after the original
+            // heartbeat it conflicts with — outside a 0.4s bound (confirmed
+            // tp=0/fn=33 via smoke test).
+            //
+            // The `!it->alert_raised` guard added after that revert only
+            // covers the sub-case where the stale entry was ITSELF already
+            // a CONFIRMED detection. It does not cover an undetected/missed
+            // attack heartbeat (attack_label=true but alert_raised=false --
+            // i.e. one of this signature's own false negatives) lingering
+            // in the window for many seconds until a much later, unrelated
+            // benign self-report for the same claimed identity arrives and
+            // spuriously matches it (confirmed empirically: real gaps of
+            // ~4.9s and ~9.9s between the stale entry and the false-positive
+            // self-report, vs. a genuine hijack's ~2.0s gap). Restoring a
+            // proximity bound -- sized to comfortably cover the true 2.0s
+            // gap with headroom, while excluding the observed ~5-10s stale
+            // collisions -- closes this without repeating the too-tight
+            // 0.4s regression.
+            static const double kBshhS1ProximityWindowS = 2.0 * TTW_S1_REPLAY_MARGIN_S; // 4.0s
             if (it->type == PEM_EVENT_HEARTBEAT &&
                 it->physical_sender_id != event.physical_sender_id &&
                 it->claimed_sender_id == event.claimed_sender_id &&
-                !it->alert_raised)
+                !it->alert_raised &&
+                std::fabs(event.reception_timestamp - it->reception_timestamp) <= kBshhS1ProximityWindowS)
             {
                 event.triggered[3] = true;
                 break;
@@ -8016,6 +8101,27 @@ void declare_attack_states()
     present_bshh_attack_controllers  = false;
     present_me_attack_controllers    = false;
 
+    // Combined mode (scenario 13): activate all three families' node/
+    // controller attack presence at once. This is additional validation
+    // infrastructure (not itself PDF-specified) built to stress-test the
+    // PDF-specified TGN 3-way variant classifier (Eq. 3.26/3.27) under
+    // conditions where the detector cannot assume which family it's
+    // facing -- every individual attack algorithm below (Eq 3.2, 3.6, 3.7,
+    // 3.20-3.27, etc.) is completely unmodified; only attacker/victim pool
+    // selection is partitioned (see declare_attackers()) so the three
+    // families don't collide over the same vehicle/controller IDs.
+    if (attack_scenario == 13)
+    {
+        present_ttw_attack_nodes        = true;
+        present_bshh_attack_nodes       = true;
+        present_me_attack_nodes         = true;
+        present_ttw_attack_controllers  = true;
+        present_bshh_attack_controllers = true;
+        present_me_attack_controllers   = true;
+        has_RSU_infrastructure = true;
+        return;
+    }
+
     // TTW family (scenarios 1–4)
     if (attack_scenario >= TTW_S1_MAL_VEH_NO_RSU &&
         attack_scenario <= TTW_S4_MAL_CTRL_WITH_RSU)
@@ -8087,6 +8193,51 @@ AttackShuffleVector(std::vector<T>& values)
         const uint32_t j = static_cast<uint32_t>(rng->GetInteger(0, i));
         std::swap(values[i], values[j]);
     }
+}
+
+// Combined-mode (attack_scenario==13) only: hands each of the 12 exact
+// sub-scenarios a disjoint slice of the vehicle-ID space, so their
+// independent pool-selection logic (several S2/S3/S4 blocks shuffle the
+// FULL 0..N_Vehicles range locally rather than consulting the shared
+// ttw_/bshh_/me_malicious_nodes[] arrays) can't collide with each other.
+// Never called from any single-scenario (attack_scenario==1..12) code path,
+// so it has zero effect on existing behavior.
+static std::vector<uint32_t>
+Scenario13_VehicleSlice(uint32_t exactScenario, uint32_t sliceSize)
+{
+    static std::vector<uint32_t> s_shuffledPool; // lazily shuffled once, shared across all 12 slice requests
+    if (s_shuffledPool.size() != N_Vehicles)
+    {
+        s_shuffledPool.resize(N_Vehicles);
+        for (uint32_t i = 0; i < N_Vehicles; i++) s_shuffledPool[i] = i;
+        AttackShuffleVector(s_shuffledPool);
+    }
+    const uint32_t perSlice = N_Vehicles / 12;
+    const uint32_t start = (exactScenario - 1) * perSlice;
+    // Avoid std::max here -- routing.cc defines 'max' as a numeric macro.
+    const uint32_t wantedSize = (sliceSize > perSlice) ? sliceSize : perSlice;
+    const uint32_t end   = std::min(start + wantedSize, N_Vehicles);
+    std::vector<uint32_t> slice;
+    if (start < N_Vehicles)
+    {
+        slice.assign(s_shuffledPool.begin() + start, s_shuffledPool.begin() + end);
+        for (uint32_t k : slice) g_scenario13_vehicle_origin[k] = exactScenario;
+    }
+    return slice;
+}
+
+// Combined-mode (attack_scenario==13) only: TTW-S1, BSHH-S1, and ME-S1 each
+// build their own "victim pool" as every vehicle NOT in *their own*
+// malicious_nodes[] array. In single-scenario runs that's correct (there's
+// nothing else to exclude), but in combined mode it would let e.g. TTW-S1
+// pick a BSHH/ME attacker vehicle as its own victim, contaminating that
+// vehicle's benign traffic. This checks across all three families' arrays
+// at once so each family's victim pool only contains vehicles that are
+// nobody's attacker.
+static bool
+IsAnyFamilyAttacker(uint32_t k)
+{
+    return ttw_malicious_nodes[k] || bshh_malicious_nodes[k] || me_malicious_nodes[k];
 }
 
 static bool
@@ -8249,31 +8400,65 @@ void declare_attackers()
         if (n_mal_veh > N_Vehicles) n_mal_veh = N_Vehicles;
     }
 
-    std::vector<uint32_t> indices(N_Vehicles);
-    for (uint32_t i = 0; i < N_Vehicles; i++) indices[i] = i;
-    // --Random=0: deterministic first-N vehicle selection.
-    // --Random=1: randomly shuffle vehicles first, then take the first N.
-    // The shuffled mode uses the shared attack RNG, so it is reproducible with
-    // ns-3 RNG run control while changing across different RngRun values.
-    if (Random != 0)
+    if (attack_scenario == 13)
     {
-        AttackShuffleVector(indices);
+        // Combined mode: give each family a DISJOINT slice of the vehicle
+        // pool instead of the shared indices/n_mal_veh selection every
+        // single-scenario run uses below. TTW's slice backs TTW-S1 only
+        // (its only variant reading ttw_malicious_nodes[] directly -- S2-S4
+        // build their own local pools, handled separately at their own
+        // block sites); BSHH's slice backs BSHH-S1 only likewise; ME's
+        // slice backs all four ME variants, since S1-S4 all read
+        // me_malicious_nodes[] directly (confirmed by direct code read).
+        for (uint32_t k = 0; k < N_Vehicles; k++)
+        {
+            ttw_malicious_nodes[k]  = false;
+            bshh_malicious_nodes[k] = false;
+            me_malicious_nodes[k]   = false;
+        }
+        for (uint32_t k : Scenario13_VehicleSlice(1, n_mal_veh))  ttw_malicious_nodes[k]  = true;
+        for (uint32_t k : Scenario13_VehicleSlice(5, n_mal_veh))  bshh_malicious_nodes[k] = true;
+        for (uint32_t k : Scenario13_VehicleSlice(9, n_mal_veh))  me_malicious_nodes[k]   = true;
+    }
+    else
+    {
+        std::vector<uint32_t> indices(N_Vehicles);
+        for (uint32_t i = 0; i < N_Vehicles; i++) indices[i] = i;
+        // --Random=0: deterministic first-N vehicle selection.
+        // --Random=1: randomly shuffle vehicles first, then take the first N.
+        // The shuffled mode uses the shared attack RNG, so it is reproducible with
+        // ns-3 RNG run control while changing across different RngRun values.
+        if (Random != 0)
+        {
+            AttackShuffleVector(indices);
+        }
+
+        for (uint32_t i = 0; i < N_Vehicles; i++)
+        {
+            bool attacking = (i < n_mal_veh);
+            uint32_t k = indices[i];
+
+            if (present_ttw_attack_nodes)   ttw_malicious_nodes[k]  = attacking;
+            if (present_bshh_attack_nodes)  bshh_malicious_nodes[k] = attacking;
+            if (present_me_attack_nodes)    me_malicious_nodes[k]   = attacking;
+        }
     }
 
-    for (uint32_t i = 0; i < N_Vehicles; i++)
-    {
-        bool attacking = (i < n_mal_veh);
-        uint32_t k = indices[i];
-
-        if (present_ttw_attack_nodes)   ttw_malicious_nodes[k]  = attacking;
-        if (present_bshh_attack_nodes)  bshh_malicious_nodes[k] = attacking;
-        if (present_me_attack_nodes)    me_malicious_nodes[k]   = attacking;
-    }
 
 
+    // NOTE (combined mode / attack_scenario==13): these three arrays are
+    // never actually read anywhere else in the codebase (confirmed by
+    // direct search) -- purely display/bookkeeping flags, not consulted by
+    // any detection or mitigation logic. So no physical-controller
+    // disjointness is needed here regardless of N_Controllers (unlike the
+    // real is_malicious_controller ambiguity, which is fixed at its actual
+    // read sites in PemApplyMitigation via the scenario_tag-derived local
+    // shadow above). Kept identical for all attack_scenario values,
+    // including 13, since there's nothing to partition.
+    for (int k = 0; k < 4; k++) ttw_malicious_controllers[k]  = false;
+    for (int k = 0; k < 4; k++) bshh_malicious_controllers[k] = false;
+    for (int k = 0; k < 4; k++) me_malicious_controllers[k]   = false;
 
-    // ── Controller assignment — TTW ──────────────────────────────────────────
-    for (int k = 0; k < 4; k++) ttw_malicious_controllers[k] = false;
     if (present_ttw_attack_controllers)
     {
         if (attack_percentage >= 10)  ttw_malicious_controllers[0] = true;
@@ -8281,18 +8466,12 @@ void declare_attackers()
         if (attack_percentage >= 67)  ttw_malicious_controllers[2] = true;
         // index 3 intentionally left false
     }
-
-    // ── Controller assignment — BSHH ─────────────────────────────────────────
-    for (int k = 0; k < 4; k++) bshh_malicious_controllers[k] = false;
     if (present_bshh_attack_controllers)
     {
         if (attack_percentage >= 10)  bshh_malicious_controllers[0] = true;
         if (attack_percentage >= 35)  bshh_malicious_controllers[1] = true;
         if (attack_percentage >= 67)  bshh_malicious_controllers[2] = true;
     }
-
-    // ── Controller assignment — ME ───────────────────────────────────────────
-    for (int k = 0; k < 4; k++) me_malicious_controllers[k] = false;
     if (present_me_attack_controllers)
     {
         if (attack_percentage >= 10)  me_malicious_controllers[0] = true;
@@ -153455,7 +153634,7 @@ static int RoutingMain(int argc, char *argv[])
           Vehicle_Nodes.Create(N_Vehicles);
       }
   }
-  else if (attack_scenario == 1)
+  else if (attack_scenario == 1 || attack_scenario == 13)
   {
       // TTW-S1 (Option B): let vehicles follow their REAL SUMO trajectories —
       // no synthetic converge/diverge mobility override. The attacker/victim
@@ -153749,11 +153928,20 @@ static int RoutingMain(int argc, char *argv[])
   	{
 		  ltehelper = CreateObject<LteHelper> ();
 		  ltehelper->SetAttribute("FadingModel",StringValue("ns3::TraceFadingLossModel"));
+		  // Absolute path (was a bare relative string) -- relative resolution
+		  // depends on the process's cwd, which breaks under
+		  // `./waf --cwd=<other dir>` (used to isolate parallel dataset-
+		  // generation runs from clobbering each other's output files). The
+		  // SUMO mobility trace paths a few hundred lines below already use
+		  // absolute paths for the same reason; this brings the fading trace
+		  // path in line with that existing precedent.
+		  const std::string fadingTracePath =
+		      "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/src/lte/model/fading-traces/fading_trace_EVA_60kmph.fad";
 		  std::ifstream TraceFile;
-		  TraceFile.open("src/lte/model/fading-traces/fading_trace_EVA_60kmph.fad", std::ifstream::in);
+		  TraceFile.open(fadingTracePath, std::ifstream::in);
 		  if(TraceFile.good())
 		  {
-		  	ltehelper->SetFadingModelAttribute("TraceFilename", StringValue("src/lte/model/fading-traces/fading_trace_EVA_60kmph.fad"));
+		  	ltehelper->SetFadingModelAttribute("TraceFilename", StringValue(fadingTracePath));
 		  }
 		  
 		  ltehelper->SetFadingModelAttribute("TraceLength",TimeValue(Seconds(10.0)));
@@ -155925,7 +156113,7 @@ static int RoutingMain(int argc, char *argv[])
   }
 
   // ── TTW-S1: color all malicious nodes RED, victims CYAN ──────────────────
-  if (attack_scenario == 1)
+  if (attack_scenario == 1 || attack_scenario == 13)
   {
       for (uint32_t k = 0; k < N_Vehicles; k++)
       {
@@ -155955,7 +156143,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE TTW-S1 ATTACK — Scenario 1
   // ===========================================================================
 
-  if (attack_scenario == 1)
+  if (attack_scenario == 1 || attack_scenario == 13)
   {
       TTW_InitLog();
 
@@ -155969,7 +156157,10 @@ static int RoutingMain(int argc, char *argv[])
           if (ttw_malicious_nodes[k]) {
               attacker_idx.push_back(k);
           }
-          else {
+          // Combined mode: exclude other families' attackers from TTW-S1's
+          // victim pool too, not just its own -- otherwise TTW-S1 could
+          // pick a simultaneously-active BSHH/ME attacker as its victim.
+          else if (attack_scenario != 13 || !IsAnyFamilyAttacker(k)) {
               victim_idx.push_back(k);
           }
       }
@@ -156296,7 +156487,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE TTW-S2 ATTACK — Scenario 2 (Malicious RSU)
   // ===========================================================================
 
-  if (attack_scenario == 2)
+  if (attack_scenario == 2 || attack_scenario == 13)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] TTW-S2 requires --N_RSUs >= 1. Aborting.\n";
@@ -156326,8 +156517,19 @@ static int RoutingMain(int argc, char *argv[])
       // without ever being verified against real movement. This replaces
       // that with a genuine natural-break search.
       std::vector<uint32_t> s2_victim_pool;
-      for (uint32_t k = 0; k < N_Vehicles; k++) s2_victim_pool.push_back(k);
-      AttackShuffleVector(s2_victim_pool);
+      if (attack_scenario == 13)
+      {
+          // Combined mode: restrict this scenario's candidate pool to its
+          // own disjoint vehicle-ID slice instead of the full fleet, so it
+          // can't pick the same vehicles as any other simultaneously-active
+          // scenario (already shuffled by Scenario13_VehicleSlice itself).
+          s2_victim_pool = Scenario13_VehicleSlice(2, N_Vehicles / 12);
+      }
+      else
+      {
+          for (uint32_t k = 0; k < N_Vehicles; k++) s2_victim_pool.push_back(k);
+          AttackShuffleVector(s2_victim_pool);
+      }
 
       // Repeated-attack extension: each malicious RSU (slot 0..n_malicious_rsus-1)
       // can genuinely intercept MORE THAN ONE real vehicle-pair HELLO exchange
@@ -156528,7 +156730,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE TTW-S3 ATTACK — Scenario 3 (Malicious Controller, No RSU)
   // ===========================================================================
 
-  if (attack_scenario == 3)
+  if (attack_scenario == 3 || attack_scenario == 13)
   {
       if (N_Vehicles < 2) {
           std::cout << "[ERROR] TTW-S3 requires at least --N_Vehicles=2. Aborting.\n";
@@ -156569,8 +156771,15 @@ static int RoutingMain(int argc, char *argv[])
       // internal replay always claimed a "physical link break" that was
       // never actually verified against real vehicle movement.
       std::vector<uint32_t> s3_victim_pool;
-      for (uint32_t k = 0; k < N_Vehicles; k++) s3_victim_pool.push_back(k);
-      AttackShuffleVector(s3_victim_pool);
+      if (attack_scenario == 13)
+      {
+          s3_victim_pool = Scenario13_VehicleSlice(3, N_Vehicles / 12);
+      }
+      else
+      {
+          for (uint32_t k = 0; k < N_Vehicles; k++) s3_victim_pool.push_back(k);
+          AttackShuffleVector(s3_victim_pool);
+      }
       const uint32_t s3_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
       std::vector<uint32_t> s3_attacker_pool(
           s3_victim_pool.begin(),
@@ -156698,7 +156907,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE TTW-S4 ATTACK — Scenario 4 (Malicious Controller, With RSU)
   // ===========================================================================
 
-  if (attack_scenario == 4)
+  if (attack_scenario == 4 || attack_scenario == 13)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] TTW-S4 requires --N_RSUs=1. Aborting.\n";
@@ -156734,8 +156943,15 @@ static int RoutingMain(int argc, char *argv[])
       // internal replay always claimed a "physical link break" that was
       // never actually verified against real vehicle movement.
       std::vector<uint32_t> s4_victim_pool;
-      for (uint32_t k = 0; k < N_Vehicles; k++) s4_victim_pool.push_back(k);
-      AttackShuffleVector(s4_victim_pool);
+      if (attack_scenario == 13)
+      {
+          s4_victim_pool = Scenario13_VehicleSlice(4, N_Vehicles / 12);
+      }
+      else
+      {
+          for (uint32_t k = 0; k < N_Vehicles; k++) s4_victim_pool.push_back(k);
+          AttackShuffleVector(s4_victim_pool);
+      }
       const uint32_t s4_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
       std::vector<uint32_t> s4_attacker_pool(
           s4_victim_pool.begin(),
@@ -156881,7 +157097,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE BSHH-S1 ATTACK — Scenario 5 (Malicious Vehicle, No RSU)
   // ===========================================================================
 
-    if (attack_scenario == 5)
+    if (attack_scenario == 5 || attack_scenario == 13)
   {
       if (N_Vehicles < 2) {
           std::cout << "[ERROR] BSHH-S1 requires --N_Vehicles >= 2. Aborting.\n";
@@ -156893,7 +157109,10 @@ static int RoutingMain(int argc, char *argv[])
       std::vector<uint32_t> bshh_attacker_idx, bshh_victim_idx;
       for (uint32_t k = 0; k < N_Vehicles; k++) {
           if (bshh_malicious_nodes[k]) bshh_attacker_idx.push_back(k);
-          else                         bshh_victim_idx.push_back(k);
+          // Combined mode: exclude other families' attackers too (see
+          // IsAnyFamilyAttacker's comment for why).
+          else if (attack_scenario != 13 || !IsAnyFamilyAttacker(k))
+              bshh_victim_idx.push_back(k);
       }
       if (bshh_attacker_idx.empty()) {
           std::cout << "[BSHH-S1] WARNING: 0 attackers selected; defaulting to V1\n";
@@ -157165,7 +157384,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE BSHH-S2 ATTACK — Scenario 6 (Malicious RSU)
   // ===========================================================================
 
-    if (attack_scenario == 6)
+    if (attack_scenario == 6 || attack_scenario == 13)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] BSHH-S2 requires --N_RSUs >= 1. Aborting.\n";
@@ -157192,8 +157411,15 @@ static int RoutingMain(int argc, char *argv[])
       // TTW_COMM_RANGE, instead of forcing a lane geometry the SUMO waypoint
       // schedule would silently overwrite and replaying on a fixed clock.
       std::vector<uint32_t> s6_victim_pool;
-      for (uint32_t k = 0; k < N_Vehicles; k++) s6_victim_pool.push_back(k);
-      AttackShuffleVector(s6_victim_pool);
+      if (attack_scenario == 13)
+      {
+          s6_victim_pool = Scenario13_VehicleSlice(6, N_Vehicles / 12);
+      }
+      else
+      {
+          for (uint32_t k = 0; k < N_Vehicles; k++) s6_victim_pool.push_back(k);
+          AttackShuffleVector(s6_victim_pool);
+      }
 
       // Repeated-attack extension (mirrors TTW-S2's TtwFindRepeatedPairs use):
       // each malicious RSU can genuinely intercept MORE THAN ONE real
@@ -157365,7 +157591,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE BSHH-S3 ATTACK — Scenario 7 (Malicious Controller, No RSU)
   // ===========================================================================
 
-    if (attack_scenario == 7)
+    if (attack_scenario == 7 || attack_scenario == 13)
   {
       if (N_Vehicles < 2) {
           std::cout << "[ERROR] BSHH-S3 requires --N_Vehicles >= 2. Aborting.\n";
@@ -157396,8 +157622,15 @@ static int RoutingMain(int argc, char *argv[])
       // of forcing a lane geometry the SUMO waypoint schedule would silently
       // overwrite and replaying on a fixed clock.
       std::vector<uint32_t> s7_victim_pool;
-      for (uint32_t k = 0; k < N_Vehicles; k++) s7_victim_pool.push_back(k);
-      AttackShuffleVector(s7_victim_pool);
+      if (attack_scenario == 13)
+      {
+          s7_victim_pool = Scenario13_VehicleSlice(7, N_Vehicles / 12);
+      }
+      else
+      {
+          for (uint32_t k = 0; k < N_Vehicles; k++) s7_victim_pool.push_back(k);
+          AttackShuffleVector(s7_victim_pool);
+      }
       const uint32_t s7_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
       std::vector<uint32_t> s7_attacker_pool(
           s7_victim_pool.begin(),
@@ -157497,7 +157730,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE BSHH-S4 ATTACK — Scenario 8 (Malicious Controller, With RSU)
   // ===========================================================================
 
-    if (attack_scenario == 8)
+    if (attack_scenario == 8 || attack_scenario == 13)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] BSHH-S4 requires --N_RSUs >= 1. Aborting.\n";
@@ -157540,8 +157773,15 @@ static int RoutingMain(int argc, char *argv[])
       // of forcing a lane geometry the SUMO waypoint schedule would silently
       // overwrite and replaying on a fixed clock.
       std::vector<uint32_t> s8_victim_pool;
-      for (uint32_t k = 0; k < N_Vehicles; k++) s8_victim_pool.push_back(k);
-      AttackShuffleVector(s8_victim_pool);
+      if (attack_scenario == 13)
+      {
+          s8_victim_pool = Scenario13_VehicleSlice(8, N_Vehicles / 12);
+      }
+      else
+      {
+          for (uint32_t k = 0; k < N_Vehicles; k++) s8_victim_pool.push_back(k);
+          AttackShuffleVector(s8_victim_pool);
+      }
       uint32_t s8_pool_target = std::min(kControllerOriginVictimPoolSize, N_Vehicles / 2);
       if (s8_pool_target > RSU_Nodes.GetN()) s8_pool_target = RSU_Nodes.GetN();
       std::vector<uint32_t> s8_attacker_pool(
@@ -157662,7 +157902,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE ME-S1 ATTACK — Scenario 9 (Malicious Vehicles, No RSU)
   // ===========================================================================
 
-    if (attack_scenario == 9)
+    if (attack_scenario == 9 || attack_scenario == 13)
   {
       if (N_Vehicles < 3) {
           std::cout << "[ERROR] ME-S1 requires --N_Vehicles >= 3 (at least 2 real-link + 1 echo attacker). Aborting.\n";
@@ -157678,7 +157918,9 @@ static int RoutingMain(int argc, char *argv[])
               me_echo_cidx.push_back(k);
               me_s1_actual_attackers.insert(k);
           }
-          else {
+          // Combined mode: exclude other families' attackers too (see
+          // IsAnyFamilyAttacker's comment for why).
+          else if (attack_scenario != 13 || !IsAnyFamilyAttacker(k)) {
               me_real_cidx.push_back(k);
           }
       }
@@ -157908,7 +158150,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE ME-S2 ATTACK — Scenario 10 (Malicious RSU)
   // ===========================================================================
 
-    if (attack_scenario == 10)
+    if (attack_scenario == 10 || attack_scenario == 13)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] ME-S2 requires --N_RSUs >= 1. Aborting.\n";
@@ -158115,7 +158357,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE ME-S3 ATTACK — Scenario 11 (Malicious Controller, No RSU)
   // ===========================================================================
 
-    if (attack_scenario == 11)
+    if (attack_scenario == 11 || attack_scenario == 13)
   {
       if (N_Vehicles < 4) {
           std::cout << "[ERROR] ME-S3 requires --N_Vehicles >= 4. Aborting.\n";
@@ -158266,7 +158508,7 @@ static int RoutingMain(int argc, char *argv[])
   // SCHEDULE ME-S4 ATTACK — Scenario 12 (Malicious Controller, With RSU)
   // ===========================================================================
 
-    if (attack_scenario == 12)
+    if (attack_scenario == 12 || attack_scenario == 13)
   {
       if (N_RSUs < 1 || RSU_Nodes.GetN() < 1) {
           std::cout << "[ERROR] ME-S4 requires --N_RSUs >= 1. Aborting.\n";

@@ -457,8 +457,20 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
 
     # Variant class labels for Section 4.7 classification head.
     # -1 = benign (excluded from CE loss), 0 = TTW, 1 = BSHH, 2 = ME
-    sc = df["attack_scenario"].values.astype(np.int64) if "attack_scenario" in df.columns \
-         else np.zeros(len(df), dtype=np.int64)
+    # Prefer origin_scenario (per-event true 1-12 family, only meaningful for
+    # combined attack_scenario==13 runs) over the top-level attack_scenario
+    # column when present and actually populated -- attack_scenario==13
+    # itself falls outside every range below and would otherwise map every
+    # combined-run row to -1 (excluded), silently discarding all of it from
+    # variant-classifier training. Falls back to attack_scenario for every
+    # existing single-scenario dataset (origin_scenario absent, or present
+    # but identically equal to attack_scenario) -- no behavior change there.
+    if "origin_scenario" in df.columns and (df["origin_scenario"] > 0).any():
+        sc = df["origin_scenario"].values.astype(np.int64)
+    elif "attack_scenario" in df.columns:
+        sc = df["attack_scenario"].values.astype(np.int64)
+    else:
+        sc = np.zeros(len(df), dtype=np.int64)
     variant_label = np.where((sc >= 1)  & (sc <= 4),  0,
                     np.where((sc >= 5)  & (sc <= 8),  1,
                     np.where((sc >= 9)  & (sc <= 12), 2, -1))).astype(np.int64)
