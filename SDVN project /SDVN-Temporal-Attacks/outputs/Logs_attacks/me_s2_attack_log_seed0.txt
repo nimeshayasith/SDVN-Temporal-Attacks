@@ -1,0 +1,582 @@
+========================================================
+  ME Attack S2 — Malicious RSU                          
+========================================================
+
+  Simulation Parameters:
+    Total vehicles      : 200
+    Total RSUs          : 64
+    Attack percentage   : 20%
+    Malicious RSUs      : 13
+
+  Attack Steps:
+  t=10  ①  V1 ↔ V2 HELLO exchange (V2V); V3/V4 in range
+  t=10  ②  V1, V2, V3, V4 forward topology to RSU
+  t=10  ③  RSU aggregates legitimate topology reports
+  t=10  ④  Malicious RSU injects forged echo observations
+  t=10+ ⑤  RSU forwards aggregated + injected reports to controller
+  t=10+ ⑥  Controller infers phantom paths via V3, V4
+  t=10+ ⑦  Controller installs faulty routes on phantom paths
+
+========================================================
+
+[t=10.020]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V198 -> V184 : HELLO(t=10.000)
+  V184 -> V198 : HELLO(t=10.000)
+  [V32 and V37 in overhearing range — no direct link to V198 or V184]
+
+[t=10.020]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_205
+  V198 -> RSU_205 : <V198 sees V184, t=10.000>
+  V184 -> RSU_205 : <V184 sees V198, t=10.000>
+  V32 -> RSU_205 : <V32 sees V37, t=10.000000>
+  V37 -> RSU_205 : <V37 sees V32, t=10.000000>
+
+[t=10.020]  STEP ③  RSU_205 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V198,V184)=311.075m  d(V32,V37)=4.899m  (range=300.000m)
+  V198<->V184 OUT OF RANGE — no real link
+  <V32 sees V37>  AGGREGATED
+  <V37 sees V32>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.045]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V111 -> V109 : HELLO(t=10.000)
+  V109 -> V111 : HELLO(t=10.000)
+  [V36 and V42 in overhearing range — no direct link to V111 or V109]
+
+[t=10.045]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_206
+  V111 -> RSU_206 : <V111 sees V109, t=10.000>
+  V109 -> RSU_206 : <V109 sees V111, t=10.000>
+  V36 -> RSU_206 : <V36 sees V42, t=10.000000>
+  V42 -> RSU_206 : <V42 sees V36, t=10.000000>
+
+[t=10.045]  STEP ③  RSU_206 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V111,V109)=13.770m  d(V36,V42)=0.598m  (range=300.000m)
+  <V111 sees V109>  AGGREGATED
+  <V109 sees V111>  AGGREGATED
+  <V36 sees V42>  AGGREGATED
+  <V42 sees V36>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.070]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V85 -> V191 : HELLO(t=10.000)
+  V191 -> V85 : HELLO(t=10.000)
+  [V5 and V8 in overhearing range — no direct link to V85 or V191]
+
+[t=10.070]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_207
+  V85 -> RSU_207 : <V85 sees V191, t=10.000>
+  V191 -> RSU_207 : <V191 sees V85, t=10.000>
+  V5 -> RSU_207 : <V5 sees V8, t=10.000000>
+  V8 -> RSU_207 : <V8 sees V5, t=10.000000>
+
+[t=10.070]  STEP ③  RSU_207 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V85,V191)=112.118m  d(V5,V8)=1.499m  (range=300.000m)
+  <V85 sees V191>  AGGREGATED
+  <V191 sees V85>  AGGREGATED
+  <V5 sees V8>  AGGREGATED
+  <V8 sees V5>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.095]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V162 -> V157 : HELLO(t=10.000)
+  V157 -> V162 : HELLO(t=10.000)
+  [V40 and V18 in overhearing range — no direct link to V162 or V157]
+
+[t=10.095]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_208
+  V162 -> RSU_208 : <V162 sees V157, t=10.000>
+  V157 -> RSU_208 : <V157 sees V162, t=10.000>
+  V40 -> RSU_208 : <V40 sees V18, t=10.000000>
+  V18 -> RSU_208 : <V18 sees V40, t=10.000000>
+
+[t=10.095]  STEP ③  RSU_208 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V162,V157)=208.774m  d(V40,V18)=166.993m  (range=300.000m)
+  <V162 sees V157>  AGGREGATED
+  <V157 sees V162>  AGGREGATED
+  <V40 sees V18>  AGGREGATED
+  <V18 sees V40>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.100]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_205
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_205 -> Controller : <V198 sees V184, t=10.000> reported by V32  (INJECTED — forged)
+  RSU_205 -> Controller : <V198 sees V184, t=10.000000> reported by V37  (INJECTED — forged)
+  V3↔V4 link: dist=4.9m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V198↔V184 across multiple paths
+
+[t=10.100]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_205 -> Controller: legitimate + injected echo observations:
+    V32 reports observing V198↔V184  [INJECTED]
+    V37 reports observing V198↔V184  [INJECTED]
+
+[t=10.100]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V198↔V184 echoed link: dist=311.1m  OUT OF RANGE — Path 1 claim itself is false
+  Controller incorrectly infers:
+    Path 1: V198 → V184  (FALSE — out of range, echoed anyway)
+    Path 2: V198 → V32 → V184  (PHANTOM)
+    Path 3: V198 → V37 → V184  (PHANTOM)
+    Path 4: V198 → V32 → V37 → V184  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V32 and V37 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V182 -> V49 : HELLO(t=10.0)
+  V49 -> V182 : HELLO(t=10.0)
+  [V16 and V24 in overhearing range — no direct link to V182 or V49]
+
+[t=10.1]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_209
+  V182 -> RSU_209 : <V182 sees V49, t=10.0>
+  V49 -> RSU_209 : <V49 sees V182, t=10.0>
+  V16 -> RSU_209 : <V16 sees V24, t=10.000000>
+  V24 -> RSU_209 : <V24 sees V16, t=10.000000>
+
+[t=10.1]  STEP ③  RSU_209 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V182,V49)=178.7m  d(V16,V24)=274.2m  (range=300.0m)
+  <V182 sees V49>  AGGREGATED
+  <V49 sees V182>  AGGREGATED
+  <V16 sees V24>  AGGREGATED
+  <V24 sees V16>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_206
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_206 -> Controller : <V111 sees V109, t=10.0> reported by V36  (INJECTED — forged)
+  RSU_206 -> Controller : <V111 sees V109, t=10.000000> reported by V42  (INJECTED — forged)
+  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V111↔V109 across multiple paths
+
+[t=10.1]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_206 -> Controller: legitimate + injected echo observations:
+    V36 reports observing V111↔V109  [INJECTED]
+    V42 reports observing V111↔V109  [INJECTED]
+
+[t=10.1]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V111↔V109 echoed link: dist=13.7m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V111 → V109  (REAL)
+    Path 2: V111 → V36 → V109  (PHANTOM)
+    Path 3: V111 → V42 → V109  (PHANTOM)
+    Path 4: V111 → V36 → V42 → V109  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V36 and V42 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V170 -> V168 : HELLO(t=10.0)
+  V168 -> V170 : HELLO(t=10.0)
+  [V23 and V33 in overhearing range — no direct link to V170 or V168]
+
+[t=10.1]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_210
+  V170 -> RSU_210 : <V170 sees V168, t=10.0>
+  V168 -> RSU_210 : <V168 sees V170, t=10.0>
+  V23 -> RSU_210 : <V23 sees V33, t=10.000000>
+  V33 -> RSU_210 : <V33 sees V23, t=10.000000>
+
+[t=10.1]  STEP ③  RSU_210 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V170,V168)=43.3m  d(V23,V33)=372.6m  (range=300.0m)
+  <V170 sees V168>  AGGREGATED
+  <V168 sees V170>  AGGREGATED
+  V23<->V33 OUT OF RANGE — echo pair has no genuine link of its own
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_207
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_207 -> Controller : <V85 sees V191, t=10.0> reported by V5  (INJECTED — forged)
+  RSU_207 -> Controller : <V85 sees V191, t=10.000000> reported by V8  (INJECTED — forged)
+  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V85↔V191 across multiple paths
+
+[t=10.2]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_207 -> Controller: legitimate + injected echo observations:
+    V5 reports observing V85↔V191  [INJECTED]
+    V8 reports observing V85↔V191  [INJECTED]
+
+[t=10.2]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V85↔V191 echoed link: dist=112.1m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V85 → V191  (REAL)
+    Path 2: V85 → V5 → V191  (PHANTOM)
+    Path 3: V85 → V8 → V191  (PHANTOM)
+    Path 4: V85 → V5 → V8 → V191  (PHANTOM — V3↔V4 in range)
+
+[t=10.2]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V5 and V8 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V166 -> V103 : HELLO(t=10.0)
+  V103 -> V166 : HELLO(t=10.0)
+  [V43 and V35 in overhearing range — no direct link to V166 or V103]
+
+[t=10.2]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_211
+  V166 -> RSU_211 : <V166 sees V103, t=10.0>
+  V103 -> RSU_211 : <V103 sees V166, t=10.0>
+  V43 -> RSU_211 : <V43 sees V35, t=10.000000>
+  V35 -> RSU_211 : <V35 sees V43, t=10.000000>
+
+[t=10.2]  STEP ③  RSU_211 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V166,V103)=250.5m  d(V43,V35)=826.9m  (range=300.0m)
+  <V166 sees V103>  AGGREGATED
+  <V103 sees V166>  AGGREGATED
+  V43<->V35 OUT OF RANGE — echo pair has no genuine link of its own
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_208
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_208 -> Controller : <V162 sees V157, t=10.0> reported by V40  (INJECTED — forged)
+  RSU_208 -> Controller : <V162 sees V157, t=10.000000> reported by V18  (INJECTED — forged)
+  V3↔V4 link: dist=167.0m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V162↔V157 across multiple paths
+
+[t=10.2]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_208 -> Controller: legitimate + injected echo observations:
+    V40 reports observing V162↔V157  [INJECTED]
+    V18 reports observing V162↔V157  [INJECTED]
+
+[t=10.2]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V162↔V157 echoed link: dist=208.5m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V162 → V157  (REAL)
+    Path 2: V162 → V40 → V157  (PHANTOM)
+    Path 3: V162 → V18 → V157  (PHANTOM)
+    Path 4: V162 → V40 → V18 → V157  (PHANTOM — V3↔V4 in range)
+
+[t=10.2]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V40 and V18 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V187 -> V190 : HELLO(t=10.0)
+  V190 -> V187 : HELLO(t=10.0)
+  [V26 and V39 in overhearing range — no direct link to V187 or V190]
+
+[t=10.2]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_212
+  V187 -> RSU_212 : <V187 sees V190, t=10.0>
+  V190 -> RSU_212 : <V190 sees V187, t=10.0>
+  V26 -> RSU_212 : <V26 sees V39, t=10.000000>
+  V39 -> RSU_212 : <V39 sees V26, t=10.000000>
+
+[t=10.2]  STEP ③  RSU_212 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V187,V190)=4.9m  d(V26,V39)=96.0m  (range=300.0m)
+  <V187 sees V190>  AGGREGATED
+  <V190 sees V187>  AGGREGATED
+  <V26 sees V39>  AGGREGATED
+  <V39 sees V26>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_209
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_209 -> Controller : <V182 sees V49, t=10.0> reported by V16  (INJECTED — forged)
+  RSU_209 -> Controller : <V182 sees V49, t=10.000000> reported by V24  (INJECTED — forged)
+  V3↔V4 link: dist=274.2m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V182↔V49 across multiple paths
+
+[t=10.2]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_209 -> Controller: legitimate + injected echo observations:
+    V16 reports observing V182↔V49  [INJECTED]
+    V24 reports observing V182↔V49  [INJECTED]
+
+[t=10.2]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V182↔V49 echoed link: dist=178.7m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V182 → V49  (REAL)
+    Path 2: V182 → V16 → V49  (PHANTOM)
+    Path 3: V182 → V24 → V49  (PHANTOM)
+    Path 4: V182 → V16 → V24 → V49  (PHANTOM — V3↔V4 in range)
+
+[t=10.2]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V16 and V24 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V172 -> V47 : HELLO(t=10.0)
+  V47 -> V172 : HELLO(t=10.0)
+  [V14 and V7 in overhearing range — no direct link to V172 or V47]
+
+[t=10.2]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_213
+  V172 -> RSU_213 : <V172 sees V47, t=10.0>
+  V47 -> RSU_213 : <V47 sees V172, t=10.0>
+  V14 -> RSU_213 : <V14 sees V7, t=10.000000>
+  V7 -> RSU_213 : <V7 sees V14, t=10.000000>
+
+[t=10.2]  STEP ③  RSU_213 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V172,V47)=69.4m  d(V14,V7)=308.3m  (range=300.0m)
+  <V172 sees V47>  AGGREGATED
+  <V47 sees V172>  AGGREGATED
+  V14<->V7 OUT OF RANGE — echo pair has no genuine link of its own
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_210
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_210 -> Controller : <V170 sees V168, t=10.0> reported by V23  (INJECTED — forged)
+  RSU_210 -> Controller : <V170 sees V168, t=10.000000> reported by V33  (INJECTED — forged)
+  V3↔V4 link: dist=372.6m  OUT OF RANGE — no Path 4
+  Note: These do NOT fabricate new physical links — they duplicate V170↔V168 across multiple paths
+
+[t=10.2]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_210 -> Controller: legitimate + injected echo observations:
+    V23 reports observing V170↔V168  [INJECTED]
+    V33 reports observing V170↔V168  [INJECTED]
+
+[t=10.2]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V170↔V168 echoed link: dist=43.6m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V170 → V168  (REAL)
+    Path 2: V170 → V23 → V168  (PHANTOM)
+    Path 3: V170 → V33 → V168  (PHANTOM)
+
+[t=10.2]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V23 and V33 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V71 -> V73 : HELLO(t=10.0)
+  V73 -> V71 : HELLO(t=10.0)
+  [V10 and V6 in overhearing range — no direct link to V71 or V73]
+
+[t=10.2]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_214
+  V71 -> RSU_214 : <V71 sees V73, t=10.0>
+  V73 -> RSU_214 : <V73 sees V71, t=10.0>
+  V10 -> RSU_214 : <V10 sees V6, t=10.000000>
+  V6 -> RSU_214 : <V6 sees V10, t=10.000000>
+
+[t=10.2]  STEP ③  RSU_214 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V71,V73)=44.7m  d(V10,V6)=4.9m  (range=300.0m)
+  <V71 sees V73>  AGGREGATED
+  <V73 sees V71>  AGGREGATED
+  <V10 sees V6>  AGGREGATED
+  <V6 sees V10>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_211
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_211 -> Controller : <V166 sees V103, t=10.0> reported by V43  (INJECTED — forged)
+  RSU_211 -> Controller : <V166 sees V103, t=10.000000> reported by V35  (INJECTED — forged)
+  V3↔V4 link: dist=826.9m  OUT OF RANGE — no Path 4
+  Note: These do NOT fabricate new physical links — they duplicate V166↔V103 across multiple paths
+
+[t=10.2]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_211 -> Controller: legitimate + injected echo observations:
+    V43 reports observing V166↔V103  [INJECTED]
+    V35 reports observing V166↔V103  [INJECTED]
+
+[t=10.2]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V166↔V103 echoed link: dist=251.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V166 → V103  (REAL)
+    Path 2: V166 → V43 → V103  (PHANTOM)
+    Path 3: V166 → V35 → V103  (PHANTOM)
+
+[t=10.2]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V43 and V35 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.3]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V114 -> V151 : HELLO(t=10.0)
+  V151 -> V114 : HELLO(t=10.0)
+  [V11 and V27 in overhearing range — no direct link to V114 or V151]
+
+[t=10.3]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_215
+  V114 -> RSU_215 : <V114 sees V151, t=10.0>
+  V151 -> RSU_215 : <V151 sees V114, t=10.0>
+  V11 -> RSU_215 : <V11 sees V27, t=10.000000>
+  V27 -> RSU_215 : <V27 sees V11, t=10.000000>
+
+[t=10.3]  STEP ③  RSU_215 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V114,V151)=99.3m  d(V11,V27)=1.5m  (range=300.0m)
+  <V114 sees V151>  AGGREGATED
+  <V151 sees V114>  AGGREGATED
+  <V11 sees V27>  AGGREGATED
+  <V27 sees V11>  AGGREGATED
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.3]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_212
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_212 -> Controller : <V187 sees V190, t=10.0> reported by V26  (INJECTED — forged)
+  RSU_212 -> Controller : <V187 sees V190, t=10.000000> reported by V39  (INJECTED — forged)
+  V3↔V4 link: dist=96.0m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V187↔V190 across multiple paths
+
+[t=10.3]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_212 -> Controller: legitimate + injected echo observations:
+    V26 reports observing V187↔V190  [INJECTED]
+    V39 reports observing V187↔V190  [INJECTED]
+
+[t=10.3]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V187↔V190 echoed link: dist=4.9m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V187 → V190  (REAL)
+    Path 2: V187 → V26 → V190  (PHANTOM)
+    Path 3: V187 → V39 → V190  (PHANTOM)
+    Path 4: V187 → V26 → V39 → V190  (PHANTOM — V3↔V4 in range)
+
+[t=10.3]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V26 and V39 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.3]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V134 -> V196 : HELLO(t=10.0)
+  V196 -> V134 : HELLO(t=10.0)
+  [V22 and V19 in overhearing range — no direct link to V134 or V196]
+
+[t=10.3]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_216
+  V134 -> RSU_216 : <V134 sees V196, t=10.0>
+  V196 -> RSU_216 : <V196 sees V134, t=10.0>
+  V22 -> RSU_216 : <V22 sees V19, t=10.000000>
+  V19 -> RSU_216 : <V19 sees V22, t=10.000000>
+
+[t=10.3]  STEP ③  RSU_216 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V134,V196)=41.5m  d(V22,V19)=381.9m  (range=300.0m)
+  <V134 sees V196>  AGGREGATED
+  <V196 sees V134>  AGGREGATED
+  V22<->V19 OUT OF RANGE — echo pair has no genuine link of its own
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.3]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_213
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_213 -> Controller : <V172 sees V47, t=10.0> reported by V14  (INJECTED — forged)
+  RSU_213 -> Controller : <V172 sees V47, t=10.000000> reported by V7  (INJECTED — forged)
+  V3↔V4 link: dist=308.3m  OUT OF RANGE — no Path 4
+  Note: These do NOT fabricate new physical links — they duplicate V172↔V47 across multiple paths
+
+[t=10.3]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_213 -> Controller: legitimate + injected echo observations:
+    V14 reports observing V172↔V47  [INJECTED]
+    V7 reports observing V172↔V47  [INJECTED]
+
+[t=10.3]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V172↔V47 echoed link: dist=68.9m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V172 → V47  (REAL)
+    Path 2: V172 → V14 → V47  (PHANTOM)
+    Path 3: V172 → V7 → V47  (PHANTOM)
+
+[t=10.3]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V14 and V7 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.3]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
+  V110 -> V123 : HELLO(t=10.0)
+  V123 -> V110 : HELLO(t=10.0)
+  [V28 and V9 in overhearing range — no direct link to V110 or V123]
+
+[t=10.3]  STEP ②  NORMAL TOPOLOGY REPORTING TO RSU_217
+  V110 -> RSU_217 : <V110 sees V123, t=10.0>
+  V123 -> RSU_217 : <V123 sees V110, t=10.0>
+  V28 -> RSU_217 : <V28 sees V9, t=10.000000>
+  V9 -> RSU_217 : <V9 sees V28, t=10.000000>
+
+[t=10.3]  STEP ③  RSU_217 AGGREGATES LEGITIMATE TOPOLOGY
+  Measured distances: d(V110,V123)=38.0m  d(V28,V9)=989.7m  (range=300.0m)
+  <V110 sees V123>  AGGREGATED
+  <V123 sees V110>  AGGREGATED
+  V28<->V9 OUT OF RANGE — echo pair has no genuine link of its own
+  RSU -> Controller: forwarding aggregated report
+
+[t=10.3]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_214
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_214 -> Controller : <V71 sees V73, t=10.0> reported by V10  (INJECTED — forged)
+  RSU_214 -> Controller : <V71 sees V73, t=10.000000> reported by V6  (INJECTED — forged)
+  V3↔V4 link: dist=4.9m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V71↔V73 across multiple paths
+
+[t=10.3]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_214 -> Controller: legitimate + injected echo observations:
+    V10 reports observing V71↔V73  [INJECTED]
+    V6 reports observing V71↔V73  [INJECTED]
+
+[t=10.3]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V71↔V73 echoed link: dist=44.6m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V71 → V73  (REAL)
+    Path 2: V71 → V10 → V73  (PHANTOM)
+    Path 3: V71 → V6 → V73  (PHANTOM)
+    Path 4: V71 → V10 → V6 → V73  (PHANTOM — V3↔V4 in range)
+
+[t=10.3]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V10 and V6 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.3]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_215
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_215 -> Controller : <V114 sees V151, t=10.0> reported by V11  (INJECTED — forged)
+  RSU_215 -> Controller : <V114 sees V151, t=10.000000> reported by V27  (INJECTED — forged)
+  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
+  Note: These do NOT fabricate new physical links — they duplicate V114↔V151 across multiple paths
+
+[t=10.3]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_215 -> Controller: legitimate + injected echo observations:
+    V11 reports observing V114↔V151  [INJECTED]
+    V27 reports observing V114↔V151  [INJECTED]
+
+[t=10.3]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V114↔V151 echoed link: dist=98.1m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V114 → V151  (REAL)
+    Path 2: V114 → V11 → V151  (PHANTOM)
+    Path 3: V114 → V27 → V151  (PHANTOM)
+    Path 4: V114 → V11 → V27 → V151  (PHANTOM — V3↔V4 in range)
+
+[t=10.3]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V11 and V27 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.4]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_216
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_216 -> Controller : <V134 sees V196, t=10.0> reported by V22  (INJECTED — forged)
+  RSU_216 -> Controller : <V134 sees V196, t=10.000000> reported by V19  (INJECTED — forged)
+  V3↔V4 link: dist=381.9m  OUT OF RANGE — no Path 4
+  Note: These do NOT fabricate new physical links — they duplicate V134↔V196 across multiple paths
+
+[t=10.4]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_216 -> Controller: legitimate + injected echo observations:
+    V22 reports observing V134↔V196  [INJECTED]
+    V19 reports observing V134↔V196  [INJECTED]
+
+[t=10.4]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V134↔V196 echoed link: dist=41.5m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V134 → V196  (REAL)
+    Path 2: V134 → V22 → V196  (PHANTOM)
+    Path 3: V134 → V19 → V196  (PHANTOM)
+
+[t=10.4]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V22 and V19 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.4]  STEP ④  ECHO INJECTION BY MALICIOUS RSU_217
+  RSU injects forged observations indicating V1↔V2 HELLO was overheard by V3, V4:
+  RSU_217 -> Controller : <V110 sees V123, t=10.0> reported by V28  (INJECTED — forged)
+  RSU_217 -> Controller : <V110 sees V123, t=10.000000> reported by V9  (INJECTED — forged)
+  V3↔V4 link: dist=989.7m  OUT OF RANGE — no Path 4
+  Note: These do NOT fabricate new physical links — they duplicate V110↔V123 across multiple paths
+
+[t=10.4]  STEP ⑤  AGGREGATED TOPOLOGY FORWARDING TO CONTROLLER
+  RSU_217 -> Controller: legitimate + injected echo observations:
+    V28 reports observing V110↔V123  [INJECTED]
+    V9 reports observing V110↔V123  [INJECTED]
+
+[t=10.4]  STEP ⑥  FALSE MULTIPATH INFERENCE AT CONTROLLER
+  V110↔V123 echoed link: dist=38.0m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V110 → V123  (REAL)
+    Path 2: V110 → V28 → V123  (PHANTOM)
+    Path 3: V110 → V9 → V123  (PHANTOM)
+
+[t=10.4]  STEP ⑦  FAULTY ROUTING DECISIONS
+  Controller installs routes using phantom V28 and V9 paths
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+

@@ -10,68 +10,50 @@
 
 ========================================================
 
-[t=10.000]  STEP ①  V78/V147 -> RSU_205 -> Controller (legitimate aggregate)
-  <V78 sees V147, t=10.000>  ACCEPTED
-  <V147 sees V78, t=10.000>  ACCEPTED
+[t=10.000]  STEP ①  V57/V28 -> RSU_205 -> Controller (legitimate aggregate)
+  <V57 sees V28, t=10.000>  ACCEPTED
+  <V28 sees V57, t=10.000>  ACCEPTED
 
-[t=10.001]  STEP ①  V153/V98 -> RSU_205 -> Controller (legitimate aggregate)
-  <V153 sees V98, t=10.000>  ACCEPTED
-  <V98 sees V153, t=10.000>  ACCEPTED
+[t=10.001]  STEP ①  V35/V89 -> RSU_205 -> Controller (legitimate aggregate)
+  <V35 sees V89, t=10.000>  ACCEPTED
+  <V89 sees V35, t=10.000>  ACCEPTED
 
-[t=10.001]  STEP ①  V199/V204 -> RSU_205 -> Controller (legitimate aggregate)
-  <V199 sees V204, t=10.000>  ACCEPTED
-  <V204 sees V199, t=10.000>  ACCEPTED
+[t=10.001]  STEP ①  V28/V57 -> RSU_205 -> Controller (legitimate aggregate)
+  <V28 sees V57, t=10.000>  ACCEPTED
+  <V57 sees V28, t=10.000>  ACCEPTED
 
-[t=10.002]  STEP ①  V147/V78 -> RSU_205 -> Controller (legitimate aggregate)
-  <V147 sees V78, t=10.000>  ACCEPTED
-  <V78 sees V147, t=10.000>  ACCEPTED
-
-[t=10.002]  STEP ①  V204/V199 -> RSU_205 -> Controller (legitimate aggregate)
-  <V204 sees V199, t=10.000>  ACCEPTED
-  <V199 sees V204, t=10.000>  ACCEPTED
-
-[t=10.002]  STEP ①  V98/V153 -> RSU_205 -> Controller (legitimate aggregate)
-  <V98 sees V153, t=10.000>  ACCEPTED
-  <V153 sees V98, t=10.000>  ACCEPTED
+[t=10.002]  STEP ①  V89/V35 -> RSU_205 -> Controller (legitimate aggregate)
+  <V89 sees V35, t=10.000>  ACCEPTED
+  <V35 sees V89, t=10.000>  ACCEPTED
 
 [t=10.100]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V78 sees V147, t=10.000>
-  Link physically breaks at t≈42.7s (dist > 300.0m, real SUMO trajectory)
-  Controller WILL NOT time out this entry — will replay at t=44.7
+  Stored : <V57 sees V28, t=10.000>
+  Link physically breaks at t≈57.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=59.0
 
 [t=10.101]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V153 sees V98, t=10.000>
-  Link physically breaks at t≈16.1s (dist > 300.0m, real SUMO trajectory)
-  Controller WILL NOT time out this entry — will replay at t=18.1
+  Stored : <V35 sees V89, t=10.000>
+  Link physically breaks at t≈57.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=59.0
 
 [t=10.101]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V199 sees V204, t=10.000>
-  Link physically breaks at t≈54.9s (dist > 300.0m, real SUMO trajectory)
-  Controller WILL NOT time out this entry — will replay at t=56.9
+  Stored : <V28 sees V57, t=10.000>
+  Link physically breaks at t≈57.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=59.0
 
 [t=10.101]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V147 sees V78, t=10.000>
-  Link physically breaks at t≈42.7s (dist > 300.0m, real SUMO trajectory)
-  Controller WILL NOT time out this entry — will replay at t=44.7
+  Stored : <V89 sees V35, t=10.000>
+  Link physically breaks at t≈57.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=59.0
 
-[t=10.102]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V204 sees V199, t=10.000>
-  Link physically breaks at t≈54.9s (dist > 300.0m, real SUMO trajectory)
-  Controller WILL NOT time out this entry — will replay at t=56.9
-
-[t=10.102]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
-  Stored : <V98 sees V153, t=10.000>
-  Link physically breaks at t≈16.1s (dist > 300.0m, real SUMO trajectory)
-  Controller WILL NOT time out this entry — will replay at t=18.1
-
-[t=18.101]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
-  Stored entry  : <V153 sees V98, t=10.000>  (captured from RSU-aggregated update at t=10.000)
-  Forged packet : <V153 sees V98, t=18.100>  timestamp changed 10.000 -> 18.100
-  Forge action  : controller changes timestamp to appear current, reinserts at t=18.101 — no external packet required
+[t=59.000]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V57 sees V28, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V57 sees V28, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.000 — no external packet required
   RSU was in original data path (V→RSU→Controller)
 
-[t=18.101]  STEP ④  TABLE POISONED (internal — no external packet)
-  Controller believes V153<->V98 was ACTIVE at t=18.100 (forged — link has since broken)
+[t=59.000]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V57<->V28 was ACTIVE at t=59.000 (forged — link has since broken)
   Physical reality : link BROKEN
   <- ATTACK SUCCESS
 
@@ -79,166 +61,180 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V0  ->  V1    t=10.000    No
-  V100  ->  V199    t=10.000    No
+  V100  ->  V119    t=10.000    No
+  V100  ->  V72    t=10.000    No
   V104  ->  V106    t=10.000    No
+  V104  ->  V196    t=40.000    No
   V105  ->  V118    t=10.000    No
   V106  ->  V104    t=10.000    No
+  V106  ->  V96    t=25.000    No
   V109  ->  V146    t=10.000    No
-  V110  ->  V94    t=10.000    No
-  V117  ->  V85    t=10.000    No
+  V10  ->  V12    t=10.000    No
+  V110  ->  V91    t=10.000    No
+  V113  ->  V196    t=30.000    No
+  V113  ->  V63    t=10.000    YES <- FORGED
+  V115  ->  V196    t=35.000    No
+  V116  ->  V112    t=30.000    No
   V118  ->  V105    t=10.000    No
-  V119  ->  V193    t=10.000    No
-  V120  ->  V12    t=10.000    No
-  V123  ->  V99    t=10.000    YES <- FORGED
-  V125  ->  V131    t=10.000    No
-  V125  ->  V145    t=10.010    No
-  V127  ->  V147    t=15.000    No
-  V127  ->  V99    t=10.000    YES <- FORGED
-  V127  ->  V132    t=10.000    No
+  V119  ->  V100    t=10.000    No
+  V119  ->  V112    t=15.000    No
+  V124  ->  V144    t=15.000    No
+  V124  ->  V187    t=10.000    YES <- FORGED
+  V125  ->  V127    t=25.000    No
+  V128  ->  V91    t=30.000    No
   V129  ->  V191    t=10.000    No
-  V12  ->  V120    t=10.000    No
-  V12  ->  V20    t=10.000    No
-  V131  ->  V125    t=10.000    No
-  V134  ->  V195    t=10.000    No
-  V134  ->  V202    t=15.000    No
-  V134  ->  V191    t=10.000    YES <- FORGED
-  V138  ->  V141    t=10.000    No
-  V13  ->  V17    t=10.000    No
-  V140  ->  V173    t=10.000    No
-  V140  ->  V145    t=10.000    No
-  V141  ->  V138    t=10.000    No
-  V143  ->  V69    t=10.000    YES <- FORGED
-  V143  ->  V134    t=10.000    No
+  V12  ->  V10    t=10.000    No
+  V12  ->  V15    t=10.000    No
+  V130  ->  V127    t=20.000    No
+  V133  ->  V34    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V136  ->  V80    t=15.000    No
+  V137  ->  V86    t=10.000    YES <- FORGED
+  V138  ->  V189    t=10.000    No
+  V138  ->  V99    t=10.000    YES <- FORGED
+  V138  ->  V180    t=9.990    No
+  V138  ->  V189    t=10.000    No
+  V139  ->  V91    t=25.000    No
+  V13  ->  V35    t=10.000    No
+  V13  ->  V191    t=10.000    YES <- FORGED
+  V13  ->  V35    t=10.000    No
+  V144  ->  V4    t=10.000    No
   V144  ->  V4    t=10.000    No
   V146  ->  V109    t=10.000    No
-  V147  ->  V127    t=15.000    No
-  V147  ->  V78    t=10.000    No
-  V149  ->  V153    t=10.000    No
-  V151  ->  V73    t=10.000    No
-  V153  ->  V149    t=10.000    No
-  V153  ->  V98    t=18.100    YES <- FORGED
-  V155  ->  V53    t=10.000    No
-  V158  ->  V160    t=10.000    No
-  V158  ->  V85    t=10.000    YES <- FORGED
-  V158  ->  V160    t=10.000    No
-  V159  ->  V175    t=10.000    No
-  V15  ->  V20    t=10.000    No
-  V160  ->  V158    t=10.000    No
-  V160  ->  V85    t=10.000    YES <- FORGED
-  V160  ->  V158    t=10.000    No
-  V163  ->  V83    t=10.000    No
-  V163  ->  V118    t=10.000    YES <- FORGED
-  V163  ->  V83    t=10.000    No
-  V164  ->  V64    t=10.000    No
-  V164  ->  V106    t=10.000    YES <- FORGED
-  V164  ->  V87    t=10.000    No
-  V167  ->  V42    t=10.000    No
-  V169  ->  V71    t=10.000    No
-  V170  ->  V166    t=10.000    No
-  V171  ->  V59    t=10.000    No
-  V171  ->  V21    t=10.000    YES <- FORGED
-  V171  ->  V59    t=10.000    No
-  V172  ->  V47    t=10.000    No
-  V173  ->  V140    t=10.000    No
-  V175  ->  V159    t=10.000    No
-  V177  ->  V51    t=10.000    No
-  V179  ->  V42    t=10.000    YES <- FORGED
-  V17  ->  V13    t=10.000    No
+  V146  ->  V96    t=40.000    No
+  V148  ->  V19    t=10.000    No
+  V152  ->  V86    t=10.000    YES <- FORGED
+  V153  ->  V15    t=15.000    No
+  V154  ->  V118    t=10.000    YES <- FORGED
+  V156  ->  V96    t=30.000    No
+  V15  ->  V71    t=10.000    No
+  V160  ->  V34    t=25.000    No
+  V161  ->  V127    t=15.000    No
+  V161  ->  V163    t=10.000    No
+  V163  ->  V161    t=10.000    No
+  V163  ->  V34    t=30.000    No
+  V164  ->  V154    t=10.000    No
+  V165  ->  V63    t=10.000    YES <- FORGED
+  V167  ->  V179    t=10.000    No
+  V171  ->  V109    t=50.000    No
+  V173  ->  V186    t=35.000    No
+  V174  ->  V34    t=40.000    No
+  V176  ->  V180    t=20.000    No
+  V177  ->  V44    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V65    t=25.000    No
+  V180  ->  V49    t=10.000    No
+  V180  ->  V146    t=10.000    YES <- FORGED
+  V180  ->  V49    t=10.000    No
+  V181  ->  V186    t=25.000    No
+  V182  ->  V132    t=45.000    No
+  V182  ->  V77    t=10.000    No
+  V182  ->  V161    t=10.000    YES <- FORGED
   V183  ->  V186    t=10.000    No
-  V184  ->  V155    t=10.000    YES <- FORGED
-  V186  ->  V183    t=10.000    No
-  V18  ->  V70    t=10.000    No
-  V18  ->  V13    t=10.000    YES <- FORGED
-  V18  ->  V22    t=10.000    No
-  V18  ->  V70    t=10.000    No
+  V185  ->  V28    t=10.000    No
+  V186  ->  V44    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V189  ->  V99    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V190  ->  V86    t=30.000    No
   V191  ->  V129    t=10.000    No
-  V193  ->  V119    t=10.000    No
-  V194  ->  V199    t=10.010    No
-  V195  ->  V134    t=10.000    No
-  V195  ->  V191    t=10.000    YES <- FORGED
-  V195  ->  V134    t=10.000    No
-  V199  ->  V100    t=10.000    No
-  V199  ->  V194    t=10.010    No
-  V199  ->  V204    t=10.000    No
-  V19  ->  V6    t=10.000    No
+  V193  ->  V106    t=10.000    YES <- FORGED
+  V197  ->  V69    t=10.000    No
+  V19  ->  V97    t=10.000    No
+  V19  ->  V197    t=10.000    YES <- FORGED
+  V19  ->  V13    t=10.000    No
   V1  ->  V0    t=10.000    No
-  V202  ->  V134    t=15.000    No
-  V204  ->  V199    t=10.000    No
-  V20  ->  V12    t=10.000    No
-  V20  ->  V15    t=10.000    No
-  V21  ->  V55    t=10.000    No
-  V22  ->  V35    t=10.000    No
-  V22  ->  V19    t=10.000    YES <- FORGED
-  V22  ->  V35    t=10.000    No
-  V30  ->  V79    t=10.000    No
-  V30  ->  V98    t=10.000    No
-  V32  ->  V36    t=10.000    No
-  V35  ->  V22    t=10.000    No
-  V35  ->  V94    t=10.000    No
-  V35  ->  V19    t=10.000    YES <- FORGED
-  V36  ->  V32    t=10.000    No
-  V37  ->  V42    t=10.000    No
-  V42  ->  V167    t=10.000    No
-  V42  ->  V37    t=10.000    No
-  V43  ->  V84    t=10.000    No
-  V47  ->  V172    t=10.000    No
+  V204  ->  V112    t=25.000    No
+  V20  ->  V25    t=10.000    No
+  V22  ->  V162    t=10.000    No
+  V25  ->  V26    t=10.000    No
+  V26  ->  V180    t=25.000    No
+  V28  ->  V180    t=10.000    No
+  V28  ->  V185    t=10.000    No
+  V28  ->  V57    t=10.000    No
+  V32  ->  V37    t=10.000    No
+  V32  ->  V167    t=10.000    YES <- FORGED
+  V32  ->  V37    t=10.000    No
+  V35  ->  V13    t=10.000    No
+  V35  ->  V89    t=10.000    No
+  V35  ->  V97    t=10.000    No
+  V35  ->  V191    t=10.000    YES <- FORGED
+  V37  ->  V32    t=10.000    No
+  V37  ->  V167    t=10.000    YES <- FORGED
+  V37  ->  V193    t=10.000    No
+  V39  ->  V180    t=30.000    No
+  V43  ->  V87    t=10.000    No
+  V44  ->  V177    t=10.000    No
+  V45  ->  V132    t=20.000    No
+  V45  ->  V48    t=10.000    No
+  V46  ->  V152    t=10.000    No
+  V49  ->  V180    t=10.000    No
+  V49  ->  V146    t=10.000    YES <- FORGED
+  V49  ->  V180    t=10.000    No
   V4  ->  V144    t=10.000    No
-  V51  ->  V177    t=10.000    No
-  V53  ->  V155    t=10.000    No
-  V55  ->  V21    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V52  ->  V21    t=35.000    No
+  V54  ->  V63    t=10.000    No
+  V57  ->  V28    t=59.000    YES <- FORGED
   V57  ->  V62    t=10.000    No
-  V57  ->  V79    t=10.000    YES <- FORGED
+  V57  ->  V96    t=10.000    No
+  V57  ->  V28    t=10.000    YES <- FORGED
   V57  ->  V62    t=10.000    No
-  V59  ->  V171    t=10.000    No
-  V59  ->  V21    t=10.000    YES <- FORGED
-  V59  ->  V171    t=10.000    No
-  V59  ->  V62    t=10.000    No
-  V60  ->  V79    t=10.000    No
+  V58  ->  V90    t=10.000    No
+  V59  ->  V152    t=20.000    No
   V62  ->  V57    t=10.000    No
-  V62  ->  V79    t=10.000    YES <- FORGED
-  V64  ->  V164    t=10.000    No
-  V64  ->  V106    t=10.000    YES <- FORGED
-  V64  ->  V164    t=10.000    No
-  V67  ->  V146    t=10.000    YES <- FORGED
-  V69  ->  V94    t=10.000    No
-  V6  ->  V19    t=10.000    No
-  V6  ->  V8    t=10.000    No
-  V70  ->  V18    t=10.000    No
-  V70  ->  V13    t=10.000    YES <- FORGED
-  V70  ->  V18    t=10.000    No
-  V71  ->  V169    t=10.000    No
-  V71  ->  V155    t=10.000    YES <- FORGED
-  V71  ->  V169    t=10.000    No
+  V62  ->  V28    t=10.000    YES <- FORGED
+  V62  ->  V78    t=10.000    No
+  V63  ->  V54    t=10.000    No
+  V64  ->  V68    t=9.990    No
+  V65  ->  V187    t=10.000    YES <- FORGED
+  V66  ->  V21    t=40.000    No
+  V68  ->  V64    t=9.990    No
+  V69  ->  V109    t=20.000    No
+  V69  ->  V197    t=10.000    No
+  V6  ->  V5    t=10.000    No
+  V71  ->  V109    t=15.000    No
+  V73  ->  V151    t=10.000    No
+  V75  ->  V152    t=25.000    No
+  V77  ->  V182    t=10.000    No
+  V77  ->  V161    t=10.000    YES <- FORGED
+  V77  ->  V182    t=10.000    No
+  V77  ->  V65    t=10.000    No
   V78  ->  V127    t=10.000    No
-  V78  ->  V147    t=10.000    No
-  V79  ->  V30    t=10.000    No
-  V79  ->  V60    t=10.000    No
-  V79  ->  V81    t=10.000    No
-  V80  ->  V69    t=10.000    YES <- FORGED
-  V81  ->  V79    t=10.000    No
-  V83  ->  V163    t=10.000    No
-  V83  ->  V118    t=10.000    YES <- FORGED
-  V84  ->  V43    t=10.000    No
-  V85  ->  V117    t=10.000    No
-  V87  ->  V146    t=10.000    YES <- FORGED
-  V8  ->  V6    t=10.000    No
-  V94  ->  V110    t=10.000    No
-  V94  ->  V35    t=10.000    No
-  V94  ->  V69    t=10.000    No
-  V97  ->  V99    t=10.000    No
-  V98  ->  V153    t=10.000    No
-  V98  ->  V30    t=10.000    No
-  V99  ->  V97    t=10.000    No
-  V9  ->  V42    t=10.000    YES <- FORGED
-[t=18.101]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=18.102]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
-  Stored entry  : <V98 sees V153, t=10.000>  (captured from RSU-aggregated update at t=10.000)
-  Forged packet : <V98 sees V153, t=18.100>  timestamp changed 10.000 -> 18.100
-  Forge action  : controller changes timestamp to appear current, reinserts at t=18.102 — no external packet required
+  V78  ->  V118    t=10.000    YES <- FORGED
+  V79  ->  V34    t=10.000    No
+  V81  ->  V29    t=10.000    No
+  V84  ->  V65    t=10.000    No
+  V86  ->  V89    t=10.000    No
+  V87  ->  V65    t=10.000    No
+  V87  ->  V106    t=10.000    YES <- FORGED
+  V88  ->  V86    t=10.000    No
+  V88  ->  V44    t=10.000    YES <- FORGED
+  V88  ->  V113    t=10.000    No
+  V89  ->  V152    t=40.000    No
+  V89  ->  V35    t=10.000    No
+  V89  ->  V86    t=10.000    No
+  V8  ->  V4    t=10.000    No
+  V8  ->  V26    t=10.000    No
+  V94  ->  V152    t=35.000    No
+  V94  ->  V99    t=10.000    No
+  V96  ->  V154    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V97  ->  V197    t=10.000    YES <- FORGED
+  V97  ->  V113    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V99  ->  V196    t=10.000    No
+  V99  ->  V94    t=10.000    No
+[t=59.000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=59.001]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V35 sees V89, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V35 sees V89, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.001 — no external packet required
   RSU was in original data path (V→RSU→Controller)
 
-[t=18.102]  STEP ④  TABLE POISONED (internal — no external packet)
-  Controller believes V98<->V153 was ACTIVE at t=18.100 (forged — link has since broken)
+[t=59.001]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V35<->V89 was ACTIVE at t=59.000 (forged — link has since broken)
   Physical reality : link BROKEN
   <- ATTACK SUCCESS
 
@@ -246,154 +242,1117 @@
   Src   Dst   Timestamp   Forged?
   ──────────────────────────────────
   V0  ->  V1    t=10.000    No
-  V100  ->  V199    t=10.000    No
+  V100  ->  V119    t=10.000    No
+  V100  ->  V72    t=10.000    No
   V104  ->  V106    t=10.000    No
+  V104  ->  V196    t=40.000    No
   V105  ->  V118    t=10.000    No
   V106  ->  V104    t=10.000    No
+  V106  ->  V96    t=25.000    No
   V109  ->  V146    t=10.000    No
-  V110  ->  V94    t=10.000    No
-  V117  ->  V85    t=10.000    No
+  V10  ->  V12    t=10.000    No
+  V110  ->  V91    t=10.000    No
+  V113  ->  V196    t=30.000    No
+  V113  ->  V63    t=10.000    YES <- FORGED
+  V115  ->  V196    t=35.000    No
+  V116  ->  V112    t=30.000    No
   V118  ->  V105    t=10.000    No
-  V119  ->  V193    t=10.000    No
-  V120  ->  V12    t=10.000    No
-  V123  ->  V99    t=10.000    YES <- FORGED
-  V125  ->  V131    t=10.000    No
-  V125  ->  V145    t=10.010    No
-  V127  ->  V147    t=15.000    No
-  V127  ->  V99    t=10.000    YES <- FORGED
-  V127  ->  V132    t=10.000    No
+  V119  ->  V100    t=10.000    No
+  V119  ->  V112    t=15.000    No
+  V124  ->  V144    t=15.000    No
+  V124  ->  V187    t=10.000    YES <- FORGED
+  V125  ->  V127    t=25.000    No
+  V128  ->  V91    t=30.000    No
   V129  ->  V191    t=10.000    No
-  V12  ->  V120    t=10.000    No
-  V12  ->  V20    t=10.000    No
-  V131  ->  V125    t=10.000    No
-  V134  ->  V195    t=10.000    No
-  V134  ->  V202    t=15.000    No
-  V134  ->  V191    t=10.000    YES <- FORGED
-  V138  ->  V141    t=10.000    No
-  V13  ->  V17    t=10.000    No
-  V140  ->  V173    t=10.000    No
-  V140  ->  V145    t=10.000    No
-  V141  ->  V138    t=10.000    No
-  V143  ->  V69    t=10.000    YES <- FORGED
-  V143  ->  V134    t=10.000    No
+  V12  ->  V10    t=10.000    No
+  V12  ->  V15    t=10.000    No
+  V130  ->  V127    t=20.000    No
+  V133  ->  V34    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V136  ->  V80    t=15.000    No
+  V137  ->  V86    t=10.000    YES <- FORGED
+  V138  ->  V189    t=10.000    No
+  V138  ->  V99    t=10.000    YES <- FORGED
+  V138  ->  V180    t=9.990    No
+  V138  ->  V189    t=10.000    No
+  V139  ->  V91    t=25.000    No
+  V13  ->  V35    t=10.000    No
+  V13  ->  V191    t=10.000    YES <- FORGED
+  V13  ->  V35    t=10.000    No
+  V144  ->  V4    t=10.000    No
   V144  ->  V4    t=10.000    No
   V146  ->  V109    t=10.000    No
-  V147  ->  V127    t=15.000    No
-  V147  ->  V78    t=10.000    No
-  V149  ->  V153    t=10.000    No
-  V151  ->  V73    t=10.000    No
-  V153  ->  V149    t=10.000    No
-  V155  ->  V53    t=10.000    No
-  V158  ->  V160    t=10.000    No
-  V158  ->  V85    t=10.000    YES <- FORGED
-  V158  ->  V160    t=10.000    No
-  V159  ->  V175    t=10.000    No
-  V15  ->  V20    t=10.000    No
-  V160  ->  V158    t=10.000    No
-  V160  ->  V85    t=10.000    YES <- FORGED
-  V160  ->  V158    t=10.000    No
-  V163  ->  V83    t=10.000    No
-  V163  ->  V118    t=10.000    YES <- FORGED
-  V163  ->  V83    t=10.000    No
-  V164  ->  V64    t=10.000    No
-  V164  ->  V106    t=10.000    YES <- FORGED
-  V164  ->  V87    t=10.000    No
-  V167  ->  V42    t=10.000    No
-  V169  ->  V71    t=10.000    No
-  V170  ->  V166    t=10.000    No
-  V171  ->  V59    t=10.000    No
-  V171  ->  V21    t=10.000    YES <- FORGED
-  V171  ->  V59    t=10.000    No
-  V172  ->  V47    t=10.000    No
-  V173  ->  V140    t=10.000    No
-  V175  ->  V159    t=10.000    No
-  V177  ->  V51    t=10.000    No
-  V179  ->  V42    t=10.000    YES <- FORGED
-  V17  ->  V13    t=10.000    No
+  V146  ->  V96    t=40.000    No
+  V148  ->  V19    t=10.000    No
+  V152  ->  V86    t=10.000    YES <- FORGED
+  V153  ->  V15    t=15.000    No
+  V154  ->  V118    t=10.000    YES <- FORGED
+  V156  ->  V96    t=30.000    No
+  V15  ->  V71    t=10.000    No
+  V160  ->  V34    t=25.000    No
+  V161  ->  V127    t=15.000    No
+  V161  ->  V163    t=10.000    No
+  V163  ->  V161    t=10.000    No
+  V163  ->  V34    t=30.000    No
+  V164  ->  V154    t=10.000    No
+  V165  ->  V63    t=10.000    YES <- FORGED
+  V167  ->  V179    t=10.000    No
+  V171  ->  V109    t=50.000    No
+  V173  ->  V186    t=35.000    No
+  V174  ->  V34    t=40.000    No
+  V176  ->  V180    t=20.000    No
+  V177  ->  V44    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V65    t=25.000    No
+  V180  ->  V49    t=10.000    No
+  V180  ->  V146    t=10.000    YES <- FORGED
+  V180  ->  V49    t=10.000    No
+  V181  ->  V186    t=25.000    No
+  V182  ->  V132    t=45.000    No
+  V182  ->  V77    t=10.000    No
+  V182  ->  V161    t=10.000    YES <- FORGED
   V183  ->  V186    t=10.000    No
-  V184  ->  V155    t=10.000    YES <- FORGED
-  V186  ->  V183    t=10.000    No
-  V18  ->  V70    t=10.000    No
-  V18  ->  V13    t=10.000    YES <- FORGED
-  V18  ->  V22    t=10.000    No
-  V18  ->  V70    t=10.000    No
+  V185  ->  V28    t=10.000    No
+  V186  ->  V44    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V189  ->  V99    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V190  ->  V86    t=30.000    No
   V191  ->  V129    t=10.000    No
-  V193  ->  V119    t=10.000    No
-  V194  ->  V199    t=10.010    No
-  V195  ->  V134    t=10.000    No
-  V195  ->  V191    t=10.000    YES <- FORGED
-  V195  ->  V134    t=10.000    No
-  V199  ->  V100    t=10.000    No
-  V199  ->  V194    t=10.010    No
-  V199  ->  V204    t=10.000    No
-  V19  ->  V6    t=10.000    No
+  V193  ->  V106    t=10.000    YES <- FORGED
+  V197  ->  V69    t=10.000    No
+  V19  ->  V97    t=10.000    No
+  V19  ->  V197    t=10.000    YES <- FORGED
+  V19  ->  V13    t=10.000    No
   V1  ->  V0    t=10.000    No
-  V202  ->  V134    t=15.000    No
-  V204  ->  V199    t=10.000    No
-  V20  ->  V12    t=10.000    No
-  V20  ->  V15    t=10.000    No
-  V21  ->  V55    t=10.000    No
-  V22  ->  V35    t=10.000    No
-  V22  ->  V19    t=10.000    YES <- FORGED
-  V22  ->  V35    t=10.000    No
-  V30  ->  V79    t=10.000    No
-  V30  ->  V98    t=10.000    No
-  V32  ->  V36    t=10.000    No
-  V35  ->  V22    t=10.000    No
-  V35  ->  V94    t=10.000    No
-  V35  ->  V19    t=10.000    YES <- FORGED
-  V36  ->  V32    t=10.000    No
-  V37  ->  V42    t=10.000    No
-  V42  ->  V167    t=10.000    No
-  V42  ->  V37    t=10.000    No
-  V43  ->  V84    t=10.000    No
-  V47  ->  V172    t=10.000    No
+  V204  ->  V112    t=25.000    No
+  V20  ->  V25    t=10.000    No
+  V22  ->  V162    t=10.000    No
+  V25  ->  V26    t=10.000    No
+  V26  ->  V180    t=25.000    No
+  V28  ->  V180    t=10.000    No
+  V28  ->  V185    t=10.000    No
+  V28  ->  V57    t=10.000    No
+  V32  ->  V37    t=10.000    No
+  V32  ->  V167    t=10.000    YES <- FORGED
+  V32  ->  V37    t=10.000    No
+  V35  ->  V13    t=10.000    No
+  V35  ->  V89    t=59.000    YES <- FORGED
+  V35  ->  V97    t=10.000    No
+  V35  ->  V191    t=10.000    YES <- FORGED
+  V37  ->  V32    t=10.000    No
+  V37  ->  V167    t=10.000    YES <- FORGED
+  V37  ->  V193    t=10.000    No
+  V39  ->  V180    t=30.000    No
+  V43  ->  V87    t=10.000    No
+  V44  ->  V177    t=10.000    No
+  V45  ->  V132    t=20.000    No
+  V45  ->  V48    t=10.000    No
+  V46  ->  V152    t=10.000    No
+  V49  ->  V180    t=10.000    No
+  V49  ->  V146    t=10.000    YES <- FORGED
+  V49  ->  V180    t=10.000    No
   V4  ->  V144    t=10.000    No
-  V51  ->  V177    t=10.000    No
-  V53  ->  V155    t=10.000    No
-  V55  ->  V21    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V52  ->  V21    t=35.000    No
+  V54  ->  V63    t=10.000    No
   V57  ->  V62    t=10.000    No
-  V57  ->  V79    t=10.000    YES <- FORGED
+  V57  ->  V96    t=10.000    No
+  V57  ->  V28    t=10.000    YES <- FORGED
   V57  ->  V62    t=10.000    No
-  V59  ->  V171    t=10.000    No
-  V59  ->  V21    t=10.000    YES <- FORGED
-  V59  ->  V171    t=10.000    No
-  V59  ->  V62    t=10.000    No
-  V60  ->  V79    t=10.000    No
+  V58  ->  V90    t=10.000    No
+  V59  ->  V152    t=20.000    No
   V62  ->  V57    t=10.000    No
-  V62  ->  V79    t=10.000    YES <- FORGED
-  V64  ->  V164    t=10.000    No
-  V64  ->  V106    t=10.000    YES <- FORGED
-  V64  ->  V164    t=10.000    No
-  V67  ->  V146    t=10.000    YES <- FORGED
-  V69  ->  V94    t=10.000    No
-  V6  ->  V19    t=10.000    No
-  V6  ->  V8    t=10.000    No
-  V70  ->  V18    t=10.000    No
-  V70  ->  V13    t=10.000    YES <- FORGED
-  V70  ->  V18    t=10.000    No
-  V71  ->  V169    t=10.000    No
-  V71  ->  V155    t=10.000    YES <- FORGED
-  V71  ->  V169    t=10.000    No
+  V62  ->  V28    t=10.000    YES <- FORGED
+  V62  ->  V78    t=10.000    No
+  V63  ->  V54    t=10.000    No
+  V64  ->  V68    t=9.990    No
+  V65  ->  V187    t=10.000    YES <- FORGED
+  V66  ->  V21    t=40.000    No
+  V68  ->  V64    t=9.990    No
+  V69  ->  V109    t=20.000    No
+  V69  ->  V197    t=10.000    No
+  V6  ->  V5    t=10.000    No
+  V71  ->  V109    t=15.000    No
+  V73  ->  V151    t=10.000    No
+  V75  ->  V152    t=25.000    No
+  V77  ->  V182    t=10.000    No
+  V77  ->  V161    t=10.000    YES <- FORGED
+  V77  ->  V182    t=10.000    No
+  V77  ->  V65    t=10.000    No
   V78  ->  V127    t=10.000    No
-  V78  ->  V147    t=10.000    No
-  V79  ->  V30    t=10.000    No
-  V79  ->  V60    t=10.000    No
-  V79  ->  V81    t=10.000    No
-  V80  ->  V69    t=10.000    YES <- FORGED
-  V81  ->  V79    t=10.000    No
-  V83  ->  V163    t=10.000    No
-  V83  ->  V118    t=10.000    YES <- FORGED
-  V84  ->  V43    t=10.000    No
-  V85  ->  V117    t=10.000    No
-  V87  ->  V146    t=10.000    YES <- FORGED
-  V8  ->  V6    t=10.000    No
-  V94  ->  V110    t=10.000    No
-  V94  ->  V35    t=10.000    No
-  V94  ->  V69    t=10.000    No
-  V97  ->  V99    t=10.000    No
-  V98  ->  V153    t=18.100    YES <- FORGED
-  V98  ->  V30    t=10.000    No
-  V99  ->  V97    t=10.000    No
-  V9  ->  V42    t=10.000    YES <- FORGED
-[t=18.102]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+  V78  ->  V118    t=10.000    YES <- FORGED
+  V79  ->  V34    t=10.000    No
+  V81  ->  V29    t=10.000    No
+  V84  ->  V65    t=10.000    No
+  V86  ->  V89    t=10.000    No
+  V87  ->  V65    t=10.000    No
+  V87  ->  V106    t=10.000    YES <- FORGED
+  V88  ->  V86    t=10.000    No
+  V88  ->  V44    t=10.000    YES <- FORGED
+  V88  ->  V113    t=10.000    No
+  V89  ->  V152    t=40.000    No
+  V89  ->  V35    t=10.000    No
+  V89  ->  V86    t=10.000    No
+  V8  ->  V4    t=10.000    No
+  V8  ->  V26    t=10.000    No
+  V94  ->  V152    t=35.000    No
+  V94  ->  V99    t=10.000    No
+  V96  ->  V154    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V97  ->  V197    t=10.000    YES <- FORGED
+  V97  ->  V113    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V99  ->  V196    t=10.000    No
+  V99  ->  V94    t=10.000    No
+[t=59.001]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=59.001]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V28 sees V57, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V28 sees V57, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.001 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.001]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V28<->V57 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V0  ->  V1    t=10.000    No
+  V100  ->  V119    t=10.000    No
+  V100  ->  V72    t=10.000    No
+  V104  ->  V106    t=10.000    No
+  V104  ->  V196    t=40.000    No
+  V105  ->  V118    t=10.000    No
+  V106  ->  V104    t=10.000    No
+  V106  ->  V96    t=25.000    No
+  V109  ->  V146    t=10.000    No
+  V10  ->  V12    t=10.000    No
+  V110  ->  V91    t=10.000    No
+  V113  ->  V196    t=30.000    No
+  V113  ->  V63    t=10.000    YES <- FORGED
+  V115  ->  V196    t=35.000    No
+  V116  ->  V112    t=30.000    No
+  V118  ->  V105    t=10.000    No
+  V119  ->  V112    t=15.000    No
+  V124  ->  V144    t=15.000    No
+  V124  ->  V187    t=10.000    YES <- FORGED
+  V125  ->  V127    t=25.000    No
+  V128  ->  V91    t=30.000    No
+  V129  ->  V191    t=10.000    No
+  V12  ->  V10    t=10.000    No
+  V12  ->  V15    t=10.000    No
+  V130  ->  V127    t=20.000    No
+  V133  ->  V34    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V136  ->  V80    t=15.000    No
+  V137  ->  V86    t=10.000    YES <- FORGED
+  V138  ->  V189    t=10.000    No
+  V138  ->  V99    t=10.000    YES <- FORGED
+  V138  ->  V180    t=9.990    No
+  V138  ->  V189    t=10.000    No
+  V139  ->  V91    t=25.000    No
+  V13  ->  V35    t=10.000    No
+  V13  ->  V191    t=10.000    YES <- FORGED
+  V13  ->  V35    t=10.000    No
+  V144  ->  V4    t=10.000    No
+  V144  ->  V4    t=10.000    No
+  V146  ->  V109    t=10.000    No
+  V146  ->  V96    t=40.000    No
+  V148  ->  V19    t=10.000    No
+  V152  ->  V86    t=10.000    YES <- FORGED
+  V153  ->  V15    t=15.000    No
+  V154  ->  V118    t=10.000    YES <- FORGED
+  V156  ->  V96    t=30.000    No
+  V15  ->  V71    t=10.000    No
+  V160  ->  V34    t=25.000    No
+  V161  ->  V127    t=15.000    No
+  V161  ->  V163    t=10.000    No
+  V163  ->  V161    t=10.000    No
+  V163  ->  V34    t=30.000    No
+  V164  ->  V154    t=10.000    No
+  V165  ->  V63    t=10.000    YES <- FORGED
+  V167  ->  V179    t=10.000    No
+  V171  ->  V109    t=50.000    No
+  V173  ->  V186    t=35.000    No
+  V174  ->  V34    t=40.000    No
+  V176  ->  V180    t=20.000    No
+  V177  ->  V44    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V65    t=25.000    No
+  V180  ->  V49    t=10.000    No
+  V180  ->  V146    t=10.000    YES <- FORGED
+  V180  ->  V49    t=10.000    No
+  V181  ->  V186    t=25.000    No
+  V182  ->  V132    t=45.000    No
+  V182  ->  V77    t=10.000    No
+  V182  ->  V161    t=10.000    YES <- FORGED
+  V183  ->  V186    t=10.000    No
+  V185  ->  V28    t=10.000    No
+  V186  ->  V44    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V189  ->  V99    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V190  ->  V86    t=30.000    No
+  V191  ->  V129    t=10.000    No
+  V193  ->  V106    t=10.000    YES <- FORGED
+  V197  ->  V69    t=10.000    No
+  V19  ->  V97    t=10.000    No
+  V19  ->  V197    t=10.000    YES <- FORGED
+  V19  ->  V13    t=10.000    No
+  V1  ->  V0    t=10.000    No
+  V204  ->  V112    t=25.000    No
+  V20  ->  V25    t=10.000    No
+  V22  ->  V162    t=10.000    No
+  V25  ->  V26    t=10.000    No
+  V26  ->  V180    t=25.000    No
+  V28  ->  V180    t=10.000    No
+  V28  ->  V185    t=10.000    No
+  V28  ->  V57    t=59.000    YES <- FORGED
+  V32  ->  V37    t=10.000    No
+  V32  ->  V167    t=10.000    YES <- FORGED
+  V32  ->  V37    t=10.000    No
+  V35  ->  V13    t=10.000    No
+  V35  ->  V97    t=10.000    No
+  V35  ->  V191    t=10.000    YES <- FORGED
+  V37  ->  V32    t=10.000    No
+  V37  ->  V167    t=10.000    YES <- FORGED
+  V37  ->  V193    t=10.000    No
+  V39  ->  V180    t=30.000    No
+  V43  ->  V87    t=10.000    No
+  V44  ->  V177    t=10.000    No
+  V45  ->  V132    t=20.000    No
+  V45  ->  V48    t=10.000    No
+  V46  ->  V152    t=10.000    No
+  V49  ->  V180    t=10.000    No
+  V49  ->  V146    t=10.000    YES <- FORGED
+  V49  ->  V180    t=10.000    No
+  V4  ->  V144    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V52  ->  V21    t=35.000    No
+  V54  ->  V63    t=10.000    No
+  V57  ->  V62    t=10.000    No
+  V57  ->  V96    t=10.000    No
+  V57  ->  V28    t=10.000    YES <- FORGED
+  V57  ->  V62    t=10.000    No
+  V58  ->  V90    t=10.000    No
+  V59  ->  V152    t=20.000    No
+  V62  ->  V57    t=10.000    No
+  V62  ->  V28    t=10.000    YES <- FORGED
+  V62  ->  V78    t=10.000    No
+  V63  ->  V54    t=10.000    No
+  V64  ->  V68    t=9.990    No
+  V65  ->  V187    t=10.000    YES <- FORGED
+  V66  ->  V21    t=40.000    No
+  V68  ->  V64    t=9.990    No
+  V69  ->  V109    t=20.000    No
+  V69  ->  V197    t=10.000    No
+  V6  ->  V5    t=10.000    No
+  V71  ->  V109    t=15.000    No
+  V73  ->  V151    t=10.000    No
+  V75  ->  V152    t=25.000    No
+  V77  ->  V182    t=10.000    No
+  V77  ->  V161    t=10.000    YES <- FORGED
+  V77  ->  V182    t=10.000    No
+  V77  ->  V65    t=10.000    No
+  V78  ->  V127    t=10.000    No
+  V78  ->  V118    t=10.000    YES <- FORGED
+  V79  ->  V34    t=10.000    No
+  V81  ->  V29    t=10.000    No
+  V84  ->  V65    t=10.000    No
+  V86  ->  V89    t=10.000    No
+  V87  ->  V65    t=10.000    No
+  V87  ->  V106    t=10.000    YES <- FORGED
+  V88  ->  V86    t=10.000    No
+  V88  ->  V44    t=10.000    YES <- FORGED
+  V88  ->  V113    t=10.000    No
+  V89  ->  V152    t=40.000    No
+  V89  ->  V35    t=10.000    No
+  V89  ->  V86    t=10.000    No
+  V8  ->  V4    t=10.000    No
+  V8  ->  V26    t=10.000    No
+  V94  ->  V152    t=35.000    No
+  V94  ->  V99    t=10.000    No
+  V96  ->  V154    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V97  ->  V197    t=10.000    YES <- FORGED
+  V97  ->  V113    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V99  ->  V196    t=10.000    No
+  V99  ->  V94    t=10.000    No
+[t=59.001]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=59.002]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V89 sees V35, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V89 sees V35, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.002 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.002]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V89<->V35 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V0  ->  V1    t=10.000    No
+  V100  ->  V72    t=10.000    No
+  V104  ->  V106    t=10.000    No
+  V104  ->  V196    t=40.000    No
+  V105  ->  V118    t=10.000    No
+  V106  ->  V104    t=10.000    No
+  V106  ->  V96    t=25.000    No
+  V109  ->  V146    t=10.000    No
+  V10  ->  V12    t=10.000    No
+  V110  ->  V91    t=10.000    No
+  V113  ->  V196    t=30.000    No
+  V113  ->  V63    t=10.000    YES <- FORGED
+  V115  ->  V196    t=35.000    No
+  V116  ->  V112    t=30.000    No
+  V118  ->  V105    t=10.000    No
+  V119  ->  V112    t=15.000    No
+  V124  ->  V144    t=15.000    No
+  V124  ->  V187    t=10.000    YES <- FORGED
+  V125  ->  V127    t=25.000    No
+  V128  ->  V91    t=30.000    No
+  V129  ->  V191    t=10.000    No
+  V12  ->  V10    t=10.000    No
+  V12  ->  V15    t=10.000    No
+  V130  ->  V127    t=20.000    No
+  V133  ->  V34    t=10.000    No
+  V135  ->  V132    t=10.000    No
+  V136  ->  V80    t=15.000    No
+  V137  ->  V86    t=10.000    YES <- FORGED
+  V138  ->  V189    t=10.000    No
+  V138  ->  V99    t=10.000    YES <- FORGED
+  V138  ->  V180    t=9.990    No
+  V138  ->  V189    t=10.000    No
+  V139  ->  V91    t=25.000    No
+  V13  ->  V35    t=10.000    No
+  V13  ->  V191    t=10.000    YES <- FORGED
+  V13  ->  V35    t=10.000    No
+  V144  ->  V4    t=10.000    No
+  V144  ->  V4    t=10.000    No
+  V146  ->  V109    t=10.000    No
+  V146  ->  V96    t=40.000    No
+  V148  ->  V19    t=10.000    No
+  V152  ->  V86    t=10.000    YES <- FORGED
+  V153  ->  V15    t=15.000    No
+  V154  ->  V118    t=10.000    YES <- FORGED
+  V156  ->  V96    t=30.000    No
+  V15  ->  V71    t=10.000    No
+  V160  ->  V34    t=25.000    No
+  V161  ->  V127    t=15.000    No
+  V161  ->  V163    t=10.000    No
+  V163  ->  V161    t=10.000    No
+  V163  ->  V34    t=30.000    No
+  V164  ->  V154    t=10.000    No
+  V165  ->  V63    t=10.000    YES <- FORGED
+  V167  ->  V179    t=10.000    No
+  V171  ->  V109    t=50.000    No
+  V173  ->  V186    t=35.000    No
+  V174  ->  V34    t=40.000    No
+  V176  ->  V180    t=20.000    No
+  V177  ->  V44    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V65    t=25.000    No
+  V180  ->  V49    t=10.000    No
+  V180  ->  V146    t=10.000    YES <- FORGED
+  V180  ->  V49    t=10.000    No
+  V181  ->  V186    t=25.000    No
+  V182  ->  V132    t=45.000    No
+  V182  ->  V77    t=10.000    No
+  V182  ->  V161    t=10.000    YES <- FORGED
+  V183  ->  V186    t=10.000    No
+  V185  ->  V28    t=10.000    No
+  V186  ->  V44    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V189  ->  V99    t=10.000    YES <- FORGED
+  V189  ->  V138    t=10.000    No
+  V190  ->  V86    t=30.000    No
+  V191  ->  V129    t=10.000    No
+  V193  ->  V106    t=10.000    YES <- FORGED
+  V197  ->  V69    t=10.000    No
+  V19  ->  V97    t=10.000    No
+  V19  ->  V197    t=10.000    YES <- FORGED
+  V19  ->  V13    t=10.000    No
+  V1  ->  V0    t=10.000    No
+  V204  ->  V112    t=25.000    No
+  V20  ->  V25    t=10.000    No
+  V22  ->  V162    t=10.000    No
+  V25  ->  V26    t=10.000    No
+  V26  ->  V180    t=25.000    No
+  V28  ->  V180    t=10.000    No
+  V28  ->  V185    t=10.000    No
+  V32  ->  V37    t=10.000    No
+  V32  ->  V167    t=10.000    YES <- FORGED
+  V32  ->  V37    t=10.000    No
+  V35  ->  V13    t=10.000    No
+  V35  ->  V97    t=10.000    No
+  V35  ->  V191    t=10.000    YES <- FORGED
+  V37  ->  V32    t=10.000    No
+  V37  ->  V167    t=10.000    YES <- FORGED
+  V37  ->  V193    t=10.000    No
+  V39  ->  V180    t=30.000    No
+  V43  ->  V87    t=10.000    No
+  V44  ->  V177    t=10.000    No
+  V45  ->  V132    t=20.000    No
+  V45  ->  V48    t=10.000    No
+  V46  ->  V152    t=10.000    No
+  V49  ->  V180    t=10.000    No
+  V49  ->  V146    t=10.000    YES <- FORGED
+  V49  ->  V180    t=10.000    No
+  V4  ->  V144    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V4  ->  V8    t=10.000    No
+  V52  ->  V21    t=35.000    No
+  V54  ->  V63    t=10.000    No
+  V57  ->  V62    t=10.000    No
+  V57  ->  V96    t=10.000    No
+  V57  ->  V28    t=10.000    YES <- FORGED
+  V57  ->  V62    t=10.000    No
+  V58  ->  V90    t=10.000    No
+  V59  ->  V152    t=20.000    No
+  V62  ->  V57    t=10.000    No
+  V62  ->  V28    t=10.000    YES <- FORGED
+  V62  ->  V78    t=10.000    No
+  V63  ->  V54    t=10.000    No
+  V64  ->  V68    t=9.990    No
+  V65  ->  V187    t=10.000    YES <- FORGED
+  V66  ->  V21    t=40.000    No
+  V68  ->  V64    t=9.990    No
+  V69  ->  V109    t=20.000    No
+  V69  ->  V197    t=10.000    No
+  V6  ->  V5    t=10.000    No
+  V71  ->  V109    t=15.000    No
+  V73  ->  V151    t=10.000    No
+  V75  ->  V152    t=25.000    No
+  V77  ->  V182    t=10.000    No
+  V77  ->  V161    t=10.000    YES <- FORGED
+  V77  ->  V182    t=10.000    No
+  V77  ->  V65    t=10.000    No
+  V78  ->  V127    t=10.000    No
+  V78  ->  V118    t=10.000    YES <- FORGED
+  V79  ->  V34    t=10.000    No
+  V81  ->  V29    t=10.000    No
+  V84  ->  V65    t=10.000    No
+  V86  ->  V89    t=10.000    No
+  V87  ->  V65    t=10.000    No
+  V87  ->  V106    t=10.000    YES <- FORGED
+  V88  ->  V86    t=10.000    No
+  V88  ->  V44    t=10.000    YES <- FORGED
+  V88  ->  V113    t=10.000    No
+  V89  ->  V152    t=40.000    No
+  V89  ->  V35    t=59.000    YES <- FORGED
+  V89  ->  V86    t=10.000    No
+  V8  ->  V4    t=10.000    No
+  V8  ->  V26    t=10.000    No
+  V94  ->  V152    t=35.000    No
+  V94  ->  V99    t=10.000    No
+  V96  ->  V154    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V97  ->  V197    t=10.000    YES <- FORGED
+  V97  ->  V113    t=10.000    No
+  V97  ->  V19    t=10.000    No
+  V99  ->  V196    t=10.000    No
+  V99  ->  V94    t=10.000    No
+
+========================================================
+  TTW ATTACK S4 COMPLETE
+========================================================
+[t=59.002]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+ency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V94 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=22.107]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V61 sees V174, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V61 sees V174, t=22.100>  timestamp changed 10.000 -> 22.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.107 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.107]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V61<->V174 was ACTIVE at t=22.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V10  ->  V191    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V179  ->  V173    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V199  ->  V204    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V30  ->  V133    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V52  ->  V53    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V61  ->  V174    t=22.100    YES <- FORGED
+  V86  ->  V187    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=22.107]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V61 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=22.906]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V30 sees V133, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V30 sees V133, t=22.900>  timestamp changed 10.000 -> 22.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.906 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.906]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V30<->V133 was ACTIVE at t=22.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V10  ->  V191    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V179  ->  V173    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V199  ->  V204    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V30  ->  V133    t=22.900    YES <- FORGED
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V52  ->  V53    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V86  ->  V187    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=22.906]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V30 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=32.103]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V179 sees V173, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V179 sees V173, t=32.100>  timestamp changed 10.000 -> 32.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=32.103 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=32.103]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V179<->V173 was ACTIVE at t=32.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V10  ->  V191    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V179  ->  V173    t=32.100    YES <- FORGED
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V199  ->  V204    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V52  ->  V53    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V86  ->  V187    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=32.103]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V179 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=38.301]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V86 sees V187, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V86 sees V187, t=38.300>  timestamp changed 10.000 -> 38.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=38.301 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=38.301]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V86<->V187 was ACTIVE at t=38.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V10  ->  V191    t=10.000    No
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V199  ->  V204    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V52  ->  V53    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V86  ->  V187    t=38.300    YES <- FORGED
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=38.301]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V86 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=46.105]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V10 sees V191, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V10 sees V191, t=46.100>  timestamp changed 10.000 -> 46.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=46.105 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=46.105]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V10<->V191 was ACTIVE at t=46.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V10  ->  V191    t=46.100    YES <- FORGED
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V199  ->  V204    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V52  ->  V53    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=46.105]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V10 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=56.900]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V199 sees V204, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V199 sees V204, t=56.900>  timestamp changed 10.000 -> 56.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=56.900 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=56.900]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V199<->V204 was ACTIVE at t=56.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V199  ->  V204    t=56.900    YES <- FORGED
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V52  ->  V53    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=56.900]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V199 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=59.007]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V52 sees V53, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V52 sees V53, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.007 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.007]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V52<->V53 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V52  ->  V53    t=59.000    YES <- FORGED
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=59.007]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V52 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=59.008]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V120 sees V12, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V120 sees V12, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.008 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.008]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V120<->V12 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V118  ->  V94    t=10.000    No
+  V120  ->  V12    t=59.000    YES <- FORGED
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=59.008]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V120 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=59.008]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V50 sees V52, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V50 sees V52, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.008 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.008]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V50<->V52 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V118  ->  V94    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=10.000    No
+  V50  ->  V52    t=59.000    YES <- FORGED
+  V52  ->  V50    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=59.008]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V50 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=59.008]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V31 sees V29, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V31 sees V29, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.008 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.008]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V31<->V29 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V118  ->  V94    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V31  ->  V29    t=59.000    YES <- FORGED
+  V52  ->  V50    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=59.008]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V31 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=59.009]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V160 sees V163, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V160 sees V163, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.009 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.009]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V160<->V163 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V118  ->  V94    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V160  ->  V163    t=59.000    YES <- FORGED
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=59.009]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V160 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=59.010]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V9 sees V20, t=10.000>  (captured from RSU-aggregated update at t=10.000)
+  Forged packet : <V9 sees V20, t=59.000>  timestamp changed 10.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.010 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.010]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V9<->V20 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V118  ->  V94    t=10.000    No
+  V121  ->  V145    t=10.000    No
+  V123  ->  V63    t=10.000    No
+  V127  ->  V78    t=10.000    No
+  V12  ->  V120    t=10.000    No
+  V133  ->  V30    t=10.000    No
+  V153  ->  V79    t=10.000    No
+  V162  ->  V24    t=10.000    No
+  V163  ->  V160    t=10.000    No
+  V173  ->  V179    t=10.000    No
+  V174  ->  V61    t=10.000    No
+  V175  ->  V167    t=10.000    No
+  V187  ->  V86    t=10.000    No
+  V191  ->  V10    t=10.000    No
+  V204  ->  V199    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V29  ->  V31    t=10.000    No
+  V52  ->  V50    t=10.000    No
+  V53  ->  V52    t=10.000    No
+  V90  ->  V165    t=10.000    No
+  V9  ->  V20    t=59.000    YES <- FORGED
+
+========================================================
+  TTW ATTACK S4 COMPLETE
+========================================================
+[t=59.010]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.222
+  Latency: 0.000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V9 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=7  delta_thresh=14  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+

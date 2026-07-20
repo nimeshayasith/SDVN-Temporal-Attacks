@@ -1,0 +1,12 @@
+========================================================
+  TTW Attack S3 — Malicious Controller, No RSU         
+========================================================
+
+  t=10    ①  V2V HELLO + legitimate updates to controller
+  t=10    ②  Controller stores legitimately + keeps copy <V1 sees V2, t=10>
+  t=15        Link breaks physically
+  t=20    ③  Controller forges timestamp t=10→t=20, reinserts into database
+  t=20    ④  Controller table poisoned (no external packet)
+
+========================================================
+

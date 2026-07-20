@@ -1,0 +1,75 @@
+[TGN] Seed fixed: 1
+[TGN] L_link=43.0s  gamma=310.2  W_max=430
+[TGN] Loaded 7751 rows from '../training_data/sim60_ap60_3seeds_events.csv'
+      Attack events: 2089  Benign events: 5662
+[TGN] After BEACON filter: 7751 rows
+
+[TGN] Events per attack_scenario:
+        scenario  1:   891 events (149 attack, 742 benign)
+        scenario  2:  1520 events (52 attack, 1468 benign)
+        scenario  3:   815 events (163 attack, 652 benign)
+        scenario  4:   800 events (160 attack, 640 benign)
+        scenario  5:   431 events (67 attack, 364 benign)
+        scenario  6:  1188 events (136 attack, 1052 benign)
+        scenario  7:   652 events (326 attack, 326 benign)
+        scenario  8:   632 events (316 attack, 316 benign)
+        scenario  9:     6 events (0 attack, 6 benign)
+        scenario 10:    60 events (0 attack, 60 benign)
+        scenario 11:   384 events (360 attack, 24 benign)
+        scenario 12:   372 events (360 attack, 12 benign)
+[TGN] Device: cuda
+       train:  5417 events  (1458 attack, 3959 benign)
+       val  :  1162 events  (312 attack, 850 benign)
+       test :  1172 events  (319 attack, 853 benign)
+       pos_weight = 5.50  (3959 benign / 1458 attack in train)  [override]
+
+[TGN] Training attempt 1/2: dim=128 layers=2 epochs=200 lr=0.001 theta=-1.0
+
+  Epoch   20/200  loss=1.0605  bce=0.8718  gap=0.329  mrgn=0.021  val_MCC@0.5=0.506  val_bestMCC=0.653  (θ=0.612)  val_AUROC=0.833  val_ACC=0.769  TP=249 TN=645 FP=205 FN=63
+  Epoch   40/200  loss=0.6703  bce=0.5214  gap=0.588  mrgn=0.000  val_MCC@0.5=0.564  val_bestMCC=0.764  (θ=0.764)  val_AUROC=0.827  val_ACC=0.817  TP=235 TN=714 FP=136 FN=77
+  Epoch   60/200  loss=0.5338  bce=0.3971  gap=0.667  mrgn=0.000  val_MCC@0.5=0.740  val_bestMCC=0.815  (θ=0.701)  val_AUROC=0.923  val_ACC=0.894  TP=265 TN=774 FP=76 FN=47
+  Epoch   80/200  loss=0.3227  bce=0.1978  gap=0.825  mrgn=0.000  val_MCC@0.5=0.784  val_bestMCC=0.835  (θ=0.606)  val_AUROC=0.943  val_ACC=0.916  TP=259 TN=805 FP=45 FN=53
+  Epoch  100/200  loss=0.2227  bce=0.1086  gap=0.905  mrgn=0.000  val_MCC@0.5=0.837  val_bestMCC=0.862  (θ=0.529)  val_AUROC=0.961  val_ACC=0.936  TP=272 TN=816 FP=34 FN=40
+  Epoch  120/200  loss=0.1755  bce=0.0694  gap=0.937  mrgn=0.000  val_MCC@0.5=0.858  val_bestMCC=0.869  (θ=0.448)  val_AUROC=0.959  val_ACC=0.945  TP=269 TN=829 FP=21 FN=43
+  Epoch  140/200  loss=0.1537  bce=0.0531  gap=0.951  mrgn=0.000  val_MCC@0.5=0.869  val_bestMCC=0.880  (θ=0.389)  val_AUROC=0.959  val_ACC=0.949  TP=271 TN=832 FP=18 FN=41
+  Epoch  160/200  loss=0.1432  bce=0.0456  gap=0.958  mrgn=0.000  val_MCC@0.5=0.864  val_bestMCC=0.876  (θ=0.355)  val_AUROC=0.959  val_ACC=0.948  TP=268 TN=833 FP=17 FN=44
+  Epoch  180/200  loss=0.1394  bce=0.0429  gap=0.960  mrgn=0.000  val_MCC@0.5=0.860  val_bestMCC=0.878  (θ=0.343)  val_AUROC=0.959  val_ACC=0.946  TP=266 TN=833 FP=17 FN=46
+  Epoch  200/200  loss=0.1387  bce=0.0425  gap=0.961  mrgn=0.000  val_MCC@0.5=0.860  val_bestMCC=0.878  (θ=0.341)  val_AUROC=0.959  val_ACC=0.946  TP=266 TN=833 FP=17 FN=46
+
+[TGN] Best checkpoint: epoch=140  val_bestMCC=0.880  val_AUROC=0.959
+[TGN] Restart check: val_bestMCC=0.880 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+
+[TGN] Restart 1/1 — val_bestMCC=0.880 < target=0.975. Re-initialising model.
+       pos_weight = 5.50  (3959 benign / 1458 attack in train)  [override]
+
+[TGN] Training attempt 2/2: dim=128 layers=2 epochs=200 lr=0.001 theta=-1.0
+
+  Epoch   20/200  loss=1.1096  bce=0.9159  gap=0.317  mrgn=0.033  val_MCC@0.5=0.411  val_bestMCC=0.607  (θ=0.628)  val_AUROC=0.818  val_ACC=0.690  TP=256 TN=546 FP=304 FN=56
+  Epoch   40/200  loss=0.7194  bce=0.5720  gap=0.545  mrgn=0.000  val_MCC@0.5=0.463  val_bestMCC=0.767  (θ=0.858)  val_AUROC=0.820  val_ACC=0.752  TP=237 TN=637 FP=213 FN=75
+  Epoch   60/200  loss=0.4622  bce=0.3266  gap=0.725  mrgn=0.000  val_MCC@0.5=0.715  val_bestMCC=0.812  (θ=0.763)  val_AUROC=0.912  val_ACC=0.882  TP=264 TN=761 FP=89 FN=48
+  Epoch   80/200  loss=0.3152  bce=0.1918  gap=0.826  mrgn=0.000  val_MCC@0.5=0.781  val_bestMCC=0.837  (θ=0.694)  val_AUROC=0.943  val_ACC=0.912  TP=269 TN=791 FP=59 FN=43
+  Epoch  100/200  loss=0.2337  bce=0.1198  gap=0.894  mrgn=0.000  val_MCC@0.5=0.796  val_bestMCC=0.848  (θ=0.728)  val_AUROC=0.952  val_ACC=0.918  TP=274 TN=793 FP=57 FN=38
+  Epoch  120/200  loss=0.1870  bce=0.0810  gap=0.927  mrgn=0.000  val_MCC@0.5=0.834  val_bestMCC=0.851  (θ=0.597)  val_AUROC=0.953  val_ACC=0.935  TP=276 TN=810 FP=40 FN=36
+  Epoch  140/200  loss=0.1600  bce=0.0600  gap=0.943  mrgn=0.000  val_MCC@0.5=0.832  val_bestMCC=0.854  (θ=0.544)  val_AUROC=0.955  val_ACC=0.934  TP=275 TN=810 FP=40 FN=37
+  Epoch  160/200  loss=0.1480  bce=0.0513  gap=0.951  mrgn=0.000  val_MCC@0.5=0.829  val_bestMCC=0.851  (θ=0.525)  val_AUROC=0.955  val_ACC=0.933  TP=274 TN=810 FP=40 FN=38
+  Epoch  180/200  loss=0.1437  bce=0.0482  gap=0.954  mrgn=0.000  val_MCC@0.5=0.825  val_bestMCC=0.854  (θ=0.538)  val_AUROC=0.955  val_ACC=0.931  TP=273 TN=809 FP=41 FN=39
+  Epoch  200/200  loss=0.1430  bce=0.0477  gap=0.954  mrgn=0.000  val_MCC@0.5=0.825  val_bestMCC=0.854  (θ=0.544)  val_AUROC=0.955  val_ACC=0.931  TP=273 TN=809 FP=41 FN=39
+
+[TGN] Best checkpoint: epoch=140  val_bestMCC=0.854  val_AUROC=0.955
+[TGN] Restart check: val_bestMCC=0.854 (>=0.975? False)  gap_width=0.0000 (>=0.01? False)
+[TGN] Max restarts (2) reached. Proceeding with global best (val_bestMCC=0.880).
+[TGN] Global best restored: epoch=140  val_bestMCC=0.880  val_AUROC=0.959
+[TGN] Optimal theta_FS = 0.391  (val_MCC=0.880  theta_plateau=0.391  gap=N/A  method=plateau_mid [no val separation gap])
+
+[TGN] Test  MCC=0.893  AUROC=0.966  ACC=0.958  TP=279 TN=844 FP=9 FN=40
+[TGN] Test variant classifier (TTW/BSHH/ME)  ACC=0.597  F1_macro=0.671  n=1172
+[TGN] Wall-clock training time: 1590.8s (26.51 min)
+[TGN] Weights saved to 'sweep_5seeds/tgn_weights_seed1_pw5_5.bin'  (1076264 bytes, dim=128 layers=2)
+
+[TGN] Complete.  Deploy with (use the SAME simTime/N_Vehicles/mobility_scenario
+                 as the data generation runs to avoid train/eval mismatch):
+  ./waf --run "scratch/routing --simTime=<N> --N_Vehicles=<N> \
+               --mobility_scenario=<N> --maxspeed=<N> \
+               --attack_scenario=1 --tgn_weights=sweep_5seeds/tgn_weights_seed1_pw5_5.bin \
+               --tgn_theta=0.39 --tgn_l_link=43.0"
+  # Also pass: --tgn_dim=128 --tgn_layers=2

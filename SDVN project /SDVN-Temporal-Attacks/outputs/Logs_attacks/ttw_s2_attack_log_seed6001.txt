@@ -1,0 +1,923 @@
+========================================================
+  TTW Attack S2 — Malicious RSU                        
+========================================================
+
+  t=10    ①  V2V HELLO + vehicles -> RSU
+  t=10    ②  RSU aggregates + forwards to controller
+  t=10    ③  Malicious RSU stores old packet <V1 sees V2, t=10>
+  t=15        Link breaks physically
+  t=20    ④  RSU forges timestamp t=10→t=20, replays to controller
+  t=20    ⑤  Forged packet <V1 sees V2, t=20> accepted by controller
+  t=20    ⑥  Controller routing poisoned (ghost link active)
+
+========================================================
+
+[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_205
+  V79 -> RSU : <V79 sees V133, t=10.000>
+  V133 -> RSU : <V133 sees V79, t=10.000>
+
+[t=10.001]  STEP ①  V2V HELLO + topology updates to RSU_206
+  V130 -> RSU : <V130 sees V147, t=10.000>
+  V147 -> RSU : <V147 sees V130, t=10.000>
+
+[t=10.001]  STEP ①  V2V HELLO + topology updates to RSU_207
+  V9 -> RSU : <V9 sees V20, t=10.000>
+  V20 -> RSU : <V20 sees V9, t=10.000>
+
+[t=10.002]  STEP ①  V2V HELLO + topology updates to RSU_208
+  V147 -> RSU : <V147 sees V130, t=10.000>
+  V130 -> RSU : <V130 sees V147, t=10.000>
+
+[t=10.100]  STEP ②  RSU_205 aggregated forward to controller
+  [<V79 sees V133, t=10.000>, <V133 sees V79, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.101]  STEP ②  RSU_206 aggregated forward to controller
+  [<V130 sees V147, t=10.000>, <V147 sees V130, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.101]  STEP ②  RSU_207 aggregated forward to controller
+  [<V9 sees V20, t=10.000>, <V20 sees V9, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.101]  STEP ②  RSU_208 aggregated forward to controller
+  [<V147 sees V130, t=10.000>, <V130 sees V147, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V79 sees V133, t=10.000>
+  Awaiting replay at t=23.500
+  Link physically breaks at t≈21.5s (dist > 300.0m, real SUMO trajectory)
+
+[t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V130 sees V147, t=10.000>
+  Awaiting replay at t=27.000
+  Link physically breaks at t≈25.0s (dist > 300.0m, real SUMO trajectory)
+
+[t=10.201]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V9 sees V20, t=10.000>
+  Awaiting replay at t=27.000
+  Link physically breaks at t≈25.0s (dist > 300.0m, real SUMO trajectory)
+
+[t=10.201]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V147 sees V130, t=10.000>
+  Awaiting replay at t=27.000
+  Link physically breaks at t≈25.0s (dist > 300.0m, real SUMO trajectory)
+
+[t=23.500]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_205)
+  Stored packet : <V79 sees V133, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V79 sees V133, t=23.500>  timestamp changed 10.000 -> 23.500
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=23.500
+
+[t=23.500]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_205)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=23.500]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V79<->V133 was ACTIVE at t=23.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V0  ->  V1    t=10.000    No
+  V100  ->  V197    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V104  ->  V75    t=10.000    No
+  V104  ->  V167    t=10.000    YES <- FORGED
+  V104  ->  V76    t=9.990    YES <- FORGED
+  V104  ->  V75    t=10.000    No
+  V105  ->  V118    t=10.000    No
+  V106  ->  V66    t=10.000    No
+  V109  ->  V69    t=10.000    No
+  V109  ->  V66    t=10.000    YES <- FORGED
+  V109  ->  V69    t=10.000    No
+  V111  ->  V92    t=20.000    No
+  V115  ->  V139    t=15.000    No
+  V115  ->  V93    t=10.000    YES <- FORGED
+  V115  ->  V154    t=10.000    No
+  V118  ->  V105    t=10.000    No
+  V122  ->  V145    t=10.000    No
+  V122  ->  V142    t=10.000    YES <- FORGED
+  V123  ->  V68    t=10.000    No
+  V125  ->  V142    t=10.000    No
+  V125  ->  V147    t=15.000    No
+  V128  ->  V23    t=15.000    No
+  V129  ->  V191    t=10.000    No
+  V130  ->  V147    t=10.000    No
+  V130  ->  V76    t=9.990    YES <- FORGED
+  V131  ->  V145    t=10.000    No
+  V133  ->  V79    t=10.000    No
+  V133  ->  V76    t=9.990    YES <- FORGED
+  V134  ->  V202    t=15.000    No
+  V137  ->  V43    t=10.000    No
+  V137  ->  V63    t=10.000    YES <- FORGED
+  V137  ->  V43    t=10.000    No
+  V139  ->  V115    t=15.000    No
+  V140  ->  V176    t=10.000    No
+  V141  ->  V143    t=10.000    No
+  V141  ->  V118    t=10.000    YES <- FORGED
+  V141  ->  V76    t=9.990    YES <- FORGED
+  V141  ->  V143    t=10.000    No
+  V142  ->  V125    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V143  ->  V118    t=10.000    YES <- FORGED
+  V143  ->  V76    t=9.990    YES <- FORGED
+  V143  ->  V141    t=10.000    No
+  V144  ->  V8    t=10.000    No
+  V144  ->  V169    t=10.000    YES <- FORGED
+  V144  ->  V76    t=9.990    YES <- FORGED
+  V144  ->  V8    t=10.000    No
+  V145  ->  V122    t=10.000    No
+  V145  ->  V131    t=10.000    No
+  V145  ->  V147    t=20.000    No
+  V145  ->  V142    t=10.000    YES <- FORGED
+  V145  ->  V76    t=9.990    YES <- FORGED
+  V145  ->  V122    t=10.000    No
+  V145  ->  V190    t=10.000    No
+  V146  ->  V87    t=10.000    No
+  V147  ->  V130    t=10.000    No
+  V147  ->  V145    t=20.000    No
+  V147  ->  V54    t=10.000    No
+  V147  ->  V70    t=10.000    YES <- FORGED
+  V148  ->  V169    t=10.000    No
+  V14  ->  V42    t=10.000    No
+  V151  ->  V92    t=10.000    No
+  V153  ->  V20    t=15.000    No
+  V157  ->  V22    t=10.000    No
+  V157  ->  V87    t=10.000    YES <- FORGED
+  V157  ->  V22    t=10.000    No
+  V15  ->  V4    t=10.000    No
+  V161  ->  V77    t=10.000    No
+  V161  ->  V76    t=9.990    YES <- FORGED
+  V161  ->  V163    t=10.000    YES <- FORGED
+  V161  ->  V77    t=10.000    No
+  V163  ->  V98    t=10.000    No
+  V167  ->  V179    t=10.000    No
+  V169  ->  V148    t=10.000    No
+  V16  ->  V49    t=10.000    No
+  V16  ->  V76    t=9.990    YES <- FORGED
+  V172  ->  V69    t=20.330    YES <- FORGED
+  V174  ->  V181    t=10.000    No
+  V174  ->  V76    t=13.709    YES <- FORGED
+  V175  ->  V167    t=10.000    No
+  V176  ->  V140    t=10.000    No
+  V176  ->  V38    t=10.000    No
+  V176  ->  V187    t=10.000    YES <- FORGED
+  V176  ->  V76    t=9.990    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V178  ->  V181    t=10.000    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V186    t=10.000    No
+  V17  ->  V20    t=10.000    No
+  V180  ->  V67    t=10.000    No
+  V181  ->  V174    t=10.000    No
+  V182  ->  V187    t=10.000    No
+  V183  ->  V93    t=10.000    YES <- FORGED
+  V183  ->  V76    t=9.990    YES <- FORGED
+  V186  ->  V179    t=10.000    No
+  V187  ->  V182    t=10.000    No
+  V189  ->  V76    t=9.990    YES <- FORGED
+  V18  ->  V70    t=10.000    No
+  V190  ->  V76    t=9.990    YES <- FORGED
+  V191  ->  V129    t=10.000    No
+  V197  ->  V100    t=10.000    No
+  V19  ->  V191    t=10.000    YES <- FORGED
+  V19  ->  V76    t=9.990    YES <- FORGED
+  V19  ->  V157    t=10.000    No
+  V19  ->  V22    t=10.000    No
+  V1  ->  V0    t=10.000    No
+  V202  ->  V134    t=15.000    No
+  V20  ->  V153    t=20.897    YES <- FORGED
+  V20  ->  V17    t=10.000    No
+  V20  ->  V9    t=10.000    No
+  V22  ->  V157    t=10.000    No
+  V22  ->  V87    t=10.000    YES <- FORGED
+  V23  ->  V128    t=15.000    No
+  V23  ->  V178    t=10.000    No
+  V23  ->  V181    t=10.000    YES <- FORGED
+  V23  ->  V76    t=9.990    YES <- FORGED
+  V25  ->  V34    t=10.000    No
+  V25  ->  V93    t=10.000    No
+  V30  ->  V133    t=10.000    No
+  V32  ->  V37    t=10.000    No
+  V33  ->  V76    t=9.990    YES <- FORGED
+  V34  ->  V25    t=10.000    No
+  V37  ->  V32    t=10.000    No
+  V38  ->  V176    t=10.000    No
+  V38  ->  V187    t=10.000    YES <- FORGED
+  V38  ->  V76    t=9.990    YES <- FORGED
+  V38  ->  V176    t=10.000    No
+  V41  ->  V191    t=10.000    YES <- FORGED
+  V41  ->  V76    t=9.990    YES <- FORGED
+  V41  ->  V43    t=10.000    No
+  V42  ->  V14    t=10.000    No
+  V43  ->  V137    t=10.000    No
+  V43  ->  V63    t=10.000    YES <- FORGED
+  V43  ->  V76    t=9.990    YES <- FORGED
+  V48  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V16    t=10.000    No
+  V49  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V133    t=10.000    No
+  V4  ->  V15    t=10.000    No
+  V51  ->  V77    t=10.000    No
+  V53  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V54  ->  V70    t=10.000    YES <- FORGED
+  V54  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V55  ->  V147    t=10.000    No
+  V58  ->  V63    t=10.000    No
+  V5  ->  V6    t=10.000    No
+  V61  ->  V101    t=15.000    No
+  V63  ->  V58    t=10.000    No
+  V63  ->  V68    t=10.000    No
+  V63  ->  V75    t=10.000    No
+  V66  ->  V106    t=10.000    No
+  V67  ->  V180    t=10.000    No
+  V68  ->  V63    t=10.000    No
+  V69  ->  V109    t=10.000    No
+  V69  ->  V172    t=15.000    No
+  V69  ->  V66    t=10.000    YES <- FORGED
+  V69  ->  V76    t=9.990    YES <- FORGED
+  V6  ->  V5    t=10.000    No
+  V70  ->  V18    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V71  ->  V76    t=9.990    No
+  V75  ->  V104    t=10.000    No
+  V75  ->  V63    t=10.000    No
+  V75  ->  V167    t=10.000    YES <- FORGED
+  V76  ->  V174    t=10.000    No
+  V76  ->  V71    t=9.990    No
+  V77  ->  V161    t=10.000    No
+  V77  ->  V51    t=10.000    No
+  V77  ->  V163    t=10.000    YES <- FORGED
+  V77  ->  V161    t=10.000    No
+  V79  ->  V133    t=23.500    YES <- FORGED
+  V7  ->  V8    t=10.000    No
+  V81  ->  V133    t=20.000    No
+  V83  ->  V87    t=20.000    No
+  V87  ->  V146    t=10.000    No
+  V87  ->  V83    t=20.000    No
+  V8  ->  V144    t=10.000    No
+  V8  ->  V7    t=10.000    No
+  V8  ->  V169    t=10.000    YES <- FORGED
+  V92  ->  V111    t=20.000    No
+  V93  ->  V25    t=10.000    No
+  V98  ->  V133    t=15.000    No
+  V98  ->  V163    t=10.000    No
+  V99  ->  V22    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=23.500]  TTW-S2 RSU attacker  forged fresh ts=23.500  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=23.500]  DETECTION + MITIGATION
+  Ghost link V79<->V133 removed
+  Score: 0.125
+  Latency: 0.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V205): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V205 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V205): blocked from re-admission until re-authenticated
+
+[t=27.000]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_206)
+  Stored packet : <V130 sees V147, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V130 sees V147, t=27.000>  timestamp changed 10.000 -> 27.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=27.000
+
+[t=27.000]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_206)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=27.000]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V130<->V147 was ACTIVE at t=27.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V0  ->  V1    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V104  ->  V75    t=10.000    No
+  V104  ->  V167    t=10.000    YES <- FORGED
+  V104  ->  V76    t=9.990    YES <- FORGED
+  V104  ->  V75    t=10.000    No
+  V105  ->  V118    t=10.000    No
+  V106  ->  V66    t=10.000    No
+  V109  ->  V69    t=10.000    No
+  V109  ->  V66    t=10.000    YES <- FORGED
+  V109  ->  V69    t=10.000    No
+  V111  ->  V92    t=20.000    No
+  V115  ->  V139    t=25.724    YES <- FORGED
+  V115  ->  V93    t=10.000    YES <- FORGED
+  V115  ->  V154    t=10.000    No
+  V118  ->  V105    t=10.000    No
+  V121  ->  V147    t=25.000    No
+  V122  ->  V145    t=10.000    No
+  V122  ->  V142    t=10.000    YES <- FORGED
+  V123  ->  V68    t=10.000    No
+  V125  ->  V142    t=10.000    No
+  V125  ->  V147    t=15.000    No
+  V128  ->  V23    t=15.000    No
+  V129  ->  V191    t=10.000    No
+  V130  ->  V147    t=27.000    YES <- FORGED
+  V130  ->  V76    t=9.990    YES <- FORGED
+  V131  ->  V145    t=10.000    No
+  V133  ->  V79    t=10.000    No
+  V133  ->  V76    t=9.990    YES <- FORGED
+  V134  ->  V202    t=15.000    No
+  V137  ->  V43    t=10.000    No
+  V137  ->  V63    t=10.000    YES <- FORGED
+  V137  ->  V43    t=10.000    No
+  V139  ->  V115    t=15.000    No
+  V141  ->  V143    t=10.000    No
+  V141  ->  V118    t=10.000    YES <- FORGED
+  V141  ->  V76    t=9.990    YES <- FORGED
+  V141  ->  V143    t=10.000    No
+  V142  ->  V125    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V143  ->  V118    t=10.000    YES <- FORGED
+  V143  ->  V76    t=9.990    YES <- FORGED
+  V143  ->  V141    t=10.000    No
+  V144  ->  V8    t=10.000    No
+  V144  ->  V169    t=10.000    YES <- FORGED
+  V144  ->  V76    t=9.990    YES <- FORGED
+  V144  ->  V8    t=10.000    No
+  V145  ->  V122    t=10.000    No
+  V145  ->  V131    t=10.000    No
+  V145  ->  V147    t=20.000    No
+  V145  ->  V142    t=10.000    YES <- FORGED
+  V145  ->  V76    t=9.990    YES <- FORGED
+  V145  ->  V122    t=10.000    No
+  V145  ->  V190    t=10.000    No
+  V146  ->  V87    t=10.000    No
+  V147  ->  V121    t=25.000    No
+  V147  ->  V130    t=10.000    No
+  V147  ->  V54    t=10.000    No
+  V147  ->  V70    t=10.000    YES <- FORGED
+  V148  ->  V169    t=10.000    No
+  V14  ->  V42    t=10.000    No
+  V151  ->  V92    t=10.000    No
+  V153  ->  V20    t=15.000    No
+  V157  ->  V22    t=10.000    No
+  V157  ->  V7    t=25.000    No
+  V157  ->  V87    t=10.000    YES <- FORGED
+  V157  ->  V22    t=10.000    No
+  V15  ->  V4    t=10.000    No
+  V160  ->  V34    t=25.000    No
+  V161  ->  V77    t=10.000    No
+  V161  ->  V76    t=9.990    YES <- FORGED
+  V161  ->  V163    t=10.000    YES <- FORGED
+  V161  ->  V77    t=10.000    No
+  V163  ->  V98    t=10.000    No
+  V167  ->  V179    t=10.000    No
+  V169  ->  V148    t=10.000    No
+  V16  ->  V49    t=10.000    No
+  V16  ->  V76    t=9.990    YES <- FORGED
+  V172  ->  V69    t=20.330    YES <- FORGED
+  V174  ->  V181    t=10.000    No
+  V174  ->  V76    t=13.709    YES <- FORGED
+  V175  ->  V167    t=10.000    No
+  V176  ->  V140    t=10.000    No
+  V176  ->  V38    t=10.000    No
+  V176  ->  V187    t=10.000    YES <- FORGED
+  V176  ->  V76    t=9.990    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V178  ->  V181    t=10.000    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V186    t=10.000    No
+  V17  ->  V20    t=10.000    No
+  V180  ->  V186    t=25.000    No
+  V180  ->  V67    t=10.000    No
+  V181  ->  V174    t=10.000    No
+  V182  ->  V187    t=10.000    No
+  V183  ->  V93    t=10.000    YES <- FORGED
+  V183  ->  V76    t=9.990    YES <- FORGED
+  V186  ->  V179    t=26.963    YES <- FORGED
+  V186  ->  V180    t=25.000    No
+  V187  ->  V182    t=10.000    No
+  V189  ->  V76    t=9.990    YES <- FORGED
+  V18  ->  V70    t=10.000    No
+  V190  ->  V76    t=9.990    YES <- FORGED
+  V191  ->  V129    t=10.000    No
+  V197  ->  V100    t=10.000    No
+  V19  ->  V191    t=10.000    YES <- FORGED
+  V19  ->  V76    t=9.990    YES <- FORGED
+  V19  ->  V157    t=10.000    No
+  V19  ->  V22    t=10.000    No
+  V1  ->  V0    t=10.000    No
+  V202  ->  V134    t=15.000    No
+  V20  ->  V153    t=20.897    YES <- FORGED
+  V20  ->  V9    t=10.000    No
+  V22  ->  V157    t=10.000    No
+  V22  ->  V87    t=10.000    YES <- FORGED
+  V23  ->  V128    t=15.000    No
+  V23  ->  V178    t=10.000    No
+  V23  ->  V181    t=10.000    YES <- FORGED
+  V23  ->  V76    t=9.990    YES <- FORGED
+  V25  ->  V34    t=10.000    No
+  V25  ->  V93    t=10.000    No
+  V30  ->  V133    t=10.000    No
+  V33  ->  V76    t=9.990    YES <- FORGED
+  V34  ->  V160    t=25.000    No
+  V37  ->  V32    t=10.000    No
+  V38  ->  V176    t=10.000    No
+  V38  ->  V187    t=10.000    YES <- FORGED
+  V38  ->  V76    t=9.990    YES <- FORGED
+  V38  ->  V176    t=10.000    No
+  V41  ->  V191    t=10.000    YES <- FORGED
+  V41  ->  V76    t=9.990    YES <- FORGED
+  V41  ->  V43    t=10.000    No
+  V43  ->  V137    t=10.000    No
+  V43  ->  V63    t=10.000    YES <- FORGED
+  V43  ->  V76    t=9.990    YES <- FORGED
+  V48  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V133    t=10.000    No
+  V4  ->  V15    t=10.000    No
+  V51  ->  V77    t=10.000    No
+  V53  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V54  ->  V70    t=10.000    YES <- FORGED
+  V54  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V55  ->  V147    t=10.000    No
+  V58  ->  V63    t=10.000    No
+  V5  ->  V6    t=10.000    No
+  V61  ->  V101    t=15.000    No
+  V63  ->  V58    t=10.000    No
+  V63  ->  V68    t=10.000    No
+  V63  ->  V75    t=10.000    No
+  V66  ->  V106    t=10.000    No
+  V67  ->  V180    t=10.000    No
+  V68  ->  V63    t=10.000    No
+  V69  ->  V109    t=10.000    No
+  V69  ->  V172    t=15.000    No
+  V69  ->  V66    t=10.000    YES <- FORGED
+  V69  ->  V76    t=9.990    YES <- FORGED
+  V6  ->  V5    t=10.000    No
+  V70  ->  V18    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V71  ->  V76    t=9.990    No
+  V75  ->  V104    t=10.000    No
+  V75  ->  V63    t=10.000    No
+  V75  ->  V167    t=10.000    YES <- FORGED
+  V76  ->  V174    t=10.000    No
+  V76  ->  V71    t=9.990    No
+  V77  ->  V161    t=10.000    No
+  V77  ->  V163    t=10.000    YES <- FORGED
+  V77  ->  V161    t=10.000    No
+  V7  ->  V157    t=25.000    No
+  V81  ->  V133    t=20.000    No
+  V83  ->  V87    t=20.000    No
+  V87  ->  V146    t=10.000    No
+  V87  ->  V83    t=20.000    No
+  V8  ->  V144    t=10.000    No
+  V8  ->  V7    t=10.000    No
+  V8  ->  V169    t=10.000    YES <- FORGED
+  V93  ->  V25    t=10.000    No
+  V98  ->  V133    t=15.000    No
+  V98  ->  V163    t=10.000    No
+  V99  ->  V22    t=10.000    No
+  V9  ->  V20    t=10.000    No
+[t=27.000]  [KEY-EXFIL] TTW-S2 sophistication: V130 (complicit) -> RSU V206 : session_key K_{V130,nk} + private signing key SK_V130 handed over (collusion)
+  RSU now holds V130's real credentials -> can produce messages cryptographically indistinguishable from V130's own genuine self-report
+[t=27.000]  TTW-S2 RSU attacker  forged fresh ts=27.000  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=27.000]  DETECTION + MITIGATION
+  Ghost link V130<->V147 removed
+  Score: 0.125
+  Latency: 0.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V206): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V206 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V206): blocked from re-admission until re-authenticated
+
+[t=27.001]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_207)
+  Stored packet : <V9 sees V20, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V9 sees V20, t=27.000>  timestamp changed 10.000 -> 27.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=27.001
+
+[t=27.001]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_207)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=27.001]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V9<->V20 was ACTIVE at t=27.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V0  ->  V1    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V104  ->  V75    t=10.000    No
+  V104  ->  V167    t=10.000    YES <- FORGED
+  V104  ->  V76    t=9.990    YES <- FORGED
+  V104  ->  V75    t=10.000    No
+  V105  ->  V118    t=10.000    No
+  V106  ->  V66    t=10.000    No
+  V109  ->  V69    t=10.000    No
+  V109  ->  V66    t=10.000    YES <- FORGED
+  V109  ->  V69    t=10.000    No
+  V111  ->  V92    t=20.000    No
+  V115  ->  V139    t=25.724    YES <- FORGED
+  V115  ->  V93    t=10.000    YES <- FORGED
+  V115  ->  V154    t=10.000    No
+  V118  ->  V105    t=10.000    No
+  V121  ->  V147    t=25.000    No
+  V122  ->  V145    t=10.000    No
+  V122  ->  V142    t=10.000    YES <- FORGED
+  V123  ->  V68    t=10.000    No
+  V125  ->  V142    t=10.000    No
+  V125  ->  V147    t=15.000    No
+  V128  ->  V23    t=15.000    No
+  V129  ->  V191    t=10.000    No
+  V130  ->  V76    t=9.990    YES <- FORGED
+  V131  ->  V145    t=10.000    No
+  V133  ->  V79    t=10.000    No
+  V133  ->  V76    t=9.990    YES <- FORGED
+  V134  ->  V202    t=15.000    No
+  V137  ->  V43    t=10.000    No
+  V137  ->  V63    t=10.000    YES <- FORGED
+  V137  ->  V43    t=10.000    No
+  V139  ->  V115    t=15.000    No
+  V141  ->  V143    t=10.000    No
+  V141  ->  V118    t=10.000    YES <- FORGED
+  V141  ->  V76    t=9.990    YES <- FORGED
+  V141  ->  V143    t=10.000    No
+  V142  ->  V125    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V143  ->  V118    t=10.000    YES <- FORGED
+  V143  ->  V76    t=9.990    YES <- FORGED
+  V143  ->  V141    t=10.000    No
+  V144  ->  V8    t=10.000    No
+  V144  ->  V169    t=10.000    YES <- FORGED
+  V144  ->  V76    t=9.990    YES <- FORGED
+  V144  ->  V8    t=10.000    No
+  V145  ->  V122    t=10.000    No
+  V145  ->  V131    t=10.000    No
+  V145  ->  V147    t=20.000    No
+  V145  ->  V142    t=10.000    YES <- FORGED
+  V145  ->  V76    t=9.990    YES <- FORGED
+  V145  ->  V122    t=10.000    No
+  V145  ->  V190    t=10.000    No
+  V146  ->  V87    t=10.000    No
+  V147  ->  V121    t=25.000    No
+  V147  ->  V130    t=10.000    No
+  V147  ->  V54    t=10.000    No
+  V147  ->  V70    t=10.000    YES <- FORGED
+  V148  ->  V169    t=10.000    No
+  V14  ->  V42    t=10.000    No
+  V151  ->  V92    t=10.000    No
+  V153  ->  V20    t=15.000    No
+  V157  ->  V22    t=10.000    No
+  V157  ->  V7    t=25.000    No
+  V157  ->  V87    t=10.000    YES <- FORGED
+  V157  ->  V22    t=10.000    No
+  V15  ->  V4    t=10.000    No
+  V160  ->  V34    t=25.000    No
+  V161  ->  V77    t=10.000    No
+  V161  ->  V76    t=9.990    YES <- FORGED
+  V161  ->  V163    t=10.000    YES <- FORGED
+  V161  ->  V77    t=10.000    No
+  V163  ->  V98    t=10.000    No
+  V167  ->  V179    t=10.000    No
+  V169  ->  V148    t=10.000    No
+  V16  ->  V49    t=10.000    No
+  V16  ->  V76    t=9.990    YES <- FORGED
+  V172  ->  V69    t=20.330    YES <- FORGED
+  V174  ->  V181    t=10.000    No
+  V174  ->  V76    t=13.709    YES <- FORGED
+  V175  ->  V167    t=10.000    No
+  V176  ->  V140    t=10.000    No
+  V176  ->  V38    t=10.000    No
+  V176  ->  V187    t=10.000    YES <- FORGED
+  V176  ->  V76    t=9.990    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V178  ->  V181    t=10.000    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V186    t=10.000    No
+  V17  ->  V20    t=10.000    No
+  V180  ->  V186    t=25.000    No
+  V180  ->  V67    t=10.000    No
+  V181  ->  V174    t=10.000    No
+  V182  ->  V187    t=10.000    No
+  V183  ->  V93    t=10.000    YES <- FORGED
+  V183  ->  V76    t=9.990    YES <- FORGED
+  V186  ->  V179    t=26.963    YES <- FORGED
+  V186  ->  V180    t=25.000    No
+  V187  ->  V182    t=10.000    No
+  V189  ->  V76    t=9.990    YES <- FORGED
+  V18  ->  V70    t=10.000    No
+  V190  ->  V76    t=9.990    YES <- FORGED
+  V191  ->  V129    t=10.000    No
+  V197  ->  V100    t=10.000    No
+  V19  ->  V191    t=10.000    YES <- FORGED
+  V19  ->  V76    t=9.990    YES <- FORGED
+  V19  ->  V157    t=10.000    No
+  V19  ->  V22    t=10.000    No
+  V1  ->  V0    t=10.000    No
+  V202  ->  V134    t=15.000    No
+  V20  ->  V153    t=20.897    YES <- FORGED
+  V20  ->  V9    t=10.000    No
+  V22  ->  V157    t=10.000    No
+  V22  ->  V87    t=10.000    YES <- FORGED
+  V23  ->  V128    t=15.000    No
+  V23  ->  V178    t=10.000    No
+  V23  ->  V181    t=10.000    YES <- FORGED
+  V23  ->  V76    t=9.990    YES <- FORGED
+  V25  ->  V34    t=10.000    No
+  V25  ->  V93    t=10.000    No
+  V30  ->  V133    t=10.000    No
+  V33  ->  V76    t=9.990    YES <- FORGED
+  V34  ->  V160    t=25.000    No
+  V37  ->  V32    t=10.000    No
+  V38  ->  V176    t=10.000    No
+  V38  ->  V187    t=10.000    YES <- FORGED
+  V38  ->  V76    t=9.990    YES <- FORGED
+  V38  ->  V176    t=10.000    No
+  V41  ->  V191    t=10.000    YES <- FORGED
+  V41  ->  V76    t=9.990    YES <- FORGED
+  V41  ->  V43    t=10.000    No
+  V43  ->  V137    t=10.000    No
+  V43  ->  V63    t=10.000    YES <- FORGED
+  V43  ->  V76    t=9.990    YES <- FORGED
+  V48  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V133    t=10.000    No
+  V4  ->  V15    t=10.000    No
+  V51  ->  V77    t=10.000    No
+  V53  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V54  ->  V70    t=10.000    YES <- FORGED
+  V54  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V55  ->  V147    t=10.000    No
+  V58  ->  V63    t=10.000    No
+  V5  ->  V6    t=10.000    No
+  V61  ->  V101    t=15.000    No
+  V63  ->  V58    t=10.000    No
+  V63  ->  V68    t=10.000    No
+  V63  ->  V75    t=10.000    No
+  V66  ->  V106    t=10.000    No
+  V67  ->  V180    t=10.000    No
+  V68  ->  V63    t=10.000    No
+  V69  ->  V109    t=10.000    No
+  V69  ->  V172    t=15.000    No
+  V69  ->  V66    t=10.000    YES <- FORGED
+  V69  ->  V76    t=9.990    YES <- FORGED
+  V6  ->  V5    t=10.000    No
+  V70  ->  V18    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V71  ->  V76    t=9.990    No
+  V75  ->  V104    t=10.000    No
+  V75  ->  V63    t=10.000    No
+  V75  ->  V167    t=10.000    YES <- FORGED
+  V76  ->  V174    t=10.000    No
+  V76  ->  V71    t=9.990    No
+  V77  ->  V161    t=10.000    No
+  V77  ->  V163    t=10.000    YES <- FORGED
+  V77  ->  V161    t=10.000    No
+  V7  ->  V157    t=25.000    No
+  V81  ->  V133    t=20.000    No
+  V83  ->  V87    t=20.000    No
+  V87  ->  V146    t=10.000    No
+  V87  ->  V83    t=20.000    No
+  V8  ->  V144    t=10.000    No
+  V8  ->  V7    t=10.000    No
+  V8  ->  V169    t=10.000    YES <- FORGED
+  V93  ->  V25    t=10.000    No
+  V98  ->  V133    t=15.000    No
+  V98  ->  V163    t=10.000    No
+  V99  ->  V22    t=10.000    No
+  V9  ->  V20    t=27.000    YES <- FORGED
+[t=27.001]  [KEY-EXFIL] TTW-S2 sophistication: V9 (complicit) -> RSU V207 : session_key K_{V9,nk} + private signing key SK_V9 handed over (collusion)
+  RSU now holds V9's real credentials -> can produce messages cryptographically indistinguishable from V9's own genuine self-report
+[t=27.001]  TTW-S2 RSU attacker  forged fresh ts=27.001  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=27.001]  DETECTION + MITIGATION
+  Ghost link V9<->V20 removed
+  Score: 0.125
+  Latency: 0.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V207): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V207 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V207): blocked from re-admission until re-authenticated
+
+[t=27.002]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_208)
+  Stored packet : <V147 sees V130, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V147 sees V130, t=27.000>  timestamp changed 10.000 -> 27.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=27.002
+
+[t=27.002]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_208)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=27.002]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V147<->V130 was ACTIVE at t=27.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (after replay):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V0  ->  V1    t=10.000    No
+  V104  ->  V115    t=10.000    No
+  V104  ->  V75    t=10.000    No
+  V104  ->  V167    t=10.000    YES <- FORGED
+  V104  ->  V76    t=9.990    YES <- FORGED
+  V104  ->  V75    t=10.000    No
+  V105  ->  V118    t=10.000    No
+  V106  ->  V66    t=10.000    No
+  V109  ->  V69    t=10.000    No
+  V109  ->  V66    t=10.000    YES <- FORGED
+  V109  ->  V69    t=10.000    No
+  V111  ->  V92    t=20.000    No
+  V115  ->  V139    t=25.724    YES <- FORGED
+  V115  ->  V93    t=10.000    YES <- FORGED
+  V115  ->  V154    t=10.000    No
+  V118  ->  V105    t=10.000    No
+  V121  ->  V147    t=25.000    No
+  V122  ->  V145    t=10.000    No
+  V122  ->  V142    t=10.000    YES <- FORGED
+  V123  ->  V68    t=10.000    No
+  V125  ->  V142    t=10.000    No
+  V125  ->  V147    t=15.000    No
+  V128  ->  V23    t=15.000    No
+  V129  ->  V191    t=10.000    No
+  V130  ->  V76    t=9.990    YES <- FORGED
+  V131  ->  V145    t=10.000    No
+  V133  ->  V79    t=10.000    No
+  V133  ->  V76    t=9.990    YES <- FORGED
+  V134  ->  V202    t=15.000    No
+  V137  ->  V43    t=10.000    No
+  V137  ->  V63    t=10.000    YES <- FORGED
+  V137  ->  V43    t=10.000    No
+  V139  ->  V115    t=15.000    No
+  V141  ->  V143    t=10.000    No
+  V141  ->  V118    t=10.000    YES <- FORGED
+  V141  ->  V76    t=9.990    YES <- FORGED
+  V141  ->  V143    t=10.000    No
+  V142  ->  V125    t=10.000    No
+  V143  ->  V141    t=10.000    No
+  V143  ->  V118    t=10.000    YES <- FORGED
+  V143  ->  V76    t=9.990    YES <- FORGED
+  V143  ->  V141    t=10.000    No
+  V144  ->  V8    t=10.000    No
+  V144  ->  V169    t=10.000    YES <- FORGED
+  V144  ->  V76    t=9.990    YES <- FORGED
+  V144  ->  V8    t=10.000    No
+  V145  ->  V122    t=10.000    No
+  V145  ->  V131    t=10.000    No
+  V145  ->  V147    t=20.000    No
+  V145  ->  V142    t=10.000    YES <- FORGED
+  V145  ->  V76    t=9.990    YES <- FORGED
+  V145  ->  V122    t=10.000    No
+  V145  ->  V190    t=10.000    No
+  V146  ->  V87    t=10.000    No
+  V147  ->  V121    t=25.000    No
+  V147  ->  V130    t=27.000    YES <- FORGED
+  V147  ->  V54    t=10.000    No
+  V147  ->  V70    t=10.000    YES <- FORGED
+  V148  ->  V169    t=10.000    No
+  V14  ->  V42    t=10.000    No
+  V151  ->  V92    t=10.000    No
+  V153  ->  V20    t=15.000    No
+  V157  ->  V22    t=10.000    No
+  V157  ->  V7    t=25.000    No
+  V157  ->  V87    t=10.000    YES <- FORGED
+  V157  ->  V22    t=10.000    No
+  V15  ->  V4    t=10.000    No
+  V160  ->  V34    t=25.000    No
+  V161  ->  V77    t=10.000    No
+  V161  ->  V76    t=9.990    YES <- FORGED
+  V161  ->  V163    t=10.000    YES <- FORGED
+  V161  ->  V77    t=10.000    No
+  V163  ->  V98    t=10.000    No
+  V167  ->  V179    t=10.000    No
+  V169  ->  V148    t=10.000    No
+  V16  ->  V49    t=10.000    No
+  V16  ->  V76    t=9.990    YES <- FORGED
+  V172  ->  V69    t=20.330    YES <- FORGED
+  V174  ->  V181    t=10.000    No
+  V174  ->  V76    t=13.709    YES <- FORGED
+  V175  ->  V167    t=10.000    No
+  V176  ->  V140    t=10.000    No
+  V176  ->  V38    t=10.000    No
+  V176  ->  V187    t=10.000    YES <- FORGED
+  V176  ->  V76    t=9.990    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V178  ->  V181    t=10.000    YES <- FORGED
+  V178  ->  V23    t=10.000    No
+  V179  ->  V167    t=10.000    No
+  V179  ->  V186    t=10.000    No
+  V17  ->  V20    t=10.000    No
+  V180  ->  V186    t=25.000    No
+  V180  ->  V67    t=10.000    No
+  V181  ->  V174    t=10.000    No
+  V182  ->  V187    t=10.000    No
+  V183  ->  V93    t=10.000    YES <- FORGED
+  V183  ->  V76    t=9.990    YES <- FORGED
+  V186  ->  V179    t=26.963    YES <- FORGED
+  V186  ->  V180    t=25.000    No
+  V187  ->  V182    t=10.000    No
+  V189  ->  V76    t=9.990    YES <- FORGED
+  V18  ->  V70    t=10.000    No
+  V190  ->  V76    t=9.990    YES <- FORGED
+  V191  ->  V129    t=10.000    No
+  V197  ->  V100    t=10.000    No
+  V19  ->  V191    t=10.000    YES <- FORGED
+  V19  ->  V76    t=9.990    YES <- FORGED
+  V19  ->  V157    t=10.000    No
+  V19  ->  V22    t=10.000    No
+  V1  ->  V0    t=10.000    No
+  V202  ->  V134    t=15.000    No
+  V20  ->  V153    t=20.897    YES <- FORGED
+  V20  ->  V9    t=10.000    No
+  V22  ->  V157    t=10.000    No
+  V22  ->  V87    t=10.000    YES <- FORGED
+  V23  ->  V128    t=15.000    No
+  V23  ->  V178    t=10.000    No
+  V23  ->  V181    t=10.000    YES <- FORGED
+  V23  ->  V76    t=9.990    YES <- FORGED
+  V25  ->  V34    t=10.000    No
+  V25  ->  V93    t=10.000    No
+  V30  ->  V133    t=10.000    No
+  V33  ->  V76    t=9.990    YES <- FORGED
+  V34  ->  V160    t=25.000    No
+  V37  ->  V32    t=10.000    No
+  V38  ->  V176    t=10.000    No
+  V38  ->  V187    t=10.000    YES <- FORGED
+  V38  ->  V76    t=9.990    YES <- FORGED
+  V38  ->  V176    t=10.000    No
+  V41  ->  V191    t=10.000    YES <- FORGED
+  V41  ->  V76    t=9.990    YES <- FORGED
+  V41  ->  V43    t=10.000    No
+  V43  ->  V137    t=10.000    No
+  V43  ->  V63    t=10.000    YES <- FORGED
+  V43  ->  V76    t=9.990    YES <- FORGED
+  V48  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V76    t=9.990    YES <- FORGED
+  V49  ->  V133    t=10.000    No
+  V4  ->  V15    t=10.000    No
+  V51  ->  V77    t=10.000    No
+  V53  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V54  ->  V70    t=10.000    YES <- FORGED
+  V54  ->  V76    t=9.990    YES <- FORGED
+  V54  ->  V147    t=10.000    No
+  V55  ->  V147    t=10.000    No
+  V58  ->  V63    t=10.000    No
+  V5  ->  V6    t=10.000    No
+  V61  ->  V101    t=15.000    No
+  V63  ->  V58    t=10.000    No
+  V63  ->  V68    t=10.000    No
+  V63  ->  V75    t=10.000    No
+  V66  ->  V106    t=10.000    No
+  V67  ->  V180    t=10.000    No
+  V68  ->  V63    t=10.000    No
+  V69  ->  V109    t=10.000    No
+  V69  ->  V172    t=15.000    No
+  V69  ->  V66    t=10.000    YES <- FORGED
+  V69  ->  V76    t=9.990    YES <- FORGED
+  V6  ->  V5    t=10.000    No
+  V70  ->  V18    t=10.000    No
+  V71  ->  V172    t=10.000    No
+  V71  ->  V76    t=9.990    No
+  V75  ->  V104    t=10.000    No
+  V75  ->  V63    t=10.000    No
+  V75  ->  V167    t=10.000    YES <- FORGED
+  V76  ->  V174    t=10.000    No
+  V76  ->  V71    t=9.990    No
+  V77  ->  V161    t=10.000    No
+  V77  ->  V163    t=10.000    YES <- FORGED
+  V77  ->  V161    t=10.000    No
+  V7  ->  V157    t=25.000    No
+  V81  ->  V133    t=20.000    No
+  V83  ->  V87    t=20.000    No
+  V87  ->  V146    t=10.000    No
+  V87  ->  V83    t=20.000    No
+  V8  ->  V144    t=10.000    No
+  V8  ->  V7    t=10.000    No
+  V8  ->  V169    t=10.000    YES <- FORGED
+  V93  ->  V25    t=10.000    No
+  V98  ->  V133    t=15.000    No
+  V98  ->  V163    t=10.000    No
+  V99  ->  V22    t=10.000    No
+
+========================================================
+  TTW ATTACK S2 COMPLETE
+========================================================
+[t=27.002]  TTW-S2 RSU attacker  forged fresh ts=27.002  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=27.002]  DETECTION + MITIGATION
+  Ghost link V147<->V130 removed
+  Score: 0.125
+  Latency: 0.000 ms
+  [Tier 1 — RSU present] FlowMod DROP -> RSU OpenFlow agent (emergency ch)
+  Isolation: INSTANT (wire propagation < 10 ms; bypasses controller)
+  [LKH] Revoke-Session-Key(V208): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V208 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V208): blocked from re-admission until re-authenticated
+

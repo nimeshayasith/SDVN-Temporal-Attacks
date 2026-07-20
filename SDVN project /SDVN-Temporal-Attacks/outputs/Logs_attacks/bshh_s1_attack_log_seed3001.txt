@@ -1,0 +1,18 @@
+========================================================
+  BSHH Attack S1 â€” Malicious Vehicle, No RSU           
+========================================================
+
+  t=5.000   ①  Legitimate V2V heartbeat exchange
+  t=5.010   ②  Both forward honest heartbeats to controller
+  t=5.050   ③  Attacker captures & stores victim heartbeat (Sender=Victim, t=5)
+  t=10.000  ④  Attacker resends own old heartbeat (Sender=Attacker, t=5) to victim
+  t=10.010  ⑤  Victim forwards attacker old heartbeat to controller
+  t=10.020  ⑥  Attacker replays victim stored heartbeat to controller (impersonation)
+  t=10.030  ⑦  Controller holds conflicting liveness
+
+  LOG FORMAT v2: vehicles are printed as V<vehicle-index>(ns3=<node-id>)
+  Every selected attacker executes STEP ③, ④, ⑤, ⑥, and ⑦.
+
+  Selected Attackers (60): V6(ns3=11)  V14(ns3=19)  V22(ns3=27)  V25(ns3=30)  V37(ns3=42)  V41(ns3=46)  V46(ns3=51)  V49(ns3=54)  V55(ns3=60)  V57(ns3=62)  V65(ns3=70)  V70(ns3=75)  V86(ns3=91)  V91(ns3=96)  V93(ns3=98)  V95(ns3=100)  V110(ns3=115)  V114(ns3=119)  V118(ns3=123)  V129(ns3=134)  V133(ns3=138)  V137(ns3=142)  V139(ns3=144)  V140(ns3=145)  V142(ns3=147)  V144(ns3=149)  V146(ns3=151)  V158(ns3=163)  V160(ns3=165)  V163(ns3=168)  V25(ns3=30)  V55(ns3=60)  V57(ns3=62)  V65(ns3=70)  V70(ns3=75)  V86(ns3=91)  V91(ns3=96)  V93(ns3=98)  V95(ns3=100)  V110(ns3=115)  V140(ns3=145)  V142(ns3=147)  V144(ns3=149)  V146(ns3=151)  V65(ns3=70)  V91(ns3=96)  V110(ns3=115)  V129(ns3=134)  V142(ns3=147)  V144(ns3=149)  V6(ns3=11)  V55(ns3=60)  V65(ns3=70)  V91(ns3=96)  V95(ns3=100)  V144(ns3=149)  V36(ns3=41)  V152(ns3=157)  V14(ns3=19)  V41(ns3=46)  
+========================================================
+

@@ -1,3 +1,3 @@
 [
-
+  {"v_id":"V9999","alpha":"BSHH","y_hat":0.1229,"t_alert":7000,"interval_ts_ms":7000,"S_trig":[3],"from_lw_path":true,"from_fs_path":false,"tdet_ms":2000}
 ]
