@@ -1,0 +1,745 @@
+========================================================
+  ME Attack S1 — Malicious Vehicles, No RSU             
+========================================================
+
+  Simulation Parameters:
+    Total vehicles        : 200
+    Attack percentage     : 20%
+    Echo attacker vehicles: 40
+    Benign (real link) veh: 80
+    Active attack groups  : 20
+
+  Vehicle Roles (NS-3 node IDs):
+    V5  [benign — real link]
+    V6  [benign — real link]
+    V7  [benign — real link]
+    V8  [benign — real link]
+    V9  [ECHO ATTACKER] <-- in active group
+    V10  [ECHO ATTACKER] <-- in active group
+    V11  [benign — real link]
+    V12  [benign — real link]
+    V13  [benign — real link]
+    V14  [benign — real link]
+    V15  [benign — real link]
+    V16  [benign — real link]
+    V17  [benign — real link]
+    V18  [benign — real link]
+    V19  [benign — real link]
+    V20  [benign — real link]
+    V21  [benign — real link]
+    V22  [benign — real link]
+    V23  [benign — real link]
+    V24  [benign — real link]
+    V25  [benign — real link]
+    V26  [benign — real link]
+    V27  [benign — real link]
+    V28  [ECHO ATTACKER] <-- in active group
+    V29  [benign — real link]
+    V30  [benign — real link]
+    V31  [benign — real link]
+    V32  [benign — real link]
+    V33  [benign — real link]
+    V34  [benign — real link]
+    V35  [benign — real link]
+    V36  [benign — real link]
+    V37  [benign — real link]
+    V38  [benign — real link]
+    V39  [benign — real link]
+    V40  [benign — real link]
+    V41  [benign — real link]
+    V42  [benign — real link]
+    V43  [ECHO ATTACKER] <-- in active group
+    V44  [ECHO ATTACKER] <-- in active group
+    V45  [ECHO ATTACKER] <-- in active group
+    V46  [ECHO ATTACKER] <-- in active group
+    V47  [benign — real link]
+    V48  [benign — real link]
+    V49  [benign — real link]
+    V50  [ECHO ATTACKER] <-- in active group
+    V51  [benign — real link]
+    V52  [benign — real link]
+    V53  [benign — real link]
+    V54  [ECHO ATTACKER] <-- in active group
+    V55  [benign — real link]
+    V56  [benign — real link]
+    V57  [benign — real link]
+    V58  [benign — real link]
+    V59  [benign — real link]
+    V60  [benign — real link]
+    V61  [benign — real link]
+    V62  [benign — real link]
+    V63  [ECHO ATTACKER] <-- in active group
+    V64  [benign — real link]
+    V65  [benign — real link]
+    V66  [benign — real link]
+    V67  [benign — real link]
+    V68  [benign — real link]
+    V69  [benign — real link]
+    V70  [benign — real link]
+    V71  [benign — real link]
+    V72  [benign — real link]
+    V73  [benign — real link]
+    V74  [benign — real link]
+    V75  [benign — real link]
+    V76  [ECHO ATTACKER] <-- in active group
+    V77  [benign — real link]
+    V78  [benign — real link]
+    V79  [benign — real link]
+    V80  [benign — real link]
+    V81  [benign — real link]
+    V82  [benign — real link]
+    V83  [benign — real link]
+    V84  [benign — real link]
+    V85  [ECHO ATTACKER] <-- in active group
+    V86  [benign — real link]
+    V87  [benign — real link]
+    V88  [benign — real link]
+    V89  [benign — real link]
+    V90  [benign — real link]
+    V91  [benign — real link]
+    V92  [benign — real link]
+    V93  [ECHO ATTACKER] <-- in active group
+    V94  [ECHO ATTACKER] <-- in active group
+    V95  [benign — real link]
+    V96  [benign — real link]
+    V97  [benign — real link]
+    V98  [ECHO ATTACKER] <-- in active group
+    V99  [ECHO ATTACKER] <-- in active group
+    V100  [benign — real link] <-- in active group
+    V101  [benign — real link]
+    V102  [benign — real link]
+    V103  [benign — real link]
+    V104  [ECHO ATTACKER] <-- in active group
+    V105  [benign — real link]
+    V106  [benign — real link]
+    V107  [ECHO ATTACKER] <-- in active group
+    V108  [benign — real link]
+    V109  [benign — real link]
+    V110  [benign — real link]
+    V111  [benign — real link]
+    V112  [benign — real link]
+    V113  [benign — real link]
+    V114  [benign — real link]
+    V115  [ECHO ATTACKER] <-- in active group
+    V116  [benign — real link]
+    V117  [benign — real link]
+    V118  [benign — real link]
+    V119  [benign — real link]
+    V120  [benign — real link]
+    V121  [benign — real link]
+    V122  [ECHO ATTACKER] <-- in active group
+    V123  [benign — real link]
+    V124  [benign — real link]
+    V125  [benign — real link]
+    V126  [ECHO ATTACKER] <-- in active group
+    V127  [ECHO ATTACKER] <-- in active group
+    V128  [benign — real link]
+    V129  [benign — real link]
+    V130  [ECHO ATTACKER] <-- in active group
+    V131  [ECHO ATTACKER] <-- in active group
+    V132  [benign — real link]
+    V133  [benign — real link]
+    V134  [ECHO ATTACKER] <-- in active group
+    V135  [benign — real link]
+    V136  [benign — real link]
+    V137  [ECHO ATTACKER] <-- in active group
+    V138  [benign — real link]
+    V139  [benign — real link]
+    V140  [benign — real link]
+    V141  [benign — real link]
+    V142  [ECHO ATTACKER] <-- in active group
+    V143  [benign — real link]
+    V144  [benign — real link]
+    V145  [benign — real link]
+    V146  [benign — real link]
+    V147  [benign — real link]
+    V148  [benign — real link]
+    V149  [ECHO ATTACKER] <-- in active group
+    V150  [benign — real link]
+    V151  [benign — real link]
+    V152  [benign — real link]
+    V153  [benign — real link]
+    V154  [ECHO ATTACKER] <-- in active group
+    V155  [benign — real link]
+    V156  [benign — real link]
+    V157  [benign — real link]
+    V158  [ECHO ATTACKER] <-- in active group
+    V159  [benign — real link]
+    V160  [ECHO ATTACKER] <-- in active group
+    V161  [benign — real link]
+    V162  [benign — real link]
+    V163  [benign — real link]
+    V164  [benign — real link]
+    V165  [ECHO ATTACKER] <-- in active group
+    V166  [benign — real link]
+    V167  [benign — real link]
+    V168  [ECHO ATTACKER] <-- in active group
+    V169  [benign — real link]
+    V170  [benign — real link]
+    V171  [ECHO ATTACKER] <-- in active group
+    V172  [benign — real link]
+    V173  [ECHO ATTACKER] <-- in active group
+    V174  [ECHO ATTACKER] <-- in active group
+    V175  [ECHO ATTACKER] <-- in active group
+    V176  [benign — real link]
+    V177  [benign — real link]
+    V178  [benign — real link]
+    V179  [benign — real link]
+    V180  [benign — real link]
+    V181  [benign — real link]
+    V182  [benign — real link]
+    V183  [benign — real link]
+    V184  [ECHO ATTACKER] <-- in active group
+    V185  [benign — real link]
+    V186  [benign — real link]
+    V187  [benign — real link]
+    V188  [benign — real link]
+    V189  [benign — real link]
+    V190  [ECHO ATTACKER] <-- in active group
+    V191  [benign — real link]
+    V192  [benign — real link]
+    V193  [benign — real link]
+    V194  [benign — real link]
+    V195  [ECHO ATTACKER] <-- in active group
+    V196  [benign — real link]
+    V197  [benign — real link] <-- in active group
+    V198  [benign — real link]
+    V199  [benign — real link]
+    V200  [benign — real link]
+    V201  [benign — real link]
+    V202  [benign — real link]
+    V203  [benign — real link]
+    V204  [benign — real link]
+
+  Attack Steps (per group):
+  t=10  ①  Real pair HELLO exchange (V2V link); echo pair also exchange own HELLO
+  t=10  ②  All four vehicles send legitimate topology to controller
+            (no cross-links between real pair and echo pair)
+  t=10  ③  Echo vehicles overhear real-pair HELLO (echo preparation)
+  t=10+ ④  Echo vehicles send forged echo reports to controller
+  t=10+ ⑤  Controller infers phantom paths via echo vehicles
+  t=10+ ⑥  Controller installs faulty routes on phantom paths
+
+========================================================
+
+
+[t=9.986]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY
+  Measured distances: d(V102,V139)=59.064m  d(V35,V38)=2051.531m  (range=300.000m)
+  V102 -> V139 : HELLO(Sender=V102, t=9.986057)  (real link pair)
+  V139 -> V102 : HELLO(Sender=V139, t=9.986057)  (real link pair)
+  V35<->V38 OUT OF RANGE — echo pair has no genuine link of its own this run
+  [V35 and V38 are in overhearing range of V102↔V139 but have NO direct link to V102 or V139]
+
+[t=9.986]  STEP ②  LEGITIMATE LINK ESTABLISHMENT
+  V102 -> Controller : <V102 sees V139, t=9.986057>  (real reporter)
+  V139 -> Controller : <V139 sees V102, t=9.986057>  (real reporter)
+  No direct links: V102-V35, V102-V38, V139-V35, V139-V38 do NOT exist
+
+[t=9.986]  STEP ③  HELLO MESSAGE INTERCEPTION (Echo Preparation)
+  V35 overhears HELLO: <V102 sees V139, t=9.986>  [stored for echo]
+  V38 overhears HELLO: <V102 sees V139, t=9.986>  [stored for echo]
+  Echo vehicles will replay this observation to the controller
+
+[t=10.060]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V5 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V22 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V5, V22
+  V3↔V4 link: dist=390.3m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.3m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V5 reports V102↔V139  [ECHO]
+    (4) V22 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V5 -> V139  (PHANTOM)
+    Path 3: V102 -> V22 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V5 or V22 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V39 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V32 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V39, V32
+  V3↔V4 link: dist=1538.1m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.3m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V39 reports V102↔V139  [ECHO]
+    (4) V32 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V39 -> V139  (PHANTOM)
+    Path 3: V102 -> V32 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V39 or V32 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V11 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V40 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V11, V40
+  V3↔V4 link: dist=172.4m  IN RANGE — Path 4 inferred
+  V102↔V139 echoed link: dist=59.3m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V11 reports V102↔V139  [ECHO]
+    (4) V40 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V11 -> V139  (PHANTOM)
+    Path 3: V102 -> V40 -> V139  (PHANTOM)
+    Path 4: V102 -> V11 -> V40 -> V139  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V11 or V40 (including 3-hop V3→V4 chain) (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V35 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V38 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V35, V38
+  V3↔V4 link: dist=2051.5m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V35 reports V102↔V139  [ECHO]
+    (4) V38 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V35 -> V139  (PHANTOM)
+    Path 3: V102 -> V38 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V35 or V38 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V6 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V10 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V6, V10
+  V3↔V4 link: dist=4.9m  IN RANGE — Path 4 inferred
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V6 reports V102↔V139  [ECHO]
+    (4) V10 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V6 -> V139  (PHANTOM)
+    Path 3: V102 -> V10 -> V139  (PHANTOM)
+    Path 4: V102 -> V6 -> V10 -> V139  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V6 or V10 (including 3-hop V3→V4 chain) (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V43 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V17 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V43, V17
+  V3↔V4 link: dist=1106.3m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V43 reports V102↔V139  [ECHO]
+    (4) V17 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V43 -> V139  (PHANTOM)
+    Path 3: V102 -> V17 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V43 or V17 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V24 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V8 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V24, V8
+  V3↔V4 link: dist=388.9m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V24 reports V102↔V139  [ECHO]
+    (4) V8 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V24 -> V139  (PHANTOM)
+    Path 3: V102 -> V8 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V24 or V8 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V42 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V21 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V42, V21
+  V3↔V4 link: dist=2002.0m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V42 reports V102↔V139  [ECHO]
+    (4) V21 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V42 -> V139  (PHANTOM)
+    Path 3: V102 -> V21 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V42 or V21 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V15 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V36 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V15, V36
+  V3↔V4 link: dist=1438.3m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V15 reports V102↔V139  [ECHO]
+    (4) V36 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V15 -> V139  (PHANTOM)
+    Path 3: V102 -> V36 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V15 or V36 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V16 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V19 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V16, V19
+  V3↔V4 link: dist=331.3m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V16 reports V102↔V139  [ECHO]
+    (4) V19 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V16 -> V139  (PHANTOM)
+    Path 3: V102 -> V19 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V16 or V19 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V41 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V29 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V41, V29
+  V3↔V4 link: dist=1150.9m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.4m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V41 reports V102↔V139  [ECHO]
+    (4) V29 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V41 -> V139  (PHANTOM)
+    Path 3: V102 -> V29 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V41 or V29 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V27 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V37 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V27, V37
+  V3↔V4 link: dist=627.5m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V27 reports V102↔V139  [ECHO]
+    (4) V37 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V27 -> V139  (PHANTOM)
+    Path 3: V102 -> V37 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V27 or V37 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V25 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V7 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V25, V7
+  V3↔V4 link: dist=1525.9m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V25 reports V102↔V139  [ECHO]
+    (4) V7 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V25 -> V139  (PHANTOM)
+    Path 3: V102 -> V7 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V25 or V7 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V44 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V26 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V44, V26
+  V3↔V4 link: dist=2045.6m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V44 reports V102↔V139  [ECHO]
+    (4) V26 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V44 -> V139  (PHANTOM)
+    Path 3: V102 -> V26 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V44 or V26 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V13 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V28 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V13, V28
+  V3↔V4 link: dist=1078.0m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V13 reports V102↔V139  [ECHO]
+    (4) V28 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V13 -> V139  (PHANTOM)
+    Path 3: V102 -> V28 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V13 or V28 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V14 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V12 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V14, V12
+  V3↔V4 link: dist=1443.2m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V14 reports V102↔V139  [ECHO]
+    (4) V12 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V14 -> V139  (PHANTOM)
+    Path 3: V102 -> V12 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V14 or V12 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V9 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V18 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V9, V18
+  V3↔V4 link: dist=1176.6m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V9 reports V102↔V139  [ECHO]
+    (4) V18 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V9 -> V139  (PHANTOM)
+    Path 3: V102 -> V18 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V9 or V18 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V30 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V20 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V30, V20
+  V3↔V4 link: dist=110.6m  IN RANGE — Path 4 inferred
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V30 reports V102↔V139  [ECHO]
+    (4) V20 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V30 -> V139  (PHANTOM)
+    Path 3: V102 -> V20 -> V139  (PHANTOM)
+    Path 4: V102 -> V30 -> V20 -> V139  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V30 or V20 (including 3-hop V3→V4 chain) (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V31 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V23 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V31, V23
+  V3↔V4 link: dist=1226.2m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.5m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V31 reports V102↔V139  [ECHO]
+    (4) V23 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V31 -> V139  (PHANTOM)
+    Path 3: V102 -> V23 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V31 or V23 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V34 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  V33 -> Controller : <V102 sees V139, t=9.986057>  (ECHO -- false reporter)
+  Active false reporters: V34, V33
+  V3↔V4 link: dist=1328.8m  OUT OF RANGE — no Path 4
+  V102↔V139 echoed link: dist=59.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V102↔V139:
+    (1) V102 reports V102↔V139  [real]
+    (2) V139 reports V139↔V102  [real]
+    (3) V34 reports V102↔V139  [ECHO]
+    (4) V33 reports V102↔V139  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V102 -> V139  (REAL)
+    Path 2: V102 -> V34 -> V139  (PHANTOM)
+    Path 3: V102 -> V33 -> V139  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V139 may be forwarded via V34 or V33 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+

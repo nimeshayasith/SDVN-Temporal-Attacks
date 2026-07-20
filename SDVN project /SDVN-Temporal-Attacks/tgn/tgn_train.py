@@ -523,7 +523,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     # Auto-restart: reinitialise model if val_bestMCC stays below target
     # OR the class separation gap is too narrow for a robust threshold.
     # Each restart uses a fresh random initialisation. Max 5 attempts.
-    MAX_RESTARTS   = 5
+    MAX_RESTARTS   = args.max_restarts
     TARGET_VAL_MCC = 0.975  # stop when this is reached; 0.98 is unattainable on small datasets
     MIN_GAP_WIDTH  = 0.010  # min score gap between classes for stable theta
 
@@ -881,6 +881,13 @@ def main():
                          "classification head's CE loss (set to -1, same as benign), "
                          "collapsing it to an effective TTW-vs-BSHH 2-way classifier. "
                          "Does not affect binary detection (is_attack) training/scoring.")
+    ap.add_argument("--max_restarts", type=int, default=5,
+                    help="Max re-initialisation attempts if val_bestMCC stays below "
+                         "TARGET_VAL_MCC=0.975 (unattainable on small datasets in "
+                         "practice, so every run tends to burn all attempts). Lower "
+                         "this to cut wall-clock time in hyperparameter sweeps where "
+                         "many seeds already provide restart-equivalent variance "
+                         "(default: 5, matches prior behavior).")
     args = ap.parse_args()
 
     if args.seed >= 0:

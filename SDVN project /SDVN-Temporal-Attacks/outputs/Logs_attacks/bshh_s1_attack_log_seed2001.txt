@@ -1,0 +1,2423 @@
+========================================================
+  BSHH Attack S1 â€” Malicious Vehicle, No RSU           
+========================================================
+
+  t=5.000   ①  Legitimate V2V heartbeat exchange
+  t=5.010   ②  Both forward honest heartbeats to controller
+  t=5.050   ③  Attacker captures & stores victim heartbeat (Sender=Victim, t=5)
+  t=10.000  ④  Attacker resends own old heartbeat (Sender=Attacker, t=5) to victim
+  t=10.010  ⑤  Victim forwards attacker old heartbeat to controller
+  t=10.020  ⑥  Attacker replays victim stored heartbeat to controller (impersonation)
+  t=10.030  ⑦  Controller holds conflicting liveness
+
+  LOG FORMAT v2: vehicles are printed as V<vehicle-index>(ns3=<node-id>)
+  Every selected attacker executes STEP ③, ④, ⑤, ⑥, and ⑦.
+
+  Selected Attackers (51): V0(ns3=5)  V4(ns3=9)  V6(ns3=11)  V7(ns3=12)  V8(ns3=13)  V9(ns3=14)  V11(ns3=16)  V14(ns3=19)  V18(ns3=23)  V20(ns3=25)  V21(ns3=26)  V23(ns3=28)  V24(ns3=29)  V25(ns3=30)  V28(ns3=33)  V30(ns3=35)  V34(ns3=39)  V38(ns3=43)  V10(ns3=15)  V13(ns3=18)  V35(ns3=40)  V11(ns3=16)  V14(ns3=19)  V18(ns3=23)  V21(ns3=26)  V23(ns3=28)  V25(ns3=30)  V28(ns3=33)  V30(ns3=35)  V34(ns3=39)  V38(ns3=43)  V11(ns3=16)  V14(ns3=19)  V18(ns3=23)  V28(ns3=33)  V30(ns3=35)  V34(ns3=39)  V17(ns3=22)  V6(ns3=11)  V14(ns3=19)  V18(ns3=23)  V25(ns3=30)  V28(ns3=33)  V30(ns3=35)  V34(ns3=39)  V26(ns3=31)  V14(ns3=19)  V18(ns3=23)  V28(ns3=33)  V30(ns3=35)  V34(ns3=39)  
+========================================================
+
+========================================
+  PAIR: ATTACKER=V0(ns3=5)  VICTIM=V186(ns3=191)
+========================================
+[t=5.00325]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V186(ns3=191) -> V0(ns3=5) : Heartbeat(Sender=V186(ns3=191), beacon_sending_time=5.00325)
+  V0(ns3=5) -> V186(ns3=191) : Heartbeat(Sender=V0(ns3=5), beacon_sending_time=5.00325)
+
+[t=5.01336]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V186(ns3=191) -> Controller : Heartbeat(Sender=V186(ns3=191), beacon_sending_time=5.00325)
+  V0(ns3=5) -> Controller : Heartbeat(Sender=V0(ns3=5), beacon_sending_time=5.00325)
+
+[t=5.06993]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V0(ns3=5)
+  Victim/claimed  : V186(ns3=191)
+  captured_packet : Heartbeat(Sender=V186(ns3=191), beacon_sending_time=5.00325)  (from legitimate exchange at beacon_sending_time=5.00325)
+  Action          : V0(ns3=5) stores V186(ns3=191)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.00029]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V0(ns3=5)
+  Victim          : V186(ns3=191)
+  V0(ns3=5) -> V186(ns3=191) : Heartbeat(Sender=V186(ns3=191), beacon_sending_time=5.00325)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.00325)
+
+[t=10.0336]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V0(ns3=5)
+  Victim/claimed_sender    : V186(ns3=191)
+  Packet source            : stored STEP ③ heartbeat captured from V186(ns3=191)
+  V0(ns3=5) -> Controller : Heartbeat(claimed=V186(ns3=191), beacon_sending_time=5.00325)
+  physical_sender=V0(ns3=5)  claimed_sender=V186(ns3=191)
+  Stale timestamp 5.00325 < current t=10.0336 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0346]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V186(ns3=191) (attacker=V0(ns3=5) replayed it back)
+  Forwarder/physical       : V186(ns3=191)
+  V186(ns3=191) -> Controller : Heartbeat(Sender=V186(ns3=191), beacon_sending_time=5.00325)
+  Controller refreshes V186(ns3=191) liveness using stale timestamp beacon_sending_time=5.00325
+
+[t=10.0356]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V186(ns3=191)
+  latest physical_sender=V0(ns3=5)  claimed_sender=V186(ns3=191)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V4(ns3=9)  VICTIM=V144(ns3=149)
+========================================
+[t=4.9927]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V144(ns3=149) -> V4(ns3=9) : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=4.9917)
+  V4(ns3=9) -> V144(ns3=149) : Heartbeat(Sender=V4(ns3=9), beacon_sending_time=4.9917)
+
+[t=5.00575]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V144(ns3=149) -> Controller : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=4.9917)
+  V4(ns3=9) -> Controller : Heartbeat(Sender=V4(ns3=9), beacon_sending_time=4.9917)
+
+[t=5.05347]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V4(ns3=9)
+  Victim/claimed  : V144(ns3=149)
+  captured_packet : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=4.9917)  (from legitimate exchange at beacon_sending_time=4.9917)
+  Action          : V4(ns3=9) stores V144(ns3=149)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=6.99807]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V4(ns3=9)
+  Victim          : V144(ns3=149)
+  V4(ns3=9) -> V144(ns3=149) : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=4.9917)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.9917)
+
+[t=10.0113]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V4(ns3=9)
+  Victim/claimed_sender    : V144(ns3=149)
+  Packet source            : stored STEP ③ heartbeat captured from V144(ns3=149)
+  V4(ns3=9) -> Controller : Heartbeat(claimed=V144(ns3=149), beacon_sending_time=4.9917)
+  physical_sender=V4(ns3=9)  claimed_sender=V144(ns3=149)
+  Stale timestamp 4.9917 < current t=10.0113 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0207]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V144(ns3=149) (attacker=V4(ns3=9) replayed it back)
+  Forwarder/physical       : V144(ns3=149)
+  V144(ns3=149) -> Controller : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=4.9917)
+  Controller refreshes V144(ns3=149) liveness using stale timestamp beacon_sending_time=4.9917
+
+[t=10.0217]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V144(ns3=149)
+  latest physical_sender=V4(ns3=9)  claimed_sender=V144(ns3=149)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V6(ns3=11)  VICTIM=V157(ns3=162)
+========================================
+[t=5.02045]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V157(ns3=162) -> V6(ns3=11) : Heartbeat(Sender=V157(ns3=162), beacon_sending_time=5.01845)
+  V6(ns3=11) -> V157(ns3=162) : Heartbeat(Sender=V6(ns3=11), beacon_sending_time=5.01845)
+
+[t=5.02145]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V157(ns3=162) -> Controller : Heartbeat(Sender=V157(ns3=162), beacon_sending_time=5.01845)
+  V6(ns3=11) -> Controller : Heartbeat(Sender=V6(ns3=11), beacon_sending_time=5.01845)
+
+[t=5.03223]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V6(ns3=11)
+  Victim/claimed  : V157(ns3=162)
+  captured_packet : Heartbeat(Sender=V157(ns3=162), beacon_sending_time=5.01845)  (from legitimate exchange at beacon_sending_time=5.01845)
+  Action          : V6(ns3=11) stores V157(ns3=162)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.03858]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V6(ns3=11)
+  Victim          : V157(ns3=162)
+  V6(ns3=11) -> V157(ns3=162) : Heartbeat(Sender=V157(ns3=162), beacon_sending_time=5.01845)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.01845)
+
+[t=10.0093]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V6(ns3=11)
+  Victim/claimed_sender    : V157(ns3=162)
+  Packet source            : stored STEP ③ heartbeat captured from V157(ns3=162)
+  V6(ns3=11) -> Controller : Heartbeat(claimed=V157(ns3=162), beacon_sending_time=5.01845)
+  physical_sender=V6(ns3=11)  claimed_sender=V157(ns3=162)
+  Stale timestamp 5.01845 < current t=10.0093 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0232]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V157(ns3=162) (attacker=V6(ns3=11) replayed it back)
+  Forwarder/physical       : V157(ns3=162)
+  V157(ns3=162) -> Controller : Heartbeat(Sender=V157(ns3=162), beacon_sending_time=5.01845)
+  Controller refreshes V157(ns3=162) liveness using stale timestamp beacon_sending_time=5.01845
+
+[t=10.0242]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V157(ns3=162)
+  latest physical_sender=V6(ns3=11)  claimed_sender=V157(ns3=162)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V6(ns3=11)  VICTIM=V99(ns3=104)
+========================================
+[t=20.0374]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V99(ns3=104) -> V6(ns3=11) : Heartbeat(Sender=V99(ns3=104), beacon_sending_time=19.9994)
+  V6(ns3=11) -> V99(ns3=104) : Heartbeat(Sender=V6(ns3=11), beacon_sending_time=19.9994)
+
+[t=20.0384]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V99(ns3=104) -> Controller : Heartbeat(Sender=V99(ns3=104), beacon_sending_time=19.9994)
+  V6(ns3=11) -> Controller : Heartbeat(Sender=V6(ns3=11), beacon_sending_time=19.9994)
+
+[t=20.0394]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V6(ns3=11)
+  Victim/claimed  : V99(ns3=104)
+  captured_packet : Heartbeat(Sender=V99(ns3=104), beacon_sending_time=19.9994)  (from legitimate exchange at beacon_sending_time=19.9994)
+  Action          : V6(ns3=11) stores V99(ns3=104)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0194]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V6(ns3=11)
+  Victim          : V99(ns3=104)
+  V6(ns3=11) -> V99(ns3=104) : Heartbeat(Sender=V99(ns3=104), beacon_sending_time=19.9994)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=19.9994)
+
+[t=22.0204]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V6(ns3=11)
+  Victim/claimed_sender    : V99(ns3=104)
+  Packet source            : stored STEP ③ heartbeat captured from V99(ns3=104)
+  V6(ns3=11) -> Controller : Heartbeat(claimed=V99(ns3=104), beacon_sending_time=19.9994)
+  physical_sender=V6(ns3=11)  claimed_sender=V99(ns3=104)
+  Stale timestamp 19.9994 < current t=22.0204 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=22.0214]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V99(ns3=104) (attacker=V6(ns3=11) replayed it back)
+  Forwarder/physical       : V99(ns3=104)
+  V99(ns3=104) -> Controller : Heartbeat(Sender=V99(ns3=104), beacon_sending_time=19.9994)
+  Controller refreshes V99(ns3=104) liveness using stale timestamp beacon_sending_time=19.9994
+
+[t=22.0224]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V99(ns3=104)
+  latest physical_sender=V6(ns3=11)  claimed_sender=V99(ns3=104)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V7(ns3=12)  VICTIM=V128(ns3=133)
+========================================
+[t=4.99715]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V128(ns3=133) -> V7(ns3=12) : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=4.99415)
+  V7(ns3=12) -> V128(ns3=133) : Heartbeat(Sender=V7(ns3=12), beacon_sending_time=4.99415)
+
+[t=5.00449]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V128(ns3=133) -> Controller : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=4.99415)
+  V7(ns3=12) -> Controller : Heartbeat(Sender=V7(ns3=12), beacon_sending_time=4.99415)
+
+[t=5.03329]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V7(ns3=12)
+  Victim/claimed  : V128(ns3=133)
+  captured_packet : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=4.99415)  (from legitimate exchange at beacon_sending_time=4.99415)
+  Action          : V7(ns3=12) stores V128(ns3=133)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=6.99481]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V7(ns3=12)
+  Victim          : V128(ns3=133)
+  V7(ns3=12) -> V128(ns3=133) : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=4.99415)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.99415)
+
+[t=10.0292]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V7(ns3=12)
+  Victim/claimed_sender    : V128(ns3=133)
+  Packet source            : stored STEP ③ heartbeat captured from V128(ns3=133)
+  V7(ns3=12) -> Controller : Heartbeat(claimed=V128(ns3=133), beacon_sending_time=4.99415)
+  physical_sender=V7(ns3=12)  claimed_sender=V128(ns3=133)
+  Stale timestamp 4.99415 < current t=10.0292 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.0302]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V128(ns3=133) (attacker=V7(ns3=12) replayed it back)
+  Forwarder/physical       : V128(ns3=133)
+  V128(ns3=133) -> Controller : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=4.99415)
+  Controller refreshes V128(ns3=133) liveness using stale timestamp beacon_sending_time=4.99415
+
+[t=10.0312]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V128(ns3=133)
+  latest physical_sender=V7(ns3=12)  claimed_sender=V128(ns3=133)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V8(ns3=13)  VICTIM=V71(ns3=76)
+========================================
+[t=5.0028]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V71(ns3=76) -> V8(ns3=13) : Heartbeat(Sender=V71(ns3=76), beacon_sending_time=4.9988)
+  V8(ns3=13) -> V71(ns3=76) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=4.9988)
+
+[t=5.01484]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V71(ns3=76) -> Controller : Heartbeat(Sender=V71(ns3=76), beacon_sending_time=4.9988)
+  V8(ns3=13) -> Controller : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=4.9988)
+
+[t=5.04938]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V8(ns3=13)
+  Victim/claimed  : V71(ns3=76)
+  captured_packet : Heartbeat(Sender=V71(ns3=76), beacon_sending_time=4.9988)  (from legitimate exchange at beacon_sending_time=4.9988)
+  Action          : V8(ns3=13) stores V71(ns3=76)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=6.99164]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V8(ns3=13)
+  Victim          : V71(ns3=76)
+  V8(ns3=13) -> V71(ns3=76) : Heartbeat(Sender=V71(ns3=76), beacon_sending_time=4.9988)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.9988)
+
+[t=10.0178]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V8(ns3=13)
+  Victim/claimed_sender    : V71(ns3=76)
+  Packet source            : stored STEP ③ heartbeat captured from V71(ns3=76)
+  V8(ns3=13) -> Controller : Heartbeat(claimed=V71(ns3=76), beacon_sending_time=4.9988)
+  physical_sender=V8(ns3=13)  claimed_sender=V71(ns3=76)
+  Stale timestamp 4.9988 < current t=10.0178 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0188]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V71(ns3=76) (attacker=V8(ns3=13) replayed it back)
+  Forwarder/physical       : V71(ns3=76)
+  V71(ns3=76) -> Controller : Heartbeat(Sender=V71(ns3=76), beacon_sending_time=4.9988)
+  Controller refreshes V71(ns3=76) liveness using stale timestamp beacon_sending_time=4.9988
+
+[t=10.0198]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V71(ns3=76)
+  latest physical_sender=V8(ns3=13)  claimed_sender=V71(ns3=76)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V9(ns3=14)  VICTIM=V193(ns3=198)
+========================================
+[t=5.02029]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V193(ns3=198) -> V9(ns3=14) : Heartbeat(Sender=V193(ns3=198), beacon_sending_time=5.01529)
+  V9(ns3=14) -> V193(ns3=198) : Heartbeat(Sender=V9(ns3=14), beacon_sending_time=5.01529)
+
+[t=5.02129]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V193(ns3=198) -> Controller : Heartbeat(Sender=V193(ns3=198), beacon_sending_time=5.01529)
+  V9(ns3=14) -> Controller : Heartbeat(Sender=V9(ns3=14), beacon_sending_time=5.01529)
+
+[t=5.06504]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V9(ns3=14)
+  Victim/claimed  : V193(ns3=198)
+  captured_packet : Heartbeat(Sender=V193(ns3=198), beacon_sending_time=5.01529)  (from legitimate exchange at beacon_sending_time=5.01529)
+  Action          : V9(ns3=14) stores V193(ns3=198)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.04135]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V9(ns3=14)
+  Victim          : V193(ns3=198)
+  V9(ns3=14) -> V193(ns3=198) : Heartbeat(Sender=V193(ns3=198), beacon_sending_time=5.01529)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.01529)
+
+[t=10.0416]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V9(ns3=14)
+  Victim/claimed_sender    : V193(ns3=198)
+  Packet source            : stored STEP ③ heartbeat captured from V193(ns3=198)
+  V9(ns3=14) -> Controller : Heartbeat(claimed=V193(ns3=198), beacon_sending_time=5.01529)
+  physical_sender=V9(ns3=14)  claimed_sender=V193(ns3=198)
+  Stale timestamp 5.01529 < current t=10.0416 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.0426]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V193(ns3=198) (attacker=V9(ns3=14) replayed it back)
+  Forwarder/physical       : V193(ns3=198)
+  V193(ns3=198) -> Controller : Heartbeat(Sender=V193(ns3=198), beacon_sending_time=5.01529)
+  Controller refreshes V193(ns3=198) liveness using stale timestamp beacon_sending_time=5.01529
+
+[t=10.0436]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V193(ns3=198)
+  latest physical_sender=V9(ns3=14)  claimed_sender=V193(ns3=198)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V10(ns3=15)  VICTIM=V115(ns3=120)
+========================================
+[t=9.99927]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V115(ns3=120) -> V10(ns3=15) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=9.98127)
+  V10(ns3=15) -> V115(ns3=120) : Heartbeat(Sender=V10(ns3=15), beacon_sending_time=9.98127)
+
+[t=10.0003]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V115(ns3=120) -> Controller : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=9.98127)
+  V10(ns3=15) -> Controller : Heartbeat(Sender=V10(ns3=15), beacon_sending_time=9.98127)
+
+[t=10.0013]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V10(ns3=15)
+  Victim/claimed  : V115(ns3=120)
+  captured_packet : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=9.98127)  (from legitimate exchange at beacon_sending_time=9.98127)
+  Action          : V10(ns3=15) stores V115(ns3=120)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.0232]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V10(ns3=15)
+  Victim          : V115(ns3=120)
+  V10(ns3=15) -> V115(ns3=120) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=9.98127)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.98127)
+
+[t=12.0242]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V10(ns3=15)
+  Victim/claimed_sender    : V115(ns3=120)
+  Packet source            : stored STEP ③ heartbeat captured from V115(ns3=120)
+  V10(ns3=15) -> Controller : Heartbeat(claimed=V115(ns3=120), beacon_sending_time=9.98127)
+  physical_sender=V10(ns3=15)  claimed_sender=V115(ns3=120)
+  Stale timestamp 9.98127 < current t=12.0242 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.024]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V15 impersonated V120
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V15 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V15): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V15 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V15): blocked from re-admission until re-authenticated
+
+[t=12.0252]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V115(ns3=120) (attacker=V10(ns3=15) replayed it back)
+  Forwarder/physical       : V115(ns3=120)
+  V115(ns3=120) -> Controller : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=9.98127)
+  Controller refreshes V115(ns3=120) liveness using stale timestamp beacon_sending_time=9.98127
+
+[t=12.0262]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V115(ns3=120)
+  latest physical_sender=V10(ns3=15)  claimed_sender=V115(ns3=120)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V11(ns3=16)  VICTIM=V44(ns3=49)
+========================================
+[t=4.99661]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V44(ns3=49) -> V11(ns3=16) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=4.99061)
+  V11(ns3=16) -> V44(ns3=49) : Heartbeat(Sender=V11(ns3=16), beacon_sending_time=4.99061)
+
+[t=5.01483]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V44(ns3=49) -> Controller : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=4.99061)
+  V11(ns3=16) -> Controller : Heartbeat(Sender=V11(ns3=16), beacon_sending_time=4.99061)
+
+[t=5.0599]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V11(ns3=16)
+  Victim/claimed  : V44(ns3=49)
+  captured_packet : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=4.99061)  (from legitimate exchange at beacon_sending_time=4.99061)
+  Action          : V11(ns3=16) stores V44(ns3=49)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.02375]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V11(ns3=16)
+  Victim          : V44(ns3=49)
+  V11(ns3=16) -> V44(ns3=49) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=4.99061)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.99061)
+
+========================================
+  PAIR: ATTACKER=V11(ns3=16)  VICTIM=V54(ns3=59)
+========================================
+[t=10.008]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V54(ns3=59) -> V11(ns3=16) : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=9.98698)
+  V11(ns3=16) -> V54(ns3=59) : Heartbeat(Sender=V11(ns3=16), beacon_sending_time=9.98698)
+
+[t=10.009]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V54(ns3=59) -> Controller : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=9.98698)
+  V11(ns3=16) -> Controller : Heartbeat(Sender=V11(ns3=16), beacon_sending_time=9.98698)
+
+[t=10.01]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V11(ns3=16)
+  Victim/claimed  : V54(ns3=59)
+  captured_packet : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=9.98698)  (from legitimate exchange at beacon_sending_time=9.98698)
+  Action          : V11(ns3=16) stores V54(ns3=59)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=10.0189]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V11(ns3=16)
+  Victim/claimed_sender    : V44(ns3=49)
+  Packet source            : stored STEP ③ heartbeat captured from V44(ns3=49)
+  V11(ns3=16) -> Controller : Heartbeat(claimed=V44(ns3=49), beacon_sending_time=4.99061)
+  physical_sender=V11(ns3=16)  claimed_sender=V44(ns3=49)
+  Stale timestamp 4.99061 < current t=10.0189 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.0199]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V44(ns3=49) (attacker=V11(ns3=16) replayed it back)
+  Forwarder/physical       : V44(ns3=49)
+  V44(ns3=49) -> Controller : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=4.99061)
+  Controller refreshes V44(ns3=49) liveness using stale timestamp beacon_sending_time=4.99061
+
+[t=10.0209]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V44(ns3=49)
+  latest physical_sender=V11(ns3=16)  claimed_sender=V44(ns3=49)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+[t=11.9867]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V11(ns3=16)
+  Victim          : V54(ns3=59)
+  V11(ns3=16) -> V54(ns3=59) : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=9.98698)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.98698)
+
+[t=11.9877]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V11(ns3=16)
+  Victim/claimed_sender    : V54(ns3=59)
+  Packet source            : stored STEP ③ heartbeat captured from V54(ns3=59)
+  V11(ns3=16) -> Controller : Heartbeat(claimed=V54(ns3=59), beacon_sending_time=9.98698)
+  physical_sender=V11(ns3=16)  claimed_sender=V54(ns3=59)
+  Stale timestamp 9.98698 < current t=11.9877 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=11.988]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V16 impersonated V59
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V16 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V16): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V16 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V16): blocked from re-admission until re-authenticated
+
+[t=11.9887]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V54(ns3=59) (attacker=V11(ns3=16) replayed it back)
+  Forwarder/physical       : V54(ns3=59)
+  V54(ns3=59) -> Controller : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=9.98698)
+  Controller refreshes V54(ns3=59) liveness using stale timestamp beacon_sending_time=9.98698
+
+[t=11.9897]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V54(ns3=59)
+  latest physical_sender=V11(ns3=16)  claimed_sender=V54(ns3=59)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V11(ns3=16)  VICTIM=V63(ns3=68)
+========================================
+[t=15.0335]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V63(ns3=68) -> V11(ns3=16) : Heartbeat(Sender=V63(ns3=68), beacon_sending_time=15.0025)
+  V11(ns3=16) -> V63(ns3=68) : Heartbeat(Sender=V11(ns3=16), beacon_sending_time=15.0025)
+
+[t=15.0345]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V63(ns3=68) -> Controller : Heartbeat(Sender=V63(ns3=68), beacon_sending_time=15.0025)
+  V11(ns3=16) -> Controller : Heartbeat(Sender=V11(ns3=16), beacon_sending_time=15.0025)
+
+[t=15.0355]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V11(ns3=16)
+  Victim/claimed  : V63(ns3=68)
+  captured_packet : Heartbeat(Sender=V63(ns3=68), beacon_sending_time=15.0025)  (from legitimate exchange at beacon_sending_time=15.0025)
+  Action          : V11(ns3=16) stores V63(ns3=68)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=17.0472]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V11(ns3=16)
+  Victim          : V63(ns3=68)
+  V11(ns3=16) -> V63(ns3=68) : Heartbeat(Sender=V63(ns3=68), beacon_sending_time=15.0025)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=15.0025)
+
+[t=17.0482]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V11(ns3=16)
+  Victim/claimed_sender    : V63(ns3=68)
+  Packet source            : stored STEP ③ heartbeat captured from V63(ns3=68)
+  V11(ns3=16) -> Controller : Heartbeat(claimed=V63(ns3=68), beacon_sending_time=15.0025)
+  physical_sender=V11(ns3=16)  claimed_sender=V63(ns3=68)
+  Stale timestamp 15.0025 < current t=17.0482 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=17.0492]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V63(ns3=68) (attacker=V11(ns3=16) replayed it back)
+  Forwarder/physical       : V63(ns3=68)
+  V63(ns3=68) -> Controller : Heartbeat(Sender=V63(ns3=68), beacon_sending_time=15.0025)
+  Controller refreshes V63(ns3=68) liveness using stale timestamp beacon_sending_time=15.0025
+
+[t=17.0502]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V63(ns3=68)
+  latest physical_sender=V11(ns3=16)  claimed_sender=V63(ns3=68)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V13(ns3=18)  VICTIM=V94(ns3=99)
+========================================
+[t=10.0305]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V94(ns3=99) -> V13(ns3=18) : Heartbeat(Sender=V94(ns3=99), beacon_sending_time=10.0115)
+  V13(ns3=18) -> V94(ns3=99) : Heartbeat(Sender=V13(ns3=18), beacon_sending_time=10.0115)
+
+[t=10.0315]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V94(ns3=99) -> Controller : Heartbeat(Sender=V94(ns3=99), beacon_sending_time=10.0115)
+  V13(ns3=18) -> Controller : Heartbeat(Sender=V13(ns3=18), beacon_sending_time=10.0115)
+
+[t=10.0325]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V13(ns3=18)
+  Victim/claimed  : V94(ns3=99)
+  captured_packet : Heartbeat(Sender=V94(ns3=99), beacon_sending_time=10.0115)  (from legitimate exchange at beacon_sending_time=10.0115)
+  Action          : V13(ns3=18) stores V94(ns3=99)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.0499]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V13(ns3=18)
+  Victim          : V94(ns3=99)
+  V13(ns3=18) -> V94(ns3=99) : Heartbeat(Sender=V94(ns3=99), beacon_sending_time=10.0115)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=10.0115)
+
+[t=12.0509]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V13(ns3=18)
+  Victim/claimed_sender    : V94(ns3=99)
+  Packet source            : stored STEP ③ heartbeat captured from V94(ns3=99)
+  V13(ns3=18) -> Controller : Heartbeat(claimed=V94(ns3=99), beacon_sending_time=10.0115)
+  physical_sender=V13(ns3=18)  claimed_sender=V94(ns3=99)
+  Stale timestamp 10.0115 < current t=12.0509 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.051]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V18 impersonated V99
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V18 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V18): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V18 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V18): blocked from re-admission until re-authenticated
+
+[t=12.0519]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V94(ns3=99) (attacker=V13(ns3=18) replayed it back)
+  Forwarder/physical       : V94(ns3=99)
+  V94(ns3=99) -> Controller : Heartbeat(Sender=V94(ns3=99), beacon_sending_time=10.0115)
+  Controller refreshes V94(ns3=99) liveness using stale timestamp beacon_sending_time=10.0115
+
+[t=12.0529]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V94(ns3=99)
+  latest physical_sender=V13(ns3=18)  claimed_sender=V94(ns3=99)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V14(ns3=19)  VICTIM=V51(ns3=56)
+========================================
+[t=4.99968]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V51(ns3=56) -> V14(ns3=19) : Heartbeat(Sender=V51(ns3=56), beacon_sending_time=4.99268)
+  V14(ns3=19) -> V51(ns3=56) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=4.99268)
+
+[t=5.00886]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V51(ns3=56) -> Controller : Heartbeat(Sender=V51(ns3=56), beacon_sending_time=4.99268)
+  V14(ns3=19) -> Controller : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=4.99268)
+
+[t=5.07014]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V14(ns3=19)
+  Victim/claimed  : V51(ns3=56)
+  captured_packet : Heartbeat(Sender=V51(ns3=56), beacon_sending_time=4.99268)  (from legitimate exchange at beacon_sending_time=4.99268)
+  Action          : V14(ns3=19) stores V51(ns3=56)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.04011]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V14(ns3=19)
+  Victim          : V51(ns3=56)
+  V14(ns3=19) -> V51(ns3=56) : Heartbeat(Sender=V51(ns3=56), beacon_sending_time=4.99268)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.99268)
+
+[t=10.0142]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V14(ns3=19)
+  Victim/claimed_sender    : V51(ns3=56)
+  Packet source            : stored STEP ③ heartbeat captured from V51(ns3=56)
+  V14(ns3=19) -> Controller : Heartbeat(claimed=V51(ns3=56), beacon_sending_time=4.99268)
+  physical_sender=V14(ns3=19)  claimed_sender=V51(ns3=56)
+  Stale timestamp 4.99268 < current t=10.0142 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0152]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V51(ns3=56) (attacker=V14(ns3=19) replayed it back)
+  Forwarder/physical       : V51(ns3=56)
+  V51(ns3=56) -> Controller : Heartbeat(Sender=V51(ns3=56), beacon_sending_time=4.99268)
+  Controller refreshes V51(ns3=56) liveness using stale timestamp beacon_sending_time=4.99268
+
+[t=10.0162]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V51(ns3=56)
+  latest physical_sender=V14(ns3=19)  claimed_sender=V51(ns3=56)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V14(ns3=19)  VICTIM=V41(ns3=46)
+========================================
+[t=10.0297]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V41(ns3=46) -> V14(ns3=19) : Heartbeat(Sender=V41(ns3=46), beacon_sending_time=10.0077)
+  V14(ns3=19) -> V41(ns3=46) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=10.0077)
+
+[t=10.0307]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V41(ns3=46) -> Controller : Heartbeat(Sender=V41(ns3=46), beacon_sending_time=10.0077)
+  V14(ns3=19) -> Controller : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=10.0077)
+
+[t=10.0317]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V14(ns3=19)
+  Victim/claimed  : V41(ns3=46)
+  captured_packet : Heartbeat(Sender=V41(ns3=46), beacon_sending_time=10.0077)  (from legitimate exchange at beacon_sending_time=10.0077)
+  Action          : V14(ns3=19) stores V41(ns3=46)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.0013]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V14(ns3=19)
+  Victim          : V41(ns3=46)
+  V14(ns3=19) -> V41(ns3=46) : Heartbeat(Sender=V41(ns3=46), beacon_sending_time=10.0077)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=10.0077)
+
+[t=12.0023]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V14(ns3=19)
+  Victim/claimed_sender    : V41(ns3=46)
+  Packet source            : stored STEP ③ heartbeat captured from V41(ns3=46)
+  V14(ns3=19) -> Controller : Heartbeat(claimed=V41(ns3=46), beacon_sending_time=10.0077)
+  physical_sender=V14(ns3=19)  claimed_sender=V41(ns3=46)
+  Stale timestamp 10.0077 < current t=12.0023 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=12.002]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V19 impersonated V46
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V19 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V19): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V19 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V19): blocked from re-admission until re-authenticated
+
+[t=12.0033]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V41(ns3=46) (attacker=V14(ns3=19) replayed it back)
+  Forwarder/physical       : V41(ns3=46)
+  V41(ns3=46) -> Controller : Heartbeat(Sender=V41(ns3=46), beacon_sending_time=10.0077)
+  Controller refreshes V41(ns3=46) liveness using stale timestamp beacon_sending_time=10.0077
+
+[t=12.0043]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V41(ns3=46)
+  latest physical_sender=V14(ns3=19)  claimed_sender=V41(ns3=46)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V14(ns3=19)  VICTIM=V43(ns3=48)
+========================================
+[t=15.0498]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V43(ns3=48) -> V14(ns3=19) : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.0178)
+  V14(ns3=19) -> V43(ns3=48) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=15.0178)
+
+[t=15.0508]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V43(ns3=48) -> Controller : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.0178)
+  V14(ns3=19) -> Controller : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=15.0178)
+
+[t=15.0518]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V14(ns3=19)
+  Victim/claimed  : V43(ns3=48)
+  captured_packet : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.0178)  (from legitimate exchange at beacon_sending_time=15.0178)
+  Action          : V14(ns3=19) stores V43(ns3=48)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=17.0221]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V14(ns3=19)
+  Victim          : V43(ns3=48)
+  V14(ns3=19) -> V43(ns3=48) : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.0178)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=15.0178)
+
+[t=17.0231]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V14(ns3=19)
+  Victim/claimed_sender    : V43(ns3=48)
+  Packet source            : stored STEP ③ heartbeat captured from V43(ns3=48)
+  V14(ns3=19) -> Controller : Heartbeat(claimed=V43(ns3=48), beacon_sending_time=15.0178)
+  physical_sender=V14(ns3=19)  claimed_sender=V43(ns3=48)
+  Stale timestamp 15.0178 < current t=17.0231 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=17.0241]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V43(ns3=48) (attacker=V14(ns3=19) replayed it back)
+  Forwarder/physical       : V43(ns3=48)
+  V43(ns3=48) -> Controller : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.0178)
+  Controller refreshes V43(ns3=48) liveness using stale timestamp beacon_sending_time=15.0178
+
+[t=17.0251]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V43(ns3=48)
+  latest physical_sender=V14(ns3=19)  claimed_sender=V43(ns3=48)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V14(ns3=19)  VICTIM=V40(ns3=45)
+========================================
+[t=20.0545]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V40(ns3=45) -> V14(ns3=19) : Heartbeat(Sender=V40(ns3=45), beacon_sending_time=20.0155)
+  V14(ns3=19) -> V40(ns3=45) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=20.0155)
+
+[t=20.0555]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V40(ns3=45) -> Controller : Heartbeat(Sender=V40(ns3=45), beacon_sending_time=20.0155)
+  V14(ns3=19) -> Controller : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=20.0155)
+
+[t=20.0565]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V14(ns3=19)
+  Victim/claimed  : V40(ns3=45)
+  captured_packet : Heartbeat(Sender=V40(ns3=45), beacon_sending_time=20.0155)  (from legitimate exchange at beacon_sending_time=20.0155)
+  Action          : V14(ns3=19) stores V40(ns3=45)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0086]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V14(ns3=19)
+  Victim          : V40(ns3=45)
+  V14(ns3=19) -> V40(ns3=45) : Heartbeat(Sender=V40(ns3=45), beacon_sending_time=20.0155)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=20.0155)
+
+[t=22.0096]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V14(ns3=19)
+  Victim/claimed_sender    : V40(ns3=45)
+  Packet source            : stored STEP ③ heartbeat captured from V40(ns3=45)
+  V14(ns3=19) -> Controller : Heartbeat(claimed=V40(ns3=45), beacon_sending_time=20.0155)
+  physical_sender=V14(ns3=19)  claimed_sender=V40(ns3=45)
+  Stale timestamp 20.0155 < current t=22.0096 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=22.0106]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V40(ns3=45) (attacker=V14(ns3=19) replayed it back)
+  Forwarder/physical       : V40(ns3=45)
+  V40(ns3=45) -> Controller : Heartbeat(Sender=V40(ns3=45), beacon_sending_time=20.0155)
+  Controller refreshes V40(ns3=45) liveness using stale timestamp beacon_sending_time=20.0155
+
+[t=22.0116]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V40(ns3=45)
+  latest physical_sender=V14(ns3=19)  claimed_sender=V40(ns3=45)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V14(ns3=19)  VICTIM=V130(ns3=135)
+========================================
+[t=25.0313]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V130(ns3=135) -> V14(ns3=19) : Heartbeat(Sender=V130(ns3=135), beacon_sending_time=24.9853)
+  V14(ns3=19) -> V130(ns3=135) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=24.9853)
+
+[t=25.0323]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V130(ns3=135) -> Controller : Heartbeat(Sender=V130(ns3=135), beacon_sending_time=24.9853)
+  V14(ns3=19) -> Controller : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=24.9853)
+
+[t=25.0333]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V14(ns3=19)
+  Victim/claimed  : V130(ns3=135)
+  captured_packet : Heartbeat(Sender=V130(ns3=135), beacon_sending_time=24.9853)  (from legitimate exchange at beacon_sending_time=24.9853)
+  Action          : V14(ns3=19) stores V130(ns3=135)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=27.0618]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V14(ns3=19)
+  Victim          : V130(ns3=135)
+  V14(ns3=19) -> V130(ns3=135) : Heartbeat(Sender=V130(ns3=135), beacon_sending_time=24.9853)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=24.9853)
+
+[t=27.0628]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V14(ns3=19)
+  Victim/claimed_sender    : V130(ns3=135)
+  Packet source            : stored STEP ③ heartbeat captured from V130(ns3=135)
+  V14(ns3=19) -> Controller : Heartbeat(claimed=V130(ns3=135), beacon_sending_time=24.9853)
+  physical_sender=V14(ns3=19)  claimed_sender=V130(ns3=135)
+  Stale timestamp 24.9853 < current t=27.0628 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=27.0638]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V130(ns3=135) (attacker=V14(ns3=19) replayed it back)
+  Forwarder/physical       : V130(ns3=135)
+  V130(ns3=135) -> Controller : Heartbeat(Sender=V130(ns3=135), beacon_sending_time=24.9853)
+  Controller refreshes V130(ns3=135) liveness using stale timestamp beacon_sending_time=24.9853
+
+[t=27.0648]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V130(ns3=135)
+  latest physical_sender=V14(ns3=19)  claimed_sender=V130(ns3=135)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V17(ns3=22)  VICTIM=V97(ns3=102)
+========================================
+[t=20.0502]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V97(ns3=102) -> V17(ns3=22) : Heartbeat(Sender=V97(ns3=102), beacon_sending_time=20.0132)
+  V17(ns3=22) -> V97(ns3=102) : Heartbeat(Sender=V17(ns3=22), beacon_sending_time=20.0132)
+
+[t=20.0512]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V97(ns3=102) -> Controller : Heartbeat(Sender=V97(ns3=102), beacon_sending_time=20.0132)
+  V17(ns3=22) -> Controller : Heartbeat(Sender=V17(ns3=22), beacon_sending_time=20.0132)
+
+[t=20.0522]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V17(ns3=22)
+  Victim/claimed  : V97(ns3=102)
+  captured_packet : Heartbeat(Sender=V97(ns3=102), beacon_sending_time=20.0132)  (from legitimate exchange at beacon_sending_time=20.0132)
+  Action          : V17(ns3=22) stores V97(ns3=102)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0714]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V17(ns3=22)
+  Victim          : V97(ns3=102)
+  V17(ns3=22) -> V97(ns3=102) : Heartbeat(Sender=V97(ns3=102), beacon_sending_time=20.0132)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=20.0132)
+
+[t=22.0724]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V17(ns3=22)
+  Victim/claimed_sender    : V97(ns3=102)
+  Packet source            : stored STEP ③ heartbeat captured from V97(ns3=102)
+  V17(ns3=22) -> Controller : Heartbeat(claimed=V97(ns3=102), beacon_sending_time=20.0132)
+  physical_sender=V17(ns3=22)  claimed_sender=V97(ns3=102)
+  Stale timestamp 20.0132 < current t=22.0724 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=22.0734]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V97(ns3=102) (attacker=V17(ns3=22) replayed it back)
+  Forwarder/physical       : V97(ns3=102)
+  V97(ns3=102) -> Controller : Heartbeat(Sender=V97(ns3=102), beacon_sending_time=20.0132)
+  Controller refreshes V97(ns3=102) liveness using stale timestamp beacon_sending_time=20.0132
+
+[t=22.0744]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V97(ns3=102)
+  latest physical_sender=V17(ns3=22)  claimed_sender=V97(ns3=102)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V18(ns3=23)  VICTIM=V70(ns3=75)
+========================================
+[t=5.01872]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V70(ns3=75) -> V18(ns3=23) : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.01072)
+  V18(ns3=23) -> V70(ns3=75) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=5.01072)
+
+[t=5.02233]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V70(ns3=75) -> Controller : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.01072)
+  V18(ns3=23) -> Controller : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=5.01072)
+
+[t=5.05382]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V18(ns3=23)
+  Victim/claimed  : V70(ns3=75)
+  captured_packet : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.01072)  (from legitimate exchange at beacon_sending_time=5.01072)
+  Action          : V18(ns3=23) stores V70(ns3=75)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.01444]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V18(ns3=23)
+  Victim          : V70(ns3=75)
+  V18(ns3=23) -> V70(ns3=75) : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.01072)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.01072)
+
+[t=10.0203]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V18(ns3=23)
+  Victim/claimed_sender    : V70(ns3=75)
+  Packet source            : stored STEP ③ heartbeat captured from V70(ns3=75)
+  V18(ns3=23) -> Controller : Heartbeat(claimed=V70(ns3=75), beacon_sending_time=5.01072)
+  physical_sender=V18(ns3=23)  claimed_sender=V70(ns3=75)
+  Stale timestamp 5.01072 < current t=10.0203 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.0227]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V70(ns3=75) (attacker=V18(ns3=23) replayed it back)
+  Forwarder/physical       : V70(ns3=75)
+  V70(ns3=75) -> Controller : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.01072)
+  Controller refreshes V70(ns3=75) liveness using stale timestamp beacon_sending_time=5.01072
+
+[t=10.0237]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V70(ns3=75)
+  latest physical_sender=V18(ns3=23)  claimed_sender=V70(ns3=75)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V18(ns3=23)  VICTIM=V58(ns3=63)
+========================================
+[t=10.0324]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V58(ns3=63) -> V18(ns3=23) : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=10.0094)
+  V18(ns3=23) -> V58(ns3=63) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=10.0094)
+
+[t=10.0334]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V58(ns3=63) -> Controller : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=10.0094)
+  V18(ns3=23) -> Controller : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=10.0094)
+
+[t=10.0344]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V18(ns3=23)
+  Victim/claimed  : V58(ns3=63)
+  captured_packet : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=10.0094)  (from legitimate exchange at beacon_sending_time=10.0094)
+  Action          : V18(ns3=23) stores V58(ns3=63)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.038]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V18(ns3=23)
+  Victim          : V58(ns3=63)
+  V18(ns3=23) -> V58(ns3=63) : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=10.0094)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=10.0094)
+
+[t=12.039]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V18(ns3=23)
+  Victim/claimed_sender    : V58(ns3=63)
+  Packet source            : stored STEP ③ heartbeat captured from V58(ns3=63)
+  V18(ns3=23) -> Controller : Heartbeat(claimed=V58(ns3=63), beacon_sending_time=10.0094)
+  physical_sender=V18(ns3=23)  claimed_sender=V58(ns3=63)
+  Stale timestamp 10.0094 < current t=12.039 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.04]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V58(ns3=63) (attacker=V18(ns3=23) replayed it back)
+  Forwarder/physical       : V58(ns3=63)
+  V58(ns3=63) -> Controller : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=10.0094)
+  Controller refreshes V58(ns3=63) liveness using stale timestamp beacon_sending_time=10.0094
+
+[t=12.041]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V58(ns3=63)
+  latest physical_sender=V18(ns3=23)  claimed_sender=V58(ns3=63)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V18(ns3=23)  VICTIM=V123(ns3=128)
+========================================
+[t=15.0338]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V123(ns3=128) -> V18(ns3=23) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.0008)
+  V18(ns3=23) -> V123(ns3=128) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=15.0008)
+
+[t=15.0348]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V123(ns3=128) -> Controller : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.0008)
+  V18(ns3=23) -> Controller : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=15.0008)
+
+[t=15.0358]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V18(ns3=23)
+  Victim/claimed  : V123(ns3=128)
+  captured_packet : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.0008)  (from legitimate exchange at beacon_sending_time=15.0008)
+  Action          : V18(ns3=23) stores V123(ns3=128)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=17.0577]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V18(ns3=23)
+  Victim          : V123(ns3=128)
+  V18(ns3=23) -> V123(ns3=128) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.0008)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=15.0008)
+
+[t=17.0587]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V18(ns3=23)
+  Victim/claimed_sender    : V123(ns3=128)
+  Packet source            : stored STEP ③ heartbeat captured from V123(ns3=128)
+  V18(ns3=23) -> Controller : Heartbeat(claimed=V123(ns3=128), beacon_sending_time=15.0008)
+  physical_sender=V18(ns3=23)  claimed_sender=V123(ns3=128)
+  Stale timestamp 15.0008 < current t=17.0587 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=17.0597]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V123(ns3=128) (attacker=V18(ns3=23) replayed it back)
+  Forwarder/physical       : V123(ns3=128)
+  V123(ns3=128) -> Controller : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.0008)
+  Controller refreshes V123(ns3=128) liveness using stale timestamp beacon_sending_time=15.0008
+
+[t=17.0607]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V123(ns3=128)
+  latest physical_sender=V18(ns3=23)  claimed_sender=V123(ns3=128)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V18(ns3=23)  VICTIM=V147(ns3=152)
+========================================
+[t=20.0268]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V147(ns3=152) -> V18(ns3=23) : Heartbeat(Sender=V147(ns3=152), beacon_sending_time=19.9868)
+  V18(ns3=23) -> V147(ns3=152) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=19.9868)
+
+[t=20.0278]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V147(ns3=152) -> Controller : Heartbeat(Sender=V147(ns3=152), beacon_sending_time=19.9868)
+  V18(ns3=23) -> Controller : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=19.9868)
+
+[t=20.0288]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V18(ns3=23)
+  Victim/claimed  : V147(ns3=152)
+  captured_packet : Heartbeat(Sender=V147(ns3=152), beacon_sending_time=19.9868)  (from legitimate exchange at beacon_sending_time=19.9868)
+  Action          : V18(ns3=23) stores V147(ns3=152)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0611]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V18(ns3=23)
+  Victim          : V147(ns3=152)
+  V18(ns3=23) -> V147(ns3=152) : Heartbeat(Sender=V147(ns3=152), beacon_sending_time=19.9868)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=19.9868)
+
+[t=22.0621]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V18(ns3=23)
+  Victim/claimed_sender    : V147(ns3=152)
+  Packet source            : stored STEP ③ heartbeat captured from V147(ns3=152)
+  V18(ns3=23) -> Controller : Heartbeat(claimed=V147(ns3=152), beacon_sending_time=19.9868)
+  physical_sender=V18(ns3=23)  claimed_sender=V147(ns3=152)
+  Stale timestamp 19.9868 < current t=22.0621 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=22.0631]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V147(ns3=152) (attacker=V18(ns3=23) replayed it back)
+  Forwarder/physical       : V147(ns3=152)
+  V147(ns3=152) -> Controller : Heartbeat(Sender=V147(ns3=152), beacon_sending_time=19.9868)
+  Controller refreshes V147(ns3=152) liveness using stale timestamp beacon_sending_time=19.9868
+
+[t=22.0641]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V147(ns3=152)
+  latest physical_sender=V18(ns3=23)  claimed_sender=V147(ns3=152)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V18(ns3=23)  VICTIM=V143(ns3=148)
+========================================
+[t=25.0329]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V143(ns3=148) -> V18(ns3=23) : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=24.9859)
+  V18(ns3=23) -> V143(ns3=148) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=24.9859)
+
+[t=25.0339]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V143(ns3=148) -> Controller : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=24.9859)
+  V18(ns3=23) -> Controller : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=24.9859)
+
+[t=25.0349]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V18(ns3=23)
+  Victim/claimed  : V143(ns3=148)
+  captured_packet : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=24.9859)  (from legitimate exchange at beacon_sending_time=24.9859)
+  Action          : V18(ns3=23) stores V143(ns3=148)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=27.0414]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V18(ns3=23)
+  Victim          : V143(ns3=148)
+  V18(ns3=23) -> V143(ns3=148) : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=24.9859)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=24.9859)
+
+[t=27.0424]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V18(ns3=23)
+  Victim/claimed_sender    : V143(ns3=148)
+  Packet source            : stored STEP ③ heartbeat captured from V143(ns3=148)
+  V18(ns3=23) -> Controller : Heartbeat(claimed=V143(ns3=148), beacon_sending_time=24.9859)
+  physical_sender=V18(ns3=23)  claimed_sender=V143(ns3=148)
+  Stale timestamp 24.9859 < current t=27.0424 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=27.0434]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V143(ns3=148) (attacker=V18(ns3=23) replayed it back)
+  Forwarder/physical       : V143(ns3=148)
+  V143(ns3=148) -> Controller : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=24.9859)
+  Controller refreshes V143(ns3=148) liveness using stale timestamp beacon_sending_time=24.9859
+
+[t=27.0444]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V143(ns3=148)
+  latest physical_sender=V18(ns3=23)  claimed_sender=V143(ns3=148)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V20(ns3=25)  VICTIM=V74(ns3=79)
+========================================
+[t=5.02045]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V74(ns3=79) -> V20(ns3=25) : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.01145)
+  V20(ns3=25) -> V74(ns3=79) : Heartbeat(Sender=V20(ns3=25), beacon_sending_time=5.01145)
+
+[t=5.02145]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V74(ns3=79) -> Controller : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.01145)
+  V20(ns3=25) -> Controller : Heartbeat(Sender=V20(ns3=25), beacon_sending_time=5.01145)
+
+[t=5.06466]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V20(ns3=25)
+  Victim/claimed  : V74(ns3=79)
+  captured_packet : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.01145)  (from legitimate exchange at beacon_sending_time=5.01145)
+  Action          : V20(ns3=25) stores V74(ns3=79)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.01522]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V20(ns3=25)
+  Victim          : V74(ns3=79)
+  V20(ns3=25) -> V74(ns3=79) : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.01145)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.01145)
+
+[t=10.0101]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V20(ns3=25)
+  Victim/claimed_sender    : V74(ns3=79)
+  Packet source            : stored STEP ③ heartbeat captured from V74(ns3=79)
+  V20(ns3=25) -> Controller : Heartbeat(claimed=V74(ns3=79), beacon_sending_time=5.01145)
+  physical_sender=V20(ns3=25)  claimed_sender=V74(ns3=79)
+  Stale timestamp 5.01145 < current t=10.0101 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.029]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V74(ns3=79) (attacker=V20(ns3=25) replayed it back)
+  Forwarder/physical       : V74(ns3=79)
+  V74(ns3=79) -> Controller : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.01145)
+  Controller refreshes V74(ns3=79) liveness using stale timestamp beacon_sending_time=5.01145
+
+[t=10.03]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V74(ns3=79)
+  latest physical_sender=V20(ns3=25)  claimed_sender=V74(ns3=79)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V21(ns3=26)  VICTIM=V79(ns3=84)
+========================================
+[t=5.02547]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V79(ns3=84) -> V21(ns3=26) : Heartbeat(Sender=V79(ns3=84), beacon_sending_time=5.01547)
+  V21(ns3=26) -> V79(ns3=84) : Heartbeat(Sender=V21(ns3=26), beacon_sending_time=5.01547)
+
+[t=5.02647]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V79(ns3=84) -> Controller : Heartbeat(Sender=V79(ns3=84), beacon_sending_time=5.01547)
+  V21(ns3=26) -> Controller : Heartbeat(Sender=V21(ns3=26), beacon_sending_time=5.01547)
+
+[t=5.04489]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V21(ns3=26)
+  Victim/claimed  : V79(ns3=84)
+  captured_packet : Heartbeat(Sender=V79(ns3=84), beacon_sending_time=5.01547)  (from legitimate exchange at beacon_sending_time=5.01547)
+  Action          : V21(ns3=26) stores V79(ns3=84)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.00068]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V21(ns3=26)
+  Victim          : V79(ns3=84)
+  V21(ns3=26) -> V79(ns3=84) : Heartbeat(Sender=V79(ns3=84), beacon_sending_time=5.01547)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.01547)
+
+[t=10.0164]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V21(ns3=26)
+  Victim/claimed_sender    : V79(ns3=84)
+  Packet source            : stored STEP ③ heartbeat captured from V79(ns3=84)
+  V21(ns3=26) -> Controller : Heartbeat(claimed=V79(ns3=84), beacon_sending_time=5.01547)
+  physical_sender=V21(ns3=26)  claimed_sender=V79(ns3=84)
+  Stale timestamp 5.01547 < current t=10.0164 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0183]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V79(ns3=84) (attacker=V21(ns3=26) replayed it back)
+  Forwarder/physical       : V79(ns3=84)
+  V79(ns3=84) -> Controller : Heartbeat(Sender=V79(ns3=84), beacon_sending_time=5.01547)
+  Controller refreshes V79(ns3=84) liveness using stale timestamp beacon_sending_time=5.01547
+
+[t=10.0193]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V79(ns3=84)
+  latest physical_sender=V21(ns3=26)  claimed_sender=V79(ns3=84)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V21(ns3=26)  VICTIM=V55(ns3=60)
+========================================
+[t=10.02]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V55(ns3=60) -> V21(ns3=26) : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=9.99605)
+  V21(ns3=26) -> V55(ns3=60) : Heartbeat(Sender=V21(ns3=26), beacon_sending_time=9.99605)
+
+[t=10.021]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V55(ns3=60) -> Controller : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=9.99605)
+  V21(ns3=26) -> Controller : Heartbeat(Sender=V21(ns3=26), beacon_sending_time=9.99605)
+
+[t=10.022]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V21(ns3=26)
+  Victim/claimed  : V55(ns3=60)
+  captured_packet : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=9.99605)  (from legitimate exchange at beacon_sending_time=9.99605)
+  Action          : V21(ns3=26) stores V55(ns3=60)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.0199]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V21(ns3=26)
+  Victim          : V55(ns3=60)
+  V21(ns3=26) -> V55(ns3=60) : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=9.99605)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.99605)
+
+[t=12.0209]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V21(ns3=26)
+  Victim/claimed_sender    : V55(ns3=60)
+  Packet source            : stored STEP ③ heartbeat captured from V55(ns3=60)
+  V21(ns3=26) -> Controller : Heartbeat(claimed=V55(ns3=60), beacon_sending_time=9.99605)
+  physical_sender=V21(ns3=26)  claimed_sender=V55(ns3=60)
+  Stale timestamp 9.99605 < current t=12.0209 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.021]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V26 impersonated V60
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V26 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V26): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V26 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V26): blocked from re-admission until re-authenticated
+
+[t=12.0219]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V55(ns3=60) (attacker=V21(ns3=26) replayed it back)
+  Forwarder/physical       : V55(ns3=60)
+  V55(ns3=60) -> Controller : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=9.99605)
+  Controller refreshes V55(ns3=60) liveness using stale timestamp beacon_sending_time=9.99605
+
+[t=12.0229]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V55(ns3=60)
+  latest physical_sender=V21(ns3=26)  claimed_sender=V55(ns3=60)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V23(ns3=28)  VICTIM=V175(ns3=180)
+========================================
+[t=5.00128]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V175(ns3=180) -> V23(ns3=28) : Heartbeat(Sender=V175(ns3=180), beacon_sending_time=4.99028)
+  V23(ns3=28) -> V175(ns3=180) : Heartbeat(Sender=V23(ns3=28), beacon_sending_time=4.99028)
+
+[t=5.01245]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V175(ns3=180) -> Controller : Heartbeat(Sender=V175(ns3=180), beacon_sending_time=4.99028)
+  V23(ns3=28) -> Controller : Heartbeat(Sender=V23(ns3=28), beacon_sending_time=4.99028)
+
+[t=5.05249]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V23(ns3=28)
+  Victim/claimed  : V175(ns3=180)
+  captured_packet : Heartbeat(Sender=V175(ns3=180), beacon_sending_time=4.99028)  (from legitimate exchange at beacon_sending_time=4.99028)
+  Action          : V23(ns3=28) stores V175(ns3=180)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.02427]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V23(ns3=28)
+  Victim          : V175(ns3=180)
+  V23(ns3=28) -> V175(ns3=180) : Heartbeat(Sender=V175(ns3=180), beacon_sending_time=4.99028)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.99028)
+
+[t=10.0135]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V23(ns3=28)
+  Victim/claimed_sender    : V175(ns3=180)
+  Packet source            : stored STEP ③ heartbeat captured from V175(ns3=180)
+  V23(ns3=28) -> Controller : Heartbeat(claimed=V175(ns3=180), beacon_sending_time=4.99028)
+  physical_sender=V23(ns3=28)  claimed_sender=V175(ns3=180)
+  Stale timestamp 4.99028 < current t=10.0135 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+========================================
+  PAIR: ATTACKER=V23(ns3=28)  VICTIM=V52(ns3=57)
+========================================
+[t=10.0336]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V52(ns3=57) -> V23(ns3=28) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=10.0086)
+  V23(ns3=28) -> V52(ns3=57) : Heartbeat(Sender=V23(ns3=28), beacon_sending_time=10.0086)
+
+[t=10.0343]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V175(ns3=180) (attacker=V23(ns3=28) replayed it back)
+  Forwarder/physical       : V175(ns3=180)
+  V175(ns3=180) -> Controller : Heartbeat(Sender=V175(ns3=180), beacon_sending_time=4.99028)
+  Controller refreshes V175(ns3=180) liveness using stale timestamp beacon_sending_time=4.99028
+
+[t=10.0346]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V52(ns3=57) -> Controller : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=10.0086)
+  V23(ns3=28) -> Controller : Heartbeat(Sender=V23(ns3=28), beacon_sending_time=10.0086)
+
+[t=10.0353]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V175(ns3=180)
+  latest physical_sender=V23(ns3=28)  claimed_sender=V175(ns3=180)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+[t=10.0356]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V23(ns3=28)
+  Victim/claimed  : V52(ns3=57)
+  captured_packet : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=10.0086)  (from legitimate exchange at beacon_sending_time=10.0086)
+  Action          : V23(ns3=28) stores V52(ns3=57)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.015]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V23(ns3=28)
+  Victim          : V52(ns3=57)
+  V23(ns3=28) -> V52(ns3=57) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=10.0086)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=10.0086)
+
+[t=12.016]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V23(ns3=28)
+  Victim/claimed_sender    : V52(ns3=57)
+  Packet source            : stored STEP ③ heartbeat captured from V52(ns3=57)
+  V23(ns3=28) -> Controller : Heartbeat(claimed=V52(ns3=57), beacon_sending_time=10.0086)
+  physical_sender=V23(ns3=28)  claimed_sender=V52(ns3=57)
+  Stale timestamp 10.0086 < current t=12.016 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=12.016]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V28 impersonated V57
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V28 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V28): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V28 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V28): blocked from re-admission until re-authenticated
+
+[t=12.017]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V52(ns3=57) (attacker=V23(ns3=28) replayed it back)
+  Forwarder/physical       : V52(ns3=57)
+  V52(ns3=57) -> Controller : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=10.0086)
+  Controller refreshes V52(ns3=57) liveness using stale timestamp beacon_sending_time=10.0086
+
+[t=12.018]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V52(ns3=57)
+  latest physical_sender=V23(ns3=28)  claimed_sender=V52(ns3=57)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V24(ns3=29)  VICTIM=V76(ns3=81)
+========================================
+[t=5.0041]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V76(ns3=81) -> V24(ns3=29) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=4.9921)
+  V24(ns3=29) -> V76(ns3=81) : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=4.9921)
+
+[t=5.01314]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V76(ns3=81) -> Controller : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=4.9921)
+  V24(ns3=29) -> Controller : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=4.9921)
+
+[t=5.06548]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V24(ns3=29)
+  Victim/claimed  : V76(ns3=81)
+  captured_packet : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=4.9921)  (from legitimate exchange at beacon_sending_time=4.9921)
+  Action          : V24(ns3=29) stores V76(ns3=81)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=6.97359]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V24(ns3=29)
+  Victim          : V76(ns3=81)
+  V24(ns3=29) -> V76(ns3=81) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=4.9921)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.9921)
+
+[t=10.0152]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V24(ns3=29)
+  Victim/claimed_sender    : V76(ns3=81)
+  Packet source            : stored STEP ③ heartbeat captured from V76(ns3=81)
+  V24(ns3=29) -> Controller : Heartbeat(claimed=V76(ns3=81), beacon_sending_time=4.9921)
+  physical_sender=V24(ns3=29)  claimed_sender=V76(ns3=81)
+  Stale timestamp 4.9921 < current t=10.0152 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.0311]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V76(ns3=81) (attacker=V24(ns3=29) replayed it back)
+  Forwarder/physical       : V76(ns3=81)
+  V76(ns3=81) -> Controller : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=4.9921)
+  Controller refreshes V76(ns3=81) liveness using stale timestamp beacon_sending_time=4.9921
+
+[t=10.0321]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V76(ns3=81)
+  latest physical_sender=V24(ns3=29)  claimed_sender=V76(ns3=81)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V25(ns3=30)  VICTIM=V93(ns3=98)
+========================================
+[t=5.02235]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V93(ns3=98) -> V25(ns3=30) : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.00935)
+  V25(ns3=30) -> V93(ns3=98) : Heartbeat(Sender=V25(ns3=30), beacon_sending_time=5.00935)
+
+[t=5.02541]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V93(ns3=98) -> Controller : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.00935)
+  V25(ns3=30) -> Controller : Heartbeat(Sender=V25(ns3=30), beacon_sending_time=5.00935)
+
+[t=5.07334]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V25(ns3=30)
+  Victim/claimed  : V93(ns3=98)
+  captured_packet : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.00935)  (from legitimate exchange at beacon_sending_time=5.00935)
+  Action          : V25(ns3=30) stores V93(ns3=98)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=6.99877]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V25(ns3=30)
+  Victim          : V93(ns3=98)
+  V25(ns3=30) -> V93(ns3=98) : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.00935)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.00935)
+
+========================================
+  PAIR: ATTACKER=V25(ns3=30)  VICTIM=V148(ns3=153)
+========================================
+[t=10.0082]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V148(ns3=153) -> V25(ns3=30) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=9.98216)
+  V25(ns3=30) -> V148(ns3=153) : Heartbeat(Sender=V25(ns3=30), beacon_sending_time=9.98216)
+
+[t=10.0092]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V148(ns3=153) -> Controller : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=9.98216)
+  V25(ns3=30) -> Controller : Heartbeat(Sender=V25(ns3=30), beacon_sending_time=9.98216)
+
+[t=10.0102]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V25(ns3=30)
+  Victim/claimed  : V148(ns3=153)
+  captured_packet : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=9.98216)  (from legitimate exchange at beacon_sending_time=9.98216)
+  Action          : V25(ns3=30) stores V148(ns3=153)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=10.0258]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V25(ns3=30)
+  Victim/claimed_sender    : V93(ns3=98)
+  Packet source            : stored STEP ③ heartbeat captured from V93(ns3=98)
+  V25(ns3=30) -> Controller : Heartbeat(claimed=V93(ns3=98), beacon_sending_time=5.00935)
+  physical_sender=V25(ns3=30)  claimed_sender=V93(ns3=98)
+  Stale timestamp 5.00935 < current t=10.0258 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0268]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V93(ns3=98) (attacker=V25(ns3=30) replayed it back)
+  Forwarder/physical       : V93(ns3=98)
+  V93(ns3=98) -> Controller : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.00935)
+  Controller refreshes V93(ns3=98) liveness using stale timestamp beacon_sending_time=5.00935
+
+[t=10.0278]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V93(ns3=98)
+  latest physical_sender=V25(ns3=30)  claimed_sender=V93(ns3=98)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+[t=12.0502]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V25(ns3=30)
+  Victim          : V148(ns3=153)
+  V25(ns3=30) -> V148(ns3=153) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=9.98216)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.98216)
+
+[t=12.0512]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V25(ns3=30)
+  Victim/claimed_sender    : V148(ns3=153)
+  Packet source            : stored STEP ③ heartbeat captured from V148(ns3=153)
+  V25(ns3=30) -> Controller : Heartbeat(claimed=V148(ns3=153), beacon_sending_time=9.98216)
+  physical_sender=V25(ns3=30)  claimed_sender=V148(ns3=153)
+  Stale timestamp 9.98216 < current t=12.0512 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.051]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V30 impersonated V153
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V30 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V30): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V30 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V30): blocked from re-admission until re-authenticated
+
+[t=12.0522]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V148(ns3=153) (attacker=V25(ns3=30) replayed it back)
+  Forwarder/physical       : V148(ns3=153)
+  V148(ns3=153) -> Controller : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=9.98216)
+  Controller refreshes V148(ns3=153) liveness using stale timestamp beacon_sending_time=9.98216
+
+[t=12.0532]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V148(ns3=153)
+  latest physical_sender=V25(ns3=30)  claimed_sender=V148(ns3=153)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V25(ns3=30)  VICTIM=V56(ns3=61)
+========================================
+[t=20.0568]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V56(ns3=61) -> V25(ns3=30) : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=20.0158)
+  V25(ns3=30) -> V56(ns3=61) : Heartbeat(Sender=V25(ns3=30), beacon_sending_time=20.0158)
+
+[t=20.0578]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V56(ns3=61) -> Controller : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=20.0158)
+  V25(ns3=30) -> Controller : Heartbeat(Sender=V25(ns3=30), beacon_sending_time=20.0158)
+
+[t=20.0588]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V25(ns3=30)
+  Victim/claimed  : V56(ns3=61)
+  captured_packet : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=20.0158)  (from legitimate exchange at beacon_sending_time=20.0158)
+  Action          : V25(ns3=30) stores V56(ns3=61)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0777]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V25(ns3=30)
+  Victim          : V56(ns3=61)
+  V25(ns3=30) -> V56(ns3=61) : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=20.0158)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=20.0158)
+
+[t=22.0787]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V25(ns3=30)
+  Victim/claimed_sender    : V56(ns3=61)
+  Packet source            : stored STEP ③ heartbeat captured from V56(ns3=61)
+  V25(ns3=30) -> Controller : Heartbeat(claimed=V56(ns3=61), beacon_sending_time=20.0158)
+  physical_sender=V25(ns3=30)  claimed_sender=V56(ns3=61)
+  Stale timestamp 20.0158 < current t=22.0787 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=22.0797]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V56(ns3=61) (attacker=V25(ns3=30) replayed it back)
+  Forwarder/physical       : V56(ns3=61)
+  V56(ns3=61) -> Controller : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=20.0158)
+  Controller refreshes V56(ns3=61) liveness using stale timestamp beacon_sending_time=20.0158
+
+[t=22.0807]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V56(ns3=61)
+  latest physical_sender=V25(ns3=30)  claimed_sender=V56(ns3=61)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V26(ns3=31)  VICTIM=V155(ns3=160)
+========================================
+[t=25.027]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V155(ns3=160) -> V26(ns3=31) : Heartbeat(Sender=V155(ns3=160), beacon_sending_time=24.982)
+  V26(ns3=31) -> V155(ns3=160) : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=24.982)
+
+[t=25.028]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V155(ns3=160) -> Controller : Heartbeat(Sender=V155(ns3=160), beacon_sending_time=24.982)
+  V26(ns3=31) -> Controller : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=24.982)
+
+[t=25.029]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V26(ns3=31)
+  Victim/claimed  : V155(ns3=160)
+  captured_packet : Heartbeat(Sender=V155(ns3=160), beacon_sending_time=24.982)  (from legitimate exchange at beacon_sending_time=24.982)
+  Action          : V26(ns3=31) stores V155(ns3=160)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=27.0519]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V26(ns3=31)
+  Victim          : V155(ns3=160)
+  V26(ns3=31) -> V155(ns3=160) : Heartbeat(Sender=V155(ns3=160), beacon_sending_time=24.982)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=24.982)
+
+[t=27.0529]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V26(ns3=31)
+  Victim/claimed_sender    : V155(ns3=160)
+  Packet source            : stored STEP ③ heartbeat captured from V155(ns3=160)
+  V26(ns3=31) -> Controller : Heartbeat(claimed=V155(ns3=160), beacon_sending_time=24.982)
+  physical_sender=V26(ns3=31)  claimed_sender=V155(ns3=160)
+  Stale timestamp 24.982 < current t=27.0529 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=27.0539]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V155(ns3=160) (attacker=V26(ns3=31) replayed it back)
+  Forwarder/physical       : V155(ns3=160)
+  V155(ns3=160) -> Controller : Heartbeat(Sender=V155(ns3=160), beacon_sending_time=24.982)
+  Controller refreshes V155(ns3=160) liveness using stale timestamp beacon_sending_time=24.982
+
+[t=27.0549]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V155(ns3=160)
+  latest physical_sender=V26(ns3=31)  claimed_sender=V155(ns3=160)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V28(ns3=33)  VICTIM=V77(ns3=82)
+========================================
+[t=4.99977]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V77(ns3=82) -> V28(ns3=33) : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=4.98577)
+  V28(ns3=33) -> V77(ns3=82) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=4.98577)
+
+[t=5.01694]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V77(ns3=82) -> Controller : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=4.98577)
+  V28(ns3=33) -> Controller : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=4.98577)
+
+[t=5.07768]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V28(ns3=33)
+  Victim/claimed  : V77(ns3=82)
+  captured_packet : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=4.98577)  (from legitimate exchange at beacon_sending_time=4.98577)
+  Action          : V28(ns3=33) stores V77(ns3=82)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.04109]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V28(ns3=33)
+  Victim          : V77(ns3=82)
+  V28(ns3=33) -> V77(ns3=82) : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=4.98577)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.98577)
+
+[t=10.0253]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V28(ns3=33)
+  Victim/claimed_sender    : V77(ns3=82)
+  Packet source            : stored STEP ③ heartbeat captured from V77(ns3=82)
+  V28(ns3=33) -> Controller : Heartbeat(claimed=V77(ns3=82), beacon_sending_time=4.98577)
+  physical_sender=V28(ns3=33)  claimed_sender=V77(ns3=82)
+  Stale timestamp 4.98577 < current t=10.0253 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0263]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V77(ns3=82) (attacker=V28(ns3=33) replayed it back)
+  Forwarder/physical       : V77(ns3=82)
+  V77(ns3=82) -> Controller : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=4.98577)
+  Controller refreshes V77(ns3=82) liveness using stale timestamp beacon_sending_time=4.98577
+
+[t=10.0273]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V77(ns3=82)
+  latest physical_sender=V28(ns3=33)  claimed_sender=V77(ns3=82)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V28(ns3=33)  VICTIM=V81(ns3=86)
+========================================
+[t=10.0438]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V81(ns3=86) -> V28(ns3=33) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=10.0168)
+  V28(ns3=33) -> V81(ns3=86) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=10.0168)
+
+[t=10.0448]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V81(ns3=86) -> Controller : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=10.0168)
+  V28(ns3=33) -> Controller : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=10.0168)
+
+[t=10.0458]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V28(ns3=33)
+  Victim/claimed  : V81(ns3=86)
+  captured_packet : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=10.0168)  (from legitimate exchange at beacon_sending_time=10.0168)
+  Action          : V28(ns3=33) stores V81(ns3=86)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.0157]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V28(ns3=33)
+  Victim          : V81(ns3=86)
+  V28(ns3=33) -> V81(ns3=86) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=10.0168)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=10.0168)
+
+[t=12.0167]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V28(ns3=33)
+  Victim/claimed_sender    : V81(ns3=86)
+  Packet source            : stored STEP ③ heartbeat captured from V81(ns3=86)
+  V28(ns3=33) -> Controller : Heartbeat(claimed=V81(ns3=86), beacon_sending_time=10.0168)
+  physical_sender=V28(ns3=33)  claimed_sender=V81(ns3=86)
+  Stale timestamp 10.0168 < current t=12.0167 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=12.017]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V33 impersonated V86
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V33 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V33): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V33 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V33): blocked from re-admission until re-authenticated
+
+[t=12.0177]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V81(ns3=86) (attacker=V28(ns3=33) replayed it back)
+  Forwarder/physical       : V81(ns3=86)
+  V81(ns3=86) -> Controller : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=10.0168)
+  Controller refreshes V81(ns3=86) liveness using stale timestamp beacon_sending_time=10.0168
+
+[t=12.0187]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V81(ns3=86)
+  latest physical_sender=V28(ns3=33)  claimed_sender=V81(ns3=86)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V28(ns3=33)  VICTIM=V83(ns3=88)
+========================================
+[t=15.0313]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V83(ns3=88) -> V28(ns3=33) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=14.9973)
+  V28(ns3=33) -> V83(ns3=88) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=14.9973)
+
+[t=15.0323]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V83(ns3=88) -> Controller : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=14.9973)
+  V28(ns3=33) -> Controller : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=14.9973)
+
+[t=15.0333]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V28(ns3=33)
+  Victim/claimed  : V83(ns3=88)
+  captured_packet : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=14.9973)  (from legitimate exchange at beacon_sending_time=14.9973)
+  Action          : V28(ns3=33) stores V83(ns3=88)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=17.0297]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V28(ns3=33)
+  Victim          : V83(ns3=88)
+  V28(ns3=33) -> V83(ns3=88) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=14.9973)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=14.9973)
+
+[t=17.0307]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V28(ns3=33)
+  Victim/claimed_sender    : V83(ns3=88)
+  Packet source            : stored STEP ③ heartbeat captured from V83(ns3=88)
+  V28(ns3=33) -> Controller : Heartbeat(claimed=V83(ns3=88), beacon_sending_time=14.9973)
+  physical_sender=V28(ns3=33)  claimed_sender=V83(ns3=88)
+  Stale timestamp 14.9973 < current t=17.0307 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=17.0317]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V83(ns3=88) (attacker=V28(ns3=33) replayed it back)
+  Forwarder/physical       : V83(ns3=88)
+  V83(ns3=88) -> Controller : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=14.9973)
+  Controller refreshes V83(ns3=88) liveness using stale timestamp beacon_sending_time=14.9973
+
+[t=17.0327]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V83(ns3=88)
+  latest physical_sender=V28(ns3=33)  claimed_sender=V83(ns3=88)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V28(ns3=33)  VICTIM=V102(ns3=107)
+========================================
+[t=20.0373]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V102(ns3=107) -> V28(ns3=33) : Heartbeat(Sender=V102(ns3=107), beacon_sending_time=19.9953)
+  V28(ns3=33) -> V102(ns3=107) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=19.9953)
+
+[t=20.0383]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V102(ns3=107) -> Controller : Heartbeat(Sender=V102(ns3=107), beacon_sending_time=19.9953)
+  V28(ns3=33) -> Controller : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=19.9953)
+
+[t=20.0393]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V28(ns3=33)
+  Victim/claimed  : V102(ns3=107)
+  captured_packet : Heartbeat(Sender=V102(ns3=107), beacon_sending_time=19.9953)  (from legitimate exchange at beacon_sending_time=19.9953)
+  Action          : V28(ns3=33) stores V102(ns3=107)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0515]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V28(ns3=33)
+  Victim          : V102(ns3=107)
+  V28(ns3=33) -> V102(ns3=107) : Heartbeat(Sender=V102(ns3=107), beacon_sending_time=19.9953)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=19.9953)
+
+[t=22.0525]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V28(ns3=33)
+  Victim/claimed_sender    : V102(ns3=107)
+  Packet source            : stored STEP ③ heartbeat captured from V102(ns3=107)
+  V28(ns3=33) -> Controller : Heartbeat(claimed=V102(ns3=107), beacon_sending_time=19.9953)
+  physical_sender=V28(ns3=33)  claimed_sender=V102(ns3=107)
+  Stale timestamp 19.9953 < current t=22.0525 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=22.0535]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V102(ns3=107) (attacker=V28(ns3=33) replayed it back)
+  Forwarder/physical       : V102(ns3=107)
+  V102(ns3=107) -> Controller : Heartbeat(Sender=V102(ns3=107), beacon_sending_time=19.9953)
+  Controller refreshes V102(ns3=107) liveness using stale timestamp beacon_sending_time=19.9953
+
+[t=22.0545]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V102(ns3=107)
+  latest physical_sender=V28(ns3=33)  claimed_sender=V102(ns3=107)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V28(ns3=33)  VICTIM=V65(ns3=70)
+========================================
+[t=25.0474]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V65(ns3=70) -> V28(ns3=33) : Heartbeat(Sender=V65(ns3=70), beacon_sending_time=24.9994)
+  V28(ns3=33) -> V65(ns3=70) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=24.9994)
+
+[t=25.0484]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V65(ns3=70) -> Controller : Heartbeat(Sender=V65(ns3=70), beacon_sending_time=24.9994)
+  V28(ns3=33) -> Controller : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=24.9994)
+
+[t=25.0494]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V28(ns3=33)
+  Victim/claimed  : V65(ns3=70)
+  captured_packet : Heartbeat(Sender=V65(ns3=70), beacon_sending_time=24.9994)  (from legitimate exchange at beacon_sending_time=24.9994)
+  Action          : V28(ns3=33) stores V65(ns3=70)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=27.05]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V28(ns3=33)
+  Victim          : V65(ns3=70)
+  V28(ns3=33) -> V65(ns3=70) : Heartbeat(Sender=V65(ns3=70), beacon_sending_time=24.9994)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=24.9994)
+
+[t=27.051]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V28(ns3=33)
+  Victim/claimed_sender    : V65(ns3=70)
+  Packet source            : stored STEP ③ heartbeat captured from V65(ns3=70)
+  V28(ns3=33) -> Controller : Heartbeat(claimed=V65(ns3=70), beacon_sending_time=24.9994)
+  physical_sender=V28(ns3=33)  claimed_sender=V65(ns3=70)
+  Stale timestamp 24.9994 < current t=27.051 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=27.052]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V65(ns3=70) (attacker=V28(ns3=33) replayed it back)
+  Forwarder/physical       : V65(ns3=70)
+  V65(ns3=70) -> Controller : Heartbeat(Sender=V65(ns3=70), beacon_sending_time=24.9994)
+  Controller refreshes V65(ns3=70) liveness using stale timestamp beacon_sending_time=24.9994
+
+[t=27.053]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V65(ns3=70)
+  latest physical_sender=V28(ns3=33)  claimed_sender=V65(ns3=70)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V30(ns3=35)  VICTIM=V92(ns3=97)
+========================================
+[t=5.02631]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V92(ns3=97) -> V30(ns3=35) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=5.01131)
+  V30(ns3=35) -> V92(ns3=97) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=5.01131)
+
+[t=5.02731]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V92(ns3=97) -> Controller : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=5.01131)
+  V30(ns3=35) -> Controller : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=5.01131)
+
+[t=5.06231]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V30(ns3=35)
+  Victim/claimed  : V92(ns3=97)
+  captured_packet : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=5.01131)  (from legitimate exchange at beacon_sending_time=5.01131)
+  Action          : V30(ns3=35) stores V92(ns3=97)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.00775]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V30(ns3=35)
+  Victim          : V92(ns3=97)
+  V30(ns3=35) -> V92(ns3=97) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=5.01131)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=5.01131)
+
+========================================
+  PAIR: ATTACKER=V30(ns3=35)  VICTIM=V86(ns3=91)
+========================================
+[t=10.0236]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V86(ns3=91) -> V30(ns3=35) : Heartbeat(Sender=V86(ns3=91), beacon_sending_time=9.99563)
+  V30(ns3=35) -> V86(ns3=91) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=9.99563)
+
+[t=10.0246]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V86(ns3=91) -> Controller : Heartbeat(Sender=V86(ns3=91), beacon_sending_time=9.99563)
+  V30(ns3=35) -> Controller : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=9.99563)
+
+[t=10.0256]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V30(ns3=35)
+  Victim/claimed  : V86(ns3=91)
+  captured_packet : Heartbeat(Sender=V86(ns3=91), beacon_sending_time=9.99563)  (from legitimate exchange at beacon_sending_time=9.99563)
+  Action          : V30(ns3=35) stores V86(ns3=91)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=10.0295]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V30(ns3=35)
+  Victim/claimed_sender    : V92(ns3=97)
+  Packet source            : stored STEP ③ heartbeat captured from V92(ns3=97)
+  V30(ns3=35) -> Controller : Heartbeat(claimed=V92(ns3=97), beacon_sending_time=5.01131)
+  physical_sender=V30(ns3=35)  claimed_sender=V92(ns3=97)
+  Stale timestamp 5.01131 < current t=10.0295 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.0305]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V92(ns3=97) (attacker=V30(ns3=35) replayed it back)
+  Forwarder/physical       : V92(ns3=97)
+  V92(ns3=97) -> Controller : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=5.01131)
+  Controller refreshes V92(ns3=97) liveness using stale timestamp beacon_sending_time=5.01131
+
+[t=10.0315]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V92(ns3=97)
+  latest physical_sender=V30(ns3=35)  claimed_sender=V92(ns3=97)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+[t=12.0385]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V30(ns3=35)
+  Victim          : V86(ns3=91)
+  V30(ns3=35) -> V86(ns3=91) : Heartbeat(Sender=V86(ns3=91), beacon_sending_time=9.99563)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.99563)
+
+[t=12.0395]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V30(ns3=35)
+  Victim/claimed_sender    : V86(ns3=91)
+  Packet source            : stored STEP ③ heartbeat captured from V86(ns3=91)
+  V30(ns3=35) -> Controller : Heartbeat(claimed=V86(ns3=91), beacon_sending_time=9.99563)
+  physical_sender=V30(ns3=35)  claimed_sender=V86(ns3=91)
+  Stale timestamp 9.99563 < current t=12.0395 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.0405]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V86(ns3=91) (attacker=V30(ns3=35) replayed it back)
+  Forwarder/physical       : V86(ns3=91)
+  V86(ns3=91) -> Controller : Heartbeat(Sender=V86(ns3=91), beacon_sending_time=9.99563)
+  Controller refreshes V86(ns3=91) liveness using stale timestamp beacon_sending_time=9.99563
+
+[t=12.0415]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V86(ns3=91)
+  latest physical_sender=V30(ns3=35)  claimed_sender=V86(ns3=91)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V30(ns3=35)  VICTIM=V89(ns3=94)
+========================================
+[t=15.0185]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V89(ns3=94) -> V30(ns3=35) : Heartbeat(Sender=V89(ns3=94), beacon_sending_time=14.9835)
+  V30(ns3=35) -> V89(ns3=94) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=14.9835)
+
+[t=15.0195]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V89(ns3=94) -> Controller : Heartbeat(Sender=V89(ns3=94), beacon_sending_time=14.9835)
+  V30(ns3=35) -> Controller : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=14.9835)
+
+[t=15.0205]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V30(ns3=35)
+  Victim/claimed  : V89(ns3=94)
+  captured_packet : Heartbeat(Sender=V89(ns3=94), beacon_sending_time=14.9835)  (from legitimate exchange at beacon_sending_time=14.9835)
+  Action          : V30(ns3=35) stores V89(ns3=94)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=17.0406]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V30(ns3=35)
+  Victim          : V89(ns3=94)
+  V30(ns3=35) -> V89(ns3=94) : Heartbeat(Sender=V89(ns3=94), beacon_sending_time=14.9835)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=14.9835)
+
+[t=17.0416]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V30(ns3=35)
+  Victim/claimed_sender    : V89(ns3=94)
+  Packet source            : stored STEP ③ heartbeat captured from V89(ns3=94)
+  V30(ns3=35) -> Controller : Heartbeat(claimed=V89(ns3=94), beacon_sending_time=14.9835)
+  physical_sender=V30(ns3=35)  claimed_sender=V89(ns3=94)
+  Stale timestamp 14.9835 < current t=17.0416 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=17.0426]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V89(ns3=94) (attacker=V30(ns3=35) replayed it back)
+  Forwarder/physical       : V89(ns3=94)
+  V89(ns3=94) -> Controller : Heartbeat(Sender=V89(ns3=94), beacon_sending_time=14.9835)
+  Controller refreshes V89(ns3=94) liveness using stale timestamp beacon_sending_time=14.9835
+
+[t=17.0436]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V89(ns3=94)
+  latest physical_sender=V30(ns3=35)  claimed_sender=V89(ns3=94)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V30(ns3=35)  VICTIM=V84(ns3=89)
+========================================
+[t=20.0435]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V84(ns3=89) -> V30(ns3=35) : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=20.0005)
+  V30(ns3=35) -> V84(ns3=89) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=20.0005)
+
+[t=20.0445]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V84(ns3=89) -> Controller : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=20.0005)
+  V30(ns3=35) -> Controller : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=20.0005)
+
+[t=20.0455]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V30(ns3=35)
+  Victim/claimed  : V84(ns3=89)
+  captured_packet : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=20.0005)  (from legitimate exchange at beacon_sending_time=20.0005)
+  Action          : V30(ns3=35) stores V84(ns3=89)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0321]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V30(ns3=35)
+  Victim          : V84(ns3=89)
+  V30(ns3=35) -> V84(ns3=89) : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=20.0005)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=20.0005)
+
+[t=22.0331]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V30(ns3=35)
+  Victim/claimed_sender    : V84(ns3=89)
+  Packet source            : stored STEP ③ heartbeat captured from V84(ns3=89)
+  V30(ns3=35) -> Controller : Heartbeat(claimed=V84(ns3=89), beacon_sending_time=20.0005)
+  physical_sender=V30(ns3=35)  claimed_sender=V84(ns3=89)
+  Stale timestamp 20.0005 < current t=22.0331 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=22.0341]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V84(ns3=89) (attacker=V30(ns3=35) replayed it back)
+  Forwarder/physical       : V84(ns3=89)
+  V84(ns3=89) -> Controller : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=20.0005)
+  Controller refreshes V84(ns3=89) liveness using stale timestamp beacon_sending_time=20.0005
+
+[t=22.0351]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V84(ns3=89)
+  latest physical_sender=V30(ns3=35)  claimed_sender=V84(ns3=89)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V30(ns3=35)  VICTIM=V134(ns3=139)
+========================================
+[t=25.0386]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V134(ns3=139) -> V30(ns3=35) : Heartbeat(Sender=V134(ns3=139), beacon_sending_time=24.9896)
+  V30(ns3=35) -> V134(ns3=139) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=24.9896)
+
+[t=25.0396]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V134(ns3=139) -> Controller : Heartbeat(Sender=V134(ns3=139), beacon_sending_time=24.9896)
+  V30(ns3=35) -> Controller : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=24.9896)
+
+[t=25.0406]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V30(ns3=35)
+  Victim/claimed  : V134(ns3=139)
+  captured_packet : Heartbeat(Sender=V134(ns3=139), beacon_sending_time=24.9896)  (from legitimate exchange at beacon_sending_time=24.9896)
+  Action          : V30(ns3=35) stores V134(ns3=139)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=27.0276]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V30(ns3=35)
+  Victim          : V134(ns3=139)
+  V30(ns3=35) -> V134(ns3=139) : Heartbeat(Sender=V134(ns3=139), beacon_sending_time=24.9896)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=24.9896)
+
+[t=27.0286]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V30(ns3=35)
+  Victim/claimed_sender    : V134(ns3=139)
+  Packet source            : stored STEP ③ heartbeat captured from V134(ns3=139)
+  V30(ns3=35) -> Controller : Heartbeat(claimed=V134(ns3=139), beacon_sending_time=24.9896)
+  physical_sender=V30(ns3=35)  claimed_sender=V134(ns3=139)
+  Stale timestamp 24.9896 < current t=27.0286 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=27.0296]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V134(ns3=139) (attacker=V30(ns3=35) replayed it back)
+  Forwarder/physical       : V134(ns3=139)
+  V134(ns3=139) -> Controller : Heartbeat(Sender=V134(ns3=139), beacon_sending_time=24.9896)
+  Controller refreshes V134(ns3=139) liveness using stale timestamp beacon_sending_time=24.9896
+
+[t=27.0306]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V134(ns3=139)
+  latest physical_sender=V30(ns3=35)  claimed_sender=V134(ns3=139)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V34(ns3=39)  VICTIM=V57(ns3=62)
+========================================
+[t=4.99829]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V57(ns3=62) -> V34(ns3=39) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=4.98229)
+  V34(ns3=39) -> V57(ns3=62) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=4.98229)
+
+[t=5.02288]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V57(ns3=62) -> Controller : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=4.98229)
+  V34(ns3=39) -> Controller : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=4.98229)
+
+[t=5.06663]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V34(ns3=39)
+  Victim/claimed  : V57(ns3=62)
+  captured_packet : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=4.98229)  (from legitimate exchange at beacon_sending_time=4.98229)
+  Action          : V34(ns3=39) stores V57(ns3=62)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=6.98656]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V34(ns3=39)
+  Victim          : V57(ns3=62)
+  V34(ns3=39) -> V57(ns3=62) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=4.98229)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.98229)
+
+========================================
+  PAIR: ATTACKER=V34(ns3=39)  VICTIM=V174(ns3=179)
+========================================
+[t=10.0202]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V174(ns3=179) -> V34(ns3=39) : Heartbeat(Sender=V174(ns3=179), beacon_sending_time=9.99122)
+  V34(ns3=39) -> V174(ns3=179) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=9.99122)
+
+[t=10.0212]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V174(ns3=179) -> Controller : Heartbeat(Sender=V174(ns3=179), beacon_sending_time=9.99122)
+  V34(ns3=39) -> Controller : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=9.99122)
+
+[t=10.0222]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V34(ns3=39)
+  Victim/claimed  : V174(ns3=179)
+  captured_packet : Heartbeat(Sender=V174(ns3=179), beacon_sending_time=9.99122)  (from legitimate exchange at beacon_sending_time=9.99122)
+  Action          : V34(ns3=39) stores V174(ns3=179)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=10.0537]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V34(ns3=39)
+  Victim/claimed_sender    : V57(ns3=62)
+  Packet source            : stored STEP ③ heartbeat captured from V57(ns3=62)
+  V34(ns3=39) -> Controller : Heartbeat(claimed=V57(ns3=62), beacon_sending_time=4.98229)
+  physical_sender=V34(ns3=39)  claimed_sender=V57(ns3=62)
+  Stale timestamp 4.98229 < current t=10.0537 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.0547]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V57(ns3=62) (attacker=V34(ns3=39) replayed it back)
+  Forwarder/physical       : V57(ns3=62)
+  V57(ns3=62) -> Controller : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=4.98229)
+  Controller refreshes V57(ns3=62) liveness using stale timestamp beacon_sending_time=4.98229
+
+[t=10.0557]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V57(ns3=62)
+  latest physical_sender=V34(ns3=39)  claimed_sender=V57(ns3=62)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+[t=12.0636]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V34(ns3=39)
+  Victim          : V174(ns3=179)
+  V34(ns3=39) -> V174(ns3=179) : Heartbeat(Sender=V174(ns3=179), beacon_sending_time=9.99122)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.99122)
+
+[t=12.0646]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V34(ns3=39)
+  Victim/claimed_sender    : V174(ns3=179)
+  Packet source            : stored STEP ③ heartbeat captured from V174(ns3=179)
+  V34(ns3=39) -> Controller : Heartbeat(claimed=V174(ns3=179), beacon_sending_time=9.99122)
+  physical_sender=V34(ns3=39)  claimed_sender=V174(ns3=179)
+  Stale timestamp 9.99122 < current t=12.0646 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.065]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V39 impersonated V179
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V39 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V39): blocked from re-admission until re-authenticated
+
+[t=12.0656]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V174(ns3=179) (attacker=V34(ns3=39) replayed it back)
+  Forwarder/physical       : V174(ns3=179)
+  V174(ns3=179) -> Controller : Heartbeat(Sender=V174(ns3=179), beacon_sending_time=9.99122)
+  Controller refreshes V174(ns3=179) liveness using stale timestamp beacon_sending_time=9.99122
+
+[t=12.0666]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V174(ns3=179)
+  latest physical_sender=V34(ns3=39)  claimed_sender=V174(ns3=179)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V34(ns3=39)  VICTIM=V178(ns3=183)
+========================================
+[t=15.0537]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V178(ns3=183) -> V34(ns3=39) : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.0177)
+  V34(ns3=39) -> V178(ns3=183) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=15.0177)
+
+[t=15.0547]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V178(ns3=183) -> Controller : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.0177)
+  V34(ns3=39) -> Controller : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=15.0177)
+
+[t=15.0557]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V34(ns3=39)
+  Victim/claimed  : V178(ns3=183)
+  captured_packet : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.0177)  (from legitimate exchange at beacon_sending_time=15.0177)
+  Action          : V34(ns3=39) stores V178(ns3=183)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=17.0624]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V34(ns3=39)
+  Victim          : V178(ns3=183)
+  V34(ns3=39) -> V178(ns3=183) : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.0177)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=15.0177)
+
+[t=17.0634]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V34(ns3=39)
+  Victim/claimed_sender    : V178(ns3=183)
+  Packet source            : stored STEP ③ heartbeat captured from V178(ns3=183)
+  V34(ns3=39) -> Controller : Heartbeat(claimed=V178(ns3=183), beacon_sending_time=15.0177)
+  physical_sender=V34(ns3=39)  claimed_sender=V178(ns3=183)
+  Stale timestamp 15.0177 < current t=17.0634 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=17.0644]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V178(ns3=183) (attacker=V34(ns3=39) replayed it back)
+  Forwarder/physical       : V178(ns3=183)
+  V178(ns3=183) -> Controller : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.0177)
+  Controller refreshes V178(ns3=183) liveness using stale timestamp beacon_sending_time=15.0177
+
+[t=17.0654]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V178(ns3=183)
+  latest physical_sender=V34(ns3=39)  claimed_sender=V178(ns3=183)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V34(ns3=39)  VICTIM=V181(ns3=186)
+========================================
+[t=20.0535]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V181(ns3=186) -> V34(ns3=39) : Heartbeat(Sender=V181(ns3=186), beacon_sending_time=20.0095)
+  V34(ns3=39) -> V181(ns3=186) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=20.0095)
+
+[t=20.0545]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V181(ns3=186) -> Controller : Heartbeat(Sender=V181(ns3=186), beacon_sending_time=20.0095)
+  V34(ns3=39) -> Controller : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=20.0095)
+
+[t=20.0555]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V34(ns3=39)
+  Victim/claimed  : V181(ns3=186)
+  captured_packet : Heartbeat(Sender=V181(ns3=186), beacon_sending_time=20.0095)  (from legitimate exchange at beacon_sending_time=20.0095)
+  Action          : V34(ns3=39) stores V181(ns3=186)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=22.0635]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V34(ns3=39)
+  Victim          : V181(ns3=186)
+  V34(ns3=39) -> V181(ns3=186) : Heartbeat(Sender=V181(ns3=186), beacon_sending_time=20.0095)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=20.0095)
+
+[t=22.0645]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V34(ns3=39)
+  Victim/claimed_sender    : V181(ns3=186)
+  Packet source            : stored STEP ③ heartbeat captured from V181(ns3=186)
+  V34(ns3=39) -> Controller : Heartbeat(claimed=V181(ns3=186), beacon_sending_time=20.0095)
+  physical_sender=V34(ns3=39)  claimed_sender=V181(ns3=186)
+  Stale timestamp 20.0095 < current t=22.0645 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=22.0655]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V181(ns3=186) (attacker=V34(ns3=39) replayed it back)
+  Forwarder/physical       : V181(ns3=186)
+  V181(ns3=186) -> Controller : Heartbeat(Sender=V181(ns3=186), beacon_sending_time=20.0095)
+  Controller refreshes V181(ns3=186) liveness using stale timestamp beacon_sending_time=20.0095
+
+[t=22.0665]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V181(ns3=186)
+  latest physical_sender=V34(ns3=39)  claimed_sender=V181(ns3=186)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V34(ns3=39)  VICTIM=V171(ns3=176)
+========================================
+[t=25.0623]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V171(ns3=176) -> V34(ns3=39) : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=25.0123)
+  V34(ns3=39) -> V171(ns3=176) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=25.0123)
+
+[t=25.0633]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V171(ns3=176) -> Controller : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=25.0123)
+  V34(ns3=39) -> Controller : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=25.0123)
+
+[t=25.0643]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V34(ns3=39)
+  Victim/claimed  : V171(ns3=176)
+  captured_packet : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=25.0123)  (from legitimate exchange at beacon_sending_time=25.0123)
+  Action          : V34(ns3=39) stores V171(ns3=176)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=27.0565]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V34(ns3=39)
+  Victim          : V171(ns3=176)
+  V34(ns3=39) -> V171(ns3=176) : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=25.0123)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=25.0123)
+
+[t=27.0575]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V34(ns3=39)
+  Victim/claimed_sender    : V171(ns3=176)
+  Packet source            : stored STEP ③ heartbeat captured from V171(ns3=176)
+  V34(ns3=39) -> Controller : Heartbeat(claimed=V171(ns3=176), beacon_sending_time=25.0123)
+  physical_sender=V34(ns3=39)  claimed_sender=V171(ns3=176)
+  Stale timestamp 25.0123 < current t=27.0575 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=27.0585]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V171(ns3=176) (attacker=V34(ns3=39) replayed it back)
+  Forwarder/physical       : V171(ns3=176)
+  V171(ns3=176) -> Controller : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=25.0123)
+  Controller refreshes V171(ns3=176) liveness using stale timestamp beacon_sending_time=25.0123
+
+[t=27.0595]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V171(ns3=176)
+  latest physical_sender=V34(ns3=39)  claimed_sender=V171(ns3=176)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V35(ns3=40)  VICTIM=V152(ns3=157)
+========================================
+[t=10.0006]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V152(ns3=157) -> V35(ns3=40) : Heartbeat(Sender=V152(ns3=157), beacon_sending_time=9.98056)
+  V35(ns3=40) -> V152(ns3=157) : Heartbeat(Sender=V35(ns3=40), beacon_sending_time=9.98056)
+
+[t=10.0016]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V152(ns3=157) -> Controller : Heartbeat(Sender=V152(ns3=157), beacon_sending_time=9.98056)
+  V35(ns3=40) -> Controller : Heartbeat(Sender=V35(ns3=40), beacon_sending_time=9.98056)
+
+[t=10.0026]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V35(ns3=40)
+  Victim/claimed  : V152(ns3=157)
+  captured_packet : Heartbeat(Sender=V152(ns3=157), beacon_sending_time=9.98056)  (from legitimate exchange at beacon_sending_time=9.98056)
+  Action          : V35(ns3=40) stores V152(ns3=157)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=12.0102]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V35(ns3=40)
+  Victim          : V152(ns3=157)
+  V35(ns3=40) -> V152(ns3=157) : Heartbeat(Sender=V152(ns3=157), beacon_sending_time=9.98056)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.98056)
+
+[t=12.0112]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V35(ns3=40)
+  Victim/claimed_sender    : V152(ns3=157)
+  Packet source            : stored STEP ③ heartbeat captured from V152(ns3=157)
+  V35(ns3=40) -> Controller : Heartbeat(claimed=V152(ns3=157), beacon_sending_time=9.98056)
+  physical_sender=V35(ns3=40)  claimed_sender=V152(ns3=157)
+  Stale timestamp 9.98056 < current t=12.0112 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.011]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V40 impersonated V157
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V40 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V40): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V40 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V40): blocked from re-admission until re-authenticated
+
+[t=12.0122]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V152(ns3=157) (attacker=V35(ns3=40) replayed it back)
+  Forwarder/physical       : V152(ns3=157)
+  V152(ns3=157) -> Controller : Heartbeat(Sender=V152(ns3=157), beacon_sending_time=9.98056)
+  Controller refreshes V152(ns3=157) liveness using stale timestamp beacon_sending_time=9.98056
+
+[t=12.0132]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V152(ns3=157)
+  latest physical_sender=V35(ns3=40)  claimed_sender=V152(ns3=157)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+========================================
+  PAIR: ATTACKER=V38(ns3=43)  VICTIM=V60(ns3=65)
+========================================
+[t=5.00119]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V60(ns3=65) -> V38(ns3=43) : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=4.98419)
+  V38(ns3=43) -> V60(ns3=65) : Heartbeat(Sender=V38(ns3=43), beacon_sending_time=4.98419)
+
+[t=5.031]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V60(ns3=65) -> Controller : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=4.98419)
+  V38(ns3=43) -> Controller : Heartbeat(Sender=V38(ns3=43), beacon_sending_time=4.98419)
+
+[t=5.07164]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V38(ns3=43)
+  Victim/claimed  : V60(ns3=65)
+  captured_packet : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=4.98419)  (from legitimate exchange at beacon_sending_time=4.98419)
+  Action          : V38(ns3=43) stores V60(ns3=65)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=7.04185]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V38(ns3=43)
+  Victim          : V60(ns3=65)
+  V38(ns3=43) -> V60(ns3=65) : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=4.98419)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=4.98419)
+
+========================================
+  PAIR: ATTACKER=V38(ns3=43)  VICTIM=V82(ns3=87)
+========================================
+[t=10.0202]  STEP ①  NORMAL HEARTBEAT EXCHANGE
+  V82(ns3=87) -> V38(ns3=43) : Heartbeat(Sender=V82(ns3=87), beacon_sending_time=9.99018)
+  V38(ns3=43) -> V82(ns3=87) : Heartbeat(Sender=V38(ns3=43), beacon_sending_time=9.99018)
+
+[t=10.0212]  STEP ②  LEGITIMATE HEARTBEATS TO CONTROLLER
+  V82(ns3=87) -> Controller : Heartbeat(Sender=V82(ns3=87), beacon_sending_time=9.99018)
+  V38(ns3=43) -> Controller : Heartbeat(Sender=V38(ns3=43), beacon_sending_time=9.99018)
+
+[t=10.0222]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
+  Attacker        : V38(ns3=43)
+  Victim/claimed  : V82(ns3=87)
+  captured_packet : Heartbeat(Sender=V82(ns3=87), beacon_sending_time=9.99018)  (from legitimate exchange at beacon_sending_time=9.99018)
+  Action          : V38(ns3=43) stores V82(ns3=87)'s old heartbeat for replay to victim (STEP ④) and hijack to controller (STEP ⑥)
+
+[t=10.0296]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V38(ns3=43)
+  Victim/claimed_sender    : V60(ns3=65)
+  Packet source            : stored STEP ③ heartbeat captured from V60(ns3=65)
+  V38(ns3=43) -> Controller : Heartbeat(claimed=V60(ns3=65), beacon_sending_time=4.98419)
+  physical_sender=V38(ns3=43)  claimed_sender=V60(ns3=65)
+  Stale timestamp 4.98419 < current t=10.0296 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.0306]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V60(ns3=65) (attacker=V38(ns3=43) replayed it back)
+  Forwarder/physical       : V60(ns3=65)
+  V60(ns3=65) -> Controller : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=4.98419)
+  Controller refreshes V60(ns3=65) liveness using stale timestamp beacon_sending_time=4.98419
+
+[t=10.0316]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V60(ns3=65)
+  latest physical_sender=V38(ns3=43)  claimed_sender=V60(ns3=65)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+
+[t=12.055]  STEP ④  ATTACKER REPLAYS VICTIM'S CAPTURED HEARTBEAT TO VICTIM
+  Attacker        : V38(ns3=43)
+  Victim          : V82(ns3=87)
+  V38(ns3=43) -> V82(ns3=87) : Heartbeat(Sender=V82(ns3=87), beacon_sending_time=9.99018)
+  Victim receives its own captured heartbeat replayed back (stale timestamp beacon_sending_time=9.99018)
+
+[t=12.056]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
+  Attacker/physical_sender : V38(ns3=43)
+  Victim/claimed_sender    : V82(ns3=87)
+  Packet source            : stored STEP ③ heartbeat captured from V82(ns3=87)
+  V38(ns3=43) -> Controller : Heartbeat(claimed=V82(ns3=87), beacon_sending_time=9.99018)
+  physical_sender=V38(ns3=43)  claimed_sender=V82(ns3=87)
+  Stale timestamp 9.99018 < current t=12.056 -> replay evidence
+  Different physical sender -> impersonation evidence
+
+  Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=12.056]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V87
+  Score: 0.123
+  Latency: 1978.423 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V43 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V43): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V43 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V43): blocked from re-admission until re-authenticated
+
+[t=12.057]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
+  Originally captured from : V82(ns3=87) (attacker=V38(ns3=43) replayed it back)
+  Forwarder/physical       : V82(ns3=87)
+  V82(ns3=87) -> Controller : Heartbeat(Sender=V82(ns3=87), beacon_sending_time=9.99018)
+  Controller refreshes V82(ns3=87) liveness using stale timestamp beacon_sending_time=9.99018
+
+[t=12.058]  STEP ⑦  FAULTY ROUTING CONSEQUENCES
+  Controller now holds conflicting stale liveness for V82(ns3=87)
+  latest physical_sender=V38(ns3=43)  claimed_sender=V82(ns3=87)
+  Packets may be routed using stale/non-existent links
+  Expected impact: packet loss, added delay, degraded PDR
+

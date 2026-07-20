@@ -1,0 +1,1854 @@
+========================================================
+  BSHH Attack S4 — Malicious Controller, With RSU      
+========================================================
+
+  t=5.000   ①  V0 <-> V1: Normal V2V heartbeat exchange
+  t=5.000   ②  V0/V1 -> RSU: DSRC heartbeat forwarding
+  t=5.010   ③  RSU -> Controller: legitimate aggregate (CSMA)
+  t=5.100   ④  Malicious Controller stores stale copies from RSU aggregate
+  t=10.000  ⑤  Controller internally replays stale HBs (no external packet)
+  t=10.000  ⑥  Controller holds conflicting liveness -> faulty routing
+
+  LOG FORMAT: controllers printed as Ctrl<idx>(ns3=<id>), RSUs as RSU<idx>(ns3=<id>), vehicles as V<idx>(ns3=<id>)
+  Every selected malicious controller executes STEP ④, ⑤, ⑥.
+
+========================================
+  PAIR: ATTACKER=Ctrl0(ns3=0)  VICTIMS=V111(ns3=116)/V192(ns3=197)  RSU=RSU0(ns3=205)
+========================================
+[t=5.000]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V111(ns3=116) -> V192(ns3=197) : Heartbeat(Sender=V111(ns3=116), beacon_sending_time=5.000)
+  V192(ns3=197) -> V111(ns3=116) : Heartbeat(Sender=V192(ns3=197), beacon_sending_time=5.000)
+
+[t=5.000]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V111(ns3=116) --[DSRC broadcast]--> RSU0(ns3=205) : Heartbeat(Sender=V111(ns3=116), beacon_sending_time=5.000)
+  V192(ns3=197) --[DSRC broadcast]--> RSU0(ns3=205) : Heartbeat(Sender=V192(ns3=197), beacon_sending_time=5.000)
+
+[t=5.010]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU0(ns3=205) --CSMA--> Ctrl0(ns3=0) : Heartbeat(Sender=V111(ns3=116), beacon_sending_time=5.000)  ACCEPTED
+  RSU0(ns3=205) --CSMA--> Ctrl0(ns3=0) : Heartbeat(Sender=V192(ns3=197), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.100]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl0(ns3=0)
+  captured_packet for V111(ns3=116) : Heartbeat(Sender=V111(ns3=116), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V192(ns3=197) : Heartbeat(Sender=V192(ns3=197), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl0(ns3=0) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl0(ns3=0)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V111(ns3=116) liveness with V111(ns3=116)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V192(ns3=197) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V192(ns3=197)
+    claimed_sender  (forged identity)  = V111(ns3=116)
+    Ctrl0(ns3=0) topology DB[V192(ns3=197)] <- Heartbeat(Sender=V111(ns3=116), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V111(ns3=116)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl0(ns3=0)
+
+[t=7.000]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl0(ns3=0) now holds conflicting liveness:
+    V111(ns3=116) : beacon_sending_time=5.000 < current t=7.000  [STALE]
+    V192(ns3=197) : beacon_sending_time=5.000 < current t=7.000  [STALE/FORGED — claims to be V111(ns3=116)]
+  Two liveness entries now assert the same identity (V111(ns3=116)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl1(ns3=1)  VICTIMS=V69(ns3=74)/V197(ns3=202)  RSU=RSU1(ns3=206)
+========================================
+[t=5.001]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V69(ns3=74) -> V197(ns3=202) : Heartbeat(Sender=V69(ns3=74), beacon_sending_time=5.000)
+  V197(ns3=202) -> V69(ns3=74) : Heartbeat(Sender=V197(ns3=202), beacon_sending_time=5.000)
+
+[t=5.001]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V69(ns3=74) --[DSRC broadcast]--> RSU1(ns3=206) : Heartbeat(Sender=V69(ns3=74), beacon_sending_time=5.000)
+  V197(ns3=202) --[DSRC broadcast]--> RSU1(ns3=206) : Heartbeat(Sender=V197(ns3=202), beacon_sending_time=5.000)
+
+[t=5.011]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU1(ns3=206) --CSMA--> Ctrl1(ns3=1) : Heartbeat(Sender=V69(ns3=74), beacon_sending_time=5.000)  ACCEPTED
+  RSU1(ns3=206) --CSMA--> Ctrl1(ns3=1) : Heartbeat(Sender=V197(ns3=202), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.101]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl1(ns3=1)
+  captured_packet for V69(ns3=74) : Heartbeat(Sender=V69(ns3=74), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V197(ns3=202) : Heartbeat(Sender=V197(ns3=202), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl1(ns3=1) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl1(ns3=1)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V69(ns3=74) liveness with V69(ns3=74)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V197(ns3=202) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V197(ns3=202)
+    claimed_sender  (forged identity)  = V69(ns3=74)
+    Ctrl1(ns3=1) topology DB[V197(ns3=202)] <- Heartbeat(Sender=V69(ns3=74), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V69(ns3=74)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl1(ns3=1)
+
+[t=7.001]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl1(ns3=1) now holds conflicting liveness:
+    V69(ns3=74) : beacon_sending_time=5.000 < current t=7.001  [STALE]
+    V197(ns3=202) : beacon_sending_time=5.000 < current t=7.001  [STALE/FORGED — claims to be V69(ns3=74)]
+  Two liveness entries now assert the same identity (V69(ns3=74)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl2(ns3=2)  VICTIMS=V93(ns3=98)/V76(ns3=81)  RSU=RSU2(ns3=207)
+========================================
+[t=5.002]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V93(ns3=98) -> V76(ns3=81) : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.000)
+  V76(ns3=81) -> V93(ns3=98) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)
+
+[t=5.002]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V93(ns3=98) --[DSRC broadcast]--> RSU2(ns3=207) : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.000)
+  V76(ns3=81) --[DSRC broadcast]--> RSU2(ns3=207) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)
+
+[t=5.012]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU2(ns3=207) --CSMA--> Ctrl2(ns3=2) : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.000)  ACCEPTED
+  RSU2(ns3=207) --CSMA--> Ctrl2(ns3=2) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.102]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl2(ns3=2)
+  captured_packet for V93(ns3=98) : Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V76(ns3=81) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl2(ns3=2) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl2(ns3=2)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V93(ns3=98) liveness with V93(ns3=98)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V76(ns3=81) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V76(ns3=81)
+    claimed_sender  (forged identity)  = V93(ns3=98)
+    Ctrl2(ns3=2) topology DB[V76(ns3=81)] <- Heartbeat(Sender=V93(ns3=98), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V93(ns3=98)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl2(ns3=2)
+
+[t=7.002]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl2(ns3=2) now holds conflicting liveness:
+    V93(ns3=98) : beacon_sending_time=5.000 < current t=7.002  [STALE]
+    V76(ns3=81) : beacon_sending_time=5.000 < current t=7.002  [STALE/FORGED — claims to be V93(ns3=98)]
+  Two liveness entries now assert the same identity (V93(ns3=98)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl3(ns3=3)  VICTIMS=V148(ns3=153)/V169(ns3=174)  RSU=RSU3(ns3=208)
+========================================
+[t=5.003]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V148(ns3=153) -> V169(ns3=174) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=5.000)
+  V169(ns3=174) -> V148(ns3=153) : Heartbeat(Sender=V169(ns3=174), beacon_sending_time=5.000)
+
+[t=5.003]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V148(ns3=153) --[DSRC broadcast]--> RSU3(ns3=208) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=5.000)
+  V169(ns3=174) --[DSRC broadcast]--> RSU3(ns3=208) : Heartbeat(Sender=V169(ns3=174), beacon_sending_time=5.000)
+
+[t=5.013]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU3(ns3=208) --CSMA--> Ctrl3(ns3=3) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=5.000)  ACCEPTED
+  RSU3(ns3=208) --CSMA--> Ctrl3(ns3=3) : Heartbeat(Sender=V169(ns3=174), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.103]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl3(ns3=3)
+  captured_packet for V148(ns3=153) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V169(ns3=174) : Heartbeat(Sender=V169(ns3=174), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl3(ns3=3) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl3(ns3=3)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V148(ns3=153) liveness with V148(ns3=153)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V169(ns3=174) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V169(ns3=174)
+    claimed_sender  (forged identity)  = V148(ns3=153)
+    Ctrl3(ns3=3) topology DB[V169(ns3=174)] <- Heartbeat(Sender=V148(ns3=153), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V148(ns3=153)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl3(ns3=3)
+
+[t=7.003]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl3(ns3=3) now holds conflicting liveness:
+    V148(ns3=153) : beacon_sending_time=5.000 < current t=7.003  [STALE]
+    V169(ns3=174) : beacon_sending_time=5.000 < current t=7.003  [STALE/FORGED — claims to be V148(ns3=153)]
+  Two liveness entries now assert the same identity (V148(ns3=153)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl4(?)  VICTIMS=V171(ns3=176)/V176(ns3=181)  RSU=RSU4(ns3=209)
+========================================
+[t=5.004]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V171(ns3=176) -> V176(ns3=181) : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=5.000)
+  V176(ns3=181) -> V171(ns3=176) : Heartbeat(Sender=V176(ns3=181), beacon_sending_time=5.000)
+
+[t=5.004]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V171(ns3=176) --[DSRC broadcast]--> RSU4(ns3=209) : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=5.000)
+  V176(ns3=181) --[DSRC broadcast]--> RSU4(ns3=209) : Heartbeat(Sender=V176(ns3=181), beacon_sending_time=5.000)
+
+[t=5.014]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU4(ns3=209) --CSMA--> Ctrl4(?) : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=5.000)  ACCEPTED
+  RSU4(ns3=209) --CSMA--> Ctrl4(?) : Heartbeat(Sender=V176(ns3=181), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.104]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl4(?)
+  captured_packet for V171(ns3=176) : Heartbeat(Sender=V171(ns3=176), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V176(ns3=181) : Heartbeat(Sender=V176(ns3=181), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl4(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl4(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V171(ns3=176) liveness with V171(ns3=176)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V176(ns3=181) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V176(ns3=181)
+    claimed_sender  (forged identity)  = V171(ns3=176)
+    Ctrl4(?) topology DB[V176(ns3=181)] <- Heartbeat(Sender=V171(ns3=176), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V171(ns3=176)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl4(?)
+
+[t=7.004]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl4(?) now holds conflicting liveness:
+    V171(ns3=176) : beacon_sending_time=5.000 < current t=7.004  [STALE]
+    V176(ns3=181) : beacon_sending_time=5.000 < current t=7.004  [STALE/FORGED — claims to be V171(ns3=176)]
+  Two liveness entries now assert the same identity (V171(ns3=176)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl5(?)  VICTIMS=V108(ns3=113)/V110(ns3=115)  RSU=RSU5(ns3=210)
+========================================
+[t=5.005]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V108(ns3=113) -> V110(ns3=115) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)
+  V110(ns3=115) -> V108(ns3=113) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)
+
+[t=5.005]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V108(ns3=113) --[DSRC broadcast]--> RSU5(ns3=210) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)
+  V110(ns3=115) --[DSRC broadcast]--> RSU5(ns3=210) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)
+
+[t=5.015]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU5(ns3=210) --CSMA--> Ctrl5(?) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)  ACCEPTED
+  RSU5(ns3=210) --CSMA--> Ctrl5(?) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.105]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl5(?)
+  captured_packet for V108(ns3=113) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V110(ns3=115) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl5(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl5(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V108(ns3=113) liveness with V108(ns3=113)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V110(ns3=115) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V110(ns3=115)
+    claimed_sender  (forged identity)  = V108(ns3=113)
+    Ctrl5(?) topology DB[V110(ns3=115)] <- Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V108(ns3=113)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl5(?)
+
+[t=7.005]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl5(?) now holds conflicting liveness:
+    V108(ns3=113) : beacon_sending_time=5.000 < current t=7.005  [STALE]
+    V110(ns3=115) : beacon_sending_time=5.000 < current t=7.005  [STALE/FORGED — claims to be V108(ns3=113)]
+  Two liveness entries now assert the same identity (V108(ns3=113)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl6(?)  VICTIMS=V158(ns3=163)/V160(ns3=165)  RSU=RSU6(ns3=211)
+========================================
+[t=5.006]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V158(ns3=163) -> V160(ns3=165) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)
+  V160(ns3=165) -> V158(ns3=163) : Heartbeat(Sender=V160(ns3=165), beacon_sending_time=5.000)
+
+[t=5.006]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V158(ns3=163) --[DSRC broadcast]--> RSU6(ns3=211) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)
+  V160(ns3=165) --[DSRC broadcast]--> RSU6(ns3=211) : Heartbeat(Sender=V160(ns3=165), beacon_sending_time=5.000)
+
+[t=5.016]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU6(ns3=211) --CSMA--> Ctrl6(?) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)  ACCEPTED
+  RSU6(ns3=211) --CSMA--> Ctrl6(?) : Heartbeat(Sender=V160(ns3=165), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.106]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl6(?)
+  captured_packet for V158(ns3=163) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V160(ns3=165) : Heartbeat(Sender=V160(ns3=165), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl6(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl6(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V158(ns3=163) liveness with V158(ns3=163)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V160(ns3=165) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V160(ns3=165)
+    claimed_sender  (forged identity)  = V158(ns3=163)
+    Ctrl6(?) topology DB[V160(ns3=165)] <- Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V158(ns3=163)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl6(?)
+
+[t=7.006]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl6(?) now holds conflicting liveness:
+    V158(ns3=163) : beacon_sending_time=5.000 < current t=7.006  [STALE]
+    V160(ns3=165) : beacon_sending_time=5.000 < current t=7.006  [STALE/FORGED — claims to be V158(ns3=163)]
+  Two liveness entries now assert the same identity (V158(ns3=163)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl7(?)  VICTIMS=V140(ns3=145)/V122(ns3=127)  RSU=RSU7(ns3=212)
+========================================
+[t=5.007]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V140(ns3=145) -> V122(ns3=127) : Heartbeat(Sender=V140(ns3=145), beacon_sending_time=5.000)
+  V122(ns3=127) -> V140(ns3=145) : Heartbeat(Sender=V122(ns3=127), beacon_sending_time=5.000)
+
+[t=5.007]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V140(ns3=145) --[DSRC broadcast]--> RSU7(ns3=212) : Heartbeat(Sender=V140(ns3=145), beacon_sending_time=5.000)
+  V122(ns3=127) --[DSRC broadcast]--> RSU7(ns3=212) : Heartbeat(Sender=V122(ns3=127), beacon_sending_time=5.000)
+
+[t=5.017]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU7(ns3=212) --CSMA--> Ctrl7(?) : Heartbeat(Sender=V140(ns3=145), beacon_sending_time=5.000)  ACCEPTED
+  RSU7(ns3=212) --CSMA--> Ctrl7(?) : Heartbeat(Sender=V122(ns3=127), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.107]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl7(?)
+  captured_packet for V140(ns3=145) : Heartbeat(Sender=V140(ns3=145), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V122(ns3=127) : Heartbeat(Sender=V122(ns3=127), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl7(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl7(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V140(ns3=145) liveness with V140(ns3=145)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V122(ns3=127) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V122(ns3=127)
+    claimed_sender  (forged identity)  = V140(ns3=145)
+    Ctrl7(?) topology DB[V122(ns3=127)] <- Heartbeat(Sender=V140(ns3=145), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V140(ns3=145)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl7(?)
+
+[t=7.007]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl7(?) now holds conflicting liveness:
+    V140(ns3=145) : beacon_sending_time=5.000 < current t=7.007  [STALE]
+    V122(ns3=127) : beacon_sending_time=5.000 < current t=7.007  [STALE/FORGED — claims to be V140(ns3=145)]
+  Two liveness entries now assert the same identity (V140(ns3=145)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl8(?)  VICTIMS=V66(ns3=71)/V146(ns3=151)  RSU=RSU8(ns3=213)
+========================================
+[t=5.008]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V66(ns3=71) -> V146(ns3=151) : Heartbeat(Sender=V66(ns3=71), beacon_sending_time=5.000)
+  V146(ns3=151) -> V66(ns3=71) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=5.000)
+
+[t=5.008]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V66(ns3=71) --[DSRC broadcast]--> RSU8(ns3=213) : Heartbeat(Sender=V66(ns3=71), beacon_sending_time=5.000)
+  V146(ns3=151) --[DSRC broadcast]--> RSU8(ns3=213) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=5.000)
+
+[t=5.018]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU8(ns3=213) --CSMA--> Ctrl8(?) : Heartbeat(Sender=V66(ns3=71), beacon_sending_time=5.000)  ACCEPTED
+  RSU8(ns3=213) --CSMA--> Ctrl8(?) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.108]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl8(?)
+  captured_packet for V66(ns3=71) : Heartbeat(Sender=V66(ns3=71), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V146(ns3=151) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl8(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl8(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V66(ns3=71) liveness with V66(ns3=71)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V146(ns3=151) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V146(ns3=151)
+    claimed_sender  (forged identity)  = V66(ns3=71)
+    Ctrl8(?) topology DB[V146(ns3=151)] <- Heartbeat(Sender=V66(ns3=71), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V66(ns3=71)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl8(?)
+
+[t=7.008]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl8(?) now holds conflicting liveness:
+    V66(ns3=71) : beacon_sending_time=5.000 < current t=7.008  [STALE]
+    V146(ns3=151) : beacon_sending_time=5.000 < current t=7.008  [STALE/FORGED — claims to be V66(ns3=71)]
+  Two liveness entries now assert the same identity (V66(ns3=71)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl9(?)  VICTIMS=V110(ns3=115)/V108(ns3=113)  RSU=RSU9(ns3=214)
+========================================
+[t=5.009]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V110(ns3=115) -> V108(ns3=113) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)
+  V108(ns3=113) -> V110(ns3=115) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)
+
+[t=5.009]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V110(ns3=115) --[DSRC broadcast]--> RSU9(ns3=214) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)
+  V108(ns3=113) --[DSRC broadcast]--> RSU9(ns3=214) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)
+
+[t=5.019]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU9(ns3=214) --CSMA--> Ctrl9(?) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)  ACCEPTED
+  RSU9(ns3=214) --CSMA--> Ctrl9(?) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.109]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl9(?)
+  captured_packet for V110(ns3=115) : Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V108(ns3=113) : Heartbeat(Sender=V108(ns3=113), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl9(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl9(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V110(ns3=115) liveness with V110(ns3=115)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V108(ns3=113) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V108(ns3=113)
+    claimed_sender  (forged identity)  = V110(ns3=115)
+    Ctrl9(?) topology DB[V108(ns3=113)] <- Heartbeat(Sender=V110(ns3=115), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V110(ns3=115)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl9(?)
+
+[t=7.009]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl9(?) now holds conflicting liveness:
+    V110(ns3=115) : beacon_sending_time=5.000 < current t=7.009  [STALE]
+    V108(ns3=113) : beacon_sending_time=5.000 < current t=7.009  [STALE/FORGED — claims to be V110(ns3=115)]
+  Two liveness entries now assert the same identity (V110(ns3=115)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl10(?)  VICTIMS=V88(ns3=93)/V139(ns3=144)  RSU=RSU10(ns3=215)
+========================================
+[t=5.010]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V88(ns3=93) -> V139(ns3=144) : Heartbeat(Sender=V88(ns3=93), beacon_sending_time=5.000)
+  V139(ns3=144) -> V88(ns3=93) : Heartbeat(Sender=V139(ns3=144), beacon_sending_time=5.000)
+
+[t=5.010]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V88(ns3=93) --[DSRC broadcast]--> RSU10(ns3=215) : Heartbeat(Sender=V88(ns3=93), beacon_sending_time=5.000)
+  V139(ns3=144) --[DSRC broadcast]--> RSU10(ns3=215) : Heartbeat(Sender=V139(ns3=144), beacon_sending_time=5.000)
+
+[t=5.020]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU10(ns3=215) --CSMA--> Ctrl10(?) : Heartbeat(Sender=V88(ns3=93), beacon_sending_time=5.000)  ACCEPTED
+  RSU10(ns3=215) --CSMA--> Ctrl10(?) : Heartbeat(Sender=V139(ns3=144), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.110]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl10(?)
+  captured_packet for V88(ns3=93) : Heartbeat(Sender=V88(ns3=93), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V139(ns3=144) : Heartbeat(Sender=V139(ns3=144), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl10(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl10(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V88(ns3=93) liveness with V88(ns3=93)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V139(ns3=144) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V139(ns3=144)
+    claimed_sender  (forged identity)  = V88(ns3=93)
+    Ctrl10(?) topology DB[V139(ns3=144)] <- Heartbeat(Sender=V88(ns3=93), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V88(ns3=93)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl10(?)
+
+[t=7.010]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl10(?) now holds conflicting liveness:
+    V88(ns3=93) : beacon_sending_time=5.000 < current t=7.010  [STALE]
+    V139(ns3=144) : beacon_sending_time=5.000 < current t=7.010  [STALE/FORGED — claims to be V88(ns3=93)]
+  Two liveness entries now assert the same identity (V88(ns3=93)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl11(?)  VICTIMS=V90(ns3=95)/V196(ns3=201)  RSU=RSU11(ns3=216)
+========================================
+[t=5.011]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V90(ns3=95) -> V196(ns3=201) : Heartbeat(Sender=V90(ns3=95), beacon_sending_time=5.000)
+  V196(ns3=201) -> V90(ns3=95) : Heartbeat(Sender=V196(ns3=201), beacon_sending_time=5.000)
+
+[t=5.011]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V90(ns3=95) --[DSRC broadcast]--> RSU11(ns3=216) : Heartbeat(Sender=V90(ns3=95), beacon_sending_time=5.000)
+  V196(ns3=201) --[DSRC broadcast]--> RSU11(ns3=216) : Heartbeat(Sender=V196(ns3=201), beacon_sending_time=5.000)
+
+[t=5.021]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU11(ns3=216) --CSMA--> Ctrl11(?) : Heartbeat(Sender=V90(ns3=95), beacon_sending_time=5.000)  ACCEPTED
+  RSU11(ns3=216) --CSMA--> Ctrl11(?) : Heartbeat(Sender=V196(ns3=201), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.111]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl11(?)
+  captured_packet for V90(ns3=95) : Heartbeat(Sender=V90(ns3=95), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V196(ns3=201) : Heartbeat(Sender=V196(ns3=201), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl11(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl11(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V90(ns3=95) liveness with V90(ns3=95)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V196(ns3=201) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V196(ns3=201)
+    claimed_sender  (forged identity)  = V90(ns3=95)
+    Ctrl11(?) topology DB[V196(ns3=201)] <- Heartbeat(Sender=V90(ns3=95), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V90(ns3=95)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl11(?)
+
+[t=7.011]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl11(?) now holds conflicting liveness:
+    V90(ns3=95) : beacon_sending_time=5.000 < current t=7.011  [STALE]
+    V196(ns3=201) : beacon_sending_time=5.000 < current t=7.011  [STALE/FORGED — claims to be V90(ns3=95)]
+  Two liveness entries now assert the same identity (V90(ns3=95)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl12(?)  VICTIMS=V53(ns3=58)/V117(ns3=122)  RSU=RSU12(ns3=217)
+========================================
+[t=5.012]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V53(ns3=58) -> V117(ns3=122) : Heartbeat(Sender=V53(ns3=58), beacon_sending_time=5.000)
+  V117(ns3=122) -> V53(ns3=58) : Heartbeat(Sender=V117(ns3=122), beacon_sending_time=5.000)
+
+[t=5.012]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V53(ns3=58) --[DSRC broadcast]--> RSU12(ns3=217) : Heartbeat(Sender=V53(ns3=58), beacon_sending_time=5.000)
+  V117(ns3=122) --[DSRC broadcast]--> RSU12(ns3=217) : Heartbeat(Sender=V117(ns3=122), beacon_sending_time=5.000)
+
+[t=5.022]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU12(ns3=217) --CSMA--> Ctrl12(?) : Heartbeat(Sender=V53(ns3=58), beacon_sending_time=5.000)  ACCEPTED
+  RSU12(ns3=217) --CSMA--> Ctrl12(?) : Heartbeat(Sender=V117(ns3=122), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.112]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl12(?)
+  captured_packet for V53(ns3=58) : Heartbeat(Sender=V53(ns3=58), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V117(ns3=122) : Heartbeat(Sender=V117(ns3=122), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl12(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl12(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V53(ns3=58) liveness with V53(ns3=58)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V117(ns3=122) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V117(ns3=122)
+    claimed_sender  (forged identity)  = V53(ns3=58)
+    Ctrl12(?) topology DB[V117(ns3=122)] <- Heartbeat(Sender=V53(ns3=58), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V53(ns3=58)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl12(?)
+
+[t=7.012]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl12(?) now holds conflicting liveness:
+    V53(ns3=58) : beacon_sending_time=5.000 < current t=7.012  [STALE]
+    V117(ns3=122) : beacon_sending_time=5.000 < current t=7.012  [STALE/FORGED — claims to be V53(ns3=58)]
+  Two liveness entries now assert the same identity (V53(ns3=58)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl13(?)  VICTIMS=V144(ns3=149)/V128(ns3=133)  RSU=RSU13(ns3=218)
+========================================
+[t=5.013]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V144(ns3=149) -> V128(ns3=133) : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=5.000)
+  V128(ns3=133) -> V144(ns3=149) : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=5.000)
+
+[t=5.013]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V144(ns3=149) --[DSRC broadcast]--> RSU13(ns3=218) : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=5.000)
+  V128(ns3=133) --[DSRC broadcast]--> RSU13(ns3=218) : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=5.000)
+
+[t=5.023]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU13(ns3=218) --CSMA--> Ctrl13(?) : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=5.000)  ACCEPTED
+  RSU13(ns3=218) --CSMA--> Ctrl13(?) : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.113]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl13(?)
+  captured_packet for V144(ns3=149) : Heartbeat(Sender=V144(ns3=149), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V128(ns3=133) : Heartbeat(Sender=V128(ns3=133), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl13(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl13(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V144(ns3=149) liveness with V144(ns3=149)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V128(ns3=133) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V128(ns3=133)
+    claimed_sender  (forged identity)  = V144(ns3=149)
+    Ctrl13(?) topology DB[V128(ns3=133)] <- Heartbeat(Sender=V144(ns3=149), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V144(ns3=149)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl13(?)
+
+[t=7.013]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl13(?) now holds conflicting liveness:
+    V144(ns3=149) : beacon_sending_time=5.000 < current t=7.013  [STALE]
+    V128(ns3=133) : beacon_sending_time=5.000 < current t=7.013  [STALE/FORGED — claims to be V144(ns3=149)]
+  Two liveness entries now assert the same identity (V144(ns3=149)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl14(?)  VICTIMS=V49(ns3=54)/V180(ns3=185)  RSU=RSU14(ns3=219)
+========================================
+[t=5.014]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V49(ns3=54) -> V180(ns3=185) : Heartbeat(Sender=V49(ns3=54), beacon_sending_time=5.000)
+  V180(ns3=185) -> V49(ns3=54) : Heartbeat(Sender=V180(ns3=185), beacon_sending_time=5.000)
+
+[t=5.014]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V49(ns3=54) --[DSRC broadcast]--> RSU14(ns3=219) : Heartbeat(Sender=V49(ns3=54), beacon_sending_time=5.000)
+  V180(ns3=185) --[DSRC broadcast]--> RSU14(ns3=219) : Heartbeat(Sender=V180(ns3=185), beacon_sending_time=5.000)
+
+[t=5.024]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU14(ns3=219) --CSMA--> Ctrl14(?) : Heartbeat(Sender=V49(ns3=54), beacon_sending_time=5.000)  ACCEPTED
+  RSU14(ns3=219) --CSMA--> Ctrl14(?) : Heartbeat(Sender=V180(ns3=185), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.114]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl14(?)
+  captured_packet for V49(ns3=54) : Heartbeat(Sender=V49(ns3=54), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V180(ns3=185) : Heartbeat(Sender=V180(ns3=185), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl14(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl14(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V49(ns3=54) liveness with V49(ns3=54)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V180(ns3=185) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V180(ns3=185)
+    claimed_sender  (forged identity)  = V49(ns3=54)
+    Ctrl14(?) topology DB[V180(ns3=185)] <- Heartbeat(Sender=V49(ns3=54), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V49(ns3=54)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl14(?)
+
+[t=7.014]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl14(?) now holds conflicting liveness:
+    V49(ns3=54) : beacon_sending_time=5.000 < current t=7.014  [STALE]
+    V180(ns3=185) : beacon_sending_time=5.000 < current t=7.014  [STALE/FORGED — claims to be V49(ns3=54)]
+  Two liveness entries now assert the same identity (V49(ns3=54)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl15(?)  VICTIMS=V85(ns3=90)/V158(ns3=163)  RSU=RSU15(ns3=220)
+========================================
+[t=5.015]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V85(ns3=90) -> V158(ns3=163) : Heartbeat(Sender=V85(ns3=90), beacon_sending_time=5.000)
+  V158(ns3=163) -> V85(ns3=90) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)
+
+[t=5.015]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V85(ns3=90) --[DSRC broadcast]--> RSU15(ns3=220) : Heartbeat(Sender=V85(ns3=90), beacon_sending_time=5.000)
+  V158(ns3=163) --[DSRC broadcast]--> RSU15(ns3=220) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)
+
+[t=5.025]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU15(ns3=220) --CSMA--> Ctrl15(?) : Heartbeat(Sender=V85(ns3=90), beacon_sending_time=5.000)  ACCEPTED
+  RSU15(ns3=220) --CSMA--> Ctrl15(?) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.115]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl15(?)
+  captured_packet for V85(ns3=90) : Heartbeat(Sender=V85(ns3=90), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V158(ns3=163) : Heartbeat(Sender=V158(ns3=163), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl15(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl15(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V85(ns3=90) liveness with V85(ns3=90)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V158(ns3=163) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V158(ns3=163)
+    claimed_sender  (forged identity)  = V85(ns3=90)
+    Ctrl15(?) topology DB[V158(ns3=163)] <- Heartbeat(Sender=V85(ns3=90), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V85(ns3=90)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl15(?)
+
+[t=7.015]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl15(?) now holds conflicting liveness:
+    V85(ns3=90) : beacon_sending_time=5.000 < current t=7.015  [STALE]
+    V158(ns3=163) : beacon_sending_time=5.000 < current t=7.015  [STALE/FORGED — claims to be V85(ns3=90)]
+  Two liveness entries now assert the same identity (V85(ns3=90)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl16(?)  VICTIMS=V91(ns3=96)/V52(ns3=57)  RSU=RSU16(ns3=221)
+========================================
+[t=5.016]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V91(ns3=96) -> V52(ns3=57) : Heartbeat(Sender=V91(ns3=96), beacon_sending_time=5.000)
+  V52(ns3=57) -> V91(ns3=96) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=5.000)
+
+[t=5.016]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V91(ns3=96) --[DSRC broadcast]--> RSU16(ns3=221) : Heartbeat(Sender=V91(ns3=96), beacon_sending_time=5.000)
+  V52(ns3=57) --[DSRC broadcast]--> RSU16(ns3=221) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=5.000)
+
+[t=5.026]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU16(ns3=221) --CSMA--> Ctrl16(?) : Heartbeat(Sender=V91(ns3=96), beacon_sending_time=5.000)  ACCEPTED
+  RSU16(ns3=221) --CSMA--> Ctrl16(?) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.116]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl16(?)
+  captured_packet for V91(ns3=96) : Heartbeat(Sender=V91(ns3=96), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V52(ns3=57) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl16(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl16(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V91(ns3=96) liveness with V91(ns3=96)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V52(ns3=57) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V52(ns3=57)
+    claimed_sender  (forged identity)  = V91(ns3=96)
+    Ctrl16(?) topology DB[V52(ns3=57)] <- Heartbeat(Sender=V91(ns3=96), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V91(ns3=96)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl16(?)
+
+[t=7.016]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl16(?) now holds conflicting liveness:
+    V91(ns3=96) : beacon_sending_time=5.000 < current t=7.016  [STALE]
+    V52(ns3=57) : beacon_sending_time=5.000 < current t=7.016  [STALE/FORGED — claims to be V91(ns3=96)]
+  Two liveness entries now assert the same identity (V91(ns3=96)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl17(?)  VICTIMS=V8(ns3=13)/V29(ns3=34)  RSU=RSU17(ns3=222)
+========================================
+[t=5.017]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V8(ns3=13) -> V29(ns3=34) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=5.000)
+  V29(ns3=34) -> V8(ns3=13) : Heartbeat(Sender=V29(ns3=34), beacon_sending_time=5.000)
+
+[t=5.017]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V8(ns3=13) --[DSRC broadcast]--> RSU17(ns3=222) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=5.000)
+  V29(ns3=34) --[DSRC broadcast]--> RSU17(ns3=222) : Heartbeat(Sender=V29(ns3=34), beacon_sending_time=5.000)
+
+[t=5.027]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU17(ns3=222) --CSMA--> Ctrl17(?) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=5.000)  ACCEPTED
+  RSU17(ns3=222) --CSMA--> Ctrl17(?) : Heartbeat(Sender=V29(ns3=34), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.117]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl17(?)
+  captured_packet for V8(ns3=13) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V29(ns3=34) : Heartbeat(Sender=V29(ns3=34), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl17(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl17(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V8(ns3=13) liveness with V8(ns3=13)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V29(ns3=34) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V29(ns3=34)
+    claimed_sender  (forged identity)  = V8(ns3=13)
+    Ctrl17(?) topology DB[V29(ns3=34)] <- Heartbeat(Sender=V8(ns3=13), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V8(ns3=13)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl17(?)
+
+[t=7.017]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl17(?) now holds conflicting liveness:
+    V8(ns3=13) : beacon_sending_time=5.000 < current t=7.017  [STALE]
+    V29(ns3=34) : beacon_sending_time=5.000 < current t=7.017  [STALE/FORGED — claims to be V8(ns3=13)]
+  Two liveness entries now assert the same identity (V8(ns3=13)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl18(?)  VICTIMS=V18(ns3=23)/V70(ns3=75)  RSU=RSU18(ns3=223)
+========================================
+[t=5.018]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V18(ns3=23) -> V70(ns3=75) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=5.000)
+  V70(ns3=75) -> V18(ns3=23) : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.000)
+
+[t=5.018]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V18(ns3=23) --[DSRC broadcast]--> RSU18(ns3=223) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=5.000)
+  V70(ns3=75) --[DSRC broadcast]--> RSU18(ns3=223) : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.000)
+
+[t=5.028]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU18(ns3=223) --CSMA--> Ctrl18(?) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=5.000)  ACCEPTED
+  RSU18(ns3=223) --CSMA--> Ctrl18(?) : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.118]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl18(?)
+  captured_packet for V18(ns3=23) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V70(ns3=75) : Heartbeat(Sender=V70(ns3=75), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl18(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl18(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V18(ns3=23) liveness with V18(ns3=23)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V70(ns3=75) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V70(ns3=75)
+    claimed_sender  (forged identity)  = V18(ns3=23)
+    Ctrl18(?) topology DB[V70(ns3=75)] <- Heartbeat(Sender=V18(ns3=23), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V18(ns3=23)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl18(?)
+
+[t=7.018]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl18(?) now holds conflicting liveness:
+    V18(ns3=23) : beacon_sending_time=5.000 < current t=7.018  [STALE]
+    V70(ns3=75) : beacon_sending_time=5.000 < current t=7.018  [STALE/FORGED — claims to be V18(ns3=23)]
+  Two liveness entries now assert the same identity (V18(ns3=23)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl19(?)  VICTIMS=V76(ns3=81)/V74(ns3=79)  RSU=RSU19(ns3=224)
+========================================
+[t=5.019]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V76(ns3=81) -> V74(ns3=79) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)
+  V74(ns3=79) -> V76(ns3=81) : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.000)
+
+[t=5.019]  STEP ②  VEHICLES FORWARD HBs TO RSU (DSRC broadcast)
+  V76(ns3=81) --[DSRC broadcast]--> RSU19(ns3=224) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)
+  V74(ns3=79) --[DSRC broadcast]--> RSU19(ns3=224) : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.000)
+
+[t=5.029]  STEP ③  RSU FORWARDS LEGITIMATE AGGREGATE TO CONTROLLER (CSMA)
+  RSU19(ns3=224) --CSMA--> Ctrl19(?) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)  ACCEPTED
+  RSU19(ns3=224) --CSMA--> Ctrl19(?) : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.000)  ACCEPTED
+
+[t=5.119]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES (from RSU path)
+  Attacker Controller : Ctrl19(?)
+  captured_packet for V76(ns3=81) : Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  captured_packet for V74(ns3=79) : Heartbeat(Sender=V74(ns3=79), beacon_sending_time=5.000)  (from STEP ③ RSU aggregate)
+  Action : Ctrl19(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=7.000000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V116 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.001000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V74 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.002000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V98 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.003000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V153 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+
+[t=7.004000]  DETECTION + MITIGATION
+  Controller internal HB replay (RSU variant) detected
+  Score: 0.111111
+  Latency: 0.000000 ms
+  [Controller-origin] Network isolation SUPPRESSED — V176 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=4 > delta_thresh=2 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=7.005000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.006000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.007000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.008000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=7.019]  STEP ⑤  CONTROLLER INTERNAL REPLAY (RSU path variant, no external packet)
+  Attacker Controller : Ctrl19(?)
+  Packet source       : stored STEP ④ stale copies (captured from RSU aggregate)
+  Overwrites V76(ns3=81) liveness with V76(ns3=81)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
+  Overwrites V74(ns3=79) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V74(ns3=79)
+    claimed_sender  (forged identity)  = V76(ns3=81)
+    Ctrl19(?) topology DB[V74(ns3=79)] <- Heartbeat(Sender=V76(ns3=81), beacon_sending_time=5.000, sourced from old RSU report)  IMPERSONATING V76(ns3=81)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl19(?)
+
+[t=7.019]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl19(?) now holds conflicting liveness:
+    V76(ns3=81) : beacon_sending_time=5.000 < current t=7.019  [STALE]
+    V74(ns3=79) : beacon_sending_time=5.000 < current t=7.019  [STALE/FORGED — claims to be V76(ns3=81)]
+  Two liveness entries now assert the same identity (V76(ns3=81)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+

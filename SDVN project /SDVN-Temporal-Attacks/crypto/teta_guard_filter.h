@@ -420,7 +420,16 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     // location-binding (TetaGuardLocBindVerify) only applies where it is
     // architecturally meaningful: ME-S1/S2, where an EXTERNAL attacker
     // (vehicle/RSU) must convince an HONEST verifier.
-    if (is_malicious_controller)
+    // Combined-mode (attack_scenario==13) fix: is_malicious_controller is a
+    // plain global contaminated for the whole run once ANY controller-origin
+    // scenario's setup executes (see PemEventIsMaliciousControllerOrigin's
+    // own comment, routing.cc). Reading the raw global here bypassed Stage-0
+    // crypto verification for EVERY event in combined mode, not just
+    // controller-origin ones -- PemEventIsMaliciousControllerOrigin resolves
+    // the per-event-correct answer instead, with zero behavior change for
+    // every single-scenario run (attack_scenario != 13 passes the global
+    // through unchanged).
+    if (PemEventIsMaliciousControllerOrigin(event))
         return true;
 
     // ── Revocation (Eq. 3.18) — LKH check added to this pipeline ────────────

@@ -1783,6 +1783,7 @@ static std::string TGN_AttackName(uint32_t s)
         case 10: return "ME-S2: Malicious RSU";
         case 11: return "ME-S3: Malicious Controller, No RSU";
         case 12: return "ME-S4: Malicious Controller, With RSU";
+        case 13: return "COMBINED: All 12 Scenarios";
         default: return "Baseline (No Attack)";
     }
 }
