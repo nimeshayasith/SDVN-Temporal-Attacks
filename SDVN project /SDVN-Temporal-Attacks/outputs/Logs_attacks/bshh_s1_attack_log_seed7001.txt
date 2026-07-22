@@ -94,6 +94,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.013]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V9 impersonated V149
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V9 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V9): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V9 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V9): blocked from re-admission until re-authenticated
+
 [t=10.014]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V144(ns3=149) (attacker=V4(ns3=9) replayed it back)
   Forwarder/physical       : V144(ns3=149)
@@ -139,6 +149,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.026]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V11 impersonated V162
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V11 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V11): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V11 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V11): blocked from re-admission until re-authenticated
+
 [t=10.0269]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V157(ns3=162) (attacker=V6(ns3=11) replayed it back)
   Forwarder/physical       : V157(ns3=162)
@@ -229,16 +249,6 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
-[t=42.036]  DETECTION + MITIGATION
-  Stale heartbeat impersonation: V11 impersonated V118
-  Score: 0.123
-  Latency: 2009.338 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V11 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V11): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V11 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V11): blocked from re-admission until re-authenticated
-
 [t=42.037]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V113(ns3=118) (attacker=V6(ns3=11) replayed it back)
   Forwarder/physical       : V113(ns3=118)
@@ -422,7 +432,7 @@
 [t=37.057]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V13 impersonated V165
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V13 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V13): O(log 200) = 8 KEK updates on path to LKH root
@@ -522,7 +532,7 @@
 [t=12.044]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V15 impersonated V120
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V15 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V15): O(log 200) = 8 KEK updates on path to LKH root
@@ -591,6 +601,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.018]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V16 impersonated V49
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V16 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V16): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V16 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V16): blocked from re-admission until re-authenticated
+
 [t=10.0277]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V44(ns3=49) (attacker=V11(ns3=16) replayed it back)
   Forwarder/physical       : V44(ns3=49)
@@ -619,6 +639,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.017]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V16 impersonated V59
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V16 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V16): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V16 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V16): blocked from re-admission until re-authenticated
+
 [t=12.0181]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V54(ns3=59) (attacker=V11(ns3=16) replayed it back)
   Forwarder/physical       : V54(ns3=59)
@@ -712,7 +742,7 @@
 [t=37.074]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V16 impersonated V182
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V16 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V16): O(log 200) = 8 KEK updates on path to LKH root
@@ -764,6 +794,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=12.014]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V18 impersonated V99
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V18 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V18): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V18 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V18): blocked from re-admission until re-authenticated
+
 [t=12.0151]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V94(ns3=99) (attacker=V13(ns3=18) replayed it back)
   Forwarder/physical       : V94(ns3=99)
@@ -820,6 +860,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.008]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V19 impersonated V56
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V19 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V19): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V19 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V19): blocked from re-admission until re-authenticated
+
 [t=10.0085]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
   Attacker        : V14(ns3=19)
   Victim/claimed  : V41(ns3=46)
@@ -854,6 +904,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.014]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V19 impersonated V46
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V19 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V19): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V19 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V19): blocked from re-admission until re-authenticated
+
 [t=12.0148]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V41(ns3=46) (attacker=V14(ns3=19) replayed it back)
   Forwarder/physical       : V41(ns3=46)
@@ -902,7 +962,7 @@
 [t=17.048]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V19 impersonated V48
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V19 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V19): O(log 200) = 8 KEK updates on path to LKH root
@@ -957,7 +1017,7 @@
 [t=22.072]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V19 impersonated V45
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V19 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V19): O(log 200) = 8 KEK updates on path to LKH root
@@ -1147,7 +1207,7 @@
 [t=32.074]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V21 impersonated V50
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V21 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V21): O(log 200) = 8 KEK updates on path to LKH root
@@ -1202,7 +1262,7 @@
 [t=37.058]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V21 impersonated V52
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V21 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V21): O(log 200) = 8 KEK updates on path to LKH root
@@ -1254,16 +1314,6 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
-[t=42.061]  DETECTION + MITIGATION
-  Stale heartbeat impersonation: V21 impersonated V66
-  Score: 0.123
-  Latency: 2009.338 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V21 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V21): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V21 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V21): blocked from re-admission until re-authenticated
-
 [t=42.0619]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V61(ns3=66) (attacker=V16(ns3=21) replayed it back)
   Forwarder/physical       : V61(ns3=66)
@@ -1357,7 +1407,7 @@
 [t=22.066]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V22 impersonated V102
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V22 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V22): O(log 200) = 8 KEK updates on path to LKH root
@@ -1547,7 +1597,7 @@
 [t=17.016]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V23 impersonated V128
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V23 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V23): O(log 200) = 8 KEK updates on path to LKH root
@@ -1692,7 +1742,7 @@
 [t=37.064]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V23 impersonated V132
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V23 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V23): O(log 200) = 8 KEK updates on path to LKH root
@@ -1789,6 +1839,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.046]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V25 impersonated V79
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V25 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V25): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V25 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V25): blocked from re-admission until re-authenticated
+
 [t=10.047]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V74(ns3=79) (attacker=V20(ns3=25) replayed it back)
   Forwarder/physical       : V74(ns3=79)
@@ -1851,6 +1911,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.038]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V26 impersonated V84
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V26 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V26): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V26 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V26): blocked from re-admission until re-authenticated
+
 [t=10.0388]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V79(ns3=84) (attacker=V21(ns3=26) replayed it back)
   Forwarder/physical       : V79(ns3=84)
@@ -1882,7 +1952,7 @@
 [t=12.062]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V26 impersonated V60
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V26 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V26): O(log 200) = 8 KEK updates on path to LKH root
@@ -1937,7 +2007,7 @@
 [t=37.053]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V27 impersonated V115
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V27 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V27): O(log 200) = 8 KEK updates on path to LKH root
@@ -2006,6 +2076,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.045]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V28 impersonated V180
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V28 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V28): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V28 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V28): blocked from re-admission until re-authenticated
+
 [t=10.046]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V175(ns3=180) (attacker=V23(ns3=28) replayed it back)
   Forwarder/physical       : V175(ns3=180)
@@ -2034,6 +2114,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=12.008]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V28 impersonated V57
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V28 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V28): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V28 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V28): blocked from re-admission until re-authenticated
+
 [t=12.0091]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V52(ns3=57) (attacker=V23(ns3=28) replayed it back)
   Forwarder/physical       : V52(ns3=57)
@@ -2124,6 +2214,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.052]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V29 impersonated V81
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V29 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V29): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V29 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V29): blocked from re-admission until re-authenticated
+
 [t=10.0525]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V76(ns3=81) (attacker=V24(ns3=29) replayed it back)
   Forwarder/physical       : V76(ns3=81)
@@ -2180,6 +2280,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.037]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V30 impersonated V98
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V30 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V30): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V30 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V30): blocked from re-admission until re-authenticated
+
 [t=10.0376]  STEP ③  ATTACKER CAPTURES HEARTBEAT FROM EXCHANGE
   Attacker        : V25(ns3=30)
   Victim/claimed  : V148(ns3=153)
@@ -2217,7 +2327,7 @@
 [t=12.026]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V30 impersonated V153
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V30 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V30): O(log 200) = 8 KEK updates on path to LKH root
@@ -2317,7 +2427,7 @@
 [t=37.102]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V30 impersonated V174
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V30 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V30): O(log 200) = 8 KEK updates on path to LKH root
@@ -2369,16 +2479,6 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
-[t=42.056]  DETECTION + MITIGATION
-  Stale heartbeat impersonation: V30 impersonated V167
-  Score: 0.123
-  Latency: 2009.338 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V30 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V30): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V30 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V30): blocked from re-admission until re-authenticated
-
 [t=42.0569]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V162(ns3=167) (attacker=V25(ns3=30) replayed it back)
   Forwarder/physical       : V162(ns3=167)
@@ -2427,7 +2527,7 @@
 [t=27.072]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V31 impersonated V160
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V31 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V31): O(log 200) = 8 KEK updates on path to LKH root
@@ -2496,6 +2596,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.051]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V33 impersonated V82
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V33 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V33): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V33 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V33): blocked from re-admission until re-authenticated
+
 [t=10.0518]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V77(ns3=82) (attacker=V28(ns3=33) replayed it back)
   Forwarder/physical       : V77(ns3=82)
@@ -2527,7 +2637,7 @@
 [t=12.017]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V33 impersonated V86
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V33 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V33): O(log 200) = 8 KEK updates on path to LKH root
@@ -2582,7 +2692,7 @@
 [t=17.066]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V33 impersonated V88
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V33 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V33): O(log 200) = 8 KEK updates on path to LKH root
@@ -2772,7 +2882,7 @@
 [t=37.069]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V33 impersonated V192
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V33 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V33): O(log 200) = 8 KEK updates on path to LKH root
@@ -2824,16 +2934,6 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
-[t=42.107]  DETECTION + MITIGATION
-  Stale heartbeat impersonation: V33 impersonated V166
-  Score: 0.123
-  Latency: 2009.338 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V33 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V33): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V33 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V33): blocked from re-admission until re-authenticated
-
 [t=42.1081]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V161(ns3=166) (attacker=V28(ns3=33) replayed it back)
   Forwarder/physical       : V161(ns3=166)
@@ -2927,7 +3027,7 @@
 [t=32.068]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V34 impersonated V163
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V34 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V34): O(log 200) = 8 KEK updates on path to LKH root
@@ -3027,7 +3127,7 @@
 [t=12.032]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V35 impersonated V91
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V35 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V35): O(log 200) = 8 KEK updates on path to LKH root
@@ -3082,7 +3182,7 @@
 [t=17.040]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V35 impersonated V94
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V35 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V35): O(log 200) = 8 KEK updates on path to LKH root
@@ -3182,7 +3282,7 @@
 [t=27.074]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V35 impersonated V139
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V35 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V35): O(log 200) = 8 KEK updates on path to LKH root
@@ -3234,6 +3334,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.024]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V39 impersonated V62
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V39 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V39): blocked from re-admission until re-authenticated
+
 [t=10.0251]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V57(ns3=62) (attacker=V34(ns3=39) replayed it back)
   Forwarder/physical       : V57(ns3=62)
@@ -3282,7 +3392,7 @@
 [t=12.033]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V39 impersonated V179
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
@@ -3337,7 +3447,7 @@
 [t=17.056]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V39 impersonated V183
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
@@ -3392,7 +3502,7 @@
 [t=22.072]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V39 impersonated V186
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
@@ -3447,7 +3557,7 @@
 [t=27.086]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V39 impersonated V176
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
@@ -3502,7 +3612,7 @@
 [t=32.083]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V39 impersonated V140
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
@@ -3599,16 +3709,6 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
-[t=42.111]  DETECTION + MITIGATION
-  Stale heartbeat impersonation: V39 impersonated V181
-  Score: 0.123
-  Latency: 2009.338 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V39 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V39): O(log 200) = 8 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V39 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V39): blocked from re-admission until re-authenticated
-
 [t=42.1117]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V176(ns3=181) (attacker=V34(ns3=39) replayed it back)
   Forwarder/physical       : V176(ns3=181)
@@ -3699,6 +3799,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=11.988]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V40 impersonated V157
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V40 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V40): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V40 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V40): blocked from re-admission until re-authenticated
+
 [t=11.9891]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V152(ns3=157) (attacker=V35(ns3=40) replayed it back)
   Forwarder/physical       : V152(ns3=157)
@@ -3744,6 +3854,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=10.027]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V65
+  Score: 0.123
+  Latency: 0.000 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V43 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V43): O(log 200) = 8 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V43 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V43): blocked from re-admission until re-authenticated
+
 ========================================
   PAIR: ATTACKER=V38(ns3=43)  VICTIM=V82(ns3=87)
 ========================================
@@ -3792,7 +3912,7 @@
 [t=12.046]  DETECTION + MITIGATION
   Stale heartbeat impersonation: V43 impersonated V87
   Score: 0.123
-  Latency: 2009.338 ms
+  Latency: 0.000 ms
   [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V43 cert fingerprint
   Propagation: ceil(diam(G_t)) ~= 8 hop(s) x 100.000 ms/hop = 800.000 ms  (eventually-consistent, NOT instant)
   [LKH] Revoke-Session-Key(V43): O(log 200) = 8 KEK updates on path to LKH root

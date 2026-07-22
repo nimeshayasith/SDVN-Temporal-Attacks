@@ -4,212 +4,212 @@
 
   Simulation Parameters:
     Total vehicles        : 200
-    Attack percentage     : 20%
-    Echo attacker vehicles: 40
-    Benign (real link) veh: 80
-    Active attack groups  : 20
+    Attack percentage     : 80%
+    Echo attacker vehicles: 160
+    Benign (real link) veh: 200
+    Active attack groups  : 80
 
   Vehicle Roles (NS-3 node IDs):
-    V5  [benign — real link]
-    V6  [benign — real link]
-    V7  [benign — real link]
-    V8  [benign — real link]
-    V9  [benign — real link]
-    V10  [benign — real link]
-    V11  [benign — real link]
-    V12  [benign — real link]
+    V5  [ECHO ATTACKER] <-- in active group
+    V6  [ECHO ATTACKER] <-- in active group
+    V7  [ECHO ATTACKER] <-- in active group
+    V8  [ECHO ATTACKER] <-- in active group
+    V9  [ECHO ATTACKER] <-- in active group
+    V10  [ECHO ATTACKER] <-- in active group
+    V11  [ECHO ATTACKER] <-- in active group
+    V12  [ECHO ATTACKER] <-- in active group
     V13  [benign — real link]
     V14  [ECHO ATTACKER] <-- in active group
-    V15  [benign — real link]
-    V16  [benign — real link]
-    V17  [benign — real link]
-    V18  [benign — real link]
-    V19  [benign — real link]
+    V15  [ECHO ATTACKER] <-- in active group
+    V16  [ECHO ATTACKER] <-- in active group
+    V17  [ECHO ATTACKER] <-- in active group
+    V18  [ECHO ATTACKER] <-- in active group
+    V19  [ECHO ATTACKER] <-- in active group
     V20  [benign — real link]
     V21  [ECHO ATTACKER] <-- in active group
-    V22  [benign — real link]
+    V22  [ECHO ATTACKER] <-- in active group
     V23  [ECHO ATTACKER] <-- in active group
-    V24  [benign — real link]
+    V24  [ECHO ATTACKER] <-- in active group
     V25  [benign — real link]
     V26  [benign — real link]
     V27  [ECHO ATTACKER] <-- in active group
-    V28  [benign — real link]
-    V29  [benign — real link]
+    V28  [ECHO ATTACKER] <-- in active group
+    V29  [ECHO ATTACKER] <-- in active group
     V30  [benign — real link]
-    V31  [benign — real link]
+    V31  [ECHO ATTACKER] <-- in active group
     V32  [benign — real link]
-    V33  [benign — real link]
-    V34  [benign — real link]
+    V33  [ECHO ATTACKER] <-- in active group
+    V34  [ECHO ATTACKER] <-- in active group
     V35  [benign — real link]
-    V36  [benign — real link]
-    V37  [benign — real link]
-    V38  [ECHO ATTACKER] <-- in active group
-    V39  [benign — real link]
+    V36  [ECHO ATTACKER] <-- in active group
+    V37  [ECHO ATTACKER] <-- in active group
+    V38  [benign — real link]
+    V39  [ECHO ATTACKER] <-- in active group
     V40  [ECHO ATTACKER] <-- in active group
-    V41  [benign — real link]
-    V42  [benign — real link]
-    V43  [benign — real link]
-    V44  [benign — real link]
-    V45  [benign — real link]
-    V46  [benign — real link]
-    V47  [benign — real link]
-    V48  [benign — real link]
-    V49  [benign — real link]
-    V50  [benign — real link]
+    V41  [ECHO ATTACKER] <-- in active group
+    V42  [ECHO ATTACKER] <-- in active group
+    V43  [ECHO ATTACKER] <-- in active group
+    V44  [ECHO ATTACKER] <-- in active group
+    V45  [ECHO ATTACKER] <-- in active group
+    V46  [ECHO ATTACKER] <-- in active group
+    V47  [ECHO ATTACKER] <-- in active group
+    V48  [ECHO ATTACKER] <-- in active group
+    V49  [ECHO ATTACKER] <-- in active group
+    V50  [ECHO ATTACKER] <-- in active group
     V51  [benign — real link]
-    V52  [benign — real link]
-    V53  [benign — real link]
-    V54  [benign — real link]
+    V52  [ECHO ATTACKER] <-- in active group
+    V53  [ECHO ATTACKER] <-- in active group
+    V54  [ECHO ATTACKER] <-- in active group
     V55  [benign — real link]
-    V56  [benign — real link]
-    V57  [benign — real link]
-    V58  [benign — real link]
+    V56  [ECHO ATTACKER] <-- in active group
+    V57  [ECHO ATTACKER] <-- in active group
+    V58  [ECHO ATTACKER] <-- in active group
     V59  [benign — real link]
-    V60  [benign — real link]
+    V60  [ECHO ATTACKER] <-- in active group
     V61  [ECHO ATTACKER] <-- in active group
-    V62  [ECHO ATTACKER] <-- in active group
+    V62  [benign — real link]
     V63  [benign — real link]
     V64  [ECHO ATTACKER] <-- in active group
     V65  [benign — real link]
-    V66  [benign — real link]
+    V66  [ECHO ATTACKER] <-- in active group
     V67  [ECHO ATTACKER] <-- in active group
-    V68  [benign — real link]
+    V68  [ECHO ATTACKER] <-- in active group
     V69  [ECHO ATTACKER] <-- in active group
     V70  [ECHO ATTACKER] <-- in active group
-    V71  [benign — real link]
+    V71  [ECHO ATTACKER] <-- in active group
     V72  [ECHO ATTACKER] <-- in active group
-    V73  [benign — real link]
-    V74  [benign — real link]
+    V73  [ECHO ATTACKER] <-- in active group
+    V74  [ECHO ATTACKER] <-- in active group
     V75  [ECHO ATTACKER] <-- in active group
-    V76  [ECHO ATTACKER] <-- in active group
+    V76  [benign — real link]
     V77  [ECHO ATTACKER] <-- in active group
-    V78  [benign — real link]
-    V79  [benign — real link]
-    V80  [benign — real link]
-    V81  [benign — real link]
+    V78  [ECHO ATTACKER] <-- in active group
+    V79  [ECHO ATTACKER] <-- in active group
+    V80  [ECHO ATTACKER] <-- in active group
+    V81  [ECHO ATTACKER] <-- in active group
     V82  [benign — real link]
     V83  [benign — real link]
-    V84  [benign — real link]
+    V84  [ECHO ATTACKER] <-- in active group
     V85  [ECHO ATTACKER] <-- in active group
     V86  [ECHO ATTACKER] <-- in active group
     V87  [benign — real link]
     V88  [ECHO ATTACKER] <-- in active group
-    V89  [benign — real link]
+    V89  [ECHO ATTACKER] <-- in active group
     V90  [benign — real link]
-    V91  [benign — real link]
+    V91  [ECHO ATTACKER] <-- in active group
     V92  [ECHO ATTACKER] <-- in active group
-    V93  [benign — real link]
-    V94  [benign — real link]
-    V95  [benign — real link]
-    V96  [benign — real link]
-    V97  [benign — real link]
+    V93  [ECHO ATTACKER] <-- in active group
+    V94  [ECHO ATTACKER] <-- in active group
+    V95  [ECHO ATTACKER] <-- in active group
+    V96  [ECHO ATTACKER] <-- in active group
+    V97  [ECHO ATTACKER] <-- in active group
     V98  [benign — real link]
-    V99  [benign — real link]
-    V100  [benign — real link]
-    V101  [benign — real link]
-    V102  [benign — real link]
-    V103  [benign — real link]
-    V104  [benign — real link]
+    V99  [ECHO ATTACKER] <-- in active group
+    V100  [ECHO ATTACKER] <-- in active group
+    V101  [ECHO ATTACKER] <-- in active group
+    V102  [ECHO ATTACKER] <-- in active group
+    V103  [ECHO ATTACKER] <-- in active group
+    V104  [ECHO ATTACKER] <-- in active group
     V105  [benign — real link]
-    V106  [benign — real link]
+    V106  [ECHO ATTACKER] <-- in active group
     V107  [benign — real link]
-    V108  [benign — real link]
-    V109  [benign — real link]
+    V108  [ECHO ATTACKER] <-- in active group
+    V109  [ECHO ATTACKER] <-- in active group
     V110  [benign — real link]
     V111  [benign — real link]
-    V112  [benign — real link]
+    V112  [ECHO ATTACKER] <-- in active group
     V113  [benign — real link]
-    V114  [benign — real link]
-    V115  [benign — real link]
-    V116  [benign — real link]
-    V117  [benign — real link]
-    V118  [benign — real link]
-    V119  [benign — real link]
+    V114  [ECHO ATTACKER] <-- in active group
+    V115  [ECHO ATTACKER] <-- in active group
+    V116  [ECHO ATTACKER] <-- in active group
+    V117  [ECHO ATTACKER] <-- in active group
+    V118  [ECHO ATTACKER] <-- in active group
+    V119  [ECHO ATTACKER] <-- in active group
     V120  [benign — real link]
-    V121  [benign — real link]
+    V121  [ECHO ATTACKER] <-- in active group
     V122  [benign — real link]
     V123  [benign — real link]
-    V124  [benign — real link]
-    V125  [benign — real link]
-    V126  [benign — real link]
+    V124  [ECHO ATTACKER] <-- in active group
+    V125  [ECHO ATTACKER] <-- in active group
+    V126  [ECHO ATTACKER] <-- in active group
     V127  [benign — real link]
     V128  [ECHO ATTACKER] <-- in active group
-    V129  [benign — real link]
+    V129  [ECHO ATTACKER] <-- in active group
     V130  [ECHO ATTACKER] <-- in active group
     V131  [benign — real link]
-    V132  [ECHO ATTACKER] <-- in active group
-    V133  [benign — real link]
-    V134  [benign — real link]
-    V135  [benign — real link]
-    V136  [benign — real link]
+    V132  [benign — real link]
+    V133  [ECHO ATTACKER] <-- in active group
+    V134  [ECHO ATTACKER] <-- in active group
+    V135  [ECHO ATTACKER] <-- in active group
+    V136  [ECHO ATTACKER] <-- in active group
     V137  [ECHO ATTACKER] <-- in active group
-    V138  [benign — real link]
+    V138  [ECHO ATTACKER] <-- in active group
     V139  [ECHO ATTACKER] <-- in active group
-    V140  [benign — real link]
-    V141  [benign — real link]
-    V142  [benign — real link]
+    V140  [ECHO ATTACKER] <-- in active group
+    V141  [ECHO ATTACKER] <-- in active group
+    V142  [ECHO ATTACKER] <-- in active group
     V143  [ECHO ATTACKER] <-- in active group
-    V144  [benign — real link]
-    V145  [ECHO ATTACKER] <-- in active group
-    V146  [benign — real link]
-    V147  [benign — real link]
+    V144  [ECHO ATTACKER] <-- in active group
+    V145  [benign — real link]
+    V146  [ECHO ATTACKER] <-- in active group
+    V147  [ECHO ATTACKER] <-- in active group
     V148  [ECHO ATTACKER] <-- in active group
-    V149  [benign — real link]
+    V149  [ECHO ATTACKER] <-- in active group
     V150  [ECHO ATTACKER] <-- in active group
-    V151  [benign — real link]
-    V152  [benign — real link]
-    V153  [benign — real link]
-    V154  [benign — real link]
-    V155  [benign — real link]
-    V156  [benign — real link]
-    V157  [benign — real link]
-    V158  [benign — real link]
-    V159  [benign — real link]
-    V160  [benign — real link]
-    V161  [benign — real link]
-    V162  [benign — real link]
+    V151  [ECHO ATTACKER] <-- in active group
+    V152  [ECHO ATTACKER] <-- in active group
+    V153  [ECHO ATTACKER] <-- in active group
+    V154  [ECHO ATTACKER] <-- in active group
+    V155  [ECHO ATTACKER] <-- in active group
+    V156  [ECHO ATTACKER] <-- in active group
+    V157  [ECHO ATTACKER] <-- in active group
+    V158  [ECHO ATTACKER] <-- in active group
+    V159  [ECHO ATTACKER] <-- in active group
+    V160  [ECHO ATTACKER] <-- in active group
+    V161  [ECHO ATTACKER] <-- in active group
+    V162  [ECHO ATTACKER] <-- in active group
     V163  [ECHO ATTACKER] <-- in active group
     V164  [ECHO ATTACKER] <-- in active group
     V165  [ECHO ATTACKER] <-- in active group
-    V166  [benign — real link]
-    V167  [benign — real link]
+    V166  [ECHO ATTACKER] <-- in active group
+    V167  [ECHO ATTACKER] <-- in active group
     V168  [ECHO ATTACKER] <-- in active group
-    V169  [ECHO ATTACKER] <-- in active group
-    V170  [benign — real link]
+    V169  [benign — real link]
+    V170  [ECHO ATTACKER] <-- in active group
     V171  [ECHO ATTACKER] <-- in active group
-    V172  [benign — real link]
+    V172  [ECHO ATTACKER] <-- in active group
     V173  [benign — real link]
     V174  [ECHO ATTACKER] <-- in active group
-    V175  [benign — real link]
+    V175  [ECHO ATTACKER] <-- in active group
     V176  [ECHO ATTACKER] <-- in active group
     V177  [benign — real link]
     V178  [benign — real link]
-    V179  [benign — real link]
-    V180  [benign — real link]
-    V181  [benign — real link]
+    V179  [ECHO ATTACKER] <-- in active group
+    V180  [ECHO ATTACKER] <-- in active group
+    V181  [ECHO ATTACKER] <-- in active group
     V182  [benign — real link]
-    V183  [benign — real link]
+    V183  [ECHO ATTACKER] <-- in active group
     V184  [ECHO ATTACKER] <-- in active group
-    V185  [benign — real link]
-    V186  [benign — real link]
-    V187  [benign — real link]
-    V188  [benign — real link]
+    V185  [ECHO ATTACKER] <-- in active group
+    V186  [ECHO ATTACKER] <-- in active group
+    V187  [ECHO ATTACKER] <-- in active group
+    V188  [ECHO ATTACKER] <-- in active group
     V189  [ECHO ATTACKER] <-- in active group
-    V190  [benign — real link]
-    V191  [benign — real link]
-    V192  [benign — real link]
-    V193  [benign — real link]
-    V194  [benign — real link]
-    V195  [benign — real link]
-    V196  [benign — real link]
-    V197  [benign — real link]
-    V198  [benign — real link]
-    V199  [benign — real link] <-- in active group
-    V200  [ECHO ATTACKER] <-- in active group
+    V190  [ECHO ATTACKER] <-- in active group
+    V191  [ECHO ATTACKER] <-- in active group
+    V192  [ECHO ATTACKER] <-- in active group
+    V193  [ECHO ATTACKER] <-- in active group
+    V194  [ECHO ATTACKER] <-- in active group
+    V195  [ECHO ATTACKER] <-- in active group
+    V196  [ECHO ATTACKER] <-- in active group
+    V197  [ECHO ATTACKER] <-- in active group
+    V198  [ECHO ATTACKER] <-- in active group
+    V199  [ECHO ATTACKER] <-- in active group
+    V200  [benign — real link]
     V201  [benign — real link]
-    V202  [benign — real link]
-    V203  [benign — real link]
-    V204  [benign — real link] <-- in active group
+    V202  [ECHO ATTACKER] <-- in active group
+    V203  [ECHO ATTACKER] <-- in active group
+    V204  [benign — real link]
 
   Attack Steps (per group):
   t=10  ①  Real pair HELLO exchange (V2V link); echo pair also exchange own HELLO
@@ -221,4 +221,2497 @@
   t=10+ ⑥  Controller installs faulty routes on phantom paths
 
 ========================================================
+
+==================
+
+[t=10.001]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY
+  Measured distances: d(V165,V163)=51.580m  d(V43,V75)=676.050m  (range=300.000m)
+  V165 -> V163 : HELLO(Sender=V165, t=10.000871)  (real link pair)
+  V163 -> V165 : HELLO(Sender=V163, t=10.000871)  (real link pair)
+  V43<->V75 OUT OF RANGE — echo pair has no genuine link of its own this run
+  [V43 and V75 are in overhearing range of V165↔V163 but have NO direct link to V165 or V163]
+
+[t=10.001]  STEP ②  LEGITIMATE LINK ESTABLISHMENT
+  V165 -> Controller : <V165 sees V163, t=10.000871>  (real reporter)
+  V163 -> Controller : <V163 sees V165, t=10.000871>  (real reporter)
+  No direct links: V165-V43, V165-V75, V163-V43, V163-V75 do NOT exist
+
+[t=10.001]  STEP ③  HELLO MESSAGE INTERCEPTION (Echo Preparation)
+  V43 overhears HELLO: <V165 sees V163, t=10.001>  [stored for echo]
+  V75 overhears HELLO: <V165 sees V163, t=10.001>  [stored for echo]
+  Echo vehicles will replay this observation to the controller
+
+[t=10.071]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V160 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V123 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V160, V123
+  V3↔V4 link: dist=1340.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V160 reports V165↔V163  [ECHO]
+    (4) V123 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V160 -> V163  (PHANTOM)
+    Path 3: V165 -> V123 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V160 or V123 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V103 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V132 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V103, V132
+  V3↔V4 link: dist=908.3m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V103 reports V165↔V163  [ECHO]
+    (4) V132 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V103 -> V163  (PHANTOM)
+    Path 3: V165 -> V132 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V103 or V132 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V97 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V155 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V97, V155
+  V3↔V4 link: dist=1134.4m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V97 reports V165↔V163  [ECHO]
+    (4) V155 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V97 -> V163  (PHANTOM)
+    Path 3: V165 -> V155 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V97 or V155 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V38 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V35 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V38, V35
+  V3↔V4 link: dist=2051.5m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V38 reports V165↔V163  [ECHO]
+    (4) V35 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V38 -> V163  (PHANTOM)
+    Path 3: V165 -> V35 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V38 or V35 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V72 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V150 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V72, V150
+  V3↔V4 link: dist=510.3m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V72 reports V165↔V163  [ECHO]
+    (4) V150 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V72 -> V163  (PHANTOM)
+    Path 3: V165 -> V150 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V72 or V150 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V90 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V151 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V90, V151
+  V3↔V4 link: dist=1336.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V90 reports V165↔V163  [ECHO]
+    (4) V151 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V90 -> V163  (PHANTOM)
+    Path 3: V165 -> V151 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V90 or V151 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V62 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V110 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V62, V110
+  V3↔V4 link: dist=764.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V62 reports V165↔V163  [ECHO]
+    (4) V110 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V62 -> V163  (PHANTOM)
+    Path 3: V165 -> V110 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V62 or V110 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V59 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V121 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V59, V121
+  V3↔V4 link: dist=1245.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V59 reports V165↔V163  [ECHO]
+    (4) V121 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V59 -> V163  (PHANTOM)
+    Path 3: V165 -> V121 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V59 or V121 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V152 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V24 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V152, V24
+  V3↔V4 link: dist=351.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V152 reports V165↔V163  [ECHO]
+    (4) V24 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V152 -> V163  (PHANTOM)
+    Path 3: V165 -> V24 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V152 or V24 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V27 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V91 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V27, V91
+  V3↔V4 link: dist=142.7m  IN RANGE — Path 4 inferred
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V27 reports V165↔V163  [ECHO]
+    (4) V91 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V27 -> V163  (PHANTOM)
+    Path 3: V165 -> V91 -> V163  (PHANTOM)
+    Path 4: V165 -> V27 -> V91 -> V163  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V27 or V91 (including 3-hop V3→V4 chain) (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V93 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V104 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V93, V104
+  V3↔V4 link: dist=430.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V93 reports V165↔V163  [ECHO]
+    (4) V104 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V93 -> V163  (PHANTOM)
+    Path 3: V165 -> V104 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V93 or V104 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V64 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V45 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V64, V45
+  V3↔V4 link: dist=662.2m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V64 reports V165↔V163  [ECHO]
+    (4) V45 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V64 -> V163  (PHANTOM)
+    Path 3: V165 -> V45 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V64 or V45 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V118 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V159 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V118, V159
+  V3↔V4 link: dist=786.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V118 reports V165↔V163  [ECHO]
+    (4) V159 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V118 -> V163  (PHANTOM)
+    Path 3: V165 -> V159 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V118 or V159 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V10 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V12 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V10, V12
+  V3↔V4 link: dist=1432.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V10 reports V165↔V163  [ECHO]
+    (4) V12 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V10 -> V163  (PHANTOM)
+    Path 3: V165 -> V12 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V10 or V12 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V92 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V87 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V92, V87
+  V3↔V4 link: dist=1360.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V92 reports V165↔V163  [ECHO]
+    (4) V87 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V92 -> V163  (PHANTOM)
+    Path 3: V165 -> V87 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V92 or V87 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V96 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V134 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V96, V134
+  V3↔V4 link: dist=872.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V96 reports V165↔V163  [ECHO]
+    (4) V134 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V96 -> V163  (PHANTOM)
+    Path 3: V165 -> V134 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V96 or V134 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V146 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V49 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V146, V49
+  V3↔V4 link: dist=543.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V146 reports V165↔V163  [ECHO]
+    (4) V49 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V146 -> V163  (PHANTOM)
+    Path 3: V165 -> V49 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V146 or V49 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V106 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V115 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V106, V115
+  V3↔V4 link: dist=622.0m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V106 reports V165↔V163  [ECHO]
+    (4) V115 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V106 -> V163  (PHANTOM)
+    Path 3: V165 -> V115 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V106 or V115 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V68 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V63 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V68, V63
+  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V68 reports V165↔V163  [ECHO]
+    (4) V63 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V68 -> V163  (PHANTOM)
+    Path 3: V165 -> V63 -> V163  (PHANTOM)
+    Path 4: V165 -> V68 -> V63 -> V163  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V68 or V63 (including 3-hop V3→V4 chain) (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V50 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V84 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V50, V84
+  V3↔V4 link: dist=732.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V50 reports V165↔V163  [ECHO]
+    (4) V84 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V50 -> V163  (PHANTOM)
+    Path 3: V165 -> V84 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V50 or V84 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V98 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V148 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V98, V148
+  V3↔V4 link: dist=875.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V98 reports V165↔V163  [ECHO]
+    (4) V148 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V98 -> V163  (PHANTOM)
+    Path 3: V165 -> V148 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V98 or V148 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V71 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V107 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V71, V107
+  V3↔V4 link: dist=1208.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V71 reports V165↔V163  [ECHO]
+    (4) V107 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V71 -> V163  (PHANTOM)
+    Path 3: V165 -> V107 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V71 or V107 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V52 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V161 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V52, V161
+  V3↔V4 link: dist=1452.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V52 reports V165↔V163  [ECHO]
+    (4) V161 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V52 -> V163  (PHANTOM)
+    Path 3: V165 -> V161 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V52 or V161 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V73 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V99 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V73, V99
+  V3↔V4 link: dist=530.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V73 reports V165↔V163  [ECHO]
+    (4) V99 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V73 -> V163  (PHANTOM)
+    Path 3: V165 -> V99 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V73 or V99 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V119 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V111 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V119, V111
+  V3↔V4 link: dist=509.3m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V119 reports V165↔V163  [ECHO]
+    (4) V111 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V119 -> V163  (PHANTOM)
+    Path 3: V165 -> V111 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V119 or V111 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V66 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V79 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V66, V79
+  V3↔V4 link: dist=1150.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V66 reports V165↔V163  [ECHO]
+    (4) V79 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V66 -> V163  (PHANTOM)
+    Path 3: V165 -> V79 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V66 or V79 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V20 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V109 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V20, V109
+  V3↔V4 link: dist=1159.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V20 reports V165↔V163  [ECHO]
+    (4) V109 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V20 -> V163  (PHANTOM)
+    Path 3: V165 -> V109 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V20 or V109 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V100 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V34 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V100, V34
+  V3↔V4 link: dist=751.3m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V100 reports V165↔V163  [ECHO]
+    (4) V34 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V100 -> V163  (PHANTOM)
+    Path 3: V165 -> V34 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V100 or V34 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V120 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V129 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V120, V129
+  V3↔V4 link: dist=883.2m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V120 reports V165↔V163  [ECHO]
+    (4) V129 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V120 -> V163  (PHANTOM)
+    Path 3: V165 -> V129 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V120 or V129 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V116 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V53 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V116, V53
+  V3↔V4 link: dist=1454.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V116 reports V165↔V163  [ECHO]
+    (4) V53 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V116 -> V163  (PHANTOM)
+    Path 3: V165 -> V53 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V116 or V53 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V44 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V154 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V44, V154
+  V3↔V4 link: dist=1665.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V44 reports V165↔V163  [ECHO]
+    (4) V154 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V44 -> V163  (PHANTOM)
+    Path 3: V165 -> V154 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V44 or V154 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V23 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V83 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V23, V83
+  V3↔V4 link: dist=908.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V23 reports V165↔V163  [ECHO]
+    (4) V83 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V23 -> V163  (PHANTOM)
+    Path 3: V165 -> V83 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V23 or V83 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V162 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V137 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V162, V137
+  V3↔V4 link: dist=665.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V162 reports V165↔V163  [ECHO]
+    (4) V137 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V162 -> V163  (PHANTOM)
+    Path 3: V165 -> V137 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V162 or V137 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V163 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V128 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V163, V128
+  V3↔V4 link: dist=1294.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V163 reports V165↔V163  [ECHO]
+    (4) V128 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V163 -> V163  (PHANTOM)
+    Path 3: V165 -> V128 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V163 or V128 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V158 and V123 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V74 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V141 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V74, V141
+  V3↔V4 link: dist=553.0m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V74 reports V165↔V163  [ECHO]
+    (4) V141 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V74 -> V163  (PHANTOM)
+    Path 3: V165 -> V141 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V74 or V141 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V69 and V136 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V95 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V22 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V95, V22
+  V3↔V4 link: dist=1188.3m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V95 reports V165↔V163  [ECHO]
+    (4) V22 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V95 -> V163  (PHANTOM)
+    Path 3: V165 -> V22 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V95 or V22 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V90 and V17 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V30 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V89 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V30, V89
+  V3↔V4 link: dist=1159.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V30 reports V165↔V163  [ECHO]
+    (4) V89 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V30 -> V163  (PHANTOM)
+    Path 3: V165 -> V89 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V30 or V89 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V25 and V84 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V43 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V75 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V43, V75
+  V3↔V4 link: dist=676.0m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V43 reports V165↔V163  [ECHO]
+    (4) V75 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V43 -> V163  (PHANTOM)
+    Path 3: V165 -> V75 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V43 or V75 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V38 and V70 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V61 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V117 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V61, V117
+  V3↔V4 link: dist=609.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V61 reports V165↔V163  [ECHO]
+    (4) V117 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V61 -> V163  (PHANTOM)
+    Path 3: V165 -> V117 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V61 or V117 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V56 and V112 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V13 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V70 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V13, V70
+  V3↔V4 link: dist=1384.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V13 reports V165↔V163  [ECHO]
+    (4) V70 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V13 -> V163  (PHANTOM)
+    Path 3: V165 -> V70 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V13 or V70 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V8 and V65 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V6 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V94 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V6, V94
+  V3↔V4 link: dist=526.0m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V6 reports V165↔V163  [ECHO]
+    (4) V94 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V6 -> V163  (PHANTOM)
+    Path 3: V165 -> V94 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V6 or V94 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V1 and V89 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V133 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V14 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V133, V14
+  V3↔V4 link: dist=1524.4m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V133 reports V165↔V163  [ECHO]
+    (4) V14 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V133 -> V163  (PHANTOM)
+    Path 3: V165 -> V14 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V133 or V14 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V128 and V9 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V102 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V158 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V102, V158
+  V3↔V4 link: dist=733.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V102 reports V165↔V163  [ECHO]
+    (4) V158 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V102 -> V163  (PHANTOM)
+    Path 3: V165 -> V158 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V102 or V158 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V97 and V153 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V18 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V21 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V18, V21
+  V3↔V4 link: dist=1457.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V18 reports V165↔V163  [ECHO]
+    (4) V21 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V18 -> V163  (PHANTOM)
+    Path 3: V165 -> V21 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V18 or V21 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V13 and V16 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V47 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V144 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V47, V144
+  V3↔V4 link: dist=1043.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V47 reports V165↔V163  [ECHO]
+    (4) V144 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V47 -> V163  (PHANTOM)
+    Path 3: V165 -> V144 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V47 or V144 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V42 and V139 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V136 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V76 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V136, V76
+  V3↔V4 link: dist=957.0m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V136 reports V165↔V163  [ECHO]
+    (4) V76 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V136 -> V163  (PHANTOM)
+    Path 3: V165 -> V76 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V136 or V76 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V131 and V71 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V147 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V125 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V147, V125
+  V3↔V4 link: dist=65.6m  IN RANGE — Path 4 inferred
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V147 reports V165↔V163  [ECHO]
+    (4) V125 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V147 -> V163  (PHANTOM)
+    Path 3: V165 -> V125 -> V163  (PHANTOM)
+    Path 4: V165 -> V147 -> V125 -> V163  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V147 or V125 (including 3-hop V3→V4 chain) (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V142 and V120 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V39 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V16 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V39, V16
+  V3↔V4 link: dist=713.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V39 reports V165↔V163  [ECHO]
+    (4) V16 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V39 -> V163  (PHANTOM)
+    Path 3: V165 -> V16 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V39 or V16 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V34 and V11 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V11 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V51 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V11, V51
+  V3↔V4 link: dist=915.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V11 reports V165↔V163  [ECHO]
+    (4) V51 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V11 -> V163  (PHANTOM)
+    Path 3: V165 -> V51 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V11 or V51 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V6 and V46 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.1]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V127 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V26 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V127, V26
+  V3↔V4 link: dist=1522.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.1]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V127 reports V165↔V163  [ECHO]
+    (4) V26 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V127 -> V163  (PHANTOM)
+    Path 3: V165 -> V26 -> V163  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V127 or V26 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.1]  DETECTION + MITIGATION
+  Echo reporters V122 and V21 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V82 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V19 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V82, V19
+  V3↔V4 link: dist=512.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V82 reports V165↔V163  [ECHO]
+    (4) V19 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V82 -> V163  (PHANTOM)
+    Path 3: V165 -> V19 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V82 or V19 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V77 and V14 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V77 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V122 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V77, V122
+  V3↔V4 link: dist=667.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V77 reports V165↔V163  [ECHO]
+    (4) V122 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V77 -> V163  (PHANTOM)
+    Path 3: V165 -> V122 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V77 or V122 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V72 and V117 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V29 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V80 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V29, V80
+  V3↔V4 link: dist=962.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V29 reports V165↔V163  [ECHO]
+    (4) V80 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V29 -> V163  (PHANTOM)
+    Path 3: V165 -> V80 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V29 or V80 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V24 and V75 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V33 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V60 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V33, V60
+  V3↔V4 link: dist=398.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V33 reports V165↔V163  [ECHO]
+    (4) V60 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V33 -> V163  (PHANTOM)
+    Path 3: V165 -> V60 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V33 or V60 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V28 and V55 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V86 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V8 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V86, V8
+  V3↔V4 link: dist=1038.7m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V86 reports V165↔V163  [ECHO]
+    (4) V8 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V86 -> V163  (PHANTOM)
+    Path 3: V165 -> V8 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V86 or V8 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V81 and V3 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V48 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V149 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V48, V149
+  V3↔V4 link: dist=888.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V48 reports V165↔V163  [ECHO]
+    (4) V149 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V48 -> V163  (PHANTOM)
+    Path 3: V165 -> V149 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V48 or V149 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V43 and V144 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V101 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V37 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V101, V37
+  V3↔V4 link: dist=1270.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V101 reports V165↔V163  [ECHO]
+    (4) V37 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V101 -> V163  (PHANTOM)
+    Path 3: V165 -> V37 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V101 or V37 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V96 and V32 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V5 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V54 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V5, V54
+  V3↔V4 link: dist=888.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V5 reports V165↔V163  [ECHO]
+    (4) V54 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V5 -> V163  (PHANTOM)
+    Path 3: V165 -> V54 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V5 or V54 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V0 and V49 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V56 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V138 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V56, V138
+  V3↔V4 link: dist=442.4m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V56 reports V165↔V163  [ECHO]
+    (4) V138 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V56 -> V163  (PHANTOM)
+    Path 3: V165 -> V138 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V56 or V138 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V51 and V133 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V130 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V65 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V130, V65
+  V3↔V4 link: dist=1469.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V130 reports V165↔V163  [ECHO]
+    (4) V65 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V130 -> V163  (PHANTOM)
+    Path 3: V165 -> V65 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V130 or V65 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V125 and V60 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V113 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V114 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V113, V114
+  V3↔V4 link: dist=346.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V113 reports V165↔V163  [ECHO]
+    (4) V114 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V113 -> V163  (PHANTOM)
+    Path 3: V165 -> V114 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V113 or V114 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V108 and V109 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V40 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V108 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V40, V108
+  V3↔V4 link: dist=512.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V40 reports V165↔V163  [ECHO]
+    (4) V108 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V40 -> V163  (PHANTOM)
+    Path 3: V165 -> V108 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V40 or V108 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V35 and V103 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V32 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V126 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V32, V126
+  V3↔V4 link: dist=889.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V32 reports V165↔V163  [ECHO]
+    (4) V126 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V32 -> V163  (PHANTOM)
+    Path 3: V165 -> V126 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V32 or V126 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V27 and V121 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V28 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V157 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V28, V157
+  V3↔V4 link: dist=1113.5m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V28 reports V165↔V163  [ECHO]
+    (4) V157 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V28 -> V163  (PHANTOM)
+    Path 3: V165 -> V157 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V28 or V157 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V23 and V152 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V153 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V46 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V153, V46
+  V3↔V4 link: dist=902.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V153 reports V165↔V163  [ECHO]
+    (4) V46 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V153 -> V163  (PHANTOM)
+    Path 3: V165 -> V46 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V153 or V46 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V148 and V41 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V69 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V57 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V69, V57
+  V3↔V4 link: dist=1185.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V69 reports V165↔V163  [ECHO]
+    (4) V57 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V69 -> V163  (PHANTOM)
+    Path 3: V165 -> V57 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V69 or V57 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V64 and V52 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V25 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V36 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V25, V36
+  V3↔V4 link: dist=1521.0m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V25 reports V165↔V163  [ECHO]
+    (4) V36 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V25 -> V163  (PHANTOM)
+    Path 3: V165 -> V36 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V25 or V36 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V20 and V31 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V105 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V139 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V105, V139
+  V3↔V4 link: dist=1061.4m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V105 reports V165↔V163  [ECHO]
+    (4) V139 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V105 -> V163  (PHANTOM)
+    Path 3: V165 -> V139 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V105 or V139 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V100 and V134 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V112 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V7 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V112, V7
+  V3↔V4 link: dist=732.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V112 reports V165↔V163  [ECHO]
+    (4) V7 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V112 -> V163  (PHANTOM)
+    Path 3: V165 -> V7 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V112 or V7 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V107 and V2 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V140 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V81 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V140, V81
+  V3↔V4 link: dist=995.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V140 reports V165↔V163  [ECHO]
+    (4) V81 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V140 -> V163  (PHANTOM)
+    Path 3: V165 -> V81 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V140 or V81 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V135 and V76 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V58 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V42 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V58, V42
+  V3↔V4 link: dist=1806.0m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V58 reports V165↔V163  [ECHO]
+    (4) V42 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V58 -> V163  (PHANTOM)
+    Path 3: V165 -> V42 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V58 or V42 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V53 and V37 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V78 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V67 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V78, V67
+  V3↔V4 link: dist=1563.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V78 reports V165↔V163  [ECHO]
+    (4) V67 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V78 -> V163  (PHANTOM)
+    Path 3: V165 -> V67 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V78 or V67 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V73 and V62 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V41 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V131 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V41, V131
+  V3↔V4 link: dist=973.1m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V41 reports V165↔V163  [ECHO]
+    (4) V131 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V41 -> V163  (PHANTOM)
+    Path 3: V165 -> V131 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V41 or V131 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V36 and V126 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V143 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V156 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V143, V156
+  V3↔V4 link: dist=687.8m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V143 reports V165↔V163  [ECHO]
+    (4) V156 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V143 -> V163  (PHANTOM)
+    Path 3: V165 -> V156 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V143 or V156 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V138 and V151 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V55 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V88 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V55, V88
+  V3↔V4 link: dist=1460.9m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V55 reports V165↔V163  [ECHO]
+    (4) V88 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V55 -> V163  (PHANTOM)
+    Path 3: V165 -> V88 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V55 or V88 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V50 and V83 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V9 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V31 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V9, V31
+  V3↔V4 link: dist=107.3m  IN RANGE — Path 4 inferred
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V9 reports V165↔V163  [ECHO]
+    (4) V31 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V9 -> V163  (PHANTOM)
+    Path 3: V165 -> V31 -> V163  (PHANTOM)
+    Path 4: V165 -> V9 -> V31 -> V163  (PHANTOM — V3↔V4 in range)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V9 or V31 (including 3-hop V3→V4 chain) (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V4 and V26 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V135 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V15 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V135, V15
+  V3↔V4 link: dist=597.5m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V135 reports V165↔V163  [ECHO]
+    (4) V15 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V135 -> V163  (PHANTOM)
+    Path 3: V165 -> V15 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V135 or V15 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V130 and V10 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V164 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V145 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V164, V145
+  V3↔V4 link: dist=1145.4m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V164 reports V165↔V163  [ECHO]
+    (4) V145 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V164 -> V163  (PHANTOM)
+    Path 3: V165 -> V145 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V164 or V145 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V159 and V140 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V124 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V85 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V124, V85
+  V3↔V4 link: dist=716.6m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V124 reports V165↔V163  [ECHO]
+    (4) V85 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V124 -> V163  (PHANTOM)
+    Path 3: V165 -> V85 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V124 or V85 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V119 and V80 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=10.2]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS
+  V17 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  V142 -> Controller : <V165 sees V163, t=10.000871>  (ECHO -- false reporter)
+  Active false reporters: V17, V142
+  V3↔V4 link: dist=883.2m  OUT OF RANGE — no Path 4
+  V165↔V163 echoed link: dist=51.6m  IN RANGE — genuinely real
+  Note: echo vehicles duplicate an existing link — they do NOT fabricate new physical links
+
+[t=10.2]  STEP ⑤  MULTIPATH INFERENCE AT CONTROLLER (Attack Effect)
+  Controller aggregates observations for link V165↔V163:
+    (1) V165 reports V165↔V163  [real]
+    (2) V163 reports V163↔V165  [real]
+    (3) V17 reports V165↔V163  [ECHO]
+    (4) V142 reports V165↔V163  [ECHO]
+  Controller incorrectly infers:
+    Path 1: V165 -> V163  (REAL)
+    Path 2: V165 -> V17 -> V163  (PHANTOM)
+    Path 3: V165 -> V142 -> V163  (PHANTOM)
+
+[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing rules relying on phantom paths
+  Packets to V163 may be forwarded via V17 or V142 (non-existent paths)
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS
+
+[t=10.2]  DETECTION + MITIGATION
+  Echo reporters V12 and V137 identified; phantom entries removed
+  Score: 0.1
+  Latency: 59.3 ms
+  delta after mitigation: 66
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_QUORUM (Eq. 3.32): 0/200 valid, need t=3: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
