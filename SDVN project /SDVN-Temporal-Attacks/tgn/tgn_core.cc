@@ -1956,6 +1956,7 @@ static void TGN_WriteSummary()
         << "  W_max       : " << g_tgn_params.wmax  << "  [§3.4.3 window = N_beacon (Eq. 3.32)]\n"
         << "  Events      : " << (g_tgn_tp+g_tgn_tn+g_tgn_fp+g_tgn_fn) << "\n"
         << "  Stage-0 blocked (attacks): " << g_tgn_stage0_blocked_attacks << "\n"
+        << "  Stage-0 blocked (revoked, TEMP DEBUG): " << TetaGuardGetRevokedDropCount() << "\n"
         << "  |E_t^trusted|  : " << g_tgn_E_trusted_n
         << (g_tgn_E_was_ever_nonempty ? "" : "  [BLIND WINDOW — E_t^trusted=∅ throughout]")
         << "\n"
@@ -2417,19 +2418,48 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     // g_tgn_link_reporters' declaration comment — so this fix is not what
     // makes rho_v accumulate; it only matters for the other three features.
     // Vehicle/RSU-origin events (physical_sender_id != 9999) are unaffected.
+    // Combined-mode (attack_scenario==13) fix: bucketing every
+    // controller-origin event under one shared trusted_node_id=9999 is
+    // correct and validated for a SINGLE controller-origin scenario running
+    // alone (the rationale in the comment above) -- but in combined mode,
+    // six controller-origin sub-scenarios (TTW-S3/S4, BSHH-S3/S4, ME-S3/S4)
+    // run concurrently and would all share that one bucket's sequential
+    // features (beacon_count, seq_gap, tau_dev), diluting each family's own
+    // temporal signal with the other five's -- the exact same class of bug
+    // already found and fixed for the LW detector's PEM_SHARED_TRUSTED_NODE_ID
+    // (routing.cc, PemDetectionNodeKey). Partition by the event's own
+    // resolved origin scenario in combined mode only, using the same
+    // explicit-origin-tagging mechanism (PemResolveOriginScenario) already
+    // relied on there -- zero behavior change for every single-scenario run
+    // (attack_scenario != 13 always uses plain 9999u, exactly as before).
     const uint32_t trusted_node_id =
-        (e.physical_sender_id == 9999u) ? 9999u : e.reporter_id;
+        (e.physical_sender_id == 9999u)
+            ? ((attack_scenario == 13) ? (9999u + PemResolveOriginScenario(e)) : 9999u)
+            : e.reporter_id;
     const int tier = (N_RSUs > 0) ? 1 : 2;
     const char* tier_label = (tier == 1) ? "Tier1-RSU" : "Tier2-OBU";
     const char* mitig_mode = (tier == 1) ? "FlowMod"   : "BlacklistBeacon";
 
-    // Tier 2 Eq. 3.40 Cond 5: F_flagged exclusion in inline path.
-    // If this reporter was previously flagged as an attacker (by Stage-0 or a prior
-    // TGN alert), discard its events — it is no longer an eligible trusted verifier.
-    // Controller (9999) is always allowed through regardless of flagged set.
-    if (tier == 2 && trusted_node_id != 9999u) {
-        if (g_tgn_flagged_nodes.count(trusted_node_id)) return;
-    }
+    // Bug fix (over-broad F_flagged exclusion): Eq. 3.40's third case says a
+    // detection flag "permanently excludes the attacker from peer eligibility"
+    // — the PDF text (§3.4.11) is explicit that this means eligibility as a
+    // TRUSTED VERIFIER/WITNESS for OTHER nodes (Eq. 3.42 Fflagged, Eq. 3.46
+    // E_t^trusted), not exclusion from ever being scored again itself.
+    // Algorithm 2 (FS-DETECT)'s own loop, "for each v in Vt: ... if yhat_v >
+    // theta_FS then A <- A U {(v, yhat_v, alpha)}", scores every node in the
+    // current graph snapshot every round with no flagged-node skip anywhere
+    // in the pseudocode — a repeat attacker is supposed to keep getting
+    // caught each round, not silently stop being evaluated after its first
+    // detection. The removed `return` here used to drop a flagged reporter's
+    // event before feature extraction, scoring, AND the tp/fn confusion-
+    // matrix increment — so once a repeat attacker (e.g. BSHH-S1's
+    // multi-round hijackers) was caught once, every later attack attempt
+    // from that same vehicle silently vanished from TGN's own scorecard
+    // entirely (not scored, not TP, not counted), even though it should
+    // still be independently re-detected each round per Algorithm 2. The
+    // correctly-scoped exclusion (can no longer be relied on as a witness
+    // for OTHER nodes) is applied below at in_E_trusted instead, which is
+    // the actual Eq. 3.42/3.46 concept this citation was pointing at.
 
     // Beacon events: update sliding window only (no detection round).
     // Scoped to trusted_node_id — see g_tgn_beacon_windows declaration.
@@ -2462,8 +2492,14 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     //   Note: round_count was just incremented, so post-increment value is used
     //   (matching the "after this round completes" timing of §3.4.11 trust update).
     // Controller events (9999) are excluded — they are the audit target.
+    // Eq. 3.40 Cond 5 / Eq. 3.42 Fflagged: a previously-flagged node is
+    // permanently excluded from PEER ELIGIBILITY — i.e. it can no longer
+    // serve as a trusted witness whose evidence feeds E_t^trusted for OTHER
+    // nodes' divergence checks (moved here from the old blanket early-return
+    // above, which incorrectly also stopped the flagged node's own traffic
+    // from ever being scored again).
     bool in_E_trusted = false;
-    if (trusted_node_id != 9999u) {
+    if (trusted_node_id != 9999u && !g_tgn_flagged_nodes.count(trusted_node_id)) {
         if (tier == 1) {
             const uint32_t rsu_base = N_Controllers + 1u + (uint32_t)N_Vehicles;
             in_E_trusted = (trusted_node_id >= rsu_base
@@ -2485,6 +2521,30 @@ static void TGN_ProcessEventInline(const PemEvent& e)
                                             e.reception_timestamp);
     bool tgn_alert  = (tgn_score > g_tgn->GetThreshold());
     const bool bootstrap_done = (tier == 2) ? (round_count >= RMIN_BOOTSTRAP) : true;
+
+    // TEMP DEBUG (scenario-13 TGN misclassification investigation, remove
+    // after diagnosis): print full feature vector + score for every FN/FP.
+    if (attack_scenario == 13 && (e.attack_label != tgn_alert)) {
+        std::cout << "[TGN-DEBUG] " << (e.attack_label ? "FN" : "FP")
+                  << " t=" << e.reception_timestamp
+                  << " origin=" << PemResolveOriginScenario(e)
+                  << " trusted_node=" << (trusted_node_id==9999u?"ctrl":std::to_string(trusted_node_id))
+                  << " phys=" << e.physical_sender_id
+                  << " claimed=" << e.claimed_sender_id
+                  << " reporter=" << e.reporter_id
+                  << " link=" << e.link_src_id << "-" << e.link_dst_id
+                  << " score=" << tgn_score << " thresh=" << g_tgn->GetThreshold()
+                  << " | tau_dev=" << feat.tau_dev
+                  << " beacon_count=" << feat.beacon_count
+                  << " seq_gap=" << feat.seq_gap
+                  << " reporter_count=" << feat.reporter_count
+                  << " identity_mismatch=" << feat.identity_mismatch
+                  << " edge_fresh=" << ef
+                  << " lw_alert=" << e.alert_raised
+                  << " lw_sig=";
+        for (int si = 0; si < 9; ++si) if (e.triggered[si]) std::cout << si << ",";
+        std::cout << std::endl;
+    }
 
     // Same exclusion as the other TGN_ProcessEventInline call site above —
     // see its comment for why (matches PemEvaluateEvent's

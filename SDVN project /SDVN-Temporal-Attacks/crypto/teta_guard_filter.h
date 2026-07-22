@@ -432,28 +432,23 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
     if (PemEventIsMaliciousControllerOrigin(event))
         return true;
 
-    // ── Revocation (Eq. 3.18) — LKH check added to this pipeline ────────────
-    // This pipeline previously had no LKH revocation check at all — only
-    // Rx()'s independent lw_mitigate() call (hmac_filter.cc) consulted the
-    // real LKH tree (g_lkh_tree/lkh_is_revoked). Meanwhile PemEmitEvent()
-    // already runs a SEPARATE, independent revocation-adjacent check before
-    // ever reaching this function: g_blacklisted_nodes, populated by
-    // PemReadBlacklistFile() polling the Tier-2 cooperative BlacklistBeacon
-    // IPC file. That is not a duplicate of LKH — per the paper's §3.4.10
-    // Node Removal Mechanism, LKH session-key revocation (Eq. 3.18, O(log n),
-    // both Tier 1 and Tier 2) and the Tier-2-only cooperative blacklist-beacon
-    // propagation (no-OpenFlow networks) are two distinct, both-legitimate
-    // mechanisms — this adds the missing one (LKH) here; it does not replace
-    // or duplicate the existing blacklist-file gate in PemEmitEvent.
-    // Same leaf-index convention as every other LKH call site in this
-    // codebase (physical_sender_id % g_lkh_n_leaves indexes g_lkh_vids).
-    if (g_lkh_ready && g_lkh_n_leaves > 0u) {
-        const uint32_t leaf_idx = event.physical_sender_id % g_lkh_n_leaves;
-        if (lkh_is_revoked(&g_lkh_tree, g_lkh_vids[leaf_idx])) {
-            tg_crypto_drop_revoked++;
-            return false;
-        }
-    }
+    // Revocation (Eq. 3.18) check REMOVED from this pre-filter (routing.cc
+    // system design decision). Verified against the PDF: Algorithm 3
+    // (LW-MITIGATE), the formal specification of this exact Stage-0
+    // procedure, enforces precisely three conditions -- MAC validity
+    // (Eq. 3.15), freshness (Eq. 3.16), nonce novelty (Eq. 3.17) -- with no
+    // revocation check anywhere in it. LKH revocation (Eq. 3.18) is
+    // specified separately (§3.4.10, Node Removal Mechanism) as a
+    // downstream MITIGATION action triggered after a detection is
+    // confirmed, not as a standing gate inside the pre-detection filter
+    // that blocks future packet evaluation from a previously-caught node.
+    // This was an implementation addition beyond what Algorithm 3 actually
+    // specifies; removed here since Algorithm 3 is the same procedure used
+    // by every scenario (not scoped to attack_scenario==13 -- this fixes
+    // standalone runs too). g_blacklisted_nodes (PemEmitEvent's own,
+    // separate check) remains untouched -- that's the Tier-2 cooperative
+    // BlacklistBeacon propagation mechanism, a distinct, still-legitimate
+    // path per §3.4.10, not a duplicate of this removed LKH check.
 
     // Retrieve (or create) this verifier node's state
     TrustedNodeCryptoState& state = g_per_node_crypto_state[reporter_id];

@@ -112,208 +112,208 @@ Timeline (Option B — real SUMO trajectories decide the break):
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 199 handshakes timed: avg=36.9991 ms, max=98.6966 ms, over_budget=199/199 (budget=10 ms)
+[KEM][10ms budget] 199 handshakes timed: avg=37.0632 ms, max=85.9827 ms, over_budget=199/199 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
 [TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_sim60_ap60_3seeds.bin'  (dim=128 layers=2)
-[KEM][SimLatency][t=0.0349168] Vehicle 124 session key simulated-ready (real handshake was 34.9168 ms)
-[KEM][SimLatency][t=0.0349187] Vehicle 109 session key simulated-ready (real handshake was 34.9187 ms)
-[KEM][SimLatency][t=0.0350006] Vehicle 106 session key simulated-ready (real handshake was 35.0006 ms)
-[KEM][SimLatency][t=0.0351019] Vehicle 125 session key simulated-ready (real handshake was 35.1019 ms)
-[KEM][SimLatency][t=0.0351125] Vehicle 108 session key simulated-ready (real handshake was 35.1125 ms)
-[KEM][SimLatency][t=0.0351271] Vehicle 105 session key simulated-ready (real handshake was 35.1271 ms)
-[KEM][SimLatency][t=0.0351278] Vehicle 110 session key simulated-ready (real handshake was 35.1278 ms)
-[KEM][SimLatency][t=0.0352019] Vehicle 117 session key simulated-ready (real handshake was 35.2019 ms)
-[KEM][SimLatency][t=0.0352041] Vehicle 107 session key simulated-ready (real handshake was 35.2041 ms)
-[KEM][SimLatency][t=0.0352048] Vehicle 115 session key simulated-ready (real handshake was 35.2048 ms)
-[KEM][SimLatency][t=0.03525] Vehicle 123 session key simulated-ready (real handshake was 35.25 ms)
-[KEM][SimLatency][t=0.0353867] Vehicle 111 session key simulated-ready (real handshake was 35.3867 ms)
-[KEM][SimLatency][t=0.0353999] Vehicle 114 session key simulated-ready (real handshake was 35.3999 ms)
-[KEM][SimLatency][t=0.0354031] Vehicle 1 session key simulated-ready (real handshake was 35.4031 ms)
-[KEM][SimLatency][t=0.0354203] Vehicle 121 session key simulated-ready (real handshake was 35.4203 ms)
-[KEM][SimLatency][t=0.0354414] Vehicle 112 session key simulated-ready (real handshake was 35.4414 ms)
-[KEM][SimLatency][t=0.0354454] Vehicle 119 session key simulated-ready (real handshake was 35.4454 ms)
-[KEM][SimLatency][t=0.0354523] Vehicle 113 session key simulated-ready (real handshake was 35.4523 ms)
-[KEM][SimLatency][t=0.0355334] Vehicle 4 session key simulated-ready (real handshake was 35.5334 ms)
-[KEM][SimLatency][t=0.0355426] Vehicle 126 session key simulated-ready (real handshake was 35.5426 ms)
-[KEM][SimLatency][t=0.0355667] Vehicle 79 session key simulated-ready (real handshake was 35.5667 ms)
-[KEM][SimLatency][t=0.0355967] Vehicle 29 session key simulated-ready (real handshake was 35.5967 ms)
-[KEM][SimLatency][t=0.0356061] Vehicle 32 session key simulated-ready (real handshake was 35.6061 ms)
-[KEM][SimLatency][t=0.0356126] Vehicle 7 session key simulated-ready (real handshake was 35.6126 ms)
-[KEM][SimLatency][t=0.0356213] Vehicle 186 session key simulated-ready (real handshake was 35.6213 ms)
-[KEM][SimLatency][t=0.0356239] Vehicle 30 session key simulated-ready (real handshake was 35.6239 ms)
-[KEM][SimLatency][t=0.0356249] Vehicle 27 session key simulated-ready (real handshake was 35.6249 ms)
-[KEM][SimLatency][t=0.035635] Vehicle 40 session key simulated-ready (real handshake was 35.635 ms)
-[KEM][SimLatency][t=0.0356381] Vehicle 8 session key simulated-ready (real handshake was 35.6381 ms)
-[KEM][SimLatency][t=0.0356413] Vehicle 142 session key simulated-ready (real handshake was 35.6413 ms)
-[KEM][SimLatency][t=0.0356469] Vehicle 145 session key simulated-ready (real handshake was 35.6469 ms)
-[KEM][SimLatency][t=0.0356475] Vehicle 144 session key simulated-ready (real handshake was 35.6475 ms)
-[KEM][SimLatency][t=0.0356538] Vehicle 122 session key simulated-ready (real handshake was 35.6538 ms)
-[KEM][SimLatency][t=0.0356544] Vehicle 118 session key simulated-ready (real handshake was 35.6544 ms)
-[KEM][SimLatency][t=0.0356548] Vehicle 31 session key simulated-ready (real handshake was 35.6548 ms)
-[KEM][SimLatency][t=0.0356553] Vehicle 116 session key simulated-ready (real handshake was 35.6553 ms)
-[KEM][SimLatency][t=0.0356602] Vehicle 2 session key simulated-ready (real handshake was 35.6602 ms)
-[KEM][SimLatency][t=0.0356706] Vehicle 5 session key simulated-ready (real handshake was 35.6706 ms)
-[KEM][SimLatency][t=0.0356721] Vehicle 140 session key simulated-ready (real handshake was 35.6721 ms)
-[KEM][SimLatency][t=0.0356978] Vehicle 6 session key simulated-ready (real handshake was 35.6978 ms)
-[KEM][SimLatency][t=0.0356991] Vehicle 39 session key simulated-ready (real handshake was 35.6991 ms)
-[KEM][SimLatency][t=0.0357016] Vehicle 120 session key simulated-ready (real handshake was 35.7016 ms)
-[KEM][SimLatency][t=0.0357147] Vehicle 143 session key simulated-ready (real handshake was 35.7147 ms)
-[KEM][SimLatency][t=0.0357185] Vehicle 188 session key simulated-ready (real handshake was 35.7185 ms)
-[KEM][SimLatency][t=0.0357261] Vehicle 76 session key simulated-ready (real handshake was 35.7261 ms)
-[KEM][SimLatency][t=0.0357294] Vehicle 69 session key simulated-ready (real handshake was 35.7294 ms)
-[KEM][SimLatency][t=0.035739] Vehicle 28 session key simulated-ready (real handshake was 35.739 ms)
-[KEM][SimLatency][t=0.0357421] Vehicle 198 session key simulated-ready (real handshake was 35.7421 ms)
-[KEM][SimLatency][t=0.0357498] Vehicle 11 session key simulated-ready (real handshake was 35.7498 ms)
-[KEM][SimLatency][t=0.0357512] Vehicle 67 session key simulated-ready (real handshake was 35.7512 ms)
-[KEM][SimLatency][t=0.035759] Vehicle 68 session key simulated-ready (real handshake was 35.759 ms)
-[KEM][SimLatency][t=0.0357716] Vehicle 132 session key simulated-ready (real handshake was 35.7716 ms)
-[KEM][SimLatency][t=0.0357777] Vehicle 36 session key simulated-ready (real handshake was 35.7777 ms)
-[KEM][SimLatency][t=0.0357786] Vehicle 10 session key simulated-ready (real handshake was 35.7786 ms)
-[KEM][SimLatency][t=0.0357899] Vehicle 77 session key simulated-ready (real handshake was 35.7899 ms)
-[KEM][SimLatency][t=0.0357927] Vehicle 187 session key simulated-ready (real handshake was 35.7927 ms)
-[KEM][SimLatency][t=0.0357939] Vehicle 190 session key simulated-ready (real handshake was 35.7939 ms)
-[KEM][SimLatency][t=0.035794] Vehicle 14 session key simulated-ready (real handshake was 35.794 ms)
-[KEM][SimLatency][t=0.0357996] Vehicle 133 session key simulated-ready (real handshake was 35.7996 ms)
-[KEM][SimLatency][t=0.0358174] Vehicle 66 session key simulated-ready (real handshake was 35.8174 ms)
-[KEM][SimLatency][t=0.0358192] Vehicle 176 session key simulated-ready (real handshake was 35.8192 ms)
-[KEM][SimLatency][t=0.0358268] Vehicle 199 session key simulated-ready (real handshake was 35.8268 ms)
-[KEM][SimLatency][t=0.0358372] Vehicle 70 session key simulated-ready (real handshake was 35.8372 ms)
-[KEM][SimLatency][t=0.0358423] Vehicle 12 session key simulated-ready (real handshake was 35.8423 ms)
-[KEM][SimLatency][t=0.0358531] Vehicle 141 session key simulated-ready (real handshake was 35.8531 ms)
-[KEM][SimLatency][t=0.0358541] Vehicle 197 session key simulated-ready (real handshake was 35.8541 ms)
-[KEM][SimLatency][t=0.0358659] Vehicle 45 session key simulated-ready (real handshake was 35.8659 ms)
-[KEM][SimLatency][t=0.0358733] Vehicle 3 session key simulated-ready (real handshake was 35.8733 ms)
-[KEM][SimLatency][t=0.0358836] Vehicle 189 session key simulated-ready (real handshake was 35.8836 ms)
-[KEM][SimLatency][t=0.0358861] Vehicle 34 session key simulated-ready (real handshake was 35.8861 ms)
-[KEM][SimLatency][t=0.0358952] Vehicle 72 session key simulated-ready (real handshake was 35.8952 ms)
-[KEM][SimLatency][t=0.0359001] Vehicle 54 session key simulated-ready (real handshake was 35.9001 ms)
-[KEM][SimLatency][t=0.0359013] Vehicle 33 session key simulated-ready (real handshake was 35.9013 ms)
-[KEM][SimLatency][t=0.0359027] Vehicle 191 session key simulated-ready (real handshake was 35.9027 ms)
-[KEM][SimLatency][t=0.0359038] Vehicle 13 session key simulated-ready (real handshake was 35.9038 ms)
-[KEM][SimLatency][t=0.0359054] Vehicle 127 session key simulated-ready (real handshake was 35.9054 ms)
-[KEM][SimLatency][t=0.0359141] Vehicle 22 session key simulated-ready (real handshake was 35.9141 ms)
-[KEM][SimLatency][t=0.035926] Vehicle 131 session key simulated-ready (real handshake was 35.926 ms)
-[KEM][SimLatency][t=0.0359261] Vehicle 134 session key simulated-ready (real handshake was 35.9261 ms)
-[KEM][SimLatency][t=0.0359332] Vehicle 151 session key simulated-ready (real handshake was 35.9332 ms)
-[KEM][SimLatency][t=0.0359338] Vehicle 78 session key simulated-ready (real handshake was 35.9338 ms)
-[KEM][SimLatency][t=0.0359357] Vehicle 35 session key simulated-ready (real handshake was 35.9357 ms)
-[KEM][SimLatency][t=0.0359377] Vehicle 139 session key simulated-ready (real handshake was 35.9377 ms)
-[KEM][SimLatency][t=0.0359417] Vehicle 71 session key simulated-ready (real handshake was 35.9417 ms)
-[KEM][SimLatency][t=0.0359507] Vehicle 60 session key simulated-ready (real handshake was 35.9507 ms)
-[KEM][SimLatency][t=0.0359615] Vehicle 185 session key simulated-ready (real handshake was 35.9615 ms)
-[KEM][SimLatency][t=0.0359635] Vehicle 184 session key simulated-ready (real handshake was 35.9635 ms)
-[KEM][SimLatency][t=0.0359751] Vehicle 41 session key simulated-ready (real handshake was 35.9751 ms)
-[KEM][SimLatency][t=0.0359792] Vehicle 147 session key simulated-ready (real handshake was 35.9792 ms)
-[KEM][SimLatency][t=0.0359806] Vehicle 61 session key simulated-ready (real handshake was 35.9806 ms)
-[KEM][SimLatency][t=0.0359822] Vehicle 51 session key simulated-ready (real handshake was 35.9822 ms)
-[KEM][SimLatency][t=0.0359839] Vehicle 43 session key simulated-ready (real handshake was 35.9839 ms)
-[KEM][SimLatency][t=0.0359914] Vehicle 15 session key simulated-ready (real handshake was 35.9914 ms)
-[KEM][SimLatency][t=0.0359942] Vehicle 149 session key simulated-ready (real handshake was 35.9942 ms)
-[KEM][SimLatency][t=0.0360014] Vehicle 9 session key simulated-ready (real handshake was 36.0014 ms)
-[KEM][SimLatency][t=0.0360055] Vehicle 146 session key simulated-ready (real handshake was 36.0055 ms)
-[KEM][SimLatency][t=0.0360071] Vehicle 16 session key simulated-ready (real handshake was 36.0071 ms)
-[KEM][SimLatency][t=0.0360105] Vehicle 192 session key simulated-ready (real handshake was 36.0105 ms)
-[KEM][SimLatency][t=0.0360134] Vehicle 154 session key simulated-ready (real handshake was 36.0134 ms)
-[KEM][SimLatency][t=0.0360154] Vehicle 58 session key simulated-ready (real handshake was 36.0154 ms)
-[KEM][SimLatency][t=0.0360355] Vehicle 128 session key simulated-ready (real handshake was 36.0355 ms)
-[KEM][SimLatency][t=0.0360415] Vehicle 50 session key simulated-ready (real handshake was 36.0415 ms)
-[KEM][SimLatency][t=0.0360462] Vehicle 46 session key simulated-ready (real handshake was 36.0462 ms)
-[KEM][SimLatency][t=0.0360491] Vehicle 53 session key simulated-ready (real handshake was 36.0491 ms)
-[KEM][SimLatency][t=0.0360498] Vehicle 75 session key simulated-ready (real handshake was 36.0498 ms)
-[KEM][SimLatency][t=0.0360585] Vehicle 55 session key simulated-ready (real handshake was 36.0585 ms)
-[KEM][SimLatency][t=0.0360621] Vehicle 20 session key simulated-ready (real handshake was 36.0621 ms)
-[KEM][SimLatency][t=0.0360629] Vehicle 52 session key simulated-ready (real handshake was 36.0629 ms)
-[KEM][SimLatency][t=0.0360659] Vehicle 56 session key simulated-ready (real handshake was 36.0659 ms)
-[KEM][SimLatency][t=0.0360669] Vehicle 138 session key simulated-ready (real handshake was 36.0669 ms)
-[KEM][SimLatency][t=0.0360714] Vehicle 167 session key simulated-ready (real handshake was 36.0714 ms)
-[KEM][SimLatency][t=0.0360778] Vehicle 135 session key simulated-ready (real handshake was 36.0778 ms)
-[KEM][SimLatency][t=0.0360843] Vehicle 166 session key simulated-ready (real handshake was 36.0843 ms)
-[KEM][SimLatency][t=0.0360847] Vehicle 148 session key simulated-ready (real handshake was 36.0847 ms)
-[KEM][SimLatency][t=0.0360852] Vehicle 18 session key simulated-ready (real handshake was 36.0852 ms)
-[KEM][SimLatency][t=0.0360922] Vehicle 49 session key simulated-ready (real handshake was 36.0922 ms)
-[KEM][SimLatency][t=0.0360926] Vehicle 183 session key simulated-ready (real handshake was 36.0926 ms)
-[KEM][SimLatency][t=0.0360992] Vehicle 161 session key simulated-ready (real handshake was 36.0992 ms)
-[KEM][SimLatency][t=0.0361028] Vehicle 23 session key simulated-ready (real handshake was 36.1028 ms)
-[KEM][SimLatency][t=0.0361082] Vehicle 163 session key simulated-ready (real handshake was 36.1082 ms)
-[KEM][SimLatency][t=0.0361147] Vehicle 160 session key simulated-ready (real handshake was 36.1147 ms)
-[KEM][SimLatency][t=0.0361181] Vehicle 42 session key simulated-ready (real handshake was 36.1181 ms)
-[KEM][SimLatency][t=0.036119] Vehicle 63 session key simulated-ready (real handshake was 36.119 ms)
-[KEM][SimLatency][t=0.0361287] Vehicle 37 session key simulated-ready (real handshake was 36.1287 ms)
-[KEM][SimLatency][t=0.03613] Vehicle 73 session key simulated-ready (real handshake was 36.13 ms)
-[KEM][SimLatency][t=0.0361308] Vehicle 177 session key simulated-ready (real handshake was 36.1308 ms)
-[KEM][SimLatency][t=0.0361308] Vehicle 21 session key simulated-ready (real handshake was 36.1308 ms)
-[KEM][SimLatency][t=0.0361353] Vehicle 193 session key simulated-ready (real handshake was 36.1353 ms)
-[KEM][SimLatency][t=0.0361404] Vehicle 65 session key simulated-ready (real handshake was 36.1404 ms)
-[KEM][SimLatency][t=0.0361574] Vehicle 153 session key simulated-ready (real handshake was 36.1574 ms)
-[KEM][SimLatency][t=0.0361676] Vehicle 136 session key simulated-ready (real handshake was 36.1676 ms)
-[KEM][SimLatency][t=0.0361687] Vehicle 19 session key simulated-ready (real handshake was 36.1687 ms)
-[KEM][SimLatency][t=0.0361843] Vehicle 165 session key simulated-ready (real handshake was 36.1843 ms)
-[KEM][SimLatency][t=0.0361856] Vehicle 62 session key simulated-ready (real handshake was 36.1856 ms)
-[KEM][SimLatency][t=0.0361911] Vehicle 159 session key simulated-ready (real handshake was 36.1911 ms)
-[KEM][SimLatency][t=0.0361938] Vehicle 157 session key simulated-ready (real handshake was 36.1938 ms)
-[KEM][SimLatency][t=0.0361952] Vehicle 57 session key simulated-ready (real handshake was 36.1952 ms)
-[KEM][SimLatency][t=0.0361995] Vehicle 168 session key simulated-ready (real handshake was 36.1995 ms)
-[KEM][SimLatency][t=0.0362025] Vehicle 44 session key simulated-ready (real handshake was 36.2025 ms)
-[KEM][SimLatency][t=0.0362057] Vehicle 171 session key simulated-ready (real handshake was 36.2057 ms)
-[KEM][SimLatency][t=0.0362138] Vehicle 172 session key simulated-ready (real handshake was 36.2138 ms)
-[KEM][SimLatency][t=0.0362163] Vehicle 158 session key simulated-ready (real handshake was 36.2163 ms)
-[KEM][SimLatency][t=0.0362206] Vehicle 164 session key simulated-ready (real handshake was 36.2206 ms)
-[KEM][SimLatency][t=0.0362233] Vehicle 162 session key simulated-ready (real handshake was 36.2233 ms)
-[KEM][SimLatency][t=0.0362263] Vehicle 178 session key simulated-ready (real handshake was 36.2263 ms)
-[KEM][SimLatency][t=0.0362281] Vehicle 24 session key simulated-ready (real handshake was 36.2281 ms)
-[KEM][SimLatency][t=0.0362335] Vehicle 182 session key simulated-ready (real handshake was 36.2335 ms)
-[KEM][SimLatency][t=0.0362352] Vehicle 152 session key simulated-ready (real handshake was 36.2352 ms)
-[KEM][SimLatency][t=0.0362464] Vehicle 170 session key simulated-ready (real handshake was 36.2464 ms)
-[KEM][SimLatency][t=0.0362513] Vehicle 26 session key simulated-ready (real handshake was 36.2513 ms)
-[KEM][SimLatency][t=0.0362654] Vehicle 150 session key simulated-ready (real handshake was 36.2654 ms)
-[KEM][SimLatency][t=0.0362695] Vehicle 74 session key simulated-ready (real handshake was 36.2695 ms)
-[KEM][SimLatency][t=0.0362781] Vehicle 17 session key simulated-ready (real handshake was 36.2781 ms)
-[KEM][SimLatency][t=0.0362798] Vehicle 181 session key simulated-ready (real handshake was 36.2798 ms)
-[KEM][SimLatency][t=0.0362807] Vehicle 194 session key simulated-ready (real handshake was 36.2807 ms)
-[KEM][SimLatency][t=0.0362811] Vehicle 59 session key simulated-ready (real handshake was 36.2811 ms)
-[KEM][SimLatency][t=0.036284] Vehicle 169 session key simulated-ready (real handshake was 36.284 ms)
-[KEM][SimLatency][t=0.0362883] Vehicle 137 session key simulated-ready (real handshake was 36.2883 ms)
-[KEM][SimLatency][t=0.0363151] Vehicle 64 session key simulated-ready (real handshake was 36.3151 ms)
-[KEM][SimLatency][t=0.036316] Vehicle 173 session key simulated-ready (real handshake was 36.316 ms)
-[KEM][SimLatency][t=0.0363208] Vehicle 38 session key simulated-ready (real handshake was 36.3208 ms)
-[KEM][SimLatency][t=0.036345] Vehicle 179 session key simulated-ready (real handshake was 36.345 ms)
-[KEM][SimLatency][t=0.0363948] Vehicle 180 session key simulated-ready (real handshake was 36.3948 ms)
-[KEM][SimLatency][t=0.0363955] Vehicle 155 session key simulated-ready (real handshake was 36.3955 ms)
-[KEM][SimLatency][t=0.0364112] Vehicle 47 session key simulated-ready (real handshake was 36.4112 ms)
-[KEM][SimLatency][t=0.0364236] Vehicle 130 session key simulated-ready (real handshake was 36.4236 ms)
-[KEM][SimLatency][t=0.0364257] Vehicle 48 session key simulated-ready (real handshake was 36.4257 ms)
-[KEM][SimLatency][t=0.0364465] Vehicle 195 session key simulated-ready (real handshake was 36.4465 ms)
-[KEM][SimLatency][t=0.0364624] Vehicle 25 session key simulated-ready (real handshake was 36.4624 ms)
-[KEM][SimLatency][t=0.0364947] Vehicle 156 session key simulated-ready (real handshake was 36.4947 ms)
-[KEM][SimLatency][t=0.0365284] Vehicle 196 session key simulated-ready (real handshake was 36.5284 ms)
-[KEM][SimLatency][t=0.0366185] Vehicle 129 session key simulated-ready (real handshake was 36.6185 ms)
-[KEM][SimLatency][t=0.0371676] Vehicle 175 session key simulated-ready (real handshake was 37.1676 ms)
-[KEM][SimLatency][t=0.038012] Vehicle 80 session key simulated-ready (real handshake was 38.012 ms)
-[KEM][SimLatency][t=0.0411007] Vehicle 98 session key simulated-ready (real handshake was 41.1007 ms)
-[KEM][SimLatency][t=0.0413667] Vehicle 91 session key simulated-ready (real handshake was 41.3667 ms)
-[KEM][SimLatency][t=0.0413958] Vehicle 99 session key simulated-ready (real handshake was 41.3958 ms)
-[KEM][SimLatency][t=0.0414006] Vehicle 95 session key simulated-ready (real handshake was 41.4006 ms)
-[KEM][SimLatency][t=0.0414337] Vehicle 88 session key simulated-ready (real handshake was 41.4337 ms)
-[KEM][SimLatency][t=0.041449] Vehicle 100 session key simulated-ready (real handshake was 41.449 ms)
-[KEM][SimLatency][t=0.0415077] Vehicle 90 session key simulated-ready (real handshake was 41.5077 ms)
-[KEM][SimLatency][t=0.0415098] Vehicle 89 session key simulated-ready (real handshake was 41.5098 ms)
-[KEM][SimLatency][t=0.0415124] Vehicle 93 session key simulated-ready (real handshake was 41.5124 ms)
-[KEM][SimLatency][t=0.0416559] Vehicle 97 session key simulated-ready (real handshake was 41.6559 ms)
-[KEM][SimLatency][t=0.0416695] Vehicle 94 session key simulated-ready (real handshake was 41.6695 ms)
-[KEM][SimLatency][t=0.0417536] Vehicle 101 session key simulated-ready (real handshake was 41.7536 ms)
-[KEM][SimLatency][t=0.0417602] Vehicle 86 session key simulated-ready (real handshake was 41.7602 ms)
-[KEM][SimLatency][t=0.0417732] Vehicle 85 session key simulated-ready (real handshake was 41.7732 ms)
-[KEM][SimLatency][t=0.0418174] Vehicle 102 session key simulated-ready (real handshake was 41.8174 ms)
-[KEM][SimLatency][t=0.0418394] Vehicle 84 session key simulated-ready (real handshake was 41.8394 ms)
-[KEM][SimLatency][t=0.0419888] Vehicle 87 session key simulated-ready (real handshake was 41.9888 ms)
-[KEM][SimLatency][t=0.0420449] Vehicle 83 session key simulated-ready (real handshake was 42.0449 ms)
-[KEM][SimLatency][t=0.0423041] Vehicle 92 session key simulated-ready (real handshake was 42.3041 ms)
-[KEM][SimLatency][t=0.0428455] Vehicle 174 session key simulated-ready (real handshake was 42.8455 ms)
-[KEM][SimLatency][t=0.0429226] Vehicle 96 session key simulated-ready (real handshake was 42.9226 ms)
-[KEM][SimLatency][t=0.0430018] Vehicle 82 session key simulated-ready (real handshake was 43.0018 ms)
-[KEM][SimLatency][t=0.0438314] Vehicle 81 session key simulated-ready (real handshake was 43.8314 ms)
-[KEM][SimLatency][t=0.0476747] Vehicle 104 session key simulated-ready (real handshake was 47.6747 ms)
-[KEM][SimLatency][t=0.0986966] Vehicle 103 session key simulated-ready (real handshake was 98.6966 ms)
+[KEM][SimLatency][t=0.0343382] Vehicle 108 session key simulated-ready (real handshake was 34.3382 ms)
+[KEM][SimLatency][t=0.034558] Vehicle 109 session key simulated-ready (real handshake was 34.558 ms)
+[KEM][SimLatency][t=0.0346535] Vehicle 110 session key simulated-ready (real handshake was 34.6535 ms)
+[KEM][SimLatency][t=0.0348203] Vehicle 162 session key simulated-ready (real handshake was 34.8203 ms)
+[KEM][SimLatency][t=0.0348759] Vehicle 160 session key simulated-ready (real handshake was 34.8759 ms)
+[KEM][SimLatency][t=0.034885] Vehicle 163 session key simulated-ready (real handshake was 34.885 ms)
+[KEM][SimLatency][t=0.0348876] Vehicle 161 session key simulated-ready (real handshake was 34.8876 ms)
+[KEM][SimLatency][t=0.0348934] Vehicle 164 session key simulated-ready (real handshake was 34.8934 ms)
+[KEM][SimLatency][t=0.0349017] Vehicle 132 session key simulated-ready (real handshake was 34.9017 ms)
+[KEM][SimLatency][t=0.0350323] Vehicle 131 session key simulated-ready (real handshake was 35.0323 ms)
+[KEM][SimLatency][t=0.0350643] Vehicle 182 session key simulated-ready (real handshake was 35.0643 ms)
+[KEM][SimLatency][t=0.0351069] Vehicle 116 session key simulated-ready (real handshake was 35.1069 ms)
+[KEM][SimLatency][t=0.0351634] Vehicle 180 session key simulated-ready (real handshake was 35.1634 ms)
+[KEM][SimLatency][t=0.0352029] Vehicle 168 session key simulated-ready (real handshake was 35.2029 ms)
+[KEM][SimLatency][t=0.0352121] Vehicle 165 session key simulated-ready (real handshake was 35.2121 ms)
+[KEM][SimLatency][t=0.0352444] Vehicle 111 session key simulated-ready (real handshake was 35.2444 ms)
+[KEM][SimLatency][t=0.0352567] Vehicle 117 session key simulated-ready (real handshake was 35.2567 ms)
+[KEM][SimLatency][t=0.0352639] Vehicle 166 session key simulated-ready (real handshake was 35.2639 ms)
+[KEM][SimLatency][t=0.0352949] Vehicle 43 session key simulated-ready (real handshake was 35.2949 ms)
+[KEM][SimLatency][t=0.0352978] Vehicle 112 session key simulated-ready (real handshake was 35.2978 ms)
+[KEM][SimLatency][t=0.0353225] Vehicle 170 session key simulated-ready (real handshake was 35.3225 ms)
+[KEM][SimLatency][t=0.0353293] Vehicle 70 session key simulated-ready (real handshake was 35.3293 ms)
+[KEM][SimLatency][t=0.0353403] Vehicle 71 session key simulated-ready (real handshake was 35.3403 ms)
+[KEM][SimLatency][t=0.0353644] Vehicle 42 session key simulated-ready (real handshake was 35.3644 ms)
+[KEM][SimLatency][t=0.0353651] Vehicle 60 session key simulated-ready (real handshake was 35.3651 ms)
+[KEM][SimLatency][t=0.0353864] Vehicle 66 session key simulated-ready (real handshake was 35.3864 ms)
+[KEM][SimLatency][t=0.0353903] Vehicle 114 session key simulated-ready (real handshake was 35.3903 ms)
+[KEM][SimLatency][t=0.0353903] Vehicle 68 session key simulated-ready (real handshake was 35.3903 ms)
+[KEM][SimLatency][t=0.0353917] Vehicle 55 session key simulated-ready (real handshake was 35.3917 ms)
+[KEM][SimLatency][t=0.0354112] Vehicle 69 session key simulated-ready (real handshake was 35.4112 ms)
+[KEM][SimLatency][t=0.0354292] Vehicle 113 session key simulated-ready (real handshake was 35.4292 ms)
+[KEM][SimLatency][t=0.0354307] Vehicle 124 session key simulated-ready (real handshake was 35.4307 ms)
+[KEM][SimLatency][t=0.0354426] Vehicle 118 session key simulated-ready (real handshake was 35.4426 ms)
+[KEM][SimLatency][t=0.0354498] Vehicle 35 session key simulated-ready (real handshake was 35.4498 ms)
+[KEM][SimLatency][t=0.0354504] Vehicle 185 session key simulated-ready (real handshake was 35.4504 ms)
+[KEM][SimLatency][t=0.0354546] Vehicle 130 session key simulated-ready (real handshake was 35.4546 ms)
+[KEM][SimLatency][t=0.0354551] Vehicle 67 session key simulated-ready (real handshake was 35.4551 ms)
+[KEM][SimLatency][t=0.0354708] Vehicle 2 session key simulated-ready (real handshake was 35.4708 ms)
+[KEM][SimLatency][t=0.0354875] Vehicle 115 session key simulated-ready (real handshake was 35.4875 ms)
+[KEM][SimLatency][t=0.0354936] Vehicle 64 session key simulated-ready (real handshake was 35.4936 ms)
+[KEM][SimLatency][t=0.0355081] Vehicle 59 session key simulated-ready (real handshake was 35.5081 ms)
+[KEM][SimLatency][t=0.0355358] Vehicle 65 session key simulated-ready (real handshake was 35.5358 ms)
+[KEM][SimLatency][t=0.0355524] Vehicle 167 session key simulated-ready (real handshake was 35.5524 ms)
+[KEM][SimLatency][t=0.0355615] Vehicle 45 session key simulated-ready (real handshake was 35.5615 ms)
+[KEM][SimLatency][t=0.0355685] Vehicle 1 session key simulated-ready (real handshake was 35.5685 ms)
+[KEM][SimLatency][t=0.0355767] Vehicle 56 session key simulated-ready (real handshake was 35.5767 ms)
+[KEM][SimLatency][t=0.0355808] Vehicle 123 session key simulated-ready (real handshake was 35.5808 ms)
+[KEM][SimLatency][t=0.0355809] Vehicle 72 session key simulated-ready (real handshake was 35.5809 ms)
+[KEM][SimLatency][t=0.035583] Vehicle 173 session key simulated-ready (real handshake was 35.583 ms)
+[KEM][SimLatency][t=0.0355916] Vehicle 83 session key simulated-ready (real handshake was 35.5916 ms)
+[KEM][SimLatency][t=0.0356133] Vehicle 48 session key simulated-ready (real handshake was 35.6133 ms)
+[KEM][SimLatency][t=0.0356189] Vehicle 119 session key simulated-ready (real handshake was 35.6189 ms)
+[KEM][SimLatency][t=0.0356284] Vehicle 179 session key simulated-ready (real handshake was 35.6284 ms)
+[KEM][SimLatency][t=0.035632] Vehicle 57 session key simulated-ready (real handshake was 35.632 ms)
+[KEM][SimLatency][t=0.0356367] Vehicle 46 session key simulated-ready (real handshake was 35.6367 ms)
+[KEM][SimLatency][t=0.0356463] Vehicle 120 session key simulated-ready (real handshake was 35.6463 ms)
+[KEM][SimLatency][t=0.0356564] Vehicle 169 session key simulated-ready (real handshake was 35.6564 ms)
+[KEM][SimLatency][t=0.0356663] Vehicle 58 session key simulated-ready (real handshake was 35.6663 ms)
+[KEM][SimLatency][t=0.0356684] Vehicle 174 session key simulated-ready (real handshake was 35.6684 ms)
+[KEM][SimLatency][t=0.0356841] Vehicle 77 session key simulated-ready (real handshake was 35.6841 ms)
+[KEM][SimLatency][t=0.0356859] Vehicle 49 session key simulated-ready (real handshake was 35.6859 ms)
+[KEM][SimLatency][t=0.0356904] Vehicle 121 session key simulated-ready (real handshake was 35.6904 ms)
+[KEM][SimLatency][t=0.0356983] Vehicle 122 session key simulated-ready (real handshake was 35.6983 ms)
+[KEM][SimLatency][t=0.0357023] Vehicle 63 session key simulated-ready (real handshake was 35.7023 ms)
+[KEM][SimLatency][t=0.0357024] Vehicle 37 session key simulated-ready (real handshake was 35.7024 ms)
+[KEM][SimLatency][t=0.0357131] Vehicle 172 session key simulated-ready (real handshake was 35.7131 ms)
+[KEM][SimLatency][t=0.0357132] Vehicle 61 session key simulated-ready (real handshake was 35.7132 ms)
+[KEM][SimLatency][t=0.0357214] Vehicle 85 session key simulated-ready (real handshake was 35.7214 ms)
+[KEM][SimLatency][t=0.0357257] Vehicle 107 session key simulated-ready (real handshake was 35.7257 ms)
+[KEM][SimLatency][t=0.0357365] Vehicle 171 session key simulated-ready (real handshake was 35.7365 ms)
+[KEM][SimLatency][t=0.0357367] Vehicle 82 session key simulated-ready (real handshake was 35.7367 ms)
+[KEM][SimLatency][t=0.0357439] Vehicle 22 session key simulated-ready (real handshake was 35.7439 ms)
+[KEM][SimLatency][t=0.035753] Vehicle 175 session key simulated-ready (real handshake was 35.753 ms)
+[KEM][SimLatency][t=0.0357557] Vehicle 54 session key simulated-ready (real handshake was 35.7557 ms)
+[KEM][SimLatency][t=0.0357575] Vehicle 44 session key simulated-ready (real handshake was 35.7575 ms)
+[KEM][SimLatency][t=0.0357755] Vehicle 47 session key simulated-ready (real handshake was 35.7755 ms)
+[KEM][SimLatency][t=0.0357812] Vehicle 74 session key simulated-ready (real handshake was 35.7812 ms)
+[KEM][SimLatency][t=0.0357946] Vehicle 38 session key simulated-ready (real handshake was 35.7946 ms)
+[KEM][SimLatency][t=0.0357961] Vehicle 78 session key simulated-ready (real handshake was 35.7961 ms)
+[KEM][SimLatency][t=0.0358025] Vehicle 18 session key simulated-ready (real handshake was 35.8025 ms)
+[KEM][SimLatency][t=0.0358188] Vehicle 81 session key simulated-ready (real handshake was 35.8188 ms)
+[KEM][SimLatency][t=0.035826] Vehicle 177 session key simulated-ready (real handshake was 35.826 ms)
+[KEM][SimLatency][t=0.0358317] Vehicle 53 session key simulated-ready (real handshake was 35.8317 ms)
+[KEM][SimLatency][t=0.0358343] Vehicle 33 session key simulated-ready (real handshake was 35.8343 ms)
+[KEM][SimLatency][t=0.0358391] Vehicle 76 session key simulated-ready (real handshake was 35.8391 ms)
+[KEM][SimLatency][t=0.0358392] Vehicle 176 session key simulated-ready (real handshake was 35.8392 ms)
+[KEM][SimLatency][t=0.0358417] Vehicle 51 session key simulated-ready (real handshake was 35.8417 ms)
+[KEM][SimLatency][t=0.0358462] Vehicle 73 session key simulated-ready (real handshake was 35.8462 ms)
+[KEM][SimLatency][t=0.0358498] Vehicle 28 session key simulated-ready (real handshake was 35.8498 ms)
+[KEM][SimLatency][t=0.0358526] Vehicle 52 session key simulated-ready (real handshake was 35.8526 ms)
+[KEM][SimLatency][t=0.0358651] Vehicle 30 session key simulated-ready (real handshake was 35.8651 ms)
+[KEM][SimLatency][t=0.0358708] Vehicle 86 session key simulated-ready (real handshake was 35.8708 ms)
+[KEM][SimLatency][t=0.0358709] Vehicle 19 session key simulated-ready (real handshake was 35.8709 ms)
+[KEM][SimLatency][t=0.0358799] Vehicle 29 session key simulated-ready (real handshake was 35.8799 ms)
+[KEM][SimLatency][t=0.0358868] Vehicle 84 session key simulated-ready (real handshake was 35.8868 ms)
+[KEM][SimLatency][t=0.0358943] Vehicle 126 session key simulated-ready (real handshake was 35.8943 ms)
+[KEM][SimLatency][t=0.0359211] Vehicle 127 session key simulated-ready (real handshake was 35.9211 ms)
+[KEM][SimLatency][t=0.0359216] Vehicle 80 session key simulated-ready (real handshake was 35.9216 ms)
+[KEM][SimLatency][t=0.0359339] Vehicle 17 session key simulated-ready (real handshake was 35.9339 ms)
+[KEM][SimLatency][t=0.0359359] Vehicle 34 session key simulated-ready (real handshake was 35.9359 ms)
+[KEM][SimLatency][t=0.0359402] Vehicle 75 session key simulated-ready (real handshake was 35.9402 ms)
+[KEM][SimLatency][t=0.0359435] Vehicle 36 session key simulated-ready (real handshake was 35.9435 ms)
+[KEM][SimLatency][t=0.0359604] Vehicle 79 session key simulated-ready (real handshake was 35.9604 ms)
+[KEM][SimLatency][t=0.0359615] Vehicle 12 session key simulated-ready (real handshake was 35.9615 ms)
+[KEM][SimLatency][t=0.0359675] Vehicle 32 session key simulated-ready (real handshake was 35.9675 ms)
+[KEM][SimLatency][t=0.0359823] Vehicle 27 session key simulated-ready (real handshake was 35.9823 ms)
+[KEM][SimLatency][t=0.0359954] Vehicle 31 session key simulated-ready (real handshake was 35.9954 ms)
+[KEM][SimLatency][t=0.036008] Vehicle 23 session key simulated-ready (real handshake was 36.008 ms)
+[KEM][SimLatency][t=0.0360258] Vehicle 125 session key simulated-ready (real handshake was 36.0258 ms)
+[KEM][SimLatency][t=0.0360372] Vehicle 50 session key simulated-ready (real handshake was 36.0372 ms)
+[KEM][SimLatency][t=0.0360413] Vehicle 62 session key simulated-ready (real handshake was 36.0413 ms)
+[KEM][SimLatency][t=0.036042] Vehicle 13 session key simulated-ready (real handshake was 36.042 ms)
+[KEM][SimLatency][t=0.036052] Vehicle 178 session key simulated-ready (real handshake was 36.052 ms)
+[KEM][SimLatency][t=0.0360603] Vehicle 128 session key simulated-ready (real handshake was 36.0603 ms)
+[KEM][SimLatency][t=0.0360647] Vehicle 25 session key simulated-ready (real handshake was 36.0647 ms)
+[KEM][SimLatency][t=0.0360695] Vehicle 16 session key simulated-ready (real handshake was 36.0695 ms)
+[KEM][SimLatency][t=0.0360769] Vehicle 6 session key simulated-ready (real handshake was 36.0769 ms)
+[KEM][SimLatency][t=0.0360809] Vehicle 24 session key simulated-ready (real handshake was 36.0809 ms)
+[KEM][SimLatency][t=0.0360983] Vehicle 4 session key simulated-ready (real handshake was 36.0983 ms)
+[KEM][SimLatency][t=0.036112] Vehicle 26 session key simulated-ready (real handshake was 36.112 ms)
+[KEM][SimLatency][t=0.0361251] Vehicle 3 session key simulated-ready (real handshake was 36.1251 ms)
+[KEM][SimLatency][t=0.0361484] Vehicle 196 session key simulated-ready (real handshake was 36.1484 ms)
+[KEM][SimLatency][t=0.0361527] Vehicle 14 session key simulated-ready (real handshake was 36.1527 ms)
+[KEM][SimLatency][t=0.0361788] Vehicle 5 session key simulated-ready (real handshake was 36.1788 ms)
+[KEM][SimLatency][t=0.0361816] Vehicle 15 session key simulated-ready (real handshake was 36.1816 ms)
+[KEM][SimLatency][t=0.0362247] Vehicle 11 session key simulated-ready (real handshake was 36.2247 ms)
+[KEM][SimLatency][t=0.0362367] Vehicle 10 session key simulated-ready (real handshake was 36.2367 ms)
+[KEM][SimLatency][t=0.0362425] Vehicle 7 session key simulated-ready (real handshake was 36.2425 ms)
+[KEM][SimLatency][t=0.0363832] Vehicle 199 session key simulated-ready (real handshake was 36.3832 ms)
+[KEM][SimLatency][t=0.0364058] Vehicle 8 session key simulated-ready (real handshake was 36.4058 ms)
+[KEM][SimLatency][t=0.0364557] Vehicle 9 session key simulated-ready (real handshake was 36.4557 ms)
+[KEM][SimLatency][t=0.036603] Vehicle 146 session key simulated-ready (real handshake was 36.603 ms)
+[KEM][SimLatency][t=0.0366052] Vehicle 197 session key simulated-ready (real handshake was 36.6052 ms)
+[KEM][SimLatency][t=0.0366559] Vehicle 154 session key simulated-ready (real handshake was 36.6559 ms)
+[KEM][SimLatency][t=0.0367728] Vehicle 198 session key simulated-ready (real handshake was 36.7728 ms)
+[KEM][SimLatency][t=0.0367968] Vehicle 195 session key simulated-ready (real handshake was 36.7968 ms)
+[KEM][SimLatency][t=0.0368241] Vehicle 91 session key simulated-ready (real handshake was 36.8241 ms)
+[KEM][SimLatency][t=0.0368489] Vehicle 90 session key simulated-ready (real handshake was 36.8489 ms)
+[KEM][SimLatency][t=0.0369658] Vehicle 191 session key simulated-ready (real handshake was 36.9658 ms)
+[KEM][SimLatency][t=0.0369932] Vehicle 194 session key simulated-ready (real handshake was 36.9932 ms)
+[KEM][SimLatency][t=0.037032] Vehicle 100 session key simulated-ready (real handshake was 37.032 ms)
+[KEM][SimLatency][t=0.037078] Vehicle 21 session key simulated-ready (real handshake was 37.078 ms)
+[KEM][SimLatency][t=0.0370791] Vehicle 101 session key simulated-ready (real handshake was 37.0791 ms)
+[KEM][SimLatency][t=0.0371096] Vehicle 192 session key simulated-ready (real handshake was 37.1096 ms)
+[KEM][SimLatency][t=0.0371981] Vehicle 98 session key simulated-ready (real handshake was 37.1981 ms)
+[KEM][SimLatency][t=0.0371985] Vehicle 157 session key simulated-ready (real handshake was 37.1985 ms)
+[KEM][SimLatency][t=0.0372507] Vehicle 105 session key simulated-ready (real handshake was 37.2507 ms)
+[KEM][SimLatency][t=0.037276] Vehicle 153 session key simulated-ready (real handshake was 37.276 ms)
+[KEM][SimLatency][t=0.0372809] Vehicle 181 session key simulated-ready (real handshake was 37.2809 ms)
+[KEM][SimLatency][t=0.0373765] Vehicle 193 session key simulated-ready (real handshake was 37.3765 ms)
+[KEM][SimLatency][t=0.0373855] Vehicle 186 session key simulated-ready (real handshake was 37.3855 ms)
+[KEM][SimLatency][t=0.0374739] Vehicle 155 session key simulated-ready (real handshake was 37.4739 ms)
+[KEM][SimLatency][t=0.0375705] Vehicle 89 session key simulated-ready (real handshake was 37.5705 ms)
+[KEM][SimLatency][t=0.0375844] Vehicle 104 session key simulated-ready (real handshake was 37.5844 ms)
+[KEM][SimLatency][t=0.0375859] Vehicle 145 session key simulated-ready (real handshake was 37.5859 ms)
+[KEM][SimLatency][t=0.0375898] Vehicle 183 session key simulated-ready (real handshake was 37.5898 ms)
+[KEM][SimLatency][t=0.0376714] Vehicle 190 session key simulated-ready (real handshake was 37.6714 ms)
+[KEM][SimLatency][t=0.03772] Vehicle 92 session key simulated-ready (real handshake was 37.72 ms)
+[KEM][SimLatency][t=0.0377624] Vehicle 144 session key simulated-ready (real handshake was 37.7624 ms)
+[KEM][SimLatency][t=0.0377651] Vehicle 41 session key simulated-ready (real handshake was 37.7651 ms)
+[KEM][SimLatency][t=0.0378194] Vehicle 189 session key simulated-ready (real handshake was 37.8194 ms)
+[KEM][SimLatency][t=0.0378225] Vehicle 99 session key simulated-ready (real handshake was 37.8225 ms)
+[KEM][SimLatency][t=0.0379031] Vehicle 103 session key simulated-ready (real handshake was 37.9031 ms)
+[KEM][SimLatency][t=0.0379822] Vehicle 184 session key simulated-ready (real handshake was 37.9822 ms)
+[KEM][SimLatency][t=0.0380828] Vehicle 149 session key simulated-ready (real handshake was 38.0828 ms)
+[KEM][SimLatency][t=0.0381501] Vehicle 147 session key simulated-ready (real handshake was 38.1501 ms)
+[KEM][SimLatency][t=0.0381863] Vehicle 88 session key simulated-ready (real handshake was 38.1863 ms)
+[KEM][SimLatency][t=0.038192] Vehicle 87 session key simulated-ready (real handshake was 38.192 ms)
+[KEM][SimLatency][t=0.0382101] Vehicle 133 session key simulated-ready (real handshake was 38.2101 ms)
+[KEM][SimLatency][t=0.0382635] Vehicle 136 session key simulated-ready (real handshake was 38.2635 ms)
+[KEM][SimLatency][t=0.0382702] Vehicle 95 session key simulated-ready (real handshake was 38.2702 ms)
+[KEM][SimLatency][t=0.0382928] Vehicle 97 session key simulated-ready (real handshake was 38.2928 ms)
+[KEM][SimLatency][t=0.0383019] Vehicle 102 session key simulated-ready (real handshake was 38.3019 ms)
+[KEM][SimLatency][t=0.0383369] Vehicle 187 session key simulated-ready (real handshake was 38.3369 ms)
+[KEM][SimLatency][t=0.0383475] Vehicle 96 session key simulated-ready (real handshake was 38.3475 ms)
+[KEM][SimLatency][t=0.0383875] Vehicle 93 session key simulated-ready (real handshake was 38.3875 ms)
+[KEM][SimLatency][t=0.0384001] Vehicle 134 session key simulated-ready (real handshake was 38.4001 ms)
+[KEM][SimLatency][t=0.0384439] Vehicle 152 session key simulated-ready (real handshake was 38.4439 ms)
+[KEM][SimLatency][t=0.0385101] Vehicle 142 session key simulated-ready (real handshake was 38.5101 ms)
+[KEM][SimLatency][t=0.038672] Vehicle 148 session key simulated-ready (real handshake was 38.672 ms)
+[KEM][SimLatency][t=0.0386846] Vehicle 135 session key simulated-ready (real handshake was 38.6846 ms)
+[KEM][SimLatency][t=0.0388216] Vehicle 143 session key simulated-ready (real handshake was 38.8216 ms)
+[KEM][SimLatency][t=0.0388827] Vehicle 156 session key simulated-ready (real handshake was 38.8827 ms)
+[KEM][SimLatency][t=0.0389568] Vehicle 141 session key simulated-ready (real handshake was 38.9568 ms)
+[KEM][SimLatency][t=0.0390204] Vehicle 94 session key simulated-ready (real handshake was 39.0204 ms)
+[KEM][SimLatency][t=0.039028] Vehicle 150 session key simulated-ready (real handshake was 39.028 ms)
+[KEM][SimLatency][t=0.0390764] Vehicle 139 session key simulated-ready (real handshake was 39.0764 ms)
+[KEM][SimLatency][t=0.0391277] Vehicle 188 session key simulated-ready (real handshake was 39.1277 ms)
+[KEM][SimLatency][t=0.0392894] Vehicle 137 session key simulated-ready (real handshake was 39.2894 ms)
+[KEM][SimLatency][t=0.0393064] Vehicle 151 session key simulated-ready (real handshake was 39.3064 ms)
+[KEM][SimLatency][t=0.039682] Vehicle 140 session key simulated-ready (real handshake was 39.682 ms)
+[KEM][SimLatency][t=0.0397895] Vehicle 138 session key simulated-ready (real handshake was 39.7895 ms)
+[KEM][SimLatency][t=0.0411951] Vehicle 159 session key simulated-ready (real handshake was 41.1951 ms)
+[KEM][SimLatency][t=0.0419519] Vehicle 129 session key simulated-ready (real handshake was 41.9519 ms)
+[KEM][SimLatency][t=0.0426028] Vehicle 20 session key simulated-ready (real handshake was 42.6028 ms)
+[KEM][SimLatency][t=0.0460997] Vehicle 39 session key simulated-ready (real handshake was 46.0997 ms)
+[KEM][SimLatency][t=0.0577874] Vehicle 40 session key simulated-ready (real handshake was 57.7874 ms)
+[KEM][SimLatency][t=0.0749693] Vehicle 158 session key simulated-ready (real handshake was 74.9693 ms)
+[KEM][SimLatency][t=0.0859827] Vehicle 106 session key simulated-ready (real handshake was 85.9827 ms)
 lte total packet size is 228
 lte total packet size is 456
 lte total packet size is 684
@@ -77171,13 +77171,23 @@ lte total packet size is 48529796
 [BSHH-S1][t=10.002]  V15 captured heartbeat for replay  Heartbeat(Sender=V120, t=9.982)
 [BSHH-S1][t=10.006]  V16 captured heartbeat for replay  Heartbeat(Sender=V59, t=9.983)
 [BSHH-S1][t=10.008]  V19 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V19, claimed=V56, t=10.008)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.008]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.008]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V19  propagation=800.000 ms
+[Trust][t=10.008]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[Trust][t=10.008]  Node 19: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.009]  V19 captured heartbeat for replay  Heartbeat(Sender=V46, t=9.985)
 [BSHH-S1][t=10.012]  V13 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V13, claimed=V76, t=4.986)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=10.013]  V33 captured heartbeat for replay  Heartbeat(Sender=V86, t=9.984)
 [BSHH-S1][t=10.013]  V9 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V9, claimed=V149, t=10.013)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.013]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.013]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V9  propagation=800.000 ms
+[Trust][t=10.013]  Node 9: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.014]  V149 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V149, t=5.013)  Controller liveness POISONED
 This is tag7. Serialized size is 676
 [BSHH-S1][t=10.018]  V16 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V16, claimed=V49, t=10.018)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.018]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.018]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V16  propagation=800.000 ms
+[Trust][t=10.018]  Node 16: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 This is tag9. Serialized size is 844
 [BSHH-S1][t=10.021]  V76 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V76, t=4.986)  Controller liveness POISONED
 [BSHH-S1][t=10.023]  V5 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V5, claimed=V191, t=5.014)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
@@ -77185,13 +77195,22 @@ This is tag9. Serialized size is 844
 [BSHH-S1][t=10.023]  V35 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V35, claimed=V97, t=5.015)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=10.024]  V191 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V191, t=5.014)  Controller liveness POISONED
 [BSHH-S1][t=10.024]  V39 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V39, claimed=V62, t=10.024)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.024]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.024]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V39  propagation=800.000 ms
+[Trust][t=10.024]  Node 39: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.024]  V97 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V97, t=5.015)  Controller liveness POISONED
 [BSHH-S1][t=10.025]  V62 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V62, t=5.015)  Controller liveness POISONED
 [BSHH-S1][t=10.026]  V11 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V11, claimed=V162, t=4.980)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.026]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.026]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V11  propagation=800.000 ms
+[Trust][t=10.026]  Node 11: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.027]  V162 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V162, t=4.980)  Controller liveness POISONED
 This is tag14. Serialized size is 1264
 This is tag6. Serialized size is 592
 [BSHH-S1][t=10.027]  V43 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V43, claimed=V65, t=10.027)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.027]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.027]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V43  propagation=800.000 ms
+[Trust][t=10.027]  Node 43: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.028]  V49 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V49, t=4.986)  Controller liveness POISONED
 [BSHH-S1][t=10.030]  V40 captured heartbeat for replay  Heartbeat(Sender=V157, t=10.008)
 [BSHH-S1][t=10.030]  V26 captured heartbeat for replay  Heartbeat(Sender=V60, t=10.004)
@@ -77212,9 +77231,15 @@ This is tag12. Serialized size is 1096
 [BSHH-S1][t=10.035]  V75 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V75, t=5.000)  Controller liveness POISONED
 [BSHH-S1][t=10.036]  V56 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V56, t=5.011)  Controller liveness POISONED
 [BSHH-S1][t=10.037]  V30 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V30, claimed=V98, t=10.037)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.037]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.037]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V30  propagation=800.000 ms
+[Trust][t=10.037]  Node 30: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.037]  V39 captured heartbeat for replay  Heartbeat(Sender=V179, t=10.006)
 [BSHH-S1][t=10.038]  V30 captured heartbeat for replay  Heartbeat(Sender=V153, t=10.010)
 [BSHH-S1][t=10.038]  V26 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V26, claimed=V84, t=10.038)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.038]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.038]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V26  propagation=800.000 ms
+[Trust][t=10.038]  Node 26: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 This is tag6. Serialized size is 592
 [BSHH-S1][t=10.038]  V98 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V98, t=5.017)  Controller liveness POISONED
 [BSHH-S1][t=10.039]  V84 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V84, t=4.996)  Controller liveness POISONED
@@ -77227,12 +77252,24 @@ This is tag8. Serialized size is 760
 This is tag7. Serialized size is 676
 This is tag8. Serialized size is 760
 [BSHH-S1][t=10.045]  V28 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V28, claimed=V180, t=10.045)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.045]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.045]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V28  propagation=800.000 ms
+[Trust][t=10.045]  Node 28: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 This is tag8. Serialized size is 760
 [BSHH-S1][t=10.046]  V180 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V180, t=4.982)  Controller liveness POISONED
 [BSHH-S1][t=10.046]  V25 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V25, claimed=V79, t=10.046)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.046]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.046]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V25  propagation=800.000 ms
+[Trust][t=10.046]  Node 25: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.047]  V79 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V79, t=5.005)  Controller liveness POISONED
 [BSHH-S1][t=10.051]  V33 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V33, claimed=V82, t=5.013)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.051]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.051]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V33  propagation=800.000 ms
+[Trust][t=10.051]  Node 33: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.052]  V29 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V29, claimed=V81, t=4.983)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=10.052]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=10.052]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V29  propagation=800.000 ms
+[Trust][t=10.052]  Node 29: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=10.052]  V82 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V82, t=5.013)  Controller liveness POISONED
 [BSHH-S1][t=10.053]  V81 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V81, t=4.983)  Controller liveness POISONED
 lte total packet size is 48530444
@@ -92437,8 +92474,11 @@ lte total packet size is 58715536
 lte total packet size is 58716268
 [BSHH-S1][t=11.987]  V40 --REPLAY old heartbeat--> V157  Heartbeat(Sender=V157, t=10.008)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=11.988]  V40 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V40, claimed=V157, t=10.008)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=11.988]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=11.988]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V40  propagation=800.000 ms
+[Trust][t=11.988]  Node 40: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=11.989]  V157 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V157, t=10.008)  Controller liveness POISONED
-[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=12437993353412927963 (interval=3.000s)
+[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=5343286897872401304 (interval=3.000s)
 lte total packet size is 58716916
 lte total packet size is 58717564
 lte total packet size is 58718212
@@ -93241,21 +93281,28 @@ lte total packet size is 59260772
 lte total packet size is 59261504
 [BSHH-S1][t=12.007]  V28 --REPLAY old heartbeat--> V57  Heartbeat(Sender=V57, t=10.006)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=12.008]  V28 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V28, claimed=V57, t=12.008)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=12.008]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=12.008]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V28  propagation=800.000 ms
 [BSHH-S1][t=12.009]  V57 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V57, t=10.006)  Controller liveness POISONED
 [BSHH-S1][t=12.013]  V19 --REPLAY old heartbeat--> V46  Heartbeat(Sender=V46, t=9.985)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=12.013]  V18 --REPLAY old heartbeat--> V99  Heartbeat(Sender=V99, t=10.009)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=12.014]  V19 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V19, claimed=V46, t=12.014)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=12.014]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=12.014]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V19  propagation=800.000 ms
 [BSHH-S1][t=12.014]  V18 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V18, claimed=V99, t=10.009)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=12.014]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=12.014]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V18  propagation=800.000 ms
+[Trust][t=12.014]  Node 18: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=12.015]  V46 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V46, t=9.985)  Controller liveness POISONED
 [BSHH-S1][t=12.015]  V99 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V99, t=10.009)  Controller liveness POISONED
 [BSHH-S1][t=12.016]  V16 --REPLAY old heartbeat--> V59  Heartbeat(Sender=V59, t=9.983)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=12.016]  V33 --REPLAY old heartbeat--> V86  Heartbeat(Sender=V86, t=9.984)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=12.017]  V16 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V16, claimed=V59, t=12.017)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
+[BSHH-S1][t=12.017]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
+[BSHH-S1][t=12.017]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V16  propagation=800.000 ms
 [BSHH-S1][t=12.017]  V33 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V33, claimed=V86, t=12.017)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=12.017]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S1][t=12.017]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V33  propagation=800.000 ms
-[Trust][t=12.017]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[Trust][t=12.017]  Node 33: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=12.018]  V59 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V59, t=9.983)  Controller liveness POISONED
 [BSHH-S1][t=12.018]  V86 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V86, t=9.984)  Controller liveness POISONED
 This is tag2. Serialized size is 256
@@ -93268,7 +93315,6 @@ This is tag9. Serialized size is 844
 [BSHH-S1][t=12.026]  V30 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V30, claimed=V153, t=12.026)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=12.026]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S1][t=12.026]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V30  propagation=800.000 ms
-[Trust][t=12.026]  Node 30: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=12.027]  V153 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V153, t=10.010)  Controller liveness POISONED
 [BSHH-S1][t=12.031]  V35 --REPLAY old heartbeat--> V91  Heartbeat(Sender=V91, t=9.993)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=12.032]  V39 --REPLAY old heartbeat--> V179  Heartbeat(Sender=V179, t=10.006)  [MALICIOUS â€” replayed victim's captured heartbeat]
@@ -93279,7 +93325,6 @@ This is tag9. Serialized size is 844
 [BSHH-S1][t=12.033]  V39 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V39, claimed=V179, t=10.006)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=12.033]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S1][t=12.033]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V39  propagation=800.000 ms
-[Trust][t=12.033]  Node 39: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=12.033]  V91 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V91, t=9.993)  Controller liveness POISONED
 [BSHH-S1][t=12.034]  V179 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V179, t=10.006)  Controller liveness POISONED
 This is tag5. Serialized size is 508
@@ -93299,13 +93344,11 @@ This is tag8. Serialized size is 760
 [BSHH-S1][t=12.046]  V43 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V43, claimed=V87, t=12.046)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=12.046]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S1][t=12.046]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V43  propagation=800.000 ms
-[Trust][t=12.046]  Node 43: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=12.047]  V87 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V87, t=10.009)  Controller liveness POISONED
 [BSHH-S1][t=12.061]  V26 --REPLAY old heartbeat--> V60  Heartbeat(Sender=V60, t=10.004)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=12.062]  V26 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V26, claimed=V60, t=12.062)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=12.062]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S1][t=12.062]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V26  propagation=800.000 ms
-[Trust][t=12.062]  Node 26: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=12.063]  V60 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V60, t=10.004)  Controller liveness POISONED
 lte total packet size is 59262152
 lte total packet size is 59262800
@@ -116507,7 +116550,7 @@ lte total packet size is 75080528
 lte total packet size is 75081260
 lte total packet size is 75081992
 lte total packet size is 75082724
-[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=4551886965377874986 (interval=3.000s)
+[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=12744683327414896687 (interval=3.000s)
 lte total packet size is 75083372
 lte total packet size is 75084020
 lte total packet size is 75084668
@@ -133339,7 +133382,6 @@ This is tag9. Serialized size is 844
 [BSHH-S1][t=17.048]  V19 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V19, claimed=V48, t=17.048)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=17.048]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S1][t=17.048]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V19  propagation=800.000 ms
-[Trust][t=17.048]  Node 19: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=17.049]  V48 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V48, t=15.002)  Controller liveness POISONED
 [BSHH-S1][t=17.055]  V39 --REPLAY old heartbeat--> V183  Heartbeat(Sender=V183, t=14.986)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=17.056]  V39 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V39, claimed=V183, t=14.986)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
@@ -140551,7 +140593,7 @@ lte total packet size is 91663436
 lte total packet size is 91664168
 lte total packet size is 91664900
 lte total packet size is 91665632
-[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=18245437224152332218 (interval=3.000s)
+[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=6894656085791734990 (interval=3.000s)
 lte total packet size is 91666280
 lte total packet size is 91666928
 lte total packet size is 91667576
@@ -164560,7 +164602,7 @@ lte total packet size is 108236608
 lte total packet size is 108237340
 lte total packet size is 108238072
 lte total packet size is 108238804
-[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=18245437224152332218 (interval=3.000s)
+[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=6894656085791734990 (interval=3.000s)
 lte total packet size is 108239452
 lte total packet size is 108240100
 lte total packet size is 108240748
@@ -188592,7 +188634,7 @@ lte total packet size is 124794856
 lte total packet size is 124795672
 lte total packet size is 124796488
 lte total packet size is 124797304
-[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=15443930056986887425 (interval=3.000s)
+[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=6347720232785836557 (interval=3.000s)
 lte total packet size is 124798076
 lte total packet size is 124798808
 lte total packet size is 124799540
@@ -212600,7 +212642,7 @@ lte total packet size is 141673376
 lte total packet size is 141674192
 lte total packet size is 141675008
 lte total packet size is 141675824
-[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=15443930056986887425 (interval=3.000s)
+[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=6347720232785836557 (interval=3.000s)
 lte total packet size is 141676556
 lte total packet size is 141677288
 lte total packet size is 141678020
@@ -236628,7 +236670,7 @@ lte total packet size is 158756228
 lte total packet size is 158757044
 lte total packet size is 158757860
 lte total packet size is 158758676
-[Trust][Anchor][t=30.000] Published checkpoint seq=9 block_height=270 digest=15596202513462877656 (interval=3.000s)
+[Trust][Anchor][t=30.000] Published checkpoint seq=9 block_height=270 digest=3329512516572936664 (interval=3.000s)
 lte total packet size is 158759324
 lte total packet size is 158759972
 lte total packet size is 158760620
@@ -260658,7 +260700,7 @@ lte total packet size is 176011524
 lte total packet size is 176012340
 lte total packet size is 176013156
 lte total packet size is 176013972
-[Trust][Anchor][t=33.000] Published checkpoint seq=10 block_height=300 digest=10081879319433878390 (interval=3.000s)
+[Trust][Anchor][t=33.000] Published checkpoint seq=10 block_height=300 digest=14754043552522073606 (interval=3.000s)
 lte total packet size is 176014620
 lte total packet size is 176015268
 lte total packet size is 176015916
@@ -284669,7 +284711,7 @@ lte total packet size is 193663748
 lte total packet size is 193664480
 lte total packet size is 193665212
 lte total packet size is 193665944
-[Trust][Anchor][t=36.000] Published checkpoint seq=11 block_height=330 digest=10081879319433878390 (interval=3.000s)
+[Trust][Anchor][t=36.000] Published checkpoint seq=11 block_height=330 digest=14754043552522073606 (interval=3.000s)
 lte total packet size is 193666592
 lte total packet size is 193667240
 lte total packet size is 193667888
@@ -293510,7 +293552,6 @@ lte total packet size is 200081132
 [BSHH-S1][t=37.074]  V16 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V16, claimed=V182, t=37.074)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=37.074]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
 [BSHH-S1][t=37.074]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V16  propagation=800.000 ms
-[Trust][t=37.074]  Node 16: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=37.075]  V182 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V182, t=34.986)  Controller liveness POISONED
 lte total packet size is 200081780
 lte total packet size is 200082428
@@ -308719,7 +308760,7 @@ lte total packet size is 211298064
 lte total packet size is 211298880
 lte total packet size is 211299696
 lte total packet size is 211300512
-[Trust][Anchor][t=39.000] Published checkpoint seq=12 block_height=360 digest=68688187211432957 (interval=3.000s)
+[Trust][Anchor][t=39.000] Published checkpoint seq=12 block_height=360 digest=11424505797782959614 (interval=3.000s)
 lte total packet size is 211301160
 lte total packet size is 211301808
 lte total packet size is 211302456
@@ -317520,6 +317561,7 @@ lte total packet size is 217833640
 lte total packet size is 217834456
 lte total packet size is 217835272
 lte total packet size is 217836088
+[Trust][t=40.008]  Node 19: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 [BSHH-S1][t=40.070]  V33 captured heartbeat for replay  Heartbeat(Sender=V166, t=39.999)
 [BSHH-S1][t=40.075]  V39 captured heartbeat for replay  Heartbeat(Sender=V181, t=40.003)
 [BSHH-S1][t=40.075]  V30 captured heartbeat for replay  Heartbeat(Sender=V167, t=40.005)
@@ -318325,6 +318367,17 @@ lte total packet size is 218423808
 lte total packet size is 218424624
 lte total packet size is 218425440
 lte total packet size is 218426256
+[Trust][t=40.108]  Node 9: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 11: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 16: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 25: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 26: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 28: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 29: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 30: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 33: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 39: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=40.108]  Node 43: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 lte total packet size is 218426904
 lte total packet size is 218427552
 lte total packet size is 218428200
@@ -332725,7 +332778,7 @@ lte total packet size is 229030664
 lte total packet size is 229031564
 lte total packet size is 229032464
 lte total packet size is 229033364
-[Trust][Anchor][t=42.000] Published checkpoint seq=13 block_height=390 digest=68688187211432957 (interval=3.000s)
+[Trust][Anchor][t=42.000] Published checkpoint seq=13 block_height=390 digest=1124328477085690730 (interval=3.000s)
 lte total packet size is 229034012
 lte total packet size is 229034660
 lte total packet size is 229035308
@@ -333526,22 +333579,15 @@ lte total packet size is 229622348
 lte total packet size is 229623248
 lte total packet size is 229624148
 lte total packet size is 229625048
-[Trust][t=42.017]  Node 33: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=42.008]  Node 40: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 [BSHH-S1][t=42.035]  V11 --REPLAY old heartbeat--> V118  Heartbeat(Sender=V118, t=40.011)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=42.036]  V11 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V11, claimed=V118, t=42.036)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=42.036]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S1][t=42.036]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V11  propagation=800.000 ms
-[Trust][t=42.036]  Node 11: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
 [BSHH-S1][t=42.037]  V118 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V118, t=40.011)  Controller liveness POISONED
 [BSHH-S1][t=42.055]  V30 --REPLAY old heartbeat--> V167  Heartbeat(Sender=V167, t=40.005)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=42.056]  V30 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V30, claimed=V167, t=40.005)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=42.056]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S1][t=42.056]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V30  propagation=800.000 ms
 [BSHH-S1][t=42.057]  V167 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V167, t=40.005)  Controller liveness POISONED
 [BSHH-S1][t=42.060]  V21 --REPLAY old heartbeat--> V66  Heartbeat(Sender=V66, t=40.020)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=42.061]  V21 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V21, claimed=V66, t=40.020)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=42.061]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S1][t=42.061]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V21  propagation=800.000 ms
 [BSHH-S1][t=42.062]  V66 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V66, t=40.020)  Controller liveness POISONED
 lte total packet size is 229625696
 lte total packet size is 229626344
@@ -334345,20 +334391,13 @@ lte total packet size is 230217680
 lte total packet size is 230218580
 [BSHH-S1][t=42.106]  V33 --REPLAY old heartbeat--> V166  Heartbeat(Sender=V166, t=39.999)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=42.107]  V33 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V33, claimed=V166, t=39.999)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=42.107]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S1][t=42.107]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V33  propagation=800.000 ms
+[Trust][t=42.108]  Node 15: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=42.108]  Node 18: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=42.108]  Node 35: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 [BSHH-S1][t=42.108]  V166 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V166, t=39.999)  Controller liveness POISONED
 [BSHH-S1][t=42.110]  V39 --REPLAY old heartbeat--> V181  Heartbeat(Sender=V181, t=40.003)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=42.111]  V39 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V39, claimed=V181, t=42.111)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
-[BSHH-S1][t=42.111]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 200/200 >= t=101 -> PASS
-[BSHH-S1][t=42.111]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V39  propagation=800.000 ms
 [BSHH-S1][t=42.112]  V181 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V181, t=40.003)  Controller liveness POISONED
-[Trust][t=42.117]  Node 15: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
-[Trust][t=42.117]  Node 26: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
-[Trust][t=42.117]  Node 30: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
-[Trust][t=42.117]  Node 35: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
-[Trust][t=42.117]  Node 39: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
-[Trust][t=42.117]  Node 43: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 This is tag14. Serialized size is 1264
 This is tag11. Serialized size is 1012
 This is tag7. Serialized size is 676
@@ -356763,7 +356802,7 @@ lte total packet size is 246716956
 lte total packet size is 246717772
 lte total packet size is 246718588
 lte total packet size is 246719404
-[Trust][Anchor][t=45.000] Published checkpoint seq=14 block_height=420 digest=17724117109300408515 (interval=3.000s)
+[Trust][Anchor][t=45.000] Published checkpoint seq=14 block_height=420 digest=8291543616424111386 (interval=3.000s)
 lte total packet size is 246719968
 lte total packet size is 246720532
 lte total packet size is 246721096
@@ -373570,7 +373609,6 @@ lte total packet size is 258974448
 lte total packet size is 258975264
 lte total packet size is 258976080
 lte total packet size is 258976896
-[Trust][t=47.017]  Node 23: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 [BSHH-S1][t=47.058]  V28 --REPLAY old heartbeat--> V164  Heartbeat(Sender=V164, t=44.997)  [MALICIOUS â€” replayed victim's captured heartbeat]
 [BSHH-S1][t=47.059]  V28 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V28, claimed=V164, t=47.059)  IMPERSONATION [SOPHISTICATED→LW+TGN]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=47.060]  V164 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V164, t=44.997)  Controller liveness POISONED
@@ -374384,6 +374422,7 @@ lte total packet size is 259566824
 lte total packet size is 259567640
 lte total packet size is 259568456
 [BSHH-S1][t=47.107]  V22 --REPLAY old heartbeat--> V123  Heartbeat(Sender=V123, t=45.002)  [MALICIOUS â€” replayed victim's captured heartbeat]
+[Trust][t=47.108]  Node 23: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 [BSHH-S1][t=47.108]  V22 --HIJACK old heartbeat--> Controller  Heartbeat(physical=V22, claimed=V123, t=45.002)  IMPERSONATION [BASIC→Stage-0 drop]  *** ATTACK COMPLETE ***
 [BSHH-S1][t=47.109]  V123 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V123, t=45.002)  Controller liveness POISONED
 [BSHH-S1][t=47.110]  V33 --REPLAY old heartbeat--> V168  Heartbeat(Sender=V168, t=45.016)  [MALICIOUS â€” replayed victim's captured heartbeat]
@@ -374391,7 +374430,6 @@ lte total packet size is 259568456
 [BSHH-S1][t=47.112]  V168 --forwards stale heartbeat--> Controller  Heartbeat(Sender=V168, t=45.016)  Controller liveness POISONED
 This is tag14. Serialized size is 1264
 This is tag10. Serialized size is 928
-[Trust][t=47.117]  Node 19: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 This is tag12. Serialized size is 1096
 This is tag11. Serialized size is 1012
 lte total packet size is 259569020
@@ -380794,7 +380832,7 @@ lte total packet size is 264277300
 lte total packet size is 264278116
 lte total packet size is 264278932
 lte total packet size is 264279748
-[Trust][Anchor][t=48.000] Published checkpoint seq=15 block_height=450 digest=15777114090993845051 (interval=3.000s)
+[Trust][Anchor][t=48.000] Published checkpoint seq=15 block_height=450 digest=15002942036554238441 (interval=3.000s)
 lte total packet size is 264280312
 lte total packet size is 264280876
 lte total packet size is 264281440
@@ -404795,7 +404833,7 @@ lte total packet size is 281745168
 lte total packet size is 281746068
 lte total packet size is 281746968
 lte total packet size is 281747868
-[Trust][Anchor][t=51.000] Published checkpoint seq=16 block_height=480 digest=15777114090993845051 (interval=3.000s)
+[Trust][Anchor][t=51.000] Published checkpoint seq=16 block_height=480 digest=15002942036554238441 (interval=3.000s)
 lte total packet size is 281748432
 lte total packet size is 281748996
 lte total packet size is 281749560
@@ -414396,7 +414434,7 @@ lte total packet size is 288613908
 lte total packet size is 288614808
 lte total packet size is 288615708
 lte total packet size is 288616608
-[Trust][t=52.117]  Node 22: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=52.108]  Node 22: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 lte total packet size is 288617172
 lte total packet size is 288617736
 lte total packet size is 288618300
@@ -428797,7 +428835,7 @@ lte total packet size is 298903628
 lte total packet size is 298904528
 lte total packet size is 298905428
 lte total packet size is 298906328
-[Trust][Anchor][t=54.000] Published checkpoint seq=17 block_height=510 digest=1473969455710258258 (interval=3.000s)
+[Trust][Anchor][t=54.000] Published checkpoint seq=17 block_height=510 digest=17898901555938149164 (interval=3.000s)
 lte total packet size is 298906892
 lte total packet size is 298907456
 lte total packet size is 298908020
@@ -452798,7 +452836,7 @@ lte total packet size is 315911992
 lte total packet size is 315912724
 lte total packet size is 315913456
 lte total packet size is 315914188
-[Trust][Anchor][t=57.000] Published checkpoint seq=18 block_height=540 digest=1473969455710258258 (interval=3.000s)
+[Trust][Anchor][t=57.000] Published checkpoint seq=18 block_height=540 digest=17898901555938149164 (interval=3.000s)
 lte total packet size is 315914752
 lte total packet size is 315915316
 lte total packet size is 315915880
@@ -454399,7 +454437,7 @@ lte total packet size is 317016124
 lte total packet size is 317016772
 lte total packet size is 317017420
 lte total packet size is 317018068
-[Trust][t=57.117]  Node 31: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=57.108]  Node 31: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
 lte total packet size is 317018632
 lte total packet size is 317019196
 lte total packet size is 317019760
@@ -476804,12 +476842,12 @@ lte total packet size is 332498232
 [M2][TDRR] mean_topology_divergence=0.000  (samples=0)
 [M3][T_stale] mean=0.000 ms (samples=0)
 [M4][PIR] mean=1.000 (links tracked=0)
-[M5][T_pipeline] mean=31.692 ms  max=72.034 ms  over_budget=0/33
+[M5][T_pipeline] mean=27.124 ms  max=39.160 ms  over_budget=0/45
 [M7][Omega] omega_lw=5.941%  omega_fs=572.649%
-[M9][F1] TTW=1.000 BSHH=0.643 ME=1.000 macro=0.881
-[M10][FRA/FRR] FRA=0.877 FRR=0.253
-[M11][FSR] attempts=33 success=33 FSR=1.000
-[M12][Trust] t_trust=2009.338 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
+[M9][F1] TTW=1.000 BSHH=0.970 ME=1.000 macro=0.990
+[M10][FRA/FRR] FRA=0.890 FRR=0.266
+[M11][FSR] attempts=45 success=45 FSR=1.000
+[M12][Trust] t_trust=0.000 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (1513 events)
 [CRYPTO] crypto_latency_summary.csv written  (18 distinct operations)
@@ -476818,8 +476856,8 @@ lte total packet size is 332498232
 [TGN] Online mode — 125 events already processed inline. Running secondary crypto audit...
 [TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
 [TGN] Trusted nodes (Tier 2 OBU): ctrl 
-[TGN] |E_t^trusted|=115 (Tier 2: 115 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 134 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] |E_t^trusted|=113 (Tier 2: 113 events from OBU peers with tau_k >= 0.50)
+[CryptoFilter] 130 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
 [TGN] tgn_alerts.json written: 14 alert(s) → tgn_alerts.json
 [TGN] individual_sig_evidence.json written: 70 record(s) → individual_sig_evidence.json
 [TGN] beacon_evidence.csv written: 0 observation(s)
@@ -476842,8 +476880,8 @@ lte total packet size is 332498232
   γ_init      : 144.319  [Eq. 3.22 init; validation-tuned hyperparameter]
   W_max       : 200  [§3.4.3 window = N_beacon (Eq. 3.32)]
   Events      : 125
-  Stage-0 blocked (attacks): 135
-  |E_t^trusted|  : 115
+  Stage-0 blocked (attacks): 137
+  |E_t^trusted|  : 113
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
 
@@ -476851,18 +476889,18 @@ Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
   Events processed: 308
-  Avg wall-clock time: 2.5 ms
-  Max wall-clock time: 7.4 ms
+  Avg wall-clock time: 1.9 ms
+  Max wall-clock time: 16 ms
   Events exceeding budget: 0 / 308
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
-  Mitigations applied: 33
-  Avg wall-clock time: 30 ms
-  Max wall-clock time: 65 ms
+  Mitigations applied: 45
+  Avg wall-clock time: 25 ms
+  Max wall-clock time: 39 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
-  Triggered events: 33
-  Avg wall-clock time: 32 ms
-  Max wall-clock time: 72 ms
-  Events exceeding 1e+02 ms budget: 0 / 33  -- full pipeline stays within the T_b budget on this hardware
+  Triggered events: 45
+  Avg wall-clock time: 27 ms
+  Max wall-clock time: 39 ms
+  Events exceeding 1e+02 ms budget: 0 / 45  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 0
@@ -476878,24 +476916,24 @@ RSU-forward (CSMA dispatch, AttackSendRSUToController):
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
   Calls: 154
-  Avg wall-clock time: 0.1 ms
-  Max wall-clock time: 0.39 ms
+  Avg wall-clock time: 0.084 ms
+  Max wall-clock time: 0.56 ms
   Calls exceeding budget: 0 / 154
 
 Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
   Calls: 77
-  Avg wall-clock time: 0.33 ms
-  Max wall-clock time: 1.1 ms
+  Avg wall-clock time: 0.27 ms
+  Max wall-clock time: 0.46 ms
   Calls exceeding budget: 0 / 77
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 77
-  Avg wall-clock time: 0.0067 ms
-  Max wall-clock time: 0.28 ms
+  Avg wall-clock time: 0.0056 ms
+  Max wall-clock time: 0.25 ms
   Calls exceeding budget: 0 / 77
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0) + beacon-crypto(0.1) + rsu-forward(0) + detect(2.5) + detection-crypto(0.33) + mitigate(30) + lkh-crypto(0.0067) = 33 ms
+  beacon-send(0) + beacon-crypto(0.084) + rsu-forward(0) + detect(1.9) + detection-crypto(0.27) + mitigate(25) + lkh-crypto(0.0056) = 28 ms
   -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
@@ -476907,10 +476945,10 @@ Maximum neighbors observed at once: 19
 
 Real-time (wall-clock) budget check — T_b=1e+02 ms:
   Ticks executed: 500
-  Avg tick wall-clock time: 2.7 ms
-  Max tick wall-clock time: 16 ms
+  Avg tick wall-clock time: 2.2 ms
+  Max tick wall-clock time: 15 ms
   Ticks exceeding 1e+02 ms budget: 0 / 500  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(2.7) + beacon-send(0) + beacon-crypto(0.1) + rsu-forward(0) + detect(2.5) + detection-crypto(0.33) + mitigate(30) + lkh-crypto(0.0067) = 36 ms
+  neighborhood(2.2) + beacon-send(0) + beacon-crypto(0.084) + rsu-forward(0) + detect(1.9) + detection-crypto(0.27) + mitigate(25) + lkh-crypto(0.0056) = 30 ms
   -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware

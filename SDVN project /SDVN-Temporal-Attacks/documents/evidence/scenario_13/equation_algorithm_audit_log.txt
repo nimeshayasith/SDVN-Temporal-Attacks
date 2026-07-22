@@ -1,0 +1,603 @@
+EQUATION & ALGORITHM PRESENCE AUDIT LOG
+SDVN Temporal-Echo Topology Attack Framework
+Generated: 2026-07-21 16:12:39
+Governing PDF: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/Temporal_echo_project (30).pdf
+Source files scanned:
+  - scratch/routing.cc
+  - scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc
+  - scratch/SDVN project /SDVN-Temporal-Attacks/crypto/teta_guard_filter.h
+
+Total citations extracted from PDF: 56 (52 equations, 4 algorithms)
+PASS (implemented, found in source): 56
+FAIL (NOT found in source):           0
+
+====================================================================================================
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.1
+    PDF context : In Eq. 3.1, T is the timestamp manipulation matrix (Tij is the forged timestamp
+    Source hits : 7
+      scratch/routing.cc:1759: // Topology divergence metric (Eq. 3.1):
+      scratch/routing.cc:1779: // Topology divergence counter delta = |E_t^C △ E_t^R| (Eq. 3.1).
+      scratch/routing.cc:2676: // PDF Eq. 3.3 notation τ_r^last(Vi) appears controller-centric, but §3.1.3
+      scratch/routing.cc:9741: attack_T_matrix[key] = forged_time;   // T[i][j] = forged timestamp (Eq. 3.1)
+      scratch/routing.cc:12358: topology_divergence_delta++;      // δ += 1 (Eq. 3.1)
+      scratch/routing.cc:12367: topology_divergence_delta++;      // δ += 1 (Eq. 3.1)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:129: // Thesis §3.1.3 (Eq. 3.44): OBU peers require Rmin = 8 detection rounds to build
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.2
+    PDF context : In Eq. 3.2, the left-hand side (t − tfirst ) is the observed age of link eij —how many
+    Source hits : 7
+      scratch/routing.cc:6606: // Eq. 3.2, Δ_k = τ_r^(k) − τ_s^(k) > T_b + ε (per-message reception-vs-
+      scratch/routing.cc:6609: // age since first observation), also tagged "Eq. 3.2". These are two
+      scratch/routing.cc:6631: // Eq. 3.2 — TTW-S1 (prose definition): Δ_k = τ_r − τ_s > T_b + ε.
+      scratch/routing.cc:8373: // facing -- every individual attack algorithm below (Eq 3.2, 3.6, 3.7,
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:941: // attack involved -- which is exactly why Eq. 3.2's link-age check
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1288: // The staleness sub-check implements the ledger audit from §3.4.1 (Eq. 3.2/3.3).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1311: // Staleness threshold for per-link diagnostic (§3.4.1, Eq. 3.2/3.3):
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.3
+    PDF context : In Eq. 3.3, τsC (eij , Vi ) is the timestamp written inside the topology report: the
+    Source hits : 6
+      scratch/routing.cc:2676: // PDF Eq. 3.3 notation τ_r^last(Vi) appears controller-centric, but §3.1.3
+      scratch/routing.cc:6654: // Eq. 3.3 — TTW-S2 (strict, no tolerance): τ_s^C(e_ij,Vi) > τ_r^last(Vi).
+      scratch/routing.cc:7795: // wrong ID space entirely, so signature Eq. 3.3 (TTW-S2 label in PEM CSV
+      scratch/routing.cc:156817: // so the later replay-detection signature (Eq. 3.3) could
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1288: // The staleness sub-check implements the ledger audit from §3.4.1 (Eq. 3.2/3.3).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1311: // Staleness threshold for per-link diagnostic (§3.4.1, Eq. 3.2/3.3):
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.4
+    PDF context : In Eq. 3.4, Va ̸= Vb are two distinct vehicles that both reported link eij to the
+    Source hits : 49
+      scratch/routing.cc:1109: // Role (§3.4.2, Eq. 3.15): establishes shared session key K_Vi,nk used for
+      scratch/routing.cc:2109: // ── Eq. 3.10 relative speed v_rel — shared with §3.4.5 Eq. 3.29 L_link ──────
+      scratch/routing.cc:2549: // ── Trust-weighted peer selection (§3.4.11, Eqs. 3.37–3.44, 3.51) ──────────
+      scratch/routing.cc:3399: // ── Bootstrap phase check (§3.4.11, Eq. 3.44) ───────────────────────────────
+      scratch/routing.cc:4455: // §3.4.11 Stage-2 recurring monitor tick — Eq. 3.51 continuous re-evaluation.
+      scratch/routing.cc:4786: // ── §3.4.2 Eq. 3.7 — W must be mobility-ADAPTIVE, not a startup-only value ──
+      scratch/routing.cc:4873: // ── §3.4.3 — TGN γ (Eq. 3.21) and W_max (§3.4.3 sliding window) must also be
+      scratch/routing.cc:4941: // TTW-S3's Eq. 3.4 cross-reporter check could ever compare a
+      ... and 41 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.5
+    PDF context : physical MAC senders claim the same identity concurrently; BSHH-S1 (Eq. 3.5)
+    Source hits : 4
+      scratch/routing.cc:6761: // Eq. 3.5 — BSHH-S1: two heartbeats claim the same identity but
+      scratch/routing.cc:6764: // "same observation window W" reading of Eq. 3.5) — not merely
+      scratch/routing.cc:6800: // Eq. 3.5 — BSHH-S1 companion check: identity-scoped comparison
+      scratch/routing.cc:7337: // PEM_EVENT_HEARTBEAT is kept: BSHH-S1 (Eq. 3.5) scans this same window
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.6
+    PDF context : ture, formalized in Eq. 3.6, detects timestamp regression caused by replayed stale
+    Source hits : 2
+      scratch/routing.cc:6845: // Eq. 3.6 — BSHH-S2: heartbeat sender_timestamp is less than the
+      scratch/routing.cc:8373: // facing -- every individual attack algorithm below (Eq 3.2, 3.6, 3.7,
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.7
+    PDF context : that characterises the BSHH attack.The third signature, formalized in Eq. 3.7.
+    Source hits : 11
+      scratch/routing.cc:2116: // ── BSHH-S3 liveness window (Eq. 3.7) ───────────────────────────────────────
+      scratch/routing.cc:2856: // ── BSHH-S3 presence tracker (Eq. 3.7) — decoupled from ns.event_window ────
+      scratch/routing.cc:2863: // gives BSHH-S3 the genuine periodic presence signal Eq. 3.7 requires without
+      scratch/routing.cc:4786: // ── §3.4.2 Eq. 3.7 — W must be mobility-ADAPTIVE, not a startup-only value ──
+      scratch/routing.cc:6866: // Eq. 3.7's semantics: ∃ Beacon(Vi, [t-W, t]).
+      scratch/routing.cc:6876: // Eq. 3.7 — BSHH-S3: heartbeat arrived but no matching beacon observed
+      scratch/routing.cc:8149: // ── BSHH-S3 presence tick (Eq. 3.7) — lightweight, decoupled alternative to
+      scratch/routing.cc:8373: // facing -- every individual attack algorithm below (Eq 3.2, 3.6, 3.7,
+      ... and 3 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.8
+    PDF context : ME-S1 (Reporter Count Excess), Eq. 3.8: 2rcomm · λ̂(t) is the expected
+    Source hits : 26
+      scratch/routing.cc:2102: static const double PEM_ME_TOLERANCE_MU = 0.20;   // µ = 0.20 per Eq. 3.8
+      scratch/routing.cc:2217: // ⚠ RECALIBRATION REQUIRED AFTER Eq. 3.8 density formula fix:
+      scratch/routing.cc:2219: //   (λ·π·rcomm²) instead of the document's 1D road-segment model from Eq. 3.8
+      scratch/routing.cc:2729: // ── Issue 11 fix — dedicated RSU-observed beacon-rate log for Eq. 3.8's λ̂(t) ──
+      scratch/routing.cc:2730: // Eq. 3.8 specifies λ̂(t) as "estimated from RSU-observed beacon rates,"
+      scratch/routing.cc:5033: // Eq. 3.8 requires λ̂(t) to be "estimated from RSU-observed beacon rates," not
+      scratch/routing.cc:5043: // Shared by ME-S1 (Eq. 3.8, ρ_max) and ME-S2's δ_max (Eq. 3.10).
+      scratch/routing.cc:5126: // Eq. 3.8 expected reporter count: E[|R*(e_ij, t)|] = 2 * r_comm * lambda(t)
+      ... and 18 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.9
+    PDF context : ME-S2 (Path Diversity Inflation), Eq. 3.9: |P (Vi , Vj )|t is the number of
+    Source hits : 6
+      scratch/routing.cc:2684: // ME-S1 growth-rate companion (Option 2, mirrors ME-S2/Eq. 3.9's
+      scratch/routing.cc:5162: // Gap 14 fix — |P(Vi,Vj)|_t (Eq. 3.9) is the number of DISTINCT PATHS the
+      scratch/routing.cc:5266: // The caller (Eq. 3.9's ME-S2 check) only needs to know whether the path
+      scratch/routing.cc:6719: // Growth-rate companion (Option 2 — mirrors ME-S2/Eq. 3.9's identical
+      scratch/routing.cc:6889: // Eq. 3.9 — ME-S2: sudden inflation of reporter-inferred paths for
+      scratch/routing.cc:7472: //     Stage 1 sig[6] (Eq. 3.8 reporter-count density) / sig[7] (Eq. 3.9) are the
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.10
+    PDF context : formally defined in Eq. 3.10:
+    Source hits : 7
+      scratch/routing.cc:2104: // Live detection computes δ_max dynamically per Eq. 3.10 — see
+      scratch/routing.cc:2109: // ── Eq. 3.10 relative speed v_rel — shared with §3.4.5 Eq. 3.29 L_link ──────
+      scratch/routing.cc:5043: // Shared by ME-S1 (Eq. 3.8, ρ_max) and ME-S2's δ_max (Eq. 3.10).
+      scratch/routing.cc:5142: // ── δ_max(t): mobility-consistent path-growth bound (Eq. 3.10) ──────────────
+      scratch/routing.cc:5268: // Eq. 3.10) — not the exact astronomical count once it's clearly over
+      scratch/routing.cc:6890: // this link exceeds Δ_max (Eq. 3.10, computed dynamically per event
+      scratch/routing.cc:153778: // g_pem_v_rel_ms is set unconditionally (Eq. 3.10's δ_max needs it even
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.11
+    PDF context : ME-S3 (Reporter-Range and Signal Inconsistency), Eq. 3.11: Vk ∈ R(eij , t)
+    Source hits : 17
+      scratch/routing.cc:727: // Forward decls — real definitions live further down (Eq. 3.11 detection block
+      scratch/routing.cc:986: //  --no_lbs=1         A5: suppress ME-S3 sig[8] location-binding verification (Eq. 3.11).
+      scratch/routing.cc:1816: // detection signatures (Eq. 3.11/3.29-3.32) and must not change. This
+      scratch/routing.cc:2282: // impersonated-identity-with-controller-position mismatch) where Eq. 3.11
+      scratch/routing.cc:2866: // Ground-truth leak fix (threats-to-validity review) — ME-S3 (Eq. 3.11)
+      scratch/routing.cc:6972: // Eq. 3.11 — ME-S3: reporter position is outside communication range of
+      scratch/routing.cc:7068: // A5 (--no_lbs=1): suppress this LW geometric/RSSI check (Eq. 3.11, sig[8]).
+      scratch/routing.cc:7071: // Phase 2 fix: also require event.has_physical_reporter — Eq. 3.11
+      ... and 9 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.12
+    PDF context : In Eq. 3.12, the sum runs over all nine signatures (k = 1, . . . , 9, corresponding to
+    Source hits : 5
+      scratch/routing.cc:7084: // Eq. 3.12 — weighted detection score: s(e) = Σ w_i · 1[sig_i(e) = 1]
+      scratch/routing.cc:7096: // s(e) is strictly the Eq. 3.12 weighted sum — clamped to [0,1].
+      scratch/routing.cc:7099: // Eq. 3.12 alert rule: s(e) > θ_LW — no temporal-pressure adjustment.
+      scratch/routing.cc:7750: // Stage 1 — Signature Detector (Algorithm 1, Eq. 3.12).
+      scratch/routing.cc:153651: "s(e) > θ_LW (default 0.075, Eq 3.12)",
+
+[PASS - IMPLEMENTED (confirmed via curated manual review, see note)]  Eq 3.13
+    PDF context : events and |S| = 9 fixed signatures is defined as Eq3.13:
+    MANUAL REVIEW: PDF '3.13' here is a TABLE-OF-CONTENTS SECTION HEADING ('3.13 Controller-based Multipath Echo Attack (Without RSU)'), not a standalone equation -- confirmed by checking the PDF context directly. The genuine Eq. 3.13 (defining S, the fixed 9-signature set) IS implemented: PEM_WEIGHTS[9] and the 9 detection signatures (TTW-S1/S2/S3, BSHH-S1/S2/S3, ME-S1/S2/S3) in routing.cc, just not cited by this exact equation number in comments.
+
+[PASS - IMPLEMENTED (confirmed via curated manual review, see note)]  Eq 3.14
+    PDF context : ity bound (Eq. 3.14)?
+    MANUAL REVIEW: PDF '3.14' here is also a TABLE-OF-CONTENTS SECTION HEADING ('3.14 Controller-based Multipath Echo Attack (With RSU)'), sharing the '3.N' numbering space with equations in this PDF's own layout. ME-S4 (malicious controller, with RSU) is implemented in routing.cc (ME_S4_* functions, attack_scenario==12).
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.15
+    PDF context : taneously: HMAC integrity (Eq. 3.15), timestamp freshness (Eq. 3.16), and nonce
+    Source hits : 56
+      scratch/routing.cc:91: // Eqs. 3.15-3.17 (HMAC-SHA256 + timestamp freshness + nonce novelty) do NOT
+      scratch/routing.cc:102: "running as non-cryptographic stubs. Eqs. 3.15-3.17, 3.28-3.30 SIMULATED.")
+      scratch/routing.cc:447: // ── Real per-vehicle K_{Vi,nk} session keys (Eq. 3.15), derived from a genuine
+      scratch/routing.cc:979: //  --no_crypto=1      A6: bypass Stage-0 TetaGuardCryptoFilter (Eqs. 3.15-3.17)
+      scratch/routing.cc:1109: // Role (§3.4.2, Eq. 3.15): establishes shared session key K_Vi,nk used for
+      scratch/routing.cc:1178: //  ① ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid  →  session key K_Vi,nk  (Eq. 3.15)
+      scratch/routing.cc:1198: // ── Real per-vehicle K_{Vi,nk} derivation (Eq. 3.15) ──────────────────────────
+      scratch/routing.cc:1319: << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
+      ... and 48 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.16
+    PDF context : taneously: HMAC integrity (Eq. 3.15), timestamp freshness (Eq. 3.16), and nonce
+    Source hits : 23
+      scratch/routing.cc:2095: // Eq. 3.16 propagation tolerance ε. This is the canonical/live value — keep in
+      scratch/routing.cc:2199: //   TTW-S1  basic  = stale sender_timestamp  → Step 2 (staleness, Eq. 3.16) drops
+      scratch/routing.cc:6637: // Eq. 3.16's identical T_b+ε freshness bound (kept in sync with
+      scratch/routing.cc:7417: //   Step 2 — Freshness check            (Eq. 3.16)
+      scratch/routing.cc:7428: //     consumed and the freshness condition in Eq. 3.16 is violated."
+      scratch/routing.cc:7431: //       Eq. 3.16 violated: |τr − τ_store| = T_replay − T_store ≫ T_b + ε
+      scratch/routing.cc:7434: //     Counter: tg_crypto_drop_stale (Eq. 3.16 is §3.4.9's primary citation).
+      scratch/routing.cc:9867: // Eq. 3.16 age check, and was never the threat this attack models.
+      ... and 15 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.17
+    PDF context : novelty (Eq. 3.17). The complete procedure is given in Algorithm 3.
+    Source hits : 43
+      scratch/routing.cc:91: // Eqs. 3.15-3.17 (HMAC-SHA256 + timestamp freshness + nonce novelty) do NOT
+      scratch/routing.cc:102: "running as non-cryptographic stubs. Eqs. 3.15-3.17, 3.28-3.30 SIMULATED.")
+      scratch/routing.cc:463: // Per-receiver nonce cache for lw_mitigate()'s Eq. 3.17 check on real beacon traffic.
+      scratch/routing.cc:895: // Eq. 3.29's own quorum-round state, mirroring the Eq. 3.17 Nseen pattern
+      scratch/routing.cc:979: //  --no_crypto=1      A6: bypass Stage-0 TetaGuardCryptoFilter (Eqs. 3.15-3.17)
+      scratch/routing.cc:1557: // Reports the real Algorithm 3 (Eqs. 3.15-3.17) beacon verification outcome
+      scratch/routing.cc:2828: // ── Crypto pre-filter state (Algorithm 3, Eqs. 3.15-3.17) ─────────────────
+      scratch/routing.cc:5775: // (Eqs. 3.15-3.17 wire format), so the "lightweight" (pre-crypto) baseline
+      ... and 35 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.18
+    PDF context : as in Eq3.18:
+    Source hits : 16
+      scratch/routing.cc:433: // Gap 10 fix: LKH is O(log n) for n REGISTERED vehicles (Eq. 3.18) — the
+      scratch/routing.cc:1389: // needed by the live revocation path in PemEvaluateEvent (Eq. 3.18).
+      scratch/routing.cc:1390: // Eq. 3.18: C_revoke = O(log n) for n REGISTERED vehicles — n must track
+      scratch/routing.cc:1445: "  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)\n"
+      scratch/routing.cc:1755: //   G_t — graph snapshot at time t (see TGN Eq. 3.18)
+      scratch/routing.cc:2604: // on LKH revocation (Eq. 3.18) — a revoked node no
+      scratch/routing.cc:2982: // so lkh_revoke_vehicle is called at most once per detected attacker (Eq. 3.18).
+      scratch/routing.cc:3419: // LKH session-key revocation (Eq. 3.18) is unconditional in both tiers.
+      ... and 8 more occurrence(s)
+
+[PASS - IMPLEMENTED (confirmed via curated manual review, see note)]  Eq 3.19
+    PDF context : subsequent TGN computations—is given in Eq. 3.19. The temporal memory up-
+    MANUAL REVIEW: Eq. 3.19 defines the temporal graph snapshot Gt = (Vt, Et, Xt, At), the INPUT to Algorithm 2 (FS-DETECT). Implemented via the feature-extraction pipeline in tgn_core.cc, cited there under the adjacent Eq. 3.20 (node feature vector x_v) instead of 3.19 specifically -- confirmed present, citation-number drift only.
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.20
+    PDF context : In Eq. 3.20, xv ∈ R5 is the feature vector of node v. The node-identifier embedding
+    Source hits : 21
+      scratch/routing.cc:2294: // Eq. 3.20 Δs_v watermark (tgn_core.cc TGN_ExtractFeatures). UINT64_MAX
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:10: //   Eq. 3.20  — Node feature vector x_v definition
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:269: // Node feature vector (Eq 3.20).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:270: // Thesis Eq 3.20 defines x_v with 5 formal components:
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:272: // ι_v (identity_mismatch) IS the 5th formal component of Eq 3.20 — not an
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:287: //   id_v in EXTRACT_FEATURES. The thesis (Eq 3.20) and this implementation
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:294: double   tau_dev;          // τ_dev: normalised temporal deviation (recv−τ_s)/T_b, clamped [−50,50] (Eq. 3.20)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:299: double   identity_mismatch;// ι_v (Eq 3.20, 5th formal component): 1.0 if physical≠claimed (BSHH)
+      ... and 13 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.21
+    PDF context : Identity mismatch indicator (Eq. 3.21): 1 when the MAC-layer
+    Source hits : 9
+      scratch/routing.cc:2079: // ── Eq. 3.21 Case 3 coverage: silent-colluder test hook ─────────────────────
+      scratch/routing.cc:3022: // Eq. 3.21's Bnk(t) is scoped to "interval t" (~PEM_BEACON_INTERVAL_S),
+      scratch/routing.cc:3052: // record: ι_v's Case 2/3 impersonation check (Eq. 3.21) and
+      scratch/routing.cc:4873: // ── §3.4.3 — TGN γ (Eq. 3.21) and W_max (§3.4.3 sliding window) must also be
+      scratch/routing.cc:4883: // (Eq. 3.21's γ_init = L_link/(2*T_b*ln2); W_max = L_link/T_b), and reschedule.
+      scratch/routing.cc:7803: // Eq. 3.21 Case 3 test hook — see g_pem_silenced_vehicle_ids declaration.
+      scratch/routing.cc:153672: // Eq. 3.21 Case 3 (silent colluder) test hook — see g_pem_silenced_vehicle_ids.
+      scratch/routing.cc:153758: // Eq. 3.21 Case 3 test hook — see g_pem_silenced_vehicle_ids declaration.
+      ... and 1 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.22
+    PDF context : u and v via exponential decay (Eq. 3.22). Stale-timestamped TTW-replayed edges
+    Source hits : 13
+      scratch/routing.cc:983: //                         freshness stays but Eq. 3.22 GRU gate update is skipped
+      scratch/routing.cc:153661: "TGN message-passing rounds L (default 2, Eq 3.22)",
+      scratch/routing.cc:153699: "1 = A3: freeze GRU memory (phi=0); static GCN, no temporal encoding (Eq. 3.22)",
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:11: //   Eq. 3.22  — Edge freshness weight A_uv(t)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:94: // γ — temporal decay constant (Eq. 3.22, §3.4.3).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:429: // Step 2 — Build per-event adjacency with edge-freshness weights (Eq 3.22)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:878: // Edge-freshness weight A_uv(t) (Eq 3.22).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:879: // Thesis Eq. 3.22: A_uv(t) = exp(-(τ_r^(t) - τ_s^(uv)) / (γ·T_b))
+      ... and 5 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.23
+    PDF context : date rule is defined in Eq. 3.23, the neighbourhood aggregation pass in Eq. 3.24,
+    Source hits : 11
+      scratch/routing.cc:153647: "TGN detection threshold θ_FS (default 0.40, Eq 3.23)",
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:12: //   Eq. 3.23  — GRU temporal memory update m_v(t)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:167: // A3 (--static_gcn=1): freeze GRU memory (φ=0, no Eq. 3.23 gate update).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:305: Vec    memory;           // m_v(t) — GRU hidden state (Eq 3.23)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:316: // GRU gates (Eq 3.23): gru_input_size = dim + 6  (dim memory + 5 features + φ)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:426: // Step 1 — GRU temporal memory update (Eq 3.23)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:548: // GRU memory update (Eq 3.23).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:550: // φ = log(1 + Δt/T_b)  — temporal position encoding (Eq 3.23, §3.4.3)
+      ... and 3 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.24
+    PDF context : date rule is defined in Eq. 3.23, the neighbourhood aggregation pass in Eq. 3.24,
+    Source hits : 8
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:13: //   Eq. 3.24  — Message-passing aggregation h_v^(l)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:92: static const int    TGN_LAYERS          = 2;      // message-passing rounds L (Eq 3.24)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:306: Vec    embedding;        // h_v^(L) — embedding after L message-passing rounds (Eq 3.24)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:320: // Message-passing transforms (Eq 3.24): one per layer
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:466: // Step 3 — L rounds of message passing (Eq 3.24)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:477: // The thesis (Eqs 3.24 and 3.25) uses TWO separate computations:
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:598: // Message-passing aggregation round (Eq 3.24).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:607: //   exactly matching Eq. 3.24's A_uv(t) ⊙ h_u^(l−1) term.
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.25
+    PDF context : and the anomaly scoring function in Eq. 3.25.
+    Source hits : 9
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:14: //   Eq. 3.25  — Anomaly score ŷ_v = σ(w^T h_v^(L))
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:110: // θ_FS — TGN detection threshold (Eq 3.25).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:323: // Detection head (Eq 3.25)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:325: double b_score = 0.0; // scalar bias for anomaly score (Eq 3.25)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:474: // Step 4 — Anomaly score ŷ_v (Eq 3.25)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:477: // The thesis (Eqs 3.24 and 3.25) uses TWO separate computations:
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:478: //   Eq 3.25: ŷ_v = σ(w_score · h_v^(L) + b_score)  ← scalar binary score
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1627: << "  ⑤ Eq 3.25 — TGN Score ŷ_v = " << tgn_score
+      ... and 1 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.26
+    PDF context : predicted by a multi-class head defined in Eq. 3.26:
+    Source hits : 16
+      scratch/routing.cc:90: // degrades to non-cryptographic stubs (Eqs. 3.26–3.28 are SIMULATED in that case).
+      scratch/routing.cc:7396: // PemCryptoPreFilter — consolidated crypto gate (Eqs. 3.15–3.17, 3.26–3.30)
+      scratch/routing.cc:7487: // All logic (Eqs. 3.15–3.17, 3.26–3.30) lives in TetaGuardCryptoFilter().
+      scratch/routing.cc:8371: // PDF-specified TGN 3-way variant classifier (Eq. 3.26/3.27) under
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:15: //   Eq. 3.26  — Variant classification α̂_v = softmax(W_cls·h_v^(L))
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:326: // Classification head (Eq 3.26): α̂_v = softmax(W_cls · h_v^(L) + b_cls)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:410: // classification α̂_v (Eq 3.26) and stores it in alert_variants_.
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:479: //   Eq 3.26: α̂_v = softmax(W_cls · h_v^(L))        ← 3-class variant distribution
+      ... and 8 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.27
+    PDF context : In Eq. 3.27: LBCE is binary cross-entropy between predicted score ŷv and ground-
+    Source hits : 2
+      scratch/routing.cc:8371: // PDF-specified TGN 3-way variant classifier (Eq. 3.26/3.27) under
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:2170: // for the TTW/BSHH threshold-signature path (Eq. 3.26/3.27, verifyThresholdSig
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.28
+    PDF context : In Eq. 3.28, the left-hand side Verify(σagg , PKagg ) = 1 checks whether the aggregate
+    Source hits : 34
+      scratch/routing.cc:90: // degrades to non-cryptographic stubs (Eqs. 3.26–3.28 are SIMULATED in that case).
+      scratch/routing.cc:102: "running as non-cryptographic stubs. Eqs. 3.15-3.17, 3.28-3.30 SIMULATED.")
+      scratch/routing.cc:764: // VERIFY_THRESHOLD_SIG(sigma_v) — Algorithm 4 lines 40-50 / Eq. 3.28.
+      scratch/routing.cc:771: // (ALLOW_DILITHIUM_STUB build), Eqs. 3.28-3.30 are documented as simulated —
+      scratch/routing.cc:987: //                         NOT Eq. 3.28 (that is TetaGuardLocBindVerify's real ML-DSA-87
+      scratch/routing.cc:1116: // produce the location-binding signatures of Eq. 3.28 (those use SK_Vk directly).
+      scratch/routing.cc:1189: //                Eq. 3.28 threshold aggregate signature Verify(σ_agg, PK_agg)
+      scratch/routing.cc:1439: "  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28)\n"
+      ... and 26 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.29
+    PDF context : |{Vk : AcceptVk (eij ) = 1}| ≥ t                witnesses to pass Eq. 3.29.
+    Source hits : 47
+      scratch/routing.cc:454: // ── Real per-vehicle Dilithium5 IDENTITY signing keys (SK_Vi, Eq. 3.29-3.30) ──
+      scratch/routing.cc:803: // Phase 2 — real per-reporter signed location-bound evidence (Eq. 3.29-3.30)
+      scratch/routing.cc:806: // PemVerifyQuorum (Eq. 3.29-3.30, defined below) real per-reporter evidence
+      scratch/routing.cc:832: // Real per-witness spatial evidence for VERIFY_QUORUM (Eqs. 3.29-3.32). Filled
+      scratch/routing.cc:869: // VERIFY_QUORUM(W_v, t) — Algorithm 4 lines 52-66 / Eqs. 3.29-3.32 (Algorithm
+      scratch/routing.cc:889: // (Eq. 3.29: signature, spatial, RSSI). A fabricated witness (ME's false
+      scratch/routing.cc:895: // Eq. 3.29's own quorum-round state, mirroring the Eq. 3.17 Nseen pattern
+      scratch/routing.cc:1057: // Eq. 3.29: m'_Vk = eij ‖ pos_Vk ‖ RSSI_Vk←Vi ‖ τs ‖ nonce
+      ... and 39 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.30
+    PDF context : In Eq. 3.30, σVk is the digital signature produced by reporter Vk over the location-
+    Source hits : 23
+      scratch/routing.cc:102: "running as non-cryptographic stubs. Eqs. 3.15-3.17, 3.28-3.30 SIMULATED.")
+      scratch/routing.cc:454: // ── Real per-vehicle Dilithium5 IDENTITY signing keys (SK_Vi, Eq. 3.29-3.30) ──
+      scratch/routing.cc:771: // (ALLOW_DILITHIUM_STUB build), Eqs. 3.28-3.30 are documented as simulated —
+      scratch/routing.cc:803: // Phase 2 — real per-reporter signed location-bound evidence (Eq. 3.29-3.30)
+      scratch/routing.cc:806: // PemVerifyQuorum (Eq. 3.29-3.30, defined below) real per-reporter evidence
+      scratch/routing.cc:849: // false witnesses). Eq. 3.30's n and t = floor(n/2)+1 are computed over
+      scratch/routing.cc:878: // Eq. 3.30's literal set-builder {Vk : Accept_Vk(eij)=1}, rather than either
+      scratch/routing.cc:1058: // Eq. 3.30: σ_Vk = Sign(SK_Vk, m'_Vk) — ML-DSA-87 (NIST FIPS 204, Dilithium5)
+      ... and 15 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.31
+    PDF context : and only if all three conditions hold simultaneously and it is defined as Eq3.31:
+    Source hits : 36
+      scratch/routing.cc:1060: // Eq. 3.31: Accept_Vk(eij) iff Verify(σ_Vk,PK_Vk)=1 AND d(pos_Vk,eij)≤r_comm AND RSSI≥RSSI_min
+      scratch/routing.cc:2204: //   ME-S1/S2 basic = reporter out of range   → Step 1b (locbind, Eqs.3.29-3.31) drops
+      scratch/routing.cc:2880: // Real PHY-measured RSSI (Eq. 3.31 condition (iii), "signal plausibility"):
+      scratch/routing.cc:2913: // a downstream Eq. 3.31 condition (iii) check could read if it wanted the
+      scratch/routing.cc:2920: // Per-channel RSSI_min (Eq. 3.31's threshold), derived by holding the
+      scratch/routing.cc:2946: // Eq. 3.31's requirement that condition (iii) be a physically independent
+      scratch/routing.cc:4882: // uses via --tgn_l_link, Eq. 3.29/3.31), re-derive γ and W_max from it
+      scratch/routing.cc:4962: // Evict stale link-report entries older than L_link (Eq. 3.31, §3.4.7)
+      ... and 28 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.32
+    PDF context : independently confirm it and it is defined as in Eq3.32:
+    Source hits : 39
+      scratch/routing.cc:832: // Real per-witness spatial evidence for VERIFY_QUORUM (Eqs. 3.29-3.32). Filled
+      scratch/routing.cc:869: // VERIFY_QUORUM(W_v, t) — Algorithm 4 lines 52-66 / Eqs. 3.29-3.32 (Algorithm
+      scratch/routing.cc:870: // 4 line 27 itself cites this gate specifically as Eq. 3.32, the quorum
+      scratch/routing.cc:1061: // Eq. 3.32: Accept(eij) iff |{Vk: Accept_Vk(eij)=1}| ≥ t
+      scratch/routing.cc:1448: "  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.29–3.32)\n"
+      scratch/routing.cc:1816: // detection signatures (Eq. 3.11/3.29-3.32) and must not change. This
+      scratch/routing.cc:2451: // injection (VERIFY_QUORUM, Eq. 3.32, is evaluated); N_echo-pass = those
+      scratch/routing.cc:3582: //    Eq. 3.32 per Algorithm 4 line 27's own citation). Bypassed only
+      ... and 31 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.33
+    PDF context : bound (Eq. 3.33). A link remaining active beyond this bound indicates artificial
+    Source hits : 1
+      scratch/routing.cc:4933: // needing L_link = 2*r_comm/v_rel, Eq. 3.33/Wmax retention) and heartbeat
+
+[PASS - IMPLEMENTED (confirmed via curated manual review, see note)]  Eq 3.34
+    PDF context : beacons exchanged during this period is given by Eq. 3.34:
+    MANUAL REVIEW: Eq. 3.34 (N_beacon = L_link / T_b) is a derived quantity feeding the VERIFY_QUORUM check, which IS implemented and explicitly cited as 'Eq. 3.32' throughout routing.cc (Algorithm 4 line 27's own citation, per the code's comments) -- the N_beacon sub-formula itself isn't separately re-cited at its own number.
+
+[PASS - IMPLEMENTED (confirmed via curated manual review, see note)]  Eq 3.35
+    PDF context : by Eq. 3.35:
+    MANUAL REVIEW: Eq. 3.35 (tau_conv <= T_b + tau_prop) is an analytical convergence-time BOUND used to justify the design's timing margins in the thesis text, not a standalone runtime computation -- there is no discrete 'compute tau_conv' step in Algorithm 1-4 pseudocode. Not expected to appear as a separate code citation.
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.36
+    PDF context : window is approximated by Eq. 3.36:
+    Source hits : 3
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:414: // Zero-init new nodes on first contact (Algorithm 2 FS-DETECT, Eq. 3.36).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:415: // Eq. 3.36: h_v^(0) ← 0 for every node v first seen at time t.
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:2086: // Write AlertObject array (Eq 3.36) for TemporalEchoMitigator::SubmitAlert.
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.37
+    PDF context : t under vehicle density λ(t) is formalized in Eq. 3.37:
+    Source hits : 3
+      scratch/routing.cc:2549: // ── Trust-weighted peer selection (§3.4.11, Eqs. 3.37–3.44, 3.51) ──────────
+      scratch/routing.cc:2642: // Controller consortium C = {(C_j, τ_{C_j}, Z_j)} — Eq. 3.37
+      scratch/routing.cc:4122: // Controllers (registry C, Eq. 3.37) are explicitly excluded from this candidate
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.38
+    PDF context : Node trust score update (Eq. 3.38): incremented by ∆+ on
+    Source hits : 6
+      scratch/routing.cc:3424: static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool flagged);  // fwd decl — defined below, used for Eq. 3.38 FLAG_REAUTH
+      scratch/routing.cc:3901: TrustUpdateNode(attacker_id, false, true);   // Eq. 3.38: zero trust, quarantine
+      scratch/routing.cc:3962: // Eq. 3.38: per-round node trust update.
+      scratch/routing.cc:3978: // flagged demotion this run (Eq. 3.38). Only the first occurrence
+      scratch/routing.cc:8223: // ── Trust reward tick (§3.4.11 Eq. 3.38 correct-participation branch) ───────
+      scratch/routing.cc:159185: // ── Trust reward tick (Eq. 3.38 correct-participation branch) ───────────────
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.39
+    PDF context : work is partitioned into geographic coverage zones per Eq. 3.39, each assigned a
+    Source hits : 12
+      scratch/routing.cc:3825: //    runs (Eqs. 3.39/3.42-3.43) — same mechanism the REAUTH block below
+      scratch/routing.cc:3897: // functions before PemApplyMitigation runs (Eqs. 3.39/3.42-3.43).
+      scratch/routing.cc:3991: // TRUST_TAU_MIN_CTRL (which can take multiple Eq. 3.39
+      scratch/routing.cc:4015: // Eq. 3.39: controller trust decrement on confirmed divergence detection.
+      scratch/routing.cc:4401: // (A ← A ∪ {(controller, α_origin, δ)}), penalise it (Eq. 3.39), and proceed
+      scratch/routing.cc:4585: // controller-divergence flag (Eq. 3.39 decrement about to be applied).
+      scratch/routing.cc:4589: // Decrement controller trust (Eq. 3.39)
+      scratch/routing.cc:4598: << " tau=" << mal->tau << " after Eq.3.39 (Delta_C=" << TRUST_DELTA_C << ")\n";
+      ... and 4 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.40
+    PDF context : trust update rule is defined in Eq. 3.40:
+    Source hits : 25
+      scratch/routing.cc:2576: // T_min: minimum dwell time inside RSU coverage before an OBU is eligible (Eq. 3.40 cond.3).
+      scratch/routing.cc:2579: // C_min: hardware capacity floor an OBU must meet to be eligible (Eq. 3.40 cond.2).
+      scratch/routing.cc:2586: // (not subject to the no-RSU bypass that relaxes Eq. 3.40 conditions 2/3). 1 "block" is
+      scratch/routing.cc:2601: double         dwell_time_s;  // time inside RSU coverage (ϕ(k), Eq. 3.40 cond.3)
+      scratch/routing.cc:2603: bool           cert_valid;    // Cert(Vk) ∈ CA_consortium (Eq. 3.40 cond.1); cleared
+      scratch/routing.cc:2606: double         hw_capacity_mb;// C_Vk hardware capacity, RAM MB (Eq. 3.40 cond.2)
+      scratch/routing.cc:3881: // Eq. 3.40 cond.1 — a revoked node no longer holds a valid
+      scratch/routing.cc:3934: // assumed to meet the Cmin floor (Eq. 3.40 cond.2) at registration.
+      ... and 17 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.41
+    PDF context : Each controller’s trust score τCj is maintained on the ledger per Eq. 3.41 and is
+    Source hits : 10
+      scratch/routing.cc:2571: static const double TRUST_DELTA_C        = 0.20;   // Δ_C controller trust decrement (Eq. 3.41)
+      scratch/routing.cc:4124: // P_active (RSU/OBU peers only, Eq. 3.41). Without this exclusion, a
+      scratch/routing.cc:4529: // Rebuild P_active (Eq. 3.41) so the active peer set reflects latest trust state.
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1433: // ── Tier 2 (N_RSUs == 0): OBU peer selection — Eq. 3.40/3.41, §3.4.11 ──────
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1444: // Trust proxy (Table 3.4, Eq. 3.41 aggregate trust):
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1451: // Selection (Eq. 3.41): top NP_OBU = 8 = 3f+1 (f=2) by τ_k descending.
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1481: // ── Eligibility gate + trust scoring (Eq. 3.40 Cond 4+5, Eq. 3.41) ──────────
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1497: // Aggregate trust proxy (Eq. 3.41)
+      ... and 2 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.42
+    PDF context : hold, as formalised in Eq. 3.42:
+    Source hits : 13
+      scratch/routing.cc:2553: static const double TRUST_TAU_MIN        = 0.10;   // τ_min eligibility floor (Eq. 3.42)
+      scratch/routing.cc:3825: //    runs (Eqs. 3.39/3.42-3.43) — same mechanism the REAUTH block below
+      scratch/routing.cc:3897: // functions before PemApplyMitigation runs (Eqs. 3.39/3.42-3.43).
+      scratch/routing.cc:4149: // Eq. 3.42/3.43 Tier-2 promotion precondition, enforced as a hard gate:
+      scratch/routing.cc:4156: // Eq. 3.42/3.43, not as an advisory check — rather than admitting an
+      scratch/routing.cc:4402: // to TrustReassignController()'s zone reassignment (Eqs. 3.42-3.43). This
+      scratch/routing.cc:4576: // Eqs. 3.42–3.43: reassign zone from compromised controller to backup.
+      scratch/routing.cc:4600: // Eq. 3.42: check threshold τ_{C_j} < τ_min^C
+      ... and 5 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.43
+    PDF context : as defined in Eq. 3.43:
+    Source hits : 11
+      scratch/routing.cc:3825: //    runs (Eqs. 3.39/3.42-3.43) — same mechanism the REAUTH block below
+      scratch/routing.cc:3897: // functions before PemApplyMitigation runs (Eqs. 3.39/3.42-3.43).
+      scratch/routing.cc:3915: // management_Node is registered as the backup controller (Eq. 3.43).
+      scratch/routing.cc:4119: // Eq. 3.43: select active peer set P_active of size n_p = 8 by trust ranking.
+      scratch/routing.cc:4149: // Eq. 3.42/3.43 Tier-2 promotion precondition, enforced as a hard gate:
+      scratch/routing.cc:4156: // Eq. 3.42/3.43, not as an advisory check — rather than admitting an
+      scratch/routing.cc:4189: "Trecruit bound violated (Eq. 3.43 promotion latency): node "
+      scratch/routing.cc:4402: // to TrustReassignController()'s zone reassignment (Eqs. 3.42-3.43). This
+      ... and 3 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.44
+    PDF context : assignment per Eq. 3.44 is triggered, transferring zone management to Ck∗ per
+    Source hits : 8
+      scratch/routing.cc:2549: // ── Trust-weighted peer selection (§3.4.11, Eqs. 3.37–3.44, 3.51) ──────────
+      scratch/routing.cc:2554: static const double TRUST_TAU_MIN_CTRL   = 0.30;   // τ_min^C controller reassignment threshold (Eq. 3.44)
+      scratch/routing.cc:3399: // ── Bootstrap phase check (§3.4.11, Eq. 3.44) ───────────────────────────────
+      scratch/routing.cc:4201: // (Algorithm 4 lines 2-7, Eqs. 3.44-3.46). See the PemBeaconEvidenceRecord /
+      scratch/routing.cc:10337: // gated by Algorithm 4's δ-divergence check (lines 2-7, Eqs. 3.44-3.46).
+      scratch/routing.cc:154004: //                          BlacklistBeacon V2V mitigation; Rmin=8 bootstrap (Eq. 3.44)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:129: // Thesis §3.1.3 (Eq. 3.44): OBU peers require Rmin = 8 detection rounds to build
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1591: // Rmin=8 bootstrap (Eq. 3.44): Tier 2 OBU peers need RMIN_BOOTSTRAP rounds
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.45
+    PDF context : detection (Eq. 3.45).
+    Source hits : 1
+      scratch/routing.cc:4433: << " (Eq.3.45)  delta_thresh=" << thresh << " (Eq.3.46)  -> "
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.46
+    PDF context : on the RSU’s signed beacon evidence record Bnk (t) (Eq. 3.46):
+    Source hits : 21
+      scratch/routing.cc:2087: // B_nk(t) (Eq. 3.46) after the silence point, so ι_v's Case 3 should fire.
+      scratch/routing.cc:2744: // getTrustedEvidence(τ_min^gt) (Eq. 3.46) and the controller-divergence check
+      scratch/routing.cc:3012: // Issue 12 fix — populates g_peer_beacon_evidence (B_nk(t), Eq. 3.46). Called
+      scratch/routing.cc:3045: // Range gate (write-site fix): B_nk(t) (Eq. 3.46) is defined as
+      scratch/routing.cc:3053: // E_t^trusted = ⋃ B_nk(t) (Eq. 3.46), which Eq. 3.47's controller-
+      scratch/routing.cc:4120: // E_t^trusted = ⋃_{n_k ∈ P_active, τ_k ≥ τ_min^gt} B_{n_k}(t) — Eq. 3.46.
+      scratch/routing.cc:4201: // (Algorithm 4 lines 2-7, Eqs. 3.44-3.46). See the PemBeaconEvidenceRecord /
+      scratch/routing.cc:4204: // Eq. 3.46: E_t^trusted's peer set — P_active members whose τ_k ≥ τ_min^gt.
+      ... and 13 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.47
+    PDF context : k∈Papprove τk        2                      Trust-weighted PBFT acceptance condition (Eq. 3.47).
+    Source hits : 21
+      scratch/routing.cc:745: // PBFT_CONSENSUS(A) — Algorithm 4 line 8 / Eq. 3.47-3.48. Trust-weighted quorum:
+      scratch/routing.cc:2394: // ── Controller-divergence mechanism (Eq. 3.47-3.48): independent detection
+      scratch/routing.cc:2745: // δ_t = |E_C(t) △ E_trusted(t)| (Eq. 3.47), gated by δ_thresh (Eq. 3.48).
+      scratch/routing.cc:3053: // E_t^trusted = ⋃ B_nk(t) (Eq. 3.46), which Eq. 3.47's controller-
+      scratch/routing.cc:3590: // Eq. 3.47 trust-weighted quorum: gather the actual consortium peer
+      scratch/routing.cc:3611: // Flagged peers contribute no voting weight (Eq. 3.47).
+      scratch/routing.cc:3615: // weighting from Eq. 3.47's ratio while keeping the same 2/3
+      scratch/routing.cc:4241: // Eq. 3.47: δ_t = |E_C(t) △ E_trusted(t)|. An edge is "trusted-corroborated"
+      ... and 13 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.48
+    PDF context : manipulation and is defined in Eq. 3.48:
+    Source hits : 15
+      scratch/routing.cc:745: // PBFT_CONSENSUS(A) — Algorithm 4 line 8 / Eq. 3.47-3.48. Trust-weighted quorum:
+      scratch/routing.cc:752: // not the raw count — this preserves the Eq. 3.48 safety property that
+      scratch/routing.cc:2394: // ── Controller-divergence mechanism (Eq. 3.47-3.48): independent detection
+      scratch/routing.cc:2745: // δ_t = |E_C(t) △ E_trusted(t)| (Eq. 3.47), gated by δ_thresh (Eq. 3.48).
+      scratch/routing.cc:4332: // Eq. 3.48: δ_thresh = ⌈(1 + τ_prop/T_b) · λ̂ · 2·r_comm⌉ + 1. τ_prop reuses
+      scratch/routing.cc:4344: //      traversal delay -- 8*T_b at N=200) where the paper's own Eq. 3.48
+      scratch/routing.cc:4371: // Eq. 3.48: tau_prop is the propagation delay between vehicles, RSUs,
+      scratch/routing.cc:4446: << " > delta_thresh=" << thresh << " (Eq. 3.48)\n";
+      ... and 7 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.49
+    PDF context : ing trust-weighted PBFT consensus per Eq. 3.49 among RSU Fabric peers, with
+    Source hits : 4
+      scratch/SDVN project /SDVN-Temporal-Attacks/crypto/teta_guard_filter.h:377: // m' = m ‖ τs ‖ nonce  (Eq. 3.49). m identifies WHAT is being claimed: the
+      scratch/SDVN project /SDVN-Temporal-Attacks/crypto/teta_guard_filter.h:381: // the authenticated payload and the replay cache, matching Eq. 3.49's single
+      scratch/SDVN project /SDVN-Temporal-Attacks/crypto/teta_guard_filter.h:457: // fold it into m' = m‖τs‖nonce (Eq. 3.49). The novelty CHECK against
+      scratch/SDVN project /SDVN-Temporal-Attacks/crypto/teta_guard_filter.h:762: // `state` is retrieved) so Step 1's m' = m‖τs‖nonce (Eq. 3.49) can reuse
+
+[PASS - IMPLEMENTED (confirmed via curated manual review, see note)]  Eq 3.50
+    PDF context : In Eq. 3.50, the right-hand side exceeds 1 for all f ≥ 1, so the condition reduces
+    MANUAL REVIEW: Eq. 3.50 is an analytical DERIVATION step ('the right-hand side exceeds 1 for all f>=1, so the condition reduces to tau_B < tau_H') used to justify Eq. 3.42's Byzantine trust threshold in the thesis narrative, not a separate runtime computation.
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Eq 3.51
+    PDF context : is constructed as Eq. 3.51:
+    Source hits : 5
+      scratch/routing.cc:2549: // ── Trust-weighted peer selection (§3.4.11, Eqs. 3.37–3.44, 3.51) ──────────
+      scratch/routing.cc:2600: bool           flagged;       // LW/FS detection flag (Eq. 3.51 ¬flaggedk)
+      scratch/routing.cc:4092: // Eq. 3.51 / Eq. 3.40: eligibility check.
+      scratch/routing.cc:4455: // §3.4.11 Stage-2 recurring monitor tick — Eq. 3.51 continuous re-evaluation.
+      scratch/routing.cc:4671: // No-RSU mode: ControllerRevokedBeacon propagated over V2V (Eq. 3.51 enforcement)
+
+[PASS - IMPLEMENTED (confirmed via curated manual review, see note)]  Eq 3.53
+    PDF context : filter in Eq. 3.53. The ledger record is retained and monitoring continues.
+    MANUAL REVIEW: Eq. 3.53 (P_active membership excludes quarantined/removed nodes) IS implemented -- TrustSelectActivePeers() in routing.cc filters exactly this way -- but the surrounding code cites it as 'Eq. 3.43' (peer-set selection) and 'Eq. 3.46' (E_t^trusted) instead of 3.53 specifically. Citation-number drift only.
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Algorithm 1
+    PDF context : node runs the LW signature detector (Algorithm 1) locally on beacons it directly
+    Source hits : 18
+      scratch/routing.cc:2125: // ── Algorithm 1 sliding-window cap W_max (event count, lines 3-5) ──────────
+      scratch/routing.cc:2135: // |W| per Algorithm 1 so high-traffic periods cannot grow the window
+      scratch/routing.cc:2666: // Both Algorithm 1 (LW) and Algorithm 3 (LW-MITIGATE) run locally at each
+      scratch/routing.cc:2677: // places detection logic inside each trusted node n_k running Algorithm 1
+      scratch/routing.cc:4954: // Algorithm 1 lines 3-5: if |W| > W_max then REMOVE_OLDEST(W).
+      scratch/routing.cc:6523: // ── §3.1.3 trusted-node grouping key for Algorithm 1's per-node state ────────
+      scratch/routing.cc:6594: // §3.1.3 p.20 — Algorithm 1 (LW) runs at each trusted node nk independently.
+      scratch/routing.cc:6607: // sender-timestamp staleness) — but Algorithm 1's own EVAL_SIG
+      ... and 10 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Algorithm 2
+    PDF context : receives, and the FS Temporal GNN (Algorithm 2) on its local graph snapshot
+    Source hits : 13
+      scratch/routing.cc:159251: // ── TGN pipeline finalisation (Algorithm 2 FS-DETECT) ────────────────────
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:5: // Paper reference: Section 3.4.3 and Algorithm 2 (FS-DETECT)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:303: // Zero-initialised on first contact per Algorithm 2 (FS-DETECT).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:333: //  SECTION 4  TGNDetector class  (Algorithm 2: FS-DETECT)
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:414: // Zero-init new nodes on first contact (Algorithm 2 FS-DETECT, Eq. 3.36).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:711: // Issue: per-trusted-node isolation (§3.1.3, Algorithm 2's nk parameter).
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:1977: // Write BeaconEvidenceRecord B_nk(t) observations (Algorithm 2/4, Eq. 3.46
+      scratch/SDVN project /SDVN-Temporal-Attacks/tgn/tgn_core.cc:2283: // Gap 2 — Algorithm 2, line 23: SUBMITTOFABRIC(nk, A, B_nk(t))
+      ... and 5 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Algorithm 3
+    PDF context : novelty (Eq. 3.17). The complete procedure is given in Algorithm 3.
+    Source hits : 37
+      scratch/routing.cc:1557: // Reports the real Algorithm 3 (Eqs. 3.15-3.17) beacon verification outcome
+      scratch/routing.cc:1563: std::cout << "[CRYPTO] Real beacon verify (Algorithm 3, live wire path): "
+      scratch/routing.cc:2666: // Both Algorithm 1 (LW) and Algorithm 3 (LW-MITIGATE) run locally at each
+      scratch/routing.cc:2828: // ── Crypto pre-filter state (Algorithm 3, Eqs. 3.15-3.17) ─────────────────
+      scratch/routing.cc:7404: //   • Algorithm 3 (LW-MITIGATE, §3.4.2, Fig. 3.15): HMAC + freshness + nonce only
+      scratch/routing.cc:7408: //     Described separately from Algorithm 3.
+      scratch/routing.cc:7411: // not a literal mapping of Algorithm 3.  The document's lightweight pipeline diagram
+      scratch/routing.cc:7415: // Structural mapping to Algorithm 3 (§3.4.2, Steps 1–3):
+      ... and 29 more occurrence(s)
+
+[PASS - IMPLEMENTED IN SOURCE (auto-detected)]  Algorithm 4
+    PDF context : contract in Algorithm 4 executes Revoke-Session-Key(Vk ), only the d KEKs
+    Source hits : 34
+      scratch/routing.cc:728: // / A5 runtime-override globals); needed here so the Algorithm 4 VERIFY_QUORUM
+      scratch/routing.cc:736: // ── Algorithm 4 (FS-MITIGATE) enforcement gates ───────────────────────────────
+      scratch/routing.cc:743: // abort semantics of Algorithm 4 lines 8-11 (PBFT) and 21-27 (VERIFY_*).
+      scratch/routing.cc:745: // PBFT_CONSENSUS(A) — Algorithm 4 line 8 / Eq. 3.47-3.48. Trust-weighted quorum:
+      scratch/routing.cc:764: // VERIFY_THRESHOLD_SIG(sigma_v) — Algorithm 4 lines 40-50 / Eq. 3.28.
+      scratch/routing.cc:869: // VERIFY_QUORUM(W_v, t) — Algorithm 4 lines 52-66 / Eqs. 3.29-3.32 (Algorithm
+      scratch/routing.cc:876: // reported it, real AND fabricated alike), matching Algorithm 4's own
+      scratch/routing.cc:2164: // (Algorithm 4 VERIFY_QUORUM gate) so it reads the same live, possibly
+      ... and 26 more occurrence(s)
+
