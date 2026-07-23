@@ -1013,29 +1013,33 @@ static double __attribute__((unused)) TimedFreshness()
 // Each flag disables exactly one layer of the full detection pipeline.
 // Default (0) = full stack enabled.  Set to 1 on the command line to ablate.
 //
-//  --no_crypto=1      A6: bypass Stage-0 TetaGuardCryptoFilter (Eqs. 3.15-3.17)
-//  --no_tgn=1         A1/A2: skip TGN_ProcessEventInline + TGN_RunPipeline
-//  --no_blockchain=1  A1/A2: suppress blockchain smart-contract mitigation
+// Table 4.2 ID corrections (2026-07-24): four flags below had the wrong PDF
+// ablation ID in their comments (functionally correct, mislabeled). Correct
+// mapping now used throughout:
+//  --no_crypto=1      A5 (was mislabeled A6): bypass Stage-0 TetaGuardCryptoFilter (Eqs. 3.15-3.17)
+//  --no_tgn=1         A1 (was mislabeled A1/A2): skip TGN_ProcessEventInline + TGN_RunPipeline
+//  --no_blockchain=1  A8 (was mislabeled A1/A2): suppress blockchain smart-contract mitigation
 //  --static_gcn=1     A3: freeze GRU memory (φ=0, no temporal encoding); edge
 //                         freshness stays but Eq. 3.22 GRU gate update is skipped
 //  --no_mobility_adapt=1  A4: fix ρ_max to a static density and fix W to
 //                             PEM_HEARTBEAT_WINDOW_S; skip mobility calibration
-//  --no_lbs=1         A5: suppress ME-S3 sig[8] location-binding verification (Eq. 3.11).
-//                         NOT Eq. 3.28 (that is TetaGuardLocBindVerify's real ML-DSA-87
-//                         signature check, a SEPARATE Stage-0 mechanism — see Gap 11 note
-//                         at TetaGuardLocBindVerify in .crypto_src/teta_guard_filter.h).
+//  --no_lbs=1         A7 (was mislabeled A5): suppress ME-S3 sig[8] location-binding
+//                         verification (Eq. 3.11). NOT Eq. 3.28 (that is
+//                         TetaGuardLocBindVerify's real ML-DSA-87 signature check, a
+//                         SEPARATE Stage-0 mechanism — see Gap 11 note at
+//                         TetaGuardLocBindVerify in .crypto_src/teta_guard_filter.h).
 //
 // These flags are mutually independent; combine to create compound baselines.
 // Declared here (ahead of MeasureKEM/CryptoDeriveVehicleSessionKeys below,
 // which reference g_abl.single_kem) instead of further down near the LW
 // scoring code, purely for C++ ordering.
 struct AblationFlags {
-    bool no_crypto        = false;   // A6
-    bool no_tgn           = false;   // A1 / A2
-    bool no_blockchain    = false;   // A1 / A2
+    bool no_crypto        = false;   // A5 (Table 4.2 — was mislabeled A6)
+    bool no_tgn           = false;   // A1 (Table 4.2 — was mislabeled A1/A2)
+    bool no_blockchain    = false;   // A8 (Table 4.2 — was mislabeled A1/A2)
     bool static_gcn       = false;   // A3
     bool no_mobility_adapt= false;   // A4
-    bool no_lbs           = false;   // A5
+    bool no_lbs           = false;   // A7 (Table 4.2 — was mislabeled A5)
     bool no_lw            = false;   // A2: disable LW rule-based signature engine, FS/TGN only
     bool no_threshold_sig = false;   // A6: BSHH t-of-n threshold sig -> majority-count heuristic
     bool equal_weight_pbft= false;   // A9: PBFT peer votes weighted 1 instead of tau_k
@@ -1043,7 +1047,32 @@ struct AblationFlags {
     bool no_lkh           = false;   // A11: naive flat re-key instead of O(log n) LKH revoke
     bool no_divergence_detector = false; // A12: controller-origin blind (skip delta-divergence gate)
     bool single_kem       = false;   // A13: ML-KEM-1024 only, no HQC-5 (measurement-only)
+    double kem_handshake_rate = 0.0; // A13 X-variable: r_hs (vehicles/s); 0 = unthrottled burst at t=0 (default, prior behaviour)
     bool no_reassign      = false;   // A14: skip TrustReassignController on flagged controller
+    // A7 X-variable (Table 4.2): echo reporter distance from claimed link,
+    // d in {r_comm, 1.5*r_comm, 3*r_comm}. 0 = disabled (default) — natural
+    // shuffled candidate order, unchanged from prior behaviour. >0 reorders
+    // ME-S1's echo-attacker candidate list by proximity to (ratio * r_comm)
+    // from the real V1<->V2 link before pair assignment, so the scheduled
+    // echo pairs are the ones closest to the requested distance bucket.
+    double echo_dist_ratio = 0.0;
+    // A8 X-variable (Table 4.2): intervals post-alert without enforcement,
+    // k in {0,1,5,10} beacon intervals. 0 (default) = immediate enforcement,
+    // unchanged from prior behaviour. See PemApplyMitigation's use of this.
+    uint32_t mitigation_delay_intervals = 0;
+    // A9 X-variable (Table 4.2): Byzantine peers in the active consensus
+    // set, f_b in {0,1,2}. 0 (default) = only the attacker-as-peer withholds
+    // its vote (prior behaviour). See PemApplyMitigation's PBFT voting loop.
+    uint32_t byzantine_peer_count = 0;
+    // A10 X-variable (Table 4.2): synthetic detector false-positive rate,
+    // p_FP in {0.0, 0.02, 0.05} (paper sweep 0%/2%/5%). 0.0 (default) =
+    // disabled, unchanged from prior behaviour. See PemRecordObservation.
+    double detector_fp_rate = 0.0;
+    // A14 X-variable (Table 4.2): compromised controllers out of N_Controllers,
+    // n_C in {1,2,3} (paper sweep, out of 4). 0 (default) = disabled — only
+    // controller_Node.Get(0) is registered in the reassignment pool, unchanged
+    // from prior behaviour. See TrustInit()'s use of this.
+    uint32_t compromised_controllers = 0;
 };
 static AblationFlags g_abl;
 
@@ -1278,92 +1307,101 @@ static void KemSimLatencyFire(uint32_t vehicle_idx, double handshake_ms)
                  " (real handshake was " << handshake_ms << " ms)\n";
 }
 
+#ifdef HAVE_LIBOQS
+// A13 (--kem_handshake_rate=r_hs): accumulator state for the per-vehicle
+// registration body below, shared between the original synchronous burst
+// path (rate=0, byte-identical to previous behaviour) and the new
+// Simulator::Schedule-staggered path used when a finite arrival rate is
+// requested. PDF Table 4.2 X-variable: KEM handshake rate r_hs in {10, 50,
+// 100, 200}/s — this is the rate at which vehicle registration REQUESTS
+// arrive at the RSU keystore, not a throttle on how fast liboqs itself can
+// compute; each handshake's own cost (handshake_ms) is measured exactly as
+// before via kem_get_last_handshake_only_ms(), only the ARRIVAL spacing
+// between vehicles changes.
+static double   g_kem_handshake_ms_sum = 0.0, g_kem_handshake_ms_max = 0.0;
+static uint32_t g_kem_handshake_timed_count = 0, g_kem_handshake_over_budget = 0;
+static uint32_t g_kem_ok_count = 0;
+
+// Body of the original per-vehicle loop iteration, extracted unchanged so it
+// can be invoked either inline (rate=0 burst) or via Simulator::Schedule
+// (rate>0 staggered arrivals). No behavioural change versus the prior inline
+// loop body for a single vehicle.
+static void CryptoRegisterOneVehicleKEM(uint32_t i)
+{
+    uint8_t vid[16] = {};
+    vid[0] = (uint8_t)(i & 0xFFu);
+    vid[1] = (uint8_t)((i >> 8) & 0xFFu);
+
+    VehicleKeyRecord *rec = kem_lookup(vid);
+    if (!rec) {
+        rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i],
+                                    !g_abl.single_kem);
+        double handshake_ms = kem_get_last_handshake_only_ms();
+        if (g_abl.single_kem) {
+            CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake_SingleKEM",
+                         handshake_ms * 1000.0, i, "Session_Setup", false);
+        }
+        g_kem_handshake_ms_sum += handshake_ms;
+        if (handshake_ms > g_kem_handshake_ms_max) g_kem_handshake_ms_max = handshake_ms;
+        g_kem_handshake_timed_count++;
+        if (handshake_ms > KEM_HANDSHAKE_BUDGET_MS) g_kem_handshake_over_budget++;
+        CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake",
+                     handshake_ms * 1000.0, i, "Session_Setup", false);
+        Simulator::Schedule(Seconds(handshake_ms / 1000.0),
+                             &KemSimLatencyFire, i, handshake_ms);
+    }
+    if (rec) {
+        memcpy(g_vehicle_session_keys[i], rec->session_key, SESSION_KEY_LEN);
+        g_vehicle_session_key_ready[i] = true;
+        g_vehicle_dilithium_sk_ready[i] = true;
+        g_kem_ok_count++;
+    }
+}
+
+static void CryptoPrintKEMSummary(uint32_t n)
+{
+    std::cout << "[KEM] Registered " << g_kem_ok_count << "/" << n
+              << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
+              << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).\n";
+    if (g_kem_handshake_timed_count > 0) {
+        const double avg_ms = g_kem_handshake_ms_sum / (double)g_kem_handshake_timed_count;
+        std::cout << "[KEM][10ms budget]"
+                  << (g_abl.single_kem ? " (A13:single_kem — ML-KEM-1024-only, HQC-5 skipped, real measurement)" : "")
+                  << (g_abl.kem_handshake_rate > 0.0 ? " (A13:kem_handshake_rate=" + std::to_string(g_abl.kem_handshake_rate) + "/s)" : "")
+                  << " " << g_kem_handshake_timed_count
+                  << " handshakes timed: avg=" << avg_ms << " ms, max="
+                  << g_kem_handshake_ms_max << " ms, over_budget=" << g_kem_handshake_over_budget
+                  << "/" << g_kem_handshake_timed_count << " (budget="
+                  << KEM_HANDSHAKE_BUDGET_MS << " ms)\n";
+    }
+}
+#endif
+
 static void CryptoDeriveVehicleSessionKeys()
 {
 #ifdef HAVE_LIBOQS
     if (!g_crypto_ready) return;
     uint32_t n = (N_Vehicles > 0u) ? N_Vehicles : 1u;
     if (n > MAX_VEHICLES) n = MAX_VEHICLES;
-    uint32_t ok_count = 0;
-    double handshake_ms_sum = 0.0, handshake_ms_max = 0.0;
-    uint32_t handshake_timed_count = 0, handshake_over_budget = 0;
-    for (uint32_t i = 0; i < n; i++) {
-        uint8_t vid[16] = {};
-        vid[0] = (uint8_t)(i & 0xFFu);
-        vid[1] = (uint8_t)((i >> 8) & 0xFFu);
 
-        VehicleKeyRecord *rec = kem_lookup(vid);
-        // rec pre-existing here only happens for i==0 (registered earlier by
-        // MeasureKEM(0.0,0,...)'s TimedKemRegister call, which already
-        // captured g_vehicle_dilithium_sk[0]) — so only the fresh-registration
-        // branch needs to capture sk_vi itself. Only the fresh-registration
-        // branch is timed for the handshake-latency budget below, since a
-        // pre-existing lookup isn't a handshake.
-        if (!rec) {
-            // A13 (--single_kem=1): pass hqc5_enabled=false through to
-            // kem_register_vehicle() -> kem_vehicle_keygen/kem_rsu_encapsulate/
-            // kem_vehicle_decapsulate (kem.cc), which then genuinely SKIP every
-            // HQC-5 step (keypair fill, kmsg buffer bytes, ct_hqc, HKDF input
-            // half — see the hqc5_enabled branches added there) instead of
-            // still doing the hybrid work and reporting a synthetic ratio.
-            // g_kem_handshake_only_ms (read below via
-            // kem_get_last_handshake_only_ms()) is real clock_gettime()
-            // wall-clock time around that same reduced call, so the resulting
-            // handshake_ms is a REAL measurement of less work being done, not
-            // an estimate. Default (flag off) is hqc5_enabled=true, so the
-            // hybrid path here is byte-for-byte unchanged from before.
-            rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i],
-                                        !g_abl.single_kem);
-            // kem_get_last_handshake_only_ms() isolates just Steps 1/3/4
-            // (kem_vehicle_keygen + kem_rsu_encapsulate + kem_vehicle_decapsulate)
-            // — the KEM handshake proper — excluding the one-time Dilithium5
-            // identity-keygen + CA cert-issuance PKI bootstrap that also
-            // happens inside kem_register_vehicle(). The paper's "10ms
-            // V2X-compliant" claim is about the handshake, not that PKI setup.
-            double handshake_ms = kem_get_last_handshake_only_ms();
-            if (g_abl.single_kem) {
-                CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake_SingleKEM",
-                             handshake_ms * 1000.0, i, "Session_Setup", false);
-            }
-            handshake_ms_sum += handshake_ms;
-            if (handshake_ms > handshake_ms_max) handshake_ms_max = handshake_ms;
-            handshake_timed_count++;
-            if (handshake_ms > KEM_HANDSHAKE_BUDGET_MS) handshake_over_budget++;
-            // Feed into the shared crypto-latency framework (g_crypto_records /
-            // g_crypto_pending_delay_us) so this measurement is consistent with
-            // every other timed crypto op (HMAC/Dilithium/threshold-sig): it
-            // becomes visible in the existing latency reports, and — under
-            // --enable_crypto_latency=2 — this real (wall-clock) cost is
-            // folded into the SIMULATED event clock (the next NS-3 event for
-            // this vehicle fires this many microseconds later in sim time),
-            // rather than staying a purely off-timeline side measurement.
-            CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake",
-                         handshake_ms * 1000.0, i, "Session_Setup", false);
-
-            // Unconditional (default-on) simulated-latency injection, scoped
-            // to KEM only — see KemSimLatencyFire comment above.
-            Simulator::Schedule(Seconds(handshake_ms / 1000.0),
-                                 &KemSimLatencyFire, i, handshake_ms);
+    if (g_abl.kem_handshake_rate > 0.0) {
+        // A13 X-variable sweep: stagger registration REQUEST arrivals at the
+        // requested rate (vehicles/s) instead of one synchronous burst at
+        // t=0. Each vehicle's own handshake cost is unaffected — this models
+        // the RSU keystore receiving requests at a bounded arrival rate
+        // (queueing/throughput scenario), matching Table 4.2's r_hs sweep.
+        const double interval_s = 1.0 / g_abl.kem_handshake_rate;
+        for (uint32_t i = 0; i < n; i++) {
+            Simulator::Schedule(Seconds(i * interval_s), &CryptoRegisterOneVehicleKEM, i);
         }
-        if (rec) {
-            memcpy(g_vehicle_session_keys[i], rec->session_key, SESSION_KEY_LEN);
-            g_vehicle_session_key_ready[i] = true;
-            g_vehicle_dilithium_sk_ready[i] = true;
-            ok_count++;
+        Simulator::Schedule(Seconds(n * interval_s + 0.001), &CryptoPrintKEMSummary, n);
+    } else {
+        // Default (flag off, rate=0): original synchronous burst at t=0,
+        // byte-identical to previous behaviour.
+        for (uint32_t i = 0; i < n; i++) {
+            CryptoRegisterOneVehicleKEM(i);
         }
-    }
-    std::cout << "[KEM] Registered " << ok_count << "/" << n
-              << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
-              << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).\n";
-    if (handshake_timed_count > 0) {
-        const double avg_ms = handshake_ms_sum / (double)handshake_timed_count;
-        std::cout << "[KEM][10ms budget]"
-                  << (g_abl.single_kem ? " (A13:single_kem — ML-KEM-1024-only, HQC-5 skipped, real measurement)" : "")
-                  << " " << handshake_timed_count
-                  << " handshakes timed: avg=" << avg_ms << " ms, max="
-                  << handshake_ms_max << " ms, over_budget=" << handshake_over_budget
-                  << "/" << handshake_timed_count << " (budget="
-                  << KEM_HANDSHAKE_BUDGET_MS << " ms)\n";
+        CryptoPrintKEMSummary(n);
     }
 #endif
 }
@@ -3438,6 +3476,22 @@ PemComputeAuroc()
 static void
 PemRecordObservation(bool actualAttack, double score, bool alertRaised)
 {
+    // A10 X-variable (Table 4.2): synthetic detector false-positive rate,
+    // p_FP in {0%, 2%, 5%} (paper sweep). Single insertion point — every
+    // PemRecordObservation call site funnels through here, and callers check
+    // the pem_last_alert global (set below) afterward to decide whether to
+    // trigger PemApplyMitigation, so flipping alertRaised here is picked up
+    // by the whole existing FP/mitigation pipeline with no other call sites
+    // touched. Only applies to genuinely benign events the real detector
+    // didn't already flag (actualAttack==false && alertRaised==false) —
+    // doesn't touch real attack events or real detector false positives.
+    if (!actualAttack && !alertRaised && g_abl.detector_fp_rate > 0.0) {
+        static Ptr<UniformRandomVariable> abl_fp_rng = CreateObject<UniformRandomVariable>();
+        if (abl_fp_rng->GetValue(0.0, 1.0) < g_abl.detector_fp_rate) {
+            alertRaised = true;
+        }
+    }
+
     pem_last_detection_score = score;
     pem_last_alert = alertRaised;
 
@@ -3636,6 +3690,10 @@ struct PemStageTimer {
     }
 };
 
+// A8 X-variable state: first alert time per attacker_id, used to gate the
+// post-alert enforcement grace window (g_abl.mitigation_delay_intervals).
+static std::map<uint32_t, double> g_first_alert_time_per_attacker;
+
 static std::string
 PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenario_tag,
                     const PemQuorumEvidence *ev = nullptr)
@@ -3648,10 +3706,33 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     // boundary between consensus and enforcement).
     const auto __pemMitStart = std::chrono::steady_clock::now();
 
-    // A1/A2 (--no_blockchain=1): suppress all smart-contract mitigation actions.
+    // A8 (--no_blockchain=1): suppress all smart-contract mitigation actions.
     // Detection metrics (TP/FP/MCC) still accumulate; only enforcement is skipped.
     if (g_abl.no_blockchain)
-        return "[A1/A2: blockchain mitigation suppressed (--no_blockchain=1)]\n";
+        return "[A8: blockchain mitigation suppressed (--no_blockchain=1)]\n";
+
+    // A8 X-variable (Table 4.2): intervals post-alert without enforcement,
+    // k in {0,1,5,10} beacon intervals. Unlike --no_blockchain (permanent
+    // removal), this delays enforcement by k*T_b after the FIRST alert for a
+    // given attacker, then enforces normally — testing how much topology
+    // damage accrues while detection has fired but mitigation is withheld.
+    // Self-contained (no Simulator::Schedule refactor of every call site):
+    // gated purely on elapsed sim time since first alert for this attacker_id.
+    if (g_abl.mitigation_delay_intervals > 0) {
+        auto it = g_first_alert_time_per_attacker.find(attacker_id);
+        if (it == g_first_alert_time_per_attacker.end()) {
+            g_first_alert_time_per_attacker[attacker_id] = t_now;
+            it = g_first_alert_time_per_attacker.find(attacker_id);
+        }
+        const double grace_s = g_abl.mitigation_delay_intervals * PEM_BEACON_INTERVAL_S;
+        if (t_now - it->second < grace_s) {
+            return "[A8: enforcement withheld, " +
+                   std::to_string(g_abl.mitigation_delay_intervals) +
+                   " beacon-interval grace window (--mitigation_delay_intervals), " +
+                   std::to_string(t_now - it->second) + "s/" + std::to_string(grace_s) +
+                   "s elapsed since first alert]\n";
+        }
+    }
 
     // ⌈log₂(N)⌉ approximates both the network hop-diameter for a well-connected
     // mesh and the LKH tree depth for O(log n) KEK updates.
@@ -3718,6 +3799,15 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         if (peer_ids.empty()) peer_ids.push_back(attacker_id);
 
         double sum_active_tau = 0.0, sum_approve_tau = 0.0;
+        // A9 X-variable (Table 4.2): Byzantine peers in the active consensus
+        // set, f_b in {0,1,2}, ADDITIONAL to the single attacker-as-peer
+        // non-vote already modeled below. The first g_abl.byzantine_peer_count
+        // non-attacker peers encountered (deterministic iteration order) also
+        // withhold their approval vote — still "active" (counted in
+        // sum_active_tau, so quorum math sees them as present) but dishonest
+        // (excluded from sum_approve_tau), testing trust-weighted vs
+        // equal-weight PBFT's resilience as more voters go Byzantine.
+        uint32_t byzantine_remaining = g_abl.byzantine_peer_count;
         for (uint32_t pid : peer_ids) {
             double tau = TRUST_TAU_TIER1_INIT;
             bool   flagged = false;
@@ -3735,8 +3825,14 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
             sum_active_tau += vote_weight;
             // A Byzantine peer does not vote to approve detection of its own
             // attack; every other present peer votes honestly (single
-            // external forger threat model per the doc comment above).
-            if (pid != attacker_id) sum_approve_tau += vote_weight;
+            // external forger threat model per the doc comment above), unless
+            // consumed by the A9 f_b Byzantine-peer count above.
+            bool is_byzantine_extra = false;
+            if (pid != attacker_id && byzantine_remaining > 0) {
+                is_byzantine_extra = true;
+                byzantine_remaining--;
+            }
+            if (pid != attacker_id && !is_byzantine_extra) sum_approve_tau += vote_weight;
         }
 
         uint32_t f = 0, q_needed = 0;
@@ -4127,6 +4223,48 @@ static void TrustInit()
                                true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
         g_ctrl_table.push_back({bid, TRUST_TAU_TIER1_INIT, 1u});
         g_backup_ctrl_ns3_id = bid;
+    }
+    // Correctness fix (2026-07-24, discovered while implementing A14):
+    // controller_Node actually creates N_Controllers real nodes
+    // (controller_Node.Create(N_Controllers) in main()), but only Get(0) was
+    // ever registered here — the paper's own Eq. 3.44 defines the backup as
+    // "the highest-trust available controller other [than the compromised
+    // one]", selected via Eq. 3.43's arg-max over the FULL controller pool,
+    // not a fixed single backup. TrustReassignController's arg-max search
+    // (see its own code) was already written generically over g_ctrl_table
+    // with no 2-node assumption — it was just starved of the other
+    // N_Controllers-1 real candidates. This is a default-system correctness
+    // fix (applies to every run, not just the A14 ablation): register every
+    // controller_Node into the real reassignment pool, matching the paper's
+    // actual design.
+    for (uint32_t i = 1; i < controller_Node.GetN(); i++) {
+        uint32_t xid = controller_Node.Get(i)->GetId();
+        g_trust_table[xid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
+                               true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
+        g_ctrl_table.push_back({xid, TRUST_TAU_TIER1_INIT, i + 1u});
+    }
+    // A14 (--compromised_controllers=nC, Table 4.2 X-variable): pre-flag the
+    // first (nC-1) of the additional real controllers above as already
+    // compromised/quarantined (tau=0) — shrinking the pool
+    // TrustReassignController's arg-max search actually has to work with,
+    // testing A14's "n_C compromised out of N_Controllers" question. No
+    // effect when unset (default 0) — the pool-registration above already
+    // happens unconditionally as the corrected default behaviour.
+    if (g_abl.compromised_controllers > 1 && controller_Node.GetN() > 1) {
+        uint32_t already_flagged = 0;
+        const uint32_t to_preflag = g_abl.compromised_controllers - 1;
+        for (uint32_t i = 1; i < controller_Node.GetN() && already_flagged < to_preflag; i++) {
+            uint32_t xid = controller_Node.Get(i)->GetId();
+            g_trust_table[xid].tau      = 0.0;
+            g_trust_table[xid].state    = TRUST_QUARANTINE;
+            g_trust_table[xid].flagged  = true;
+            for (auto& c : g_ctrl_table) if (c.ctrl_ns3_id == xid) c.tau = 0.0;
+            already_flagged++;
+        }
+        std::cout << "[A14][compromised_controllers=" << g_abl.compromised_controllers
+                  << "] " << already_flagged << " additional controller(s) pre-flagged "
+                  << "as already compromised (out of " << (controller_Node.GetN() - 1)
+                  << " in the pool).\n";
     }
 
     // §3.4.10: kick off the real, periodic Tier-1 anchor-checkpoint producer.
@@ -10051,6 +10189,36 @@ SelectMutualRangePair(const std::vector<uint32_t>& pool, double atTime)
               << "  effective_range=" << kEffectiveReceptionRadius << "m"
               << "  using unfiltered ordering (ground_truth_valid=false)" << std::endl;
     return pool;
+}
+
+// A7 (--echo_dist_ratio, Table 4.2 X-variable): reorders an ME echo-attacker
+// candidate pool by proximity to (ratio * kEffectiveReceptionRadius) from the
+// real V1<->V2 link's midpoint, ascending — so callers that take the first N
+// candidates get the ones closest to the requested distance bucket
+// (ratio=1.0 -> ~r_comm, 1.5 -> ~1.5*r_comm, 3.0 -> ~3*r_comm). No-op
+// (returns pool unchanged) when ratio<=0, matching prior/default behaviour.
+static std::vector<uint32_t>
+MeReorderEchoCandidatesByDistanceRatio(const std::vector<uint32_t>& pool,
+                                        uint32_t v1_cidx, uint32_t v2_cidx,
+                                        double atTime, double ratio)
+{
+    if (ratio <= 0.0 || pool.empty()) return pool;
+    const Vector p1 = TtwSumoPositionAt(v1_cidx, atTime);
+    const Vector p2 = TtwSumoPositionAt(v2_cidx, atTime);
+    const Vector mid((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0, 0.0);
+    const double target_d = ratio * kEffectiveReceptionRadius;
+
+    std::vector<uint32_t> result = pool;
+    std::sort(result.begin(), result.end(), [&](uint32_t a, uint32_t b) {
+        const double da = std::fabs(PemDistance2d(TtwSumoPositionAt(a, atTime), mid) - target_d);
+        const double db = std::fabs(PemDistance2d(TtwSumoPositionAt(b, atTime), mid) - target_d);
+        return da < db;
+    });
+    std::cout << "[ME][A7] echo_dist_ratio=" << ratio << " target_d=" << target_d
+              << "m — reordered " << result.size() << " candidates by proximity to target"
+              << " (closest: V" << Vehicle_Nodes.Get(result[0])->GetId()
+              << " at " << PemDistance2d(TtwSumoPositionAt(result[0], atTime), mid) << "m)\n";
+    return result;
 }
 
 // Result of scanning a candidate attacker/victim pair's real trajectories
@@ -134318,7 +134486,13 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 		
 		if ((destination_node_id > (total_size+1)) or (destination_node_id < 2))
 		{
-			cout<<"invalid conversion. setting default value to 2"<<endl;
+			// Diagnostic cout removed (2026-07-24): fires per-packet whenever the
+			// parsed byte-array destination ID falls outside [2, total_size+1] —
+			// harmless at N_Vehicles<=200 (near-zero occurrences observed) but
+			// floods stdout badly enough to stall wall-clock progress at larger
+			// scale (N_Vehicles=400: 40k+ prints within a 280s run). Fallback
+			// behaviour (destination_node_id=2) is unchanged, only the print
+			// is removed.
 			destination_node_id = 2;
 		}
 		//cout<<"Converted destination node id is "<<destination_node_id;		
@@ -134755,7 +134929,8 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 			
 			if ((destination_node_id > (total_size+1)) or (destination_node_id < 2))
 			{
-				cout<<"invalid conversion. setting default value to 2"<<endl;
+				// Diagnostic cout removed — see the identical fix's comment at
+				// the sibling occurrence of this check earlier in this file.
 				destination_node_id = 2;
 			}
 			//cout<<"Converted destination node id is "<<destination_node_id;
@@ -154476,13 +154651,16 @@ static int RoutingMain(int argc, char *argv[])
                   g_rsu_overlap_frac);
     // ── Table 4.2 Ablation baseline flags (default 0 = full stack) ───────────
     cmd.AddValue ("no_crypto",
-                  "1 = A6: bypass Stage-0 HMAC/nonce crypto pre-filter (Eqs. 3.15-3.17)",
+                  "1 = A5 (Table 4.2 — was mislabeled A6 here): bypass Stage-0 HMAC/nonce "
+                  "crypto pre-filter (Eqs. 3.15-3.17)",
                   g_abl.no_crypto);
     cmd.AddValue ("no_tgn",
-                  "1 = A1/A2: disable TGN inference (LW rule-based signatures only)",
+                  "1 = A1 (Table 4.2 — was mislabeled A1/A2 here): disable TGN inference "
+                  "(LW rule-based signatures only)",
                   g_abl.no_tgn);
     cmd.AddValue ("no_blockchain",
-                  "1 = A1/A2: suppress blockchain smart-contract mitigation actions",
+                  "1 = A8 (Table 4.2 — was mislabeled A1/A2 here): suppress blockchain "
+                  "smart-contract mitigation actions (No Smart Contract Mitigation)",
                   g_abl.no_blockchain);
     cmd.AddValue ("static_gcn",
                   "1 = A3: freeze GRU memory (phi=0); static GCN, no temporal encoding (Eq. 3.22)",
@@ -154491,8 +154669,10 @@ static int RoutingMain(int argc, char *argv[])
                   "1 = A4: fix rho_max and W to compile-time constants; disable mobility calibration",
                   g_abl.no_mobility_adapt);
     cmd.AddValue ("no_lbs",
-                  "1 = A5: suppress ME-S3 geometric/RSSI check sig[8] (Eq. 3.11; NOT the "
-                  "separate Eq. 3.28 ML-DSA-87 signature check in TetaGuardLocBindVerify)",
+                  "1 = A7 (Table 4.2 — was mislabeled A5 here): suppress ME-S3 "
+                  "geometric/RSSI check sig[8] (Eq. 3.11; NOT the separate Eq. 3.28 "
+                  "ML-DSA-87 signature check in TetaGuardLocBindVerify) — No "
+                  "Location-Binding + Quorum (ME Defence)",
                   g_abl.no_lbs);
     cmd.AddValue ("no_lw",
                   "1 = A2: disable the LW 9-signature rule-based scoring engine; alerts "
@@ -154504,6 +154684,56 @@ static int RoutingMain(int argc, char *argv[])
                   "(PemVerifyThresholdSig, Eq. 3.28) degrades to an unweighted "
                   "majority-count heuristic with no crypto attestation",
                   g_abl.no_threshold_sig);
+    cmd.AddValue ("compromised_controllers",
+                  "A14 X-variable (Table 4.2): compromised controllers out of "
+                  "N_Controllers, n_C in {1,2,3} (paper sweep, out of 4). 0 (default) = "
+                  "disabled, unchanged prior behaviour (only controller_Node.Get(0) "
+                  "registered). >0 registers all N_Controllers real controller nodes "
+                  "into the reassignment pool and pre-flags (nC-1) of them as already "
+                  "compromised/quarantined, shrinking TrustReassignController's real "
+                  "eligible-backup pool. Use with a controller-origin scenario "
+                  "(3,4,7,8,11,12) for A14's comparison.",
+                  g_abl.compromised_controllers);
+    cmd.AddValue ("detector_fp_rate",
+                  "A10 X-variable (Table 4.2): synthetic detector false-positive rate, "
+                  "p_FP in {0.0, 0.02, 0.05} (paper sweep 0%/2%/5%). 0.0 (default) = "
+                  "disabled. >0 probabilistically flips benign, undetected events to "
+                  "alertRaised=true at this rate — feeding into the SAME FP/mitigation "
+                  "pipeline real detector false positives use, so A10's quarantine-vs-"
+                  "immediate-removal comparison can be measured under controlled FP "
+                  "pressure. Use with --no_quarantine=1/0 for A10's full comparison.",
+                  g_abl.detector_fp_rate);
+    cmd.AddValue ("byzantine_peer_count",
+                  "A9 X-variable (Table 4.2): Byzantine peers in the active PBFT "
+                  "consensus set, f_b in {0,1,2} (paper sweep). 0 (default) = only the "
+                  "attacker-as-peer withholds its vote. >0 additionally withholds approval "
+                  "votes from f_b other active peers (deterministic iteration order) — "
+                  "still counted as present for quorum sizing, just dishonest. Use with "
+                  "--equal_weight_pbft=1 for A9's full comparison.",
+                  g_abl.byzantine_peer_count);
+    cmd.AddValue ("mitigation_delay_intervals",
+                  "A8 X-variable (Table 4.2): intervals post-alert without enforcement, "
+                  "k in {0,1,5,10} beacon intervals (paper sweep). 0 (default) = immediate "
+                  "enforcement. >0 withholds FlowMod/BlacklistBeacon/quarantine action for "
+                  "k*T_b seconds after the first alert for a given attacker, then enforces "
+                  "normally — detection/TP/FP/MCC still accumulate throughout.",
+                  g_abl.mitigation_delay_intervals);
+    cmd.AddValue ("echo_dist_ratio",
+                  "A7 X-variable (Table 4.2): ME echo-reporter distance from claimed "
+                  "link, as a ratio of r_comm (paper sweep {1.0, 1.5, 3.0}). 0 (default) "
+                  "= disabled, natural shuffled candidate order. >0 reorders ME-S1's echo "
+                  "candidate pool by proximity to (ratio * r_comm) from the real link "
+                  "before pair assignment.",
+                  g_abl.echo_dist_ratio);
+    cmd.AddValue ("kem_handshake_rate",
+                  "A13 X-variable (Table 4.2): KEM handshake arrival rate r_hs, "
+                  "vehicles/s (paper sweep {10,50,100,200}). 0 (default) = original "
+                  "unthrottled burst — all vehicles register at t=0. >0 staggers "
+                  "vehicle registration requests via Simulator::Schedule at 1/r_hs "
+                  "intervals instead, modelling the RSU keystore receiving requests "
+                  "at a bounded arrival rate; per-handshake cost itself is unaffected, "
+                  "only inter-arrival spacing changes. Use with --single_kem=1 for A13.",
+                  g_abl.kem_handshake_rate);
     cmd.AddValue ("equal_weight_pbft",
                   "1 = A9: PBFT_CONSENSUS votes are counted with equal weight=1 per peer "
                   "instead of weighted by ledger trust score tau_k (Eq. 3.47-3.48)",
@@ -154689,12 +154919,12 @@ static int RoutingMain(int argc, char *argv[])
         g_abl.no_quarantine || g_abl.no_lkh || g_abl.no_divergence_detector ||
         g_abl.single_kem || g_abl.no_reassign) {
         std::cout << "[Ablation] Active flags:";
-        if (g_abl.no_crypto)         std::cout << "  A6:no_crypto";
-        if (g_abl.no_tgn)            std::cout << "  A1/A2:no_tgn";
-        if (g_abl.no_blockchain)     std::cout << "  A1/A2:no_blockchain";
+        if (g_abl.no_crypto)         std::cout << "  A5:no_crypto";
+        if (g_abl.no_tgn)            std::cout << "  A1:no_tgn";
+        if (g_abl.no_blockchain)     std::cout << "  A8:no_blockchain";
         if (g_abl.static_gcn)        std::cout << "  A3:static_gcn";
         if (g_abl.no_mobility_adapt) std::cout << "  A4:no_mobility_adapt";
-        if (g_abl.no_lbs)            std::cout << "  A5:no_lbs";
+        if (g_abl.no_lbs)            std::cout << "  A7:no_lbs";
         if (g_abl.no_lw)                  std::cout << "  A2:no_lw";
         if (g_abl.no_threshold_sig)       std::cout << "  A6:no_threshold_sig";
         if (g_abl.equal_weight_pbft)      std::cout << "  A9:equal_weight_pbft";
@@ -155238,7 +155468,15 @@ static int RoutingMain(int argc, char *argv[])
   			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_0.tcl";
   			break;
   		case (10):
-	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_10.tcl";
+	  		// PDF Experiment 2 (Eq. 4.26) vmax sweep {10,60,100,140} km/h — 200-vehicle
+	  		// Colombo urban trace, uniform edge speed + speedFactor=1.0/speedDev=0.0
+	  		// (no per-vehicle randomisation), generated 2026-07-24. Falls back to the
+	  		// older non-200veh-scale trace below N_Vehicles=100, matching case(30)'s
+	  		// existing pattern.
+	  		if (N_Vehicles >= 100)
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_10_200veh.tcl";
+	  		else
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_10.tcl";
 	  		break;
 	  	case (20):
 	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_20.tcl";
@@ -155257,7 +155495,37 @@ static int RoutingMain(int argc, char *argv[])
 	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_50.tcl";
 	  		break;
 	  	case (60):
-	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60.tcl";
+	  		// PDF Experiment 2 vmax sweep — see case(10)'s comment. This is also
+	  		// routing.cc's own DEFAULT maxspeed value.
+	  		//
+	  		// A4 (Table 4.2) density sweep, lambda in {0.01,0.02,0.04} veh/m, also
+	  		// rides on this same case: routing.cc's own PemComputeDeltaThreshold
+	  		// calibration (kNetworkRoadLengthEstimateM=9674m, the map's perimeter)
+	  		// establishes N=200 vehicles <-> lambda~=0.0207/m (the paper's own
+	  		// lambda=0.02 reference point) — so lambda in {0.01,0.02,0.04} maps to
+	  		// N_Vehicles in {~100,~200,~400}, each with its OWN genuinely-simulated
+	  		// SUMO traffic pattern (not the same 200-vehicle trace subsampled/
+	  		// reused at different N, which would carry the wrong local density).
+	  		// Generated 2026-07-24, same uniform-speed/no-randomisation recipe as
+	  		// the vmax sweep traces.
+	  		if (N_Vehicles >= 350)
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60_400veh_density.tcl";
+	  		else if (N_Vehicles >= 150)
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60_200veh.tcl";
+	  		else if (N_Vehicles >= 100)
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60_100veh_density.tcl";
+	  		else
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60.tcl";
+	  		break;
+	  	case (100):
+	  		// PDF Experiment 2 vmax sweep — see case(10)'s comment. No non-200veh
+	  		// fallback exists for this speed (100 km/h was never a case before
+	  		// this sweep was added), so N_Vehicles<100 at this speed is unsupported.
+	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_100_200veh.tcl";
+	  		break;
+	  	case (140):
+	  		// PDF Experiment 2 vmax sweep — see case(10)'s comment.
+	  		trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_140_200veh.tcl";
 	  		break;
 	  	default:
 	  		break;
@@ -159247,6 +159515,17 @@ static int RoutingMain(int argc, char *argv[])
       }
       uint32_t v1_cidx = me_real_cidx.empty()       ? 0u : me_real_cidx[0];
       uint32_t v2_cidx = me_real_cidx.size() < 2    ? 1u : me_real_cidx[1];
+
+      // A7 (--echo_dist_ratio): reorder echo-attacker candidates by proximity
+      // to the requested distance bucket before pair assignment. No-op when
+      // the flag is unset (default 0). Uses the literal 10.0 (matching this
+      // path's own ME_S1_DISCOVERY_TIME, declared later/out of scope here)
+      // since positions are only sampled at whole-second granularity for
+      // this distance check anyway.
+      if (g_abl.echo_dist_ratio > 0.0 && me_echo_cidx.size() >= 2) {
+          me_echo_cidx = MeReorderEchoCandidatesByDistanceRatio(
+              me_echo_cidx, v1_cidx, v2_cidx, 10.0, g_abl.echo_dist_ratio);
+      }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 09 - ME-S1 ATTACK CONFIGURED" << std::endl;
