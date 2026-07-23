@@ -540,7 +540,7 @@ static void CD_CapturePositions()
     //   these are the vehicles the RSU has overheard and will forge stale BSMs for.
     //
     // All other scenarios: capture malicious vehicle positions (original behaviour).
-    [[maybe_unused]] bool is_rsu_attacker = (cd_attack_scenario == 2 || cd_attack_scenario == 6);
+    [[maybe_unused]] bool is_rsu_attacker = (cd_attack_scenario == 2 || cd_attack_scenario == 6 || cd_attack_scenario == 13);
 
     for (uint32_t i = 0; i < cd_vehicle_nodes.GetN(); ++i) {
         ns3::Ptr<ns3::Node> node = cd_vehicle_nodes.Get(i);
@@ -577,7 +577,7 @@ static void CD_InjectStaleBsm()
     double now      = ns3::Simulator::Now().GetSeconds();
     double interval = (comparison_detector == 2) ? CD_M_BSM_INTERVAL_S : CD_V_BSM_INTERVAL_S;
 
-    [[maybe_unused]] bool is_rsu_attacker = (cd_attack_scenario == 2 || cd_attack_scenario == 6);
+    [[maybe_unused]] bool is_rsu_attacker = (cd_attack_scenario == 2 || cd_attack_scenario == 6 || cd_attack_scenario == 13);
 
     for (auto& kv : cd_stored_kinem) {
         uint32_t nid = kv.first;
@@ -694,15 +694,23 @@ static void CD_Start(ns3::NodeContainer vehicles,
     cd_attack_pct_stored = attack_pct;
     cd_routing_pdr_ptr   = routing_pdr_ptr;
 
-    // Build malicious node ID set from routing.cc's per-vehicle boolean vectors
+    // Build malicious node ID set from routing.cc's per-vehicle boolean vectors.
+    // Combined scenario (13) runs all 12 sub-attacks at once, so all three
+    // family vectors (ttw_mal/bshh_mal/me_mal) can be simultaneously non-empty
+    // — checked with independent ifs (not else-if) so scenario 13 picks up
+    // whichever families routing.cc actually populated, instead of falling
+    // through every branch and leaving cd_malicious_node_ids empty.
     for (uint32_t i = 0; i < vehicles.GetN(); ++i) {
         bool is_mal = false;
-        if (attack_scenario_id >= 1  && attack_scenario_id <= 4  && i < ttw_mal.size())
-            is_mal = ttw_mal[i];
-        else if (attack_scenario_id >= 5 && attack_scenario_id <= 8  && i < bshh_mal.size())
-            is_mal = bshh_mal[i];
-        else if (attack_scenario_id >= 9 && attack_scenario_id <= 12 && i < me_mal.size())
-            is_mal = me_mal[i];
+        if ((attack_scenario_id >= 1 && attack_scenario_id <= 4) || attack_scenario_id == 13) {
+            if (i < ttw_mal.size() && ttw_mal[i]) is_mal = true;
+        }
+        if ((attack_scenario_id >= 5 && attack_scenario_id <= 8) || attack_scenario_id == 13) {
+            if (i < bshh_mal.size() && bshh_mal[i]) is_mal = true;
+        }
+        if ((attack_scenario_id >= 9 && attack_scenario_id <= 12) || attack_scenario_id == 13) {
+            if (i < me_mal.size() && me_mal[i]) is_mal = true;
+        }
         if (is_mal)
             cd_malicious_node_ids.insert(vehicles.Get(i)->GetId());
     }
@@ -715,10 +723,13 @@ static void CD_Start(ns3::NodeContainer vehicles,
     // Open pairs CSV — VeReMi only, only when explicitly requested
     if (comparison_detector == 1) {
         cd_pairs_csv.open("comparison_veremi_pairs.csv");
+        // Column name "time_interval" (not "dt") — required verbatim by
+        // knn_bagging_detector.py's PERM_FEATURE_COLS (Mekonen et al. paper
+        // implementation); a "dt"-named column caused a missing-columns error.
         cd_pairs_csv << "vehicle_id,attack_type,sim_time,"
                      << "pos_x1,pos_y1,spd_x1,spd_y1,"
                      << "pos_x2,pos_y2,spd_x2,spd_y2,"
-                     << "dt,label\n";
+                     << "time_interval,label\n";
     }
 
     // Schedule periodic BSM tick starting at t=0.5s
@@ -738,12 +749,17 @@ static void CD_Start(ns3::NodeContainer vehicles,
     //
     // S1/S3/S4/S5/S7/S8 → no injection (control-plane attacks, BSM-level blind)
     // S9–S12 (ME) → no injection → MCC=0 for all attack_pct
+    // Combined scenario (13) includes S2/S6's sub-attacks alongside the other
+    // 10, so both injections fire together for it too — independent ifs (not
+    // else-if) since S2 and S6 are on different attack-model timelines and
+    // both apply simultaneously under scenario 13.
     if (attack_pct > 0) {
-        if (attack_scenario_id == 2 && rsus.GetN() > 0) {
+        if ((attack_scenario_id == 2 || attack_scenario_id == 13) && rsus.GetN() > 0) {
             // TTW-S2: malicious RSU replays topology
             ns3::Simulator::Schedule(ns3::Seconds(CD_TTW_CAPTURE_TIME), &CD_CapturePositions);
             ns3::Simulator::Schedule(ns3::Seconds(CD_TTW_REPLAY_TIME),  &CD_InjectStaleBsm);
-        } else if (attack_scenario_id == 6 && rsus.GetN() > 0) {
+        }
+        if ((attack_scenario_id == 6 || attack_scenario_id == 13) && rsus.GetN() > 0) {
             // BSHH-S6: malicious RSU replays heartbeat
             ns3::Simulator::Schedule(ns3::Seconds(CD_BSHH_CAPTURE_TIME), &CD_CapturePositions);
             ns3::Simulator::Schedule(ns3::Seconds(CD_BSHH_REPLAY_TIME),  &CD_InjectStaleBsm);
@@ -772,12 +788,13 @@ static void CD_WriteSummary(uint32_t attack_scenario_id,
 
     double mcc, auroc;
 
-    // S2 (TTW-S2) and S6 (BSHH-S6) at attack_percentage=0:
-    // The attack in these scenarios is RSU-based topology forging.
-    // VeReMi/MBSM only evaluate vehicle BSM kinematics — they cannot detect RSU
-    // attacks and their vehicle-level FP are semantically irrelevant here.
+    // S2 (TTW-S2), S6 (BSHH-S6), and combined (13, which includes both) at
+    // attack_percentage=0: the attack in these scenarios is RSU-based
+    // topology forging. VeReMi/MBSM only evaluate vehicle BSM kinematics —
+    // they cannot detect RSU attacks and their vehicle-level FP are
+    // semantically irrelevant here.
     // At 0% attack no RSU attack is injected → evaluation is vacuously perfect.
-    if ((cd_attack_scenario == 2 || cd_attack_scenario == 6) &&
+    if ((cd_attack_scenario == 2 || cd_attack_scenario == 6 || cd_attack_scenario == 13) &&
         cd_attack_pct_stored == 0)
     {
         mcc   = 1.0;
@@ -835,7 +852,7 @@ static void CD_WriteSummary(uint32_t attack_scenario_id,
         pdr_base = 100.0;
     }
 
-    static const char* SNAMES[13] = {
+    static const char* SNAMES[14] = {
         "No Attack",
         "TTW-S1: Malicious Vehicle, No RSU",
         "TTW-S2: Malicious RSU",
@@ -848,9 +865,10 @@ static void CD_WriteSummary(uint32_t attack_scenario_id,
         "ME-S1: Malicious Vehicles, No RSU",
         "ME-S2: Malicious RSU",
         "ME-S3: Malicious Controller, No RSU",
-        "ME-S4: Malicious Controller, With RSU"
+        "ME-S4: Malicious Controller, With RSU",
+        "COMBINED: All 12 Scenarios"
     };
-    const char* sname = (attack_scenario_id <= 12) ? SNAMES[attack_scenario_id] : "Unknown";
+    const char* sname = (attack_scenario_id <= 13) ? SNAMES[attack_scenario_id] : "Unknown";
 
     std::string det_name = (comparison_detector == 1)
         ? "VeReMi_VREM_Detect (Mekonen 2025)"

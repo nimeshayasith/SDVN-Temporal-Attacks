@@ -2071,6 +2071,37 @@ int main(int argc, char* argv[])
         std::cout << "[Warning] ME scenarios require N_Vehicles >= 4; set to 4.\n";
     }
 
+    // ── Compute n_malicious from attack_percentage and auto-expand simTime ────
+    // Moved here (was previously computed after the banner print below and
+    // after the legit-BSM t_end calculation) — same fix as
+    // temporal_veremi_compare.cc: (1) the startup banner shows the real
+    // malicious-node count instead of g_n_malicious's default 0, and (2)
+    // legit BSM traffic (t_end = simTime - 0.5, scheduled further down)
+    // actually covers the full auto-expanded simTime instead of stopping at
+    // the pre-expansion duration when many malicious nodes require staggered
+    // attack windows beyond the caller's --simTime.
+    static const double ATTACK_STAGGER_S = 20.0;
+    {
+        uint32_t n_total = 0;
+        if (attack_percentage > 0 && attack_scenario >= 1) {
+            if      (attack_scenario == 1 || attack_scenario == 5 || attack_scenario == 9)
+                n_total = N_Vehicles;
+            else if (attack_scenario == 2 || attack_scenario == 6 || attack_scenario == 10)
+                n_total = N_RSUs;
+            else
+                n_total = N_Controllers;
+        }
+        g_n_malicious = ComputeNMalicious(n_total, attack_percentage);
+    }
+    if (g_n_malicious > 1) {
+        double last_t = TTW_REPLAY_TIME + (g_n_malicious - 1) * ATTACK_STAGGER_S;
+        if (simTime < last_t + 5.0) {
+            simTime = last_t + 5.0;
+            std::cout << "[Info] Adjusted simTime to " << simTime
+                      << " s for " << g_n_malicious << " malicious nodes.\n";
+        }
+    }
+
     TEMP_InitLogs();
 
     std::cout << "\n══════════════════════════════════════════════════════════════\n"
@@ -2206,31 +2237,8 @@ int main(int argc, char* argv[])
     // ── Schedule TOPOLOGY-LEVEL attack events ─────────────────────
     // These do NOT affect BSM content — they only modify
     // in-memory controller tables and set the oracle flag.
-
-    // ── Compute n_malicious from attack_percentage ────────────────────────────
-    static const double ATTACK_STAGGER_S = 20.0;
-    {
-        uint32_t n_total = 0;
-        if (attack_percentage > 0 && attack_scenario >= 1) {
-            if      (attack_scenario == 1 || attack_scenario == 5 || attack_scenario == 9)
-                n_total = N_Vehicles;
-            else if (attack_scenario == 2 || attack_scenario == 6 || attack_scenario == 10)
-                n_total = N_RSUs;
-            else
-                n_total = N_Controllers;
-        }
-        g_n_malicious = ComputeNMalicious(n_total, attack_percentage);
-    }
-
-    // Auto-expand simTime when multiple sequential attacks are needed
-    if (g_n_malicious > 1) {
-        double last_t = TTW_REPLAY_TIME + (g_n_malicious - 1) * ATTACK_STAGGER_S;
-        if (simTime < last_t + 5.0) {
-            simTime = last_t + 5.0;
-            std::cout << "[Info] Adjusted simTime to " << simTime
-                      << " s for " << g_n_malicious << " malicious nodes.\n";
-        }
-    }
+    // (n_malicious/simTime auto-expansion already computed above, before the
+    // startup banner and legit-BSM t_end calculation — see comment there.)
 
     if (attack_scenario == 1) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {

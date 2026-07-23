@@ -1,0 +1,1443 @@
+Solution at controller cleared
+[CD] detector=1  scenario=2  malicious_nodes=100  rsus=64
+[SUMO] Peak-activity alignment: trace_t0=332s -> 101 vehicles active in the 30s sim window (was ~few at raw t=0)
+[SUMO] Trace time offset: 332s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 127216 exact position+velocity events
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/02_TTW_S2_Malicious_RSU.xml
+[TTW-S2] RSU slot 0: V90 <-> V120  (real break at t=19.9s)
+[TTW-S2] RSU slot 0: V96 <-> V56  (real break at t=16.3s)
+[TTW-S2] RSU slot 0: V139 <-> V88  (real break at t=22.9s)
+[TTW-S2] RSU slot 1: V131 <-> V109  (real break at t=12.5s)
+[TTW-S2] RSU slot 1: V172 <-> V162  (real break at t=19.3s)
+[TTW-S2] RSU slot 1: V146 <-> V164  (real break at t=23.7s)
+[TTW-S2] RSU slot 2: V35 <-> V152  (real break at t=16.3s)
+[TTW-S2] RSU slot 2: V23 <-> V175  (real break at t=24.5s)
+[TTW-S2] RSU slot 2: V42 <-> V167  (real break at t=24.1s)
+[TTW-S2] RSU slot 3: V160 <-> V85  (real break at t=14.1s)
+[TTW-S2] RSU slot 3: V74 <-> V128  (real break at t=21.5s)
+[TTW-S2] RSU slot 3: V113 <-> V134  (real break at t=24.9s)
+[TTW-S2] RSU slot 4: V144 <-> V148  (real break at t=17.9s)
+[TTW-S2] RSU slot 4: V40 <-> V143  (real break at t=20.1s)
+[TTW-S2] RSU slot 4: V89 <-> V118  (real break at t=23.5s)
+[TTW-S2] RSU slot 5: V196 <-> V140  (real break at t=19.7s)
+[TTW-S2] RSU slot 5: V54 <-> V123  (real break at t=26.7s)
+[TTW-S2] RSU slot 5: V22 <-> V17  (real break at t=27s)
+[TTW-S2] RSU slot 6: V79 <-> V82  (real break at t=14.3s)
+[TTW-S2] RSU slot 6: V94 <-> V13  (real break at t=18.9s)
+[TTW-S2] RSU slot 6: V127 <-> V51  (real break at t=27s)
+[TTW-S2] RSU slot 7: V42 <-> V66  (real break at t=15.9s)
+[TTW-S2] RSU slot 7: V99 <-> V110  (real break at t=17.1s)
+[TTW-S2] RSU slot 7: V75 <-> V131  (real break at t=27s)
+[TTW-S2] RSU slot 8: V110 <-> V97  (real break at t=15.3s)
+[TTW-S2] RSU slot 8: V17 <-> V94  (real break at t=19.3s)
+[TTW-S2] RSU slot 8: V77 <-> V28  (real break at t=27s)
+[TTW-S2] RSU slot 9: V74 <-> V169  (real break at t=12.1s)
+[TTW-S2] RSU slot 9: V175 <-> V23  (real break at t=24.5s)
+[TTW-S2] RSU slot 9: V11 <-> V44  (real break at t=27s)
+[TTW-S2] RSU slot 10: V43 <-> V147  (real break at t=10.7s)
+[TTW-S2] RSU slot 10: V190 <-> V50  (real break at t=27s)
+[TTW-S2] RSU slot 10: V114 <-> V95  (real break at t=27s)
+[TTW-S2] RSU slot 11: V154 <-> V173  (real break at t=13.5s)
+[TTW-S2] RSU slot 11: V135 <-> V59  (real break at t=27s)
+[TTW-S2] RSU slot 11: V20 <-> V26  (real break at t=27s)
+[TTW-S2] RSU slot 12: V167 <-> V68  (real break at t=18.3s)
+[TTW-S2] RSU slot 12: V18 <-> V70  (real break at t=27s)
+[TTW-S2] RSU slot 12: V145 <-> V142  (real break at t=27s)
+[TTW-S2] RSU slot 13: V143 <-> V14  (real break at t=19.7s)
+[TTW-S2] RSU slot 13: V46 <-> V172  (real break at t=27s)
+[TTW-S2] RSU slot 13: V133 <-> V180  (real break at t=27s)
+[TTW-S2] RSU slot 14: V125 <-> V122  (real break at t=23.7s)
+[TTW-S2] RSU slot 14: V176 <-> V135  (real break at t=27s)
+[TTW-S2] RSU slot 14: V71 <-> V76  (real break at t=27s)
+[TTW-S2] RSU slot 15: V128 <-> V144  (real break at t=18.5s)
+[TTW-S2] RSU slot 15: V41 <-> V43  (real break at t=27s)
+[TTW-S2] RSU slot 15: V18 <-> V58  (real break at t=27s)
+[TTW-S2] RSU slot 16: V173 <-> V154  (real break at t=13.5s)
+[TTW-S2] RSU slot 16: V90 <-> V196  (real break at t=27s)
+[TTW-S2] RSU slot 16: V69 <-> V197  (real break at t=27s)
+[TTW-S2] RSU slot 17: V82 <-> V38  (real break at t=12.5s)
+[TTW-S2] RSU slot 17: V47 <-> V45  (real break at t=27s)
+[TTW-S2] RSU slot 17: V93 <-> V74  (real break at t=27s)
+[TTW-S2] RSU slot 18: V106 <-> V104  (real break at t=25s)
+[TTW-S2] RSU slot 18: V32 <-> V31  (real break at t=27s)
+[TTW-S2] RSU slot 18: V199 <-> V111  (real break at t=27s)
+[TTW-S2] RSU slot 19: V181 <-> V178  (real break at t=25s)
+[TTW-S2] RSU slot 19: V142 <-> V150  (real break at t=27s)
+[TTW-S2] RSU slot 19: V190 <-> V145  (real break at t=27s)
+[TTW-S2] RSU slot 20: V46 <-> V72  (real break at t=25s)
+[TTW-S2] RSU slot 20: V55 <-> V60  (real break at t=27s)
+[TTW-S2] RSU slot 20: V67 <-> V194  (real break at t=27s)
+[TTW-S2] RSU slot 21: V81 <-> V102  (real break at t=25s)
+[TTW-S2] RSU slot 21: V127 <-> V130  (real break at t=27s)
+[TTW-S2] RSU slot 21: V151 <-> V149  (real break at t=27s)
+[TTW-S2] RSU slot 22: V182 <-> V185  (real break at t=25s)
+[TTW-S2] RSU slot 22: V168 <-> V171  (real break at t=27s)
+[TTW-S2] RSU slot 22: V28 <-> V83  (real break at t=27s)
+[TTW-S2] RSU slot 23: V95 <-> V188  (real break at t=25s)
+[TTW-S2] RSU slot 23: V26 <-> V24  (real break at t=27s)
+[TTW-S2] RSU slot 23: V40 <-> V41  (real break at t=27s)
+[TTW-S2] RSU slot 24: V186 <-> V1  (real break at t=25s)
+[TTW-S2] RSU slot 24: V165 <-> V163  (real break at t=27s)
+[TTW-S2] RSU slot 24: V7 <-> V12  (real break at t=27s)
+[TTW-S2] RSU slot 25: V151 <-> V153  (real break at t=25s)
+[TTW-S2] RSU slot 25: V4 <-> V15  (real break at t=27s)
+[TTW-S2] RSU slot 25: V19 <-> V22  (real break at t=27s)
+[TTW-S2] RSU slot 26: V194 <-> V192  (real break at t=25s)
+[TTW-S2] RSU slot 26: V176 <-> V168  (real break at t=27s)
+[TTW-S2] RSU slot 27: V104 <-> V106  (real break at t=25s)
+[TTW-S2] RSU slot 27: V194 <-> V67  (real break at t=27s)
+[TTW-S2] RSU slot 28: V47 <-> V48  (real break at t=25s)
+[TTW-S2] RSU slot 29: V149 <-> V159  (real break at t=25s)
+
+========================================
+SCENARIO 02 - TTW-S2 ATTACK CONFIGURED
+Malicious RSUs : 32 / 64
+Victim pairs   (84):
+  RSU_205  ->  V95 <-> V125  (real break at t=19.9s)
+  RSU_205  ->  V101 <-> V61  (real break at t=16.3s)
+  RSU_205  ->  V144 <-> V93  (real break at t=22.9s)
+  RSU_206  ->  V136 <-> V114  (real break at t=12.5s)
+  RSU_206  ->  V177 <-> V167  (real break at t=19.3s)
+  RSU_206  ->  V151 <-> V169  (real break at t=23.7s)
+  RSU_207  ->  V40 <-> V157  (real break at t=16.3s)
+  RSU_207  ->  V28 <-> V180  (real break at t=24.5s)
+  RSU_207  ->  V47 <-> V172  (real break at t=24.1s)
+  RSU_208  ->  V165 <-> V90  (real break at t=14.1s)
+  RSU_208  ->  V79 <-> V133  (real break at t=21.5s)
+  RSU_208  ->  V118 <-> V139  (real break at t=24.9s)
+  RSU_209  ->  V149 <-> V153  (real break at t=17.9s)
+  RSU_209  ->  V45 <-> V148  (real break at t=20.1s)
+  RSU_209  ->  V94 <-> V123  (real break at t=23.5s)
+  RSU_210  ->  V201 <-> V145  (real break at t=19.7s)
+  RSU_210  ->  V59 <-> V128  (real break at t=26.7s)
+  RSU_210  ->  V27 <-> V22  (real break at t=27s)
+  RSU_211  ->  V84 <-> V87  (real break at t=14.3s)
+  RSU_211  ->  V99 <-> V18  (real break at t=18.9s)
+  RSU_211  ->  V132 <-> V56  (real break at t=27s)
+  RSU_212  ->  V47 <-> V71  (real break at t=15.9s)
+  RSU_212  ->  V104 <-> V115  (real break at t=17.1s)
+  RSU_212  ->  V80 <-> V136  (real break at t=27s)
+  RSU_213  ->  V115 <-> V102  (real break at t=15.3s)
+  RSU_213  ->  V22 <-> V99  (real break at t=19.3s)
+  RSU_213  ->  V82 <-> V33  (real break at t=27s)
+  RSU_214  ->  V79 <-> V174  (real break at t=12.1s)
+  RSU_214  ->  V180 <-> V28  (real break at t=24.5s)
+  RSU_214  ->  V16 <-> V49  (real break at t=27s)
+  RSU_215  ->  V48 <-> V152  (real break at t=10.7s)
+  RSU_215  ->  V195 <-> V55  (real break at t=27s)
+  RSU_215  ->  V119 <-> V100  (real break at t=27s)
+  RSU_216  ->  V159 <-> V178  (real break at t=13.5s)
+  RSU_216  ->  V140 <-> V64  (real break at t=27s)
+  RSU_216  ->  V25 <-> V31  (real break at t=27s)
+  RSU_217  ->  V172 <-> V73  (real break at t=18.3s)
+  RSU_217  ->  V23 <-> V75  (real break at t=27s)
+  RSU_217  ->  V150 <-> V147  (real break at t=27s)
+  RSU_218  ->  V148 <-> V19  (real break at t=19.7s)
+  RSU_218  ->  V51 <-> V177  (real break at t=27s)
+  RSU_218  ->  V138 <-> V185  (real break at t=27s)
+  RSU_219  ->  V130 <-> V127  (real break at t=23.7s)
+  RSU_219  ->  V181 <-> V140  (real break at t=27s)
+  RSU_219  ->  V76 <-> V81  (real break at t=27s)
+  RSU_220  ->  V133 <-> V149  (real break at t=18.5s)
+  RSU_220  ->  V46 <-> V48  (real break at t=27s)
+  RSU_220  ->  V23 <-> V63  (real break at t=27s)
+  RSU_221  ->  V178 <-> V159  (real break at t=13.5s)
+  RSU_221  ->  V95 <-> V201  (real break at t=27s)
+  RSU_221  ->  V74 <-> V202  (real break at t=27s)
+  RSU_222  ->  V87 <-> V43  (real break at t=12.5s)
+  RSU_222  ->  V52 <-> V50  (real break at t=27s)
+  RSU_222  ->  V98 <-> V79  (real break at t=27s)
+  RSU_223  ->  V111 <-> V109  (real break at t=25s)
+  RSU_223  ->  V37 <-> V36  (real break at t=27s)
+  RSU_223  ->  V204 <-> V116  (real break at t=27s)
+  RSU_224  ->  V186 <-> V183  (real break at t=25s)
+  RSU_224  ->  V147 <-> V155  (real break at t=27s)
+  RSU_224  ->  V195 <-> V150  (real break at t=27s)
+  RSU_225  ->  V51 <-> V77  (real break at t=25s)
+  RSU_225  ->  V60 <-> V65  (real break at t=27s)
+  RSU_225  ->  V72 <-> V199  (real break at t=27s)
+  RSU_226  ->  V86 <-> V107  (real break at t=25s)
+  RSU_226  ->  V132 <-> V135  (real break at t=27s)
+  RSU_226  ->  V156 <-> V154  (real break at t=27s)
+  RSU_227  ->  V187 <-> V190  (real break at t=25s)
+  RSU_227  ->  V173 <-> V176  (real break at t=27s)
+  RSU_227  ->  V33 <-> V88  (real break at t=27s)
+  RSU_228  ->  V100 <-> V193  (real break at t=25s)
+  RSU_228  ->  V31 <-> V29  (real break at t=27s)
+  RSU_228  ->  V45 <-> V46  (real break at t=27s)
+  RSU_229  ->  V191 <-> V6  (real break at t=25s)
+  RSU_229  ->  V170 <-> V168  (real break at t=27s)
+  RSU_229  ->  V12 <-> V17  (real break at t=27s)
+  RSU_230  ->  V156 <-> V158  (real break at t=25s)
+  RSU_230  ->  V9 <-> V20  (real break at t=27s)
+  RSU_230  ->  V24 <-> V27  (real break at t=27s)
+  RSU_231  ->  V199 <-> V197  (real break at t=25s)
+  RSU_231  ->  V181 <-> V173  (real break at t=27s)
+  RSU_232  ->  V109 <-> V111  (real break at t=25s)
+  RSU_232  ->  V199 <-> V72  (real break at t=27s)
+  RSU_233  ->  V52 <-> V53  (real break at t=25s)
+  RSU_234  ->  V154 <-> V164  (real break at t=25s)
+Timeline (Option B — real SUMO trajectories decide the break):
+  t=10s     STEP 1+2 : Each pair -> its RSU -> Controller (legit)
+  t=10.2s   STEP 3   : Each malicious RSU stores pair's old packet
+  [per-pair]         : Physical link breaks whenever that pair's real SUMO trajectory naturally exceeds 300 m
+  [per-pair]         : Malicious RSU replays forged packet 2s after its pair's real break
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
+[CRYPTO] TETA-Guard pipeline initialised:
+  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28)
+      dilithium5_sign / dilithium5_verify / dilithium5_thresh
+  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)
+      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]
+  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
+      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
+  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.29–3.32)
+      create_location_bound_report / verify_single_witness / verify_quorum
+  [6] Haversine distance (GPS consistency gate, Eq. 3.29)
+  All modules from .crypto_src/
+[CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
+[KEM][10ms budget] 199 handshakes timed: avg=33.1336 ms, max=34.4277 ms, over_budget=199/199 (budget=10 ms)
+[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
+[KEM][SimLatency][t=0.0321979] Vehicle 137 session key simulated-ready (real handshake was 32.1979 ms)
+[KEM][SimLatency][t=0.0322636] Vehicle 138 session key simulated-ready (real handshake was 32.2636 ms)
+[KEM][SimLatency][t=0.0322653] Vehicle 136 session key simulated-ready (real handshake was 32.2653 ms)
+[KEM][SimLatency][t=0.032416] Vehicle 49 session key simulated-ready (real handshake was 32.416 ms)
+[KEM][SimLatency][t=0.0325925] Vehicle 139 session key simulated-ready (real handshake was 32.5925 ms)
+[KEM][SimLatency][t=0.0326765] Vehicle 48 session key simulated-ready (real handshake was 32.6765 ms)
+[KEM][SimLatency][t=0.03284] Vehicle 170 session key simulated-ready (real handshake was 32.84 ms)
+[KEM][SimLatency][t=0.0328453] Vehicle 99 session key simulated-ready (real handshake was 32.8453 ms)
+[KEM][SimLatency][t=0.0328521] Vehicle 168 session key simulated-ready (real handshake was 32.8521 ms)
+[KEM][SimLatency][t=0.0328525] Vehicle 57 session key simulated-ready (real handshake was 32.8525 ms)
+[KEM][SimLatency][t=0.0328581] Vehicle 98 session key simulated-ready (real handshake was 32.8581 ms)
+[KEM][SimLatency][t=0.0328604] Vehicle 11 session key simulated-ready (real handshake was 32.8604 ms)
+[KEM][SimLatency][t=0.0328607] Vehicle 75 session key simulated-ready (real handshake was 32.8607 ms)
+[KEM][SimLatency][t=0.032863] Vehicle 146 session key simulated-ready (real handshake was 32.863 ms)
+[KEM][SimLatency][t=0.0328635] Vehicle 155 session key simulated-ready (real handshake was 32.8635 ms)
+[KEM][SimLatency][t=0.0328675] Vehicle 84 session key simulated-ready (real handshake was 32.8675 ms)
+[KEM][SimLatency][t=0.0328689] Vehicle 64 session key simulated-ready (real handshake was 32.8689 ms)
+[KEM][SimLatency][t=0.0328693] Vehicle 175 session key simulated-ready (real handshake was 32.8693 ms)
+[KEM][SimLatency][t=0.0328707] Vehicle 24 session key simulated-ready (real handshake was 32.8707 ms)
+[KEM][SimLatency][t=0.0328715] Vehicle 185 session key simulated-ready (real handshake was 32.8715 ms)
+[KEM][SimLatency][t=0.0328723] Vehicle 102 session key simulated-ready (real handshake was 32.8723 ms)
+[KEM][SimLatency][t=0.032875] Vehicle 115 session key simulated-ready (real handshake was 32.875 ms)
+[KEM][SimLatency][t=0.0328777] Vehicle 28 session key simulated-ready (real handshake was 32.8777 ms)
+[KEM][SimLatency][t=0.0328782] Vehicle 26 session key simulated-ready (real handshake was 32.8782 ms)
+[KEM][SimLatency][t=0.032879] Vehicle 73 session key simulated-ready (real handshake was 32.879 ms)
+[KEM][SimLatency][t=0.03288] Vehicle 27 session key simulated-ready (real handshake was 32.88 ms)
+[KEM][SimLatency][t=0.0328813] Vehicle 61 session key simulated-ready (real handshake was 32.8813 ms)
+[KEM][SimLatency][t=0.0328848] Vehicle 156 session key simulated-ready (real handshake was 32.8848 ms)
+[KEM][SimLatency][t=0.0328848] Vehicle 79 session key simulated-ready (real handshake was 32.8848 ms)
+[KEM][SimLatency][t=0.0328852] Vehicle 81 session key simulated-ready (real handshake was 32.8852 ms)
+[KEM][SimLatency][t=0.0328855] Vehicle 76 session key simulated-ready (real handshake was 32.8855 ms)
+[KEM][SimLatency][t=0.0328865] Vehicle 59 session key simulated-ready (real handshake was 32.8865 ms)
+[KEM][SimLatency][t=0.0328866] Vehicle 1 session key simulated-ready (real handshake was 32.8866 ms)
+[KEM][SimLatency][t=0.0328867] Vehicle 60 session key simulated-ready (real handshake was 32.8867 ms)
+[KEM][SimLatency][t=0.0328873] Vehicle 9 session key simulated-ready (real handshake was 32.8873 ms)
+[KEM][SimLatency][t=0.0328876] Vehicle 129 session key simulated-ready (real handshake was 32.8876 ms)
+[KEM][SimLatency][t=0.0328899] Vehicle 58 session key simulated-ready (real handshake was 32.8899 ms)
+[KEM][SimLatency][t=0.0328902] Vehicle 194 session key simulated-ready (real handshake was 32.8902 ms)
+[KEM][SimLatency][t=0.0328927] Vehicle 37 session key simulated-ready (real handshake was 32.8927 ms)
+[KEM][SimLatency][t=0.0328931] Vehicle 19 session key simulated-ready (real handshake was 32.8931 ms)
+[KEM][SimLatency][t=0.0328933] Vehicle 116 session key simulated-ready (real handshake was 32.8933 ms)
+[KEM][SimLatency][t=0.0328947] Vehicle 42 session key simulated-ready (real handshake was 32.8947 ms)
+[KEM][SimLatency][t=0.032895] Vehicle 190 session key simulated-ready (real handshake was 32.895 ms)
+[KEM][SimLatency][t=0.0328959] Vehicle 163 session key simulated-ready (real handshake was 32.8959 ms)
+[KEM][SimLatency][t=0.0328968] Vehicle 21 session key simulated-ready (real handshake was 32.8968 ms)
+[KEM][SimLatency][t=0.0328984] Vehicle 77 session key simulated-ready (real handshake was 32.8984 ms)
+[KEM][SimLatency][t=0.032902] Vehicle 100 session key simulated-ready (real handshake was 32.902 ms)
+[KEM][SimLatency][t=0.0329022] Vehicle 65 session key simulated-ready (real handshake was 32.9022 ms)
+[KEM][SimLatency][t=0.0329036] Vehicle 29 session key simulated-ready (real handshake was 32.9036 ms)
+[KEM][SimLatency][t=0.0329057] Vehicle 184 session key simulated-ready (real handshake was 32.9057 ms)
+[KEM][SimLatency][t=0.0329062] Vehicle 95 session key simulated-ready (real handshake was 32.9062 ms)
+[KEM][SimLatency][t=0.0329069] Vehicle 171 session key simulated-ready (real handshake was 32.9069 ms)
+[KEM][SimLatency][t=0.0329087] Vehicle 7 session key simulated-ready (real handshake was 32.9087 ms)
+[KEM][SimLatency][t=0.032909] Vehicle 31 session key simulated-ready (real handshake was 32.909 ms)
+[KEM][SimLatency][t=0.0329097] Vehicle 43 session key simulated-ready (real handshake was 32.9097 ms)
+[KEM][SimLatency][t=0.0329101] Vehicle 131 session key simulated-ready (real handshake was 32.9101 ms)
+[KEM][SimLatency][t=0.0329103] Vehicle 166 session key simulated-ready (real handshake was 32.9103 ms)
+[KEM][SimLatency][t=0.0329121] Vehicle 187 session key simulated-ready (real handshake was 32.9121 ms)
+[KEM][SimLatency][t=0.0329123] Vehicle 152 session key simulated-ready (real handshake was 32.9123 ms)
+[KEM][SimLatency][t=0.0329127] Vehicle 128 session key simulated-ready (real handshake was 32.9127 ms)
+[KEM][SimLatency][t=0.0329132] Vehicle 103 session key simulated-ready (real handshake was 32.9132 ms)
+[KEM][SimLatency][t=0.0329138] Vehicle 55 session key simulated-ready (real handshake was 32.9138 ms)
+[KEM][SimLatency][t=0.0329173] Vehicle 66 session key simulated-ready (real handshake was 32.9173 ms)
+[KEM][SimLatency][t=0.032919] Vehicle 164 session key simulated-ready (real handshake was 32.919 ms)
+[KEM][SimLatency][t=0.0329198] Vehicle 192 session key simulated-ready (real handshake was 32.9198 ms)
+[KEM][SimLatency][t=0.0329199] Vehicle 12 session key simulated-ready (real handshake was 32.9199 ms)
+[KEM][SimLatency][t=0.03292] Vehicle 20 session key simulated-ready (real handshake was 32.92 ms)
+[KEM][SimLatency][t=0.0329212] Vehicle 147 session key simulated-ready (real handshake was 32.9212 ms)
+[KEM][SimLatency][t=0.0329219] Vehicle 18 session key simulated-ready (real handshake was 32.9219 ms)
+[KEM][SimLatency][t=0.0329223] Vehicle 154 session key simulated-ready (real handshake was 32.9223 ms)
+[KEM][SimLatency][t=0.0329229] Vehicle 3 session key simulated-ready (real handshake was 32.9229 ms)
+[KEM][SimLatency][t=0.0329236] Vehicle 127 session key simulated-ready (real handshake was 32.9236 ms)
+[KEM][SimLatency][t=0.032925] Vehicle 132 session key simulated-ready (real handshake was 32.925 ms)
+[KEM][SimLatency][t=0.0329252] Vehicle 120 session key simulated-ready (real handshake was 32.9252 ms)
+[KEM][SimLatency][t=0.0329259] Vehicle 40 session key simulated-ready (real handshake was 32.9259 ms)
+[KEM][SimLatency][t=0.0329263] Vehicle 182 session key simulated-ready (real handshake was 32.9263 ms)
+[KEM][SimLatency][t=0.0329269] Vehicle 189 session key simulated-ready (real handshake was 32.9269 ms)
+[KEM][SimLatency][t=0.032928] Vehicle 111 session key simulated-ready (real handshake was 32.928 ms)
+[KEM][SimLatency][t=0.0329281] Vehicle 191 session key simulated-ready (real handshake was 32.9281 ms)
+[KEM][SimLatency][t=0.0329289] Vehicle 176 session key simulated-ready (real handshake was 32.9289 ms)
+[KEM][SimLatency][t=0.0329291] Vehicle 151 session key simulated-ready (real handshake was 32.9291 ms)
+[KEM][SimLatency][t=0.0329299] Vehicle 181 session key simulated-ready (real handshake was 32.9299 ms)
+[KEM][SimLatency][t=0.0329314] Vehicle 118 session key simulated-ready (real handshake was 32.9314 ms)
+[KEM][SimLatency][t=0.032933] Vehicle 148 session key simulated-ready (real handshake was 32.933 ms)
+[KEM][SimLatency][t=0.0329342] Vehicle 149 session key simulated-ready (real handshake was 32.9342 ms)
+[KEM][SimLatency][t=0.0329347] Vehicle 109 session key simulated-ready (real handshake was 32.9347 ms)
+[KEM][SimLatency][t=0.0329351] Vehicle 39 session key simulated-ready (real handshake was 32.9351 ms)
+[KEM][SimLatency][t=0.0329357] Vehicle 30 session key simulated-ready (real handshake was 32.9357 ms)
+[KEM][SimLatency][t=0.0329358] Vehicle 85 session key simulated-ready (real handshake was 32.9358 ms)
+[KEM][SimLatency][t=0.0329362] Vehicle 157 session key simulated-ready (real handshake was 32.9362 ms)
+[KEM][SimLatency][t=0.0329366] Vehicle 67 session key simulated-ready (real handshake was 32.9366 ms)
+[KEM][SimLatency][t=0.0329377] Vehicle 121 session key simulated-ready (real handshake was 32.9377 ms)
+[KEM][SimLatency][t=0.0329411] Vehicle 145 session key simulated-ready (real handshake was 32.9411 ms)
+[KEM][SimLatency][t=0.0329418] Vehicle 25 session key simulated-ready (real handshake was 32.9418 ms)
+[KEM][SimLatency][t=0.0329434] Vehicle 74 session key simulated-ready (real handshake was 32.9434 ms)
+[KEM][SimLatency][t=0.0329458] Vehicle 174 session key simulated-ready (real handshake was 32.9458 ms)
+[KEM][SimLatency][t=0.032946] Vehicle 90 session key simulated-ready (real handshake was 32.946 ms)
+[KEM][SimLatency][t=0.0329476] Vehicle 135 session key simulated-ready (real handshake was 32.9476 ms)
+[KEM][SimLatency][t=0.0329481] Vehicle 80 session key simulated-ready (real handshake was 32.9481 ms)
+[KEM][SimLatency][t=0.0329488] Vehicle 119 session key simulated-ready (real handshake was 32.9488 ms)
+[KEM][SimLatency][t=0.0329504] Vehicle 8 session key simulated-ready (real handshake was 32.9504 ms)
+[KEM][SimLatency][t=0.032952] Vehicle 4 session key simulated-ready (real handshake was 32.952 ms)
+[KEM][SimLatency][t=0.0329565] Vehicle 130 session key simulated-ready (real handshake was 32.9565 ms)
+[KEM][SimLatency][t=0.0329568] Vehicle 134 session key simulated-ready (real handshake was 32.9568 ms)
+[KEM][SimLatency][t=0.0329574] Vehicle 5 session key simulated-ready (real handshake was 32.9574 ms)
+[KEM][SimLatency][t=0.0329594] Vehicle 117 session key simulated-ready (real handshake was 32.9594 ms)
+[KEM][SimLatency][t=0.0329612] Vehicle 56 session key simulated-ready (real handshake was 32.9612 ms)
+[KEM][SimLatency][t=0.0329613] Vehicle 78 session key simulated-ready (real handshake was 32.9613 ms)
+[KEM][SimLatency][t=0.0329622] Vehicle 2 session key simulated-ready (real handshake was 32.9622 ms)
+[KEM][SimLatency][t=0.0329639] Vehicle 10 session key simulated-ready (real handshake was 32.9639 ms)
+[KEM][SimLatency][t=0.0329664] Vehicle 165 session key simulated-ready (real handshake was 32.9664 ms)
+[KEM][SimLatency][t=0.0329696] Vehicle 199 session key simulated-ready (real handshake was 32.9696 ms)
+[KEM][SimLatency][t=0.0329696] Vehicle 172 session key simulated-ready (real handshake was 32.9696 ms)
+[KEM][SimLatency][t=0.0329727] Vehicle 188 session key simulated-ready (real handshake was 32.9727 ms)
+[KEM][SimLatency][t=0.0329757] Vehicle 110 session key simulated-ready (real handshake was 32.9757 ms)
+[KEM][SimLatency][t=0.0329775] Vehicle 97 session key simulated-ready (real handshake was 32.9775 ms)
+[KEM][SimLatency][t=0.0329779] Vehicle 169 session key simulated-ready (real handshake was 32.9779 ms)
+[KEM][SimLatency][t=0.0329793] Vehicle 108 session key simulated-ready (real handshake was 32.9793 ms)
+[KEM][SimLatency][t=0.0329809] Vehicle 183 session key simulated-ready (real handshake was 32.9809 ms)
+[KEM][SimLatency][t=0.0329826] Vehicle 186 session key simulated-ready (real handshake was 32.9826 ms)
+[KEM][SimLatency][t=0.0329857] Vehicle 62 session key simulated-ready (real handshake was 32.9857 ms)
+[KEM][SimLatency][t=0.0329865] Vehicle 63 session key simulated-ready (real handshake was 32.9865 ms)
+[KEM][SimLatency][t=0.0329908] Vehicle 6 session key simulated-ready (real handshake was 32.9908 ms)
+[KEM][SimLatency][t=0.0329917] Vehicle 193 session key simulated-ready (real handshake was 32.9917 ms)
+[KEM][SimLatency][t=0.0330009] Vehicle 96 session key simulated-ready (real handshake was 33.0009 ms)
+[KEM][SimLatency][t=0.033006] Vehicle 72 session key simulated-ready (real handshake was 33.006 ms)
+[KEM][SimLatency][t=0.033018] Vehicle 46 session key simulated-ready (real handshake was 33.018 ms)
+[KEM][SimLatency][t=0.0330206] Vehicle 41 session key simulated-ready (real handshake was 33.0206 ms)
+[KEM][SimLatency][t=0.0330217] Vehicle 44 session key simulated-ready (real handshake was 33.0217 ms)
+[KEM][SimLatency][t=0.0330255] Vehicle 23 session key simulated-ready (real handshake was 33.0255 ms)
+[KEM][SimLatency][t=0.0330262] Vehicle 13 session key simulated-ready (real handshake was 33.0262 ms)
+[KEM][SimLatency][t=0.0330517] Vehicle 126 session key simulated-ready (real handshake was 33.0517 ms)
+[KEM][SimLatency][t=0.0330618] Vehicle 167 session key simulated-ready (real handshake was 33.0618 ms)
+[KEM][SimLatency][t=0.0330623] Vehicle 47 session key simulated-ready (real handshake was 33.0623 ms)
+[KEM][SimLatency][t=0.0330723] Vehicle 173 session key simulated-ready (real handshake was 33.0723 ms)
+[KEM][SimLatency][t=0.0330768] Vehicle 54 session key simulated-ready (real handshake was 33.0768 ms)
+[KEM][SimLatency][t=0.0330794] Vehicle 158 session key simulated-ready (real handshake was 33.0794 ms)
+[KEM][SimLatency][t=0.0330844] Vehicle 91 session key simulated-ready (real handshake was 33.0844 ms)
+[KEM][SimLatency][t=0.0330868] Vehicle 114 session key simulated-ready (real handshake was 33.0868 ms)
+[KEM][SimLatency][t=0.0330957] Vehicle 94 session key simulated-ready (real handshake was 33.0957 ms)
+[KEM][SimLatency][t=0.033102] Vehicle 32 session key simulated-ready (real handshake was 33.102 ms)
+[KEM][SimLatency][t=0.0331028] Vehicle 153 session key simulated-ready (real handshake was 33.1028 ms)
+[KEM][SimLatency][t=0.0331043] Vehicle 36 session key simulated-ready (real handshake was 33.1043 ms)
+[KEM][SimLatency][t=0.0331145] Vehicle 45 session key simulated-ready (real handshake was 33.1145 ms)
+[KEM][SimLatency][t=0.0331175] Vehicle 22 session key simulated-ready (real handshake was 33.1175 ms)
+[KEM][SimLatency][t=0.0331201] Vehicle 14 session key simulated-ready (real handshake was 33.1201 ms)
+[KEM][SimLatency][t=0.0331396] Vehicle 133 session key simulated-ready (real handshake was 33.1396 ms)
+[KEM][SimLatency][t=0.0331559] Vehicle 82 session key simulated-ready (real handshake was 33.1559 ms)
+[KEM][SimLatency][t=0.0331582] Vehicle 101 session key simulated-ready (real handshake was 33.1582 ms)
+[KEM][SimLatency][t=0.0331793] Vehicle 83 session key simulated-ready (real handshake was 33.1793 ms)
+[KEM][SimLatency][t=0.0332022] Vehicle 17 session key simulated-ready (real handshake was 33.2022 ms)
+[KEM][SimLatency][t=0.0332052] Vehicle 162 session key simulated-ready (real handshake was 33.2052 ms)
+[KEM][SimLatency][t=0.0332124] Vehicle 195 session key simulated-ready (real handshake was 33.2124 ms)
+[KEM][SimLatency][t=0.0332254] Vehicle 93 session key simulated-ready (real handshake was 33.2254 ms)
+[KEM][SimLatency][t=0.0332426] Vehicle 92 session key simulated-ready (real handshake was 33.2426 ms)
+[KEM][SimLatency][t=0.033244] Vehicle 144 session key simulated-ready (real handshake was 33.244 ms)
+[KEM][SimLatency][t=0.0332868] Vehicle 122 session key simulated-ready (real handshake was 33.2868 ms)
+[KEM][SimLatency][t=0.0332876] Vehicle 104 session key simulated-ready (real handshake was 33.2876 ms)
+[KEM][SimLatency][t=0.0332952] Vehicle 112 session key simulated-ready (real handshake was 33.2952 ms)
+[KEM][SimLatency][t=0.0332984] Vehicle 107 session key simulated-ready (real handshake was 33.2984 ms)
+[KEM][SimLatency][t=0.0333414] Vehicle 38 session key simulated-ready (real handshake was 33.3414 ms)
+[KEM][SimLatency][t=0.0333486] Vehicle 50 session key simulated-ready (real handshake was 33.3486 ms)
+[KEM][SimLatency][t=0.0333769] Vehicle 150 session key simulated-ready (real handshake was 33.3769 ms)
+[KEM][SimLatency][t=0.0333937] Vehicle 89 session key simulated-ready (real handshake was 33.3937 ms)
+[KEM][SimLatency][t=0.0334531] Vehicle 198 session key simulated-ready (real handshake was 33.4531 ms)
+[KEM][SimLatency][t=0.0335237] Vehicle 177 session key simulated-ready (real handshake was 33.5237 ms)
+[KEM][SimLatency][t=0.0335358] Vehicle 140 session key simulated-ready (real handshake was 33.5358 ms)
+[KEM][SimLatency][t=0.0335634] Vehicle 159 session key simulated-ready (real handshake was 33.5634 ms)
+[KEM][SimLatency][t=0.0336288] Vehicle 68 session key simulated-ready (real handshake was 33.6288 ms)
+[KEM][SimLatency][t=0.0336294] Vehicle 125 session key simulated-ready (real handshake was 33.6294 ms)
+[KEM][SimLatency][t=0.0336563] Vehicle 33 session key simulated-ready (real handshake was 33.6563 ms)
+[KEM][SimLatency][t=0.033675] Vehicle 196 session key simulated-ready (real handshake was 33.675 ms)
+[KEM][SimLatency][t=0.0336885] Vehicle 86 session key simulated-ready (real handshake was 33.6885 ms)
+[KEM][SimLatency][t=0.0337108] Vehicle 180 session key simulated-ready (real handshake was 33.7108 ms)
+[KEM][SimLatency][t=0.0337245] Vehicle 15 session key simulated-ready (real handshake was 33.7245 ms)
+[KEM][SimLatency][t=0.0338047] Vehicle 16 session key simulated-ready (real handshake was 33.8047 ms)
+[KEM][SimLatency][t=0.0338257] Vehicle 35 session key simulated-ready (real handshake was 33.8257 ms)
+[KEM][SimLatency][t=0.033863] Vehicle 71 session key simulated-ready (real handshake was 33.863 ms)
+[KEM][SimLatency][t=0.0338921] Vehicle 197 session key simulated-ready (real handshake was 33.8921 ms)
+[KEM][SimLatency][t=0.033931] Vehicle 113 session key simulated-ready (real handshake was 33.931 ms)
+[KEM][SimLatency][t=0.0339837] Vehicle 143 session key simulated-ready (real handshake was 33.9837 ms)
+[KEM][SimLatency][t=0.0340456] Vehicle 141 session key simulated-ready (real handshake was 34.0456 ms)
+[KEM][SimLatency][t=0.0340549] Vehicle 161 session key simulated-ready (real handshake was 34.0549 ms)
+[KEM][SimLatency][t=0.0340769] Vehicle 106 session key simulated-ready (real handshake was 34.0769 ms)
+[KEM][SimLatency][t=0.0340986] Vehicle 105 session key simulated-ready (real handshake was 34.0986 ms)
+[KEM][SimLatency][t=0.0341308] Vehicle 53 session key simulated-ready (real handshake was 34.1308 ms)
+[KEM][SimLatency][t=0.0341587] Vehicle 87 session key simulated-ready (real handshake was 34.1587 ms)
+[KEM][SimLatency][t=0.0341624] Vehicle 69 session key simulated-ready (real handshake was 34.1624 ms)
+[KEM][SimLatency][t=0.0341809] Vehicle 70 session key simulated-ready (real handshake was 34.1809 ms)
+[KEM][SimLatency][t=0.0341913] Vehicle 52 session key simulated-ready (real handshake was 34.1913 ms)
+[KEM][SimLatency][t=0.034199] Vehicle 142 session key simulated-ready (real handshake was 34.199 ms)
+[KEM][SimLatency][t=0.0342127] Vehicle 34 session key simulated-ready (real handshake was 34.2127 ms)
+[KEM][SimLatency][t=0.0342177] Vehicle 51 session key simulated-ready (real handshake was 34.2177 ms)
+[KEM][SimLatency][t=0.0342738] Vehicle 178 session key simulated-ready (real handshake was 34.2738 ms)
+[KEM][SimLatency][t=0.0342943] Vehicle 179 session key simulated-ready (real handshake was 34.2943 ms)
+[KEM][SimLatency][t=0.0343039] Vehicle 123 session key simulated-ready (real handshake was 34.3039 ms)
+[KEM][SimLatency][t=0.0343327] Vehicle 160 session key simulated-ready (real handshake was 34.3327 ms)
+[KEM][SimLatency][t=0.0343577] Vehicle 88 session key simulated-ready (real handshake was 34.3577 ms)
+[KEM][SimLatency][t=0.0344277] Vehicle 124 session key simulated-ready (real handshake was 34.4277 ms)
+[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=4866803567695255771 (interval=3s)
+[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=4866803567695255771 (interval=3s)
+[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=4866803567695255771 (interval=3s)
+[TTW-S2][t=10.000]  V95 --HELLO + topo--> RSU_205  <V95 sees V125, t=10.000>
+[TTW-S2][t=10.000]  V125 --HELLO + topo--> RSU_205  <V125 sees V95, t=10.000>
+[TTW-S2][t=10.001]  V101 --HELLO + topo--> RSU_205  <V101 sees V61, t=10.000>
+[TTW-S2][t=10.001]  V61 --HELLO + topo--> RSU_205  <V61 sees V101, t=10.000>
+[TTW-S2][t=10.001]  V144 --HELLO + topo--> RSU_205  <V144 sees V93, t=10.000>
+[TTW-S2][t=10.001]  V93 --HELLO + topo--> RSU_205  <V93 sees V144, t=10.000>
+[TTW-S2][t=10.002]  V136 --HELLO + topo--> RSU_206  <V136 sees V114, t=10.000>
+[TTW-S2][t=10.002]  V114 --HELLO + topo--> RSU_206  <V114 sees V136, t=10.000>
+[TTW-S2][t=10.002]  V177 --HELLO + topo--> RSU_206  <V177 sees V167, t=10.000>
+[TTW-S2][t=10.002]  V167 --HELLO + topo--> RSU_206  <V167 sees V177, t=10.000>
+[TTW-S2][t=10.002]  V151 --HELLO + topo--> RSU_206  <V151 sees V169, t=10.000>
+[TTW-S2][t=10.002]  V169 --HELLO + topo--> RSU_206  <V169 sees V151, t=10.000>
+[TTW-S2][t=10.003]  V40 --HELLO + topo--> RSU_207  <V40 sees V157, t=10.000>
+[TTW-S2][t=10.003]  V157 --HELLO + topo--> RSU_207  <V157 sees V40, t=10.000>
+[TTW-S2][t=10.004]  V28 --HELLO + topo--> RSU_207  <V28 sees V180, t=10.000>
+[TTW-S2][t=10.004]  V180 --HELLO + topo--> RSU_207  <V180 sees V28, t=10.000>
+[TTW-S2][t=10.004]  V47 --HELLO + topo--> RSU_207  <V47 sees V172, t=10.000>
+[TTW-S2][t=10.004]  V172 --HELLO + topo--> RSU_207  <V172 sees V47, t=10.000>
+[TTW-S2][t=10.005]  V165 --HELLO + topo--> RSU_208  <V165 sees V90, t=10.000>
+[TTW-S2][t=10.005]  V90 --HELLO + topo--> RSU_208  <V90 sees V165, t=10.000>
+[TTW-S2][t=10.005]  V79 --HELLO + topo--> RSU_208  <V79 sees V133, t=10.000>
+[TTW-S2][t=10.005]  V133 --HELLO + topo--> RSU_208  <V133 sees V79, t=10.000>
+[TTW-S2][t=10.005]  V118 --HELLO + topo--> RSU_208  <V118 sees V139, t=10.000>
+[TTW-S2][t=10.005]  V139 --HELLO + topo--> RSU_208  <V139 sees V118, t=10.000>
+[TTW-S2][t=10.006]  V149 --HELLO + topo--> RSU_209  <V149 sees V153, t=10.000>
+[TTW-S2][t=10.006]  V153 --HELLO + topo--> RSU_209  <V153 sees V149, t=10.000>
+[TTW-S2][t=10.007]  V45 --HELLO + topo--> RSU_209  <V45 sees V148, t=10.000>
+[TTW-S2][t=10.007]  V148 --HELLO + topo--> RSU_209  <V148 sees V45, t=10.000>
+[TTW-S2][t=10.007]  V94 --HELLO + topo--> RSU_209  <V94 sees V123, t=10.000>
+[TTW-S2][t=10.007]  V123 --HELLO + topo--> RSU_209  <V123 sees V94, t=10.000>
+[TTW-S2][t=10.008]  V201 --HELLO + topo--> RSU_210  <V201 sees V145, t=10.000>
+[TTW-S2][t=10.008]  V145 --HELLO + topo--> RSU_210  <V145 sees V201, t=10.000>
+[TTW-S2][t=10.008]  V59 --HELLO + topo--> RSU_210  <V59 sees V128, t=10.000>
+[TTW-S2][t=10.008]  V128 --HELLO + topo--> RSU_210  <V128 sees V59, t=10.000>
+[TTW-S2][t=10.008]  V27 --HELLO + topo--> RSU_210  <V27 sees V22, t=10.000>
+[TTW-S2][t=10.008]  V22 --HELLO + topo--> RSU_210  <V22 sees V27, t=10.000>
+[TTW-S2][t=10.009]  V84 --HELLO + topo--> RSU_211  <V84 sees V87, t=10.000>
+[TTW-S2][t=10.009]  V87 --HELLO + topo--> RSU_211  <V87 sees V84, t=10.000>
+[TTW-S2][t=10.009]  V99 --HELLO + topo--> RSU_211  <V99 sees V18, t=10.000>
+[TTW-S2][t=10.009]  V18 --HELLO + topo--> RSU_211  <V18 sees V99, t=10.000>
+[TTW-S2][t=10.010]  V132 --HELLO + topo--> RSU_211  <V132 sees V56, t=10.000>
+[TTW-S2][t=10.010]  V56 --HELLO + topo--> RSU_211  <V56 sees V132, t=10.000>
+[TTW-S2][t=10.011]  V47 --HELLO + topo--> RSU_212  <V47 sees V71, t=10.000>
+[TTW-S2][t=10.011]  V71 --HELLO + topo--> RSU_212  <V71 sees V47, t=10.000>
+[TTW-S2][t=10.011]  V104 --HELLO + topo--> RSU_212  <V104 sees V115, t=10.000>
+[TTW-S2][t=10.011]  V115 --HELLO + topo--> RSU_212  <V115 sees V104, t=10.000>
+[TTW-S2][t=10.011]  V80 --HELLO + topo--> RSU_212  <V80 sees V136, t=10.000>
+[TTW-S2][t=10.011]  V136 --HELLO + topo--> RSU_212  <V136 sees V80, t=10.000>
+[TTW-S2][t=10.012]  V115 --HELLO + topo--> RSU_213  <V115 sees V102, t=10.000>
+[TTW-S2][t=10.012]  V102 --HELLO + topo--> RSU_213  <V102 sees V115, t=10.000>
+[TTW-S2][t=10.012]  V22 --HELLO + topo--> RSU_213  <V22 sees V99, t=10.000>
+[TTW-S2][t=10.012]  V99 --HELLO + topo--> RSU_213  <V99 sees V22, t=10.000>
+[TTW-S2][t=10.013]  V82 --HELLO + topo--> RSU_213  <V82 sees V33, t=10.000>
+[TTW-S2][t=10.013]  V33 --HELLO + topo--> RSU_213  <V33 sees V82, t=10.000>
+[TTW-S2][t=10.014]  V79 --HELLO + topo--> RSU_214  <V79 sees V174, t=10.000>
+[TTW-S2][t=10.014]  V174 --HELLO + topo--> RSU_214  <V174 sees V79, t=10.000>
+[TTW-S2][t=10.014]  V180 --HELLO + topo--> RSU_214  <V180 sees V28, t=10.000>
+[TTW-S2][t=10.014]  V28 --HELLO + topo--> RSU_214  <V28 sees V180, t=10.000>
+[TTW-S2][t=10.014]  V16 --HELLO + topo--> RSU_214  <V16 sees V49, t=10.000>
+[TTW-S2][t=10.014]  V49 --HELLO + topo--> RSU_214  <V49 sees V16, t=10.000>
+[TTW-S2][t=10.015]  V48 --HELLO + topo--> RSU_215  <V48 sees V152, t=10.000>
+[TTW-S2][t=10.015]  V152 --HELLO + topo--> RSU_215  <V152 sees V48, t=10.000>
+[TTW-S2][t=10.015]  V195 --HELLO + topo--> RSU_215  <V195 sees V55, t=10.000>
+[TTW-S2][t=10.015]  V55 --HELLO + topo--> RSU_215  <V55 sees V195, t=10.000>
+[TTW-S2][t=10.016]  V119 --HELLO + topo--> RSU_215  <V119 sees V100, t=10.000>
+[TTW-S2][t=10.016]  V100 --HELLO + topo--> RSU_215  <V100 sees V119, t=10.000>
+[TTW-S2][t=10.017]  V159 --HELLO + topo--> RSU_216  <V159 sees V178, t=10.000>
+[TTW-S2][t=10.017]  V178 --HELLO + topo--> RSU_216  <V178 sees V159, t=10.000>
+[TTW-S2][t=10.017]  V140 --HELLO + topo--> RSU_216  <V140 sees V64, t=10.000>
+[TTW-S2][t=10.017]  V64 --HELLO + topo--> RSU_216  <V64 sees V140, t=10.000>
+[TTW-S2][t=10.018]  V25 --HELLO + topo--> RSU_216  <V25 sees V31, t=10.000>
+[TTW-S2][t=10.018]  V31 --HELLO + topo--> RSU_216  <V31 sees V25, t=10.000>
+[TTW-S2][t=10.018]  V172 --HELLO + topo--> RSU_217  <V172 sees V73, t=10.000>
+[TTW-S2][t=10.018]  V73 --HELLO + topo--> RSU_217  <V73 sees V172, t=10.000>
+[TTW-S2][t=10.018]  V23 --HELLO + topo--> RSU_217  <V23 sees V75, t=10.000>
+[TTW-S2][t=10.018]  V75 --HELLO + topo--> RSU_217  <V75 sees V23, t=10.000>
+[TTW-S2][t=10.019]  V150 --HELLO + topo--> RSU_217  <V150 sees V147, t=10.000>
+[TTW-S2][t=10.019]  V147 --HELLO + topo--> RSU_217  <V147 sees V150, t=10.000>
+[TTW-S2][t=10.020]  V148 --HELLO + topo--> RSU_218  <V148 sees V19, t=10.000>
+[TTW-S2][t=10.020]  V19 --HELLO + topo--> RSU_218  <V19 sees V148, t=10.000>
+[TTW-S2][t=10.020]  V51 --HELLO + topo--> RSU_218  <V51 sees V177, t=10.000>
+[TTW-S2][t=10.020]  V177 --HELLO + topo--> RSU_218  <V177 sees V51, t=10.000>
+[TTW-S2][t=10.021]  V138 --HELLO + topo--> RSU_218  <V138 sees V185, t=10.000>
+[TTW-S2][t=10.021]  V185 --HELLO + topo--> RSU_218  <V185 sees V138, t=10.000>
+[TTW-S2][t=10.021]  V130 --HELLO + topo--> RSU_219  <V130 sees V127, t=10.000>
+[TTW-S2][t=10.021]  V127 --HELLO + topo--> RSU_219  <V127 sees V130, t=10.000>
+[TTW-S2][t=10.021]  V181 --HELLO + topo--> RSU_219  <V181 sees V140, t=10.000>
+[TTW-S2][t=10.021]  V140 --HELLO + topo--> RSU_219  <V140 sees V181, t=10.000>
+[TTW-S2][t=10.022]  V76 --HELLO + topo--> RSU_219  <V76 sees V81, t=10.000>
+[TTW-S2][t=10.022]  V81 --HELLO + topo--> RSU_219  <V81 sees V76, t=10.000>
+[TTW-S2][t=10.023]  V133 --HELLO + topo--> RSU_220  <V133 sees V149, t=10.000>
+[TTW-S2][t=10.023]  V149 --HELLO + topo--> RSU_220  <V149 sees V133, t=10.000>
+[TTW-S2][t=10.023]  V46 --HELLO + topo--> RSU_220  <V46 sees V48, t=10.000>
+[TTW-S2][t=10.023]  V48 --HELLO + topo--> RSU_220  <V48 sees V46, t=10.000>
+[TTW-S2][t=10.024]  V23 --HELLO + topo--> RSU_220  <V23 sees V63, t=10.000>
+[TTW-S2][t=10.024]  V63 --HELLO + topo--> RSU_220  <V63 sees V23, t=10.000>
+[TTW-S2][t=10.024]  V178 --HELLO + topo--> RSU_221  <V178 sees V159, t=10.000>
+[TTW-S2][t=10.024]  V159 --HELLO + topo--> RSU_221  <V159 sees V178, t=10.000>
+[TTW-S2][t=10.024]  V95 --HELLO + topo--> RSU_221  <V95 sees V201, t=10.000>
+[TTW-S2][t=10.024]  V201 --HELLO + topo--> RSU_221  <V201 sees V95, t=10.000>
+[TTW-S2][t=10.025]  V74 --HELLO + topo--> RSU_221  <V74 sees V202, t=10.000>
+[TTW-S2][t=10.025]  V202 --HELLO + topo--> RSU_221  <V202 sees V74, t=10.000>
+[TTW-S2][t=10.025]  V87 --HELLO + topo--> RSU_222  <V87 sees V43, t=10.000>
+[TTW-S2][t=10.025]  V43 --HELLO + topo--> RSU_222  <V43 sees V87, t=10.000>
+[TTW-S2][t=10.026]  V52 --HELLO + topo--> RSU_222  <V52 sees V50, t=10.000>
+[TTW-S2][t=10.026]  V50 --HELLO + topo--> RSU_222  <V50 sees V52, t=10.000>
+[TTW-S2][t=10.027]  V98 --HELLO + topo--> RSU_222  <V98 sees V79, t=10.000>
+[TTW-S2][t=10.027]  V79 --HELLO + topo--> RSU_222  <V79 sees V98, t=10.000>
+[TTW-S2][t=10.027]  V111 --HELLO + topo--> RSU_223  <V111 sees V109, t=10.000>
+[TTW-S2][t=10.027]  V109 --HELLO + topo--> RSU_223  <V109 sees V111, t=10.000>
+[TTW-S2][t=10.027]  V37 --HELLO + topo--> RSU_223  <V37 sees V36, t=10.000>
+[TTW-S2][t=10.027]  V36 --HELLO + topo--> RSU_223  <V36 sees V37, t=10.000>
+[TTW-S2][t=10.028]  V204 --HELLO + topo--> RSU_223  <V204 sees V116, t=10.000>
+[TTW-S2][t=10.028]  V116 --HELLO + topo--> RSU_223  <V116 sees V204, t=10.000>
+[TTW-S2][t=10.028]  V186 --HELLO + topo--> RSU_224  <V186 sees V183, t=10.000>
+[TTW-S2][t=10.028]  V183 --HELLO + topo--> RSU_224  <V183 sees V186, t=10.000>
+[TTW-S2][t=10.029]  V147 --HELLO + topo--> RSU_224  <V147 sees V155, t=10.000>
+[TTW-S2][t=10.029]  V155 --HELLO + topo--> RSU_224  <V155 sees V147, t=10.000>
+[TTW-S2][t=10.030]  V195 --HELLO + topo--> RSU_224  <V195 sees V150, t=10.000>
+[TTW-S2][t=10.030]  V150 --HELLO + topo--> RSU_224  <V150 sees V195, t=10.000>
+[TTW-S2][t=10.030]  V51 --HELLO + topo--> RSU_225  <V51 sees V77, t=10.000>
+[TTW-S2][t=10.030]  V77 --HELLO + topo--> RSU_225  <V77 sees V51, t=10.000>
+[TTW-S2][t=10.030]  V60 --HELLO + topo--> RSU_225  <V60 sees V65, t=10.000>
+[TTW-S2][t=10.030]  V65 --HELLO + topo--> RSU_225  <V65 sees V60, t=10.000>
+[TTW-S2][t=10.031]  V72 --HELLO + topo--> RSU_225  <V72 sees V199, t=10.000>
+[TTW-S2][t=10.031]  V199 --HELLO + topo--> RSU_225  <V199 sees V72, t=10.000>
+[TTW-S2][t=10.031]  V86 --HELLO + topo--> RSU_226  <V86 sees V107, t=10.000>
+[TTW-S2][t=10.031]  V107 --HELLO + topo--> RSU_226  <V107 sees V86, t=10.000>
+[TTW-S2][t=10.032]  V132 --HELLO + topo--> RSU_226  <V132 sees V135, t=10.000>
+[TTW-S2][t=10.032]  V135 --HELLO + topo--> RSU_226  <V135 sees V132, t=10.000>
+[TTW-S2][t=10.033]  V156 --HELLO + topo--> RSU_226  <V156 sees V154, t=10.000>
+[TTW-S2][t=10.033]  V154 --HELLO + topo--> RSU_226  <V154 sees V156, t=10.000>
+[TTW-S2][t=10.033]  V187 --HELLO + topo--> RSU_227  <V187 sees V190, t=10.000>
+[TTW-S2][t=10.033]  V190 --HELLO + topo--> RSU_227  <V190 sees V187, t=10.000>
+[TTW-S2][t=10.034]  V173 --HELLO + topo--> RSU_227  <V173 sees V176, t=10.000>
+[TTW-S2][t=10.034]  V176 --HELLO + topo--> RSU_227  <V176 sees V173, t=10.000>
+[TTW-S2][t=10.034]  V33 --HELLO + topo--> RSU_227  <V33 sees V88, t=10.000>
+[TTW-S2][t=10.034]  V88 --HELLO + topo--> RSU_227  <V88 sees V33, t=10.000>
+[TTW-S2][t=10.034]  V100 --HELLO + topo--> RSU_228  <V100 sees V193, t=10.000>
+[TTW-S2][t=10.034]  V193 --HELLO + topo--> RSU_228  <V193 sees V100, t=10.000>
+[TTW-S2][t=10.035]  V31 --HELLO + topo--> RSU_228  <V31 sees V29, t=10.000>
+[TTW-S2][t=10.035]  V29 --HELLO + topo--> RSU_228  <V29 sees V31, t=10.000>
+[TTW-S2][t=10.036]  V45 --HELLO + topo--> RSU_228  <V45 sees V46, t=10.000>
+[TTW-S2][t=10.036]  V46 --HELLO + topo--> RSU_228  <V46 sees V45, t=10.000>
+[TTW-S2][t=10.036]  V191 --HELLO + topo--> RSU_229  <V191 sees V6, t=10.000>
+[TTW-S2][t=10.036]  V6 --HELLO + topo--> RSU_229  <V6 sees V191, t=10.000>
+[TTW-S2][t=10.037]  V170 --HELLO + topo--> RSU_229  <V170 sees V168, t=10.000>
+[TTW-S2][t=10.037]  V168 --HELLO + topo--> RSU_229  <V168 sees V170, t=10.000>
+[TTW-S2][t=10.037]  V12 --HELLO + topo--> RSU_229  <V12 sees V17, t=10.000>
+[TTW-S2][t=10.037]  V17 --HELLO + topo--> RSU_229  <V17 sees V12, t=10.000>
+[TTW-S2][t=10.037]  V156 --HELLO + topo--> RSU_230  <V156 sees V158, t=10.000>
+[TTW-S2][t=10.037]  V158 --HELLO + topo--> RSU_230  <V158 sees V156, t=10.000>
+[TTW-S2][t=10.038]  V9 --HELLO + topo--> RSU_230  <V9 sees V20, t=10.000>
+[TTW-S2][t=10.038]  V20 --HELLO + topo--> RSU_230  <V20 sees V9, t=10.000>
+[TTW-S2][t=10.039]  V24 --HELLO + topo--> RSU_230  <V24 sees V27, t=10.000>
+[TTW-S2][t=10.039]  V27 --HELLO + topo--> RSU_230  <V27 sees V24, t=10.000>
+[TTW-S2][t=10.039]  V199 --HELLO + topo--> RSU_231  <V199 sees V197, t=10.000>
+[TTW-S2][t=10.039]  V197 --HELLO + topo--> RSU_231  <V197 sees V199, t=10.000>
+[TTW-S2][t=10.040]  V181 --HELLO + topo--> RSU_231  <V181 sees V173, t=10.000>
+[TTW-S2][t=10.040]  V173 --HELLO + topo--> RSU_231  <V173 sees V181, t=10.000>
+[TTW-S2][t=10.040]  V109 --HELLO + topo--> RSU_232  <V109 sees V111, t=10.000>
+[TTW-S2][t=10.040]  V111 --HELLO + topo--> RSU_232  <V111 sees V109, t=10.000>
+[TTW-S2][t=10.040]  V199 --HELLO + topo--> RSU_232  <V199 sees V72, t=10.000>
+[TTW-S2][t=10.040]  V72 --HELLO + topo--> RSU_232  <V72 sees V199, t=10.000>
+[TTW-S2][t=10.041]  V52 --HELLO + topo--> RSU_233  <V52 sees V53, t=10.000>
+[TTW-S2][t=10.041]  V53 --HELLO + topo--> RSU_233  <V53 sees V52, t=10.000>
+[TTW-S2][t=10.041]  V154 --HELLO + topo--> RSU_234  <V154 sees V164, t=10.000>
+[TTW-S2][t=10.041]  V164 --HELLO + topo--> RSU_234  <V164 sees V154, t=10.000>
+[TTW-S2][t=10.100]  RSU_205 --aggregate forward--> Controller  [<V95 sees V125>, <V125 sees V95>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.101]  RSU_205 --aggregate forward--> Controller  [<V101 sees V61>, <V61 sees V101>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.101]  RSU_205 --aggregate forward--> Controller  [<V144 sees V93>, <V93 sees V144>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.101]  RSU_206 --aggregate forward--> Controller  [<V136 sees V114>, <V114 sees V136>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.102]  RSU_206 --aggregate forward--> Controller  [<V177 sees V167>, <V167 sees V177>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.102]  RSU_206 --aggregate forward--> Controller  [<V151 sees V169>, <V169 sees V151>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.103]  RSU_207 --aggregate forward--> Controller  [<V40 sees V157>, <V157 sees V40>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.104]  RSU_207 --aggregate forward--> Controller  [<V28 sees V180>, <V180 sees V28>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.104]  RSU_207 --aggregate forward--> Controller  [<V47 sees V172>, <V172 sees V47>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.104]  RSU_208 --aggregate forward--> Controller  [<V165 sees V90>, <V90 sees V165>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 206 of size 12packet timestamp 10.101s with delay 1ms
+Current neighbor size is 0Received packet from 206 of size 12packet timestamp 10.102s with delay 1ms
+Current neighbor size is 0Received packet from 206 of size 12packet timestamp 10.102s with delay 1ms
+[TTW-S2][t=10.105]  RSU_208 --aggregate forward--> Controller  [<V79 sees V133>, <V133 sees V79>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.105]  RSU_208 --aggregate forward--> Controller  [<V118 sees V139>, <V139 sees V118>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.106]  RSU_209 --aggregate forward--> Controller  [<V149 sees V153>, <V153 sees V149>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.100s with delay 1ms
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.101s with delay 1ms
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 10.101s with delay 1ms
+[TTW-S2][t=10.107]  RSU_209 --aggregate forward--> Controller  [<V45 sees V148>, <V148 sees V45>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.107]  RSU_209 --aggregate forward--> Controller  [<V94 sees V123>, <V123 sees V94>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 207 of size 12packet timestamp 10.103s with delay 1ms
+Current neighbor size is 0Received packet from 207 of size 12packet timestamp 10.104s with delay 1ms
+Current neighbor size is 0Received packet from 207 of size 12packet timestamp 10.104s with delay 1ms
+Current neighbor size is 0Received packet from 209 of size 12packet timestamp 10.106s with delay 1ms
+Current neighbor size is 0Received packet from 209 of size 12packet timestamp 10.107s with delay 1ms
+Current neighbor size is 0Received packet from 209 of size 12packet timestamp 10.107s with delay 1ms
+[TTW-S2][t=10.107]  RSU_210 --aggregate forward--> Controller  [<V201 sees V145>, <V145 sees V201>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.108]  RSU_210 --aggregate forward--> Controller  [<V59 sees V128>, <V128 sees V59>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.108]  RSU_210 --aggregate forward--> Controller  [<V27 sees V22>, <V22 sees V27>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.109]  RSU_211 --aggregate forward--> Controller  [<V84 sees V87>, <V87 sees V84>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.110]  RSU_211 --aggregate forward--> Controller  [<V99 sees V18>, <V18 sees V99>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.110]  RSU_211 --aggregate forward--> Controller  [<V132 sees V56>, <V56 sees V132>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 211 of size 12packet timestamp 10.109s with delay 1ms
+Current neighbor size is 0Received packet from 211 of size 12packet timestamp 10.110s with delay 1ms
+Current neighbor size is 0Received packet from 211 of size 12packet timestamp 10.110s with delay 1ms
+[TTW-S2][t=10.111]  RSU_212 --aggregate forward--> Controller  [<V47 sees V71>, <V71 sees V47>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 208 of size 12packet timestamp 10.104s with delay 1ms
+Current neighbor size is 0Received packet from 208 of size 12packet timestamp 10.105s with delay 1ms
+Current neighbor size is 0Received packet from 208 of size 12packet timestamp 10.105s with delay 1ms
+[TTW-S2][t=10.111]  RSU_212 --aggregate forward--> Controller  [<V104 sees V115>, <V115 sees V104>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.111]  RSU_212 --aggregate forward--> Controller  [<V80 sees V136>, <V136 sees V80>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.112]  RSU_213 --aggregate forward--> Controller  [<V115 sees V102>, <V102 sees V115>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.113]  RSU_213 --aggregate forward--> Controller  [<V22 sees V99>, <V99 sees V22>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.113]  RSU_213 --aggregate forward--> Controller  [<V82 sees V33>, <V33 sees V82>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.114]  RSU_214 --aggregate forward--> Controller  [<V79 sees V174>, <V174 sees V79>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 210 of size 12packet timestamp 10.107s with delay 1ms
+Current neighbor size is 0Received packet from 210 of size 12packet timestamp 10.108s with delay 1ms
+Current neighbor size is 0Received packet from 210 of size 12packet timestamp 10.108s with delay 1ms
+This is tag7. Serialized size is 676
+[TTW-S2][t=10.114]  RSU_214 --aggregate forward--> Controller  [<V180 sees V28>, <V28 sees V180>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.114]  RSU_214 --aggregate forward--> Controller  [<V16 sees V49>, <V49 sees V16>]  t=10.000  ACCEPTED
+This is tag4. Serialized size is 424
+This is tag3. Serialized size is 340
+[TTW-S2][t=10.115]  RSU_215 --aggregate forward--> Controller  [<V48 sees V152>, <V152 sees V48>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 213 of size 12packet timestamp 10.112s with delay 1ms
+Current neighbor size is 0Received packet from 213 of size 12packet timestamp 10.113s with delay 1ms
+Current neighbor size is 0Received packet from 213 of size 12packet timestamp 10.113s with delay 1ms
+[TTW-S2][t=10.116]  RSU_215 --aggregate forward--> Controller  [<V195 sees V55>, <V55 sees V195>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.116]  RSU_215 --aggregate forward--> Controller  [<V119 sees V100>, <V100 sees V119>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 215 of size 12packet timestamp 10.115s with delay 1ms
+Current neighbor size is 0Received packet from 215 of size 12packet timestamp 10.116s with delay 1ms
+Current neighbor size is 0Received packet from 215 of size 12packet timestamp 10.116s with delay 1ms
+[TTW-S2][t=10.117]  RSU_216 --aggregate forward--> Controller  [<V159 sees V178>, <V178 sees V159>]  t=10.000  ACCEPTED
+Current neighbor size is 7Received neighborset from 99
+This is tag9. Serialized size is 844
+[TTW-S2][t=10.117]  RSU_216 --aggregate forward--> Controller  [<V140 sees V64>, <V64 sees V140>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.117]  RSU_216 --aggregate forward--> Controller  [<V25 sees V31>, <V31 sees V25>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 212 of size 12packet timestamp 10.111s with delay 1ms
+Current neighbor size is 0Received packet from 214 of size 12packet timestamp 10.114s with delay 1ms
+Current neighbor size is 0Received packet from 212 of size 12packet timestamp 10.111s with delay 1ms
+Current neighbor size is 0Received packet from 214 of size 12packet timestamp 10.114s with delay 1ms
+Current neighbor size is 0Received packet from 214 of size 12packet timestamp 10.114s with delay 1ms
+Current neighbor size is 0Received packet from 212 of size 12packet timestamp 10.111s with delay 1ms
+[TTW-S2][t=10.118]  RSU_217 --aggregate forward--> Controller  [<V172 sees V73>, <V73 sees V172>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.118]  RSU_217 --aggregate forward--> Controller  [<V23 sees V75>, <V75 sees V23>]  t=10.000  ACCEPTED
+Current neighbor size is 1Received neighborset from 101
+This is tag2. Serialized size is 256
+This is tag12. Serialized size is 1096
+[TTW-S2][t=10.119]  RSU_217 --aggregate forward--> Controller  [<V150 sees V147>, <V147 sees V150>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.120]  RSU_218 --aggregate forward--> Controller  [<V148 sees V19>, <V19 sees V148>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.120]  RSU_218 --aggregate forward--> Controller  [<V51 sees V177>, <V177 sees V51>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.120]  RSU_218 --aggregate forward--> Controller  [<V138 sees V185>, <V185 sees V138>]  t=10.000  ACCEPTED
+This is tag9. Serialized size is 844
+[TTW-S2][t=10.121]  RSU_219 --aggregate forward--> Controller  [<V130 sees V127>, <V127 sees V130>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.121]  RSU_219 --aggregate forward--> Controller  [<V181 sees V140>, <V140 sees V181>]  t=10.000  ACCEPTED
+This is tag7. Serialized size is 676
+This is tag5. Serialized size is 508
+[TTW-S2][t=10.122]  RSU_219 --aggregate forward--> Controller  [<V76 sees V81>, <V81 sees V76>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.123]  RSU_220 --aggregate forward--> Controller  [<V133 sees V149>, <V149 sees V133>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 216 of size 12packet timestamp 10.117s with delay 1ms
+Current neighbor size is 0Received packet from 216 of size 12packet timestamp 10.117s with delay 1ms
+Current neighbor size is 0Received packet from 216 of size 12packet timestamp 10.117s with delay 1ms
+Current neighbor size is 1Received neighborset from 132
+This is tag2. Serialized size is 256
+This is tag3. Serialized size is 340
+[TTW-S2][t=10.123]  RSU_220 --aggregate forward--> Controller  [<V46 sees V48>, <V48 sees V46>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.123]  RSU_220 --aggregate forward--> Controller  [<V23 sees V63>, <V63 sees V23>]  t=10.000  ACCEPTED
+Current neighbor size is 5Received neighborset from 151
+This is tag6. Serialized size is 592
+[TTW-S2][t=10.124]  RSU_221 --aggregate forward--> Controller  [<V178 sees V159>, <V159 sees V178>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.124]  RSU_221 --aggregate forward--> Controller  [<V95 sees V201>, <V201 sees V95>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 218 of size 12packet timestamp 10.120s with delay 1ms
+Current neighbor size is 0Received packet from 220 of size 12packet timestamp 10.123s with delay 1ms
+Current neighbor size is 0Received packet from 220 of size 12packet timestamp 10.123s with delay 1ms
+Current neighbor size is 0Received packet from 218 of size 12packet timestamp 10.120s with delay 1ms
+Current neighbor size is 0Received packet from 218 of size 12packet timestamp 10.120s with delay 1ms
+Current neighbor size is 0Received packet from 220 of size 12packet timestamp 10.123s with delay 1ms
+This is tag7. Serialized size is 676
+This is tag12. Serialized size is 1096
+[TTW-S2][t=10.125]  RSU_221 --aggregate forward--> Controller  [<V74 sees V202>, <V202 sees V74>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.126]  RSU_222 --aggregate forward--> Controller  [<V87 sees V43>, <V43 sees V87>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.126]  RSU_222 --aggregate forward--> Controller  [<V52 sees V50>, <V50 sees V52>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 217 of size 12packet timestamp 10.118s with delay 1ms
+Current neighbor size is 0Received packet from 217 of size 12packet timestamp 10.118s with delay 1ms
+Current neighbor size is 0Received packet from 217 of size 12packet timestamp 10.119s with delay 1ms
+[TTW-S2][t=10.127]  RSU_222 --aggregate forward--> Controller  [<V98 sees V79>, <V79 sees V98>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.127]  RSU_223 --aggregate forward--> Controller  [<V111 sees V109>, <V109 sees V111>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 221 of size 12packet timestamp 10.124s with delay 1ms
+Current neighbor size is 0Received packet from 221 of size 12packet timestamp 10.124s with delay 1ms
+Current neighbor size is 0Received packet from 221 of size 12packet timestamp 10.125s with delay 1ms
+[TTW-S2][t=10.127]  RSU_223 --aggregate forward--> Controller  [<V37 sees V36>, <V36 sees V37>]  t=10.000  ACCEPTED
+Current neighbor size is 4Received neighborset from 114
+This is tag5. Serialized size is 508
+[TTW-S2][t=10.128]  RSU_223 --aggregate forward--> Controller  [<V204 sees V116>, <V116 sees V204>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.129]  RSU_224 --aggregate forward--> Controller  [<V186 sees V183>, <V183 sees V186>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 224 of size 12packet timestamp 10.129s with delay 1ms
+[TTW-S2][t=10.129]  RSU_224 --aggregate forward--> Controller  [<V147 sees V155>, <V155 sees V147>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 224 of size 12packet timestamp 10.129s with delay 1ms
+[TTW-S2][t=10.130]  RSU_224 --aggregate forward--> Controller  [<V195 sees V150>, <V150 sees V195>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 224 of size 12packet timestamp 10.130s with delay 1ms
+This is tag8. Serialized size is 760
+This is tag4. Serialized size is 424
+This is tag5. Serialized size is 508
+[TTW-S2][t=10.130]  RSU_225 --aggregate forward--> Controller  [<V51 sees V77>, <V77 sees V51>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 219 of size 12packet timestamp 10.121s with delay 1ms
+Current neighbor size is 0Received packet from 219 of size 12packet timestamp 10.121s with delay 1ms
+Current neighbor size is 0Received packet from 219 of size 12packet timestamp 10.122s with delay 1ms
+[TTW-S2][t=10.130]  RSU_225 --aggregate forward--> Controller  [<V60 sees V65>, <V65 sees V60>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.131]  RSU_225 --aggregate forward--> Controller  [<V72 sees V199>, <V199 sees V72>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.132]  RSU_226 --aggregate forward--> Controller  [<V86 sees V107>, <V107 sees V86>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 222 of size 12packet timestamp 10.126s with delay 1ms
+Current neighbor size is 0Received packet from 222 of size 12packet timestamp 10.126s with delay 1ms
+Current neighbor size is 0Received packet from 222 of size 12packet timestamp 10.127s with delay 1ms
+[TTW-S2][t=10.132]  RSU_226 --aggregate forward--> Controller  [<V132 sees V135>, <V135 sees V132>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 225 of size 12packet timestamp 10.130s with delay 1ms
+Current neighbor size is 0Received packet from 225 of size 12packet timestamp 10.130s with delay 1ms
+Current neighbor size is 0Received packet from 225 of size 12packet timestamp 10.131s with delay 1ms
+[TTW-S2][t=10.133]  RSU_226 --aggregate forward--> Controller  [<V156 sees V154>, <V154 sees V156>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.133]  RSU_227 --aggregate forward--> Controller  [<V187 sees V190>, <V190 sees V187>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.133]  RSU_227 --aggregate forward--> Controller  [<V173 sees V176>, <V176 sees V173>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 226 of size 12packet timestamp 10.132s with delay 1ms
+Current neighbor size is 0Received packet from 226 of size 12packet timestamp 10.132s with delay 1ms
+Current neighbor size is 0Received packet from 226 of size 12packet timestamp 10.133s with delay 1ms
+[TTW-S2][t=10.134]  RSU_227 --aggregate forward--> Controller  [<V33 sees V88>, <V88 sees V33>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.134]  RSU_228 --aggregate forward--> Controller  [<V100 sees V193>, <V193 sees V100>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.135]  RSU_228 --aggregate forward--> Controller  [<V31 sees V29>, <V29 sees V31>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.136]  RSU_228 --aggregate forward--> Controller  [<V45 sees V46>, <V46 sees V45>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.136]  RSU_229 --aggregate forward--> Controller  [<V191 sees V6>, <V6 sees V191>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 223 of size 12packet timestamp 10.127s with delay 1ms
+Current neighbor size is 0Received packet from 223 of size 12packet timestamp 10.127s with delay 1ms
+Current neighbor size is 0Received packet from 223 of size 12packet timestamp 10.128s with delay 1ms
+[TTW-S2][t=10.136]  RSU_229 --aggregate forward--> Controller  [<V170 sees V168>, <V168 sees V170>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.137]  RSU_229 --aggregate forward--> Controller  [<V12 sees V17>, <V17 sees V12>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 227 of size 12packet timestamp 10.133s with delay 1ms
+Current neighbor size is 0Received packet from 227 of size 12packet timestamp 10.133s with delay 1ms
+Current neighbor size is 0Received packet from 227 of size 12packet timestamp 10.134s with delay 1ms
+[TTW-S2][t=10.137]  RSU_230 --aggregate forward--> Controller  [<V156 sees V158>, <V158 sees V156>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.138]  RSU_230 --aggregate forward--> Controller  [<V9 sees V20>, <V20 sees V9>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.139]  RSU_230 --aggregate forward--> Controller  [<V24 sees V27>, <V27 sees V24>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.139]  RSU_231 --aggregate forward--> Controller  [<V199 sees V197>, <V197 sees V199>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 229 of size 12packet timestamp 10.136s with delay 1ms
+Current neighbor size is 0Received packet from 229 of size 12packet timestamp 10.136s with delay 1ms
+Current neighbor size is 0Received packet from 229 of size 12packet timestamp 10.137s with delay 1ms
+[TTW-S2][t=10.139]  RSU_231 --aggregate forward--> Controller  [<V181 sees V173>, <V173 sees V181>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 228 of size 12packet timestamp 10.134s with delay 1ms
+Current neighbor size is 0Received packet from 228 of size 12packet timestamp 10.135s with delay 1ms
+Current neighbor size is 0Received packet from 228 of size 12packet timestamp 10.136s with delay 1ms
+[TTW-S2][t=10.140]  RSU_232 --aggregate forward--> Controller  [<V109 sees V111>, <V111 sees V109>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.140]  RSU_232 --aggregate forward--> Controller  [<V199 sees V72>, <V72 sees V199>]  t=10.000  ACCEPTED
+[TTW-S2][t=10.141]  RSU_233 --aggregate forward--> Controller  [<V52 sees V53>, <V53 sees V52>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 233 of size 12packet timestamp 10.141s with delay 1ms
+[TTW-S2][t=10.142]  RSU_234 --aggregate forward--> Controller  [<V154 sees V164>, <V164 sees V154>]  t=10.000  ACCEPTED
+Current neighbor size is 0Received packet from 231 of size 12packet timestamp 10.139s with delay 1ms
+Current neighbor size is 0Received packet from 231 of size 12packet timestamp 10.139s with delay 1ms
+Current neighbor size is 0Received packet from 230 of size 12packet timestamp 10.137s with delay 1ms
+Current neighbor size is 0Received packet from 230 of size 12packet timestamp 10.138s with delay 1ms
+Current neighbor size is 0Received packet from 230 of size 12packet timestamp 10.139s with delay 1ms
+Current neighbor size is 0Received packet from 234 of size 12packet timestamp 10.142s with delay 1ms
+Current neighbor size is 0Received packet from 232 of size 12packet timestamp 10.140s with delay 1ms
+Current neighbor size is 0Received packet from 232 of size 12packet timestamp 10.140s with delay 1ms
+[TTW-S2][t=10.200]  Malicious RSU stored old packet  <V95 sees V125, t=10.000>  (link breaks t≈19.900s, replay at t=21.900)
+[TTW-S2][t=10.200]  Malicious RSU stored old packet  <V101 sees V61, t=10.000>  (link breaks t≈16.300s, replay at t=18.300)
+[TTW-S2][t=10.201]  Malicious RSU stored old packet  <V144 sees V93, t=10.000>  (link breaks t≈22.900s, replay at t=24.900)
+[TTW-S2][t=10.201]  Malicious RSU stored old packet  <V136 sees V114, t=10.000>  (link breaks t≈12.500s, replay at t=14.500)
+[TTW-S2][t=10.202]  Malicious RSU stored old packet  <V177 sees V167, t=10.000>  (link breaks t≈19.300s, replay at t=21.300)
+[TTW-S2][t=10.203]  Malicious RSU stored old packet  <V151 sees V169, t=10.000>  (link breaks t≈23.700s, replay at t=25.700)
+[TTW-S2][t=10.203]  Malicious RSU stored old packet  <V40 sees V157, t=10.000>  (link breaks t≈16.300s, replay at t=18.300)
+[TTW-S2][t=10.204]  Malicious RSU stored old packet  <V28 sees V180, t=10.000>  (link breaks t≈24.500s, replay at t=26.500)
+[TTW-S2][t=10.204]  Malicious RSU stored old packet  <V47 sees V172, t=10.000>  (link breaks t≈24.100s, replay at t=26.100)
+[TTW-S2][t=10.204]  Malicious RSU stored old packet  <V165 sees V90, t=10.000>  (link breaks t≈14.100s, replay at t=16.100)
+[TTW-S2][t=10.205]  Malicious RSU stored old packet  <V79 sees V133, t=10.000>  (link breaks t≈21.500s, replay at t=23.500)
+[TTW-S2][t=10.206]  Malicious RSU stored old packet  <V118 sees V139, t=10.000>  (link breaks t≈24.900s, replay at t=26.900)
+[TTW-S2][t=10.206]  Malicious RSU stored old packet  <V149 sees V153, t=10.000>  (link breaks t≈17.900s, replay at t=19.900)
+[TTW-S2][t=10.207]  Malicious RSU stored old packet  <V45 sees V148, t=10.000>  (link breaks t≈20.100s, replay at t=22.100)
+[TTW-S2][t=10.207]  Malicious RSU stored old packet  <V94 sees V123, t=10.000>  (link breaks t≈23.500s, replay at t=25.500)
+[TTW-S2][t=10.207]  Malicious RSU stored old packet  <V201 sees V145, t=10.000>  (link breaks t≈19.700s, replay at t=21.700)
+[TTW-S2][t=10.208]  Malicious RSU stored old packet  <V59 sees V128, t=10.000>  (link breaks t≈26.700s, replay at t=28.700)
+[TTW-S2][t=10.209]  Malicious RSU stored old packet  <V27 sees V22, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.209]  Malicious RSU stored old packet  <V84 sees V87, t=10.000>  (link breaks t≈14.300s, replay at t=16.300)
+[TTW-S2][t=10.210]  Malicious RSU stored old packet  <V99 sees V18, t=10.000>  (link breaks t≈18.900s, replay at t=20.900)
+[TTW-S2][t=10.210]  Malicious RSU stored old packet  <V132 sees V56, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.210]  Malicious RSU stored old packet  <V47 sees V71, t=10.000>  (link breaks t≈15.900s, replay at t=17.900)
+[TTW-S2][t=10.211]  Malicious RSU stored old packet  <V104 sees V115, t=10.000>  (link breaks t≈17.100s, replay at t=19.100)
+[TTW-S2][t=10.211]  Malicious RSU stored old packet  <V80 sees V136, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.212]  Malicious RSU stored old packet  <V115 sees V102, t=10.000>  (link breaks t≈15.300s, replay at t=17.300)
+[TTW-S2][t=10.213]  Malicious RSU stored old packet  <V22 sees V99, t=10.000>  (link breaks t≈19.300s, replay at t=21.300)
+[TTW-S2][t=10.213]  Malicious RSU stored old packet  <V82 sees V33, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.213]  Malicious RSU stored old packet  <V79 sees V174, t=10.000>  (link breaks t≈12.100s, replay at t=14.100)
+[TTW-S2][t=10.214]  Malicious RSU stored old packet  <V180 sees V28, t=10.000>  (link breaks t≈24.500s, replay at t=26.500)
+[TTW-S2][t=10.214]  Malicious RSU stored old packet  <V16 sees V49, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.215]  Malicious RSU stored old packet  <V48 sees V152, t=10.000>  (link breaks t≈10.700s, replay at t=12.700)
+[TTW-S2][t=10.216]  Malicious RSU stored old packet  <V195 sees V55, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.216]  Malicious RSU stored old packet  <V119 sees V100, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.216]  Malicious RSU stored old packet  <V159 sees V178, t=10.000>  (link breaks t≈13.500s, replay at t=15.500)
+[TTW-S2][t=10.217]  Malicious RSU stored old packet  <V140 sees V64, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.217]  Malicious RSU stored old packet  <V25 sees V31, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.218]  Malicious RSU stored old packet  <V172 sees V73, t=10.000>  (link breaks t≈18.300s, replay at t=20.300)
+[TTW-S2][t=10.219]  Malicious RSU stored old packet  <V23 sees V75, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.219]  Malicious RSU stored old packet  <V150 sees V147, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.220]  Malicious RSU stored old packet  <V148 sees V19, t=10.000>  (link breaks t≈19.700s, replay at t=21.700)
+[TTW-S2][t=10.220]  Malicious RSU stored old packet  <V51 sees V177, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.220]  Malicious RSU stored old packet  <V138 sees V185, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.221]  Malicious RSU stored old packet  <V130 sees V127, t=10.000>  (link breaks t≈23.700s, replay at t=25.700)
+[TTW-S2][t=10.222]  Malicious RSU stored old packet  <V181 sees V140, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.222]  Malicious RSU stored old packet  <V76 sees V81, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.223]  Malicious RSU stored old packet  <V133 sees V149, t=10.000>  (link breaks t≈18.500s, replay at t=20.500)
+[TTW-S2][t=10.223]  Malicious RSU stored old packet  <V46 sees V48, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.223]  Malicious RSU stored old packet  <V23 sees V63, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.224]  Malicious RSU stored old packet  <V178 sees V159, t=10.000>  (link breaks t≈13.500s, replay at t=15.500)
+[TTW-S2][t=10.225]  Malicious RSU stored old packet  <V95 sees V201, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.225]  Malicious RSU stored old packet  <V74 sees V202, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.226]  Malicious RSU stored old packet  <V87 sees V43, t=10.000>  (link breaks t≈12.500s, replay at t=14.500)
+[TTW-S2][t=10.226]  Malicious RSU stored old packet  <V52 sees V50, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.226]  Malicious RSU stored old packet  <V98 sees V79, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.227]  Malicious RSU stored old packet  <V111 sees V109, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.227]  Malicious RSU stored old packet  <V37 sees V36, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.228]  Malicious RSU stored old packet  <V204 sees V116, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.229]  Malicious RSU stored old packet  <V186 sees V183, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.229]  Malicious RSU stored old packet  <V147 sees V155, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.229]  Malicious RSU stored old packet  <V195 sees V150, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.230]  Malicious RSU stored old packet  <V51 sees V77, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.230]  Malicious RSU stored old packet  <V60 sees V65, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.231]  Malicious RSU stored old packet  <V72 sees V199, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.232]  Malicious RSU stored old packet  <V86 sees V107, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.232]  Malicious RSU stored old packet  <V132 sees V135, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.232]  Malicious RSU stored old packet  <V156 sees V154, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.233]  Malicious RSU stored old packet  <V187 sees V190, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.233]  Malicious RSU stored old packet  <V173 sees V176, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.234]  Malicious RSU stored old packet  <V33 sees V88, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.235]  Malicious RSU stored old packet  <V100 sees V193, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.235]  Malicious RSU stored old packet  <V31 sees V29, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.236]  Malicious RSU stored old packet  <V45 sees V46, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.236]  Malicious RSU stored old packet  <V191 sees V6, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.236]  Malicious RSU stored old packet  <V170 sees V168, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.237]  Malicious RSU stored old packet  <V12 sees V17, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.238]  Malicious RSU stored old packet  <V156 sees V158, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.238]  Malicious RSU stored old packet  <V9 sees V20, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.239]  Malicious RSU stored old packet  <V24 sees V27, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.239]  Malicious RSU stored old packet  <V199 sees V197, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.239]  Malicious RSU stored old packet  <V181 sees V173, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.240]  Malicious RSU stored old packet  <V109 sees V111, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.241]  Malicious RSU stored old packet  <V199 sees V72, t=10.000>  (link breaks t≈27.000s, replay at t=29.000)
+[TTW-S2][t=10.241]  Malicious RSU stored old packet  <V52 sees V53, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[TTW-S2][t=10.242]  Malicious RSU stored old packet  <V154 sees V164, t=10.000>  (link breaks t≈25.000s, replay at t=27.000)
+[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=4866803567695255771 (interval=3.000s)
+[TTW-S2][t=12.699]  Pipeline armed: RSU NS3-ID=205 will inject 84 forged pair(s)
+    V95 sees V125
+    V101 sees V61
+    V144 sees V93
+    V136 sees V114
+    V177 sees V167
+    V151 sees V169
+    V40 sees V157
+    V28 sees V180
+    V47 sees V172
+    V165 sees V90
+    V79 sees V133
+    V118 sees V139
+    V149 sees V153
+    V45 sees V148
+    V94 sees V123
+    V201 sees V145
+    V59 sees V128
+    V27 sees V22
+    V84 sees V87
+    V99 sees V18
+    V132 sees V56
+    V47 sees V71
+    V104 sees V115
+    V80 sees V136
+    V115 sees V102
+    V22 sees V99
+    V82 sees V33
+    V79 sees V174
+    V180 sees V28
+    V16 sees V49
+    V48 sees V152
+    V195 sees V55
+    V119 sees V100
+    V159 sees V178
+    V140 sees V64
+    V25 sees V31
+    V172 sees V73
+    V23 sees V75
+    V150 sees V147
+    V148 sees V19
+    V51 sees V177
+    V138 sees V185
+    V130 sees V127
+    V181 sees V140
+    V76 sees V81
+    V133 sees V149
+    V46 sees V48
+    V23 sees V63
+    V178 sees V159
+    V95 sees V201
+    V74 sees V202
+    V87 sees V43
+    V52 sees V50
+    V98 sees V79
+    V111 sees V109
+    V37 sees V36
+    V204 sees V116
+    V186 sees V183
+    V147 sees V155
+    V195 sees V150
+    V51 sees V77
+    V60 sees V65
+    V72 sees V199
+    V86 sees V107
+    V132 sees V135
+    V156 sees V154
+    V187 sees V190
+    V173 sees V176
+    V33 sees V88
+    V100 sees V193
+    V31 sees V29
+    V45 sees V46
+    V191 sees V6
+    V170 sees V168
+    V12 sees V17
+    V156 sees V158
+    V9 sees V20
+    V24 sees V27
+    V199 sees V197
+    V181 sees V173
+    V109 sees V111
+    V199 sees V72
+    V52 sees V53
+    V154 sees V164
+[TTW-S2][t=12.715]  RSU_215 --FORGED replay--> Controller  <V48 sees V152, t=12.700>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=12.715]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=12.715]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 1/200 >= t=101 -> FAIL
+[TTW-S2][t=12.715]  FS-MITIGATE ABORTED (gate failed)  attacker=V215
+[TTW-S2][t=14.114]  RSU_214 --FORGED replay--> Controller  <V79 sees V174, t=14.100>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=14.114]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=14.114]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 2/200 >= t=101 -> FAIL
+[TTW-S2][t=14.114]  FS-MITIGATE ABORTED (gate failed)  attacker=V214
+[TTW-S2][t=14.502]  RSU_206 --FORGED replay--> Controller  <V136 sees V114, t=14.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=14.502]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=14.502]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 3/200 >= t=101 -> FAIL
+[TTW-S2][t=14.502]  FS-MITIGATE ABORTED (gate failed)  attacker=V206
+[TTW-S2][t=14.525]  RSU_222 --FORGED replay--> Controller  <V87 sees V43, t=14.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=14.525]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=14.525]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 4/200 >= t=101 -> FAIL
+[TTW-S2][t=14.525]  FS-MITIGATE ABORTED (gate failed)  attacker=V222
+[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=4866803567695255771 (interval=3.000s)
+[TTW-S2][t=15.517]  RSU_216 --FORGED replay--> Controller  <V159 sees V178, t=15.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=15.517]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=15.517]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 5/200 >= t=101 -> FAIL
+[TTW-S2][t=15.517]  FS-MITIGATE ABORTED (gate failed)  attacker=V216
+[TTW-S2][t=15.524]  RSU_221 --FORGED replay--> Controller  <V178 sees V159, t=15.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=15.524]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=15.524]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 6/200 >= t=101 -> FAIL
+[TTW-S2][t=15.524]  FS-MITIGATE ABORTED (gate failed)  attacker=V221
+[TTW-S2][t=16.105]  RSU_208 --FORGED replay--> Controller  <V165 sees V90, t=16.100>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=16.105]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=16.105]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 7/200 >= t=101 -> FAIL
+[TTW-S2][t=16.105]  FS-MITIGATE ABORTED (gate failed)  attacker=V208
+[TTW-S2][t=16.309]  RSU_211 --FORGED replay--> Controller  <V84 sees V87, t=16.300>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=16.309]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=16.309]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 8/200 >= t=101 -> FAIL
+[TTW-S2][t=16.309]  FS-MITIGATE ABORTED (gate failed)  attacker=V211
+[TTW-S2][t=17.312]  RSU_213 --FORGED replay--> Controller  <V115 sees V102, t=17.300>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=17.312]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=17.312]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 9/200 >= t=101 -> FAIL
+[TTW-S2][t=17.312]  FS-MITIGATE ABORTED (gate failed)  attacker=V213
+[TTW-S2][t=17.910]  RSU_212 --FORGED replay--> Controller  <V47 sees V71, t=17.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=17.910]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=17.910]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 10/200 >= t=101 -> FAIL
+[TTW-S2][t=17.910]  FS-MITIGATE ABORTED (gate failed)  attacker=V212
+[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=4866803567695255771 (interval=3.000s)
+[TTW-S2][t=18.300]  RSU_205 --FORGED replay--> Controller  <V101 sees V61, t=18.300>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=18.300]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=18.300]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 11/200 >= t=101 -> FAIL
+[TTW-S2][t=18.300]  FS-MITIGATE ABORTED (gate failed)  attacker=V205
+[TTW-S2][t=18.303]  RSU_207 --FORGED replay--> Controller  <V40 sees V157, t=18.300>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=18.303]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=18.303]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 12/200 >= t=101 -> FAIL
+[TTW-S2][t=18.303]  FS-MITIGATE ABORTED (gate failed)  attacker=V207
+[TTW-S2][t=19.111]  RSU_212 --FORGED replay--> Controller  <V104 sees V115, t=19.100>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=19.111]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=19.111]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 13/200 >= t=101 -> FAIL
+[TTW-S2][t=19.111]  FS-MITIGATE ABORTED (gate failed)  attacker=V212
+[TTW-S2][t=19.906]  RSU_209 --FORGED replay--> Controller  <V149 sees V153, t=19.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=19.906]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=19.906]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 14/200 >= t=101 -> FAIL
+[TTW-S2][t=19.906]  FS-MITIGATE ABORTED (gate failed)  attacker=V209
+[TTW-S2][t=20.318]  RSU_217 --FORGED replay--> Controller  <V172 sees V73, t=20.300>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=20.318]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=20.318]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 15/200 >= t=101 -> FAIL
+[TTW-S2][t=20.318]  FS-MITIGATE ABORTED (gate failed)  attacker=V217
+[TTW-S2][t=20.523]  RSU_220 --FORGED replay--> Controller  <V133 sees V149, t=20.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=20.523]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=20.523]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 16/200 >= t=101 -> FAIL
+[TTW-S2][t=20.523]  FS-MITIGATE ABORTED (gate failed)  attacker=V220
+[TTW-S2][t=20.910]  RSU_211 --FORGED replay--> Controller  <V99 sees V18, t=20.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=20.910]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=20.910]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 17/200 >= t=101 -> FAIL
+[TTW-S2][t=20.910]  FS-MITIGATE ABORTED (gate failed)  attacker=V211
+[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=4866803567695255771 (interval=3.000s)
+[TTW-S2][t=21.302]  RSU_206 --FORGED replay--> Controller  <V177 sees V167, t=21.300>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=21.302]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=21.302]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 18/200 >= t=101 -> FAIL
+[TTW-S2][t=21.302]  FS-MITIGATE ABORTED (gate failed)  attacker=V206
+[TTW-S2][t=21.312]  RSU_213 --FORGED replay--> Controller  <V22 sees V99, t=21.300>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=21.312]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=21.312]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 19/200 >= t=101 -> FAIL
+[TTW-S2][t=21.312]  FS-MITIGATE ABORTED (gate failed)  attacker=V213
+[TTW-S2][t=21.707]  RSU_210 --FORGED replay--> Controller  <V201 sees V145, t=21.700>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=21.707]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=21.707]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 20/200 >= t=101 -> FAIL
+[TTW-S2][t=21.707]  FS-MITIGATE ABORTED (gate failed)  attacker=V210
+[TTW-S2][t=21.720]  RSU_218 --FORGED replay--> Controller  <V148 sees V19, t=21.700>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=21.720]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=21.720]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 21/200 >= t=101 -> FAIL
+[TTW-S2][t=21.720]  FS-MITIGATE ABORTED (gate failed)  attacker=V218
+[TTW-S2][t=21.900]  RSU_205 --FORGED replay--> Controller  <V95 sees V125, t=21.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=21.900]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=21.900]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 22/200 >= t=101 -> FAIL
+[TTW-S2][t=21.900]  FS-MITIGATE ABORTED (gate failed)  attacker=V205
+[TTW-S2][t=22.107]  RSU_209 --FORGED replay--> Controller  <V45 sees V148, t=22.100>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=22.107]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=22.107]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 23/200 >= t=101 -> FAIL
+[TTW-S2][t=22.107]  FS-MITIGATE ABORTED (gate failed)  attacker=V209
+[TTW-S2][t=23.505]  RSU_208 --FORGED replay--> Controller  <V79 sees V133, t=23.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=23.505]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=23.505]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 24/200 >= t=101 -> FAIL
+[TTW-S2][t=23.505]  FS-MITIGATE ABORTED (gate failed)  attacker=V208
+[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=4866803567695255771 (interval=3.000s)
+[TTW-S2][t=24.901]  RSU_205 --FORGED replay--> Controller  <V144 sees V93, t=24.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=24.901]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=24.901]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 25/200 >= t=101 -> FAIL
+[TTW-S2][t=24.901]  FS-MITIGATE ABORTED (gate failed)  attacker=V205
+[TTW-S2][t=25.507]  RSU_209 --FORGED replay--> Controller  <V94 sees V123, t=25.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=25.507]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=25.507]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 26/200 >= t=101 -> FAIL
+[TTW-S2][t=25.507]  FS-MITIGATE ABORTED (gate failed)  attacker=V209
+[TTW-S2][t=25.703]  RSU_206 --FORGED replay--> Controller  <V151 sees V169, t=25.700>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=25.703]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=25.703]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 27/200 >= t=101 -> FAIL
+[TTW-S2][t=25.703]  FS-MITIGATE ABORTED (gate failed)  attacker=V206
+[TTW-S2][t=25.721]  RSU_219 --FORGED replay--> Controller  <V130 sees V127, t=25.700>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=25.721]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=25.721]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 28/200 >= t=101 -> FAIL
+[TTW-S2][t=25.721]  FS-MITIGATE ABORTED (gate failed)  attacker=V219
+[TTW-S2][t=26.104]  RSU_207 --FORGED replay--> Controller  <V47 sees V172, t=26.100>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=26.104]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=26.104]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 29/200 >= t=101 -> FAIL
+[TTW-S2][t=26.104]  FS-MITIGATE ABORTED (gate failed)  attacker=V207
+[TTW-S2][t=26.503]  RSU_207 --FORGED replay--> Controller  <V28 sees V180, t=26.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=26.503]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=26.503]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 30/200 >= t=101 -> FAIL
+[TTW-S2][t=26.503]  FS-MITIGATE ABORTED (gate failed)  attacker=V207
+[TTW-S2][t=26.514]  RSU_214 --FORGED replay--> Controller  <V180 sees V28, t=26.500>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=26.514]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=26.514]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 31/200 >= t=101 -> FAIL
+[TTW-S2][t=26.514]  FS-MITIGATE ABORTED (gate failed)  attacker=V214
+[TTW-S2][t=26.905]  RSU_208 --FORGED replay--> Controller  <V118 sees V139, t=26.900>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=26.905]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=26.905]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 32/200 >= t=101 -> FAIL
+[TTW-S2][t=26.905]  FS-MITIGATE ABORTED (gate failed)  attacker=V208
+[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=4866803567695255771 (interval=3.000s)
+[TTW-S2][t=27.027]  RSU_223 --FORGED replay--> Controller  <V111 sees V109, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.027]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.027]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 33/200 >= t=101 -> FAIL
+[TTW-S2][t=27.027]  FS-MITIGATE ABORTED (gate failed)  attacker=V223
+[TTW-S2][t=27.029]  RSU_224 --FORGED replay--> Controller  <V186 sees V183, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.029]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.029]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 34/200 >= t=101 -> FAIL
+[TTW-S2][t=27.029]  FS-MITIGATE ABORTED (gate failed)  attacker=V224
+[TTW-S2][t=27.030]  RSU_225 --FORGED replay--> Controller  <V51 sees V77, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.030]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=27.030]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 35/200 >= t=101 -> FAIL
+[TTW-S2][t=27.030]  FS-MITIGATE ABORTED (gate failed)  attacker=V225
+[TTW-S2][t=27.032]  RSU_226 --FORGED replay--> Controller  <V86 sees V107, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.032]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.032]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 36/200 >= t=101 -> FAIL
+[TTW-S2][t=27.032]  FS-MITIGATE ABORTED (gate failed)  attacker=V226
+[TTW-S2][t=27.033]  RSU_227 --FORGED replay--> Controller  <V187 sees V190, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.033]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.033]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 37/200 >= t=101 -> FAIL
+[TTW-S2][t=27.033]  FS-MITIGATE ABORTED (gate failed)  attacker=V227
+[TTW-S2][t=27.035]  RSU_228 --FORGED replay--> Controller  <V100 sees V193, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.035]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.035]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 38/200 >= t=101 -> FAIL
+[TTW-S2][t=27.035]  FS-MITIGATE ABORTED (gate failed)  attacker=V228
+[TTW-S2][t=27.036]  RSU_229 --FORGED replay--> Controller  <V191 sees V6, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.036]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=27.036]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 39/200 >= t=101 -> FAIL
+[TTW-S2][t=27.036]  FS-MITIGATE ABORTED (gate failed)  attacker=V229
+[TTW-S2][t=27.038]  RSU_230 --FORGED replay--> Controller  <V156 sees V158, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.038]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.038]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 40/200 >= t=101 -> FAIL
+[TTW-S2][t=27.038]  FS-MITIGATE ABORTED (gate failed)  attacker=V230
+[TTW-S2][t=27.039]  RSU_231 --FORGED replay--> Controller  <V199 sees V197, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.039]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.039]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 41/200 >= t=101 -> FAIL
+[TTW-S2][t=27.039]  FS-MITIGATE ABORTED (gate failed)  attacker=V231
+[TTW-S2][t=27.040]  RSU_232 --FORGED replay--> Controller  <V109 sees V111, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.040]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=27.040]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 42/200 >= t=101 -> FAIL
+[TTW-S2][t=27.040]  FS-MITIGATE ABORTED (gate failed)  attacker=V232
+[TTW-S2][t=27.041]  RSU_233 --FORGED replay--> Controller  <V52 sees V53, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.041]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=27.041]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 43/200 >= t=101 -> FAIL
+[TTW-S2][t=27.041]  FS-MITIGATE ABORTED (gate failed)  attacker=V233
+[TTW-S2][t=27.041]  RSU_234 --FORGED replay--> Controller  <V154 sees V164, t=27.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=27.041]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=27.041]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 44/200 >= t=101 -> FAIL
+[TTW-S2][t=27.041]  FS-MITIGATE ABORTED (gate failed)  attacker=V234
+[TTW-S2][t=28.708]  RSU_210 --FORGED replay--> Controller  <V59 sees V128, t=28.700>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=28.708]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=28.708]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 45/200 >= t=101 -> FAIL
+[TTW-S2][t=28.708]  FS-MITIGATE ABORTED (gate failed)  attacker=V210
+[TTW-S2][t=29.009]  RSU_210 --FORGED replay--> Controller  <V27 sees V22, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.009]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.009]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 46/200 >= t=101 -> FAIL
+[TTW-S2][t=29.009]  FS-MITIGATE ABORTED (gate failed)  attacker=V210
+[TTW-S2][t=29.010]  RSU_211 --FORGED replay--> Controller  <V132 sees V56, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.010]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.010]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 47/200 >= t=101 -> FAIL
+[TTW-S2][t=29.010]  FS-MITIGATE ABORTED (gate failed)  attacker=V211
+[TTW-S2][t=29.012]  RSU_212 --FORGED replay--> Controller  <V80 sees V136, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.012]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.012]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 48/200 >= t=101 -> FAIL
+[TTW-S2][t=29.012]  FS-MITIGATE ABORTED (gate failed)  attacker=V212
+[TTW-S2][t=29.013]  RSU_213 --FORGED replay--> Controller  <V82 sees V33, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.013]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.013]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 49/200 >= t=101 -> FAIL
+[TTW-S2][t=29.013]  FS-MITIGATE ABORTED (gate failed)  attacker=V213
+[TTW-S2][t=29.015]  RSU_214 --FORGED replay--> Controller  <V16 sees V49, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.015]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.015]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 50/200 >= t=101 -> FAIL
+[TTW-S2][t=29.015]  FS-MITIGATE ABORTED (gate failed)  attacker=V214
+[TTW-S2][t=29.015]  RSU_215 --FORGED replay--> Controller  <V195 sees V55, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.015]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.015]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 51/200 >= t=101 -> FAIL
+[TTW-S2][t=29.015]  FS-MITIGATE ABORTED (gate failed)  attacker=V215
+[TTW-S2][t=29.016]  RSU_215 --FORGED replay--> Controller  <V119 sees V100, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.016]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.016]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 52/200 >= t=101 -> FAIL
+[TTW-S2][t=29.016]  FS-MITIGATE ABORTED (gate failed)  attacker=V215
+[TTW-S2][t=29.017]  RSU_216 --FORGED replay--> Controller  <V140 sees V64, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.017]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.017]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 53/200 >= t=101 -> FAIL
+[TTW-S2][t=29.017]  FS-MITIGATE ABORTED (gate failed)  attacker=V216
+[TTW-S2][t=29.017]  RSU_216 --FORGED replay--> Controller  <V25 sees V31, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.017]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.017]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 54/200 >= t=101 -> FAIL
+[TTW-S2][t=29.017]  FS-MITIGATE ABORTED (gate failed)  attacker=V216
+[TTW-S2][t=29.018]  RSU_217 --FORGED replay--> Controller  <V23 sees V75, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.018]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.018]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 55/200 >= t=101 -> FAIL
+[TTW-S2][t=29.018]  FS-MITIGATE ABORTED (gate failed)  attacker=V217
+[TTW-S2][t=29.019]  RSU_217 --FORGED replay--> Controller  <V150 sees V147, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.019]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.019]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 56/200 >= t=101 -> FAIL
+[TTW-S2][t=29.019]  FS-MITIGATE ABORTED (gate failed)  attacker=V217
+[TTW-S2][t=29.020]  RSU_218 --FORGED replay--> Controller  <V51 sees V177, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.020]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.020]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 57/200 >= t=101 -> FAIL
+[TTW-S2][t=29.020]  FS-MITIGATE ABORTED (gate failed)  attacker=V218
+[TTW-S2][t=29.020]  RSU_218 --FORGED replay--> Controller  <V138 sees V185, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.020]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.020]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 58/200 >= t=101 -> FAIL
+[TTW-S2][t=29.020]  FS-MITIGATE ABORTED (gate failed)  attacker=V218
+[TTW-S2][t=29.021]  RSU_219 --FORGED replay--> Controller  <V181 sees V140, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.021]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.021]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 59/200 >= t=101 -> FAIL
+[TTW-S2][t=29.021]  FS-MITIGATE ABORTED (gate failed)  attacker=V219
+[TTW-S2][t=29.022]  RSU_219 --FORGED replay--> Controller  <V76 sees V81, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.022]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.022]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 60/200 >= t=101 -> FAIL
+[TTW-S2][t=29.022]  FS-MITIGATE ABORTED (gate failed)  attacker=V219
+[TTW-S2][t=29.023]  RSU_220 --FORGED replay--> Controller  <V46 sees V48, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.023]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.023]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 61/200 >= t=101 -> FAIL
+[TTW-S2][t=29.023]  FS-MITIGATE ABORTED (gate failed)  attacker=V220
+[TTW-S2][t=29.023]  RSU_220 --FORGED replay--> Controller  <V23 sees V63, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.023]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.023]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 62/200 >= t=101 -> FAIL
+[TTW-S2][t=29.023]  FS-MITIGATE ABORTED (gate failed)  attacker=V220
+[TTW-S2][t=29.024]  RSU_221 --FORGED replay--> Controller  <V95 sees V201, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.024]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.024]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 63/200 >= t=101 -> FAIL
+[TTW-S2][t=29.024]  FS-MITIGATE ABORTED (gate failed)  attacker=V221
+[TTW-S2][t=29.025]  RSU_221 --FORGED replay--> Controller  <V74 sees V202, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.025]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.025]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 64/200 >= t=101 -> FAIL
+[TTW-S2][t=29.025]  FS-MITIGATE ABORTED (gate failed)  attacker=V221
+[TTW-S2][t=29.026]  RSU_222 --FORGED replay--> Controller  <V52 sees V50, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.026]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.026]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 65/200 >= t=101 -> FAIL
+[TTW-S2][t=29.026]  FS-MITIGATE ABORTED (gate failed)  attacker=V222
+[TTW-S2][t=29.026]  RSU_222 --FORGED replay--> Controller  <V98 sees V79, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.026]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.026]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 66/200 >= t=101 -> FAIL
+[TTW-S2][t=29.026]  FS-MITIGATE ABORTED (gate failed)  attacker=V222
+[TTW-S2][t=29.027]  RSU_223 --FORGED replay--> Controller  <V37 sees V36, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.027]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.027]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 67/200 >= t=101 -> FAIL
+[TTW-S2][t=29.027]  FS-MITIGATE ABORTED (gate failed)  attacker=V223
+[TTW-S2][t=29.028]  RSU_223 --FORGED replay--> Controller  <V204 sees V116, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.028]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.028]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 68/200 >= t=101 -> FAIL
+[TTW-S2][t=29.028]  FS-MITIGATE ABORTED (gate failed)  attacker=V223
+[TTW-S2][t=29.029]  RSU_224 --FORGED replay--> Controller  <V147 sees V155, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.029]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.029]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 69/200 >= t=101 -> FAIL
+[TTW-S2][t=29.029]  FS-MITIGATE ABORTED (gate failed)  attacker=V224
+[TTW-S2][t=29.029]  RSU_224 --FORGED replay--> Controller  <V195 sees V150, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.029]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.029]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 70/200 >= t=101 -> FAIL
+[TTW-S2][t=29.029]  FS-MITIGATE ABORTED (gate failed)  attacker=V224
+[TTW-S2][t=29.030]  RSU_225 --FORGED replay--> Controller  <V60 sees V65, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.030]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.030]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 71/200 >= t=101 -> FAIL
+[TTW-S2][t=29.030]  FS-MITIGATE ABORTED (gate failed)  attacker=V225
+[TTW-S2][t=29.031]  RSU_225 --FORGED replay--> Controller  <V72 sees V199, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.031]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.031]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 72/200 >= t=101 -> FAIL
+[TTW-S2][t=29.031]  FS-MITIGATE ABORTED (gate failed)  attacker=V225
+[TTW-S2][t=29.032]  RSU_226 --FORGED replay--> Controller  <V132 sees V135, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.032]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.032]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 73/200 >= t=101 -> FAIL
+[TTW-S2][t=29.032]  FS-MITIGATE ABORTED (gate failed)  attacker=V226
+[TTW-S2][t=29.032]  RSU_226 --FORGED replay--> Controller  <V156 sees V154, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.032]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.032]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 74/200 >= t=101 -> FAIL
+[TTW-S2][t=29.032]  FS-MITIGATE ABORTED (gate failed)  attacker=V226
+[TTW-S2][t=29.034]  RSU_227 --FORGED replay--> Controller  <V173 sees V176, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.034]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.034]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 75/200 >= t=101 -> FAIL
+[TTW-S2][t=29.034]  FS-MITIGATE ABORTED (gate failed)  attacker=V227
+[TTW-S2][t=29.034]  RSU_227 --FORGED replay--> Controller  <V33 sees V88, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.034]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.034]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 76/200 >= t=101 -> FAIL
+[TTW-S2][t=29.034]  FS-MITIGATE ABORTED (gate failed)  attacker=V227
+[TTW-S2][t=29.035]  RSU_228 --FORGED replay--> Controller  <V31 sees V29, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.035]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.035]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 77/200 >= t=101 -> FAIL
+[TTW-S2][t=29.035]  FS-MITIGATE ABORTED (gate failed)  attacker=V228
+[TTW-S2][t=29.035]  RSU_228 --FORGED replay--> Controller  <V45 sees V46, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.035]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.035]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 78/200 >= t=101 -> FAIL
+[TTW-S2][t=29.035]  FS-MITIGATE ABORTED (gate failed)  attacker=V228
+[TTW-S2][t=29.037]  RSU_229 --FORGED replay--> Controller  <V170 sees V168, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.037]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.037]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 79/200 >= t=101 -> FAIL
+[TTW-S2][t=29.037]  FS-MITIGATE ABORTED (gate failed)  attacker=V229
+[TTW-S2][t=29.037]  RSU_229 --FORGED replay--> Controller  <V12 sees V17, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.037]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.037]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 80/200 >= t=101 -> FAIL
+[TTW-S2][t=29.037]  FS-MITIGATE ABORTED (gate failed)  attacker=V229
+[TTW-S2][t=29.038]  RSU_230 --FORGED replay--> Controller  <V9 sees V20, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.038]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.038]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 81/200 >= t=101 -> FAIL
+[TTW-S2][t=29.038]  FS-MITIGATE ABORTED (gate failed)  attacker=V230
+[TTW-S2][t=29.038]  RSU_230 --FORGED replay--> Controller  <V24 sees V27, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.038]  Sophistication: SOPHISTICATED (key-exfiltration) -> LW+TGN
+[TTW-S2][t=29.038]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 82/200 >= t=101 -> FAIL
+[TTW-S2][t=29.038]  FS-MITIGATE ABORTED (gate failed)  attacker=V230
+[TTW-S2][t=29.040]  RSU_231 --FORGED replay--> Controller  <V181 sees V173, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.040]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.040]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 83/200 >= t=101 -> FAIL
+[TTW-S2][t=29.040]  FS-MITIGATE ABORTED (gate failed)  attacker=V231
+[TTW-S2][t=29.041]  RSU_232 --FORGED replay--> Controller  <V199 sees V72, t=29.000>  (stored=10.000)  CONTROLLER DECEIVED  *** ATTACK COMPLETE ***
+[TTW-S2][t=29.041]  Sophistication: BASIC (no keys held) -> Stage-0 drop
+[TTW-S2][t=29.041]  FS-MITIGATE gate: PBFT n=64 f=21 q_needed=43 -> PASS  |  VERIFY_THRESHOLD_SIG 84/200 >= t=101 -> FAIL
+[TTW-S2][t=29.041]  FS-MITIGATE ABORTED (gate failed)  attacker=V232
+
+[CD] ══════════════════════════════════════════════
+  Detector    : VeReMi_VREM_Detect (Mekonen 2025)
+  Scenario    : [2] TTW-S2: Malicious RSU
+  Attack%     : 50% (100 malicious nodes)
+  TP=97  TN=20846  FP=27469  FN=1
+  MCC=0.038  AUROC=0.711  Tdet=5900.000 ms
+  PDR(attack)=61.557%  PDR(baseline)=100.000%
+  Output: comparison_veremi_summary.csv
+[CD] ══════════════════════════════════════════════
+
+[PEM] /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/SCENARIO_VALIDITY/02_TTW_S2_Malicious_RSU_seed999.csv written: 0 event(s) excluded (invalid RSU neighborhood, not detector error); 0 benign event(s) flagged no_real_reception_at_reporter (diagnostic only, STILL COUNTED in confusion matrix — confirmed real channel-contention loss, not a scenario artifact)
+[M11][FSR sweep] written to /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/M11_FSR_SWEEP/02_TTW_S2_Malicious_RSU_seed999.csv (84 f_c value(s) exercised)
+[M2][TDRR] mean_topology_divergence=0.333  (samples=252)  unprotected=1.000 (n=84)  mitigated=0.000 (n=0)  TDRR=100.000%
+[M3][T_stale] mean=0.000 ms (samples=0)
+[M4][PIR] mean=3.050 (links tracked=80)
+[M5][T_pipeline] mean=8.506 ms  max=17.347 ms  over_budget=0/84
+[M5][T_pbft] mean=5.184 ms  max=10.345 ms (n=84)
+[M5][T_exec_flowmod] mean=0.000 ms  max=0.000 ms (n=0)
+[M7][Omega] omega_lw=5.941%  omega_fs=572.649%
+[M9][F1] TTW=0.988 BSHH=1.000 ME=0.000 macro=0.663
+[M10][FRA/FRR] FRA=0.512 FRR=0.121
+[M11][FSR] attempts=84 success=0 FSR=0.000
+[M12][Trust] t_trust=0.000 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
+
+[CRYPTO] crypto_latency_sumo.csv written    (372 events)
+[CRYPTO] crypto_latency_summary.csv written  (8 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=364  reject=639
+[TGN] Online mode — 326 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=41 (Tier 1: all RSU-reported events, tau_k=1)
+[TGN] DIVERGENCE(phantom): controller has V104<->V115 (t=19.100) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V204<->V116 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V132<->V135 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V133<->V149 (t=20.500) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V138<->V185 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V181<->V140 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V150<->V147 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V149<->V153 (t=19.900) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V195<->V150 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V151<->V169 (t=25.700) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V16<->V49 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V173<->V176 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V181<->V173 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V99<->V18 (t=20.900) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V27<->V22 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V23<->V63 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V23<->V75 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V25<->V31 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V33<->V88 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V40<->V157 (t=18.300) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V87<->V43 (t=14.500) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V46<->V48 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V47<->V172 (t=26.100) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V51<->V77 (t=27.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V52<->V53 (t=27.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V195<->V55 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V101<->V61 (t=18.300) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V140<->V64 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V191<->V6 (t=27.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V72<->V199 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V172<->V73 (t=20.300) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V76<->V81 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V79<->V133 (t=23.500) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V84<->V87 (t=16.300) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V165<->V90 (t=16.100) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V144<->V93 (t=24.900) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V94<->V123 (t=25.500) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V95<->V125 (t=21.900) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V95<->V201 (t=29.000) not in E_t^trusted
+[TGN] DIVERGENCE(phantom): controller has V9<->V20 (t=29.000) not in E_t^trusted
+[TGN] Eq.3.47 δ=40 (phantom=40 stale=0 missed=0)  Eq.3.48 δ_thresh=14 (raw=13.20)
+[TGN] δ > δ_thresh → controller-origin attack flagged (Eq. 3.39: trust penalty on controller)
+[CryptoFilter] 475 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
+[TGN] individual_sig_evidence.json written: 0 record(s) → individual_sig_evidence.json
+
+========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
+  Scenario  : 2 — TTW-S2: Malicious RSU
+  RSU mode  : WITH RSU
+  TP/TN/FP/FN : 0 / 285 / 0 / 41
+  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 285 / 0 / 41
+  MCC         : 0.000
+  [comb] TP/TN/FP/FN : 41 / 285 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 0.959
+  ACR         : 87.423 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.950  [calibrated]
+  θ_MCC_opt   : 0.232  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 190.441  [Eq. 3.22 init; validation-tuned hyperparameter]
+  W_max       : 264  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 326
+  Stage-0 blocked (attacks): 43
+  Stage-0 blocked (revoked, TEMP DEBUG): 0
+  |E_t^trusted|  : 41
+  Divergence-only detections: 40  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
+----------------------------------------------------------
+Detect stage (crypto+LW+TGN, PemEmitEvent):
+  Events processed: 578
+  Avg wall-clock time: 6.4 ms
+  Max wall-clock time: 19 ms
+  Events exceeding budget: 0 / 578
+Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
+  Mitigations applied: 84
+  Avg wall-clock time: 5.2 ms
+  Max wall-clock time: 10 ms
+Full pipeline (detect+mitigate combined, when mitigation fired):
+  Triggered events: 84
+  Avg wall-clock time: 8.5 ms
+  Max wall-clock time: 17 ms
+  Events exceeding 1e+02 ms budget: 0 / 84  -- full pipeline stays within the T_b budget on this hardware
+
+Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
+  Calls: 168
+  Avg wall-clock time: 0.099 ms
+  Max wall-clock time: 0.41 ms
+  Calls exceeding budget: 0 / 168
+
+RSU-forward (CSMA dispatch, AttackSendRSUToController):
+  Calls: 84
+  Avg wall-clock time: 0.0011 ms
+  Max wall-clock time: 0.0033 ms
+  Calls exceeding budget: 0 / 84
+
+Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
+
+Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
+
+LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
+  Calls: 84
+  Avg wall-clock time: 0.0065 ms
+  Max wall-clock time: 0.25 ms
+  Calls exceeding budget: 0 / 84
+
+Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
+  beacon-send(0.099) + beacon-crypto(0) + rsu-forward(0.0011) + detect(6.4) + detection-crypto(0) + mitigate(5.2) + lkh-crypto(0.0065) = 12 ms
+  -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
+
+Continuous Neighborhood Statistics
+---------------------------------
+Candidate pairs checked: 7960000
+Successful neighbor observations: 213996
+Average neighbors/vehicle: 5.3
+Maximum neighbors observed at once: 17
+
+Real-time (wall-clock) budget check — T_b=1e+02 ms:
+  Ticks executed: 200
+  Avg tick wall-clock time: 2.1 ms
+  Max tick wall-clock time: 2.3 ms
+  Ticks exceeding 1e+02 ms budget: 0 / 200  -- pipeline stays within the T_b budget on this hardware
+
+Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
+  neighborhood(2.1) + beacon-send(0.099) + beacon-crypto(0) + rsu-forward(0.0011) + detect(6.4) + detection-crypto(0) + mitigate(5.2) + lkh-crypto(0.0065) = 14 ms
+  -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
