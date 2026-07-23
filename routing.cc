@@ -1043,6 +1043,7 @@ struct AblationFlags {
     bool no_lkh           = false;   // A11: naive flat re-key instead of O(log n) LKH revoke
     bool no_divergence_detector = false; // A12: controller-origin blind (skip delta-divergence gate)
     bool single_kem       = false;   // A13: ML-KEM-1024 only, no HQC-5 (measurement-only)
+    double kem_handshake_rate = 0.0; // A13 X-variable: r_hs (vehicles/s); 0 = unthrottled burst at t=0 (default, prior behaviour)
     bool no_reassign      = false;   // A14: skip TrustReassignController on flagged controller
 };
 static AblationFlags g_abl;
@@ -1278,92 +1279,101 @@ static void KemSimLatencyFire(uint32_t vehicle_idx, double handshake_ms)
                  " (real handshake was " << handshake_ms << " ms)\n";
 }
 
+#ifdef HAVE_LIBOQS
+// A13 (--kem_handshake_rate=r_hs): accumulator state for the per-vehicle
+// registration body below, shared between the original synchronous burst
+// path (rate=0, byte-identical to previous behaviour) and the new
+// Simulator::Schedule-staggered path used when a finite arrival rate is
+// requested. PDF Table 4.2 X-variable: KEM handshake rate r_hs in {10, 50,
+// 100, 200}/s — this is the rate at which vehicle registration REQUESTS
+// arrive at the RSU keystore, not a throttle on how fast liboqs itself can
+// compute; each handshake's own cost (handshake_ms) is measured exactly as
+// before via kem_get_last_handshake_only_ms(), only the ARRIVAL spacing
+// between vehicles changes.
+static double   g_kem_handshake_ms_sum = 0.0, g_kem_handshake_ms_max = 0.0;
+static uint32_t g_kem_handshake_timed_count = 0, g_kem_handshake_over_budget = 0;
+static uint32_t g_kem_ok_count = 0;
+
+// Body of the original per-vehicle loop iteration, extracted unchanged so it
+// can be invoked either inline (rate=0 burst) or via Simulator::Schedule
+// (rate>0 staggered arrivals). No behavioural change versus the prior inline
+// loop body for a single vehicle.
+static void CryptoRegisterOneVehicleKEM(uint32_t i)
+{
+    uint8_t vid[16] = {};
+    vid[0] = (uint8_t)(i & 0xFFu);
+    vid[1] = (uint8_t)((i >> 8) & 0xFFu);
+
+    VehicleKeyRecord *rec = kem_lookup(vid);
+    if (!rec) {
+        rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i],
+                                    !g_abl.single_kem);
+        double handshake_ms = kem_get_last_handshake_only_ms();
+        if (g_abl.single_kem) {
+            CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake_SingleKEM",
+                         handshake_ms * 1000.0, i, "Session_Setup", false);
+        }
+        g_kem_handshake_ms_sum += handshake_ms;
+        if (handshake_ms > g_kem_handshake_ms_max) g_kem_handshake_ms_max = handshake_ms;
+        g_kem_handshake_timed_count++;
+        if (handshake_ms > KEM_HANDSHAKE_BUDGET_MS) g_kem_handshake_over_budget++;
+        CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake",
+                     handshake_ms * 1000.0, i, "Session_Setup", false);
+        Simulator::Schedule(Seconds(handshake_ms / 1000.0),
+                             &KemSimLatencyFire, i, handshake_ms);
+    }
+    if (rec) {
+        memcpy(g_vehicle_session_keys[i], rec->session_key, SESSION_KEY_LEN);
+        g_vehicle_session_key_ready[i] = true;
+        g_vehicle_dilithium_sk_ready[i] = true;
+        g_kem_ok_count++;
+    }
+}
+
+static void CryptoPrintKEMSummary(uint32_t n)
+{
+    std::cout << "[KEM] Registered " << g_kem_ok_count << "/" << n
+              << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
+              << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).\n";
+    if (g_kem_handshake_timed_count > 0) {
+        const double avg_ms = g_kem_handshake_ms_sum / (double)g_kem_handshake_timed_count;
+        std::cout << "[KEM][10ms budget]"
+                  << (g_abl.single_kem ? " (A13:single_kem — ML-KEM-1024-only, HQC-5 skipped, real measurement)" : "")
+                  << (g_abl.kem_handshake_rate > 0.0 ? " (A13:kem_handshake_rate=" + std::to_string(g_abl.kem_handshake_rate) + "/s)" : "")
+                  << " " << g_kem_handshake_timed_count
+                  << " handshakes timed: avg=" << avg_ms << " ms, max="
+                  << g_kem_handshake_ms_max << " ms, over_budget=" << g_kem_handshake_over_budget
+                  << "/" << g_kem_handshake_timed_count << " (budget="
+                  << KEM_HANDSHAKE_BUDGET_MS << " ms)\n";
+    }
+}
+#endif
+
 static void CryptoDeriveVehicleSessionKeys()
 {
 #ifdef HAVE_LIBOQS
     if (!g_crypto_ready) return;
     uint32_t n = (N_Vehicles > 0u) ? N_Vehicles : 1u;
     if (n > MAX_VEHICLES) n = MAX_VEHICLES;
-    uint32_t ok_count = 0;
-    double handshake_ms_sum = 0.0, handshake_ms_max = 0.0;
-    uint32_t handshake_timed_count = 0, handshake_over_budget = 0;
-    for (uint32_t i = 0; i < n; i++) {
-        uint8_t vid[16] = {};
-        vid[0] = (uint8_t)(i & 0xFFu);
-        vid[1] = (uint8_t)((i >> 8) & 0xFFu);
 
-        VehicleKeyRecord *rec = kem_lookup(vid);
-        // rec pre-existing here only happens for i==0 (registered earlier by
-        // MeasureKEM(0.0,0,...)'s TimedKemRegister call, which already
-        // captured g_vehicle_dilithium_sk[0]) — so only the fresh-registration
-        // branch needs to capture sk_vi itself. Only the fresh-registration
-        // branch is timed for the handshake-latency budget below, since a
-        // pre-existing lookup isn't a handshake.
-        if (!rec) {
-            // A13 (--single_kem=1): pass hqc5_enabled=false through to
-            // kem_register_vehicle() -> kem_vehicle_keygen/kem_rsu_encapsulate/
-            // kem_vehicle_decapsulate (kem.cc), which then genuinely SKIP every
-            // HQC-5 step (keypair fill, kmsg buffer bytes, ct_hqc, HKDF input
-            // half — see the hqc5_enabled branches added there) instead of
-            // still doing the hybrid work and reporting a synthetic ratio.
-            // g_kem_handshake_only_ms (read below via
-            // kem_get_last_handshake_only_ms()) is real clock_gettime()
-            // wall-clock time around that same reduced call, so the resulting
-            // handshake_ms is a REAL measurement of less work being done, not
-            // an estimate. Default (flag off) is hqc5_enabled=true, so the
-            // hybrid path here is byte-for-byte unchanged from before.
-            rec = kem_register_vehicle(vid, i, g_vehicle_dilithium_sk[i],
-                                        !g_abl.single_kem);
-            // kem_get_last_handshake_only_ms() isolates just Steps 1/3/4
-            // (kem_vehicle_keygen + kem_rsu_encapsulate + kem_vehicle_decapsulate)
-            // — the KEM handshake proper — excluding the one-time Dilithium5
-            // identity-keygen + CA cert-issuance PKI bootstrap that also
-            // happens inside kem_register_vehicle(). The paper's "10ms
-            // V2X-compliant" claim is about the handshake, not that PKI setup.
-            double handshake_ms = kem_get_last_handshake_only_ms();
-            if (g_abl.single_kem) {
-                CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake_SingleKEM",
-                             handshake_ms * 1000.0, i, "Session_Setup", false);
-            }
-            handshake_ms_sum += handshake_ms;
-            if (handshake_ms > handshake_ms_max) handshake_ms_max = handshake_ms;
-            handshake_timed_count++;
-            if (handshake_ms > KEM_HANDSHAKE_BUDGET_MS) handshake_over_budget++;
-            // Feed into the shared crypto-latency framework (g_crypto_records /
-            // g_crypto_pending_delay_us) so this measurement is consistent with
-            // every other timed crypto op (HMAC/Dilithium/threshold-sig): it
-            // becomes visible in the existing latency reports, and — under
-            // --enable_crypto_latency=2 — this real (wall-clock) cost is
-            // folded into the SIMULATED event clock (the next NS-3 event for
-            // this vehicle fires this many microseconds later in sim time),
-            // rather than staying a purely off-timeline side measurement.
-            CryptoRecord(Simulator::Now().GetSeconds(), "KEM_Handshake",
-                         handshake_ms * 1000.0, i, "Session_Setup", false);
-
-            // Unconditional (default-on) simulated-latency injection, scoped
-            // to KEM only — see KemSimLatencyFire comment above.
-            Simulator::Schedule(Seconds(handshake_ms / 1000.0),
-                                 &KemSimLatencyFire, i, handshake_ms);
+    if (g_abl.kem_handshake_rate > 0.0) {
+        // A13 X-variable sweep: stagger registration REQUEST arrivals at the
+        // requested rate (vehicles/s) instead of one synchronous burst at
+        // t=0. Each vehicle's own handshake cost is unaffected — this models
+        // the RSU keystore receiving requests at a bounded arrival rate
+        // (queueing/throughput scenario), matching Table 4.2's r_hs sweep.
+        const double interval_s = 1.0 / g_abl.kem_handshake_rate;
+        for (uint32_t i = 0; i < n; i++) {
+            Simulator::Schedule(Seconds(i * interval_s), &CryptoRegisterOneVehicleKEM, i);
         }
-        if (rec) {
-            memcpy(g_vehicle_session_keys[i], rec->session_key, SESSION_KEY_LEN);
-            g_vehicle_session_key_ready[i] = true;
-            g_vehicle_dilithium_sk_ready[i] = true;
-            ok_count++;
+        Simulator::Schedule(Seconds(n * interval_s + 0.001), &CryptoPrintKEMSummary, n);
+    } else {
+        // Default (flag off, rate=0): original synchronous burst at t=0,
+        // byte-identical to previous behaviour.
+        for (uint32_t i = 0; i < n; i++) {
+            CryptoRegisterOneVehicleKEM(i);
         }
-    }
-    std::cout << "[KEM] Registered " << ok_count << "/" << n
-              << " vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk})."
-              << " Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).\n";
-    if (handshake_timed_count > 0) {
-        const double avg_ms = handshake_ms_sum / (double)handshake_timed_count;
-        std::cout << "[KEM][10ms budget]"
-                  << (g_abl.single_kem ? " (A13:single_kem — ML-KEM-1024-only, HQC-5 skipped, real measurement)" : "")
-                  << " " << handshake_timed_count
-                  << " handshakes timed: avg=" << avg_ms << " ms, max="
-                  << handshake_ms_max << " ms, over_budget=" << handshake_over_budget
-                  << "/" << handshake_timed_count << " (budget="
-                  << KEM_HANDSHAKE_BUDGET_MS << " ms)\n";
+        CryptoPrintKEMSummary(n);
     }
 #endif
 }
@@ -154504,6 +154514,15 @@ static int RoutingMain(int argc, char *argv[])
                   "(PemVerifyThresholdSig, Eq. 3.28) degrades to an unweighted "
                   "majority-count heuristic with no crypto attestation",
                   g_abl.no_threshold_sig);
+    cmd.AddValue ("kem_handshake_rate",
+                  "A13 X-variable (Table 4.2): KEM handshake arrival rate r_hs, "
+                  "vehicles/s (paper sweep {10,50,100,200}). 0 (default) = original "
+                  "unthrottled burst — all vehicles register at t=0. >0 staggers "
+                  "vehicle registration requests via Simulator::Schedule at 1/r_hs "
+                  "intervals instead, modelling the RSU keystore receiving requests "
+                  "at a bounded arrival rate; per-handshake cost itself is unaffected, "
+                  "only inter-arrival spacing changes. Use with --single_kem=1 for A13.",
+                  g_abl.kem_handshake_rate);
     cmd.AddValue ("equal_weight_pbft",
                   "1 = A9: PBFT_CONSENSUS votes are counted with equal weight=1 per peer "
                   "instead of weighted by ledger trust score tau_k (Eq. 3.47-3.48)",
