@@ -177,10 +177,11 @@ class TGNModel(nn.Module):
     expected by TGNDetector::LoadWeights(), so export_weights() is lossless.
     """
 
-    def __init__(self, dim: int = 32, layers: int = 2):
+    def __init__(self, dim: int = 32, layers: int = 2, tbptt_window: int = 100):
         super().__init__()
         self.dim    = dim
         self.layers = layers
+        self.TBPTT_WINDOW = tbptt_window   # overrides the class default below for this instance
         gs = dim + 6   # GRU input = hidden (dim) + [tau_dev, c_vW, seq_gap, rho, id_mis, phi]  (Eq 3.20)
 
         # GRU gates  (Eq 3.21)
@@ -290,7 +291,10 @@ class TGNModel(nn.Module):
             hn, hs, hd = hn_new, hs_new, hd_new
         return hn
 
-    # ── Sequential forward (per-node window-based TBPTT, W=100) ─────────────
+    # ── Sequential forward (per-node window-based TBPTT) ─────────────────────
+    # Class-level default (used if not overridden via __init__'s tbptt_window
+    # param / --tbptt_window CLI flag). PDF default = 100; calibration sweep
+    # tests {50,100,200} per Table 4.9 sec F.
     TBPTT_WINDOW = 100   # detach each node's memory after W events for that node
 
     def forward_sequence(
@@ -546,7 +550,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
                   f"— val_bestMCC={best_criterion:.3f} < target={TARGET_VAL_MCC}. "
                   f"Re-initialising model.")
 
-        model  = TGNModel(dim=args.dim, layers=args.layers).to(device)
+        model  = TGNModel(dim=args.dim, layers=args.layers, tbptt_window=args.tbptt_window).to(device)
         # Dynamic pos_weight = n_benign / n_attack (actual class ratio).
         # Using the real ratio (instead of a fixed 2.0) adapts to whatever imbalance
         # the generated dataset has — balanced data gets pos_weight≈1, skewed data
@@ -847,6 +851,10 @@ def main():
                     help="Embedding dim — must match --tgn_dim in tgn_detector (default: 32)")
     ap.add_argument("--layers",   type=int,   default=2,
                     help="Message-passing rounds — must match --tgn_layers (default: 2)")
+    ap.add_argument("--tbptt_window", type=int, default=100,
+                    help="Per-node TBPTT window W_BPTT — detach each node's GRU memory "
+                         "after this many events for that node (default: 100, PDF default; "
+                         "calibration sweep tests {50,100,200})")
     ap.add_argument("--epochs",   type=int,   default=50,
                     help="Training epochs (default: 50)")
     ap.add_argument("--lr",       type=float, default=1e-3,

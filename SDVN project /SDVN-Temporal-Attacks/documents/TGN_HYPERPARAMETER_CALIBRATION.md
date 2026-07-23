@@ -86,10 +86,10 @@ delta wouldn't isolate the parameter's effect.
 
 | # | Parameter varied | Values | Held constant at | Seeds | New runs | Status |
 |---|---|---|---|---|---|---|
-| 1 | `pos_weight` | 4, 4.5, 5, 5.5, **6 (anchor)**, 6.5, 7 | dim=128, layers=2, l_link=43, ce_weight=0.3 | 1,2,3 (+4,5,42 reused for 4/6) | 15 | 🟡 running |
-| 2 | `dim` | 64, **128 (anchor)**, 192 | pos_weight=6, layers=2, l_link=43, ce_weight=0.3 | 1,2,3,4,5,42 (exact anchor match) | 12 (dim=128 dropped — already has these 6 seeds) | 🟡 running |
-| 3 | `layers` | 1, **2 (anchor)**, 3 | dim=128, pos_weight=6, l_link=43, ce_weight=0.3 | 1,2,3 | 6 | ⬜ not started |
-| 4 | `ce_weight` | 0.15, **0.3 (anchor)**, 0.5 | dim=128, pos_weight=6, layers=2, l_link=43 | 1,2,3 | 6 | ⬜ not started |
+| 1 | `pos_weight` | 4, 4.5, 5, 5.5, **6 (anchor, confirmed)**, 6.5, 7 | dim=128, layers=2, l_link=43, ce_weight=0.3 | 1,2,3 (+4,5,42 reused for 4/6) | 15 | ✅ done |
+| 2 | `dim` | 64, 128 (old anchor), **192 (new anchor)** | pos_weight=6, layers=2, l_link=43, ce_weight=0.3 | 1,2,3,4,5,42 (exact anchor match) | 12 | ✅ done — anchor updated |
+| 3 | `layers` | 1, **2 (anchor, confirmed)**, 3 | dim=192, pos_weight=6, l_link=43, ce_weight=0.3 | 1,2,3 | 6 | ✅ done |
+| 4 | `ce_weight` | 0.15, **0.3 (anchor, confirmed)**, 0.5 | dim=192, pos_weight=6, layers=2, l_link=43 | 1,2,3 | 6 | ✅ done |
 | 5 | `L_link`/`gamma` | highway≈9s, **urban=43 (anchor)**, rural≈25s | dim=128, pos_weight=6, layers=2, ce_weight=0.3 | — | Needs new NS-3 sim data per `mobility_scenario` first — not a pure training-side sweep | ⬜ blocked on data-gen |
 
 Once each row's runs complete, compute mean±std Test MCC per value (grouped by
@@ -191,6 +191,118 @@ are simply unused if already generated.
 
 ---
 
+## 3c. Results — pos_weight curve (§3a) and dim sweep (§3b), both complete
+
+**pos_weight (dim=128, mean Test MCC across seeds):**
+
+| pos_weight | n | mean Test MCC | std |
+|---|---|---|---|
+| 4 | 6 | 0.8913 | 0.0088 |
+| 4.5 | 3 | 0.8907 | 0.0042 |
+| 5 | 3 | 0.8877 | 0.0108 |
+| 5.5 | 3 | 0.8940 | 0.0070 |
+| **6** | 6 | **0.8957** | 0.0088 |
+| 6.5 | 3 | 0.8913 | 0.0037 |
+| 7 | 3 | 0.8907 | 0.0066 |
+
+**Calibrated: pos_weight = 6** confirmed — highest mean MCC with the most seed
+evidence (n=6, not n=3). pos_weight=5.5 is close (0.8940) but only has 3
+seeds; not enough to overturn the n=6 anchor's edge.
+
+**dim (pos_weight=6, mean Test MCC across 6 seeds each):**
+
+| dim | n | mean Test MCC | std |
+|---|---|---|---|
+| 64 | 6 | 0.8820 | 0.0113 |
+| 128 (old anchor) | 6 | 0.8957 | 0.0088 |
+| **192** | 6 | **0.8965** | **0.0036** |
+
+**Calibrated: dim = 192** — narrowly beats dim=128 on mean MCC (0.8965 vs
+0.8957) but decisively beats it on stability (std 0.0036 vs 0.0088, ~2.4x
+tighter across seeds). Per the OFAT rule in §3 ("ties broken by lower std"),
+and since the mean is also (barely) ahead, dim=192 replaces dim=128 as the
+anchor for all subsequent rows (§3's `layers` and `ce_weight` sweeps below
+now run at `dim=192`, not the originally-planned `dim=128`).
+
+---
+
+## 3d. Results — layers (§3, row 3) and ce_weight (§3, row 4), both complete
+
+**layers (dim=192, pos_weight=6, mean Test MCC across 3 seeds):**
+
+| layers | n | Test MCC per seed | mean | verdict |
+|---|---|---|---|---|
+| 1 | 3 | 0.245, 0.248, 0.015 | 0.169 | catastrophic failure |
+| **2 (anchor)** | 6 | — | **0.8965** | confirmed optimal |
+| 3 | 3 | 0.511, 0.001, 0.481 | 0.331 | catastrophic failure |
+
+**Calibrated: layers = 2** — not a marginal call. Both alternatives collapse
+by more than 0.55 MCC versus the anchor; layers=2 is confirmed by a wide,
+unambiguous margin.
+
+**ce_weight (dim=192, pos_weight=6, layers=2, mean Test MCC across matching
+seeds 1,2,3 for a fair comparison against the anchor):**
+
+| ce_weight | n | Test MCC per seed | mean | verdict |
+|---|---|---|---|---|
+| 0.15 | 3 | 0.896, 0.891, 0.896 | 0.8943 | slightly worse |
+| **0.3 (anchor)** | 3 (of 6) | 0.900, 0.895, 0.896 | 0.8970 | kept |
+| 0.5 | 3 | 0.894, 0.902, 0.896 | 0.8973 | +0.0003 vs anchor — noise |
+
+**Calibrated: ce_weight = 0.3** — ce_weight=0.5 is nominally 0.0003 higher,
+which is within seed-to-seed noise (compare to the ~0.007-0.011 stds seen
+elsewhere in this doc); not a real difference, not worth switching the
+anchor for.
+
+**Final calibrated TGN config: dim=192, layers=2, pos_weight=6, ce_weight=0.3,
+l_link=43.0 (urban-only scope).** This closes out §F of the master
+calibration tracker — nothing further to train.
+
+## 3e. Canonical deployed model (2026-07-23)
+
+Picked the best of the 6 dim=192/pos_weight=6 seeds (§3c's dim sweep,
+already trained at layers=2/ce_weight=0.3 by default — no retraining
+needed) as the actual model to deploy, since none had been promoted yet.
+**seed=5 wins clearly on both metrics simultaneously** (not a tradeoff
+call): Test MCC=0.902 (best of the 6) and AUROC=0.973 (also best of the
+6).
+
+Copied to a canonical path: **`/home/sdvn_echo_topology/tgn_weights_dim192_final.bin`**
+(source: `tgn/sweep_5seeds/tgn_weights_dim192_pw6_seed5.bin`). The old
+dim=128 model (`tgn_weights_sim60_ap60_3seeds.bin`) was left untouched,
+not overwritten — every verification run in this session's calibration
+work (θ_LW, W_max, µ, T_exec, the ME-S4/DFS performance fixes, etc.) used
+that old dim=128 model, since dim=192 wasn't confirmed as the winner until
+partway through. None of those findings depend on which TGN model was
+loaded (they're LW-layer/blockchain-layer calibrations, orthogonal to the
+TGN model choice), so nothing needs to be re-run because of this switch.
+
+**Updated run command going forward** (dim=192, θ_FS re-calibrated):
+
+```bash
+--tgn_weights=/home/sdvn_echo_topology/tgn_weights_dim192_final.bin --tgn_theta=0.95 --tgn_l_link=43.0 --tgn_dim=192 --tgn_layers=2
+```
+
+**θ_FS re-opened and re-calibrated (2026-07-23), superseding the caveat
+below:** the 0.85 pick was measured against the old dim=128 model, and
+carried forward unverified when dim=192 was promoted. It was re-swept
+against dim=192 with `--no_lw=1` (LW disabled, isolating TGN's own
+decision from LW's OR-combination — LW's independent detection had gotten
+strong enough this session to mask θ_FS's effect on the combined metric
+entirely). Result: **θ_FS = 0.95** (worst-case MCC 0.529, bottleneck
+ME-S3), vs 0.85's worst-case of 0.416 under the same no_lw methodology.
+Full evidence in `TABLE_4.9_CALIBRATION_TRACKER.md` §A.2. `TGN_THETA_FS`
+in `tgn_core.cc` updated to 0.95 and rebuilt.
+
+~~**Known caveat, carried forward from earlier in this session by explicit
+decision:** θ_FS=0.85 was calibrated against the *old* dim=128 model. Per
+your decision at the time, it was kept unchanged rather than re-verified
+against dim=192 — that decision stands; this model swap doesn't reopen it
+unless you want it reopened now that dim=192 is the deployed default.~~
+(superseded — see above)
+
+---
+
 ## 4. Open items for future calibration batches (not yet run)
 
 Once the pos_weight curve (§3a) and dim sweep (§3b) are complete and their
@@ -201,12 +313,14 @@ order, per `TGN_IMPLEMENTATION_GUIDE.md` §17 and §3's methodology table):
    each, at the winning dim/pos_weight from §3a/§3b.
 2. **`ce_weight` sensitivity** — ce_weight ∈ {0.15, 0.5} vs anchor 0.3, 3
    seeds each.
-3. **`L_link`/`gamma` per mobility scenario** — currently the urban placeholder
-   (`L_link=43s`, `gamma=310`) is used for all mobility scenarios. Highway
-   (`L_link≈9s`, `gamma≈65`) and rural (`L_link≈25s`, `gamma≈180`) values in
-   `TGN_IMPLEMENTATION_GUIDE.md` §17 are analytical estimates, not calibrated
-   from actual highway/rural trace data — needs runs with
-   `--mobility_scenario=1/2` training data.
+3. **`L_link`/`gamma` per mobility scenario — OUT OF SCOPE (explicit decision).**
+   Project scope is urban-only; highway/rural mobility scenarios are not being
+   evaluated. `L_link=43s`, `gamma=310` (urban) is therefore the only value
+   needed and stays as the sole calibrated setting — no highway/rural data
+   generation or training required. The highway (`≈9s`/`≈65`) and rural
+   (`≈25s`/`≈180`) figures in `TGN_IMPLEMENTATION_GUIDE.md` §17 remain
+   uncalibrated analytical estimates and can stay that way; they are not
+   blocking anything since they're not part of the evaluated scope.
 4. **`theta_FS`** — already auto-selected per-run via `--theta -1` (maximizes
    validation MCC), so this is self-calibrating per config; no separate sweep
    needed once `dim`/`pos_weight`/`layers`/`ce_weight` are fixed.

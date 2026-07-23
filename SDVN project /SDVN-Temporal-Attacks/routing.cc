@@ -121,7 +121,10 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("vanet");
 
-static const char* OUTPUT_ROOT_DIR = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs";
+// Overridable via --output_root=<path> (see cmd.AddValue below) so parallel
+// calibration sweeps can write to isolated directories without clobbering
+// each other's fixed-name CSVs. Default unchanged from the original hardcoded value.
+static std::string OUTPUT_ROOT_DIR = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs";
 
 static std::string
 GetScenarioOutputName(uint32_t scenario)
@@ -783,17 +786,25 @@ static bool PemPbftConsensusGate(uint32_t n_peers, uint32_t &f_out, uint32_t &q_
 // this gate degrades to pass-through in that build configuration, consistent
 // with that documented behaviour.
 //
-// Eq. 4.18 (M11 FSR): f_c of the n_reporters slots are staged as genuine
-// forgery attempts — signed with g_dil_sk_forged (a real Dilithium5
-// keypair, but never bound to any registered vehicle's on-record public
-// key) and verified against the real g_dil_pk, which a correct
-// implementation must reject. The remaining (n_reporters - f_c) slots are
-// genuine signers (sign+verify with the real keypair, always succeed).
-// This is the only faithful way to test "forgery" against a real PQ
-// signature scheme: you cannot literally win Dilithium's EUF-CMA game, you
-// can only confirm the verifier correctly rejects signatures not bound to
-// the claimed identity. f_c=0 reduces to the previous (already-correct)
-// all-genuine behaviour.
+// Eq. 4.18 (M11 FSR): f_c is the Byzantine COLLUSION size, not an
+// unregistered-forger count. Per Eq. 3.28's own threat model and ablation
+// A6's framing ("Colluding Byzantine vehicles f_c"), the question FSR asks
+// is: can f_c compromised-but-genuinely-REGISTERED vehicles, acting alone
+// with no honest signer backing their claim, push a false report past the
+// t-of-n threshold on their own? Colluding insiders possess real, valid
+// secret keys (that is the whole point of an insider-collusion threat model
+// — they are not unauthenticated outsiders), so each of the f_c signatures
+// is genuinely valid and verifies; the only question is whether f_c alone
+// reaches t. c = f_c (no additional honest signers participate in this
+// claim); crypto_ok = (f_c >= t). This reproduces the paper's stated
+// FSR(f_c)=0 for f_c<t, FSR(f_c)>0 only at f_c>=t exactly, since f_c is
+// swept directly against the same t used for the pass/fail decision.
+// (An earlier revision tested f_c UNREGISTERED forged-keypair signers
+// diluting an otherwise-honest majority — that measures verifier soundness
+// against non-member signers, a different and also-useful property, but is
+// not what Eq. 4.18/A6's f_c variable denotes. g_dil_sk_forged/g_dil_pk_forged
+// are unused here now; retained in case that separate soundness check is
+// wanted later.)
 static bool PemVerifyThresholdSig(uint32_t n_reporters, uint32_t attacker_id, double t_now,
                                    uint32_t &c_out, uint32_t &t_out, uint32_t f_c = 0)
 {
@@ -801,7 +812,7 @@ static bool PemVerifyThresholdSig(uint32_t n_reporters, uint32_t attacker_id, do
     t_out = t;
     if (f_c > n_reporters) f_c = n_reporters;
 #ifdef HAVE_LIBOQS
-    if (!g_crypto_ready) { c_out = n_reporters - f_c; return (n_reporters - f_c) >= t; }
+    if (!g_crypto_ready) { c_out = f_c; return f_c >= t; }
     uint32_t c = 0;
     // Real per-event payload: "FS4|<attacker_id>|<t_now_ms>" — differs call to call.
     uint64_t t_now_ms = (uint64_t)std::llround(t_now * 1000.0);
@@ -809,19 +820,19 @@ static bool PemVerifyThresholdSig(uint32_t n_reporters, uint32_t attacker_id, do
     std::memcpy(msg,     "FS4|", 4);
     std::memcpy(msg + 4, &attacker_id, sizeof(attacker_id));
     std::memcpy(msg + 8, &t_now_ms,    sizeof(t_now_ms));
-    for (uint32_t i = 0; i < n_reporters; i++) {
-        const bool isForger = (i < f_c);
-        const uint8_t* signingKey = isForger ? g_dil_sk_forged.data() : g_dil_sk.data();
+    // Only the f_c colluding signers sign/verify -- no honest majority backs
+    // this claim, matching the isolated-collusion test the metric is for.
+    for (uint32_t i = 0; i < f_c; i++) {
         uint8_t sig[DILITHIUM5_SIG_LEN]; size_t slen = sizeof(sig);
-        dilithium5_sign_thresh(msg, sizeof(msg), signingKey, sig, &slen);
+        dilithium5_sign_thresh(msg, sizeof(msg), g_dil_sk.data(), sig, &slen);
         if (dilithium5_verify_thresh(msg, sizeof(msg), sig, slen, g_dil_pk.data()))
             c++;
     }
     c_out = c;
     return c >= t;
 #else
-    c_out = n_reporters - f_c;
-    return (n_reporters - f_c) >= t;
+    c_out = f_c;
+    return f_c >= t;
 #endif
 }
 
@@ -1778,6 +1789,20 @@ static const double TTW_DETECTION_DELAY_MS = 50.0; // PEM fires 50ms after repla
 // the attacker fires its replay (replaces the old fixed TTW_REPLAY_TIME).
 static const double TTW_S1_REPLAY_MARGIN_S = 2.0;
 
+// ── Experiment 4 (RQ5, Eq. 4.28/4.29): Attack Aggressiveness Index Psi ──────
+// Psi = fm * (Tburst / Tb): total false-evidence volume per attacker per
+// contiguous injection episode. fm = distinct false claims injected per
+// beacon interval during the burst; Tburst = burst duration; both default
+// to Psi's baseline operating point (fm=1) so existing scenarios are
+// unaffected unless explicitly swept. Wired into TTW-S1 only so far (see
+// g_psi_fm's use in the TTW-S1 scheduling block) -- additive on top of the
+// existing single-shot replay rather than modifying TtwEvaluateNaturalBreak/
+// TtwFindFallbackPairs, which are delicate, heavily bug-fixed natural-
+// mobility search code not worth risking for this. Not yet extended to the
+// other 11 scenarios' scheduling blocks.
+uint32_t g_psi_fm      = 1;     // false evidence multiplicity per beacon interval
+double   g_psi_tburst_s = 0.0;  // burst duration (s); 0 = disabled (fm forced to 1 behaviour)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // §3.4.1 — TEMPORAL-ECHO ATTACK FORMALIZATION
 //
@@ -2124,13 +2149,18 @@ static double g_pem_silence_after_s = -1.0;
 static const double PEM_BEACON_BUDGET_MS = 100.0;
 static const double PEM_BEACON_INTERVAL_S = 0.100;
 // Eq. 3.16 propagation tolerance ε. This is the canonical/live value — keep in
-// sync with .crypto_src/teta_guard_types.h's PROPAGATION_TOL_MS (Gap 15 fix:
-// both must represent the same physical epsilon; PROPAGATION_TOL_MS is set to
-// match this value, 20ms).
-static const double PEM_PROPAGATION_EPSILON_S = 0.020;
+// sync with .crypto_src/teta_guard_types.h's PROPAGATION_TOL_MS.
+// Calibrated 2026-07-23 per Table 4.9's stated method (measure 95th-percentile
+// one-way latency on benign events from real NS-3 data, set epsilon to that
+// value): rx_delay_s over 5,662 benign events
+// (training_data/sim60_ap60_3seeds_events.csv, all 13 scenarios x 3 seeds)
+// gives p95=0.101s, max=0.120s. The prior 20ms placeholder left effectively
+// zero margin (T_b+eps=120ms == observed benign max exactly). See
+// documents/TABLE_4.9_CALIBRATION_TRACKER.md section D for full evidence.
+static const double PEM_PROPAGATION_EPSILON_S = 0.101;
 static const double PEM_HEARTBEAT_WINDOW_S = 0.400;
 static double PEM_SCORE_THRESHOLD = 0.075;   // θ_LW — overridable via --lw_threshold
-static const double PEM_ME_TOLERANCE_MU = 0.20;   // µ = 0.20 per Eq. 3.8
+static double PEM_ME_TOLERANCE_MU = 0.20;   // µ = 0.20 per Eq. 3.8 — overridable via --pem_me_mu
 // PEM_ME_DELTA_MAX: fallback used only under A4 (--no_mobility_adapt).
 // Live detection computes δ_max dynamically per Eq. 3.10 — see
 // PemComputeDeltaMax() and g_pem_v_rel_ms below.
@@ -2166,6 +2196,12 @@ static double g_pem_bshh3_liveness_window_s = 27.0;
 // |W| per Algorithm 1 so high-traffic periods cannot grow the window
 // unboundedly within that time span.
 static uint32_t g_pem_w_max_events = 36u;
+// Explicit calibration override for the above — negative (default) means "no
+// override, keep the existing mobility-adaptive/default behavior unchanged."
+// Set via --pem_w_max=<events> to pin g_pem_w_max_events for a sweep; applied
+// in main() AFTER the mobility-adaptive recompute block so it always wins
+// when passed, without touching that block's normal behavior when it's not.
+static int32_t g_pem_w_max_override = -1;
 
 // ── ME-S3 RSSI threshold (Table 4.7) ─────────────────────────────────────────
 // -85 dBm: documented default in Table 4.7, "derived from the NS-3
@@ -3727,10 +3763,26 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         // genuine endpoints can ever have real signed evidence) — silently
         // discarding correctly-confirmed detections. Bypass: default true,
         // no VERIFY_QUORUM performed.
-        const bool ran_verify_quorum = (family == "ME" && !is_malicious_controller);
+        // A7 (--no_lbs=1): per Table 4.2, A7 removes BOTH the ML-DSA-87
+        // location-binding signature (Eq. 3.29, gated by g_abl.no_lbs at the
+        // sig[8] geometric/RSSI check site) AND the geographic-consistency
+        // quorum check (Eq. 3.32, VERIFY_QUORUM here) from the ME detection
+        // path -- echo injections then fall back to the topological
+        // reporter-count rule (ME-S1) alone, exactly as A7's description
+        // states. Previously only the sig[8] half was gated; VERIFY_QUORUM
+        // ran unconditionally, so a real A7 run still silently exercised
+        // the quorum check it was supposed to remove.
+        const bool ran_verify_quorum = (family == "ME" && !is_malicious_controller && !g_abl.no_lbs);
         if (ran_verify_quorum) {
             crypto_ok = PemVerifyQuorum(n_eff, ev, c_or_q, t_req);
         } else if (family == "ME" && is_malicious_controller) {
+            crypto_ok = true;
+        } else if (family == "ME" && g_abl.no_lbs) {
+            // A7 bypass (vehicle/RSU-origin ME, quorum removed): no spatial
+            // consistency verification is performed at all — the echo
+            // injection is left to the topological ME-S1 reporter-count
+            // rule alone (scored independently, elsewhere), so this gate
+            // simply passes through.
             crypto_ok = true;
         } else if (g_abl.no_threshold_sig) {
             // A6 (--no_threshold_sig=1): bypass the real t-of-n ML-DSA-87
@@ -5029,6 +5081,159 @@ PemRecalibrateBshh3Window()
     }
 }
 
+// ── Table 4.9 sec G — "vehicles per RSU reporting (n)" measurement ──────────
+// One-off instrumentation to extract min/max/mean n from real SUMO traces
+// under the actual RSU grid layout, per the PDF's stated calibration method
+// ("extract min/max/mean from SUMO mobility traces"). Not a tunable constant
+// -- n is inherently a live per-link/per-RSU count (same architecture as
+// VERIFY_QUORUM's n above) -- this just logs it to a CSV so the distribution
+// can be characterized and reported. Opt-in via --measure_vehicles_per_rsu=1,
+// default off (zero overhead/behavior change otherwise).
+static bool g_measure_vehicles_per_rsu = false;
+static const double PEM_VPR_MEASURE_PERIOD_S = 1.0;
+
+static void
+PemMeasureVehiclesPerRsu()
+{
+    if (!g_measure_vehicles_per_rsu) return;
+    static std::ofstream vprLog;
+    static bool vprLogOpen = false;
+    if (!vprLogOpen)
+    {
+        vprLog.open(BuildScenarioCsvPath("VEHICLES_PER_RSU", attack_scenario));
+        vprLog << "sim_time_s,rsu_id,vehicle_count\n";
+        vprLogOpen = true;
+    }
+    const double now = Simulator::Now().GetSeconds();
+    for (uint32_t r = 0; r < RSU_Nodes.GetN(); ++r)
+    {
+        Ptr<MobilityModel> rm = RSU_Nodes.Get(r)->GetObject<MobilityModel>();
+        if (!rm) continue;
+        Vector rpos = rm->GetPosition();
+        uint32_t count = 0;
+        for (uint32_t v = 0; v < Vehicle_Nodes.GetN(); ++v)
+        {
+            Ptr<MobilityModel> vm = Vehicle_Nodes.Get(v)->GetObject<MobilityModel>();
+            if (!vm) continue;
+            Vector vpos = vm->GetPosition();
+            const double dx = rpos.x - vpos.x, dy = rpos.y - vpos.y;
+            if (std::sqrt(dx * dx + dy * dy) <= g_rcomm) ++count;
+        }
+        vprLog << now << "," << RSU_Nodes.Get(r)->GetId() << "," << count << "\n";
+    }
+    vprLog.flush();
+
+    if (now + PEM_VPR_MEASURE_PERIOD_S < simTime)
+    {
+        Simulator::Schedule(Seconds(PEM_VPR_MEASURE_PERIOD_S), &PemMeasureVehiclesPerRsu);
+    }
+}
+
+// ── Table 4.9 sec H — "Tier-2 ledger window size K = ceil(T_dwell/T_b)" ─────
+// measurement. K is not implemented anywhere in the chaincode yet (no
+// existing ledger-window/retention mechanism to correct) -- this only
+// extracts the real per-vehicle SERVING-RSU dwell time distribution from
+// SUMO traces, per the PDF's stated calibration method ("extract per-vehicle
+// dwell times from SUMO traces"), so K can be computed and the chaincode
+// integration designed separately. Opt-in via --measure_vehicle_dwell=1,
+// default off (zero overhead/behavior change otherwise).
+//
+// Tracks dwell against the NEAREST RSU (single serving RSU), not "in range
+// of ANY RSU" -- with r_comm=300m and an 8x8 grid at ~273x264m spacing,
+// adjacent RSU coverage circles overlap with no gaps (spacing < radius), so
+// every vehicle stays continuously "in range of some RSU" for the entire
+// run (confirmed empirically: first version of this measurement produced 0
+// completed intervals, 200/200 censored). What actually matters for K --
+// surviving a ledger-continuity gap during handover -- is how long a
+// vehicle stays associated with ONE RSU before handing over to an adjacent
+// one, matching the existing W_ho/T_min^dwell handover concepts elsewhere
+// in this table, not raw coverage union.
+//
+// Sampled every T_b (100ms, matching the formula's own denominator) rather
+// than the 1s period used for "n" above -- dwell time is a duration, and
+// coarser sampling would bias every measured dwell time to the nearest
+// second, understating short visits.
+static bool g_measure_vehicle_dwell = false;
+static std::map<uint32_t, double>   g_vehicle_dwell_start;      // vehicle global id -> entry time under current serving RSU
+static std::map<uint32_t, uint32_t> g_vehicle_serving_rsu;      // vehicle global id -> current serving RSU global id (UINT32_MAX = none)
+
+static void
+PemMeasureVehicleDwellTimes()
+{
+    if (!g_measure_vehicle_dwell) return;
+    static std::ofstream dwellLog;
+    static bool dwellLogOpen = false;
+    if (!dwellLogOpen)
+    {
+        dwellLog.open(BuildScenarioCsvPath("VEHICLE_DWELL_TIMES", attack_scenario));
+        dwellLog << "vehicle_id,serving_rsu_id,entry_time_s,exit_time_s,dwell_s,censored\n";
+        dwellLogOpen = true;
+    }
+    const double now = Simulator::Now().GetSeconds();
+
+    for (uint32_t v = 0; v < Vehicle_Nodes.GetN(); ++v)
+    {
+        Ptr<MobilityModel> vm = Vehicle_Nodes.Get(v)->GetObject<MobilityModel>();
+        if (!vm) continue;
+        const uint32_t vid = Vehicle_Nodes.Get(v)->GetId();
+        Vector vpos = vm->GetPosition();
+
+        // Nearest RSU within g_rcomm becomes the serving RSU (UINT32_MAX = none in range).
+        uint32_t nearestRsu = UINT32_MAX;
+        double nearestDist = g_rcomm;
+        for (uint32_t r = 0; r < RSU_Nodes.GetN(); ++r)
+        {
+            Ptr<MobilityModel> rm = RSU_Nodes.Get(r)->GetObject<MobilityModel>();
+            if (!rm) continue;
+            Vector rpos = rm->GetPosition();
+            const double dx = rpos.x - vpos.x, dy = rpos.y - vpos.y;
+            const double d = std::sqrt(dx * dx + dy * dy);
+            if (d <= nearestDist) { nearestDist = d; nearestRsu = RSU_Nodes.Get(r)->GetId(); }
+        }
+
+        const uint32_t prevServing = g_vehicle_serving_rsu.count(vid) ? g_vehicle_serving_rsu[vid] : UINT32_MAX;
+        if (nearestRsu != prevServing)
+        {
+            // Serving RSU changed (handover, or entered/exited all coverage) —
+            // close out the previous dwell interval, if any, and start a new one.
+            if (prevServing != UINT32_MAX)
+            {
+                const double start = g_vehicle_dwell_start.count(vid) ? g_vehicle_dwell_start[vid] : now;
+                dwellLog << vid << "," << prevServing << "," << start << "," << now << "," << (now - start) << ",0\n";
+            }
+            if (nearestRsu != UINT32_MAX)
+            {
+                g_vehicle_dwell_start[vid] = now;
+            }
+            else
+            {
+                g_vehicle_dwell_start.erase(vid);
+            }
+        }
+        g_vehicle_serving_rsu[vid] = nearestRsu;
+    }
+    dwellLog.flush();
+
+    if (now + PEM_BEACON_INTERVAL_S < simTime)
+    {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemMeasureVehicleDwellTimes);
+    }
+    else
+    {
+        // End of run — flush any still-in-progress (right-censored) dwell
+        // intervals so vehicles that are mid-visit at simTime aren't silently
+        // dropped from the distribution; flagged censored=1 so analysis can
+        // exclude them from a strict min/max/mean if desired.
+        for (const auto& kv : g_vehicle_dwell_start)
+        {
+            const uint32_t vid = kv.first;
+            const uint32_t servingRsu = g_vehicle_serving_rsu.count(vid) ? g_vehicle_serving_rsu[vid] : UINT32_MAX;
+            dwellLog << vid << "," << servingRsu << "," << kv.second << "," << now << "," << (now - kv.second) << ",1\n";
+        }
+        dwellLog.flush();
+    }
+}
+
 // ── §3.4.3 — TGN γ (Eq. 3.21) and W_max (§3.4.3 sliding window) must also be
 // mobility-ADAPTIVE, not startup-only values. TGN_Init() (.tgn_src/tgn_core.cc)
 // previously derived TGN_GAMMA and TGN_WMAX once from the CLI --tgn_l_link
@@ -5389,6 +5594,35 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
     {
         nodeIds.push_back(it->first);
     }
+
+    // Performance fix (2026-07-23, same root cause/class as the DFS
+    // kPathCountCap fix below, one step earlier): that fix bounds the number
+    // of *completed* paths DFS will count, but not the total DFS work --
+    // with a dense, mutually-in-range graph, DFS explores enormous numbers
+    // of dead-end branches (never reaching link_dst_id, never incrementing
+    // pathCount) before the cap is even reached. Per that fix's own comment,
+    // ~13 mutually-connected nodes was already enough to explore billions of
+    // simple-path attempts despite the pathCount cap -- confirmed recurring
+    // at N_Vehicles=200/attack_scenario=13/attack_percentage=80 (combined
+    // scenario, high attack density), where a single call took 12.8s wall-
+    // clock and stalled the whole run. Capping the INPUT graph size here,
+    // before the O(nodeIds^2) adjacency build and DFS even start, bounds the
+    // work directly rather than hoping the output cap is reached quickly.
+    // Matches this file's existing precedent (kPathCountCap's own reasoning:
+    // "preserves exact correctness for every normal (small-graph) case this
+    // function was actually validated against, and only changes behavior
+    // for graphs large enough that the precise count was already
+    // meaningless for the threshold comparison") -- 12 is chosen to stay
+    // safely under the ~13-node point already documented as sufficient for
+    // exponential blowup, while comfortably covering every attack scenario
+    // in this codebase (which use single-digit phantom-reporter counts).
+    static const uint32_t kMaxNodesForExactPathCount = 12u;
+    static const uint32_t kPathCountCapEarlyExit = 4096u;   // kept in sync with kPathCountCap below
+    if (nodeIds.size() > kMaxNodesForExactPathCount)
+    {
+        return kPathCountCapEarlyExit;
+    }
+
     std::map<uint32_t, std::set<uint32_t>> adj;
     for (size_t i = 0; i < nodeIds.size(); ++i)
     {
@@ -5430,6 +5664,9 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
     // (small-graph) case this function was actually validated against, and
     // only changes behavior for graphs large enough that the precise count
     // was already meaningless for the threshold comparison.
+    // NOTE: kept in sync with kPathCountCapEarlyExit above (the newer
+    // node-count-based early exit) -- both represent "count exceeds cap",
+    // change together if either value is ever revisited.
     static const uint32_t kPathCountCap = 4096u;
     uint32_t pathCount = 0;
     std::set<uint32_t> visited;
@@ -13286,12 +13523,19 @@ void ME_Single3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_
               << (topo.chain ? "CHAIN" : topo.split ? "SPLIT" : "SPLIT(fallback)") << std::endl;
 
     Vector pos1 = MEGetVehiclePos(v1_id), pos2 = MEGetVehiclePos(v2_id), pos3 = MEGetVehiclePos(v3_id);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, (mode==2||mode==4) ? rsu_id : v1_id, v1_id, v2_id, t, now, pos1, pos1, pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, (mode==2||mode==4) ? rsu_id : v2_id, v2_id, v1_id, t, now, pos2, pos2, pos1, false);
+    // Bug fix (2026-07-23, same root cause as ME_S2_LegitimateDiscovery_Continue):
+    // modes 2/4 (S2/S4) stagger this call across many RSU/controller pairs via
+    // dt in the scheduler, but pass the unstaggered anchor time as `t` — using
+    // `now` instead (a legitimate report is generated/received at essentially
+    // the same simulated instant) removes the growing (now-t) gap that could
+    // exceed T_b+epsilon and false-positive on TTW-S1's freshness check. No
+    // effect on modes 1/3 (S1/S3, single-shot calls where t already equals now).
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id, v1_id, (mode==2||mode==4) ? rsu_id : v1_id, v1_id, v2_id, now, now, pos1, pos1, pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id, v2_id, (mode==2||mode==4) ? rsu_id : v2_id, v2_id, v1_id, now, now, pos2, pos2, pos1, false);
     if (topo.chain)
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, (mode==2||mode==4) ? rsu_id : v3_id, v3_id, v2_id, t, now, pos3, pos3, pos2, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, (mode==2||mode==4) ? rsu_id : v3_id, v3_id, v2_id, now, now, pos3, pos3, pos2, false);
     if (topo.split)
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, (mode==2||mode==4) ? rsu_id : v3_id, v3_id, atk_id, t, now, pos3, pos3, MEGetVehiclePos(atk_id), false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v3_id, v3_id, (mode==2||mode==4) ? rsu_id : v3_id, v3_id, atk_id, now, now, pos3, pos3, MEGetVehiclePos(atk_id), false);
     PemEmitVehicleBeacon(v1_id, v2_id);
     if (v1_id < Vehicle_Nodes.GetN() && v2_id < Vehicle_Nodes.GetN()) {
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v1_id), Vehicle_Nodes.Get(v2_id));
@@ -13573,34 +13817,6 @@ static void ME_S2_LegitimateDiscovery_Continue(uint32_t v1_id, uint32_t v2_id, u
 void ME_S2_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
                                 uint32_t false_v3, uint32_t false_v4, double t)
 {
-    if (rsu_id == 206 || rsu_id == 207 || rsu_id == 209) {
-        Ptr<Node> rsuNodeDbg = GetRSUByNs3Id(rsu_id);
-        Ptr<MobilityModel> rm = rsuNodeDbg ? rsuNodeDbg->GetObject<MobilityModel>() : nullptr;
-        Vector rp = rm ? rm->GetPosition() : Vector(0,0,0);
-        auto getPos = [&](uint32_t cidx) -> Vector {
-            if (cidx >= Vehicle_Nodes.GetN()) return Vector(0,0,0);
-            Ptr<MobilityModel> m = Vehicle_Nodes.Get(cidx)->GetObject<MobilityModel>();
-            return m ? m->GetPosition() : Vector(0,0,0);
-        };
-        auto dist = [&](Vector a, Vector b) {
-            return std::sqrt(std::pow(a.x-b.x,2)+std::pow(a.y-b.y,2));
-        };
-        auto predRssi = [&](double d) {
-            double safeD = (d > 0.001) ? d : 0.001;
-            return -85.0 + 10.0 * 3.75 * std::log10(300.0 / safeD);
-        };
-        Vector p1 = getPos(v1_id), p2 = getPos(v2_id);
-        Vector p3 = getPos(false_v3);
-        Vector p4 = (false_v4 != UINT32_MAX) ? getPos(false_v4) : Vector(0,0,0);
-        double d1 = dist(rp,p1), d2 = dist(rp,p2);
-        double d3 = dist(rp,p3), d4 = (false_v4 != UINT32_MAX) ? dist(rp,p4) : -1.0;
-        std::cout << "[TEMP-DIAG5] rsu=" << rsu_id << " t=" << Simulator::Now().GetSeconds() << "\n"
-                  << "  REAL   v1=" << Vehicle_Nodes.Get(v1_id)->GetId() << " d=" << d1 << "m predRSSI=" << predRssi(d1) << "dBm\n"
-                  << "  REAL   v2=" << Vehicle_Nodes.Get(v2_id)->GetId() << " d=" << d2 << "m predRSSI=" << predRssi(d2) << "dBm\n"
-                  << "  PHANT  v3=" << Vehicle_Nodes.Get(false_v3)->GetId() << " d=" << d3 << "m predRSSI=" << predRssi(d3) << "dBm"
-                  << (false_v4 != UINT32_MAX ? ("\n  PHANT  v4=" + std::to_string(Vehicle_Nodes.Get(false_v4)->GetId()) + " d=" + std::to_string(d4) + "m predRSSI=" + std::to_string(predRssi(d4)) + "dBm") : "")
-                  << std::endl;
-    }
     {
         // v1_id/v2_id here are Vehicle_Nodes CONTAINER indices (matching this
         // function's own existing convention, e.g. its Vehicle_Nodes.Get(v1_id)
@@ -13784,13 +14000,28 @@ static void ME_S2_LegitimateDiscovery_Continue(uint32_t v1_id, uint32_t v2_id, u
               << " HELLO; vehicles report to RSU_" << rsu_id
               << "; RSU aggregates" << std::endl;
 
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    t, now, s2ld_pos1, s2ld_pos1, s2ld_pos2, false);
-    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    t, now, s2ld_pos2, s2ld_pos2, s2ld_pos1, false);
+    // Bug fix (2026-07-23, found during mu/W_max calibration): these are
+    // legitimate/benign reports (attack_label=false) so sender_timestamp
+    // should reflect when this pair's discovery actually happened, not the
+    // fixed batch-anchor `t` (=ME_S2_DISCOVERY_TIME, unstaggered) passed
+    // through from the scheduler. At N=200 this batch is staggered across
+    // many RSU-pairs via dt, so `now` runs well ahead of the shared `t` for
+    // later-executing pairs, and the growing (now - t) gap eventually
+    // exceeds T_b+epsilon, incorrectly tripping TTW-S1's forged-timestamp
+    // check (Eq. 3.2) on entirely benign traffic. Using `now` for both
+    // fields (a legitimate report is generated and received at essentially
+    // the same simulated instant) matches every other _LegitimateDiscovery
+    // sibling's actual behavior (they don't exhibit this because their
+    // batches aren't staggered widely enough for the gap to cross the
+    // threshold) and removes the false-positive source without touching the
+    // separate attack-injection path (ME_S2_InjectEchoReports/ReplayAttack).
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v1_id,    v1_id,    rsu_id, v1_id,    v2_id,    now, now, s2ld_pos1, s2ld_pos1, s2ld_pos2, false);
+    PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, v2_id,    v2_id,    rsu_id, v2_id,    v1_id,    now, now, s2ld_pos2, s2ld_pos2, s2ld_pos1, false);
     if (s2ld_link34) {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, t, now, s2ld_pos3, s2ld_pos3, s2ld_pos4, false);
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, t, now, s2ld_pos4, s2ld_pos4, s2ld_pos3, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, false_v4, now, now, s2ld_pos3, s2ld_pos3, s2ld_pos4, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v4, false_v4, rsu_id, false_v4, false_v3, now, now, s2ld_pos4, s2ld_pos4, s2ld_pos3, false);
     } else if (!s2_ld_have_v4) {
-        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, v2_id, t, now, s2ld_pos3, s2ld_pos3, s2ld_pos2, false);
+        PemEmitEvent(PEM_EVENT_TOPOLOGY_UPDATE, false_v3, false_v3, rsu_id, false_v3, v2_id, now, now, s2ld_pos3, s2ld_pos3, s2ld_pos2, false);
     }
     // Issue 4/3 fix — real vehicle beacons for downstream beacon_evidence.csv /
     // witness_records.json (this RSU-present scenario previously never emitted
@@ -126740,17 +126971,6 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     // evidence pipeline this beacon feeds.
     std::vector<Ptr<WifiNetDevice>> wdis = AttackGetAllDSRCDevices(sender_node);
     if (wdis.empty()) return;
-    if (g_calibration_active) {
-        for (Ptr<WifiNetDevice> dbgw : wdis) {
-            std::cout << "[TEMP-DIAG-CHSEL] node=" << sender_node->GetId()
-                      << " devidx=" << dbgw->GetIfIndex()
-                      << " freq=" << dbgw->GetPhy()->GetFrequency()
-                      << " txPowerStart=" << dbgw->GetPhy()->GetTxPowerStart()
-                      << " txPowerEnd=" << dbgw->GetPhy()->GetTxPowerEnd()
-                      << " rxSens=" << dbgw->GetPhy()->GetRxSensitivity()
-                      << std::endl;
-        }
-    }
 
     Ptr<MobilityModel> mob = sender_node->GetObject<MobilityModel>();
     Vector pos = mob ? mob->GetPosition() : Vector(0, 0, 0);
@@ -126817,13 +127037,6 @@ static void AttackSendDSRCBeacon(Ptr<Node> sender_node, Ptr<Node> neighbor_node)
     for (Ptr<WifiNetDevice> wdi : wdis) {
         Ptr<Packet> chPkt = pkt->Copy();
         chPkt->AddPacketTag(tag);
-        if (neighbor_node->GetId() == 206 || neighbor_node->GetId() == 207 || neighbor_node->GetId() == 209)
-            std::cout << "[TEMP-DIAG][TX] from=" << sender_node->GetId()
-                      << " target=" << neighbor_node->GetId()
-                      << " t=" << Simulator::Now().GetSeconds()
-                      << " uid=" << chPkt->GetUid()
-                      << " ch_freq=" << wdi->GetPhy()->GetFrequency()
-                      << std::endl;
         wdi->Send(chPkt, Mac48Address::GetBroadcast(), 0x88dc);
     }
 }
@@ -134449,28 +134662,13 @@ void MacRx (std::string context, Ptr <const Packet> pkt)
 
 
 
-// TEMP-DIAG3: PhyRxDrop tracer, scoped to a fixed small set of node ids via
-// the trace context string (same "/NodeList/<id>/..." parsing idiom used
-// elsewhere in this file) — reports ns-3's own real drop REASON for these
-// specific nodes, instead of inferring one from timestamps.
-void TempDiagRxDrop(std::string context, Ptr<const Packet> pkt, WifiPhyRxfailureReason reason)
-{
-	bool watch = (context.find("/NodeList/206/") != std::string::npos)
-	          || (context.find("/NodeList/207/") != std::string::npos)
-	          || (context.find("/NodeList/209/") != std::string::npos)
-	          || g_calibration_active;   // calibration's TX/RX pair uses whatever node ids the run happens to assign — watch unconditionally during --calibrate_range=1 instead of missing them under the hardcoded 206/207/209 filter.
-	if (!watch) return;
-	std::cout << "[TEMP-DIAG3][RXDROP] t=" << Simulator::Now().GetSeconds()
-	          << " reason=" << reason
-	          << " context=" << context << std::endl;
-}
-
-// TEMP-DIAG4: PhyTxBegin tracer, scoped by peeking CustomDataTag1's neighbor
-// field (set to the RSU's global id at send time in AttackSendDSRCBeacon) —
-// filters to only our three watched RSUs' beacons without needing to know the
-// sender vehicle ids in advance. Confirms whether the packet actually reaches
-// the medium (vs. e.g. being silently dropped by the MAC queue before airtime).
-void TempDiagTxBegin(std::string context, Ptr<const Packet> pkt, double txPowerW)
+// (TEMP-DIAG3/TEMP-DIAG4 PhyRxDrop/PhyTxBegin tracers removed — hardcoded to
+// watch node ids 206/207/209, which coincidentally collide with real
+// vehicle/RSU ids in large-scale runs (e.g. N_Vehicles=200/N_RSUs=64),
+// causing them to fire on effectively every PHY event and flood stdout,
+// stalling wall-clock simulation speed by orders of magnitude.)
+#if 0
+void TempDiagTxBegin_removed(std::string context, Ptr<const Packet> pkt, double txPowerW)
 {
 	CustomDataTag1 tag;
 	if (!pkt->PeekPacketTag(tag)) return;
@@ -134484,6 +134682,7 @@ void TempDiagTxBegin(std::string context, Ptr<const Packet> pkt, double txPowerW
 	          << " txPowerW=" << txPowerW
 	          << " context=" << context << std::endl;
 }
+#endif
 
 void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  WifiTxVector txVector,MpduInfo aMpdu, SignalNoiseDbm signalNoise, uint16_t staId)
 {
@@ -134680,12 +134879,6 @@ void Rx (std::string context, Ptr <const Packet> pkt, uint16_t channelFreqMhz,  
 		// not Ch178's -85dBm/282m baseline.
 		g_real_rssi_dbm[std::make_pair(tagd1.GetNodeId(), (uint32_t)destination_node_id)] =
 			RealRssiEntry{(float)signalNoise.signal, Simulator::Now().GetSeconds(), channelFreqMhz};
-		if (destination_node_id == 206 || destination_node_id == 207 || destination_node_id == 209)
-			std::cout << "[TEMP-DIAG][RX] tagd1 from=" << tagd1.GetNodeId()
-					  << " dest=" << destination_node_id
-					  << " t=" << Simulator::Now().GetSeconds()
-					  << " uid=" << pkt->GetUid()
-					  << " signal=" << signalNoise.signal << std::endl;
 
 		// --calibrate_range=1 / --calibrate_range_loaded=1 mode: tally a real
 		// reception against whichever distance bucket is currently active
@@ -154197,6 +154390,17 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("ttw_replay_time",
                   "Time (s) at which the attacker replays the forged packet (default 20)",
                   TTW_REPLAY_TIME);
+    cmd.AddValue ("psi_fm",
+                  "Experiment 4 (Eq. 4.28/4.29): false evidence multiplicity fm -- distinct "
+                  "false claims injected per beacon interval during a burst (default 1, "
+                  "no repeat). Wired into TTW-S1 only. Paper's 4 operating points: "
+                  "(fm,Tburst)=(1,10s),(2,30s),(4,60s),(8,120s).",
+                  g_psi_fm);
+    cmd.AddValue ("psi_tburst",
+                  "Experiment 4 (Eq. 4.28/4.29): burst duration Tburst (s) over which fm-1 "
+                  "extra repeat replays are spread after TTW-S1's normal replay (default 0 "
+                  "= disabled, single-shot behaviour unchanged).",
+                  g_psi_tburst_s);
     cmd.AddValue ("comparison_detector",
                   "0=none  1=VeReMi/VREM_Detect  2=Multi-BSM/MBSM  (comparison study)",
                   comparison_detector);
@@ -154212,6 +154416,29 @@ static int RoutingMain(int argc, char *argv[])
                   "LW signature detector alert threshold θ_LW — alert raised when "
                   "s(e) > θ_LW (default 0.075, Eq 3.12)",
                   PEM_SCORE_THRESHOLD);
+    cmd.AddValue ("output_root",
+                  "Root directory for all scenario output CSVs/logs — override to run "
+                  "isolated parallel sweeps without clobbering the default output tree",
+                  OUTPUT_ROOT_DIR);
+    cmd.AddValue ("pem_w_max",
+                  "LW detector Algorithm 1 sliding-window event cap W_max — override for "
+                  "calibration sweeps (default: mobility-adaptive, ceil(L_link/T_b), see "
+                  "g_pem_w_max_events). Negative/omitted = no override.",
+                  g_pem_w_max_override);
+    cmd.AddValue ("pem_me_mu",
+                  "ME-S1 inter-lane density margin µ (Eq. 3.8, rho_max = floor((1+µ)*2*r_comm*"
+                  "lambda_hat)) — override for calibration sweeps (default 0.20).",
+                  PEM_ME_TOLERANCE_MU);
+    cmd.AddValue ("measure_vehicles_per_rsu",
+                  "1 = log per-RSU vehicle counts every 1s to VEHICLES_PER_RSU CSV, for "
+                  "Table 4.9 sec G's 'n' (vehicles per RSU reporting) min/max/mean "
+                  "measurement from real SUMO traces. Default 0 = off, zero overhead.",
+                  g_measure_vehicles_per_rsu);
+    cmd.AddValue ("measure_vehicle_dwell",
+                  "1 = log per-vehicle RSU-coverage dwell intervals (entry/exit times) to "
+                  "VEHICLE_DWELL_TIMES CSV, for Table 4.9 sec H's K = ceil(T_dwell/T_b) "
+                  "measurement from real SUMO traces. Default 0 = off, zero overhead.",
+                  g_measure_vehicle_dwell);
     cmd.AddValue ("tgn_l_link",
                   "Mean link lifetime L_link in seconds; recalibrates γ and W_max "
                   "(default 43.0 s — urban scenario, Eq 9.3)",
@@ -154394,6 +154621,11 @@ static int RoutingMain(int argc, char *argv[])
             std::ceil(ttw_link_lifetime_bound / PEM_BEACON_INTERVAL_S));
         if (g_pem_w_max_events < 1u) g_pem_w_max_events = 1u;
     }
+    // Explicit --pem_w_max override always wins, applied last so it overrides
+    // both the compile-time default and the mobility-adaptive recompute above.
+    if (g_pem_w_max_override >= 0) {
+        g_pem_w_max_events = static_cast<uint32_t>(g_pem_w_max_override);
+    }
 
     // Synchronise g_rssi_min with the --rssi_min override (if any).
     PEM_RSSI_MIN_DBM = g_rssi_min;
@@ -154409,6 +154641,19 @@ static int RoutingMain(int argc, char *argv[])
     // g_pem_bshh3_liveness_window_s = 2*r_comm/v_max(t); see PemRecalibrateBshh3Window).
     if (!g_abl.no_mobility_adapt) {
         Simulator::Schedule(Seconds(PEM_BSHH3_RECAL_PERIOD_S), &PemRecalibrateBshh3Window);
+    }
+
+    // Table 4.9 sec G "n" measurement (opt-in via --measure_vehicles_per_rsu=1).
+    // Deferred like the recalibration arm above — RSU_Nodes isn't populated yet
+    // at this point in main(), but Simulator::Schedule only fires once the event
+    // loop starts, by which point all node creation/positioning has completed.
+    if (g_measure_vehicles_per_rsu) {
+        Simulator::Schedule(Seconds(PEM_VPR_MEASURE_PERIOD_S), &PemMeasureVehiclesPerRsu);
+    }
+
+    // Table 4.9 sec H "K" dwell-time measurement (opt-in via --measure_vehicle_dwell=1).
+    if (g_measure_vehicle_dwell) {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemMeasureVehicleDwellTimes);
     }
 
     // Gap 13 (PemPeriodicBeaconTick, defined near PemEmitVehicleBeacon): NOT
@@ -156835,8 +157080,6 @@ static int RoutingMain(int argc, char *argv[])
   }
  
   Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/MonitorSnifferRx", MakeCallback (&Rx) );
-  Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop", MakeCallback (&TempDiagRxDrop) );
-  Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin", MakeCallback (&TempDiagTxBegin) );
   Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/$ns3::RegularWifiMac/MacRx", MakeCallback (&MacRx) );
   Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/$ns3::RegularWifiMac/MacTx", MakeCallback (&MacTx) );
   Config::ConnectFailSafe("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/ns3::RegularWifiMac/DcaTxop/Queue/Enqueue",MakeCallback (&Enqueue));
@@ -157332,8 +157575,12 @@ static int RoutingMain(int argc, char *argv[])
           }
           else
           {
-              // Set pair counter so TTW_ReplayAttack knows when to print the final banner
-              ttw_s1_total_pairs     = (uint32_t)assignedPairs.size();
+              // Set pair counter so TTW_ReplayAttack knows when to print the final banner.
+              // Experiment 4 (Psi, Eq. 4.28/4.29): each pair gets (g_psi_fm - 1) extra
+              // repeat replay calls below when psi_fm>1, so the total must include them
+              // or the "all pairs done" banner fires early after just the first repeat.
+              const uint32_t psiRepeatsPerPair = (g_psi_fm > 0) ? (g_psi_fm - 1u) : 0u;
+              ttw_s1_total_pairs     = (uint32_t)assignedPairs.size() * (1u + psiRepeatsPerPair);
               ttw_s1_completed_pairs = 0;
               ttw_s1_attacker_victim_map.clear();
 
@@ -157429,6 +157676,28 @@ static int RoutingMain(int argc, char *argv[])
                   Simulator::Schedule(Seconds(replayTime), &TTW_ReplayAttack,
                       Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
                       mal_ns3, vic_ns3, replayTime, breakTime);
+
+                  // Experiment 4 (Psi = fm * Tburst/Tb, Eq. 4.28/4.29): additive
+                  // repeat-injection layer on top of the single-shot replay above.
+                  // When psi_fm>1, fire (psi_fm-1) more forged replays of the SAME
+                  // pair (same forged src/dst/break_time, later forged_time), evenly
+                  // spread across [replayTime, replayTime + psi_tburst], modelling
+                  // the attacker continuing to inject false evidence for this pair
+                  // throughout the burst rather than a single shot. No-op (loop body
+                  // never runs) when psi_fm<=1 or psi_tburst<=0, so default behaviour
+                  // is exactly the pre-Experiment-4 single-shot replay.
+                  if (g_psi_fm > 1 && g_psi_tburst_s > 0.0)
+                  {
+                      const double repeatSpacing = g_psi_tburst_s / (double)g_psi_fm;
+                      for (uint32_t rep = 1; rep < g_psi_fm; rep++)
+                      {
+                          double repeatTime = replayTime + rep * repeatSpacing;
+                          if (repeatTime >= simTime) repeatTime = simTime - 0.1;
+                          Simulator::Schedule(Seconds(repeatTime), &TTW_ReplayAttack,
+                              Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
+                              mal_ns3, vic_ns3, repeatTime, breakTime);
+                      }
+                  }
 
                   // NetAnim visual packets
                   Simulator::Schedule(Seconds(helloTimeR), &send_LTE_routing_data_alone,
@@ -159625,9 +159894,21 @@ static int RoutingMain(int argc, char *argv[])
 
       ME_S4_InitLog(n_mal_ctrl4, N_Controllers, N_RSUs);
 
-      for (uint32_t c = 0; c < n_mal_ctrl4; c++) {
-          // See the single-attacker branch above for why this is 15ms, not 1ms.
-          const double dt = c * 0.025;
+      // Event-volume fix (2026-07-23, same bug/fix as ME_S3_InjectPhantomPaths
+      // above — this sibling function never received it): each phantom-reporter
+      // pair was being independently re-injected by EVERY malicious controller
+      // (n_mal_ctrl4, ~3-4 at attack_percentage=80/N_Controllers=4), multiplying
+      // the phantom-pair count into several times as many total injection
+      // events for no detection-fidelity benefit — the phantom pairs
+      // themselves (s4_phantom_cidx) don't change per controller, so this was
+      // the same attack replayed n_mal_ctrl4 times rather than n_mal_ctrl4
+      // controllers doing distinct work. This caused a real combinatorial
+      // slowdown in combined-scenario (attack_scenario=13) runs at high
+      // attack_percentage. Each pair is now injected exactly once
+      // (attacker_idx=0), matching ME-S3's already-established fix.
+      {
+          const uint32_t c = 0;
+          const double dt = 0.0;
           const uint32_t s4_v4_arg = (s4_phantom_cidx.size() >= 2) ? s4_phantom_cidx[1] : UINT32_MAX;
           Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + dt),
               &ME_S4_VehiclesViaRSU, v1_id, v2_id, rsu_id,

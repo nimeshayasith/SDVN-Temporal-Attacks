@@ -113,13 +113,13 @@
     V105  [benign — real link]
     V106  [ECHO ATTACKER] <-- in active group
     V107  [ECHO ATTACKER] <-- in active group
-    V108  [benign — real link]
+    V108  [benign — real link] <-- in active group
     V109  [benign — real link]
     V110  [benign — real link]
     V111  [ECHO ATTACKER] <-- in active group
     V112  [benign — real link]
     V113  [benign — real link]
-    V114  [benign — real link]
+    V114  [benign — real link] <-- in active group
     V115  [benign — real link]
     V116  [ECHO ATTACKER] <-- in active group
     V117  [ECHO ATTACKER] <-- in active group
@@ -163,13 +163,13 @@
     V155  [benign — real link]
     V156  [benign — real link]
     V157  [benign — real link]
-    V158  [benign — real link] <-- in active group
+    V158  [benign — real link]
     V159  [benign — real link]
     V160  [ECHO ATTACKER] <-- in active group
     V161  [benign — real link]
     V162  [benign — real link]
     V163  [benign — real link]
-    V164  [benign — real link] <-- in active group
+    V164  [benign — real link]
     V165  [benign — real link]
     V166  [benign — real link]
     V167  [benign — real link]
