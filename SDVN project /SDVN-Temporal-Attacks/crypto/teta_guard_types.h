@@ -40,13 +40,15 @@ extern "C" {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 #define BEACON_INTERVAL_MS      100u        /* T_b = 100 ms (IEEE 802.11p)   */
-// Gap 15 fix: was 10ms, disagreeing with routing.cc's live-path PEM_PROPAGATION_EPSILON_S
-// (0.020s = 20ms, the epsilon actually enforced by TetaGuardCryptoFilter's Step 2 /
-// Eq. 3.16 in the running simulation). Both represent the SAME physical constant
-// epsilon and must agree; standardised on 20ms (the live value) so hmac_filter.cc's
-// lw_mitigate() would compute the identical freshness bound if/when it is wired
-// into the live path.
-#define PROPAGATION_TOL_MS       20u        /* ε = 20 ms propagation budget  */
+// Gap 15 fix: was 10ms, disagreeing with routing.cc's live-path PEM_PROPAGATION_EPSILON_S.
+// Both represent the SAME physical constant epsilon and must agree.
+// Calibrated 2026-07-23 per Table 4.9's stated method (measure 95th-percentile
+// one-way latency on benign events from real NS-3 data, set epsilon to that value):
+// rx_delay_s over 5,662 benign events (training_data/sim60_ap60_3seeds_events.csv,
+// all 13 scenarios x 3 seeds) gives p95=0.101s, max=0.120s. The prior 20ms placeholder
+// left effectively zero margin (T_b+eps=120ms == observed benign max exactly).
+// See documents/TABLE_4.9_CALIBRATION_TRACKER.md section D for full evidence.
+#define PROPAGATION_TOL_MS      101u        /* ε = 101 ms propagation budget (p95 of benign rx_delay) */
 #define FRESHNESS_WINDOW_MS     (BEACON_INTERVAL_MS + PROPAGATION_TOL_MS)
 
 #define NONCE_LEN                16u        /* 128-bit nonce                 */

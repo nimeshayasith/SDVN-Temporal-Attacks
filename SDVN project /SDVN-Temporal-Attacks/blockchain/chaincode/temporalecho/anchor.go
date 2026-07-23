@@ -12,13 +12,33 @@ import (
 )
 
 const (
-	// AnchorIntervalBlocksUrban is ⌊Tmin/Tb⌋ for urban scenario (Llink≈43 s).
-	AnchorIntervalBlocksUrban = 215
+	// Bug fix (2026-07-23, found during Table 4.9 sec H calibration): both
+	// constants below previously held 215/45, which numerically match
+	// Llink/(2*Tb) (urban 43s, highway 9s) -- the SAME formula shape as the
+	// TGN gamma_init derivation -- not floor(Tmin/Tb) as this comment always
+	// claimed and as the PDF's Table 4.9 row actually specifies. Tmin
+	// (TrustMinDwellMs = 3000ms, trust.go) is a single global OBU-eligibility
+	// constant that does not vary by mobility scenario, so unlike Llink there
+	// is no legitimate urban/highway split for this parameter under the PDF's
+	// own formula -- both should be floor(3000/100) = 30. Corrected here;
+	// kept as two named constants (rather than collapsing to one) to avoid a
+	// larger structural change than the bug fix requires.
+	//
+	// NOT empirically load-tested against real Fabric throughput/latency
+	// after this change -- no live network or load-test harness was available
+	// in this environment to validate the ~7x more frequent checkpoint
+	// creation (215->30) against the orderer batch timeout (20ms) / batch
+	// size (50 tx per 100ms beacon interval) budget documented elsewhere in
+	// Table 4.9. Recommend a load-test pass once a Fabric test network is
+	// available, per the PDF's own calibration method for this row (measure
+	// synchronisation latency of newly promoted Tier-2 peers).
 
-	// AnchorIntervalBlocksHighway is ⌊Tmin/Tb⌋ for highway scenario (Llink≈9 s).
-	// AN-03: added — bootstrap.sh uses ANCHOR_INTERVAL_BLOCKS=45 for highway,
-	// but the constant was missing, making the highway case undiscoverable.
-	AnchorIntervalBlocksHighway = 45
+	// AnchorIntervalBlocksUrban is ⌊Tmin/Tb⌋ (Tmin=3000ms OBU dwell time, Tb=100ms beacon interval).
+	AnchorIntervalBlocksUrban = 30
+
+	// AnchorIntervalBlocksHighway is also ⌊Tmin/Tb⌋ -- Tmin doesn't vary by
+	// mobility scenario, so this is deliberately the same value as urban above.
+	AnchorIntervalBlocksHighway = 30
 
 	AnchorBlockCtrKey = "ANCHOR_CTR"
 )

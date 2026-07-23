@@ -24,13 +24,14 @@ CHANNEL="teta-channel"
 CHAINCODE="temporalecho"
 # Upgrade to 2.1/3: unconditional per-caller RSU/OBU trust checks in
 # ZeroTrust, DemotePeerToClient, SubmitLWDetectionResult,
-# CreateAnchorCheckpoint, SyncFromAnchorCheckpoint, UpdateTrustRound —
-# replacing the SIM_NO_RSU_MODE global-flag / hasRSU deployment-wide scan
-# gates, which incorrectly blocked a legitimately-active, high-trust Tier 2
-# OBU peer in a mixed RSU+OBU deployment. 2.0/2 is already committed on this
-# channel; Fabric requires sequence to increment by exactly 1 per upgrade.
-CC_VERSION="2.1"
-CC_SEQUENCE=3
+# Upgrade to 2.3/5: AnchorIntervalBlocksUrban/Highway fixed from 215/45
+# (wrong formula, matched Llink/(2*Tb) instead of floor(Tmin/Tb)) to 30/30
+# (matches Table 4.9's actual formula, Tmin=3000ms/Tb=100ms). See
+# TABLE_4.9_CALIBRATION_TRACKER.md sec H for the full finding. 2.2/4 is
+# already committed on this channel; Fabric requires sequence to increment
+# by exactly 1 per upgrade.
+CC_VERSION="2.3"
+CC_SEQUENCE=5
 CC_LABEL="${CHAINCODE}_${CC_VERSION}"
 # orderer1.tetaguard.net (not the old singular "orderer.tetaguard.net" — leftover
 # from the pre-migration single-orderer topology; its cert CN doesn't match any of
