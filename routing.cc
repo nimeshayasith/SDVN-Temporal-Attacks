@@ -159848,6 +159848,14 @@ static int RoutingMain(int argc, char *argv[])
           std::vector<uint32_t> localReal    = MeSelectMutualRangePairNearRsu(rsu_id, realPool, ME_S2_DISCOVERY_TIME);
           std::vector<uint32_t> localPhantom = MeSortVehiclesByDistanceToRsu(rsu_id, phantomPool, ME_S2_DISCOVERY_TIME);
 
+          // A7 (--echo_dist_ratio): same hook as ME-S1/ME-S3/ME-S4. Applied
+          // after the RSU-proximity sort above, using this RSU's own local
+          // real-link pair as the distance anchor.
+          if (g_abl.echo_dist_ratio > 0.0 && localPhantom.size() >= 2 && localReal.size() >= 2) {
+              localPhantom = MeReorderEchoCandidatesByDistanceRatio(
+                  localPhantom, localReal[0], localReal[1], ME_S2_DISCOVERY_TIME, g_abl.echo_dist_ratio);
+          }
+
           uint32_t v1_id = localReal[0];
           uint32_t v2_id = localReal[1];
           uint32_t local_p0 = localPhantom[0];
@@ -159999,6 +160007,14 @@ static int RoutingMain(int argc, char *argv[])
       }
       uint32_t v1_id = s3_real_cidx[0];
       uint32_t v2_id = s3_real_cidx[1];
+
+      // A7 (--echo_dist_ratio): reorder phantom-reporter candidates by
+      // proximity to the requested distance bucket, same hook as ME-S1's
+      // (see MeReorderEchoCandidatesByDistanceRatio's declaration comment).
+      if (g_abl.echo_dist_ratio > 0.0 && s3_phantom_cidx.size() >= 2) {
+          s3_phantom_cidx = MeReorderEchoCandidatesByDistanceRatio(
+              s3_phantom_cidx, v1_id, v2_id, ME_S3_DISCOVERY_TIME, g_abl.echo_dist_ratio);
+      }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 11 - ME-S3 ATTACK CONFIGURED" << std::endl;
@@ -160194,6 +160210,12 @@ static int RoutingMain(int argc, char *argv[])
       }
       uint32_t v1_id = s4_real_cidx[0];
       uint32_t v2_id = s4_real_cidx[1];
+
+      // A7 (--echo_dist_ratio): same hook as ME-S1/ME-S3.
+      if (g_abl.echo_dist_ratio > 0.0 && s4_phantom_cidx.size() >= 2) {
+          s4_phantom_cidx = MeReorderEchoCandidatesByDistanceRatio(
+              s4_phantom_cidx, v1_id, v2_id, ME_S4_DISCOVERY_TIME, g_abl.echo_dist_ratio);
+      }
 
       std::cout << "\n========================================" << std::endl;
       std::cout << "SCENARIO 12 - ME-S4 ATTACK CONFIGURED" << std::endl;

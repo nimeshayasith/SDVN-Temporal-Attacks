@@ -19,6 +19,7 @@
 
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
+TGN="$HOME/tgn_weights_dim192_final.bin"
 OUT="$HOME/ablation_sweep/a4"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -27,7 +28,7 @@ for N in 100 200 400; do
   echo "=== a4 N_Vehicles=$N (lambda proxy) ==="
   ISO="$OUT/n${N}"
   mkdir -p "$ISO"
-  ./waf --run "scratch/routing --simTime=30 --N_Vehicles=${N} --N_RSUs=0 --N_Controllers=4 --attack_scenario=1 --attack_percentage=50 --RngRun=999 --no_mobility_adapt=1 --output_root=${ISO}" > "${ISO}.log" 2>&1
+  ./waf --run "scratch/routing --simTime=30 --N_Vehicles=${N} --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=50 --RngRun=999 --no_mobility_adapt=1 --tgn_weights=$TGN --output_root=${ISO}" > "${ISO}.log" 2>&1
   rm -rf "${ISO}/PCAP_FILES" "${ISO}/XML"
 done
 

@@ -1,23 +1,30 @@
 #!/bin/bash
+# sweep_a14.sh
+# A14 (Table 4.2): No Controller Reassignment Mechanism, via
+# --compromised_controllers=nC (nC out of N_Controllers=4, X in {1,2,3}).
+# Applicable PEMs explicitly span TTW-MC/BSHH-MC/ME-MC. Now covers all 6
+# controller-origin scenarios (3,4,7,8,11,12), matching A12's expansion --
+# --no_reassign/--compromised_controllers is wired into TrustReassignController
+# and the shared trust-gate call sites already present in all 6 scenarios'
+# own detection functions, so no new code needed, just wider coverage.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
+TGN="$HOME/tgn_weights_dim192_final.bin"
 OUT="$HOME/ablation_sweep/a14"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
 
-echo "=== a14 x=1 ==="
-mkdir -p "$OUT/x1"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=3 --attack_percentage=50 --RngRun=999 --compromised_controllers=1 --output_root=$OUT/x1" > "$OUT/x1.log" 2>&1
-rm -rf "$OUT/x1/PCAP_FILES" "$OUT/x1/XML"
+declare -A RSU_FOR_SC=( [3]=0 [4]=64 [7]=0 [8]=64 [11]=0 [12]=64 )
 
-echo "=== a14 x=2 ==="
-mkdir -p "$OUT/x2"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=3 --attack_percentage=50 --RngRun=999 --compromised_controllers=2 --output_root=$OUT/x2" > "$OUT/x2.log" 2>&1
-rm -rf "$OUT/x2/PCAP_FILES" "$OUT/x2/XML"
-
-echo "=== a14 x=3 ==="
-mkdir -p "$OUT/x3"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=3 --attack_percentage=50 --RngRun=999 --compromised_controllers=3 --output_root=$OUT/x3" > "$OUT/x3.log" 2>&1
-rm -rf "$OUT/x3/PCAP_FILES" "$OUT/x3/XML"
+for SC in 3 4 7 8 11 12; do
+  NRSU=${RSU_FOR_SC[$SC]}
+  for X in 1 2 3; do
+    echo "=== a14 scenario=${SC} x=${X} ==="
+    ISO="$OUT/sc${SC}_x${X}"
+    mkdir -p "$ISO"
+    ./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=50 --RngRun=999 --compromised_controllers=${X} --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+    rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
+  done
+done
 
 echo "=== a14 sweep complete ==="
