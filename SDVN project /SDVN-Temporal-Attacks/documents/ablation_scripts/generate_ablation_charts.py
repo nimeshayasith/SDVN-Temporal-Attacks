@@ -63,6 +63,20 @@ def find_pem_summary(run_dir):
     matches = glob.glob(os.path.join(run_dir, "PEM_RUN_SUMMARY", "*.csv"))
     return matches[0] if matches else None
 
+def find_tgn_summary(run_dir):
+    matches = glob.glob(os.path.join(run_dir, "TGN_SUMMARY", "*.csv"))
+    return matches[0] if matches else None
+
+# A2 (--no_lw=1) forces event.alert_raised=false unconditionally (routing.cc
+# ~line 7920), which is what feeds PEM_RUN_SUMMARY's tp/tn/fp/fn/mcc -- so
+# that file's mcc is always exactly 0 for A2, regardless of how well TGN
+# itself is actually detecting. TGN's real standalone performance is tracked
+# separately (tgn_core.cc's g_tgn_tp/tn/fp/fn) and written to its own
+# TGN_SUMMARY/*.csv, which is what must be read here instead. Confirmed via
+# manual inspection: PEM_RUN_SUMMARY showed mcc=0.000 while TGN_SUMMARY's own
+# mcc was 0.766 for the same run (sc13, A2, x=1).
+CONFIGS_USE_TGN_SUMMARY = {"a2"}
+
 def read_mcc(csv_path):
     with open(csv_path, newline="") as f:
         rows = list(csv.DictReader(f))
@@ -119,10 +133,16 @@ def plot_config(cid, meta):
         scen_key, xval = parse_dirname(cid, sub)
         if xval is None:
             continue
-        summary = find_pem_summary(subpath)
-        if not summary:
-            print(f"[WARN] {cid}/{sub}: no PEM_RUN_SUMMARY found, skipping")
-            continue
+        if cid in CONFIGS_USE_TGN_SUMMARY:
+            summary = find_tgn_summary(subpath)
+            if not summary:
+                print(f"[WARN] {cid}/{sub}: no TGN_SUMMARY found, skipping")
+                continue
+        else:
+            summary = find_pem_summary(subpath)
+            if not summary:
+                print(f"[WARN] {cid}/{sub}: no PEM_RUN_SUMMARY found, skipping")
+                continue
         result = read_mcc(summary)
         if result is None:
             print(f"[WARN] {cid}/{sub}: could not parse mcc, skipping")

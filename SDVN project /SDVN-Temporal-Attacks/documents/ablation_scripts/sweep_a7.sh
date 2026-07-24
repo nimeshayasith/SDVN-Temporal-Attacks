@@ -1,23 +1,32 @@
 #!/bin/bash
+# sweep_a7.sh
+# A7 (Table 4.2): No Location-Binding + Quorum (ME Defence), via
+# --echo_dist_ratio (echo-reporter distance from claimed link, ratio of
+# r_comm, X in {1.0, 1.5, 3.0}). PDF scopes this to the ME defence
+# specifically -- now covers all 4 ME variants (9=ME-S1, 10=ME-S2, 11=ME-S3,
+# 12=ME-S4), matching A6's existing all-4-BSHH-variant pattern, instead of
+# ME-S1 only. The --echo_dist_ratio reorder hook (MeReorderEchoCandidatesBy
+# DistanceRatio) is now wired into all 4 ME scheduling blocks, not just
+# ME-S1 -- confirmed firing via smoke test on sc10/11/12 before this sweep
+# was expanded.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
+TGN="$HOME/tgn_weights_dim192_final.bin"
 OUT="$HOME/ablation_sweep/a7"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
 
-echo "=== a7 x=1.0 ==="
-mkdir -p "$OUT/x1.0"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=9 --attack_percentage=50 --RngRun=999 --echo_dist_ratio=1.0 --output_root=$OUT/x1.0" > "$OUT/x1.0.log" 2>&1
-rm -rf "$OUT/x1.0/PCAP_FILES" "$OUT/x1.0/XML"
+declare -A RSU_FOR_SC=( [9]=0 [10]=64 [11]=0 [12]=64 )
 
-echo "=== a7 x=1.5 ==="
-mkdir -p "$OUT/x1.5"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=9 --attack_percentage=50 --RngRun=999 --echo_dist_ratio=1.5 --output_root=$OUT/x1.5" > "$OUT/x1.5.log" 2>&1
-rm -rf "$OUT/x1.5/PCAP_FILES" "$OUT/x1.5/XML"
-
-echo "=== a7 x=3.0 ==="
-mkdir -p "$OUT/x3.0"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=9 --attack_percentage=50 --RngRun=999 --echo_dist_ratio=3.0 --output_root=$OUT/x3.0" > "$OUT/x3.0.log" 2>&1
-rm -rf "$OUT/x3.0/PCAP_FILES" "$OUT/x3.0/XML"
+for SC in 9 10 11 12; do
+  NRSU=${RSU_FOR_SC[$SC]}
+  for X in 1.0 1.5 3.0; do
+    echo "=== a7 scenario=${SC} x=${X} ==="
+    ISO="$OUT/sc${SC}_x${X}"
+    mkdir -p "$ISO"
+    ./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=50 --RngRun=999 --echo_dist_ratio=${X} --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+    rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
+  done
+done
 
 echo "=== a7 sweep complete ==="

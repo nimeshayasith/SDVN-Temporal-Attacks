@@ -1,23 +1,32 @@
 #!/bin/bash
+# sweep_a12.sh
+# A12 (Table 4.2): No Topology Divergence Detector (Controller-Origin Blind),
+# via --no_divergence_detector=1. X variable: controller-origin injection
+# rate rinj in {1%, 5%, 10%} -- "controller scenarios only" per the PDF, and
+# applicable PEMs explicitly span TTW-MC/BSHH-MC/ME-MC together. Now covers
+# all 6 controller-origin scenarios (3=TTW-S3, 4=TTW-S4, 7=BSHH-S3,
+# 8=BSHH-S4, 11=ME-S3, 12=ME-S4), matching A6's all-4-BSHH-variant pattern,
+# instead of TTW-S3 only. --no_divergence_detector gates PemController
+# DivergenceGate, a function shared by all 6 of these scenarios already --
+# no new code needed, just wider scenario coverage.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
+TGN="$HOME/tgn_weights_dim192_final.bin"
 OUT="$HOME/ablation_sweep/a12"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
 
-echo "=== a12 x=1 ==="
-mkdir -p "$OUT/x1"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=3 --attack_percentage=50 --RngRun=999 --no_divergence_detector=1 --attack_percentage=1 --output_root=$OUT/x1" > "$OUT/x1.log" 2>&1
-rm -rf "$OUT/x1/PCAP_FILES" "$OUT/x1/XML"
+declare -A RSU_FOR_SC=( [3]=0 [4]=64 [7]=0 [8]=64 [11]=0 [12]=64 )
 
-echo "=== a12 x=5 ==="
-mkdir -p "$OUT/x5"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=3 --attack_percentage=50 --RngRun=999 --no_divergence_detector=1 --attack_percentage=5 --output_root=$OUT/x5" > "$OUT/x5.log" 2>&1
-rm -rf "$OUT/x5/PCAP_FILES" "$OUT/x5/XML"
-
-echo "=== a12 x=10 ==="
-mkdir -p "$OUT/x10"
-./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=3 --attack_percentage=50 --RngRun=999 --no_divergence_detector=1 --attack_percentage=10 --output_root=$OUT/x10" > "$OUT/x10.log" 2>&1
-rm -rf "$OUT/x10/PCAP_FILES" "$OUT/x10/XML"
+for SC in 3 4 7 8 11 12; do
+  NRSU=${RSU_FOR_SC[$SC]}
+  for X in 1 5 10; do
+    echo "=== a12 scenario=${SC} x=${X} ==="
+    ISO="$OUT/sc${SC}_x${X}"
+    mkdir -p "$ISO"
+    ./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=${X} --RngRun=999 --no_divergence_detector=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+    rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
+  done
+done
 
 echo "=== a12 sweep complete ==="
