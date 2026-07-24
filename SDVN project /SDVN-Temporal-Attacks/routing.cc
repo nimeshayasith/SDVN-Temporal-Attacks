@@ -9602,7 +9602,14 @@ void declare_attackers()
         const uint32_t safeMax = (N_Vehicles > 2) ? (N_Vehicles - 2) : 0;
         uint32_t proportionalPoolSize = (uint32_t)std::round(
             (N_Vehicles * attack_percentage / 100.0) / 2.0);
-        if (proportionalPoolSize < 2u) proportionalPoolSize = 2u;
+        // Bug fix (pct=0 floor): the floor-of-2 safety net exists so a GENUINE
+        // low-but-nonzero attack_percentage/N_Vehicles combo doesn't round down
+        // to an unusably small pool -- it must not also force a nonzero phantom
+        // pool when attack_percentage is exactly 0, which is supposed to mean
+        // "no attack at all" (confirmed: this floor alone was why ME-S3/S4
+        // still injected phantom paths, and mcc<1, even at attack_percentage=0
+        // -- the ONE thing an attack_percentage=0 baseline run must never do).
+        if (attack_percentage > 0.0 && proportionalPoolSize < 2u) proportionalPoolSize = 2u;
         n_mal_veh = (proportionalPoolSize <= safeMax) ? proportionalPoolSize : safeMax;
     } else {
         n_mal_veh = (uint32_t)std::round(N_Vehicles * attack_percentage / 100.0);
@@ -158233,7 +158240,8 @@ static int RoutingMain(int argc, char *argv[])
       // attack_percentage controls how many controllers are malicious
       // (n_malicious_ctrl3 — display/coloring only, see below).
       uint32_t n_malicious_ctrl3 = (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
-      if (n_malicious_ctrl3 < 1u)                       n_malicious_ctrl3 = 1u;
+      // Bug fix (pct=0 floor): see declare_attackers()'s matching fix.
+      if (attack_percentage > 0.0 && n_malicious_ctrl3 < 1u) n_malicious_ctrl3 = 1u;
       if (n_malicious_ctrl3 > controller_Node.GetN())   n_malicious_ctrl3 = controller_Node.GetN();
       if (n_malicious_ctrl3 > N_Vehicles / 2)           n_malicious_ctrl3 = N_Vehicles / 2;
 
@@ -158264,6 +158272,11 @@ static int RoutingMain(int argc, char *argv[])
       // event volume in combined mode. Zero change for this scenario run
       // alone (attack_scenario != 13 keeps the original, uncapped formula).
       const uint32_t kControllerOriginVictimPoolSize = [&]{
+          // Bug fix (pct=0 floor): see declare_attackers()'s matching fix --
+          // attack_percentage=0 must yield a genuinely empty pool (0 pairs),
+          // not the floor-of-2 safety net meant only for a genuine low-but-
+          // nonzero attack_percentage/N_Vehicles combo.
+          if (attack_percentage <= 0.0) return 0u;
           uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
           return (p < 2u) ? 2u : p;
       }();
@@ -158425,7 +158438,8 @@ static int RoutingMain(int argc, char *argv[])
       // attack_percentage controls how many controllers are malicious
       // (n_malicious_ctrl4 — display/coloring only, see below).
       uint32_t n_malicious_ctrl4 = (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
-      if (n_malicious_ctrl4 < 1u)                       n_malicious_ctrl4 = 1u;
+      // Bug fix (pct=0 floor): see declare_attackers()'s matching fix.
+      if (attack_percentage > 0.0 && n_malicious_ctrl4 < 1u) n_malicious_ctrl4 = 1u;
       if (n_malicious_ctrl4 > controller_Node.GetN())   n_malicious_ctrl4 = controller_Node.GetN();
       if (n_malicious_ctrl4 > N_Vehicles / 2)           n_malicious_ctrl4 = N_Vehicles / 2;
 
@@ -158446,6 +158460,8 @@ static int RoutingMain(int argc, char *argv[])
       // event volume in combined mode. Zero change for this scenario run
       // alone (attack_scenario != 13 keeps the original, uncapped formula).
       const uint32_t kControllerOriginVictimPoolSize = [&]{
+          // Bug fix (pct=0 floor): see declare_attackers()'s matching fix.
+          if (attack_percentage <= 0.0) return 0u;
           uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
           return (p < 2u) ? 2u : p;
       }();
@@ -159100,7 +159116,8 @@ static int RoutingMain(int argc, char *argv[])
       // (see matching comment in the TTW-S3 block).
       uint32_t n_malicious_ctrl3b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
-      if (n_malicious_ctrl3b < 1u)                      n_malicious_ctrl3b = 1u;
+      // Bug fix (pct=0 floor): see declare_attackers()'s matching fix.
+      if (attack_percentage > 0.0 && n_malicious_ctrl3b < 1u) n_malicious_ctrl3b = 1u;
       if (n_malicious_ctrl3b > controller_Node.GetN()) n_malicious_ctrl3b = controller_Node.GetN();
       if (n_malicious_ctrl3b > N_Vehicles / 2)          n_malicious_ctrl3b = N_Vehicles / 2;
 
@@ -159120,6 +159137,8 @@ static int RoutingMain(int argc, char *argv[])
       // event volume in combined mode. Zero change for this scenario run
       // alone (attack_scenario != 13 keeps the original, uncapped formula).
       const uint32_t kControllerOriginVictimPoolSize = [&]{
+          // Bug fix (pct=0 floor): see declare_attackers()'s matching fix.
+          if (attack_percentage <= 0.0) return 0u;
           uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
           return (p < 2u) ? 2u : p;
       }();
@@ -159255,7 +159274,8 @@ static int RoutingMain(int argc, char *argv[])
       // hardware limit on distinct RSUs available.
       uint32_t n_malicious_ctrl4b =
           (uint32_t)std::round(controller_Node.GetN() * attack_percentage / 100.0);
-      if (n_malicious_ctrl4b < 1u)                      n_malicious_ctrl4b = 1u;
+      // Bug fix (pct=0 floor): see declare_attackers()'s matching fix.
+      if (attack_percentage > 0.0 && n_malicious_ctrl4b < 1u) n_malicious_ctrl4b = 1u;
       if (n_malicious_ctrl4b > controller_Node.GetN()) n_malicious_ctrl4b = controller_Node.GetN();
       if (n_malicious_ctrl4b > N_Vehicles / 2)          n_malicious_ctrl4b = N_Vehicles / 2;
       if (n_malicious_ctrl4b > RSU_Nodes.GetN())        n_malicious_ctrl4b = RSU_Nodes.GetN();
@@ -159271,6 +159291,8 @@ static int RoutingMain(int argc, char *argv[])
       // above for the full rationale. Applied here after the existing
       // RSU-count cap so both bounds compose correctly (min of all three).
       const uint32_t kControllerOriginVictimPoolSize = [&]{
+          // Bug fix (pct=0 floor): see declare_attackers()'s matching fix.
+          if (attack_percentage <= 0.0) return 0u;
           uint32_t p = (uint32_t)std::round((N_Vehicles * attack_percentage / 100.0) / 2.0);
           p = (p < 2u) ? 2u : p;
           return (RSU_Nodes.GetN() > 0 && p > RSU_Nodes.GetN()) ? (uint32_t)RSU_Nodes.GetN() : p;
@@ -159881,7 +159903,9 @@ static int RoutingMain(int argc, char *argv[])
       }
       is_malicious_controller = true;
       uint32_t n_mal_ctrl3 = (uint32_t)std::round(N_Controllers * attack_percentage / 100.0);
-      if (n_mal_ctrl3 < 1) n_mal_ctrl3 = 1;
+      // Bug fix (pct=0 floor): see declare_attackers()'s matching fix -- must
+      // not force a malicious controller into existence at attack_percentage=0.
+      if (attack_percentage > 0.0 && n_mal_ctrl3 < 1) n_mal_ctrl3 = 1;
       if (n_mal_ctrl3 > N_Controllers) n_mal_ctrl3 = N_Controllers;
 
             // Build phantom reporters from me_malicious_nodes (all malicious vehicles)
@@ -159904,13 +159928,19 @@ static int RoutingMain(int argc, char *argv[])
           return 1;
       }
       // Ensure at least 1 phantom reporter; borrow from real only if real has surplus (>= 3)
-      if (s3_phantom_cidx.empty() && s3_real_cidx.size() >= 3) {
+      // Bug fix (pct=0 floor): only borrow/require a phantom reporter when an
+      // attack was actually intended (attack_percentage>0) -- otherwise this
+      // silently manufactured an attacker even at attack_percentage=0.
+      if (attack_percentage > 0.0 && s3_phantom_cidx.empty() && s3_real_cidx.size() >= 3) {
           s3_phantom_cidx.push_back(s3_real_cidx.back()); s3_real_cidx.pop_back();
       }
-      if (s3_phantom_cidx.empty()) {
+      if (s3_phantom_cidx.empty() && attack_percentage > 0.0) {
           std::cout << "[ERROR] ME-S3 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
           return 1;
       }
+      if (s3_phantom_cidx.empty()) {
+          std::cout << "[ME-S3] attack_percentage=0 -- no malicious controller, ME-S3 attack skipped (baseline run).\n";
+      } else {
       static const double ME_S3_DISCOVERY_TIME = 10.0;
 
       // Genuine single-attacker case: exactly 1 impersonated identity declared
@@ -160036,6 +160066,7 @@ static int RoutingMain(int argc, char *argv[])
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
       }  // end else (2-attacker / legacy ME-S3 path)
+      }  // end else (s3_phantom_cidx not empty -- attack_percentage>0)
   }
 
 
@@ -160055,7 +160086,9 @@ static int RoutingMain(int argc, char *argv[])
       }
       is_malicious_controller = true;
       uint32_t n_mal_ctrl4 = (uint32_t)std::round(N_Controllers * attack_percentage / 100.0);
-      if (n_mal_ctrl4 < 1) n_mal_ctrl4 = 1;
+      // Bug fix (pct=0 floor): see declare_attackers()'s matching fix -- must
+      // not force a malicious controller into existence at attack_percentage=0.
+      if (attack_percentage > 0.0 && n_mal_ctrl4 < 1) n_mal_ctrl4 = 1;
       if (n_mal_ctrl4 > N_Controllers) n_mal_ctrl4 = N_Controllers;
 
             // Build phantom reporters from me_malicious_nodes (all malicious vehicles)
@@ -160075,13 +160108,18 @@ static int RoutingMain(int argc, char *argv[])
           return 1;
       }
       // Ensure at least 1 phantom reporter; borrow from real only if real has surplus (>= 3)
-      if (s4_phantom_cidx.empty() && s4_real_cidx.size() >= 3) {
+      // Bug fix (pct=0 floor): see ME-S3's matching fix -- only borrow/require
+      // a phantom reporter when an attack was actually intended.
+      if (attack_percentage > 0.0 && s4_phantom_cidx.empty() && s4_real_cidx.size() >= 3) {
           s4_phantom_cidx.push_back(s4_real_cidx.back()); s4_real_cidx.pop_back();
       }
-      if (s4_phantom_cidx.empty()) {
+      if (s4_phantom_cidx.empty() && attack_percentage > 0.0) {
           std::cout << "[ERROR] ME-S4 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
           return 1;
       }
+      if (s4_phantom_cidx.empty()) {
+          std::cout << "[ME-S4] attack_percentage=0 -- no malicious controller, ME-S4 attack skipped (baseline run).\n";
+      } else {
       static const double ME_S4_DISCOVERY_TIME = 10.0;
       // Pick whichever RSU actually has a viable local neighborhood for this
       // run/seed, instead of blindly using RSU_Nodes.Get(0) (see
@@ -160226,6 +160264,7 @@ static int RoutingMain(int argc, char *argv[])
       anim.UpdateNodeSize(controller_Node.Get(0)->GetId(), 48.0, 48.0);
       anim.UpdateNodeDescription(controller_Node.Get(0), "Controller-Attacker");
       }  // end else (2-attacker / legacy ME-S4 path)
+      }  // end else (s4_phantom_cidx not empty -- attack_percentage>0)
   }
 
 
