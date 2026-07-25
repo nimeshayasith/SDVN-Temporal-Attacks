@@ -1,3 +1,4 @@
 [
-
+  {"v_id":"V3","alpha":"TTW","y_hat":0.1253,"t_alert":10117,"interval_ts_ms":10117,"S_trig":[2],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0},
+  {"v_id":"V5","alpha":"TTW","y_hat":0.1253,"t_alert":10139,"interval_ts_ms":10139,"S_trig":[2],"from_lw_path":true,"from_fs_path":false,"tdet_ms":0}
 ]
