@@ -1790,7 +1790,12 @@ bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 // attack_percentage: fraction of vehicle nodes (0–100) that behave maliciously.
 // controller_malicious_assumption: when true, controllers may also be malicious.
 uint32_t attack_percentage             = 20;
-double   attack_activation_probability = 0.75;
+// PDF §Table 4.10 (canonical TGN validation dataset generation) explicitly
+// states "attack activation probability = 1.0" for the final reported
+// model's training data -- the prior 0.75 default silently deviated from
+// this, thinning every scenario's designated attacker pool by 25% before
+// any attack was even attempted, regardless of attack_percentage.
+double   attack_activation_probability = 1.0;
 double   attack_time_jitter_s          = 0.040;
 double   attack_support_evidence_probability = 1.0;
 bool     controller_malicious_assumption = false;
@@ -9521,6 +9526,141 @@ AttackSelectActiveVehicles(std::vector<uint32_t>& maliciousVehicles,
     maliciousVehicles.swap(activeVehicles);
 }
 
+// Per-attacker injection intensity (rinj, Eq. 4.24-4.25). Generalizes the
+// TTW-S1-only "Experiment 4" repeat-injection mechanism (g_psi_fm/g_psi_
+// tburst_s, see TTW_ReplayAttack's call site) to all 12 attack scenarios.
+//
+// The PDF defines rinj as "the fraction of beacon intervals in which each
+// malicious vehicle injects at least one false topology claim" -- a
+// per-interval Bernoulli-style rate. This implementation achieves the same
+// EXPECTED aggregate false-beacon load (Eq. 4.25: Lambda = L^2*N*Tobs/Tb)
+// via a deterministic, evenly-spaced repeat count instead of a true
+// per-interval random roll -- fm = round(rinj * numIntervals) repeats,
+// evenly spread across the remaining simulation window after the caller's
+// own first (one-shot) injection. This matches Experiment 4's existing,
+// already-validated g_psi_fm mechanism exactly (same formula shape,
+// same scheduling pattern), just parameterized by rinj instead of a fixed
+// fm/Tburst pair, and generalized to every scenario's own injection
+// function instead of TTW_ReplayAttack only.
+//
+// Per this session's agreed simplification (Eq. 4.24: alpha_atk(L) = L,
+// rinj(L) = L), callers pass rinj = attack_percentage/100.0 -- the same
+// joint L driving both attacker penetration (already handled upstream by
+// declare_attackers()/AttackSelectActiveVehicles) and this per-attacker
+// intensity.
+//
+// Calibration fix: the original formula sized fm off an independent T_b-
+// based interval count (numIntervals = remainingWindow/T_b, ~400-500 for a
+// typical run), which injects orders of magnitude more attack events than
+// each vehicle's actual natural benign-event population -- confirmed via
+// live measurement (TTW-S1, pct=20/rinj=0.2: ~239 attack events/attacker
+// injected against only ~14 REAL benign events/attacker), saturating the
+// attack-vs-benign ratio to ~0.95-0.99 regardless of the requested rinj
+// instead of tracking it proportionally.
+//
+// Fixed by solving directly for the target ratio instead of guessing an
+// interval count: given a per-vehicle natural benign-event population of
+// kAssumedBenignEventCount (empirically calibrated from the same TTW-S1
+// measurement above -- the ~14 benign events/attacker figure), the number
+// of attack events needed to hit ratio = rinj is:
+//   attack / (attack + benign) = rinj  =>  attack = rinj*benign/(1-rinj)
+// rinj is clamped below 1.0 to avoid the formula's own division blowup as
+// rinj->1 (which would otherwise require an unbounded attack count to
+// mathematically reach a literal 100% ratio); 0.98 already yields a
+// ~50x-benign attack count, saturating the practical ratio arbitrarily
+// close to 1.0 without an actually-infinite event count.
+static const double kAssumedBenignEventCount = 14.0;
+
+// rinj<=0, or too little remaining window to fit even 2 intervals, is a
+// no-op -- the caller's own first injection is unaffected either way, so
+// default behaviour (rinj=0) is unchanged from before this mechanism
+// existed.
+template <typename Func, typename... Args>
+static void
+AttackScheduleRepeatedInjection(double firstInjectionTime, double simTimeEnd,
+                                 double rinj, Func func, Args... args)
+{
+    if (rinj <= 0.0) return;
+    const double remainingWindow = simTimeEnd - firstInjectionTime - 1.0;
+    if (remainingWindow <= 0.0) return;
+    const double effectiveRinj = (rinj > 0.98) ? 0.98 : rinj;
+    const uint32_t fm = (uint32_t)std::round(
+        effectiveRinj * kAssumedBenignEventCount / (1.0 - effectiveRinj));
+    if (fm <= 1) return;
+    const double repeatSpacing = remainingWindow / (double)fm;
+    for (uint32_t rep = 1; rep < fm; rep++)
+    {
+        double repeatTime = firstInjectionTime + rep * repeatSpacing;
+        if (repeatTime >= simTimeEnd) repeatTime = simTimeEnd - 0.1;
+        Simulator::Schedule(Seconds(repeatTime), func, args...);
+    }
+}
+
+// rinj (Eq. 4.24-4.25), adaptive/closed-loop version. Supersedes
+// AttackScheduleRepeatedInjection above -- that mechanism precomputed a
+// fixed repeat count from an assumed benign-event rate, which could not
+// hit the literal per-attacker ratio target ("for an attacker with N total
+// events, rinj*N should be attack-type") because the real benign rate is
+// state-dependent (varies with attack_percentage itself and with per-call
+// logging variability, confirmed empirically: rows-per-call ranged 3.94 at
+// pct=20 to 1.28 at pct=80 for the same scenario) and only knowable LIVE,
+// not predictable in advance at scheduling time.
+//
+// This version checks the attacker's ACTUAL running (attack_count,
+// total_count) -- g_attackerEventCounts (tgn_core.cc), updated live at the
+// exact point each TGN_EVENTS row is written -- at every beacon interval,
+// injecting only when the CURRENT observed ratio is still below rinj.
+// Self-corrects continuously against however the benign rate actually
+// behaves, converging on the literal target ratio instead of merely being
+// directionally correct.
+// Implementation note: NS-3.35's Simulator::Schedule/MakeEvent template
+// machinery does not accept a raw lambda closure directly (confirmed via
+// build failure: "no matching function for call to MakeEvent(...<lambda>&)")
+// and separately has a bounded argument arity that a template function
+// pointer threading func+args through a recursive reschedule call exceeded
+// for this file's longer-argument-list injection functions. Both problems
+// are avoided by scheduling a single, plain (non-template-closure) static
+// function -- AttackAdaptiveTickInvoke below -- whose only arguments are a
+// shared_ptr<function<void(double)>> and a double, exactly the simple,
+// well-supported argument pattern already used everywhere else in this
+// file's own Simulator::Schedule calls. The actual per-scenario func/args
+// stay bound inside the std::function the shared_ptr points to.
+static void
+AttackAdaptiveTickInvoke(std::shared_ptr<std::function<void(double)>> tick, double now)
+{
+    (*tick)(now);
+}
+
+template <typename Func, typename... Args>
+static void
+AttackScheduleAdaptiveInjection(uint32_t physicalSenderId, double firstInjectionTime,
+                                 double simTimeEnd, double rinj, Func func, Args... args)
+{
+    if (rinj <= 0.0) return;
+    const double firstTick = firstInjectionTime + PEM_BEACON_INTERVAL_S;
+    if (firstTick >= simTimeEnd) return;
+
+    auto tick = std::make_shared<std::function<void(double)>>();
+    *tick = [physicalSenderId, simTimeEnd, rinj, func, args..., tick](double now) {
+        if (now >= simTimeEnd) return;
+        auto& counts = g_attackerEventCounts[physicalSenderId];
+        const uint32_t attackCount = counts.first;
+        const uint32_t totalCount  = counts.second;
+        // Bootstrap (no observations yet for this vehicle): allow, so a
+        // never-before-seen attacker isn't permanently blocked by a 0/0 check.
+        const bool shouldInject =
+            (totalCount == 0) || ((double)attackCount < rinj * (double)totalCount);
+        if (shouldInject)
+        {
+            func(args...);
+        }
+        const double nextTime = now + PEM_BEACON_INTERVAL_S;
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S),
+            &AttackAdaptiveTickInvoke, tick, nextTime);
+    };
+    Simulator::Schedule(Seconds(firstTick), &AttackAdaptiveTickInvoke, tick, firstTick);
+}
+
 // Assigns malicious membership to every vehicle node and to up to 3 controllers
 // based on attack_percentage.  Must be called after declare_attack_states() and
 // after N_Vehicles is finalised.
@@ -10196,6 +10336,48 @@ SelectMutualRangePair(const std::vector<uint32_t>& pool, double atTime)
               << "  effective_range=" << kEffectiveReceptionRadius << "m"
               << "  using unfiltered ordering (ground_truth_valid=false)" << std::endl;
     return pool;
+}
+
+// rinj calibration fix (ME-S1): greedy multi-pair generalization of
+// SelectMutualRangePair above, used for ME-S1's echo-attacker pool
+// (me_echo_cidx). Echo attackers V3/V4 are only guaranteed to be near the
+// V1<->V2 link they're overhearing, not near EACH OTHER -- so
+// ME_S1_LegitimateDiscovery's link34 check (whether the echo pair has its
+// own genuine mutual link, the only source of a benign self-report under
+// their own physical_sender_id for AttackScheduleAdaptiveInjection's ratio
+// tracker) frequently comes back false purely by chance, not because any
+// code path is broken. This never fabricates a link -- it only reorders the
+// pool so that when a genuinely mutual-range pairing DOES exist among the
+// candidates, the (2g, 2g+1) consecutive-pair grouping used below is more
+// likely to find it; ME_S1_LegitimateDiscovery still independently measures
+// the real distance and only credits link34 when it is genuinely <= range.
+// Any vehicles with no available mutual-range partner keep their original
+// relative order at the end (unpaired echo groups behave exactly as before).
+static std::vector<uint32_t>
+MeGreedyPairByMutualRange(const std::vector<uint32_t>& pool, double atTime)
+{
+    std::vector<uint32_t> remaining = pool;
+    std::vector<uint32_t> result;
+    while (remaining.size() >= 2) {
+        bool found = false;
+        for (size_t i = 0; i < remaining.size() && !found; i++) {
+            for (size_t j = i + 1; j < remaining.size(); j++) {
+                const double d = PemDistance2d(TtwSumoPositionAt(remaining[i], atTime),
+                                                TtwSumoPositionAt(remaining[j], atTime));
+                if (d <= kEffectiveReceptionRadius) {
+                    result.push_back(remaining[i]);
+                    result.push_back(remaining[j]);
+                    remaining.erase(remaining.begin() + j);
+                    remaining.erase(remaining.begin() + i);
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (!found) break;
+    }
+    result.insert(result.end(), remaining.begin(), remaining.end());
+    return result;
 }
 
 // A7 (--echo_dist_ratio, Table 4.2 X-variable): reorders an ME echo-attacker
@@ -11141,6 +11323,31 @@ void TTWS2_RSUForwardAggregated(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
               << " --aggregate forward--> Controller"
               << "  [<V" << v1_id << " sees V" << v2_id << ">, <V" << v2_id
               << " sees V" << v1_id << ">]  t=" << obs_time << "  ACCEPTED" << std::endl;
+    // rinj calibration fix: give AttackScheduleAdaptiveInjection's live
+    // ratio tracker (g_attackerEventCounts, keyed by physical_sender_id)
+    // a genuine benign baseline for this RSU, so it does not saturate to
+    // 1.0 on the very first (unavoidable) forged injection.
+    //
+    // Deliberately NOT done via PemEmitEvent: this codebase's established,
+    // bug-fix-backed convention (see is_self_report_me1/me3's documented
+    // comments a few hundred lines up, and the TTW-S4 V94/V118 false-
+    // positive fix) requires a relayed-but-genuinely-legitimate report to
+    // keep physical_sender_id = the ORIGINAL vehicle claimant (v1_id here,
+    // as TTWS2_VehiclesToRSU already does), never the relaying RSU --
+    // otherwise ME-S1's reporter-count check (Eq. 3.8, keyed on
+    // reporter_id) sees a brand-new distinct reporter for this link and
+    // ME-S3's position/RSSI check (keyed on physical_sender_id) loses its
+    // self-report exemption, both of which would make this RSU's own
+    // routine, honest relay traffic randomly trip false-positive alerts --
+    // an actual detection-correctness regression, not merely a calibration
+    // one. So this increments the adaptive-injection controller's private
+    // bookkeeping map directly, bypassing PemEmitEvent/PemEvaluateEvent
+    // and TGN_EVENTS.csv entirely -- it is accounting-only and can never be
+    // seen, scored, or alerted on by any detector (LW or FS/TGN).
+    {
+        auto& counts = g_attackerEventCounts[rsu_id];
+        counts.second += 1;   // total_event_count; attack_event_count left untouched
+    }
     AttackSendRSUToController(rsu_id);
 }
 
@@ -12242,6 +12449,16 @@ void BSHH_S2_LegitimateExchange(uint32_t v1_id, uint32_t v2_id, uint32_t rsu_id,
         AttackSendDSRCBeacon(Vehicle_Nodes.Get(v2_id), Vehicle_Nodes.Get(v1_id));
         AttackSendHeartbeat(Vehicle_Nodes.Get(v1_id), v1_id, t, false);
         AttackSendHeartbeat(Vehicle_Nodes.Get(v2_id), v2_id, t, false);
+    }
+    // rinj calibration fix (mirrors TTWS2_RSUForwardAggregated's identical
+    // fix and comment): benign counter bump only, bypassing PemEmitEvent so
+    // it never reaches any detector -- physical_sender_id for the two
+    // PemEmitHeartbeatEvent calls above correctly stays v1_id/v2_id (the
+    // real claimants), never rsu_id, per this codebase's established
+    // relay-attribution convention.
+    {
+        auto& counts = g_attackerEventCounts[rsu_id];
+        counts.second += 2;   // two heartbeats relayed this call
     }
     AttackSendRSUToController(rsu_id);
 }
@@ -157951,6 +158168,11 @@ static int RoutingMain(int argc, char *argv[])
                   Simulator::Schedule(Seconds(replayTime), &TTW_ReplayAttack,
                       Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
                       mal_ns3, vic_ns3, replayTime, breakTime);
+                  // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+                  AttackScheduleAdaptiveInjection(mal_ns3, replayTime, simTime,
+                      attack_percentage / 100.0, &TTW_ReplayAttack,
+                      Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
+                      mal_ns3, vic_ns3, replayTime, breakTime);
 
                   // Experiment 4 (Psi = fm * Tburst/Tb, Eq. 4.28/4.29): additive
                   // repeat-injection layer on top of the single-shot replay above.
@@ -158173,6 +158395,9 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS2_StorePacket, vA, vB, TTWS2_HELLO_TIME, breakTime, replayTime);
           Simulator::Schedule(Seconds(replayTime + dt),
               &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(rsu_id, replayTime + dt, simTime,
+              attack_percentage / 100.0, &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (topology update path)
           if (s2_app_veh_base + vA_cidx < apps.GetN()) {
@@ -158371,6 +158596,9 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS3_StorePacketInternal, vA, vB, TTWS3_HELLO_TIME, breakTime, replayTime);
           Simulator::Schedule(Seconds(replayTime + dt),
               &TTWS3_InternalReplay, vA, vB, replayTime);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
+              attack_percentage / 100.0, &TTWS3_InternalReplay, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (topology update — S3 internal attack,
           // vehicles send legitimate updates before controller corrupts internally)
@@ -158561,6 +158789,9 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS4_StorePacketInternal, vA, vB, TTWS4_HELLO_TIME, breakTime, replayTime);
           Simulator::Schedule(Seconds(replayTime + dt),
               &TTWS4_InternalReplay, vA, vB, replayTime);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
+              attack_percentage / 100.0, &TTWS4_InternalReplay, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (vehicles send topology to controller via RSU path)
           if (s4_app_veh_base + cidxB < apps.GetN()) {
@@ -158835,6 +159066,21 @@ static int RoutingMain(int argc, char *argv[])
           // STEP 4 — Attacker sends old heartbeat to victim
           Simulator::Schedule(Seconds(replayTime),
               &BSHH_S1_ReplayOldHeartbeatToVictim, att_ns3, vic_ns3, exchangeObservedTime);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          // Bug fix: was wired to BSHH_S1_ReplayOldHeartbeatToVictim (STEP 4),
+          // which has zero PemEmit*/TGN_WriteEventRow calls at all -- so
+          // g_attackerEventCounts[att_ns3].second (total_event_count) never
+          // moved from repeated calls, leaving shouldInject permanently true
+          // (totalCount==0 branch) regardless of rinj, which is why BSHH-S1
+          // under-converged at every tested attack_percentage. The function
+          // that actually logs the attack event (real physical_sender=
+          // att_ns3, claimed=vic_ns3, is_replayed=true) is STEP 6,
+          // BSHH_S1_AttackerHijacksOldHeartbeatToController -- point the
+          // repeat mechanism there instead, matching every other scenario's
+          // convention of repeating the function that genuinely emits.
+          AttackScheduleAdaptiveInjection(att_ns3, hijackTime, simTime,
+              attack_percentage / 100.0, &BSHH_S1_AttackerHijacksOldHeartbeatToController,
+              att_ns3, vic_ns3, exchangeObservedTime);
           // STEP 5 — Victim forwards old heartbeat to controller
           if (victimForwardScheduled)
           {
@@ -159060,6 +159306,9 @@ static int RoutingMain(int argc, char *argv[])
               &BSHH_S2_SuppressCurrentHeartbeat, rsu_ns3, vA_ns3, suppressTime);
           Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(rsu_ns3, replayTime + dt, simTime,
+              attack_percentage / 100.0, &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
 
           // NetAnim visual packets
           if (app_vA && app_vB) {
@@ -159208,6 +159457,10 @@ static int RoutingMain(int argc, char *argv[])
               &BSHH_S3_StoreOldHeartbeats, vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
           Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S3_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
+              attack_percentage / 100.0, &BSHH_S3_InternalReplay,
+              vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
 
           // // NetAnim visual packets
           // if (app_vA && app_vB) {
@@ -159372,6 +159625,10 @@ static int RoutingMain(int argc, char *argv[])
               &BSHH_S4_StoreOldHeartbeats, vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
           Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S4_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
+              attack_percentage / 100.0, &BSHH_S4_InternalReplay,
+              vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
 
           // // NetAnim visual packets
           // if (app_vA && app_vB) {
@@ -159524,6 +159781,14 @@ static int RoutingMain(int argc, char *argv[])
           me_s1_actual_attackers.insert(borrowed);   // borrowed vehicle is also an attacker
           me_real_cidx.pop_back();
       }
+      // rinj calibration fix (ME-S1): reorder into greedy mutual-range pairs
+      // BEFORE the (2g, 2g+1) group split below, so echo pairs that CAN be
+      // mutually in range are grouped together — giving those attackers a
+      // genuine benign self-report baseline via ME_S1_LegitimateDiscovery's
+      // link34 check. See MeGreedyPairByMutualRange's declaration comment.
+      // Uses the literal 10.0, matching ME_S1_DISCOVERY_TIME (declared later
+      // in this scope, same reason the A7 echo_dist_ratio call below it does).
+      me_echo_cidx = MeGreedyPairByMutualRange(me_echo_cidx, 10.0);
             // All echo attackers active — no random deactivation.
       // All echo pairs target the SAME real link (real_cidx[0] <-> real_cidx[1]).
       uint32_t n_echo_pairs = (uint32_t)me_echo_cidx.size() / 2;
@@ -159630,6 +159895,11 @@ static int RoutingMain(int argc, char *argv[])
           Simulator::Schedule(Seconds(echoAttackTime),
               &ME_S1_EchoAttack, echo_v3_cidx, echo_v4_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x3u);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(echo_v3_cidx, echoAttackTime, simTime,
+              attack_percentage / 100.0, &ME_S1_EchoAttack,
+              echo_v3_cidx, echo_v4_cidx, v1_cidx, v2_cidx,
+              discoveryObservedTime, 0x3u);
 
           anim.UpdateNodeColor(Vehicle_Nodes.Get(echo_v3_cidx), 255, 0, 0);
           anim.UpdateNodeSize(Vehicle_Nodes.Get(echo_v3_cidx)->GetId(), 25.0, 25.0);
@@ -159669,6 +159939,11 @@ static int RoutingMain(int argc, char *argv[])
           }
           Simulator::Schedule(Seconds(echoAttackTime),
               &ME_S1_EchoAttack, last_cidx, last_cidx, v1_cidx, v2_cidx,
+              discoveryObservedTime, 0x1u);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(last_cidx, echoAttackTime, simTime,
+              attack_percentage / 100.0, &ME_S1_EchoAttack,
+              last_cidx, last_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x1u);
           anim.UpdateNodeColor(Vehicle_Nodes.Get(last_cidx), 255, 0, 0);
           anim.UpdateNodeSize(Vehicle_Nodes.Get(last_cidx)->GetId(), 25.0, 25.0);
@@ -159878,6 +160153,10 @@ static int RoutingMain(int argc, char *argv[])
           Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1 + dt),
               &ME_S2_InjectEchoReports, rsu_id, v1_id, v2_id,
               local_p0, local_p1, ME_S2_DISCOVERY_TIME);
+          // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          AttackScheduleAdaptiveInjection(rsu_id, ME_S2_DISCOVERY_TIME + 0.1 + dt, simTime,
+              attack_percentage / 100.0, &ME_S2_InjectEchoReports, rsu_id, v1_id, v2_id,
+              local_p0, local_p1, ME_S2_DISCOVERY_TIME);
 
           anim.UpdateNodeColor(RSU_Nodes.Get(r), 139, 69, 19);   // brown = attacking RSU
           anim.UpdateNodeSize(RSU_Nodes.Get(r)->GetId(), 38.0, 38.0);
@@ -160048,14 +160327,24 @@ static int RoutingMain(int argc, char *argv[])
               s3_phantom_cidx[0], s3_v4_arg, ME_S3_DISCOVERY_TIME);
           // All phantom reporters inject in pairs
           for (uint32_t p = 0; p + 1 < s3_phantom_cidx.size(); p += 2) {
-              Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt + p * 0.001),
+              const double s3_inj_t = ME_S3_DISCOVERY_TIME + 0.1 + dt + p * 0.001;
+              Simulator::Schedule(Seconds(s3_inj_t),
                   &ME_S3_InjectPhantomPaths, v1_id, v2_id,
+                  s3_phantom_cidx[p], s3_phantom_cidx[p + 1], ME_S3_DISCOVERY_TIME, c);
+              // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+              AttackScheduleAdaptiveInjection(9999u, s3_inj_t, simTime,
+                  attack_percentage / 100.0, &ME_S3_InjectPhantomPaths, v1_id, v2_id,
                   s3_phantom_cidx[p], s3_phantom_cidx[p + 1], ME_S3_DISCOVERY_TIME, c);
           }
           if (s3_phantom_cidx.size() % 2 == 1) {
               uint32_t last_p = s3_phantom_cidx.back();
-              Simulator::Schedule(Seconds(ME_S3_DISCOVERY_TIME + 0.1 + dt + (s3_phantom_cidx.size() - 1) * 0.001),
+              const double s3_inj_t2 = ME_S3_DISCOVERY_TIME + 0.1 + dt + (s3_phantom_cidx.size() - 1) * 0.001;
+              Simulator::Schedule(Seconds(s3_inj_t2),
                   &ME_S3_InjectPhantomPaths, v1_id, v2_id,
+                  last_p, last_p, ME_S3_DISCOVERY_TIME, c);
+              // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+              AttackScheduleAdaptiveInjection(9999u, s3_inj_t2, simTime,
+                  attack_percentage / 100.0, &ME_S3_InjectPhantomPaths, v1_id, v2_id,
                   last_p, last_p, ME_S3_DISCOVERY_TIME, c);
           }
       }
@@ -160254,14 +160543,24 @@ static int RoutingMain(int argc, char *argv[])
               s4_phantom_cidx[0], s4_v4_arg, ME_S4_DISCOVERY_TIME);
           // All phantom reporters inject in pairs
           for (uint32_t p = 0; p + 1 < s4_phantom_cidx.size(); p += 2) {
-              Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt + p * 0.001),
+              const double s4_inj_t = ME_S4_DISCOVERY_TIME + 0.1 + dt + p * 0.001;
+              Simulator::Schedule(Seconds(s4_inj_t),
                   &ME_S4_InjectPhantomPaths, v1_id, v2_id,
+                  s4_phantom_cidx[p], s4_phantom_cidx[p + 1], ME_S4_DISCOVERY_TIME, c);
+              // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+              AttackScheduleAdaptiveInjection(9999u, s4_inj_t, simTime,
+                  attack_percentage / 100.0, &ME_S4_InjectPhantomPaths, v1_id, v2_id,
                   s4_phantom_cidx[p], s4_phantom_cidx[p + 1], ME_S4_DISCOVERY_TIME, c);
           }
           if (s4_phantom_cidx.size() % 2 == 1) {
               uint32_t last_p = s4_phantom_cidx.back();
-              Simulator::Schedule(Seconds(ME_S4_DISCOVERY_TIME + 0.1 + dt + (s4_phantom_cidx.size() - 1) * 0.001),
+              const double s4_inj_t2 = ME_S4_DISCOVERY_TIME + 0.1 + dt + (s4_phantom_cidx.size() - 1) * 0.001;
+              Simulator::Schedule(Seconds(s4_inj_t2),
                   &ME_S4_InjectPhantomPaths, v1_id, v2_id,
+                  last_p, last_p, ME_S4_DISCOVERY_TIME, c);
+              // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+              AttackScheduleAdaptiveInjection(9999u, s4_inj_t2, simTime,
+                  attack_percentage / 100.0, &ME_S4_InjectPhantomPaths, v1_id, v2_id,
                   last_p, last_p, ME_S4_DISCOVERY_TIME, c);
           }
       }

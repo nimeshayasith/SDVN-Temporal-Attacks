@@ -114,20 +114,24 @@ static const int    TGN_LAYERS          = 2;      // message-passing rounds L (E
 static double TGN_GAMMA = 310.0;
 
 // θ_FS — TGN detection threshold (Eq 3.25).
-// Re-calibrated 2026-07-23 (TABLE_4.9_CALIBRATION_TRACKER.md sec A.2, see
+// Re-calibrated 2026-07-24 (TABLE_4.9_CALIBRATION_TRACKER.md sec A.2, see
 // theta_calibration_results.md for full evidence) against the dim=192
-// canonical model, with LW disabled (--no_lw=1 ablation) so theta_FS's
-// effect on TGN's OWN decision is visible — the original 0.85 pick above
-// was measured with LW enabled, where LW's OR-combination masks TGN's
-// standalone sensitivity to theta. Sweep {0.65,0.70,0.75,0.80,0.85,0.90,
-// 0.95,1.0} across all 12 scenarios + combined, selected by worst-case MCC
-// (excluding ME-S1/S2, which are dropped upstream by the crypto layer
-// regardless of theta). theta=0.95 gave worst-case MCC 0.529 (bottleneck:
-// ME-S3), vs 0.416/0.366 at 0.85/0.90 (bottleneck: BSHH-S2 at those
-// values) — theta=1.0 is a degenerate boundary case (score never exceeds
-// exactly 1.0 under the strict '>' comparison, collapsing every scenario
-// to mcc=0) and is excluded as a candidate.
-static const double TGN_THETA_FS = 0.95;
+// canonical model, with LW disabled (--no_lw=1 ablation), attack_percentage
+// =50, N_Vehicles=200/N_RSUs=64 fairness baseline. Sweep {0.90,0.91,...,
+// 0.99,1.0} (11 points) across all 12 scenarios + combined (13), selected
+// by worst-case MCC excluding ME-S1/S2 (sc9/sc10) — both are dropped
+// upstream by the Stage-0 crypto pre-filter regardless of theta (confirmed:
+// sc10 had 0 total attack events, sc9 had 2, at every theta tested), so
+// including them just ties every candidate at worst-case=0.000 and makes
+// the comparison uninformative. theta=0.91 and 0.92 tied for best worst-
+// case MCC (0.613, bottleneck: ME-S3/sc11); 0.92 wins the tiebreak on
+// average MCC across the 11 scenarios (0.7169 vs 0.7075). This improves on
+// the prior 0.95 pick's worst-case of 0.554 (also bottlenecked at ME-S3),
+// suggesting the 2026-07-23 sweep's granularity (0.05 steps) missed this
+// tighter optimum between 0.90 and 0.95. theta=1.0 remains excluded as a
+// degenerate boundary case (score never exceeds exactly 1.0 under the
+// strict '>' comparison, collapsing every scenario to mcc=0).
+static const double TGN_THETA_FS = 0.92;
 
 // W_max — TGN sliding-window event-retention bound (§3.4.3, mobility-aware design).
 // Conceptually distinct from N_beacon (Eq. 3.32, §3.4.7):
@@ -1180,10 +1184,24 @@ static double TGN_ComputeAUROC()
 //  SECTION 9  Event processing loop
 // =============================================================================
 
+// Live per-vehicle event counters for the adaptive rinj mechanism
+// (routing.cc's AttackScheduleAdaptiveInjection/AttackAdaptiveInjectionTick).
+// Key = physical_sender_id, Value = {attack_event_count, total_event_count}.
+// Updated here, at the exact point a TGN_EVENTS row is actually written, so
+// the adaptive injection decision checks the SAME ground truth a post-hoc
+// analysis of TGN_EVENTS.csv would compute -- not a separate, potentially
+// inconsistent estimate.
+std::map<uint32_t, std::pair<uint32_t,uint32_t>> g_attackerEventCounts;
+
 static void TGN_WriteEventRow(const PemEvent& e, const tgn::NodeFeatures& feat,
                                double ef, double tgn_score, bool tgn_alert)
 {
     if (!g_tgn_events_csv.is_open()) return;
+    {
+        auto& counts = g_attackerEventCounts[e.physical_sender_id];
+        counts.second += 1;               // total_event_count
+        if (e.attack_label) counts.first += 1;  // attack_event_count
+    }
     auto sig_str = [&]() -> std::string {
         static const char* names[] = {
             "TTW-S1","TTW-S2","TTW-S3","BSHH-S1","BSHH-S2","BSHH-S3","ME-S1","ME-S2","ME-S3"};

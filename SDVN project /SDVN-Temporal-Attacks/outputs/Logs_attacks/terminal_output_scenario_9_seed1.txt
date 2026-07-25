@@ -1,99 +1,19 @@
 Solution at controller cleared
-[SUMO] Peak-activity alignment: trace_t0=332s -> 117 vehicles active in the 60s sim window (was ~few at raw t=0)
-[SUMO] Trace time offset: 332s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 127216 exact position+velocity events
+[SUMO] Peak-activity alignment: trace_t0=58s -> 208 vehicles active in the 60s sim window (was ~few at raw t=0)
+[SUMO] Trace time offset: 58s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 211 positions, scheduled 276645 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/09_ME_S1_Malicious_Vehicles.xml
 
 ========================================
 SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   Total vehicles        : 200
-  Attack percentage     : 80%
-  Echo attackers        : 160
+  Attack percentage     : 0%
+  Echo attackers        : 0
   Benign (real link) veh: 200
-  Active attack groups  : 80
-  Real link pair        : V165<->V163
-  Echo attackers (NS-3 IDs): V43 V75 V160 V123 V59 V121 V72 V150 V152 V24 V103 V132 V118 V159 V97 V155 V90 V151 V92 V87 V162 V137 V64 V45 V120 V129 V38 V35 V66 V79 V96 V134 V95 V22 V163 V128 V30 V89 V5 V54 V68 V63 V27 V91 V73 V99 V33 V60 V116 V53 V32 V126 V74 V141 V56 V138 V147 V125 V62 V110 V40 V108 V98 V148 V100 V34 V130 V65 V86 V8 V10 V12 V146 V49 V93 V104 V23 V83 V127 V26 V82 V19 V133 V14 V106 V115 V52 V161 V44 V154 V13 V70 V20 V109 V105 V139 V48 V149 V71 V107 V6 V94 V113 V114 V50 V84 V143 V156 V119 V111 V112 V7 V69 V57 V55 V88 V140 V81 V11 V51 V153 V46 V29 V80 V164 V145 V136 V76 V18 V21 V135 V15 V58 V42 V77 V122 V41 V131 V102 V158 V78 V67 V25 V36 V61 V117 V9 V31 V124 V85 V101 V37 V17 V142 V39 V16 V28 V157 V47 V144 
-  Active groups (all echo V165<->V163):
-    Group 1: V43+V75 echo V165<->V163
-    Group 2: V160+V123 echo V165<->V163
-    Group 3: V59+V121 echo V165<->V163
-    Group 4: V72+V150 echo V165<->V163
-    Group 5: V152+V24 echo V165<->V163
-    Group 6: V103+V132 echo V165<->V163
-    Group 7: V118+V159 echo V165<->V163
-    Group 8: V97+V155 echo V165<->V163
-    Group 9: V90+V151 echo V165<->V163
-    Group 10: V92+V87 echo V165<->V163
-    Group 11: V162+V137 echo V165<->V163
-    Group 12: V64+V45 echo V165<->V163
-    Group 13: V120+V129 echo V165<->V163
-    Group 14: V38+V35 echo V165<->V163
-    Group 15: V66+V79 echo V165<->V163
-    Group 16: V96+V134 echo V165<->V163
-    Group 17: V95+V22 echo V165<->V163
-    Group 18: V163+V128 echo V165<->V163
-    Group 19: V30+V89 echo V165<->V163
-    Group 20: V5+V54 echo V165<->V163
-    Group 21: V68+V63 echo V165<->V163
-    Group 22: V27+V91 echo V165<->V163
-    Group 23: V73+V99 echo V165<->V163
-    Group 24: V33+V60 echo V165<->V163
-    Group 25: V116+V53 echo V165<->V163
-    Group 26: V32+V126 echo V165<->V163
-    Group 27: V74+V141 echo V165<->V163
-    Group 28: V56+V138 echo V165<->V163
-    Group 29: V147+V125 echo V165<->V163
-    Group 30: V62+V110 echo V165<->V163
-    Group 31: V40+V108 echo V165<->V163
-    Group 32: V98+V148 echo V165<->V163
-    Group 33: V100+V34 echo V165<->V163
-    Group 34: V130+V65 echo V165<->V163
-    Group 35: V86+V8 echo V165<->V163
-    Group 36: V10+V12 echo V165<->V163
-    Group 37: V146+V49 echo V165<->V163
-    Group 38: V93+V104 echo V165<->V163
-    Group 39: V23+V83 echo V165<->V163
-    Group 40: V127+V26 echo V165<->V163
-    Group 41: V82+V19 echo V165<->V163
-    Group 42: V133+V14 echo V165<->V163
-    Group 43: V106+V115 echo V165<->V163
-    Group 44: V52+V161 echo V165<->V163
-    Group 45: V44+V154 echo V165<->V163
-    Group 46: V13+V70 echo V165<->V163
-    Group 47: V20+V109 echo V165<->V163
-    Group 48: V105+V139 echo V165<->V163
-    Group 49: V48+V149 echo V165<->V163
-    Group 50: V71+V107 echo V165<->V163
-    Group 51: V6+V94 echo V165<->V163
-    Group 52: V113+V114 echo V165<->V163
-    Group 53: V50+V84 echo V165<->V163
-    Group 54: V143+V156 echo V165<->V163
-    Group 55: V119+V111 echo V165<->V163
-    Group 56: V112+V7 echo V165<->V163
-    Group 57: V69+V57 echo V165<->V163
-    Group 58: V55+V88 echo V165<->V163
-    Group 59: V140+V81 echo V165<->V163
-    Group 60: V11+V51 echo V165<->V163
-    Group 61: V153+V46 echo V165<->V163
-    Group 62: V29+V80 echo V165<->V163
-    Group 63: V164+V145 echo V165<->V163
-    Group 64: V136+V76 echo V165<->V163
-    Group 65: V18+V21 echo V165<->V163
-    Group 66: V135+V15 echo V165<->V163
-    Group 67: V58+V42 echo V165<->V163
-    Group 68: V77+V122 echo V165<->V163
-    Group 69: V41+V131 echo V165<->V163
-    Group 70: V102+V158 echo V165<->V163
-    Group 71: V78+V67 echo V165<->V163
-    Group 72: V25+V36 echo V165<->V163
-    Group 73: V61+V117 echo V165<->V163
-    Group 74: V9+V31 echo V165<->V163
-    Group 75: V124+V85 echo V165<->V163
-    Group 76: V101+V37 echo V165<->V163
-    Group 77: V17+V142 echo V165<->V163
-    Group 78: V39+V16 echo V165<->V163
-    Group 79: V28+V157 echo V165<->V163
-    Group 80: V47+V144 echo V165<->V163
+  Active attack groups  : 0
+  Real link pair        : V93<->V140
+  Echo attackers (NS-3 IDs): 
+  Active groups (all echo V93<->V140):
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -113,713 +33,143 @@ SCENARIO 09 - ME-S1 ATTACK CONFIGURED
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 199 handshakes timed: avg=60.039 ms, max=165.224 ms, over_budget=199/199 (budget=10 ms)
+[KEM][10ms budget] 199 handshakes timed: avg=39.708 ms, max=80.7683 ms, over_budget=199/199 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_sim60_ap60_3seeds.bin'  (dim=128 layers=2)
-[KEM][SimLatency][t=0.0352547] Vehicle 12 session key simulated-ready (real handshake was 35.2547 ms)
-[KEM][SimLatency][t=0.0353227] Vehicle 13 session key simulated-ready (real handshake was 35.3227 ms)
-[KEM][SimLatency][t=0.0353297] Vehicle 14 session key simulated-ready (real handshake was 35.3297 ms)
-[KEM][SimLatency][t=0.0353467] Vehicle 10 session key simulated-ready (real handshake was 35.3467 ms)
-[KEM][SimLatency][t=0.0356981] Vehicle 11 session key simulated-ready (real handshake was 35.6981 ms)
-[KEM][SimLatency][t=0.0510906] Vehicle 15 session key simulated-ready (real handshake was 51.0906 ms)
-[KEM][SimLatency][t=0.0576707] Vehicle 9 session key simulated-ready (real handshake was 57.6707 ms)
-[KEM][SimLatency][t=0.0578246] Vehicle 111 session key simulated-ready (real handshake was 57.8246 ms)
-[KEM][SimLatency][t=0.0578402] Vehicle 110 session key simulated-ready (real handshake was 57.8402 ms)
-[KEM][SimLatency][t=0.0578858] Vehicle 112 session key simulated-ready (real handshake was 57.8858 ms)
-[KEM][SimLatency][t=0.0578891] Vehicle 30 session key simulated-ready (real handshake was 57.8891 ms)
-[KEM][SimLatency][t=0.0579735] Vehicle 113 session key simulated-ready (real handshake was 57.9735 ms)
-[KEM][SimLatency][t=0.0579803] Vehicle 171 session key simulated-ready (real handshake was 57.9803 ms)
-[KEM][SimLatency][t=0.0580555] Vehicle 170 session key simulated-ready (real handshake was 58.0555 ms)
-[KEM][SimLatency][t=0.0580936] Vehicle 31 session key simulated-ready (real handshake was 58.0936 ms)
-[KEM][SimLatency][t=0.0581655] Vehicle 115 session key simulated-ready (real handshake was 58.1655 ms)
-[KEM][SimLatency][t=0.0582145] Vehicle 48 session key simulated-ready (real handshake was 58.2145 ms)
-[KEM][SimLatency][t=0.0582415] Vehicle 169 session key simulated-ready (real handshake was 58.2415 ms)
-[KEM][SimLatency][t=0.0582848] Vehicle 122 session key simulated-ready (real handshake was 58.2848 ms)
-[KEM][SimLatency][t=0.0583702] Vehicle 32 session key simulated-ready (real handshake was 58.3702 ms)
-[KEM][SimLatency][t=0.0583788] Vehicle 160 session key simulated-ready (real handshake was 58.3788 ms)
-[KEM][SimLatency][t=0.0584097] Vehicle 51 session key simulated-ready (real handshake was 58.4097 ms)
-[KEM][SimLatency][t=0.0584286] Vehicle 135 session key simulated-ready (real handshake was 58.4286 ms)
-[KEM][SimLatency][t=0.0584587] Vehicle 121 session key simulated-ready (real handshake was 58.4587 ms)
-[KEM][SimLatency][t=0.0584802] Vehicle 114 session key simulated-ready (real handshake was 58.4802 ms)
-[KEM][SimLatency][t=0.0585195] Vehicle 81 session key simulated-ready (real handshake was 58.5195 ms)
-[KEM][SimLatency][t=0.0585401] Vehicle 19 session key simulated-ready (real handshake was 58.5401 ms)
-[KEM][SimLatency][t=0.0585525] Vehicle 35 session key simulated-ready (real handshake was 58.5525 ms)
-[KEM][SimLatency][t=0.0585543] Vehicle 49 session key simulated-ready (real handshake was 58.5543 ms)
-[KEM][SimLatency][t=0.0585675] Vehicle 18 session key simulated-ready (real handshake was 58.5675 ms)
-[KEM][SimLatency][t=0.0586002] Vehicle 82 session key simulated-ready (real handshake was 58.6002 ms)
-[KEM][SimLatency][t=0.0586097] Vehicle 71 session key simulated-ready (real handshake was 58.6097 ms)
-[KEM][SimLatency][t=0.0586124] Vehicle 45 session key simulated-ready (real handshake was 58.6124 ms)
-[KEM][SimLatency][t=0.0586137] Vehicle 74 session key simulated-ready (real handshake was 58.6137 ms)
-[KEM][SimLatency][t=0.0586334] Vehicle 40 session key simulated-ready (real handshake was 58.6334 ms)
-[KEM][SimLatency][t=0.0586497] Vehicle 116 session key simulated-ready (real handshake was 58.6497 ms)
-[KEM][SimLatency][t=0.058661] Vehicle 27 session key simulated-ready (real handshake was 58.661 ms)
-[KEM][SimLatency][t=0.0586706] Vehicle 92 session key simulated-ready (real handshake was 58.6706 ms)
-[KEM][SimLatency][t=0.0586827] Vehicle 33 session key simulated-ready (real handshake was 58.6827 ms)
-[KEM][SimLatency][t=0.0586914] Vehicle 17 session key simulated-ready (real handshake was 58.6914 ms)
-[KEM][SimLatency][t=0.058696] Vehicle 36 session key simulated-ready (real handshake was 58.696 ms)
-[KEM][SimLatency][t=0.0586987] Vehicle 24 session key simulated-ready (real handshake was 58.6987 ms)
-[KEM][SimLatency][t=0.0586997] Vehicle 80 session key simulated-ready (real handshake was 58.6997 ms)
-[KEM][SimLatency][t=0.058712] Vehicle 50 session key simulated-ready (real handshake was 58.712 ms)
-[KEM][SimLatency][t=0.0587146] Vehicle 44 session key simulated-ready (real handshake was 58.7146 ms)
-[KEM][SimLatency][t=0.0587401] Vehicle 125 session key simulated-ready (real handshake was 58.7401 ms)
-[KEM][SimLatency][t=0.058758] Vehicle 5 session key simulated-ready (real handshake was 58.758 ms)
-[KEM][SimLatency][t=0.0587643] Vehicle 79 session key simulated-ready (real handshake was 58.7643 ms)
-[KEM][SimLatency][t=0.0587733] Vehicle 54 session key simulated-ready (real handshake was 58.7733 ms)
-[KEM][SimLatency][t=0.0587738] Vehicle 34 session key simulated-ready (real handshake was 58.7738 ms)
-[KEM][SimLatency][t=0.0587821] Vehicle 93 session key simulated-ready (real handshake was 58.7821 ms)
-[KEM][SimLatency][t=0.0587848] Vehicle 6 session key simulated-ready (real handshake was 58.7848 ms)
-[KEM][SimLatency][t=0.0587871] Vehicle 62 session key simulated-ready (real handshake was 58.7871 ms)
-[KEM][SimLatency][t=0.0587892] Vehicle 52 session key simulated-ready (real handshake was 58.7892 ms)
-[KEM][SimLatency][t=0.0587911] Vehicle 41 session key simulated-ready (real handshake was 58.7911 ms)
-[KEM][SimLatency][t=0.0587921] Vehicle 63 session key simulated-ready (real handshake was 58.7921 ms)
-[KEM][SimLatency][t=0.0587928] Vehicle 56 session key simulated-ready (real handshake was 58.7928 ms)
-[KEM][SimLatency][t=0.0587936] Vehicle 89 session key simulated-ready (real handshake was 58.7936 ms)
-[KEM][SimLatency][t=0.0587955] Vehicle 118 session key simulated-ready (real handshake was 58.7955 ms)
-[KEM][SimLatency][t=0.0588055] Vehicle 1 session key simulated-ready (real handshake was 58.8055 ms)
-[KEM][SimLatency][t=0.0588169] Vehicle 20 session key simulated-ready (real handshake was 58.8169 ms)
-[KEM][SimLatency][t=0.0588175] Vehicle 42 session key simulated-ready (real handshake was 58.8175 ms)
-[KEM][SimLatency][t=0.0588246] Vehicle 76 session key simulated-ready (real handshake was 58.8246 ms)
-[KEM][SimLatency][t=0.0588258] Vehicle 4 session key simulated-ready (real handshake was 58.8258 ms)
-[KEM][SimLatency][t=0.0588282] Vehicle 23 session key simulated-ready (real handshake was 58.8282 ms)
-[KEM][SimLatency][t=0.0588308] Vehicle 61 session key simulated-ready (real handshake was 58.8308 ms)
-[KEM][SimLatency][t=0.0588346] Vehicle 47 session key simulated-ready (real handshake was 58.8346 ms)
-[KEM][SimLatency][t=0.0588352] Vehicle 2 session key simulated-ready (real handshake was 58.8352 ms)
-[KEM][SimLatency][t=0.0588422] Vehicle 39 session key simulated-ready (real handshake was 58.8422 ms)
-[KEM][SimLatency][t=0.0588463] Vehicle 7 session key simulated-ready (real handshake was 58.8463 ms)
-[KEM][SimLatency][t=0.0588473] Vehicle 25 session key simulated-ready (real handshake was 58.8473 ms)
-[KEM][SimLatency][t=0.058852] Vehicle 151 session key simulated-ready (real handshake was 58.852 ms)
-[KEM][SimLatency][t=0.0588585] Vehicle 68 session key simulated-ready (real handshake was 58.8585 ms)
-[KEM][SimLatency][t=0.0588642] Vehicle 85 session key simulated-ready (real handshake was 58.8642 ms)
-[KEM][SimLatency][t=0.0588789] Vehicle 43 session key simulated-ready (real handshake was 58.8789 ms)
-[KEM][SimLatency][t=0.0588823] Vehicle 57 session key simulated-ready (real handshake was 58.8823 ms)
-[KEM][SimLatency][t=0.0588887] Vehicle 197 session key simulated-ready (real handshake was 58.8887 ms)
-[KEM][SimLatency][t=0.058891] Vehicle 16 session key simulated-ready (real handshake was 58.891 ms)
-[KEM][SimLatency][t=0.0588925] Vehicle 117 session key simulated-ready (real handshake was 58.8925 ms)
-[KEM][SimLatency][t=0.0588937] Vehicle 26 session key simulated-ready (real handshake was 58.8937 ms)
-[KEM][SimLatency][t=0.0589025] Vehicle 70 session key simulated-ready (real handshake was 58.9025 ms)
-[KEM][SimLatency][t=0.0589216] Vehicle 58 session key simulated-ready (real handshake was 58.9216 ms)
-[KEM][SimLatency][t=0.0589252] Vehicle 46 session key simulated-ready (real handshake was 58.9252 ms)
-[KEM][SimLatency][t=0.0589323] Vehicle 78 session key simulated-ready (real handshake was 58.9323 ms)
-[KEM][SimLatency][t=0.0589329] Vehicle 64 session key simulated-ready (real handshake was 58.9329 ms)
-[KEM][SimLatency][t=0.0589561] Vehicle 37 session key simulated-ready (real handshake was 58.9561 ms)
-[KEM][SimLatency][t=0.0589579] Vehicle 3 session key simulated-ready (real handshake was 58.9579 ms)
-[KEM][SimLatency][t=0.0589596] Vehicle 152 session key simulated-ready (real handshake was 58.9596 ms)
-[KEM][SimLatency][t=0.0589605] Vehicle 88 session key simulated-ready (real handshake was 58.9605 ms)
-[KEM][SimLatency][t=0.0589621] Vehicle 119 session key simulated-ready (real handshake was 58.9621 ms)
-[KEM][SimLatency][t=0.05897] Vehicle 84 session key simulated-ready (real handshake was 58.97 ms)
-[KEM][SimLatency][t=0.0589701] Vehicle 90 session key simulated-ready (real handshake was 58.9701 ms)
-[KEM][SimLatency][t=0.0590081] Vehicle 75 session key simulated-ready (real handshake was 59.0081 ms)
-[KEM][SimLatency][t=0.059009] Vehicle 38 session key simulated-ready (real handshake was 59.009 ms)
-[KEM][SimLatency][t=0.0590093] Vehicle 123 session key simulated-ready (real handshake was 59.0093 ms)
-[KEM][SimLatency][t=0.0590161] Vehicle 55 session key simulated-ready (real handshake was 59.0161 ms)
-[KEM][SimLatency][t=0.0590176] Vehicle 149 session key simulated-ready (real handshake was 59.0176 ms)
-[KEM][SimLatency][t=0.0590278] Vehicle 66 session key simulated-ready (real handshake was 59.0278 ms)
-[KEM][SimLatency][t=0.0590327] Vehicle 198 session key simulated-ready (real handshake was 59.0327 ms)
-[KEM][SimLatency][t=0.059033] Vehicle 53 session key simulated-ready (real handshake was 59.033 ms)
-[KEM][SimLatency][t=0.0590391] Vehicle 8 session key simulated-ready (real handshake was 59.0391 ms)
-[KEM][SimLatency][t=0.0590467] Vehicle 87 session key simulated-ready (real handshake was 59.0467 ms)
-[KEM][SimLatency][t=0.0590477] Vehicle 21 session key simulated-ready (real handshake was 59.0477 ms)
-[KEM][SimLatency][t=0.0590477] Vehicle 120 session key simulated-ready (real handshake was 59.0477 ms)
-[KEM][SimLatency][t=0.0590585] Vehicle 91 session key simulated-ready (real handshake was 59.0585 ms)
-[KEM][SimLatency][t=0.059069] Vehicle 196 session key simulated-ready (real handshake was 59.069 ms)
-[KEM][SimLatency][t=0.0590702] Vehicle 73 session key simulated-ready (real handshake was 59.0702 ms)
-[KEM][SimLatency][t=0.0590948] Vehicle 131 session key simulated-ready (real handshake was 59.0948 ms)
-[KEM][SimLatency][t=0.0591258] Vehicle 139 session key simulated-ready (real handshake was 59.1258 ms)
-[KEM][SimLatency][t=0.0591261] Vehicle 175 session key simulated-ready (real handshake was 59.1261 ms)
-[KEM][SimLatency][t=0.0591327] Vehicle 126 session key simulated-ready (real handshake was 59.1327 ms)
-[KEM][SimLatency][t=0.0591341] Vehicle 77 session key simulated-ready (real handshake was 59.1341 ms)
-[KEM][SimLatency][t=0.0591389] Vehicle 193 session key simulated-ready (real handshake was 59.1389 ms)
-[KEM][SimLatency][t=0.0591529] Vehicle 158 session key simulated-ready (real handshake was 59.1529 ms)
-[KEM][SimLatency][t=0.0591537] Vehicle 124 session key simulated-ready (real handshake was 59.1537 ms)
-[KEM][SimLatency][t=0.0591594] Vehicle 72 session key simulated-ready (real handshake was 59.1594 ms)
-[KEM][SimLatency][t=0.05916] Vehicle 127 session key simulated-ready (real handshake was 59.16 ms)
-[KEM][SimLatency][t=0.059181] Vehicle 60 session key simulated-ready (real handshake was 59.181 ms)
-[KEM][SimLatency][t=0.0591833] Vehicle 136 session key simulated-ready (real handshake was 59.1833 ms)
-[KEM][SimLatency][t=0.0591923] Vehicle 138 session key simulated-ready (real handshake was 59.1923 ms)
-[KEM][SimLatency][t=0.0592005] Vehicle 65 session key simulated-ready (real handshake was 59.2005 ms)
-[KEM][SimLatency][t=0.0592037] Vehicle 69 session key simulated-ready (real handshake was 59.2037 ms)
-[KEM][SimLatency][t=0.0592092] Vehicle 143 session key simulated-ready (real handshake was 59.2092 ms)
-[KEM][SimLatency][t=0.0592116] Vehicle 140 session key simulated-ready (real handshake was 59.2116 ms)
-[KEM][SimLatency][t=0.0592165] Vehicle 130 session key simulated-ready (real handshake was 59.2165 ms)
-[KEM][SimLatency][t=0.0592174] Vehicle 132 session key simulated-ready (real handshake was 59.2174 ms)
-[KEM][SimLatency][t=0.0592202] Vehicle 194 session key simulated-ready (real handshake was 59.2202 ms)
-[KEM][SimLatency][t=0.0592255] Vehicle 186 session key simulated-ready (real handshake was 59.2255 ms)
-[KEM][SimLatency][t=0.0592269] Vehicle 137 session key simulated-ready (real handshake was 59.2269 ms)
-[KEM][SimLatency][t=0.0592315] Vehicle 199 session key simulated-ready (real handshake was 59.2315 ms)
-[KEM][SimLatency][t=0.0592362] Vehicle 161 session key simulated-ready (real handshake was 59.2362 ms)
-[KEM][SimLatency][t=0.0592416] Vehicle 86 session key simulated-ready (real handshake was 59.2416 ms)
-[KEM][SimLatency][t=0.0592522] Vehicle 148 session key simulated-ready (real handshake was 59.2522 ms)
-[KEM][SimLatency][t=0.0592544] Vehicle 195 session key simulated-ready (real handshake was 59.2544 ms)
-[KEM][SimLatency][t=0.0592557] Vehicle 150 session key simulated-ready (real handshake was 59.2557 ms)
-[KEM][SimLatency][t=0.0592599] Vehicle 133 session key simulated-ready (real handshake was 59.2599 ms)
-[KEM][SimLatency][t=0.0592667] Vehicle 134 session key simulated-ready (real handshake was 59.2667 ms)
-[KEM][SimLatency][t=0.0592741] Vehicle 83 session key simulated-ready (real handshake was 59.2741 ms)
-[KEM][SimLatency][t=0.0592761] Vehicle 162 session key simulated-ready (real handshake was 59.2761 ms)
-[KEM][SimLatency][t=0.0592791] Vehicle 154 session key simulated-ready (real handshake was 59.2791 ms)
-[KEM][SimLatency][t=0.0592921] Vehicle 128 session key simulated-ready (real handshake was 59.2921 ms)
-[KEM][SimLatency][t=0.0592948] Vehicle 164 session key simulated-ready (real handshake was 59.2948 ms)
-[KEM][SimLatency][t=0.0592954] Vehicle 192 session key simulated-ready (real handshake was 59.2954 ms)
-[KEM][SimLatency][t=0.059296] Vehicle 181 session key simulated-ready (real handshake was 59.296 ms)
-[KEM][SimLatency][t=0.0592973] Vehicle 159 session key simulated-ready (real handshake was 59.2973 ms)
-[KEM][SimLatency][t=0.0593001] Vehicle 184 session key simulated-ready (real handshake was 59.3001 ms)
-[KEM][SimLatency][t=0.0593088] Vehicle 155 session key simulated-ready (real handshake was 59.3088 ms)
-[KEM][SimLatency][t=0.0593118] Vehicle 157 session key simulated-ready (real handshake was 59.3118 ms)
-[KEM][SimLatency][t=0.0593121] Vehicle 147 session key simulated-ready (real handshake was 59.3121 ms)
-[KEM][SimLatency][t=0.0593171] Vehicle 129 session key simulated-ready (real handshake was 59.3171 ms)
-[KEM][SimLatency][t=0.0593176] Vehicle 67 session key simulated-ready (real handshake was 59.3176 ms)
-[KEM][SimLatency][t=0.0593296] Vehicle 178 session key simulated-ready (real handshake was 59.3296 ms)
-[KEM][SimLatency][t=0.0593332] Vehicle 163 session key simulated-ready (real handshake was 59.3332 ms)
-[KEM][SimLatency][t=0.0593377] Vehicle 183 session key simulated-ready (real handshake was 59.3377 ms)
-[KEM][SimLatency][t=0.0593428] Vehicle 187 session key simulated-ready (real handshake was 59.3428 ms)
-[KEM][SimLatency][t=0.0593451] Vehicle 22 session key simulated-ready (real handshake was 59.3451 ms)
-[KEM][SimLatency][t=0.0593521] Vehicle 179 session key simulated-ready (real handshake was 59.3521 ms)
-[KEM][SimLatency][t=0.059354] Vehicle 153 session key simulated-ready (real handshake was 59.354 ms)
-[KEM][SimLatency][t=0.0593579] Vehicle 191 session key simulated-ready (real handshake was 59.3579 ms)
-[KEM][SimLatency][t=0.0593604] Vehicle 59 session key simulated-ready (real handshake was 59.3604 ms)
-[KEM][SimLatency][t=0.059374] Vehicle 165 session key simulated-ready (real handshake was 59.374 ms)
-[KEM][SimLatency][t=0.0593832] Vehicle 174 session key simulated-ready (real handshake was 59.3832 ms)
-[KEM][SimLatency][t=0.0593863] Vehicle 145 session key simulated-ready (real handshake was 59.3863 ms)
-[KEM][SimLatency][t=0.0594036] Vehicle 172 session key simulated-ready (real handshake was 59.4036 ms)
-[KEM][SimLatency][t=0.0594053] Vehicle 176 session key simulated-ready (real handshake was 59.4053 ms)
-[KEM][SimLatency][t=0.059407] Vehicle 146 session key simulated-ready (real handshake was 59.407 ms)
-[KEM][SimLatency][t=0.0594072] Vehicle 141 session key simulated-ready (real handshake was 59.4072 ms)
-[KEM][SimLatency][t=0.059409] Vehicle 166 session key simulated-ready (real handshake was 59.409 ms)
-[KEM][SimLatency][t=0.0594138] Vehicle 188 session key simulated-ready (real handshake was 59.4138 ms)
-[KEM][SimLatency][t=0.0594241] Vehicle 189 session key simulated-ready (real handshake was 59.4241 ms)
-[KEM][SimLatency][t=0.0594263] Vehicle 190 session key simulated-ready (real handshake was 59.4263 ms)
-[KEM][SimLatency][t=0.0594289] Vehicle 144 session key simulated-ready (real handshake was 59.4289 ms)
-[KEM][SimLatency][t=0.0594435] Vehicle 177 session key simulated-ready (real handshake was 59.4435 ms)
-[KEM][SimLatency][t=0.0594439] Vehicle 142 session key simulated-ready (real handshake was 59.4439 ms)
-[KEM][SimLatency][t=0.0594468] Vehicle 185 session key simulated-ready (real handshake was 59.4468 ms)
-[KEM][SimLatency][t=0.0594841] Vehicle 180 session key simulated-ready (real handshake was 59.4841 ms)
-[KEM][SimLatency][t=0.0595061] Vehicle 167 session key simulated-ready (real handshake was 59.5061 ms)
-[KEM][SimLatency][t=0.0595091] Vehicle 182 session key simulated-ready (real handshake was 59.5091 ms)
-[KEM][SimLatency][t=0.0596309] Vehicle 168 session key simulated-ready (real handshake was 59.6309 ms)
-[KEM][SimLatency][t=0.0597484] Vehicle 156 session key simulated-ready (real handshake was 59.7484 ms)
-[KEM][SimLatency][t=0.0598708] Vehicle 173 session key simulated-ready (real handshake was 59.8708 ms)
-[KEM][SimLatency][t=0.0605751] Vehicle 109 session key simulated-ready (real handshake was 60.5751 ms)
-[KEM][SimLatency][t=0.0645172] Vehicle 29 session key simulated-ready (real handshake was 64.5172 ms)
-[KEM][SimLatency][t=0.0669316] Vehicle 94 session key simulated-ready (real handshake was 66.9316 ms)
-[KEM][SimLatency][t=0.0686233] Vehicle 96 session key simulated-ready (real handshake was 68.6233 ms)
-[KEM][SimLatency][t=0.0686922] Vehicle 97 session key simulated-ready (real handshake was 68.6922 ms)
-[KEM][SimLatency][t=0.0688013] Vehicle 107 session key simulated-ready (real handshake was 68.8013 ms)
-[KEM][SimLatency][t=0.069028] Vehicle 102 session key simulated-ready (real handshake was 69.028 ms)
-[KEM][SimLatency][t=0.0690332] Vehicle 105 session key simulated-ready (real handshake was 69.0332 ms)
-[KEM][SimLatency][t=0.0691499] Vehicle 95 session key simulated-ready (real handshake was 69.1499 ms)
-[KEM][SimLatency][t=0.0695312] Vehicle 104 session key simulated-ready (real handshake was 69.5312 ms)
-[KEM][SimLatency][t=0.0695899] Vehicle 106 session key simulated-ready (real handshake was 69.5899 ms)
-[KEM][SimLatency][t=0.0698807] Vehicle 103 session key simulated-ready (real handshake was 69.8807 ms)
-[KEM][SimLatency][t=0.0704744] Vehicle 101 session key simulated-ready (real handshake was 70.4744 ms)
-[KEM][SimLatency][t=0.0706387] Vehicle 99 session key simulated-ready (real handshake was 70.6387 ms)
-[KEM][SimLatency][t=0.0709067] Vehicle 98 session key simulated-ready (real handshake was 70.9067 ms)
-[KEM][SimLatency][t=0.0717004] Vehicle 100 session key simulated-ready (real handshake was 71.7004 ms)
-[KEM][SimLatency][t=0.138344] Vehicle 108 session key simulated-ready (real handshake was 138.344 ms)
-[KEM][SimLatency][t=0.165224] Vehicle 28 session key simulated-ready (real handshake was 165.224 ms)
-[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=12437993353412927963 (interval=3s)
-[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=12437993353412927963 (interval=3s)
-[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=12437993353412927963 (interval=3s)
-[ME-S1][t=10.001]  STEP①  V165 <-> V163 HELLO exchange (real link)
-[ME-S1][t=10.001]  STEP②  V165, V163 report real link to controller
-[ME-S1][t=10.001]  STEP③  V43, V75 overhear HELLO — stored for echo
-This is tag4. Serialized size is 424
-This is tag3. Serialized size is 340
-[ME-S1][t=10.071]  STEP④  V160 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.071]  STEP④  V123 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.071]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.071]  STEP④  V103 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.071]  STEP④  V132 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.071]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.079]  STEP④  V97 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.079]  STEP④  V155 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.079]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.080]  STEP④  V38 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.080]  STEP④  V35 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.080]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.091]  STEP④  V72 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.091]  STEP④  V150 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.091]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.091]  STEP④  V90 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.091]  STEP④  V151 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.091]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.092]  STEP④  V62 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.092]  STEP④  V110 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.092]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.095]  STEP④  V59 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.095]  STEP④  V121 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.095]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.095]  STEP④  V152 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.095]  STEP④  V24 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.095]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.105]  STEP④  V27 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.105]  STEP④  V91 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.105]  STEP⑤  Controller infers 4 path(s) for V165->V163  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.105]  STEP④  V93 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.105]  STEP④  V104 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.105]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.108]  STEP④  V64 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.108]  STEP④  V45 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.108]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.111]  STEP④  V118 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.111]  STEP④  V159 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.111]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.111]  STEP④  V10 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.111]  STEP④  V12 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.111]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.111]  STEP④  V92 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.111]  STEP④  V87 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.111]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.112]  STEP④  V96 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.112]  STEP④  V134 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.112]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.114]  STEP④  V146 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.114]  STEP④  V49 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.114]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag5. Serialized size is 508
-[ME-S1][t=10.116]  STEP④  V106 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.116]  STEP④  V115 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.116]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.117]  STEP④  V68 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.117]  STEP④  V63 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.117]  STEP⑤  Controller infers 4 path(s) for V165->V163  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-This is tag5. Serialized size is 508
-[ME-S1][t=10.119]  STEP④  V50 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.119]  STEP④  V84 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.119]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.119]  STEP④  V98 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.119]  STEP④  V148 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.119]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag3. Serialized size is 340
-[ME-S1][t=10.119]  STEP④  V71 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.119]  STEP④  V107 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.119]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.120]  STEP④  V52 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.120]  STEP④  V161 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.120]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag2. Serialized size is 256
-[ME-S1][t=10.121]  STEP④  V73 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.121]  STEP④  V99 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.121]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag6. Serialized size is 592
-[ME-S1][t=10.123]  STEP④  V119 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.123]  STEP④  V111 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.123]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag7. Serialized size is 676
-[ME-S1][t=10.123]  STEP④  V66 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.123]  STEP④  V79 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.123]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.124]  STEP④  V20 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.124]  STEP④  V109 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.124]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag3. Serialized size is 340
-[ME-S1][t=10.126]  STEP④  V100 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.126]  STEP④  V34 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.126]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.126]  STEP④  V120 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.126]  STEP④  V129 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.126]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag9. Serialized size is 844
-[ME-S1][t=10.127]  STEP④  V116 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP④  V53 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.127]  STEP④  V44 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP④  V154 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.127]  STEP④  V23 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP④  V83 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.127]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-This is tag8. Serialized size is 760
-This is tag5. Serialized size is 508
-[ME-S1][t=10.129]  STEP④  V162 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.129]  STEP④  V137 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.129]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.130]  STEP④  V163 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.130]  STEP④  V128 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.130]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.130]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.130]  FS-MITIGATE ABORTED (gate failed)  attacker=V158
-This is tag8. Serialized size is 760
-[ME-S1][t=10.131]  STEP④  V74 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.131]  STEP④  V141 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.131]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.131]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.131]  FS-MITIGATE ABORTED (gate failed)  attacker=V69
-This is tag7. Serialized size is 676
-This is tag7. Serialized size is 676
-This is tag14. Serialized size is 1264
-[ME-S1][t=10.134]  STEP④  V95 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.134]  STEP④  V22 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.134]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.134]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.134]  FS-MITIGATE ABORTED (gate failed)  attacker=V90
-This is tag7. Serialized size is 676
-This is tag6. Serialized size is 592
-This is tag14. Serialized size is 1264
-This is tag5. Serialized size is 508
-This is tag5. Serialized size is 508
-[ME-S1][t=10.135]  STEP④  V30 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.135]  STEP④  V89 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.135]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.135]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.135]  FS-MITIGATE ABORTED (gate failed)  attacker=V25
-[ME-S1][t=10.135]  STEP④  V43 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.135]  STEP④  V75 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.135]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.135]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.135]  FS-MITIGATE ABORTED (gate failed)  attacker=V38
-[ME-S1][t=10.136]  STEP④  V61 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.136]  STEP④  V117 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.136]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.136]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.136]  FS-MITIGATE ABORTED (gate failed)  attacker=V56
-This is tag2. Serialized size is 256
-This is tag7. Serialized size is 676
-This is tag1. Serialized size is 172
-[ME-S1][t=10.137]  STEP④  V13 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.137]  STEP④  V70 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.137]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.137]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.137]  FS-MITIGATE ABORTED (gate failed)  attacker=V8
-This is tag2. Serialized size is 256
-[ME-S1][t=10.139]  STEP④  V6 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.139]  STEP④  V94 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.139]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.139]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.139]  FS-MITIGATE ABORTED (gate failed)  attacker=V1
-[ME-S1][t=10.139]  STEP④  V133 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.139]  STEP④  V14 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.139]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.139]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.139]  FS-MITIGATE ABORTED (gate failed)  attacker=V128
-[ME-S1][t=10.139]  STEP④  V102 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.139]  STEP④  V158 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.139]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.139]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.139]  FS-MITIGATE ABORTED (gate failed)  attacker=V97
-This is tag7. Serialized size is 676
-[ME-S1][t=10.141]  STEP④  V18 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.141]  STEP④  V21 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.141]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.141]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.141]  FS-MITIGATE ABORTED (gate failed)  attacker=V13
-[ME-S1][t=10.141]  STEP④  V47 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.141]  STEP④  V144 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.141]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.141]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.141]  FS-MITIGATE ABORTED (gate failed)  attacker=V42
-This is tag3. Serialized size is 340
-This is tag8. Serialized size is 760
-[ME-S1][t=10.143]  STEP④  V136 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.143]  STEP④  V76 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.143]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.143]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.143]  FS-MITIGATE ABORTED (gate failed)  attacker=V131
-This is tag7. Serialized size is 676
-This is tag2. Serialized size is 256
-[ME-S1][t=10.143]  STEP④  V147 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.143]  STEP④  V125 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.143]  STEP⑤  Controller infers 4 path(s) for V165->V163  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.143]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.143]  FS-MITIGATE ABORTED (gate failed)  attacker=V142
-This is tag6. Serialized size is 592
-This is tag6. Serialized size is 592
-[ME-S1][t=10.147]  STEP④  V39 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.147]  STEP④  V16 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.147]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.147]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.147]  FS-MITIGATE ABORTED (gate failed)  attacker=V34
-[ME-S1][t=10.148]  STEP④  V11 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.148]  STEP④  V51 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.148]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.148]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.148]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[ME-S1][t=10.150]  STEP④  V127 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.150]  STEP④  V26 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.150]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.150]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.150]  FS-MITIGATE ABORTED (gate failed)  attacker=V122
-[ME-S1][t=10.151]  STEP④  V82 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.151]  STEP④  V19 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.151]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.151]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.151]  FS-MITIGATE ABORTED (gate failed)  attacker=V77
-[ME-S1][t=10.151]  STEP④  V77 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.151]  STEP④  V122 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.151]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.151]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.151]  FS-MITIGATE ABORTED (gate failed)  attacker=V72
-[ME-S1][t=10.151]  STEP④  V29 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.151]  STEP④  V80 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.151]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.151]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.151]  FS-MITIGATE ABORTED (gate failed)  attacker=V24
-[ME-S1][t=10.153]  STEP④  V33 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.153]  STEP④  V60 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.153]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.153]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.153]  FS-MITIGATE ABORTED (gate failed)  attacker=V28
-[ME-S1][t=10.153]  STEP④  V86 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.153]  STEP④  V8 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.153]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.153]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.153]  FS-MITIGATE ABORTED (gate failed)  attacker=V81
-[ME-S1][t=10.158]  STEP④  V48 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.158]  STEP④  V149 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.158]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.158]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.158]  FS-MITIGATE ABORTED (gate failed)  attacker=V43
-[ME-S1][t=10.159]  STEP④  V101 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.159]  STEP④  V37 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.159]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.159]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.159]  FS-MITIGATE ABORTED (gate failed)  attacker=V96
-[ME-S1][t=10.159]  STEP④  V5 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.159]  STEP④  V54 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.159]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.159]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.159]  FS-MITIGATE ABORTED (gate failed)  attacker=V0
-[ME-S1][t=10.159]  STEP④  V56 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.159]  STEP④  V138 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.159]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.159]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.159]  FS-MITIGATE ABORTED (gate failed)  attacker=V51
-[ME-S1][t=10.161]  STEP④  V130 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.161]  STEP④  V65 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.161]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.161]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.161]  FS-MITIGATE ABORTED (gate failed)  attacker=V125
-[ME-S1][t=10.162]  STEP④  V113 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.162]  STEP④  V114 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.162]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.162]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.162]  FS-MITIGATE ABORTED (gate failed)  attacker=V108
-[ME-S1][t=10.162]  STEP④  V40 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.162]  STEP④  V108 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.162]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.162]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.162]  FS-MITIGATE ABORTED (gate failed)  attacker=V35
-[ME-S1][t=10.163]  STEP④  V32 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.163]  STEP④  V126 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.163]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.163]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.163]  FS-MITIGATE ABORTED (gate failed)  attacker=V27
-[ME-S1][t=10.163]  STEP④  V28 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.163]  STEP④  V157 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.163]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.163]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.163]  FS-MITIGATE ABORTED (gate failed)  attacker=V23
-[ME-S1][t=10.164]  STEP④  V153 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.164]  STEP④  V46 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.164]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.164]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.164]  FS-MITIGATE ABORTED (gate failed)  attacker=V148
-[ME-S1][t=10.167]  STEP④  V69 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.167]  STEP④  V57 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.167]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.167]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.167]  FS-MITIGATE ABORTED (gate failed)  attacker=V64
-[ME-S1][t=10.169]  STEP④  V25 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.169]  STEP④  V36 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.169]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.169]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.169]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
-[ME-S1][t=10.169]  STEP④  V105 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.169]  STEP④  V139 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.169]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.169]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.169]  FS-MITIGATE ABORTED (gate failed)  attacker=V100
-[ME-S1][t=10.169]  STEP④  V112 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.169]  STEP④  V7 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.169]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.169]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.169]  FS-MITIGATE ABORTED (gate failed)  attacker=V107
-[ME-S1][t=10.170]  STEP④  V140 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.170]  STEP④  V81 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.170]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.170]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.170]  FS-MITIGATE ABORTED (gate failed)  attacker=V135
-[ME-S1][t=10.172]  STEP④  V58 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.172]  STEP④  V42 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.172]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.172]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.172]  FS-MITIGATE ABORTED (gate failed)  attacker=V53
-[ME-S1][t=10.174]  STEP④  V78 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.174]  STEP④  V67 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.174]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.174]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.174]  FS-MITIGATE ABORTED (gate failed)  attacker=V73
-[ME-S1][t=10.180]  STEP④  V41 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.180]  STEP④  V131 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.180]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.180]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.180]  FS-MITIGATE ABORTED (gate failed)  attacker=V36
-[ME-S1][t=10.182]  STEP④  V143 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.182]  STEP④  V156 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.182]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.182]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.182]  FS-MITIGATE ABORTED (gate failed)  attacker=V138
-[ME-S1][t=10.188]  STEP④  V55 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.188]  STEP④  V88 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.188]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.188]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.188]  FS-MITIGATE ABORTED (gate failed)  attacker=V50
-[ME-S1][t=10.197]  STEP④  V9 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.197]  STEP④  V31 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.197]  STEP⑤  Controller infers 4 path(s) for V165->V163  (Path4: V3↔V4 in range)  *** ATTACK COMPLETE ***
-[ME-S1][t=10.197]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.197]  FS-MITIGATE ABORTED (gate failed)  attacker=V4
-[ME-S1][t=10.199]  STEP④  V135 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.199]  STEP④  V15 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.199]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.199]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.199]  FS-MITIGATE ABORTED (gate failed)  attacker=V130
-[ME-S1][t=10.202]  STEP④  V164 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.202]  STEP④  V145 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.202]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.202]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.202]  FS-MITIGATE ABORTED (gate failed)  attacker=V159
-[ME-S1][t=10.203]  STEP④  V124 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.203]  STEP④  V85 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.203]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.203]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.203]  FS-MITIGATE ABORTED (gate failed)  attacker=V119
-This is tag2. Serialized size is 256
-[ME-S1][t=10.214]  STEP④  V17 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.214]  STEP④  V142 --ECHO--> Controller  <V165 sees V163>  FALSE REPORTER
-[ME-S1][t=10.214]  STEP⑤  Controller infers 3 path(s) for V165->V163  *** ATTACK COMPLETE ***
-[ME-S1][t=10.214]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM 0/200 >= t=3 -> FAIL
-[ME-S1][t=10.214]  FS-MITIGATE ABORTED (gate failed)  attacker=V12
-This is tag7. Serialized size is 676
-This is tag4. Serialized size is 424
-This is tag7. Serialized size is 676
-This is tag1. Serialized size is 172
-This is tag13. Serialized size is 1180
-This is tag7. Serialized size is 676
-[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=30.000] Published checkpoint seq=9 block_height=270 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=33.000] Published checkpoint seq=10 block_height=300 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=36.000] Published checkpoint seq=11 block_height=330 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=39.000] Published checkpoint seq=12 block_height=360 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=42.000] Published checkpoint seq=13 block_height=390 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=45.000] Published checkpoint seq=14 block_height=420 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=48.000] Published checkpoint seq=15 block_height=450 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=51.000] Published checkpoint seq=16 block_height=480 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=54.000] Published checkpoint seq=17 block_height=510 digest=12437993353412927963 (interval=3.000s)
-[Trust][Anchor][t=57.000] Published checkpoint seq=18 block_height=540 digest=12437993353412927963 (interval=3.000s)
-[PEM] /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/SCENARIO_VALIDITY/09_ME_S1_Malicious_Vehicles_seed1.csv written: 0 event(s) excluded (invalid RSU neighborhood, not detector error); 0 benign event(s) flagged no_real_reception_at_reporter (diagnostic only, STILL COUNTED in confusion matrix — confirmed real channel-contention loss, not a scenario artifact)
-[M11][QRR] echo_attempts=47 admitted(pass)=0 blocked=47  QRR=1.000  (Eq. 4.19; target 1.0)
-[M2][TDRR] mean_topology_divergence=0.988  (samples=162)
-[M3][T_stale] mean=0.000 ms (samples=0)
-[M4][PIR] mean=161.000 (links tracked=1)
-[M5][T_pipeline] mean=0.345 ms  max=0.492 ms  over_budget=0/47
-[M7][Omega] omega_lw=5.941%  omega_fs=572.649%
-[M9][F1] TTW=0.000 BSHH=1.000 ME=0.000 macro=0.333
-[M10][FRA/FRR] FRA=0.994 FRR=0.000
-[M11][FSR] attempts=0 success=0 FSR=0.000
-[M12][Trust] t_trust=0.000 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
-
-[CRYPTO] crypto_latency_sumo.csv written    (1809 events)
-[CRYPTO] crypto_latency_summary.csv written  (21 distinct operations)
-[CRYPTO] Beacon TX signed: 1   RX verified: 1
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=17  reject=34
-[TGN] Online mode — 3 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 158 160 ctrl 
-[TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 3 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
-[TGN] individual_sig_evidence.json written: 0 record(s) → individual_sig_evidence.json
-
-========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
-  Scenario  : 9 — ME-S1: Malicious Vehicles, No RSU
-  RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 2 / 0 / 1
-  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 1
-  MCC         : 0.000
-  [comb] TP/TN/FP/FN : 1 / 2 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.500
-  ACR         : 66.667 %
-  Tdet        : -1.000 ms
-  θ_FS        : 0.850  [fixed placeholder]
-  θ_MCC_opt   : 0.184  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 144.319  [Eq. 3.22 init; validation-tuned hyperparameter]
-  W_max       : 200  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 3
-  Stage-0 blocked (attacks): 159
-  Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 2
-  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
-============================================================
-
-Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
-----------------------------------------------------------
-Detect stage (crypto+LW+TGN, PemEmitEvent):
-  Events processed: 162
-  Avg wall-clock time: 0.44 ms
-  Max wall-clock time: 5.8 ms
-  Events exceeding budget: 0 / 162
-Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
-  Mitigations applied: 47
-  Avg wall-clock time: 0.028 ms
-  Max wall-clock time: 0.2 ms
-Full pipeline (detect+mitigate combined, when mitigation fired):
-  Triggered events: 47
-  Avg wall-clock time: 0.35 ms
-  Max wall-clock time: 0.49 ms
-  Events exceeding 1e+02 ms budget: 0 / 47  -- full pipeline stays within the T_b budget on this hardware
-
-Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
-  Calls: 4
-  Avg wall-clock time: 0.047 ms
-  Max wall-clock time: 0.094 ms
-  Calls exceeding budget: 0 / 4
-
-RSU-forward (CSMA dispatch, AttackSendRSUToController):
-  Calls: 0
-  Avg wall-clock time: 0 ms
-  Max wall-clock time: 0 ms
-  Calls exceeding budget: 0 / 0
-
-Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
-  Calls: 2
-  Avg wall-clock time: 0.12 ms
-  Max wall-clock time: 0.18 ms
-  Calls exceeding budget: 0 / 2
-
-Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
-  Calls: 80
-  Avg wall-clock time: 1.1 ms
-  Max wall-clock time: 1.5 ms
-  Calls exceeding budget: 0 / 80
-
-LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
-  Calls: 80
-  Avg wall-clock time: 0.0067 ms
-  Max wall-clock time: 0.26 ms
-  Calls exceeding budget: 0 / 80
-
-Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.047) + beacon-crypto(0.12) + rsu-forward(0) + detect(0.44) + detection-crypto(1.1) + mitigate(0.028) + lkh-crypto(0.0067) = 1.8 ms
-  -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
-
-Continuous Neighborhood Statistics
----------------------------------
-Candidate pairs checked: 19900000
-Successful neighbor observations: 554738
-Average neighbors/vehicle: 5.5
-Maximum neighbors observed at once: 19
-
-Real-time (wall-clock) budget check — T_b=1e+02 ms:
-  Ticks executed: 500
-  Avg tick wall-clock time: 2.4 ms
-  Max tick wall-clock time: 4.3 ms
-  Ticks exceeding 1e+02 ms budget: 0 / 500  -- pipeline stays within the T_b budget on this hardware
-
-Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(2.4) + beacon-send(0.047) + beacon-crypto(0.12) + rsu-forward(0) + detect(0.44) + detection-crypto(1.1) + mitigate(0.028) + lkh-crypto(0.0067) = 4.2 ms
-  -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
+[TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_dim192_final.bin'  (dim=192 layers=2)
+[KEM][SimLatency][t=0.0341268] Vehicle 56 session key simulated-ready (real handshake was 34.1268 ms)
+[KEM][SimLatency][t=0.034136] Vehicle 55 session key simulated-ready (real handshake was 34.136 ms)
+[KEM][SimLatency][t=0.0341406] Vehicle 152 session key simulated-ready (real handshake was 34.1406 ms)
+[KEM][SimLatency][t=0.0341486] Vehicle 87 session key simulated-ready (real handshake was 34.1486 ms)
+[KEM][SimLatency][t=0.0341538] Vehicle 44 session key simulated-ready (real handshake was 34.1538 ms)
+[KEM][SimLatency][t=0.0341539] Vehicle 150 session key simulated-ready (real handshake was 34.1539 ms)
+[KEM][SimLatency][t=0.0341693] Vehicle 45 session key simulated-ready (real handshake was 34.1693 ms)
+[KEM][SimLatency][t=0.0341825] Vehicle 143 session key simulated-ready (real handshake was 34.1825 ms)
+[KEM][SimLatency][t=0.0341839] Vehicle 46 session key simulated-ready (real handshake was 34.1839 ms)
+[KEM][SimLatency][t=0.0341883] Vehicle 57 session key simulated-ready (real handshake was 34.1883 ms)
+[KEM][SimLatency][t=0.0342052] Vehicle 43 session key simulated-ready (real handshake was 34.2052 ms)
+[KEM][SimLatency][t=0.0342299] Vehicle 149 session key simulated-ready (real handshake was 34.2299 ms)
+[KEM][SimLatency][t=0.0342332] Vehicle 146 session key simulated-ready (real handshake was 34.2332 ms)
+[KEM][SimLatency][t=0.0342585] Vehicle 147 session key simulated-ready (real handshake was 34.2585 ms)
+[KEM][SimLatency][t=0.03426] Vehicle 91 session key simulated-ready (real handshake was 34.26 ms)
+[KEM][SimLatency][t=0.0342617] Vehicle 61 session key simulated-ready (real handshake was 34.2617 ms)
+[KEM][SimLatency][t=0.034265] Vehicle 54 session key simulated-ready (real handshake was 34.265 ms)
+[KEM][SimLatency][t=0.0342928] Vehicle 132 session key simulated-ready (real handshake was 34.2928 ms)
+[KEM][SimLatency][t=0.0343131] Vehicle 58 session key simulated-ready (real handshake was 34.3131 ms)
+[KEM][SimLatency][t=0.0343171] Vehicle 162 session key simulated-ready (real handshake was 34.3171 ms)
+[KEM][SimLatency][t=0.0343213] Vehicle 106 session key simulated-ready (real handshake was 34.3213 ms)
+[KEM][SimLatency][t=0.0343274] Vehicle 148 session key simulated-ready (real handshake was 34.3274 ms)
+[KEM][SimLatency][t=0.0343325] Vehicle 151 session key simulated-ready (real handshake was 34.3325 ms)
+[KEM][SimLatency][t=0.0343391] Vehicle 38 session key simulated-ready (real handshake was 34.3391 ms)
+[KEM][SimLatency][t=0.034348] Vehicle 140 session key simulated-ready (real handshake was 34.348 ms)
+[KEM][SimLatency][t=0.034354] Vehicle 105 session key simulated-ready (real handshake was 34.354 ms)
+[KEM][SimLatency][t=0.0343549] Vehicle 47 session key simulated-ready (real handshake was 34.3549 ms)
+[KEM][SimLatency][t=0.0343602] Vehicle 145 session key simulated-ready (real handshake was 34.3602 ms)
+[KEM][SimLatency][t=0.0343616] Vehicle 92 session key simulated-ready (real handshake was 34.3616 ms)
+[KEM][SimLatency][t=0.0343661] Vehicle 42 session key simulated-ready (real handshake was 34.3661 ms)
+[KEM][SimLatency][t=0.034384] Vehicle 153 session key simulated-ready (real handshake was 34.384 ms)
+[KEM][SimLatency][t=0.0343859] Vehicle 131 session key simulated-ready (real handshake was 34.3859 ms)
+[KEM][SimLatency][t=0.034399] Vehicle 163 session key simulated-ready (real handshake was 34.399 ms)
+[KEM][SimLatency][t=0.034434] Vehicle 123 session key simulated-ready (real handshake was 34.434 ms)
+[KEM][SimLatency][t=0.0344449] Vehicle 133 session key simulated-ready (real handshake was 34.4449 ms)
+[KEM][SimLatency][t=0.034488] Vehicle 160 session key simulated-ready (real handshake was 34.488 ms)
+[KEM][SimLatency][t=0.0344902] Vehicle 53 session key simulated-ready (real handshake was 34.4902 ms)
+[KEM][SimLatency][t=0.0345083] Vehicle 88 session key simulated-ready (real handshake was 34.5083 ms)
+[KEM][SimLatency][t=0.0345127] Vehicle 181 session key simulated-ready (real handshake was 34.5127 ms)
+[KEM][SimLatency][t=0.034513] Vehicle 114 session key simulated-ready (real handshake was 34.513 ms)
+[KEM][SimLatency][t=0.0345242] Vehicle 104 session key simulated-ready (real handshake was 34.5242 ms)
+[KEM][SimLatency][t=0.0345287] Vehicle 141 session key simulated-ready (real handshake was 34.5287 ms)
+[KEM][SimLatency][t=0.0345346] Vehicle 159 session key simulated-ready (real handshake was 34.5346 ms)
+[KEM][SimLatency][t=0.0345358] Vehicle 182 session key simulated-ready (real handshake was 34.5358 ms)
+[KEM][SimLatency][t=0.0345477] Vehicle 90 session key simulated-ready (real handshake was 34.5477 ms)
+[KEM][SimLatency][t=0.0345628] Vehicle 97 session key simulated-ready (real handshake was 34.5628 ms)
+[KEM][SimLatency][t=0.0345683] Vehicle 134 session key simulated-ready (real handshake was 34.5683 ms)
+[KEM][SimLatency][t=0.03458] Vehicle 93 session key simulated-ready (real handshake was 34.58 ms)
+[KEM][SimLatency][t=0.0345968] Vehicle 144 session key simulated-ready (real handshake was 34.5968 ms)
+[KEM][SimLatency][t=0.0346096] Vehicle 126 session key simulated-ready (real handshake was 34.6096 ms)
+[KEM][SimLatency][t=0.0346223] Vehicle 161 session key simulated-ready (real handshake was 34.6223 ms)
+[KEM][SimLatency][t=0.0346254] Vehicle 60 session key simulated-ready (real handshake was 34.6254 ms)
+[KEM][SimLatency][t=0.0346254] Vehicle 37 session key simulated-ready (real handshake was 34.6254 ms)
+[KEM][SimLatency][t=0.0346263] Vehicle 107 session key simulated-ready (real handshake was 34.6263 ms)
+[KEM][SimLatency][t=0.0346361] Vehicle 112 session key simulated-ready (real handshake was 34.6361 ms)
+[KEM][SimLatency][t=0.0346417] Vehicle 164 session key simulated-ready (real handshake was 34.6417 ms)
+[KEM][SimLatency][t=0.0346504] Vehicle 130 session key simulated-ready (real handshake was 34.6504 ms)
+[KEM][SimLatency][t=0.0346504] Vehicle 183 session key simulated-ready (real handshake was 34.6504 ms)
+[KEM][SimLatency][t=0.0346543] Vehicle 108 session key simulated-ready (real handshake was 34.6543 ms)
+[KEM][SimLatency][t=0.0346546] Vehicle 129 session key simulated-ready (real handshake was 34.6546 ms)
+[KEM][SimLatency][t=0.0346852] Vehicle 103 session key simulated-ready (real handshake was 34.6852 ms)
+[KEM][SimLatency][t=0.0347163] Vehicle 180 session key simulated-ready (real handshake was 34.7163 ms)
+[KEM][SimLatency][t=0.0347211] Vehicle 111 session key simulated-ready (real handshake was 34.7211 ms)
+[KEM][SimLatency][t=0.0347227] Vehicle 89 session key simulated-ready (real handshake was 34.7227 ms)
+[KEM][SimLatency][t=0.0347281] Vehicle 142 session key simulated-ready (real handshake was 34.7281 ms)
+[KEM][SimLatency][t=0.0347412] Vehicle 186 session key simulated-ready (real handshake was 34.7412 ms)
+[KEM][SimLatency][t=0.0347485] Vehicle 124 session key simulated-ready (real handshake was 34.7485 ms)
+[KEM][SimLatency][t=0.0347508] Vehicle 178 session key simulated-ready (real handshake was 34.7508 ms)
+[KEM][SimLatency][t=0.0347515] Vehicle 188 session key simulated-ready (real handshake was 34.7515 ms)
+[KEM][SimLatency][t=0.0347538] Vehicle 95 session key simulated-ready (real handshake was 34.7538 ms)
+[KEM][SimLatency][t=0.0347709] Vehicle 196 session key simulated-ready (real handshake was 34.7709 ms)
+[KEM][SimLatency][t=0.0347711] Vehicle 39 session key simulated-ready (real handshake was 34.7711 ms)
+[KEM][SimLatency][t=0.0347872] Vehicle 40 session key simulated-ready (real handshake was 34.7872 ms)
+[KEM][SimLatency][t=0.0348] Vehicle 154 session key simulated-ready (real handshake was 34.8 ms)
+[KEM][SimLatency][t=0.0348056] Vehicle 113 session key simulated-ready (real handshake was 34.8056 ms)
+[KEM][SimLatency][t=0.0348163] Vehicle 41 session key simulated-ready (real handshake was 34.8163 ms)
+[KEM][SimLatency][t=0.0348239] Vehicle 177 session key simulated-ready (real handshake was 34.8239 ms)
+[KEM][SimLatency][t=0.0348403] Vehicle 99 session key simulated-ready (real handshake was 34.8403 ms)
+[KEM][SimLatency][t=0.0348516] Vehicle 128 session key simulated-ready (real handshake was 34.8516 ms)
+[KEM][SimLatency][t=0.034861] Vehicle 35 session key simulated-ready (real handshake was 34.861 ms)
+[KEM][SimLatency][t=0.0348645] Vehicle 94 session key simulated-ready (real handshake was 34.8645 ms)
+[KEM][SimLatency][t=0.0348647] Vehicle 127 session key simulated-ready (real handshake was 34.8647 ms)
+[KEM][SimLatency][t=0.0348744] Vehicle 115 session key simulated-ready (real handshake was 34.8744 ms)
+[KEM][SimLatency][t=0.0348748] Vehicle 98 session key simulated-ready (real handshake was 34.8748 ms)
+[KEM][SimLatency][t=0.0348822] Vehicle 158 session key simulated-ready (real handshake was 34.8822 ms)
+[KEM][SimLatency][t=0.034887] Vehicle 52 session key simulated-ready (real handshake was 34.887 ms)
+[KEM][SimLatency][t=0.0348873] Vehicle 96 session key simulated-ready (real handshake was 34.8873 ms)
+[KEM][SimLatency][t=0.0348972] Vehicle 189 session key simulated-ready (real handshake was 34.8972 ms)
+[KEM][SimLatency][t=0.0348973] Vehicle 179 session key simulated-ready (real handshake was 34.8973 ms)
+[KEM][SimLatency][t=0.0349066] Vehicle 185 session key simulated-ready (real handshake was 34.9066 ms)
+[KEM][SimLatency][t=0.0349206] Vehicle 184 session key simulated-ready (real handshake was 34.9206 ms)
+[KEM][SimLatency][t=0.0349471] Vehicle 171 session key simulated-ready (real handshake was 34.9471 ms)
+[KEM][SimLatency][t=0.0349604] Vehicle 34 session key simulated-ready (real handshake was 34.9604 ms)
+[KEM][SimLatency][t=0.0349893] Vehicle 190 session key simulated-ready (real handshake was 34.9893 ms)
+[KEM][SimLatency][t=0.0349984] Vehicle 187 session key simulated-ready (real handshake was 34.9984 ms)
+[KEM][SimLatency][t=0.0350355] Vehicle 36 session key simulated-ready (real handshake was 35.0355 ms)
+[KEM][SimLatency][t=0.0350863] Vehicle 59 session key simulated-ready (real handshake was 35.0863 ms)
+[KEM][SimLatency][t=0.0351146] Vehicle 125 session key simulated-ready (real handshake was 35.1146 ms)
+[KEM][SimLatency][t=0.0351201] Vehicle 195 session key simulated-ready (real handshake was 35.1201 ms)
+[KEM][SimLatency][t=0.0351354] Vehicle 176 session key simulated-ready (real handshake was 35.1354 ms)
+[KEM][SimLatency][t=0.0351362] Vehicle 122 session key simulated-ready (real handshake was 35.1362 ms)
+[KEM][SimLatency][t=0.0352099] Vehicle 135 session key simulated-ready (real handshake was 35.2099 ms)
+[KEM][SimLatency][t=0.0352159] Vehicle 157 session key simulated-ready (real handshake was 35.2159 ms)
+[KEM][SimLatency][t=0.0352383] Vehicle 170 session key simulated-ready (real handshake was 35.2383 ms)
+[KEM][SimLatency][t=0.0352434] Vehicle 194 session key simulated-ready (real handshake was 35.2434 ms)
+[KEM][SimLatency][t=0.0352477] Vehicle 51 session key simulated-ready (real handshake was 35.2477 ms)
+[KEM][SimLatency][t=0.035252] Vehicle 48 session key simulated-ready (real handshake was 35.252 ms)
+[KEM][SimLatency][t=0.0352895] Vehicle 136 session key simulated-ready (real handshake was 35.2895 ms)
+[KEM][SimLatency][t=0.035307] Vehicle 155 session key simulated-ready (real handshake was 35.307 ms)
+[KEM][SimLatency][t=0.0353242] Vehicle 33 session key simulated-ready (real handshake was 35.3242 ms)
+[KEM][SimLatency][t=0.0353311] Vehicle 169 session key simulated-ready (real handshake was 35.3311 ms)
+[KEM][SimLatency][t=0.0353361] Vehicle 168 session key simulated-ready (real handshake was 35.3361 ms)
+[KEM][SimLatency][t=0.0353574] Vehicle 116 session key simulated-ready (real handshake was 35.3574 ms)
+[KEM][SimLatency][t=0.0354157] Vehicle 197 session key simulated-ready (real handshake was 35.4157 ms)
+[KEM][SimLatency][t=0.0354178] Vehicle 117 session key simulated-ready (real handshake was 35.4178 ms)
+[KEM][SimLatency][t=0.0354408] Vehicle 100 session key simulated-ready (real handshake was 35.4408 ms)
+[KEM][SimLatency][t=0.0354438] Vehicle 166 session key simulated-ready (real handshake was 35.4438 ms)
+[KEM][SimLatency][t=0.0354591] Vehicle 50 session key simulated-ready (real handshake was 35.4591 ms)
+[KEM][SimLatency][t=0.0354606] Vehicle 165 session key simulated-ready (real handshake was 35.4606 ms)
+[KEM][SimLatency][t=0.0354764] Vehicle 137 session key simulated-ready (real handshake was 35.4764 ms)
+[KEM][SimLatency][t=0.0354788] Vehicle 118 session key simulated-ready (real handshake was 35.4788 ms)
+[KEM][SimLatency][t=0.0354823] Vehicle 49 session key simulated-ready (real handshake was 35.4823 ms)
+[KEM][SimLatency][t=0.0354937] Vehicle 167 session key simulated-ready (real handshake was 35.4937 ms)
+[KEM][SimLatency][t=0.0355204] Vehicle 193 session key simulated-ready (real handshake was 35.5204 ms)
+[KEM][SimLatency][t=0.0355252] Vehicle 192 session key simulated-ready (real handshake was 35.5252 ms)
+[KEM][SimLatency][t=0.035541] Vehicle 175 session key simulated-ready (real handshake was 35.541 ms)
+[KEM][SimLatency][t=0.0355451] Vehicle 109 session key simulated-ready (real handshake was 35.5451 ms)
+[KEM][SimLatency][t=0.0355639] Vehicle 191 session key simulated-ready (real handshake was 35.5639 ms)
+[KEM][SimLatency][t=0.0355818] Vehicle 174 session key simulated-ready (real handshake was 35.5818 ms)
+[KEM][SimLatency][t=0.0355876] Vehicle 172 session key simulated-ready (real handshake was 35.5876 ms)
+[KEM][SimLatency][t=0.0356981] Vehicle 173 session key simulated-ready (real handshake was 35.6981 ms)
+[KEM][SimLatency][t=0.0357214] Vehicle 138 session key simulated-ready (real handshake was 35.7214 ms)
+[KEM][SimLatency][t=0.0357272] Vehicle 120 session key simulated-ready (real handshake was 35.7272 ms)
+[KEM][SimLatency][t=0.0357618] Vehicle 156 session key simulated-ready (real handshake was 35.7618 ms)
+[KEM][SimLatency][t=0.0358071] Vehicle 86 session key simulated-ready (real handshake was 35.8071 ms)
+[KEM][SimLatency][t=0.0358119] Vehicle 101 session key simulated-ready (real handshake was 35.8119 ms)
+[KEM][SimLatency][t=

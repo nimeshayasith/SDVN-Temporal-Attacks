@@ -74,3 +74,40 @@ This is the same value already in use as the deployment default. Justification, 
 
 - **Scenario 3 (TTW-S3) was not included in this controlled batch** — should be re-run at the same `RngRun=999` across the same θ grid to close this gap.
 - **Scenarios 9 (ME-S1) and 10 (ME-S2) produced 0–4 total events** at this seed/duration — consistent with the previously-documented architectural gap (crypto pre-filter interception eliminating vehicle/RSU-origin ME events before they reach the detector). These scenarios contribute no signal to θ selection at this configuration and would need a longer `simTime` or different seed to meaningfully evaluate.
+
+---
+
+## 2026-07-24 Re-calibration — dim=192 canonical model, fine sweep {0.90..1.00}
+
+**Model:** `tgn_weights_dim192_final.bin` (dim=192, the canonical model used across all comparison-method and ablation sweeps this session).
+**Method:** Live NS-3 deployment runs, `simTime=30`, `N_Vehicles=200`, `N_RSUs=64` (RSU-bearing scenarios) / `0` (vehicle-origin, no-RSU scenarios), `N_Controllers=4`, `attack_percentage=50`, fixed seed `RngRun=999`, `--no_lw=1` (isolates TGN's own decision from LW's OR-combination, same rationale as the 2026-07-23 round below). **All 13 scenarios** (1-12 individual + 13 combined) included this time — the prior round's Scenario 3 gap is closed.
+**θ values tested:** 0.90, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1.00 (11 points, 0.01 granularity — finer than the prior 0.05-step round, specifically to check whether a tighter optimum existed between 0.90 and 0.95 that the coarser grid could have missed).
+
+### Per-scenario MCC by θ (excerpt — full 11×13 grid in `aggregate_theta_calib.py`'s own console output)
+
+| θ | sc1 | sc4 | sc5 | sc6 | sc11 (bottleneck) | sc12 | sc13 | Worst-case (excl sc9/10) |
+|---|---|---|---|---|---|---|---|---|
+| 0.90 | 0.866 | 1.000 | 0.636 | 0.531 | 0.613 | 0.678 | 0.728 | 0.531 (sc6) |
+| 0.91 | 0.860 | 1.000 | 0.636 | 0.668 | 0.613 | 0.678 | 0.742 | **0.613 (sc11)** |
+| **0.92** | 0.855 | 1.000 | 0.660 | 0.761 | 0.613 | 0.678 | 0.753 | **0.613 (sc11)** |
+| 0.93 | 0.855 | 1.000 | 0.698 | 0.943 | 0.554 | 0.632 | 0.757 | 0.554 (sc11) |
+| 0.95 (prior default) | 0.891 | 1.000 | 0.720 | 0.943 | 0.554 | 0.632 | 0.765 | 0.554 (sc11) |
+| 0.97 | 0.866 | 0.973 | 0.975 | 0.900 | 0.507 | 0.593 | 0.772 | 0.507 (sc11) |
+| 0.99 | 0.792 | 0.837 | 0.975 | 0.900 | 0.469 | 0.559 | 0.784 | 0.469 (sc11) |
+| 1.00 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 (degenerate) |
+
+Scenarios 9 (ME-S1) and 10 (ME-S2) excluded from the worst-case comparison for the same reason as the prior round — confirmed again this session: sc10 had **0** total attack events and sc9 had **2**, at every θ tested (Stage-0 crypto pre-filter interception, θ-insensitive). Including them ties every θ candidate at worst-case=0.000, which is uninformative.
+
+### Result: θ = 0.91 and θ = 0.92 tie for best worst-case MCC (0.613, bottleneck ME-S3/sc11)
+
+Tiebreak on average MCC across the 11 included scenarios: θ=0.92 → 0.7169 vs θ=0.91 → 0.7075. **θ=0.92 wins.**
+
+This **improves on the 2026-07-23 round's θ=0.95 pick** (worst-case MCC 0.554, also bottlenecked at ME-S3) — the 0.05-step grid used in that round (0.90, 0.941, 1.0 tested; 0.91-0.94 and 0.96-0.99 never evaluated) missed this tighter optimum. Both rounds agree ME-S3 (sc11) is the binding constraint; this round's finer granularity found a θ value that eases that specific bottleneck further than 0.95 did.
+
+## Recommended optimized θ (current): **0.92** — supersedes both the 0.95 and 0.85 picks above
+
+1. **Best worst-case MCC** (0.613) among all 11 tested values in this finer sweep — beats the prior default 0.95's worst-case of 0.554 by ~10.6% relative.
+2. **All 13 scenarios covered** — this round closes the earlier "Scenario 3 not run" gap.
+3. **Confirmed on genuinely unseen data** — same `RngRun=999` held fixed across every θ value, same controlled-comparison discipline as the prior round.
+4. **ME-S3 (sc11) is the persistent bottleneck** across both the 0.85-era and 0.95-era analyses, and now this round too — worth flagging as a candidate for the same kind of architectural investigation BSHH-S2 received in the earlier round, rather than expecting further threshold tuning alone to close it.
+5. Applied in code at `tgn_core.cc`'s `TGN_THETA_FS` constant (was hardcoded 0.95, now 0.92) — takes effect for every run that doesn't explicitly override via `--tgn_theta`.

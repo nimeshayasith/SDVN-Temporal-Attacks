@@ -1,14 +1,14 @@
 Solution at controller cleared
-[SUMO] Peak-activity alignment: trace_t0=360s -> 99 vehicles active in the 25s sim window (was ~few at raw t=0)
-[SUMO] Trace time offset: 360s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 304 positions, scheduled 0 exact position+velocity events
+[SUMO] Peak-activity alignment: trace_t0=58s -> 208 vehicles active in the 60s sim window (was ~few at raw t=0)
+[SUMO] Trace time offset: 58s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 211 positions, scheduled 276645 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/01_TTW_S1_Malicious_Vehicle.xml
 
 ========================================
 SCENARIO 01 - TTW-S1 ATTACK CONFIGURED
-Active attackers (1): V0 
-Victim pool (6): V0 V4 V2 V5 V3 V1 
-Activation probability : 0.75
+Active attackers (40): V33 V19 V0 V2 V9 V5 V29 V36 V22 V3 V13 V6 V1 V34 V4 V26 V15 V18 V24 V35 V37 V11 V32 V39 V21 V27 V7 V20 V23 V8 V16 V31 V28 V38 V10 V14 V30 V17 V12 V25 
+Victim pool (200): V11 V8 V44 V47 V149 V18 V85 V117 V160 V194 V136 V24 V80 V88 V115 V139 V55 V182 V147 V130 V72 V83 V128 V126 V31 V13 V132 V199 V112 V53 V107 V70 V30 V168 V165 V192 V174 V86 V186 V143 V45 V145 V113 V87 V35 V169 V162 V46 V189 V190 V94 V127 V159 V3 V177 V63 V20 V41 V111 V84 V29 V92 V75 V26 V81 V68 V37 V141 V197 V34 V49 V140 V164 V15 V176 V102 V62 V152 V134 V157 V151 V106 V0 V16 V77 V184 V196 V98 V28 V166 V187 V95 V32 V167 V124 V114 V56 V57 V6 V97 V78 V54 V12 V198 V69 V40 V14 V66 V118 V17 V93 V22 V39 V180 V158 V154 V178 V155 V144 V38 V137 V50 V110 V161 V64 V181 V7 V171 V82 V108 V36 V76 V60 V121 V79 V99 V191 V179 V48 V89 V138 V163 V101 V153 V42 V142 V131 V74 V61 V73 V173 V43 V65 V25 V123 V90 V19 V133 V175 V103 V119 V188 V116 V21 V59 V148 V33 V91 V146 V150 V2 V185 V96 V195 V156 V10 V135 V23 V71 V9 V109 V105 V129 V51 V4 V183 V52 V170 V100 V125 V172 V27 V1 V5 V193 V104 V58 V120 V67 V122 
+Activation probability : 1
 Replay jitter window   : +/-0.04 s
 Support evidence prob. : 1
 Timeline (Option B — real SUMO trajectories decide the break):
@@ -18,9 +18,168 @@ Timeline (Option B — real SUMO trajectories decide the break):
   [per-pair]         : Attacker replays forged packet 2s after its pair's real break
 ========================================
 
-[TTW-S1] no natural link break found for attacker V0 in round 0 — trying fallback pairing
-[TTW-S1] fallback pairing (round 0): V0 <-> V3 (no genuine break found; replaying at t=22 using real position then)
-[TTW-S1] V0 <-> V3  (hello t=10s, real break at t=22s)
+[TTW-S1] no natural link break found for attacker V13 in round 0 — trying fallback pairing
+[TTW-S1] no natural link break found for attacker V7 in round 0 — trying fallback pairing
+[TTW-S1] no natural link break found for attacker V23 in round 0 — trying fallback pairing
+[TTW-S1] no natural link break found for attacker V16 in round 0 — trying fallback pairing
+[TTW-S1] no natural link break found for attacker V28 in round 0 — trying fallback pairing
+[TTW-S1] no natural link break found for attacker V14 in round 0 — trying fallback pairing
+[TTW-S1] fallback pairing (round 0): V16 <-> V156 (no genuine break found; replaying at t=25 using real position then)
+[TTW-S1] fallback pairing (round 0): V14 <-> V194 (no genuine break found; replaying at t=25 using real position then)
+[TTW-S1] V33 <-> V6  (hello t=10s, real break at t=11.3s)
+[TTW-S1] V19 <-> V185  (hello t=10s, real break at t=13.1s)
+[TTW-S1] V0 <-> V32  (hello t=10s, real break at t=11.3s)
+[TTW-S1] V2 <-> V196  (hello t=10s, real break at t=14.7s)
+[TTW-S1] V9 <-> V51  (hello t=10s, real break at t=17.1s)
+[TTW-S1] V5 <-> V169  (hello t=10s, real break at t=10.5s)
+[TTW-S1] V29 <-> V15  (hello t=10s, real break at t=11.7s)
+[TTW-S1] V36 <-> V130  (hello t=10s, real break at t=20.3s)
+[TTW-S1] V22 <-> V84  (hello t=10s, real break at t=23.5s)
+[TTW-S1] V3 <-> V132  (hello t=10s, real break at t=16.5s)
+[TTW-S1] V6 <-> V33  (hello t=10s, real break at t=11.3s)
+[TTW-S1] V1 <-> V163  (hello t=10s, real break at t=11.1s)
+[TTW-S1] V34 <-> V155  (hello t=10s, real break at t=16.9s)
+[TTW-S1] V4 <-> V57  (hello t=10s, real break at t=10.5s)
+[TTW-S1] V26 <-> V89  (hello t=10s, real break at t=13.3s)
+[TTW-S1] V15 <-> V29  (hello t=10s, real break at t=11.7s)
+[TTW-S1] V18 <-> V112  (hello t=10s, real break at t=12.3s)
+[TTW-S1] V24 <-> V93  (hello t=10s, real break at t=13.7s)
+[TTW-S1] V35 <-> V108  (hello t=10s, real break at t=10.9s)
+[TTW-S1] V37 <-> V56  (hello t=10s, real break at t=11.9s)
+[TTW-S1] V11 <-> V66  (hello t=10s, real break at t=14.7s)
+[TTW-S1] V32 <-> V0  (hello t=10s, real break at t=11.3s)
+[TTW-S1] V39 <-> V25  (hello t=10s, real break at t=11.3s)
+[TTW-S1] V21 <-> V10  (hello t=10s, real break at t=14.3s)
+[TTW-S1] V27 <-> V8  (hello t=10s, real break at t=16.1s)
+[TTW-S1] V20 <-> V75  (hello t=10s, real break at t=12.3s)
+[TTW-S1] V8 <-> V65  (hello t=10s, real break at t=15.9s)
+[TTW-S1] V31 <-> V77  (hello t=10s, real break at t=16.5s)
+[TTW-S1] V38 <-> V173  (hello t=10s, real break at t=10.5s)
+[TTW-S1] V10 <-> V21  (hello t=10s, real break at t=14.3s)
+[TTW-S1] V30 <-> V137  (hello t=10s, real break at t=18.5s)
+[TTW-S1] V17 <-> V100  (hello t=10s, real break at t=19.9s)
+[TTW-S1] V12 <-> V144  (hello t=10s, real break at t=17.5s)
+[TTW-S1] V25 <-> V39  (hello t=10s, real break at t=11.3s)
+[TTW-S1] V16 <-> V156  (hello t=10s, real break at t=25s)
+[TTW-S1] V14 <-> V194  (hello t=10s, real break at t=25s)
+[TTW-S1] V7 <-> V86  (hello t=15s, real break at t=22.1s)
+[TTW-S1] V23 <-> V36  (hello t=15s, real break at t=18.3s)
+[TTW-S1] V33 <-> V80  (hello t=15s, real break at t=26.3s)
+[TTW-S1] V19 <-> V5  (hello t=15s, real break at t=16.1s)
+[TTW-S1] V0 <-> V18  (hello t=15s, real break at t=17.9s)
+[TTW-S1] V2 <-> V48  (hello t=15s, real break at t=16.5s)
+[TTW-S1] V9 <-> V68  (hello t=15s, real break at t=19.1s)
+[TTW-S1] V5 <-> V19  (hello t=15s, real break at t=16.1s)
+[TTW-S1] V29 <-> V44  (hello t=15s, real break at t=19.7s)
+[TTW-S1] V36 <-> V23  (hello t=15s, real break at t=18.3s)
+[TTW-S1] V22 <-> V115  (hello t=15s, real break at t=21.3s)
+[TTW-S1] V6 <-> V135  (hello t=15s, real break at t=26.3s)
+[TTW-S1] V34 <-> V146  (hello t=15s, real break at t=17.1s)
+[TTW-S1] V4 <-> V152  (hello t=15s, real break at t=16.1s)
+[TTW-S1] V26 <-> V183  (hello t=15s, real break at t=18.7s)
+[TTW-S1] V15 <-> V34  (hello t=15s, real break at t=16.5s)
+[TTW-S1] V18 <-> V30  (hello t=15s, real break at t=19.5s)
+[TTW-S1] V24 <-> V40  (hello t=15s, real break at t=18.5s)
+[TTW-S1] V35 <-> V109  (hello t=15s, real break at t=25.7s)
+[TTW-S1] V32 <-> V62  (hello t=15s, real break at t=15.5s)
+[TTW-S1] V21 <-> V49  (hello t=15s, real break at t=17.1s)
+[TTW-S1] V20 <-> V24  (hello t=15s, real break at t=20.1s)
+[TTW-S1] V8 <-> V27  (hello t=15s, real break at t=16.1s)
+[TTW-S1] V16 <-> V186  (hello t=15s, real break at t=25.9s)
+[TTW-S1] V31 <-> V105  (hello t=15s, real break at t=17.9s)
+[TTW-S1] V38 <-> V91  (hello t=15s, real break at t=21.9s)
+[TTW-S1] V10 <-> V69  (hello t=15s, real break at t=17.7s)
+[TTW-S1] V12 <-> V117  (hello t=15s, real break at t=17.7s)
+[TTW-S1] V25 <-> V134  (hello t=15s, real break at t=17.1s)
+[TTW-S1] V19 <-> V190  (hello t=20s, real break at t=21.9s)
+[TTW-S1] V2 <-> V38  (hello t=20s, real break at t=23.3s)
+[TTW-S1] V9 <-> V143  (hello t=20s, real break at t=21.3s)
+[TTW-S1] V5 <-> V128  (hello t=20s, real break at t=23.7s)
+[TTW-S1] V29 <-> V92  (hello t=20s, real break at t=20.5s)
+[TTW-S1] V36 <-> V31  (hello t=20s, real break at t=27.5s)
+[TTW-S1] V22 <-> V176  (hello t=20s, real break at t=25.3s)
+[TTW-S1] V6 <-> V97  (hello t=20s, real break at t=26.3s)
+[TTW-S1] V1 <-> V123  (hello t=20s, real break at t=25.3s)
+[TTW-S1] V34 <-> V189  (hello t=20s, real break at t=23.9s)
+[TTW-S1] V4 <-> V161  (hello t=20s, real break at t=23.5s)
+[TTW-S1] V26 <-> V63  (hello t=20s, real break at t=26.1s)
+[TTW-S1] V15 <-> V126  (hello t=20s, real break at t=20.9s)
+[TTW-S1] V18 <-> V52  (hello t=20s, real break at t=23.3s)
+[TTW-S1] V24 <-> V20  (hello t=20s, real break at t=20.5s)
+[TTW-S1] V32 <-> V158  (hello t=20s, real break at t=24.3s)
+[TTW-S1] V21 <-> V54  (hello t=20s, real break at t=22.9s)
+[TTW-S1] V27 <-> V46  (hello t=20s, real break at t=28.5s)
+[TTW-S1] V7 <-> V2  (hello t=20s, real break at t=27.1s)
+[TTW-S1] V20 <-> V141  (hello t=20s, real break at t=23.7s)
+[TTW-S1] V23 <-> V198  (hello t=20s, real break at t=25.5s)
+[TTW-S1] V8 <-> V58  (hello t=20s, real break at t=22.5s)
+[TTW-S1] V31 <-> V127  (hello t=20s, real break at t=29.1s)
+[TTW-S1] V38 <-> V116  (hello t=20s, real break at t=24.9s)
+[TTW-S1] V10 <-> V9  (hello t=20s, real break at t=20.7s)
+[TTW-S1] V12 <-> V74  (hello t=20s, real break at t=20.5s)
+[TTW-S1] V19 <-> V104  (hello t=25s, real break at t=35.9s)
+[TTW-S1] V2 <-> V7  (hello t=25s, real break at t=27.1s)
+[TTW-S1] V9 <-> V150  (hello t=25s, real break at t=32.5s)
+[TTW-S1] V5 <-> V95  (hello t=25s, real break at t=31.3s)
+[TTW-S1] V29 <-> V154  (hello t=25s, real break at t=30.3s)
+[TTW-S1] V22 <-> V148  (hello t=25s, real break at t=28.9s)
+[TTW-S1] V6 <-> V106  (hello t=25s, real break at t=27.5s)
+[TTW-S1] V1 <-> V197  (hello t=25s, real break at t=29.3s)
+[TTW-S1] V34 <-> V72  (hello t=25s, real break at t=27.3s)
+[TTW-S1] V4 <-> V1  (hello t=25s, real break at t=32.7s)
+[TTW-S1] V26 <-> V12  (hello t=25s, real break at t=26.5s)
+[TTW-S1] V15 <-> V22  (hello t=25s, real break at t=26.3s)
+[TTW-S1] V24 <-> V111  (hello t=25s, real break at t=27.5s)
+[TTW-S1] V32 <-> V45  (hello t=25s, real break at t=26.7s)
+[TTW-S1] V39 <-> V28  (hello t=25s, real break at t=29.5s)
+[TTW-S1] V21 <-> V79  (hello t=25s, real break at t=31.3s)
+[TTW-S1] V7 <-> V98  (hello t=25s, real break at t=32.1s)
+[TTW-S1] V20 <-> V199  (hello t=25s, real break at t=26.5s)
+[TTW-S1] V23 <-> V87  (hello t=25s, real break at t=32.3s)
+[TTW-S1] V8 <-> V41  (hello t=25s, real break at t=27.7s)
+[TTW-S1] V12 <-> V142  (hello t=25s, real break at t=25.5s)
+[TTW-S1] V0 <-> V17  (hello t=30s, real break at t=40.9s)
+[TTW-S1] V9 <-> V162  (hello t=30s, real break at t=35.3s)
+[TTW-S1] V5 <-> V67  (hello t=30s, real break at t=31.5s)
+[TTW-S1] V29 <-> V43  (hello t=30s, real break at t=32.5s)
+[TTW-S1] V22 <-> V102  (hello t=30s, real break at t=30.9s)
+[TTW-S1] V6 <-> V26  (hello t=30s, real break at t=35.1s)
+[TTW-S1] V1 <-> V4  (hello t=30s, real break at t=32.7s)
+[TTW-S1] V4 <-> V168  (hello t=30s, real break at t=36.1s)
+[TTW-S1] V26 <-> V131  (hello t=30s, real break at t=33.7s)
+[TTW-S1] V15 <-> V157  (hello t=30s, real break at t=43.7s)
+[TTW-S1] V7 <-> V3  (hello t=30s, real break at t=40.7s)
+[TTW-S1] V16 <-> V188  (hello t=30s, real break at t=38.1s)
+[TTW-S1] V12 <-> V178  (hello t=30s, real break at t=33.3s)
+[TTW-S1] V33 <-> V164  (hello t=35s, real break at t=48.7s)
+[TTW-S1] V2 <-> V60  (hello t=35s, real break at t=41.7s)
+[TTW-S1] V29 <-> V181  (hello t=35s, real break at t=39.1s)
+[TTW-S1] V3 <-> V113  (hello t=35s, real break at t=36.5s)
+[TTW-S1] V6 <-> V96  (hello t=35s, real break at t=35.7s)
+[TTW-S1] V15 <-> V99  (hello t=35s, real break at t=43.1s)
+[TTW-S1] V35 <-> V64  (hello t=35s, real break at t=37.1s)
+[TTW-S1] V39 <-> V171  (hello t=35s, real break at t=37.5s)
+[TTW-S1] V21 <-> V76  (hello t=35s, real break at t=40.7s)
+[TTW-S1] V7 <-> V71  (hello t=35s, real break at t=42.9s)
+[TTW-S1] V16 <-> V175  (hello t=35s, real break at t=35.9s)
+[TTW-S1] V31 <-> V139  (hello t=35s, real break at t=45.1s)
+[TTW-S1] V12 <-> V16  (hello t=35s, real break at t=41.7s)
+[TTW-S1] V0 <-> V166  (hello t=40s, real break at t=44.5s)
+[TTW-S1] V1 <-> V13  (hello t=40s, real break at t=49.3s)
+[TTW-S1] V4 <-> V88  (hello t=40s, real break at t=54.5s)
+[TTW-S1] V15 <-> V53  (hello t=40s, real break at t=44.7s)
+[TTW-S1] V21 <-> V121  (hello t=40s, real break at t=48.5s)
+[TTW-S1] V7 <-> V153  (hello t=40s, real break at t=54.3s)
+[TTW-S1] V10 <-> V191  (hello t=40s, real break at t=50.1s)
+[TTW-S1] V30 <-> V170  (hello t=40s, real break at t=47.5s)
+[TTW-S1] V12 <-> V177  (hello t=40s, real break at t=42.9s)
+[TTW-S1] V36 <-> V82  (hello t=45s, real break at t=52.9s)
+[TTW-S1] V15 <-> V70  (hello t=45s, real break at t=46.3s)
+[TTW-S1] V32 <-> V85  (hello t=45s, real break at t=48.3s)
+[TTW-S1] V21 <-> V83  (hello t=45s, real break at t=49.5s)
+[TTW-S1] V13 <-> V174  (hello t=50s, real break at t=56.7s)
+[TTW-S1] V32 <-> V138  (hello t=50s, real break at t=51.5s)
+[TTW-S1] V21 <-> V133  (hello t=50s, real break at t=56.3s)
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
 [CRYPTO] TETA-Guard pipeline initialised:
@@ -31,152 +190,646 @@ Timeline (Option B — real SUMO trajectories decide the break):
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=6)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.29–3.32)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 6/6 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 5 handshakes timed: avg=34.1427 ms, max=34.461 ms, over_budget=5/5 (budget=10 ms)
+[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
+[KEM][10ms budget] 199 handshakes timed: avg=40.6717 ms, max=146.234 ms, over_budget=199/199 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[KEM][SimLatency][t=0.0339211] Vehicle 2 session key simulated-ready (real handshake was 33.9211 ms)
-[KEM][SimLatency][t=0.0339546] Vehicle 3 session key simulated-ready (real handshake was 33.9546 ms)
-[KEM][SimLatency][t=0.0339818] Vehicle 4 session key simulated-ready (real handshake was 33.9818 ms)
-[KEM][SimLatency][t=0.0343951] Vehicle 5 session key simulated-ready (real handshake was 34.395 ms)
-[KEM][SimLatency][t=0.034461] Vehicle 1 session key simulated-ready (real handshake was 34.461 ms)
-[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=3726775969231588195 (interval=3s)
-[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=3726775969231588195 (interval=3s)
-[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=3726775969231588195 (interval=3s)
-[TTW-S1][t=10.000]  V8 --HELLO beacon--> V5  dist=1.499m  DELIVERED
-[TTW-S1][t=10.001]  V5 --HELLO beacon--> V8  dist=1.499m  DELIVERED
-[TTW-S1][t=10.100]  V5 --topology update--> Controller  <V5 sees V8, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V8 --topology update--> Controller  <V8 sees V5, t=10.000>  ACCEPTED
-[TTW-S1][t=10.189]  V5 stored old packet <V5 sees V8, t=10.000>  (will replay at t~=24.000)
-[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=3726775969231588195 (interval=3.000s)
-[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=3726775969231588195 (interval=3.000s)
-[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=3726775969231588195 (interval=3.000s)
-[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=3726775969231588195 (interval=3.000s)
-[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=3726775969231588195 (interval=3.000s)
-[TTW-S1][t=24.034]  Pipeline armed: 1 attacker(s)
-    attacker NS3-ID=5 -> victim NS3-ID=8
-[TTW-S1][t=24.035]  V5 --FORGED replay--> Controller  <V5 sees V8, t=24.035>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=1.499m)
-[TTW-S1][t=24.035]  *** ATTACK COMPLETE ***  ghost link V5<->V8 injected into controller table
-[TTW-S1][t=24.035]  FS-MITIGATE gate: PBFT n=6 f=1 q_needed=3 -> PASS  |  VERIFY_THRESHOLD_SIG 1/6 >= t=4 -> FAIL
-[TTW-S1][t=24.035]  FS-MITIGATE ABORTED (gate failed)  attacker=V5
-[TTW-S1][t=24.100]  PIPELINE: NS3-ID=5 injected forged neighbor=8 into controller con_data_inst via UDP/7777
-[PEM] /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/SCENARIO_VALIDITY/01_TTW_S1_Malicious_Vehicle_seed1.csv written: 0 event(s) excluded (invalid RSU neighborhood, not detector error); 0 benign event(s) flagged no_real_reception_at_reporter (diagnostic only, STILL COUNTED in confusion matrix — confirmed real channel-contention loss, not a scenario artifact)
-[M11][FSR sweep] written to /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/M11_FSR_SWEEP/01_TTW_S1_Malicious_Vehicle_seed1.csv (1 f_c value(s) exercised)
-[M2][TDRR] mean_topology_divergence=0.333  (samples=3)  unprotected=1.000 (n=1)  mitigated=0.000 (n=0)  TDRR=100.000%
-[M3][T_stale] mean=0.000 ms (samples=0)
-[M4][PIR] mean=2.000 (links tracked=1)
-[M5][T_pipeline] mean=2.432 ms  max=2.432 ms  over_budget=0/1
-[M5][T_pbft] mean=0.148 ms  max=0.148 ms (n=1)
-[M5][T_exec_flowmod] mean=0.000 ms  max=0.000 ms (n=0)
-[M7][Omega] omega_lw=5.941%  omega_fs=572.649%
-[M9][F1] TTW=1.000 BSHH=1.000 ME=1.000 macro=1.000
-[M10][FRA/FRR] FRA=0.000 FRR=0.000
-[M11][FSR] attempts=1 success=0 FSR=0.000
-[M12][Trust] t_trust=0.000 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
-
-[CRYPTO] crypto_latency_sumo.csv written    (31 events)
-[CRYPTO] crypto_latency_summary.csv written  (18 distinct operations)
-[CRYPTO] Beacon TX signed: 2   RX verified: 2
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=6  reject=12
-[TGN] Online mode — 5 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 1/1 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 5 ctrl 
-[TGN] |E_t^trusted|=4 (Tier 2: 4 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 7 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 0 alert(s) → tgn_alerts.json
-[TGN] individual_sig_evidence.json written: 0 record(s) → individual_sig_evidence.json
-
-========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
-  Scenario  : 1 — TTW-S1: Malicious Vehicle, No RSU
-  RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 4 / 0 / 1
-  [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 1
-  MCC         : 0.000
-  [comb] TP/TN/FP/FN : 1 / 4 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.750
-  ACR         : 80.000 %
-  Tdet        : -1.000 ms
-  θ_FS        : 0.400  [fixed placeholder]
-  θ_MCC_opt   : 0.120  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 310.179  [Eq. 3.22 init; validation-tuned hyperparameter]
-  W_max       : 430  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 5
-  Stage-0 blocked (attacks): 0
-  Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 4
-  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
-============================================================
-
-Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
-----------------------------------------------------------
-Detect stage (crypto+LW+TGN, PemEmitEvent):
-  Events processed: 7
-  Avg wall-clock time: 2.1 ms
-  Max wall-clock time: 2.7 ms
-  Events exceeding budget: 0 / 7
-Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
-  Mitigations applied: 1
-  Avg wall-clock time: 0.15 ms
-  Max wall-clock time: 0.15 ms
-Full pipeline (detect+mitigate combined, when mitigation fired):
-  Triggered events: 1
-  Avg wall-clock time: 2.4 ms
-  Max wall-clock time: 2.4 ms
-  Events exceeding 1e+02 ms budget: 0 / 1  -- full pipeline stays within the T_b budget on this hardware
-
-Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
-  Calls: 4
-  Avg wall-clock time: 0.018 ms
-  Max wall-clock time: 0.033 ms
-  Calls exceeding budget: 0 / 4
-
-RSU-forward (CSMA dispatch, AttackSendRSUToController):
-  Calls: 0
-  Avg wall-clock time: 0 ms
-  Max wall-clock time: 0 ms
-  Calls exceeding budget: 0 / 0
-
-Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
-  Calls: 4
-  Avg wall-clock time: 0.065 ms
-  Max wall-clock time: 0.1 ms
-  Calls exceeding budget: 0 / 4
-
-Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
-  Calls: 1
-  Avg wall-clock time: 0.23 ms
-  Max wall-clock time: 0.23 ms
-  Calls exceeding budget: 0 / 1
-
-LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
-  Calls: 1
-  Avg wall-clock time: 0.0055 ms
-  Max wall-clock time: 0.0055 ms
-  Calls exceeding budget: 0 / 1
-
-Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.018) + beacon-crypto(0.065) + rsu-forward(0) + detect(2.1) + detection-crypto(0.23) + mitigate(0.15) + lkh-crypto(0.0055) = 2.6 ms
-  -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
-
-Continuous Neighborhood Statistics
----------------------------------
-Candidate pairs checked: 4500
-Successful neighbor observations: 3000
-Average neighbors/vehicle: 3.3
-Maximum neighbors observed at once: 4
-
-Real-time (wall-clock) budget check — T_b=1e+02 ms:
-  Ticks executed: 150
-  Avg tick wall-clock time: 0.0044 ms
-  Max tick wall-clock time: 0.0094 ms
-  Ticks exceeding 1e+02 ms budget: 0 / 150  -- pipeline stays within the T_b budget on this hardware
-
-Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.0044) + beacon-send(0.018) + beacon-crypto(0.065) + rsu-forward(0) + detect(2.1) + detection-crypto(0.23) + mitigate(0.15) + lkh-crypto(0.0055) = 2.6 ms
-  -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
+[TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_dim192_final.bin'  (dim=192 layers=2)
+[KEM][SimLatency][t=0.0349564] Vehicle 41 session key simulated-ready (real handshake was 34.9564 ms)
+[KEM][SimLatency][t=0.0349763] Vehicle 66 session key simulated-ready (real handshake was 34.9763 ms)
+[KEM][SimLatency][t=0.0349806] Vehicle 63 session key simulated-ready (real handshake was 34.9806 ms)
+[KEM][SimLatency][t=0.0349836] Vehicle 59 session key simulated-ready (real handshake was 34.9836 ms)
+[KEM][SimLatency][t=0.0349838] Vehicle 13 session key simulated-ready (real handshake was 34.9838 ms)
+[KEM][SimLatency][t=0.0350035] Vehicle 42 session key simulated-ready (real handshake was 35.0035 ms)
+[KEM][SimLatency][t=0.0350068] Vehicle 76 session key simulated-ready (real handshake was 35.0068 ms)
+[KEM][SimLatency][t=0.0350124] Vehicle 173 session key simulated-ready (real handshake was 35.0124 ms)
+[KEM][SimLatency][t=0.0350466] Vehicle 57 session key simulated-ready (real handshake was 35.0466 ms)
+[KEM][SimLatency][t=0.0350573] Vehicle 97 session key simulated-ready (real handshake was 35.0573 ms)
+[KEM][SimLatency][t=0.0350627] Vehicle 103 session key simulated-ready (real handshake was 35.0627 ms)
+[KEM][SimLatency][t=0.0350638] Vehicle 56 session key simulated-ready (real handshake was 35.0638 ms)
+[KEM][SimLatency][t=0.0350667] Vehicle 120 session key simulated-ready (real handshake was 35.0667 ms)
+[KEM][SimLatency][t=0.0350847] Vehicle 58 session key simulated-ready (real handshake was 35.0847 ms)
+[KEM][SimLatency][t=0.0350873] Vehicle 187 session key simulated-ready (real handshake was 35.0873 ms)
+[KEM][SimLatency][t=0.0350874] Vehicle 113 session key simulated-ready (real handshake was 35.0874 ms)
+[KEM][SimLatency][t=0.0350907] Vehicle 118 session key simulated-ready (real handshake was 35.0907 ms)
+[KEM][SimLatency][t=0.0351033] Vehicle 12 session key simulated-ready (real handshake was 35.1033 ms)
+[KEM][SimLatency][t=0.0351061] Vehicle 73 session key simulated-ready (real handshake was 35.1061 ms)
+[KEM][SimLatency][t=0.0351104] Vehicle 130 session key simulated-ready (real handshake was 35.1104 ms)
+[KEM][SimLatency][t=0.0351146] Vehicle 91 session key simulated-ready (real handshake was 35.1146 ms)
+[KEM][SimLatency][t=0.035115] Vehicle 181 session key simulated-ready (real handshake was 35.115 ms)
+[KEM][SimLatency][t=0.0351236] Vehicle 117 session key simulated-ready (real handshake was 35.1236 ms)
+[KEM][SimLatency][t=0.0351249] Vehicle 116 session key simulated-ready (real handshake was 35.1249 ms)
+[KEM][SimLatency][t=0.0351283] Vehicle 14 session key simulated-ready (real handshake was 35.1283 ms)
+[KEM][SimLatency][t=0.0351325] Vehicle 96 session key simulated-ready (real handshake was 35.1325 ms)
+[KEM][SimLatency][t=0.0351386] Vehicle 64 session key simulated-ready (real handshake was 35.1386 ms)
+[KEM][SimLatency][t=0.0351408] Vehicle 114 session key simulated-ready (real handshake was 35.1408 ms)
+[KEM][SimLatency][t=0.0351411] Vehicle 102 session key simulated-ready (real handshake was 35.1411 ms)
+[KEM][SimLatency][t=0.0351433] Vehicle 95 session key simulated-ready (real handshake was 35.1433 ms)
+[KEM][SimLatency][t=0.035148] Vehicle 75 session key simulated-ready (real handshake was 35.148 ms)
+[KEM][SimLatency][t=0.0351482] Vehicle 74 session key simulated-ready (real handshake was 35.1482 ms)
+[KEM][SimLatency][t=0.0351725] Vehicle 172 session key simulated-ready (real handshake was 35.1725 ms)
+[KEM][SimLatency][t=0.0351848] Vehicle 72 session key simulated-ready (real handshake was 35.1848 ms)
+[KEM][SimLatency][t=0.0351869] Vehicle 179 session key simulated-ready (real handshake was 35.1869 ms)
+[KEM][SimLatency][t=0.035188] Vehicle 100 session key simulated-ready (real handshake was 35.188 ms)
+[KEM][SimLatency][t=0.0351961] Vehicle 98 session key simulated-ready (real handshake was 35.1961 ms)
+[KEM][SimLatency][t=0.0352057] Vehicle 139 session key simulated-ready (real handshake was 35.2057 ms)
+[KEM][SimLatency][t=0.0352236] Vehicle 2 session key simulated-ready (real handshake was 35.2236 ms)
+[KEM][SimLatency][t=0.0352322] Vehicle 119 session key simulated-ready (real handshake was 35.2322 ms)
+[KEM][SimLatency][t=0.0352368] Vehicle 38 session key simulated-ready (real handshake was 35.2368 ms)
+[KEM][SimLatency][t=0.0352507] Vehicle 115 session key simulated-ready (real handshake was 35.2507 ms)
+[KEM][SimLatency][t=0.0352633] Vehicle 101 session key simulated-ready (real handshake was 35.2633 ms)
+[KEM][SimLatency][t=0.0352738] Vehicle 55 session key simulated-ready (real handshake was 35.2738 ms)
+[KEM][SimLatency][t=0.0352806] Vehicle 170 session key simulated-ready (real handshake was 35.2806 ms)
+[KEM][SimLatency][t=0.0352812] Vehicle 40 session key simulated-ready (real handshake was 35.2812 ms)
+[KEM][SimLatency][t=0.0352989] Vehicle 1 session key simulated-ready (real handshake was 35.2989 ms)
+[KEM][SimLatency][t=0.0353023] Vehicle 189 session key simulated-ready (real handshake was 35.3023 ms)
+[KEM][SimLatency][t=0.035311] Vehicle 190 session key simulated-ready (real handshake was 35.311 ms)
+[KEM][SimLatency][t=0.0353192] Vehicle 3 session key simulated-ready (real handshake was 35.3192 ms)
+[KEM][SimLatency][t=0.0353492] Vehicle 90 session key simulated-ready (real handshake was 35.3492 ms)
+[KEM][SimLatency][t=0.0353515] Vehicle 99 session key simulated-ready (real handshake was 35.3515 ms)
+[KEM][SimLatency][t=0.0353653] Vehicle 11 session key simulated-ready (real handshake was 35.3653 ms)
+[KEM][SimLatency][t=0.0353686] Vehicle 94 session key simulated-ready (real handshake was 35.3686 ms)
+[KEM][SimLatency][t=0.0353874] Vehicle 188 session key simulated-ready (real handshake was 35.3874 ms)
+[KEM][SimLatency][t=0.0353981] Vehicle 138 session key simulated-ready (real handshake was 35.3981 ms)
+[KEM][SimLatency][t=0.0354201] Vehicle 79 session key simulated-ready (real handshake was 35.4201 ms)
+[KEM][SimLatency][t=0.0354396] Vehicle 4 session key simulated-ready (real handshake was 35.4396 ms)
+[KEM][SimLatency][t=0.0354508] Vehicle 65 session key simulated-ready (real handshake was 35.4508 ms)
+[KEM][SimLatency][t=0.0354588] Vehicle 77 session key simulated-ready (real handshake was 35.4588 ms)
+[KEM][SimLatency][t=0.0354592] Vehicle 39 session key simulated-ready (real handshake was 35.4592 ms)
+[KEM][SimLatency][t=0.0354719] Vehicle 110 session key simulated-ready (real handshake was 35.4719 ms)
+[KEM][SimLatency][t=0.035493] Vehicle 192 session key simulated-ready (real handshake was 35.493 ms)
+[KEM][SimLatency][t=0.0355026] Vehicle 121 session key simulated-ready (real handshake was 35.5026 ms)
+[KEM][SimLatency][t=0.0355156] Vehicle 112 session key simulated-ready (real handshake was 35.5156 ms)
+[KEM][SimLatency][t=0.0355176] Vehicle 71 session key simulated-ready (real handshake was 35.5176 ms)
+[KEM][SimLatency][t=0.0355312] Vehicle 62 session key simulated-ready (real handshake was 35.5312 ms)
+[KEM][SimLatency][t=0.035536] Vehicle 111 session key simulated-ready (real handshake was 35.536 ms)
+[KEM][SimLatency][t=0.0355485] Vehicle 135 session key simulated-ready (real handshake was 35.5485 ms)
+[KEM][SimLatency][t=0.0355519] Vehicle 128 session key simulated-ready (real handshake was 35.5519 ms)
+[KEM][SimLatency][t=0.0355634] Vehicle 83 session key simulated-ready (real handshake was 35.5634 ms)
+[KEM][SimLatency][t=0.0355739] Vehicle 54 session key simulated-ready (real handshake was 35.5739 ms)
+[KEM][SimLatency][t=0.0355748] Vehicle 129 session key simulated-ready (real handshake was 35.5748 ms)
+[KEM][SimLatency][t=0.0355932] Vehicle 89 session key simulated-ready (real handshake was 35.5932 ms)
+[KEM][SimLatency][t=0.0355999] Vehicle 70 session key simulated-ready (real handshake was 35.5999 ms)
+[KEM][SimLatency][t=0.0356012] Vehicle 10 session key simulated-ready (real handshake was 35.6012 ms)
+[KEM][SimLatency][t=0.0356063] Vehicle 86 session key simulated-ready (real handshake was 35.6063 ms)
+[KEM][SimLatency][t=0.0356148] Vehicle 9 session key simulated-ready (real handshake was 35.6148 ms)
+[KEM][SimLatency][t=0.0356263] Vehicle 126 session key simulated-ready (real handshake was 35.6263 ms)
+[KEM][SimLatency][t=0.0356266] Vehicle 193 session key simulated-ready (real handshake was 35.6266 ms)
+[KEM][SimLatency][t=0.0356366] Vehicle 122 session key simulated-ready (real handshake was 35.6366 ms)
+[KEM][SimLatency][t=0.0356377] Vehicle 124 session key simulated-ready (real handshake was 35.6377 ms)
+[KEM][SimLatency][t=0.035639] Vehicle 85 session key simulated-ready (real handshake was 35.639 ms)
+[KEM][SimLatency][t=0.0356593] Vehicle 68 session key simulated-ready (real handshake was 35.6593 ms)
+[KEM][SimLatency][t=0.0356596] Vehicle 8 session key simulated-ready (real handshake was 35.6596 ms)
+[KEM][SimLatency][t=0.0356739] Vehicle 67 session key simulated-ready (real handshake was 35.6739 ms)
+[KEM][SimLatency][t=0.0357052] Vehicle 133 session key simulated-ready (real handshake was 35.7052 ms)
+[KEM][SimLatency][t=0.0357227] Vehicle 134 session key simulated-ready (real handshake was 35.7227 ms)
+[KEM][SimLatency][t=0.0357232] Vehicle 82 session key simulated-ready (real handshake was 35.7232 ms)
+[KEM][SimLatency][t=0.0357264] Vehicle 84 session key simulated-ready (real handshake was 35.7264 ms)
+[KEM][SimLatency][t=0.035728] Vehicle 137 session key simulated-ready (real handshake was 35.728 ms)
+[KEM][SimLatency][t=0.0357542] Vehicle 127 session key simulated-ready (real handshake was 35.7542 ms)
+[KEM][SimLatency][t=0.0357589] Vehicle 167 session key simulated-ready (real handshake was 35.7589 ms)
+[KEM][SimLatency][t=0.0357605] Vehicle 53 session key simulated-ready (real handshake was 35.7605 ms)
+[KEM][SimLatency][t=0.0357777] Vehicle 78 session key simulated-ready (real handshake was 35.7777 ms)
+[KEM][SimLatency][t=0.035781] Vehicle 107 session key simulated-ready (real handshake was 35.781 ms)
+[KEM][SimLatency][t=0.0357971] Vehicle 191 session key simulated-ready (real handshake was 35.7971 ms)
+[KEM][SimLatency][t=0.0358149] Vehicle 174 session key simulated-ready (real handshake was 35.8149 ms)
+[KEM][SimLatency][t=0.0358156] Vehicle 109 session key simulated-ready (real handshake was 35.8156 ms)
+[KEM][SimLatency][t=0.0358348] Vehicle 125 session key simulated-ready (real handshake was 35.8348 ms)
+[KEM][SimLatency][t=0.0358382] Vehicle 88 session key simulated-ready (real handshake was 35.8382 ms)
+[KEM][SimLatency][t=0.0358493] Vehicle 6 session key simulated-ready (real handshake was 35.8493 ms)
+[KEM][SimLatency][t=0.0358568] Vehicle 176 session key simulated-ready (real handshake was 35.8568 ms)
+[KEM][SimLatency][t=0.0358667] Vehicle 7 session key simulated-ready (real handshake was 35.8667 ms)
+[KEM][SimLatency][t=0.0358783] Vehicle 123 session key simulated-ready (real handshake was 35.8783 ms)
+[KEM][SimLatency][t=0.0358867] Vehicle 81 session key simulated-ready (real handshake was 35.8867 ms)
+[KEM][SimLatency][t=0.0358894] Vehicle 195 session key simulated-ready (real handshake was 35.8894 ms)
+[KEM][SimLatency][t=0.0358925] Vehicle 131 session key simulated-ready (real handshake was 35.8925 ms)
+[KEM][SimLatency][t=0.0359341] Vehicle 180 session key simulated-ready (real handshake was 35.9341 ms)
+[KEM][SimLatency][t=0.0359344] Vehicle 175 session key simulated-ready (real handshake was 35.9344 ms)
+[KEM][SimLatency][t=0.035944] Vehicle 136 session key simulated-ready (real handshake was 35.944 ms)
+[KEM][SimLatency][t=0.0359486] Vehicle 196 session key simulated-ready (real handshake was 35.9486 ms)
+[KEM][SimLatency][t=0.0360289] Vehicle 199 session key simulated-ready (real handshake was 36.0289 ms)
+[KEM][SimLatency][t=0.0360326] Vehicle 104 session key simulated-ready (real handshake was 36.0326 ms)
+[KEM][SimLatency][t=0.0360461] Vehicle 197 session key simulated-ready (real handshake was 36.0461 ms)
+[KEM][SimLatency][t=0.0360933] Vehicle 106 session key simulated-ready (real handshake was 36.0933 ms)
+[KEM][SimLatency][t=0.0361057] Vehicle 80 session key simulated-ready (real handshake was 36.1057 ms)
+[KEM][SimLatency][t=0.0361156] Vehicle 92 session key simulated-ready (real handshake was 36.1156 ms)
+[KEM][SimLatency][t=0.0361357] Vehicle 105 session key simulated-ready (real handshake was 36.1357 ms)
+[KEM][SimLatency][t=0.0361384] Vehicle 87 session key simulated-ready (real handshake was 36.1384 ms)
+[KEM][SimLatency][t=0.0361625] Vehicle 194 session key simulated-ready (real handshake was 36.1625 ms)
+[KEM][SimLatency][t=0.0361638] Vehicle 52 session key simulated-ready (real handshake was 36.1638 ms)
+[KEM][SimLatency][t=0.0361699] Vehicle 178 session key simulated-ready (real handshake was 36.1699 ms)
+[KEM][SimLatency][t=0.0361991] Vehicle 69 session key simulated-ready (real handshake was 36.1991 ms)
+[KEM][SimLatency][t=0.0362407] Vehicle 5 session key simulated-ready (real handshake was 36.2407 ms)
+[KEM][SimLatency][t=0.0362408] Vehicle 171 session key simulated-ready (real handshake was 36.2408 ms)
+[KEM][SimLatency][t=0.0362864] Vehicle 108 session key simulated-ready (real handshake was 36.2864 ms)
+[KEM][SimLatency][t=0.0363045] Vehicle 140 session key simulated-ready (real handshake was 36.3045 ms)
+[KEM][SimLatency][t=0.0364494] Vehicle 93 session key simulated-ready (real handshake was 36.4494 ms)
+[KEM][SimLatency][t=0.0364664] Vehicle 132 session key simulated-ready (real handshake was 36.4664 ms)
+[KEM][SimLatency][t=0.0364954] Vehicle 166 session key simulated-ready (real handshake was 36.4954 ms)
+[KEM][SimLatency][t=0.0365876] Vehicle 168 session key simulated-ready (real handshake was 36.5876 ms)
+[KEM][SimLatency][t=0.0366589] Vehicle 177 session key simulated-ready (real handshake was 36.6589 ms)
+[KEM][SimLatency][t=0.0367831] Vehicle 43 session key simulated-ready (real handshake was 36.7831 ms)
+[KEM][SimLatency][t=0.037403] Vehicle 169 session key simulated-ready (real handshake was 37.403 ms)
+[KEM][SimLatency][t=0.0413255] Vehicle 37 session key simulated-ready (real handshake was 41.3255 ms)
+[KEM][SimLatency][t=0.0418396] Vehicle 15 session key simulated-ready (real handshake was 41.8396 ms)
+[KEM][SimLatency][t=0.0424755] Vehicle 26 session key simulated-ready (real handshake was 42.4755 ms)
+[KEM][SimLatency][t=0.0424791] Vehicle 28 session key simulated-ready (real handshake was 42.4791 ms)
+[KEM][SimLatency][t=0.0425921] Vehicle 35 session key simulated-ready (real handshake was 42.5921 ms)
+[KEM][SimLatency][t=0.0426012] Vehicle 33 session key simulated-ready (real handshake was 42.6012 ms)
+[KEM][SimLatency][t=0.0426351] Vehicle 27 session key simulated-ready (real handshake was 42.6351 ms)
+[KEM][SimLatency][t=0.0426939] Vehicle 32 session key simulated-ready (real handshake was 42.6939 ms)
+[KEM][SimLatency][t=0.0427437] Vehicle 18 session key simulated-ready (real handshake was 42.7437 ms)
+[KEM][SimLatency][t=0.0427864] Vehicle 17 session key simulated-ready (real handshake was 42.7864 ms)
+[KEM][SimLatency][t=0.0428655] Vehicle 34 session key simulated-ready (real handshake was 42.8655 ms)
+[KEM][SimLatency][t=0.0428903] Vehicle 29 session key simulated-ready (real handshake was 42.8903 ms)
+[KEM][SimLatency][t=0.0429102] Vehicle 19 session key simulated-ready (real handshake was 42.9102 ms)
+[KEM][SimLatency][t=0.0429781] Vehicle 145 session key simulated-ready (real handshake was 42.9781 ms)
+[KEM][SimLatency][t=0.042981] Vehicle 146 session key simulated-ready (real handshake was 42.981 ms)
+[KEM][SimLatency][t=0.0429869] Vehicle 31 session key simulated-ready (real handshake was 42.9868 ms)
+[KEM][SimLatency][t=0.0431219] Vehicle 30 session key simulated-ready (real handshake was 43.1219 ms)
+[KEM][SimLatency][t=0.0431566] Vehicle 25 session key simulated-ready (real handshake was 43.1566 ms)
+[KEM][SimLatency][t=0.0431691] Vehicle 147 session key simulated-ready (real handshake was 43.1691 ms)
+[KEM][SimLatency][t=0.0432258] Vehicle 16 session key simulated-ready (real handshake was 43.2258 ms)
+[KEM][SimLatency][t=0.0434097] Vehicle 144 session key simulated-ready (real handshake was 43.4097 ms)
+[KEM][SimLatency][t=0.0435049] Vehicle 20 session key simulated-ready (real handshake was 43.5049 ms)
+[KEM][SimLatency][t=0.0438535] Vehicle 22 session key simulated-ready (real handshake was 43.8535 ms)
+[KEM][SimLatency][t=0.044043] Vehicle 142 session key simulated-ready (real handshake was 44.043 ms)
+[KEM][SimLatency][t=0.0442382] Vehicle 143 session key simulated-ready (real handshake was 44.2382 ms)
+[KEM][SimLatency][t=0.0445231] Vehicle 141 session key simulated-ready (real handshake was 44.5231 ms)
+[KEM][SimLatency][t=0.0445956] Vehicle 23 session key simulated-ready (real handshake was 44.5956 ms)
+[KEM][SimLatency][t=0.0446832] Vehicle 21 session key simulated-ready (real handshake was 44.6832 ms)
+[KEM][SimLatency][t=0.0446865] Vehicle 151 session key simulated-ready (real handshake was 44.6865 ms)
+[KEM][SimLatency][t=0.044796] Vehicle 153 session key simulated-ready (real handshake was 44.796 ms)
+[KEM][SimLatency][t=0.0448212] Vehicle 154 session key simulated-ready (real handshake was 44.8212 ms)
+[KEM][SimLatency][t=0.0448302] Vehicle 150 session key simulated-ready (real handshake was 44.8302 ms)
+[KEM][SimLatency][t=0.0449927] Vehicle 152 session key simulated-ready (real handshake was 44.9927 ms)
+[KEM][SimLatency][t=0.0449991] Vehicle 158 session key simulated-ready (real handshake was 44.9991 ms)
+[KEM][SimLatency][t=0.0454632] Vehicle 157 session key simulated-ready (real handshake was 45.4632 ms)
+[KEM][SimLatency][t=0.0455266] Vehicle 149 session key simulated-ready (real handshake was 45.5266 ms)
+[KEM][SimLatency][t=0.0456829] Vehicle 24 session key simulated-ready (real handshake was 45.6829 ms)
+[KEM][SimLatency][t=0.04616] Vehicle 155 session key simulated-ready (real handshake was 46.16 ms)
+[KEM][SimLatency][t=0.047135] Vehicle 61 session key simulated-ready (real handshake was 47.135 ms)
+[KEM][SimLatency][t=0.0475854] Vehicle 156 session key simulated-ready (real handshake was 47.5854 ms)
+[KEM][SimLatency][t=0.0512565] Vehicle 198 session key simulated-ready (real handshake was 51.2565 ms)
+[KEM][SimLatency][t=0.0533653] Vehicle 60 session key simulated-ready (real handshake was 53.3653 ms)
+[KEM][SimLatency][t=0.0537203] Vehicle 148 session key simulated-ready (real handshake was 53.7203 ms)
+[KEM][SimLatency][t=0.0551286] Vehicle 165 session key simulated-ready (real handshake was 55.1286 ms)
+[KEM][SimLatency][t=0.0552489] Vehicle 186 session key simulated-ready (real handshake was 55.2489 ms)
+[KEM][SimLatency][t=0.0572767] Vehicle 44 session key simulated-ready (real handshake was 57.2767 ms)
+[KEM][SimLatency][t=0.0578667] Vehicle 164 session key simulated-ready (real handshake was 57.8667 ms)
+[KEM][SimLatency][t=0.0579324] Vehicle 163 session key simulated-ready (real handshake was 57.9324 ms)
+[KEM][SimLatency][t=0.058147] Vehicle 45 session key simulated-ready (real handshake was 58.147 ms)
+[KEM][SimLatency][t=0.0581675] Vehicle 47 session key simulated-ready (real handshake was 58.1675 ms)
+[KEM][SimLatency][t=0.0581877] Vehicle 49 session key simulated-ready (real handshake was 58.1877 ms)
+[KEM][SimLatency][t=0.0582101] Vehicle 182 session key simulated-ready (real handshake was 58.2101 ms)
+[KEM][SimLatency][t=0.0582462] Vehicle 46 session key simulated-ready (real handshake was 58.2463 ms)
+[KEM][SimLatency][t=0.0583555] Vehicle 183 session key simulated-ready (real handshake was 58.3555 ms)
+[KEM][SimLatency][t=0.0583923] Vehicle 48 session key simulated-ready (real handshake was 58.3923 ms)
+[KEM][SimLatency][t=0.058498] Vehicle 51 session key simulated-ready (real handshake was 58.498 ms)
+[KEM][SimLatency][t=0.0585964] Vehicle 50 session key simulated-ready (real handshake was 58.5964 ms)
+[KEM][SimLatency][t=0.0589938] Vehicle 185 session key simulated-ready (real handshake was 58.9938 ms)
+[KEM][SimLatency][t=0.0592601] Vehicle 184 session key simulated-ready (real handshake was 59.2601 ms)
+[KEM][SimLatency][t=0.0594578] Vehicle 162 session key simulated-ready (real handshake was 59.4578 ms)
+[KEM][SimLatency][t=0.0670291] Vehicle 159 session key simulated-ready (real handshake was 67.0291 ms)
+[KEM][SimLatency][t=0.0689004] Vehicle 160 session key simulated-ready (real handshake was 68.9004 ms)
+[KEM][SimLatency][t=0.1106] Vehicle 36 session key simulated-ready (real handshake was 110.6 ms)
+[KEM][SimLatency][t=0.146234] Vehicle 161 session key simulated-ready (real handshake was 146.234 ms)
+[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=2219255592843288841 (interval=3s)
+[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=2219255592843288841 (interval=3s)
+[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=2219255592843288841 (interval=3s)
+[TTW-S1][t=10.000]  V11 --HELLO beacon--> V38  dist=57.817m  DELIVERED
+[TTW-S1][t=10.000]  V190 --HELLO beacon--> V24  dist=67.547m  DELIVERED
+[TTW-S1][t=10.000]  V37 --HELLO beacon--> V5  dist=58.091m  DELIVERED
+[TTW-S1][t=10.000]  V201 --HELLO beacon--> V7  dist=59.125m  DELIVERED
+[TTW-S1][t=10.000]  V56 --HELLO beacon--> V14  dist=32.102m  DELIVERED
+[TTW-S1][t=10.000]  V174 --HELLO beacon--> V10  dist=98.890m  DELIVERED
+[TTW-S1][t=10.000]  V20 --HELLO beacon--> V34  dist=81.787m  DELIVERED
+[TTW-S1][t=10.000]  V135 --HELLO beacon--> V41  dist=73.926m  DELIVERED
+[TTW-S1][t=10.000]  V89 --HELLO beacon--> V27  dist=70.969m  DELIVERED
+[TTW-S1][t=10.000]  V137 --HELLO beacon--> V8  dist=9.884m  DELIVERED
+[TTW-S1][t=10.000]  V38 --HELLO beacon--> V11  dist=57.817m  DELIVERED
+[TTW-S1][t=10.000]  V168 --HELLO beacon--> V6  dist=74.400m  DELIVERED
+[TTW-S1][t=10.000]  V160 --HELLO beacon--> V39  dist=81.964m  DELIVERED
+[TTW-S1][t=10.000]  V62 --HELLO beacon--> V9  dist=97.906m  DELIVERED
+[TTW-S1][t=10.000]  V94 --HELLO beacon--> V31  dist=32.677m  DELIVERED
+[TTW-S1][t=10.000]  V34 --HELLO beacon--> V20  dist=81.787m  DELIVERED
+[TTW-S1][t=10.000]  V117 --HELLO beacon--> V23  dist=64.543m  DELIVERED
+[TTW-S1][t=10.000]  V98 --HELLO beacon--> V29  dist=44.063m  DELIVERED
+[TTW-S1][t=10.000]  V113 --HELLO beacon--> V40  dist=94.859m  DELIVERED
+[TTW-S1][t=10.000]  V61 --HELLO beacon--> V42  dist=70.224m  DELIVERED
+[TTW-S1][t=10.000]  V71 --HELLO beacon--> V16  dist=76.436m  DELIVERED
+[TTW-S1][t=10.000]  V5 --HELLO beacon--> V37  dist=58.091m  DELIVERED
+[TTW-S1][t=10.000]  V30 --HELLO beacon--> V44  dist=87.335m  DELIVERED
+[TTW-S1][t=10.000]  V15 --HELLO beacon--> V26  dist=36.526m  DELIVERED
+[TTW-S1][t=10.000]  V13 --HELLO beacon--> V32  dist=17.874m  DELIVERED
+[TTW-S1][t=10.000]  V80 --HELLO beacon--> V25  dist=75.993m  DELIVERED
+[TTW-S1][t=10.000]  V70 --HELLO beacon--> V13  dist=68.679m  DELIVERED
+[TTW-S1][t=10.000]  V82 --HELLO beacon--> V36  dist=80.010m  DELIVERED
+[TTW-S1][t=10.000]  V178 --HELLO beacon--> V43  dist=98.891m  DELIVERED
+[TTW-S1][t=10.000]  V26 --HELLO beacon--> V15  dist=36.526m  DELIVERED
+[TTW-S1][t=10.000]  V142 --HELLO beacon--> V35  dist=77.082m  DELIVERED
+[TTW-S1][t=10.000]  V105 --HELLO beacon--> V22  dist=82.737m  DELIVERED
+[TTW-S1][t=10.000]  V149 --HELLO beacon--> V17  dist=68.370m  DELIVERED
+[TTW-S1][t=10.000]  V44 --HELLO beacon--> V30  dist=87.335m  DELIVERED
+[TTW-S1][t=10.000]  V161 --HELLO beacon--> V21  dist=78.007m  DELIVERED
+[TTW-S1][t=10.000]  V199 --HELLO beacon--> V19  dist=14.356m  DELIVERED
+[TTW-S1][t=10.001]  V38 --HELLO beacon--> V11  dist=57.850m  DELIVERED
+[TTW-S1][t=10.001]  V24 --HELLO beacon--> V190  dist=67.558m  DELIVERED
+[TTW-S1][t=10.001]  V5 --HELLO beacon--> V37  dist=58.124m  DELIVERED
+[TTW-S1][t=10.001]  V7 --HELLO beacon--> V201  dist=59.131m  DELIVERED
+[TTW-S1][t=10.001]  V14 --HELLO beacon--> V56  dist=32.104m  DELIVERED
+[TTW-S1][t=10.001]  V10 --HELLO beacon--> V174  dist=98.906m  DELIVERED
+[TTW-S1][t=10.001]  V34 --HELLO beacon--> V20  dist=81.796m  DELIVERED
+[TTW-S1][t=10.001]  V41 --HELLO beacon--> V135  dist=73.912m  DELIVERED
+[TTW-S1][t=10.001]  V27 --HELLO beacon--> V89  dist=70.965m  DELIVERED
+[TTW-S1][t=10.001]  V8 --HELLO beacon--> V137  dist=9.875m  DELIVERED
+[TTW-S1][t=10.001]  V11 --HELLO beacon--> V38  dist=57.850m  DELIVERED
+[TTW-S1][t=10.001]  V6 --HELLO beacon--> V168  dist=74.426m  DELIVERED
+[TTW-S1][t=10.001]  V39 --HELLO beacon--> V160  dist=81.949m  DELIVERED
+[TTW-S1][t=10.001]  V9 --HELLO beacon--> V62  dist=97.912m  DELIVERED
+[TTW-S1][t=10.001]  V31 --HELLO beacon--> V94  dist=32.694m  DELIVERED
+[TTW-S1][t=10.001]  V20 --HELLO beacon--> V34  dist=81.796m  DELIVERED
+[TTW-S1][t=10.001]  V23 --HELLO beacon--> V117  dist=64.559m  DELIVERED
+[TTW-S1][t=10.001]  V29 --HELLO beacon--> V98  dist=44.073m  DELIVERED
+[TTW-S1][t=10.001]  V40 --HELLO beacon--> V113  dist=94.867m  DELIVERED
+[TTW-S1][t=10.001]  V42 --HELLO beacon--> V61  dist=70.241m  DELIVERED
+[TTW-S1][t=10.001]  V16 --HELLO beacon--> V71  dist=76.424m  DELIVERED
+[TTW-S1][t=10.001]  V37 --HELLO beacon--> V5  dist=58.124m  DELIVERED
+[TTW-S1][t=10.001]  V44 --HELLO beacon--> V30  dist=87.342m  DELIVERED
+[TTW-S1][t=10.001]  V26 --HELLO beacon--> V15  dist=36.514m  DELIVERED
+[TTW-S1][t=10.001]  V32 --HELLO beacon--> V13  dist=17.892m  DELIVERED
+[TTW-S1][t=10.001]  V25 --HELLO beacon--> V80  dist=76.004m  DELIVERED
+[TTW-S1][t=10.001]  V13 --HELLO beacon--> V70  dist=68.652m  DELIVERED
+[TTW-S1][t=10.001]  V36 --HELLO beacon--> V82  dist=80.005m  DELIVERED
+[TTW-S1][t=10.001]  V43 --HELLO beacon--> V178  dist=98.900m  DELIVERED
+[TTW-S1][t=10.001]  V15 --HELLO beacon--> V26  dist=36.514m  DELIVERED
+[TTW-S1][t=10.001]  V35 --HELLO beacon--> V142  dist=77.052m  DELIVERED
+[TTW-S1][t=10.001]  V22 --HELLO beacon--> V105  dist=82.739m  DELIVERED
+[TTW-S1][t=10.001]  V17 --HELLO beacon--> V149  dist=68.362m  DELIVERED
+[TTW-S1][t=10.001]  V30 --HELLO beacon--> V44  dist=87.342m  DELIVERED
+[TTW-S1][t=10.001]  V21 --HELLO beacon--> V161  dist=78.007m  DELIVERED
+[TTW-S1][t=10.001]  V19 --HELLO beacon--> V199  dist=14.350m  DELIVERED
+[TTW-S1][t=10.100]  V38 --topology update--> Controller  <V38 sees V11, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V24 --topology update--> Controller  <V24 sees V190, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V5 --topology update--> Controller  <V5 sees V37, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V7 --topology update--> Controller  <V7 sees V201, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V14 --topology update--> Controller  <V14 sees V56, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V10 --topology update--> Controller  <V10 sees V174, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V34 --topology update--> Controller  <V34 sees V20, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V41 --topology update--> Controller  <V41 sees V135, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V27 --topology update--> Controller  <V27 sees V89, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V8 --topology update--> Controller  <V8 sees V137, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V11 --topology update--> Controller  <V11 sees V38, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V6 --topology update--> Controller  <V6 sees V168, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V39 --topology update--> Controller  <V39 sees V160, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V9 --topology update--> Controller  <V9 sees V62, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V31 --topology update--> Controller  <V31 sees V94, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V20 --topology update--> Controller  <V20 sees V34, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V23 --topology update--> Controller  <V23 sees V117, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V29 --topology update--> Controller  <V29 sees V98, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V40 --topology update--> Controller  <V40 sees V113, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V42 --topology update--> Controller  <V42 sees V61, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V16 --topology update--> Controller  <V16 sees V71, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V37 --topology update--> Controller  <V37 sees V5, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V44 --topology update--> Controller  <V44 sees V30, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V26 --topology update--> Controller  <V26 sees V15, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V32 --topology update--> Controller  <V32 sees V13, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V25 --topology update--> Controller  <V25 sees V80, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V13 --topology update--> Controller  <V13 sees V70, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V36 --topology update--> Controller  <V36 sees V82, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V43 --topology update--> Controller  <V43 sees V178, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V15 --topology update--> Controller  <V15 sees V26, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V35 --topology update--> Controller  <V35 sees V142, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V22 --topology update--> Controller  <V22 sees V105, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V17 --topology update--> Controller  <V17 sees V149, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V30 --topology update--> Controller  <V30 sees V44, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V21 --topology update--> Controller  <V21 sees V161, t=10.000>  ACCEPTED
+[TTW-S1][t=10.100]  V19 --topology update--> Controller  <V19 sees V199, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V190 --topology update--> Controller  <V190 sees V24, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V201 --topology update--> Controller  <V201 sees V7, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V56 --topology update--> Controller  <V56 sees V14, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V174 --topology update--> Controller  <V174 sees V10, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V135 --topology update--> Controller  <V135 sees V41, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V89 --topology update--> Controller  <V89 sees V27, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V137 --topology update--> Controller  <V137 sees V8, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V168 --topology update--> Controller  <V168 sees V6, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V160 --topology update--> Controller  <V160 sees V39, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V62 --topology update--> Controller  <V62 sees V9, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V94 --topology update--> Controller  <V94 sees V31, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V117 --topology update--> Controller  <V117 sees V23, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V98 --topology update--> Controller  <V98 sees V29, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V113 --topology update--> Controller  <V113 sees V40, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V61 --topology update--> Controller  <V61 sees V42, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V71 --topology update--> Controller  <V71 sees V16, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V13 --topology update--> Controller  <V13 sees V32, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V80 --topology update--> Controller  <V80 sees V25, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V70 --topology update--> Controller  <V70 sees V13, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V82 --topology update--> Controller  <V82 sees V36, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V178 --topology update--> Controller  <V178 sees V43, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V142 --topology update--> Controller  <V142 sees V35, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V105 --topology update--> Controller  <V105 sees V22, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V149 --topology update--> Controller  <V149 sees V17, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V161 --topology update--> Controller  <V161 sees V21, t=10.000>  ACCEPTED
+[TTW-S1][t=10.101]  V199 --topology update--> Controller  <V199 sees V19, t=10.000>  ACCEPTED
+This is tag2. Serialized size is 256
+This is tag7. Serialized size is 676
+This is tag7. Serialized size is 676
+This is tag3. Serialized size is 340
+This is tag8. Serialized size is 760
+This is tag4. Serialized size is 424
+Current neighbor size is 2Received neighborset from 153
+This is tag3. Serialized size is 340
+This is tag8. Serialized size is 760
+This is tag1. Serialized size is 172
+This is tag2. Serialized size is 256
+This is tag5. Serialized size is 508
+This is tag1. Serialized size is 172
+This is tag6. Serialized size is 592
+This is tag5. Serialized size is 508
+This is tag10. Serialized size is 928
+This is tag6. Serialized size is 592
+This is tag2. Serialized size is 256
+This is tag7. Serialized size is 676
+This is tag9. Serialized size is 844
+This is tag8. Serialized size is 760
+This is tag5. Serialized size is 508
+This is tag3. Serialized size is 340
+This is tag5. Serialized size is 508
+This is tag5. Serialized size is 508
+This is tag4. Serialized size is 424
+This is tag4. Serialized size is 424
+This is tag2. Serialized size is 256
+This is tag8. Serialized size is 760
+This is tag9. Serialized size is 844
+This is tag2. Serialized size is 256
+This is tag7. Serialized size is 676
+This is tag2. Serialized size is 256
+This is tag2. Serialized size is 256
+This is tag2. Serialized size is 256
+This is tag8. Serialized size is 760
+This is tag6. Serialized size is 592
+This is tag5. Serialized size is 508
+This is tag6. Serialized size is 592
+Current neighbor size is 2Received neighborset from 59
+This is tag3. Serialized size is 340
+This is tag8. Serialized size is 760
+This is tag6. Serialized size is 592
+This is tag5. Serialized size is 508
+This is tag3. Serialized size is 340
+This is tag4. Serialized size is 424
+This is tag10. Serialized size is 928
+This is tag2. Serialized size is 256
+This is tag7. Serialized size is 676
+This is tag1. Serialized size is 172
+This is tag2. Serialized size is 256
+This is tag1. Serialized size is 172
+This is tag4. Serialized size is 424
+This is tag8. Serialized size is 760
+This is tag7. Serialized size is 676
+This is tag5. Serialized size is 508
+This is tag6. Serialized size is 592
+This is tag7. Serialized size is 676
+This is tag9. Serialized size is 844
+This is tag6. Serialized size is 592
+This is tag3. Serialized size is 340
+This is tag7. Serialized size is 676
+This is tag10. Serialized size is 928
+This is tag2. Serialized size is 256
+This is tag7. Serialized size is 676
+This is tag5. Serialized size is 508
+This is tag11. Serialized size is 1012
+This is tag8. Serialized size is 760
+This is tag7. Serialized size is 676
+This is tag3. Serialized size is 340
+This is tag5. Serialized size is 508
+This is tag4. Serialized size is 424
+This is tag5. Serialized size is 508
+This is tag10. Serialized size is 928
+This is tag10. Serialized size is 928
+This is tag2. Serialized size is 256
+This is tag7. Serialized size is 676
+This is tag3. Serialized size is 340
+This is tag2. Serialized size is 256
+This is tag4. Serialized size is 424
+This is tag4. Serialized size is 424
+This is tag5. Serialized size is 508
+This is tag3. Serialized size is 340
+This is tag10. Serialized size is 928
+This is tag2. Serialized size is 256
+This is tag5. Serialized size is 508
+This is tag8. Serialized size is 760
+This is tag2. Serialized size is 256
+This is tag5. Serialized size is 508
+This is tag8. Serialized size is 760
+This is tag10. Serialized size is 928
+This is tag1. Serialized size is 172
+This is tag7. Serialized size is 676
+This is tag8. Serialized size is 760
+This is tag10. Serialized size is 928
+This is tag4. Serialized size is 424
+This is tag7. Serialized size is 676
+This is tag2. Serialized size is 256
+This is tag8. Serialized size is 760
+This is tag1. Serialized size is 172
+This is tag8. Serialized size is 760
+This is tag4. Serialized size is 424
+This is tag5. Serialized size is 508
+This is tag4. Serialized size is 424
+This is tag5. Serialized size is 508
+This is tag7. Serialized size is 676
+This is tag2. Serialized size is 256
+This is tag6. Serialized size is 592
+This is tag7. Serialized size is 676
+This is tag5. Serialized size is 508
+This is tag3. Serialized size is 340
+This is tag4. Serialized size is 424
+This is tag3. Serialized size is 340
+This is tag7. Serialized size is 676
+This is tag11. Serialized size is 1012
+This is tag7. Serialized size is 676
+This is tag1. Serialized size is 172
+This is tag4. Serialized size is 424
+This is tag5. Serialized size is 508
+This is tag7. Serialized size is 676
+This is tag4. Serialized size is 424
+This is tag5. Serialized size is 508
+[TTW-S1][t=10.180]  V31 stored old packet <V31 sees V94, t=10.000>  (will replay at t~=15.300)
+[TTW-S1][t=10.183]  V20 stored old packet <V20 sees V34, t=10.000>  (will replay at t~=13.700)
+[TTW-S1][t=10.186]  V17 stored old packet <V17 sees V149, t=10.000>  (will replay at t~=19.500)
+[TTW-S1][t=10.186]  V27 stored old packet <V27 sees V89, t=10.000>  (will replay at t~=25.500)
+[TTW-S1][t=10.187]  V39 stored old packet <V39 sees V160, t=10.000>  (will replay at t~=18.900)
+[TTW-S1][t=10.187]  V43 stored old packet <V43 sees V178, t=10.000>  (will replay at t~=12.500)
+[TTW-S1][t=10.188]  V21 stored old packet <V21 sees V161, t=10.000>  (will replay at t~=27.000)
+[TTW-S1][t=10.189]  V13 stored old packet <V13 sees V70, t=10.000>  (will replay at t~=17.900)
+[TTW-S1][t=10.189]  V29 stored old packet <V29 sees V98, t=10.000>  (will replay at t~=15.700)
+[TTW-S1][t=10.191]  V24 stored old packet <V24 sees V190, t=10.000>  (will replay at t~=15.100)
+[TTW-S1][t=10.194]  V5 stored old packet <V5 sees V37, t=10.000>  (will replay at t~=13.300)
+[TTW-S1][t=10.195]  V19 stored old packet <V19 sees V199, t=10.000>  (will replay at t~=27.000)
+[TTW-S1][t=10.197]  V22 stored old packet <V22 sees V105, t=10.000>  (will replay at t~=21.900)
+[TTW-S1][t=10.197]  V8 stored old packet <V8 sees V137, t=10.000>  (will replay at t~=18.500)
+[TTW-S1][t=10.198]  V16 stored old packet <V16 sees V71, t=10.000>  (will replay at t~=16.700)
+[TTW-S1][t=10.202]  V32 stored old packet <V32 sees V13, t=10.000>  (will replay at t~=18.100)
+[TTW-S1][t=10.202]  V37 stored old packet <V37 sees V5, t=10.000>  (will replay at t~=13.300)
+[TTW-S1][t=10.204]  V10 stored old packet <V10 sees V174, t=10.000>  (will replay at t~=12.500)
+[TTW-S1][t=10.205]  V34 stored old packet <V34 sees V20, t=10.000>  (will replay at t~=13.700)
+[TTW-S1][t=10.205]  V41 stored old packet <V41 sees V135, t=10.000>  (will replay at t~=22.300)
+[TTW-S1][t=10.205]  V7 stored old packet <V7 sees V201, t=10.000>  (will replay at t~=16.700)
+[TTW-S1][t=10.206]  V40 stored old packet <V40 sees V113, t=10.000>  (will replay at t~=12.900)
+[TTW-S1][t=10.208]  V6 stored old packet <V6 sees V168, t=10.000>  (will replay at t~=13.100)
+[TTW-S1][t=10.209]  V44 stored old packet <V44 sees V30, t=10.000>  (will replay at t~=13.300)
+[TTW-S1][t=10.209]  V11 stored old packet <V11 sees V38, t=10.000>  (will replay at t~=13.300)
+[TTW-S1][t=10.209]  V26 stored old packet <V26 sees V15, t=10.000>  (will replay at t~=16.300)
+[TTW-S1][t=10.213]  V15 stored old packet <V15 sees V26, t=10.000>  (will replay at t~=16.300)
+[TTW-S1][t=10.214]  V35 stored old packet <V35 sees V142, t=10.000>  (will replay at t~=20.500)
+[TTW-S1][t=10.215]  V42 stored old packet <V42 sees V61, t=10.000>  (will replay at t~=13.900)
+[TTW-S1][t=10.216]  V38 stored old packet <V38 sees V11, t=10.000>  (will replay at t~=13.300)
+[TTW-S1][t=10.216]  V36 stored old packet <V36 sees V82, t=10.000>  (will replay at t~=18.500)
+[TTW-S1][t=10.216]  V30 stored old packet <V30 sees V44, t=10.000>  (will replay at t~=13.300)
+[TTW-S1][t=10.216]  V25 stored old packet <V25 sees V80, t=10.000>  (will replay at t~=14.300)
+[TTW-S1][t=10.218]  V9 stored old packet <V9 sees V62, t=10.000>  (will replay at t~=12.500)
+[TTW-S1][t=10.219]  V23 stored old packet <V23 sees V117, t=10.000>  (will replay at t~=14.300)
+[TTW-S1][t=10.220]  V14 stored old packet <V14 sees V56, t=10.000>  (will replay at t~=19.100)
+[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=2219255592843288841 (interval=3.000s)
+[TTW-S1][t=12.487]  Pipeline armed: 39 attacker(s)
+    attacker NS3-ID=5 -> victim NS3-ID=171
+    attacker NS3-ID=6 -> victim NS3-ID=18
+    attacker NS3-ID=7 -> victim NS3-ID=65
+    attacker NS3-ID=8 -> victim NS3-ID=118
+    attacker NS3-ID=9 -> victim NS3-ID=93
+    attacker NS3-ID=10 -> victim NS3-ID=72
+    attacker NS3-ID=11 -> victim NS3-ID=101
+    attacker NS3-ID=12 -> victim NS3-ID=158
+    attacker NS3-ID=13 -> victim NS3-ID=46
+    attacker NS3-ID=14 -> victim NS3-ID=167
+    attacker NS3-ID=15 -> victim NS3-ID=196
+    attacker NS3-ID=16 -> victim NS3-ID=71
+    attacker NS3-ID=17 -> victim NS3-ID=182
+    attacker NS3-ID=18 -> victim NS3-ID=179
+    attacker NS3-ID=19 -> victim NS3-ID=199
+    attacker NS3-ID=20 -> victim NS3-ID=75
+    attacker NS3-ID=21 -> victim NS3-ID=180
+    attacker NS3-ID=22 -> victim NS3-ID=105
+    attacker NS3-ID=23 -> victim NS3-ID=57
+    attacker NS3-ID=24 -> victim NS3-ID=109
+    attacker NS3-ID=25 -> victim NS3-ID=204
+    attacker NS3-ID=26 -> victim NS3-ID=138
+    attacker NS3-ID=27 -> victim NS3-ID=107
+    attacker NS3-ID=28 -> victim NS3-ID=92
+    attacker NS3-ID=29 -> victim NS3-ID=116
+    attacker NS3-ID=30 -> victim NS3-ID=139
+    attacker NS3-ID=31 -> victim NS3-ID=136
+    attacker NS3-ID=32 -> victim NS3-ID=51
+    attacker NS3-ID=34 -> victim NS3-ID=186
+    attacker NS3-ID=35 -> victim NS3-ID=175
+    attacker NS3-ID=36 -> victim NS3-ID=144
+    attacker NS3-ID=37 -> victim NS3-ID=143
+    attacker NS3-ID=38 -> victim NS3-ID=169
+    attacker NS3-ID=39 -> victim NS3-ID=77
+    attacker NS3-ID=40 -> victim NS3-ID=69
+    attacker NS3-ID=41 -> victim NS3-ID=87
+    attacker NS3-ID=42 -> victim NS3-ID=61
+    attacker NS3-ID=43 -> victim NS3-ID=121
+    attacker NS3-ID=44 -> victim NS3-ID=176
+[TTW-S1][t=12.488]  V43 --FORGED replay--> Controller  <V43 sees V178, t=12.488>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=118.224m)
+[TTW-S1][t=12.488]  *** ATTACK COMPLETE ***  ghost link V43<->V178 injected into controller table
+[TTW-S1][t=12.488]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 1/200 >= t=101 -> FAIL
+[TTW-S1][t=12.488]  FS-MITIGATE ABORTED (gate failed)  attacker=V43
+[TTW-S1][t=12.492]  V10 --FORGED replay--> Controller  <V10 sees V174, t=12.492>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=140.665m)
+[TTW-S1][t=12.492]  *** ATTACK COMPLETE ***  ghost link V10<->V174 injected into controller table
+[TTW-S1][t=12.492]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 2/200 >= t=101 -> FAIL
+[TTW-S1][t=12.492]  FS-MITIGATE ABORTED (gate failed)  attacker=V10
+[TTW-S1][t=12.495]  V9 --FORGED replay--> Controller  <V9 sees V62, t=12.495>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=116.127m)
+[TTW-S1][t=12.495]  *** ATTACK COMPLETE ***  ghost link V9<->V62 injected into controller table
+[TTW-S1][t=12.495]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 3/200 >= t=101 -> FAIL
+[TTW-S1][t=12.495]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=5 injected forged neighbor=171 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=6 injected forged neighbor=18 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=7 injected forged neighbor=65 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=8 injected forged neighbor=118 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=9 injected forged neighbor=93 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=10 injected forged neighbor=72 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=11 injected forged neighbor=101 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=12 injected forged neighbor=158 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=13 injected forged neighbor=46 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=14 injected forged neighbor=167 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=15 injected forged neighbor=196 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=16 injected forged neighbor=71 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=17 injected forged neighbor=182 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=18 injected forged neighbor=179 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=19 injected forged neighbor=199 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=20 injected forged neighbor=75 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=21 injected forged neighbor=180 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=22 injected forged neighbor=105 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=23 injected forged neighbor=57 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=24 injected forged neighbor=109 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=25 injected forged neighbor=204 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=26 injected forged neighbor=138 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=27 injected forged neighbor=107 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=28 injected forged neighbor=92 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=29 injected forged neighbor=116 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=30 injected forged neighbor=139 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=31 injected forged neighbor=136 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=32 injected forged neighbor=51 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=34 injected forged neighbor=186 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=35 injected forged neighbor=175 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=36 injected forged neighbor=144 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=37 injected forged neighbor=143 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=38 injected forged neighbor=169 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=39 injected forged neighbor=77 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=40 injected forged neighbor=69 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=41 injected forged neighbor=87 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=42 injected forged neighbor=61 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=43 injected forged neighbor=121 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.500]  PIPELINE: NS3-ID=44 injected forged neighbor=176 into controller con_data_inst via UDP/7777
+[TTW-S1][t=12.913]  V40 --FORGED replay--> Controller  <V40 sees V113, t=12.913>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=120.140m)
+[TTW-S1][t=12.913]  *** ATTACK COMPLETE ***  ghost link V40<->V113 injected into controller table
+[TTW-S1][t=12.913]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 4/200 >= t=101 -> FAIL
+[TTW-S1][t=12.913]  FS-MITIGATE ABORTED (gate failed)  attacker=V40
+This is tag3. Serialized size is 340
+[TTW-S1][t=13.101]  V6 --FORGED replay--> Controller  <V6 sees V168, t=13.101>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=168.765m)
+[TTW-S1][t=13.101]  *** ATTACK COMPLETE ***  ghost link V6<->V168 injected into controller table
+[TTW-S1][t=13.101]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 5/200 >= t=101 -> FAIL
+[TTW-S1][t=13.101]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
+This is tag2. Serialized size is 256
+[TTW-S1][t=13.270]  V37 --FORGED replay--> Controller  <V37 sees V5, t=13.270>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=166.397m)
+[TTW-S1][t=13.270]  *** ATTACK COMPLETE ***  ghost link V37<->V5 injected into controller table
+[TTW-S1][t=13.270]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 6/200 >= t=101 -> FAIL
+[TTW-S1][t=13.270]  FS-MITIGATE ABORTED (gate failed)  attacker=V37
+[TTW-S1][t=13.287]  V30 --FORGED replay--> Controller  <V30 sees V44, t=13.287>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=146.069m)
+[TTW-S1][t=13.287]  *** ATTACK COMPLETE ***  ghost link V30<->V44 injected into controller table
+[TTW-S1][t=13.287]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 7/200 >= t=101 -> FAIL
+[TTW-S1][t=13.287]  FS-MITIGATE ABORTED (gate failed)  attacker=V30
+[TTW-S1][t=13.295]  V11 --FORGED replay--> Controller  <V11 sees V38, t=13.295>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=166.597m)
+[TTW-S1][t=13.295]  *** ATTACK COMPLETE ***  ghost link V11<->V38 injected into controller table
+[TTW-S1][t=13.295]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 8/200 >= t=101 -> FAIL
+[TTW-S1][t=13.295]  FS-MITIGATE ABORTED (gate failed)  attacker=V11
+[TTW-S1][t=13.305]  V5 --FORGED replay--> Controller  <V5 sees V37, t=13.305>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=167.551m)
+[TTW-S1][t=13.305]  *** ATTACK COMPLETE ***  ghost link V5<->V37 injected into controller table
+[TTW-S1][t=13.305]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 9/200 >= t=101 -> FAIL
+[TTW-S1][t=13.305]  FS-MITIGATE ABORTED (gate failed)  attacker=V5
+[TTW-S1][t=13.305]  V38 --FORGED replay--> Controller  <V38 sees V11, t=13.305>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=166.943m)
+[TTW-S1][t=13.305]  *** ATTACK COMPLETE ***  ghost link V38<->V11 injected into controller table
+[TTW-S1][t=13.305]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 10/200 >= t=101 -> FAIL
+[TTW-S1][t=13.305]  FS-MITIGATE ABORTED (gate failed)  attacker=V38
+This is tag3. Serialized size is 340
+This is tag4. Serialized size is 424
+[TTW-S1][t=13.334]  V44 --FORGED replay--> Controller  <V44 sees V30, t=13.334>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=146.906m)
+[TTW-S1][t=13.334]  *** ATTACK COMPLETE ***  ghost link V44<->V30 injected into controller table
+[TTW-S1][t=13.334]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 11/200 >= t=101 -> FAIL
+[TTW-S1][t=13.334]  FS-MITIGATE ABORTED (gate failed)  attacker=V44
+[TTW-S1][t=13.690]  V34 --FORGED replay--> Controller  <V34 sees V20, t=13.690>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=134.327m)
+[TTW-S1][t=13.690]  *** ATTACK COMPLETE ***  ghost link V34<->V20 injected into controller table
+[TTW-S1][t=13.690]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 12/200 >= t=101 -> FAIL
+[TTW-S1][t=13.690]  FS-MITIGATE ABORTED (gate failed)  attacker=V34
+[TTW-S1][t=13.739]  V20 --FORGED replay--> Controller  <V20 sees V34, t=13.739>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=135.137m)
+[TTW-S1][t=13.739]  *** ATTACK COMPLETE ***  ghost link V20<->V34 injected into controller table
+[TTW-S1][t=13.739]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_THRESHOLD_SIG 13/200 >= t=101 -> FAIL
+[TTW-S1][t=13.739]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
+[TTW-S1][t=13.907]  V42 --FORGED replay--> Controller  <V42 sees V61, t=13.907>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=135.196m)
+[TTW-S1][t=13.907]  *** ATTACK COMPLETE ***  ghost link V42<->V61 injected into controller table
+[TTW-S1][t=13.907]  FS-MITIGATE gate: PBFT n=
