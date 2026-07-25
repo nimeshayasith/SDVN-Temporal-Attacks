@@ -1790,6 +1790,20 @@ bool has_RSU_infrastructure   = false;  // true for scenarios 01, 02
 // attack_percentage: fraction of vehicle nodes (0–100) that behave maliciously.
 // controller_malicious_assumption: when true, controllers may also be malicious.
 uint32_t attack_percentage             = 20;
+// rinj (Eq. 4.24-4.25) manual override: by default rinj is derived directly
+// from attack_percentage (rinj = attack_percentage/100), coupling "how many
+// vehicles are malicious" and "how intensely each one attacks" to the same
+// single knob. This lets rinj be set independently instead -- e.g. a small,
+// fixed attacker count that each attacks at full intensity, or a large
+// attacker count deliberately throttled low -- without changing which/how
+// many vehicles get selected as attackers (attacker COUNT calculations
+// elsewhere still read attack_percentage directly, untouched by this).
+// Sentinel -1.0 = "not set", preserving the original coupled behavior
+// exactly; only takes effect when explicitly passed via --rinj.
+double g_rinj_override = -1.0;
+static inline double EffectiveRinj() {
+    return (g_rinj_override >= 0.0) ? g_rinj_override : (attack_percentage / 100.0);
+}
 // PDF §Table 4.10 (canonical TGN validation dataset generation) explicitly
 // states "attack activation probability = 1.0" for the final reported
 // model's training data -- the prior 0.75 default silently deviated from
@@ -2086,15 +2100,19 @@ std::map<uint32_t, HeartbeatPacket> bshh_stored_heartbeats;
 std::map<uint32_t, std::string> bshh_s1_pair_logs;
 uint32_t bshh_s1_completed_pairs = 0;
 uint32_t bshh_s1_total_pairs = 0;
+bool bshh_s1_already_flushed = false;
 std::map<uint32_t, std::string> bshh_s2_pair_logs;
 uint32_t bshh_s2_completed_pairs = 0;
 uint32_t bshh_s2_total_pairs = 0;
+bool bshh_s2_already_flushed = false;
 std::map<uint32_t, std::string> bshh_s3_pair_logs;
 uint32_t bshh_s3_completed_pairs = 0;
 uint32_t bshh_s3_total_pairs = 0;
+bool bshh_s3_already_flushed = false;
 std::map<uint32_t, std::string> bshh_s4_pair_logs;
 uint32_t bshh_s4_completed_pairs = 0;
 uint32_t bshh_s4_total_pairs = 0;
+bool bshh_s4_already_flushed = false;
 std::ofstream   bshh_log;
 
 // ── ME globals ────────────────────────────────────────────────────────────────
@@ -2311,14 +2329,29 @@ static bool g_enable_neighborhood_beaconing = true;
 //   TTW-S2  basic  = physical ≠ claimed      → Step 1 (MAC, Eq. 3.15) drops
 //   TTW-S2  soph.  = physical=claimed=V1     → Steps 1-3 pass (key compromise)
 //   BSHH-S1/S2 same pattern as TTW-S2
-//   ME-S1/S2 have NO basic/sophisticated split at all -- removed from this
-//   mapping (was stale/aspirational, never implemented). ME's actual defense
-//   is location-binding + quorum (Eqs. 3.29-3.32), evaluated as a Stage-1/
-//   TGN detection signature AFTER logging, not a Stage-0 signing-key gate a
-//   sophistication roll could pass/fail before the event is ever recorded.
-//   See ME_S1_EchoAttack's and ME_S2_InjectEchoReports's own "does not model
-//   a sophisticated/basic split" comments -- both call PemEmitEvent
-//   unconditionally on every injection, with attack_label=true always.
+//   ME-S1/S2 have NO g_attacker_sophistication_prob COIN-FLIP roll (correct,
+//   per ME_S1_EchoAttack's/ME_S2_InjectEchoReports's own comments -- both
+//   call PemEmitEvent unconditionally). CORRECTION (previously wrongly
+//   deleted from this file as "stale/aspirational" -- it is not): a REAL,
+//   DETERMINISTIC Stage-0 gate for ME echoes does exist -- Step 1b in
+//   teta_guard_filter.h's TetaGuardCryptoFilter (Eqs. 3.29-3.32,
+//   TetaGuardLocBindVerify), which runs for every third-party witness claim
+//   (claimed_sender_id differs from both link endpoints) BEFORE Stage-1/TGN
+//   ever sees the event, not after:
+//   ME-S1/S2 basic  = reporter's genuine SUMO position out of R_COMM_METERS
+//                      of the claimed link -> Step 1b gate (ii) rejects,
+//                      silent drop, never logged
+//   ME-S1/S2 soph.  = reporter genuinely within range (or an attacker with
+//                      valid keys forging a still-plausible in-range
+//                      position) -> Step 1b passes -> reaches LW+TGN
+//   Confirmed via live tracing (2026-07-25): ME-S1's echo-attacker pool is
+//   selected by pure random shuffle across all N_Vehicles with no bias
+//   toward the real link's location, so nearly all candidates are
+//   genuinely too far away and correctly fail gate (ii) -- explaining why
+//   ME-S1's logged event volume was far below TTW-S1's for the same
+//   attack_percentage. This is the SAME class of "basic vs sophisticated"
+//   split TTW-S1/S2 and BSHH-S1/S2 have, just resolved by genuine
+//   geometry instead of a probability roll.
 static double g_attacker_sophistication_prob = 0.5;
 static Ptr<UniformRandomVariable> g_attacker_rng;   // initialised in main() before simulation
 
@@ -9622,10 +9655,6 @@ AttackScheduleRepeatedInjection(double firstInjectionTime, double simTimeEnd,
 // Implementation note: NS-3.35's Simulator::Schedule/MakeEvent template
 // machinery does not accept a raw lambda closure directly (confirmed via
 // build failure: "no matching function for call to MakeEvent(...<lambda>&)")
-// Temporary diagnostic toggle (ME-S1 over-injection investigation) -- prints
-// the live counter state AttackScheduleAdaptiveInjection's tick reads on
-// every fire. Off by default; flip to true only for a targeted debug run.
-static bool g_debugAdaptiveInjection = true;
 // and separately has a bounded argument arity that a template function
 // pointer threading func+args through a recursive reschedule call exceeded
 // for this file's longer-argument-list injection functions. Both problems
@@ -9656,14 +9685,28 @@ AttackScheduleAdaptiveInjection(uint32_t physicalSenderId, double firstInjection
         auto& counts = g_attackerEventCounts[physicalSenderId];
         const uint32_t attackCount = counts.first;
         const uint32_t totalCount  = counts.second;
-        // Bootstrap (no observations yet for this vehicle): allow, so a
-        // never-before-seen attacker isn't permanently blocked by a 0/0 check.
+        // Bug fix (rinj structural floor, confirmed live: a --rinj=0.01
+        // target converged only to ~31% at typical runtimes, not anywhere
+        // close to 1%). The old bootstrap unconditionally allowed a brand-
+        // new attacker's very first tick regardless of rinj (needed so a
+        // 0/0 check doesn't permanently silence every attacker -- 0 <
+        // rinj*0 is always false) -- but "always allow" is itself a 100%
+        // rate, completely ignoring whatever rinj was actually requested.
+        // For a low target like 1%, that one guaranteed hit becomes the
+        // dominant contributor to the observed ratio until totalCount
+        // grows into the hundreds (best achievable ratio is roughly
+        // 1/totalCount while that forced hit remains uncounterbalanced),
+        // which real runs rarely reach. Fixed by making the bootstrap
+        // itself a probabilistic roll AT rinj's own rate (AttackRoll,
+        // already used the same way elsewhere in this file) instead of an
+        // unconditional allow -- a brand-new attacker's first tick now
+        // respects the target intensity from the start, at rinj=1.0 this
+        // is identical to the old always-allow behavior (AttackRoll(1.0)
+        // is unconditionally true), so nothing changes for existing runs
+        // that never passed --rinj.
         const bool shouldInject =
-            (totalCount == 0) || ((double)attackCount < rinj * (double)totalCount);
-        if (g_debugAdaptiveInjection)
-            std::cout << "[DEBUG-ADAPTIVE] t=" << now << " id=" << physicalSenderId
-                      << " attackCount=" << attackCount << " totalCount=" << totalCount
-                      << " rinj=" << rinj << " shouldInject=" << shouldInject << std::endl;
+            (totalCount == 0) ? AttackRoll(rinj)
+                               : ((double)attackCount < rinj * (double)totalCount);
         if (shouldInject)
         {
             func(args...);
@@ -10421,6 +10464,44 @@ MeReorderEchoCandidatesByDistanceRatio(const std::vector<uint32_t>& pool,
               << "m — reordered " << result.size() << " candidates by proximity to target"
               << " (closest: V" << Vehicle_Nodes.Get(result[0])->GetId()
               << " at " << PemDistance2d(TtwSumoPositionAt(result[0], atTime), mid) << "m)\n";
+    return result;
+}
+
+// rinj/event-volume fix (ME-S1): default (non-ablation) reorder of the echo-
+// attacker candidate pool by proximity to the real link's midpoint, closest
+// first. Root cause this addresses: teta_guard_filter.h's Stage-0 Step 1b
+// (Eqs. 3.29-3.32, TetaGuardLocBindVerify) genuinely rejects any third-party
+// witness report whose reporter's real SUMO position is outside
+// kEffectiveReceptionRadius of the claimed link -- confirmed via live
+// tracing that this drops ~100% of ME-S1's echo events when candidates are
+// selected by pure random shuffle with no positional bias, since most
+// vehicles across a full N_Vehicles map are simply nowhere near any one
+// specific link. Per the design doc's own narrative ("V3 and V4 are within
+// overhearing range... no direct link"), echo attackers are SUPPOSED to be
+// near the link, not uniformly random across the whole map -- this does not
+// fabricate anything or change ground truth, it only picks WHICH of the
+// already-designated malicious vehicles get used for which group first, so
+// groups that can plausibly witness the link (and therefore generate a
+// realistic mix of Stage-0-pass/fail outcomes, matching TTW-S1/BSHH-S1's own
+// basic/sophisticated split) are tried before ones that structurally cannot.
+// A no-op wrapper around the A7 ablation reorder above with ratio=1.0
+// (target distance = kEffectiveReceptionRadius, i.e. "as close to the edge
+// of range as possible" would also work, but plain nearest-first is simpler
+// and does not depend on the A7 flag being unset).
+static std::vector<uint32_t>
+MeReorderEchoCandidatesByLinkProximity(const std::vector<uint32_t>& pool,
+                                        uint32_t v1_cidx, uint32_t v2_cidx,
+                                        double atTime)
+{
+    if (pool.empty()) return pool;
+    const Vector p1 = TtwSumoPositionAt(v1_cidx, atTime);
+    const Vector p2 = TtwSumoPositionAt(v2_cidx, atTime);
+    const Vector mid((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0, 0.0);
+    std::vector<uint32_t> result = pool;
+    std::sort(result.begin(), result.end(), [&](uint32_t a, uint32_t b) {
+        return PemDistance2d(TtwSumoPositionAt(a, atTime), mid)
+             < PemDistance2d(TtwSumoPositionAt(b, atTime), mid);
+    });
     return result;
 }
 
@@ -12070,6 +12151,7 @@ void BSHH_S1_InitLog()
     NS_LOG_INFO("[BSHH-S1] Log opened: bshh_s1_attack_log.txt");
     bshh_s1_pair_logs.clear();
     bshh_s1_completed_pairs = 0;
+    bshh_s1_already_flushed = false;
 }
 
 void BSHH_S1_StoreOldHeartbeat(uint32_t attacker_id, uint32_t victim_id, double stored_time)
@@ -12372,9 +12454,13 @@ void BSHH_S1_LogFaultyRoutingConsequences(uint32_t attacker_id, uint32_t victim_
     bshh_s1_pair_logs[attacker_id] += ss.str();
     
     bshh_s1_completed_pairs++;
-    if (bshh_s1_completed_pairs >= bshh_s1_total_pairs) {
+    // Bug fix (same runaway-flush class as BSHH-S2 -- see its fix comment):
+    // one-time-flush guard so an extra call beyond total_pairs can't keep
+    // re-flushing the whole map on every subsequent call.
+    if (!bshh_s1_already_flushed && bshh_s1_completed_pairs >= bshh_s1_total_pairs) {
         for (auto& p : bshh_s1_pair_logs) bshh_log << p.second;
         bshh_log.flush();
+        bshh_s1_already_flushed = true;
     }
 }
 
@@ -12396,6 +12482,7 @@ void BSHH_S2_InitLog()
     NS_LOG_INFO("[BSHH-S2] Log opened: bshh_s2_attack_log.txt");
     bshh_s2_pair_logs.clear();
     bshh_s2_completed_pairs = 0;
+    bshh_s2_already_flushed = false;
 }
 
 
@@ -12610,9 +12697,26 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
 
 
     bshh_s2_completed_pairs++;
-    if (bshh_s2_completed_pairs >= bshh_s2_total_pairs) {
+    // Bug fix (root cause of the 194MB/s -> multi-GB/s runaway growth,
+    // confirmed live across three separate incidents): this used ">=" with
+    // no "already flushed" guard. If BSHH_S2_ReplayAttack is EVER called
+    // even one time more than bshh_s2_total_pairs anticipated (from
+    // whatever upstream duplicate-scheduling condition causes an extra
+    // call), completed_pairs permanently exceeds total_pairs, and this
+    // condition stays true for every remaining call for the rest of the
+    // 60s run -- each one re-flushing the ENTIRE, still-growing
+    // bshh_s2_pair_logs map to the file again from scratch. That produces
+    // an ACCELERATING write pattern (each flush strictly larger than the
+    // last, since the map never gets cleared), not a one-time dump --
+    // exactly the multi-GB bursts measured live. A flush should only ever
+    // happen once. This is a safety-net fix independent of whatever
+    // upstream mechanism causes the extra call(s) -- it bounds the damage
+    // to "some extra accumulated text in the map" instead of "unbounded
+    // repeated disk writes," regardless of root cause.
+    if (!bshh_s2_already_flushed && bshh_s2_completed_pairs >= bshh_s2_total_pairs) {
         for (auto& p : bshh_s2_pair_logs) bshh_log << p.second;
         bshh_log.flush();
+        bshh_s2_already_flushed = true;
     }
 
     NS_LOG_INFO("[BSHH-S2] t=" << now << "s  " << rsuLabel
@@ -12685,13 +12789,24 @@ void BSHH_S2_ReplayAttack(uint32_t rsu_id, uint32_t victim_id, double stored_tim
         bshh_controller_liveness_table.erase(victim_id);
         CryptoMeasureLKH(now, victim_id, N_Vehicles);
         std::string mit = PemApplyMitigation(rsu_id, now, "BSHH-S2");
-        for (auto& p : bshh_s2_pair_logs) {
-            p.second += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION\n"
-                        "  RSU heartbeat replay detected  victim=V" + std::to_string(victim_id) + "\n"
-                        "  Score: " + std::to_string(pem_last_detection_score) + "\n"
-                        "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
-                        + mit + "\n";
-        }
+        // Bug fix (runaway log growth, confirmed live: 194 MB/s, 41GB+ in one
+        // run): this used to loop over EVERY accumulated entry in
+        // bshh_s2_pair_logs and append the same detection block to all of
+        // them, instead of just this event's own rsu_id entry. Every RSU
+        // that had EVER been logged before got a copy of every subsequent
+        // detection event appended too, so the total log volume grew
+        // combinatorially (entries x events), not linearly with genuine
+        // attack activity -- worst at attack_percentage=100 where the most
+        // RSUs are active and quorum never converges (BFT threshold
+        // crossed), so this runs continuously for the whole 60s. Appending
+        // only to this event's own rsu_id entry matches every other write
+        // to bshh_s2_pair_logs in this function (all keyed on rsu_id).
+        bshh_s2_pair_logs[rsu_id] +=
+            "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION\n"
+            "  RSU heartbeat replay detected  victim=V" + std::to_string(victim_id) + "\n"
+            "  Score: " + std::to_string(pem_last_detection_score) + "\n"
+            "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
+            + mit + "\n";
     }
 }
 
@@ -12719,6 +12834,7 @@ void BSHH_S3_InitLog()
     NS_LOG_INFO("[BSHH-S3] Log opened: bshh_s3_attack_log.txt");
     bshh_s3_pair_logs.clear();
     bshh_s3_completed_pairs = 0;
+    bshh_s3_already_flushed = false;
 }
 
 
@@ -12871,9 +12987,12 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     bshh_s3_pair_logs[ctrl_idx] += ss.str();
 
     bshh_s3_completed_pairs++;
-    if (bshh_s3_completed_pairs >= bshh_s3_total_pairs) {
+    // Bug fix (same runaway-flush class as BSHH-S2 -- see its fix comment):
+    // one-time-flush guard.
+    if (!bshh_s3_already_flushed && bshh_s3_completed_pairs >= bshh_s3_total_pairs) {
         for (auto& p : bshh_s3_pair_logs) bshh_log << p.second;
         bshh_log.flush();
+        bshh_s3_already_flushed = true;
     }
 
     NS_LOG_INFO("[BSHH-S3] t=" << now << "s  " << ctrlLabel
@@ -12926,10 +13045,11 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         const bool ctrlAlreadyRevoked7 =
             g_trust_table.count(ctrlCheckId7) && g_trust_table.at(ctrlCheckId7).flagged;
         if (ctrlAlreadyRevoked7) {
-            for (auto& p : bshh_s3_pair_logs) {
-                p.second += "[t=" + std::to_string(now) + "]  Controller C_" + std::to_string(ctrlCheckId7)
-                            + " already revoked/quarantined — detection recorded, no new mitigation action taken\n";
-            }
+            // Bug fix (same runaway-growth class as BSHH-S2, see its fix
+            // comment): append only to this event's own ctrl_idx entry, not
+            // every accumulated entry in bshh_s3_pair_logs.
+            bshh_s3_pair_logs[ctrl_idx] += "[t=" + std::to_string(now) + "]  Controller C_" + std::to_string(ctrlCheckId7)
+                        + " already revoked/quarantined — detection recorded, no new mitigation action taken\n";
         } else {
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s7 = (controller_Node.GetN() > 0)
@@ -12947,14 +13067,14 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         trust_s7 = ctrl_div_log_s7 + trust_s7;
         TrustRunDemotionPipeline(now);
         std::string mit = PemApplyMitigation(v1_id, now, "BSHH-S3");
-        for (auto& p : bshh_s3_pair_logs) {
-            p.second += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION"
-                        + std::string(lwTgnAlert_s7 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") + "\n"
-                        "  Controller internal HB replay detected\n"
-                        "  Score: " + std::to_string(pem_last_detection_score) + "\n"
-                        "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
-                        + mit + trust_s7 + "\n";
-        }
+        // Bug fix (same runaway-growth class as BSHH-S2): append only to
+        // this event's own ctrl_idx entry, not every entry in the map.
+        bshh_s3_pair_logs[ctrl_idx] += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION"
+                    + std::string(lwTgnAlert_s7 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") + "\n"
+                    "  Controller internal HB replay detected\n"
+                    "  Score: " + std::to_string(pem_last_detection_score) + "\n"
+                    "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
+                    + mit + trust_s7 + "\n";
         }
     }
 }
@@ -12982,6 +13102,7 @@ void BSHH_S4_InitLog()
     NS_LOG_INFO("[BSHH-S4] Log opened: bshh_s4_attack_log.txt");
     bshh_s4_pair_logs.clear();
     bshh_s4_completed_pairs = 0;
+    bshh_s4_already_flushed = false;
 }
 
 
@@ -13136,9 +13257,12 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
     bshh_s4_pair_logs[ctrl_idx] += ss.str();
 
     bshh_s4_completed_pairs++;
-    if (bshh_s4_completed_pairs >= bshh_s4_total_pairs) {
+    // Bug fix (same runaway-flush class as BSHH-S2 -- see its fix comment):
+    // one-time-flush guard.
+    if (!bshh_s4_already_flushed && bshh_s4_completed_pairs >= bshh_s4_total_pairs) {
         for (auto& p : bshh_s4_pair_logs) bshh_log << p.second;
         bshh_log.flush();
+        bshh_s4_already_flushed = true;
     }
 
     NS_LOG_INFO("[BSHH-S4] t=" << now << "s  " << ctrlLabel
@@ -13187,10 +13311,10 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         const bool ctrlAlreadyRevoked8 =
             g_trust_table.count(ctrlCheckId8) && g_trust_table.at(ctrlCheckId8).flagged;
         if (ctrlAlreadyRevoked8) {
-            for (auto& p : bshh_s4_pair_logs) {
-                p.second += "[t=" + std::to_string(now) + "]  Controller C_" + std::to_string(ctrlCheckId8)
-                            + " already revoked/quarantined — detection recorded, no new mitigation action taken\n";
-            }
+            // Bug fix (same runaway-growth class as BSHH-S2/S3): append only
+            // to this event's own ctrl_idx entry, not every map entry.
+            bshh_s4_pair_logs[ctrl_idx] += "[t=" + std::to_string(now) + "]  Controller C_" + std::to_string(ctrlCheckId8)
+                        + " already revoked/quarantined — detection recorded, no new mitigation action taken\n";
         } else {
         CryptoMeasureLKH(now, v1_id, N_Vehicles);
         uint32_t ctrl_s8 = (controller_Node.GetN() > 0)
@@ -13208,14 +13332,14 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
         trust_s8 = ctrl_div_log_s8 + trust_s8;
         TrustRunDemotionPipeline(now);
         std::string mit = PemApplyMitigation(v1_id, now, "BSHH-S4");
-        for (auto& p : bshh_s4_pair_logs) {
-            p.second += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION"
-                        + std::string(lwTgnAlert_s8 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") + "\n"
-                        "  Controller internal HB replay (RSU variant) detected\n"
-                        "  Score: " + std::to_string(pem_last_detection_score) + "\n"
-                        "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
-                        + mit + trust_s8 + "\n";
-        }
+        // Bug fix (same runaway-growth class as BSHH-S2/S3): append only to
+        // this event's own ctrl_idx entry, not every map entry.
+        bshh_s4_pair_logs[ctrl_idx] += "[t=" + std::to_string(now) + "]  DETECTION + MITIGATION"
+                    + std::string(lwTgnAlert_s8 ? "" : "  (via divergence mechanism only — LW/TGN score did not cross threshold)") + "\n"
+                    "  Controller internal HB replay (RSU variant) detected\n"
+                    "  Score: " + std::to_string(pem_last_detection_score) + "\n"
+                    "  Latency: " + std::to_string(PemGetDetectionLatencyMs()) + " ms\n"
+                    + mit + trust_s8 + "\n";
         }
     }
 }
@@ -154770,6 +154894,14 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("attack_percentage",
                   "Percentage (0-100) of vehicle nodes that behave as attackers",
                   attack_percentage);
+    cmd.AddValue ("rinj",
+                  "Manual override for rinj (Eq. 4.24-4.25), the per-attacker "
+                  "injection intensity ratio (0.0-1.0). Default: unset, in "
+                  "which case rinj = attack_percentage/100 as before. Does "
+                  "NOT change how many vehicles are selected as attackers "
+                  "(still controlled by attack_percentage alone) -- only how "
+                  "intensely each selected attacker is throttled to attack.",
+                  g_rinj_override);
     cmd.AddValue ("ctrl_revoke_confirm_count",
                   "Number of INDEPENDENT confirmed controller-divergence events required "
                   "before a malicious controller (TTW/BSHH/ME -S3/-S4) is actually revoked "
@@ -158197,7 +158329,7 @@ static int RoutingMain(int argc, char *argv[])
                       mal_ns3, vic_ns3, replayTime, breakTime);
                   // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
                   AttackScheduleAdaptiveInjection(mal_ns3, replayTime, simTime,
-                      attack_percentage / 100.0, &TTW_ReplayAttack,
+                      EffectiveRinj(), &TTW_ReplayAttack,
                       Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
                       mal_ns3, vic_ns3, replayTime, breakTime);
 
@@ -158430,7 +158562,7 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(rsu_id, replayTime + dt, simTime,
-              attack_percentage / 100.0, &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
+              EffectiveRinj(), &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (topology update path)
           if (s2_app_veh_base + vA_cidx < apps.GetN()) {
@@ -158631,7 +158763,7 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS3_InternalReplay, vA, vB, replayTime);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
-              attack_percentage / 100.0, &TTWS3_InternalReplay, vA, vB, replayTime);
+              EffectiveRinj(), &TTWS3_InternalReplay, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (topology update — S3 internal attack,
           // vehicles send legitimate updates before controller corrupts internally)
@@ -158824,7 +158956,7 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS4_InternalReplay, vA, vB, replayTime);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
-              attack_percentage / 100.0, &TTWS4_InternalReplay, vA, vB, replayTime);
+              EffectiveRinj(), &TTWS4_InternalReplay, vA, vB, replayTime);
 
           // V→Controller LTE visual packets (vehicles send topology to controller via RSU path)
           if (s4_app_veh_base + cidxB < apps.GetN()) {
@@ -158894,7 +159026,17 @@ static int RoutingMain(int argc, char *argv[])
           // ceiling).
           bshh_victim_idx.push_back(k);
       }
-      if (bshh_attacker_idx.empty()) {
+      // Bug fix (pct=0 floor violation, confirmed live: sc13 combined-mode
+      // pct=0 data showed genuine BSHH-S1 attack events -- physical_sender_
+      // id=6, i.e. cidx=1 -- despite attack_percentage=0 requesting zero
+      // attackers). This fallback used to fire unconditionally whenever
+      // bshh_attacker_idx was empty, without checking WHY it was empty: at
+      // attack_percentage=0, an empty list is the correct, intended
+      // outcome, not a fault to safety-net around. Only apply the "default
+      // to V1" recovery when attack_percentage > 0 (an unexpected empty
+      // list at a nonzero percentage IS a real problem worth defaulting
+      // out of); at exactly 0 there is nothing to recover from.
+      if (bshh_attacker_idx.empty() && attack_percentage > 0.0) {
           std::cout << "[BSHH-S1] WARNING: 0 attackers selected; defaulting to V1\n";
           bshh_attacker_idx.push_back(1);
           if (bshh_victim_idx.empty()) bshh_victim_idx.push_back(0);
@@ -159112,7 +159254,7 @@ static int RoutingMain(int argc, char *argv[])
           // repeat mechanism there instead, matching every other scenario's
           // convention of repeating the function that genuinely emits.
           AttackScheduleAdaptiveInjection(att_ns3, hijackTime, simTime,
-              attack_percentage / 100.0, &BSHH_S1_AttackerHijacksOldHeartbeatToController,
+              EffectiveRinj(), &BSHH_S1_AttackerHijacksOldHeartbeatToController,
               att_ns3, vic_ns3, exchangeObservedTime);
           // STEP 5 — Victim forwards old heartbeat to controller
           if (victimForwardScheduled)
@@ -159342,7 +159484,7 @@ static int RoutingMain(int argc, char *argv[])
               &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(rsu_ns3, replayTime + dt, simTime,
-              attack_percentage / 100.0, &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
+              EffectiveRinj(), &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
 
           // NetAnim visual packets
           if (app_vA && app_vB) {
@@ -159493,7 +159635,7 @@ static int RoutingMain(int argc, char *argv[])
               &BSHH_S3_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
-              attack_percentage / 100.0, &BSHH_S3_InternalReplay,
+              EffectiveRinj(), &BSHH_S3_InternalReplay,
               vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
 
           // // NetAnim visual packets
@@ -159661,7 +159803,7 @@ static int RoutingMain(int argc, char *argv[])
               &BSHH_S4_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
-              attack_percentage / 100.0, &BSHH_S4_InternalReplay,
+              EffectiveRinj(), &BSHH_S4_InternalReplay,
               vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
 
           // // NetAnim visual packets
@@ -159837,6 +159979,29 @@ static int RoutingMain(int argc, char *argv[])
       uint32_t v1_cidx = me_real_cidx.empty()       ? 0u : me_real_cidx[0];
       uint32_t v2_cidx = me_real_cidx.size() < 2    ? 1u : me_real_cidx[1];
 
+      // Bug fix: me_echo_cidx and me_real_cidx overlap by construction (the
+      // real-pair pool includes every vehicle, echo attackers included -- see
+      // its own declaration comment for why), so v1_cidx/v2_cidx can end up
+      // present in me_echo_cidx too. Confirmed live: this let the proximity
+      // reorder below put the real pair's OWN identities first (trivial
+      // distance=0 to their own link's midpoint) -- teta_guard_filter.h's
+      // Step 1b only gates THIRD-PARTY witness claims (claimed_sender_id !=
+      // both link endpoints); an echo "attack" event with claimed_sender_id
+      // == link_src_id/link_dst_id is a structurally self-contradictory
+      // record (attack_label=true on what the crypto filter treats as a
+      // self-report), not a real echo. Exclude v1_cidx/v2_cidx from the echo
+      // pool outright, same as ME-S2's phantom/real-pair exclusion fix.
+      {
+          std::vector<uint32_t> __filtered;
+          for (uint32_t __c : me_echo_cidx)
+              if (__c != v1_cidx && __c != v2_cidx) __filtered.push_back(__c);
+          me_echo_cidx = __filtered;
+      }
+      // Recompute after the exclusion above shrank the pool -- n_echo_pairs/
+      // n_me_groups were sized against the OLD (larger, unfiltered) pool.
+      n_echo_pairs = (uint32_t)me_echo_cidx.size() / 2;
+      n_me_groups  = (me_echo_cidx.size() >= 2 && me_real_cidx.size() >= 2) ? n_echo_pairs : 0;
+
       // A7 (--echo_dist_ratio): reorder echo-attacker candidates by proximity
       // to the requested distance bucket before pair assignment. No-op when
       // the flag is unset (default 0). Uses the literal 10.0 (matching this
@@ -159846,6 +160011,39 @@ static int RoutingMain(int argc, char *argv[])
       if (g_abl.echo_dist_ratio > 0.0 && me_echo_cidx.size() >= 2) {
           me_echo_cidx = MeReorderEchoCandidatesByDistanceRatio(
               me_echo_cidx, v1_cidx, v2_cidx, 10.0, g_abl.echo_dist_ratio);
+      } else if (me_echo_cidx.size() >= 2) {
+          // Default (non-ablation) fix: reorder whole PAIRS (not individual
+          // vehicles, to preserve MeGreedyPairByMutualRange's mutual-range
+          // grouping above) by that pair's average distance to the real
+          // link's midpoint, closest first. See
+          // MeReorderEchoCandidatesByLinkProximity's declaration comment for
+          // the full root-cause rationale (Stage-0 Step 1b location-binding,
+          // Eqs. 3.29-3.32, rejects out-of-range witnesses) -- without this,
+          // groups formed from a purely random shuffle are overwhelmingly
+          // too far from the link to ever pass Step 1b, regardless of how
+          // well-paired they are with each other.
+          const Vector __p1 = TtwSumoPositionAt(v1_cidx, 10.0);
+          const Vector __p2 = TtwSumoPositionAt(v2_cidx, 10.0);
+          const Vector __mid((__p1.x + __p2.x) / 2.0, (__p1.y + __p2.y) / 2.0, 0.0);
+          const uint32_t __nPairs = (uint32_t)me_echo_cidx.size() / 2;
+          std::vector<std::pair<double, std::pair<uint32_t,uint32_t>>> __pairsByDist;
+          for (uint32_t __g = 0; __g < __nPairs; __g++) {
+              const uint32_t __a = me_echo_cidx[2*__g];
+              const uint32_t __b = me_echo_cidx[2*__g+1];
+              const double __d = (PemDistance2d(TtwSumoPositionAt(__a, 10.0), __mid) +
+                                   PemDistance2d(TtwSumoPositionAt(__b, 10.0), __mid)) / 2.0;
+              __pairsByDist.push_back({__d, {__a, __b}});
+          }
+          std::sort(__pairsByDist.begin(), __pairsByDist.end(),
+                     [](const auto& x, const auto& y) { return x.first < y.first; });
+          std::vector<uint32_t> __reordered;
+          for (auto& __pr : __pairsByDist) {
+              __reordered.push_back(__pr.second.first);
+              __reordered.push_back(__pr.second.second);
+          }
+          // Odd leftover (unpaired single, if any) stays at the end unchanged.
+          if (me_echo_cidx.size() % 2 == 1) __reordered.push_back(me_echo_cidx.back());
+          me_echo_cidx = __reordered;
       }
 
       std::cout << "\n========================================" << std::endl;
@@ -159930,10 +160128,27 @@ static int RoutingMain(int argc, char *argv[])
               &ME_S1_EchoAttack, echo_v3_cidx, echo_v4_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x3u);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
+          // Bug fix (confirmed via live counter tracing): AttackScheduleAdaptive
+          // Injection only tracks ONE physicalSenderId (echo_v3_cidx) but the
+          // wrapped call (reporter_mask=0x3u) emits BOTH V3 and V4 as
+          // independent attacker identities every time. V3's own ratio was
+          // being correctly throttled; V4's identity was never checked at
+          // all, so it fired completely unthrottled on every tick the (V3-
+          // only) gate allowed -- confirmed live: V3 IDs correctly stayed at
+          // totalCount=1 while their paired V4 IDs accumulated 50+ events in
+          // the same short window. Split into two independent single-
+          // reporter repeat chains (mask 0x1=V3-only, 0x2=V4-only), each
+          // throttled against its OWN identity's own ratio -- matching the
+          // per-individual-attacker rinj definition (each of V3/V4 is its
+          // own attacker, not a bundled pair).
           AttackScheduleAdaptiveInjection(echo_v3_cidx, echoAttackTime, simTime,
-              attack_percentage / 100.0, &ME_S1_EchoAttack,
+              EffectiveRinj(), &ME_S1_EchoAttack,
               echo_v3_cidx, echo_v4_cidx, v1_cidx, v2_cidx,
-              discoveryObservedTime, 0x3u);
+              discoveryObservedTime, 0x1u);
+          AttackScheduleAdaptiveInjection(echo_v4_cidx, echoAttackTime, simTime,
+              EffectiveRinj(), &ME_S1_EchoAttack,
+              echo_v3_cidx, echo_v4_cidx, v1_cidx, v2_cidx,
+              discoveryObservedTime, 0x2u);
 
           anim.UpdateNodeColor(Vehicle_Nodes.Get(echo_v3_cidx), 255, 0, 0);
           anim.UpdateNodeSize(Vehicle_Nodes.Get(echo_v3_cidx)->GetId(), 25.0, 25.0);
@@ -159952,6 +160167,54 @@ static int RoutingMain(int argc, char *argv[])
               &send_LTE_routing_data_alone, app_e4,
               Vehicle_Nodes.Get(echo_v4_cidx), controller_Node.Get(0), echo_v4_cidx);
       }
+      // Event-volume fix (ME-S1): a single snapshot at ME_S1_DISCOVERY_TIME
+      // rarely finds any echo candidate genuinely within
+      // kEffectiveReceptionRadius (100m, the real load-tested DSRC beacon
+      // range -- confirmed correct, not to be changed) of the real link,
+      // at realistic vehicle densities -- confirmed live: closest of 20
+      // candidates was 247m away, zero in range. TTW-S2 solves the
+      // equivalent problem by re-searching every ~5s as vehicles move
+      // (TtwFindRepeatedPairs) instead of relying on one snapshot; this
+      // mirrors that pattern for ME-S1: a self-rescheduling search that
+      // re-scans the FULL echo-attacker pool's LIVE positions every 5s for
+      // the rest of the run, and fires a genuine echo attempt for any pair
+      // that is, at that moment, actually within range -- nothing
+      // fabricated, purely catching real geometric opportunities that a
+      // single fixed-time check misses as vehicles move.
+      if (!me_echo_cidx.empty()) {
+          auto meS1PeriodicSearch = std::make_shared<std::function<void(double)>>();
+          std::vector<uint32_t> meS1FullEchoPool = me_echo_cidx;
+          *meS1PeriodicSearch = [v1_cidx, v2_cidx, meS1FullEchoPool, attack_percentage,
+                                  simTime, meS1PeriodicSearch](double now) mutable {
+              if (now >= simTime) return;
+              Vector p1(0,0,0), p2(0,0,0);
+              { Ptr<Node> n = GetVehicleByNs3Id(v1_cidx); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) p1 = m->GetPosition(); } }
+              { Ptr<Node> n = GetVehicleByNs3Id(v2_cidx); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) p2 = m->GetPosition(); } }
+              const Vector mid((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0, 0.0);
+              std::vector<uint32_t> inRange;
+              for (uint32_t c : meS1FullEchoPool) {
+                  Ptr<Node> n = GetVehicleByNs3Id(c);
+                  if (!n) continue;
+                  Ptr<MobilityModel> m = n->GetObject<MobilityModel>();
+                  if (!m) continue;
+                  if (PemDistance2d(m->GetPosition(), mid) <= kEffectiveReceptionRadius)
+                      inRange.push_back(c);
+              }
+              for (size_t i = 0; i + 1 < inRange.size(); i += 2) {
+                  const uint32_t v3 = inRange[i];
+                  const uint32_t v4 = inRange[i+1];
+                  ME_S1_EchoAttack(v3, v4, v1_cidx, v2_cidx, now, 0x3u);
+                  AttackScheduleAdaptiveInjection(v3, now + PEM_BEACON_INTERVAL_S, simTime,
+                      EffectiveRinj(), &ME_S1_EchoAttack, v3, v4, v1_cidx, v2_cidx, now, 0x1u);
+                  AttackScheduleAdaptiveInjection(v4, now + PEM_BEACON_INTERVAL_S, simTime,
+                      EffectiveRinj(), &ME_S1_EchoAttack, v3, v4, v1_cidx, v2_cidx, now, 0x2u);
+              }
+              Simulator::Schedule(Seconds(5.0), &AttackAdaptiveTickInvoke, meS1PeriodicSearch, now + 5.0);
+          };
+          Simulator::Schedule(Seconds(discoveryObservedTime + 5.0),
+              &AttackAdaptiveTickInvoke, meS1PeriodicSearch, discoveryObservedTime + 5.0);
+      }
+
       // If odd number of echo attackers, schedule the last one alone (single-attacker or leftover)
       if (!me_echo_cidx.empty() && me_echo_cidx.size() % 2 == 1) {
           uint32_t last_cidx = me_echo_cidx.back();
@@ -159976,7 +160239,7 @@ static int RoutingMain(int argc, char *argv[])
               discoveryObservedTime, 0x1u);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(last_cidx, echoAttackTime, simTime,
-              attack_percentage / 100.0, &ME_S1_EchoAttack,
+              EffectiveRinj(), &ME_S1_EchoAttack,
               last_cidx, last_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x1u);
           anim.UpdateNodeColor(Vehicle_Nodes.Get(last_cidx), 255, 0, 0);
@@ -160230,7 +160493,7 @@ static int RoutingMain(int argc, char *argv[])
               local_p0, local_p1, ME_S2_DISCOVERY_TIME);
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(rsu_id, ME_S2_DISCOVERY_TIME + 0.1 + dt, simTime,
-              attack_percentage / 100.0, &ME_S2_InjectEchoReports, rsu_id, v1_id, v2_id,
+              EffectiveRinj(), &ME_S2_InjectEchoReports, rsu_id, v1_id, v2_id,
               local_p0, local_p1, ME_S2_DISCOVERY_TIME);
 
           anim.UpdateNodeColor(RSU_Nodes.Get(r), 139, 69, 19);   // brown = attacking RSU
@@ -160408,7 +160671,7 @@ static int RoutingMain(int argc, char *argv[])
                   s3_phantom_cidx[p], s3_phantom_cidx[p + 1], ME_S3_DISCOVERY_TIME, c);
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s3_inj_t, simTime,
-                  attack_percentage / 100.0, &ME_S3_InjectPhantomPaths, v1_id, v2_id,
+                  EffectiveRinj(), &ME_S3_InjectPhantomPaths, v1_id, v2_id,
                   s3_phantom_cidx[p], s3_phantom_cidx[p + 1], ME_S3_DISCOVERY_TIME, c);
           }
           if (s3_phantom_cidx.size() % 2 == 1) {
@@ -160419,7 +160682,7 @@ static int RoutingMain(int argc, char *argv[])
                   last_p, last_p, ME_S3_DISCOVERY_TIME, c);
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s3_inj_t2, simTime,
-                  attack_percentage / 100.0, &ME_S3_InjectPhantomPaths, v1_id, v2_id,
+                  EffectiveRinj(), &ME_S3_InjectPhantomPaths, v1_id, v2_id,
                   last_p, last_p, ME_S3_DISCOVERY_TIME, c);
           }
       }
@@ -160624,7 +160887,7 @@ static int RoutingMain(int argc, char *argv[])
                   s4_phantom_cidx[p], s4_phantom_cidx[p + 1], ME_S4_DISCOVERY_TIME, c);
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s4_inj_t, simTime,
-                  attack_percentage / 100.0, &ME_S4_InjectPhantomPaths, v1_id, v2_id,
+                  EffectiveRinj(), &ME_S4_InjectPhantomPaths, v1_id, v2_id,
                   s4_phantom_cidx[p], s4_phantom_cidx[p + 1], ME_S4_DISCOVERY_TIME, c);
           }
           if (s4_phantom_cidx.size() % 2 == 1) {
@@ -160635,7 +160898,7 @@ static int RoutingMain(int argc, char *argv[])
                   last_p, last_p, ME_S4_DISCOVERY_TIME, c);
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s4_inj_t2, simTime,
-                  attack_percentage / 100.0, &ME_S4_InjectPhantomPaths, v1_id, v2_id,
+                  EffectiveRinj(), &ME_S4_InjectPhantomPaths, v1_id, v2_id,
                   last_p, last_p, ME_S4_DISCOVERY_TIME, c);
           }
       }

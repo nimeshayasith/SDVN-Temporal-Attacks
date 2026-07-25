@@ -1201,11 +1201,6 @@ static void TGN_WriteEventRow(const PemEvent& e, const tgn::NodeFeatures& feat,
         auto& counts = g_attackerEventCounts[e.physical_sender_id];
         counts.second += 1;               // total_event_count
         if (e.attack_label) counts.first += 1;  // attack_event_count
-        extern bool g_debugAdaptiveInjection;
-        if (g_debugAdaptiveInjection)
-            std::cout << "[DEBUG-WRITEROW] physical_sender_id=" << e.physical_sender_id
-                      << " attack_label=" << e.attack_label
-                      << " new_counts=(" << counts.first << "," << counts.second << ")" << std::endl;
     }
     auto sig_str = [&]() -> std::string {
         static const char* names[] = {
