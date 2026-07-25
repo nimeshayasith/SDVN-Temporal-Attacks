@@ -112,7 +112,44 @@ maximizing **MCC** under class imbalance.
 
 **Status: ✅ DONE (re-calibrated).** Corresponds to the `--tgn_theta` flag.
 
-**Calibrated value: θ_FS = 0.95** (supersedes the earlier θ_FS=0.85 pick below)
+**Calibrated value: θ_FS = 0.92** (supersedes both the θ_FS=0.95 and θ_FS=0.85 picks below)
+
+**Evidence** (2026-07-24 fine re-sweep, dim=192 canonical model, all 13 scenarios):
+- Method: live NS-3 deployment sweep, `tgn_weights_dim192_final.bin`
+  (dim=192), `simTime=30`, `N_Vehicles=200`, `N_RSUs=64`/`0` per scenario,
+  `attack_percentage=50`, unseen seed `RngRun=999`, `--no_lw=1` ablation
+  (same isolation rationale as the 2026-07-23 round below). **All 13
+  scenarios included this time** — the 2026-07-23 round's "Scenario 3 not
+  run" gap is closed.
+- θ values tested: 0.90, 0.91, 0.92, ..., 0.99, 1.00 (11 points, 0.01
+  granularity — finer than the 0.05-step 2026-07-23 grid, specifically to
+  check whether a tighter optimum existed between 0.90 and 0.95 that the
+  coarser grid could have missed).
+- Selection criterion: **worst-case MCC**, excluding ME-S1/S2 (scenarios
+  9/10 — re-confirmed this round: sc10 had 0 total attack events, sc9 had 2,
+  at *every* θ tested, Stage-0 crypto pre-filter interception, θ-insensitive).
+- Result: **θ=0.91 and θ=0.92 tied for best worst-case MCC (0.613,
+  bottleneck: ME-S3/scenario 11)**. Tiebreak on average MCC across the 11
+  included scenarios: θ=0.92 → 0.7169 vs θ=0.91 → 0.7075 — θ=0.92 wins.
+  This **improves on 2026-07-23's θ=0.95 pick** (worst-case MCC 0.554, also
+  bottlenecked at ME-S3) by ~10.6% relative — the coarser grid (0.90, 0.941,
+  1.0 tested; 0.91-0.94 and 0.96-0.99 never evaluated) missed this tighter
+  optimum sitting just below 0.95.
+- ME-S3 (scenario 11) is the persistent bottleneck across the 0.85-era,
+  0.95-era, and this round's analysis — worth flagging as a candidate for
+  the same kind of architectural investigation BSHH-S2 received below,
+  rather than expecting further threshold tuning alone to close it further.
+- Full per-θ, per-scenario breakdown: `theta_calibration_results.md`'s
+  "2026-07-24 Re-calibration" section; raw data under `~/theta_calib/`;
+  aggregation script `documents/ablation_scripts/aggregate_theta_calib.py`.
+- Applied in code: `tgn_core.cc`'s `TGN_THETA_FS` constant, 0.95 → 0.92.
+
+**No further action needed on θ_FS** at this model — do not re-sweep without
+new evidence (e.g. a retrained model, since θ_FS is model-dependent).
+
+---
+
+**[SUPERSEDED] 2026-07-23 re-sweep — θ_FS = 0.95**
 
 **Evidence** (2026-07-23 re-sweep, dim=192 canonical model):
 - Method: live NS-3 deployment sweep, `tgn_weights_dim192_final.bin`
@@ -151,9 +188,8 @@ maximizing **MCC** under class imbalance.
   but is superseded — that sweep also had the awk field-shift bug affecting
   scenarios 3/4/7/8/11/12's reported values, in addition to being measured
   under LW-enabled OR-masking.
-
-**No further action needed on θ_FS** — do not re-sweep without new evidence
-(e.g. a retrained model, since θ_FS is model-dependent).
+- **This 0.95 pick is itself now superseded by the 2026-07-24 fine re-sweep
+  above (θ=0.92)** — kept here for provenance/audit trail.
 
 ---
 
@@ -1005,7 +1041,7 @@ same caveat as the anchor checkpoint interval item above.
 
 | Status | Count | Items |
 |---|---|---|
-| ✅ Done, evidence-backed | 14 | θ_FS = 0.95 (re-calibrated against dim=192 model, no_lw ablation — supersedes earlier 0.85 pick), θ_LW = 0.05 (worst-case verified across 12/12 individual scenarios), w1-w5/w7-w9 (8 of 9 signature weights, precision-weighted from real evidence), dim d = 192, pos_weight/w_class (class imbalance weight) = 6, L/layers (message-passing rounds) = 2, W_BPTT = 100 (confirmed, larger values byte-identical), η = 0.001 (confirmed, lowest variance), W_BSHH (formula-locked, validated: fp=0/fn=0 on BSHH-S3 and S4), ε = 0.101s (code changed + verified, was 0.020s), t (quorum majority threshold, formula-locked, validated: qrr=1.000, 0/28 collusion attempts admitted), n (vehicles per RSU: measured min=0/max=42/mean=11.67/median=8.0 from real SUMO traces, new opt-in instrumentation added), T_exec (mean=0.0037ms/max=0.0091ms, measured after fixing 2 real performance bugs found en route), Anchor checkpoint interval (215/45 -> 30/30 bug fix deployed live as chaincode v2.3/seq5, load-tested: 30/30 checkpoints succeeded, zero MVCC conflicts) |
+| ✅ Done, evidence-backed | 14 | θ_FS = 0.92 (fine re-sweep {0.90..1.00} against dim=192 model, no_lw ablation, all 13 scenarios — supersedes earlier 0.95 and 0.85 picks), θ_LW = 0.05 (worst-case verified across 12/12 individual scenarios), w1-w5/w7-w9 (8 of 9 signature weights, precision-weighted from real evidence), dim d = 192, pos_weight/w_class (class imbalance weight) = 6, L/layers (message-passing rounds) = 2, W_BPTT = 100 (confirmed, larger values byte-identical), η = 0.001 (confirmed, lowest variance), W_BSHH (formula-locked, validated: fp=0/fn=0 on BSHH-S3 and S4), ε = 0.101s (code changed + verified, was 0.020s), t (quorum majority threshold, formula-locked, validated: qrr=1.000, 0/28 collusion attempts admitted), n (vehicles per RSU: measured min=0/max=42/mean=11.67/median=8.0 from real SUMO traces, new opt-in instrumentation added), T_exec (mean=0.0037ms/max=0.0091ms, measured after fixing 2 real performance bugs found en route), Anchor checkpoint interval (215/45 -> 30/30 bug fix deployed live as chaincode v2.3/seq5, load-tested: 30/30 checkpoints succeeded, zero MVCC conflicts) |
 | ✅ Done, resolved via documented finding (not raw evidence) | 4 | γ (PDF's own verification method structurally doesn't apply to this attack model, for any value); W_max, µ (both swept across wide ranges, zero differentiating signal found — kept at defaults with real evidence that nothing better shows up); w6 (BSHH-S3 signature weight — traced to a genuine timing conflict in the attack model itself: 2s replay margin vs. the already-validated ~7.2s W_BSHH window means this signature structurally cannot fire without either making the attack less realistic or regressing an already-validated calibration; kept at its Laplace-smoothed neutral-prior value, now for a documented structural reason rather than "hasn't come up yet") |
 | 🔍 Measured, not implemented (informational only) | 1 | K = ⌈T_dwell/T_b⌉ (§H) — measured from real SUMO traces (min=2, median=164, max=598 handover-bounded intervals); found 17.2% of vehicles would get K<30 (unsafe per this row's own requirement) if computed literally — recommended formula `K = max(⌈T_dwell/T_b⌉, 30)` documented for future chaincode implementation, no ledger-window mechanism exists yet to apply it to |
 | ⬜ Not yet examined at all | ~7 | §H rows beyond what was investigated this session: δ_thresh(t), Δ+, Δ-, τ0, τ_RSU,0, orderer batch timeout/size, channel endorsement policy — the PDF itself already gives concrete "Empirical Value" entries for all of these (not TBD), so no calibration sweep is owed here per the PDF's own table, but they have NOT been individually cross-checked against the actual chaincode implementation the way Anchor checkpoint interval was (where that cross-check found a real bug) — worth the same scrutiny if pursued |

@@ -1,0 +1,9 @@
+=== sc6 pct=20 ===
+sc=6 pct=20 exit=0
+=== sc6 pct=40 ===
+sc=6 pct=40 exit=0
+=== sc6 pct=80 ===
+sc=6 pct=80 exit=0
+=== sc6 pct=100 ===
+sc=6 pct=100 exit=0
+=== sc6 rinj_verify complete ===
