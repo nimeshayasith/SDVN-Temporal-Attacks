@@ -1,0 +1,14 @@
+========================================================
+  TTW Attack S2 — Malicious RSU                        
+========================================================
+
+  t=10    ①  V2V HELLO + vehicles -> RSU
+  t=10    ②  RSU aggregates + forwards to controller
+  t=10    ③  Malicious RSU stores old packet <V1 sees V2, t=10>
+  t=15        Link breaks physically
+  t=20    ④  RSU forges timestamp t=10→t=20, replays to controller
+  t=20    ⑤  Forged packet <V1 sees V2, t=20> accepted by controller
+  t=20    ⑥  Controller routing poisoned (ghost link active)
+
+========================================================
+
