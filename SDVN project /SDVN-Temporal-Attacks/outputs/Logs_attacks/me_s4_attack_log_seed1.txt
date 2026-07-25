@@ -6,8 +6,8 @@
     Total vehicles       : 200
     Total RSUs           : 64
     Total controllers    : 4
-    Attack percentage    : 80%
-    Malicious controllers: 3
+    Attack percentage    : 100%
+    Malicious controllers: 4
 
   Attack Steps:
   t=10  ①  V1 ↔ V2 HELLO exchange; all vehicles report topology
@@ -20,2831 +20,1147 @@
 ========================================================
 
 [t=10.020]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
-  Measured distances: d(V149,V9)=31.419m  d(V9,V20)=1.505m  (range=300.000m)
-  V149 <-> V9 : HELLO exchange (real link)
-  V9 and V20 in overhearing range — no direct link to V149 or V9
+  Measured distances: d(V80,V181)=24.944m  d(V80,V45)=28.894m  (range=300.000m)
+  V80 <-> V181 : HELLO exchange (real link)
+  V80 and V45 in overhearing range — no direct link to V80 or V181
 
-[t=10.020]  STEP ②  TOPOLOGY REPORTING TO RSU_248
-  V149 -> RSU_248 : <V149 sees V9, t=10.000000>
-  V9 -> RSU_248 : <V9 sees V149, t=10.000000>
-  V9 -> RSU_248 : <V9 sees V20, t=10.000000>
-  V20 -> RSU_248 : <V20 sees V9, t=10.000000>
+[t=10.020]  STEP ②  TOPOLOGY REPORTING TO RSU_240
+  V80 -> RSU_240 : <V80 sees V181, t=10.000000>
+  V181 -> RSU_240 : <V181 sees V80, t=10.000000>
+  V80 -> RSU_240 : <V80 sees V45, t=10.000000>
+  V45 -> RSU_240 : <V45 sees V80, t=10.000000>
 
-[t=10.020]  STEP ③  RSU_248 AGGREGATES AND FORWARDS TO CONTROLLER
-  <V149 sees V9, t=10.000000>  FORWARDED
-  <V9 sees V149, t=10.000000>  FORWARDED
-  <V9 sees V20, t=10.000000>  FORWARDED
-  <V20 sees V9, t=10.000000>  FORWARDED
-  [RSU is legitimate; malicious action occurs at controller]
-
-[t=10.045]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
-  Measured distances: d(V149,V9)=31.419m  d(V9,V20)=1.505m  (range=300.000m)
-  V149 <-> V9 : HELLO exchange (real link)
-  V9 and V20 in overhearing range — no direct link to V149 or V9
-
-[t=10.045]  STEP ②  TOPOLOGY REPORTING TO RSU_248
-  V149 -> RSU_248 : <V149 sees V9, t=10.000000>
-  V9 -> RSU_248 : <V9 sees V149, t=10.000000>
-  V9 -> RSU_248 : <V9 sees V20, t=10.000000>
-  V20 -> RSU_248 : <V20 sees V9, t=10.000000>
-
-[t=10.045]  STEP ③  RSU_248 AGGREGATES AND FORWARDS TO CONTROLLER
-  <V149 sees V9, t=10.000000>  FORWARDED
-  <V9 sees V149, t=10.000000>  FORWARDED
-  <V9 sees V20, t=10.000000>  FORWARDED
-  <V20 sees V9, t=10.000000>  FORWARDED
-  [RSU is legitimate; malicious action occurs at controller]
-
-[t=10.070]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)
-  Measured distances: d(V149,V9)=31.419m  d(V9,V20)=1.505m  (range=300.000m)
-  V149 <-> V9 : HELLO exchange (real link)
-  V9 and V20 in overhearing range — no direct link to V149 or V9
-
-[t=10.070]  STEP ②  TOPOLOGY REPORTING TO RSU_248
-  V149 -> RSU_248 : <V149 sees V9, t=10.000000>
-  V9 -> RSU_248 : <V9 sees V149, t=10.000000>
-  V9 -> RSU_248 : <V9 sees V20, t=10.000000>
-  V20 -> RSU_248 : <V20 sees V9, t=10.000000>
-
-[t=10.070]  STEP ③  RSU_248 AGGREGATES AND FORWARDS TO CONTROLLER
-  <V149 sees V9, t=10.000000>  FORWARDED
-  <V9 sees V149, t=10.000000>  FORWARDED
-  <V9 sees V20, t=10.000000>  FORWARDED
-  <V20 sees V9, t=10.000000>  FORWARDED
+[t=10.020]  STEP ③  RSU_240 AGGREGATES AND FORWARDS TO CONTROLLER
+  <V80 sees V181, t=10.000000>  FORWARDED
+  <V181 sees V80, t=10.000000>  FORWARDED
+  <V80 sees V45, t=10.000000>  FORWARDED
+  <V45 sees V80, t=10.000000>  FORWARDED
   [RSU is legitimate; malicious action occurs at controller]
 
 [t=10.100]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V9  (FORGED internally)
-  <V149 sees V9> as-relayed-via V20  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V80  (FORGED internally)
+  <V80 sees V181> as-relayed-via V45  (FORGED internally)
+  V3↔V4 link: dist=29.6m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.100]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V9 → V9  (PHANTOM)
-    Path 3: V149 → V20 → V9  (PHANTOM)
-    Path 4: V149 → V9 → V20 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V80 → V181  (PHANTOM)
+    Path 3: V80 → V45 → V181  (PHANTOM)
+    Path 4: V80 → V80 → V45 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V9 or V20 paths will be dropped
+  Packets forwarded via phantom V80 or V45 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  DETECTION + MITIGATION
   Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V4 and V15 removed
+  Phantom reporters V75 and V40 removed
   Score: 0.1
   Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V4 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Controller-origin] Network isolation SUPPRESSED — V75 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=3  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  delta_t=4  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V15  (FORGED internally)
-  <V149 sees V9> as-relayed-via V17  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V58  (FORGED internally)
+  <V80 sees V181> as-relayed-via V29  (FORGED internally)
+  V3↔V4 link: dist=21.5m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V15 → V9  (PHANTOM)
-    Path 3: V149 → V17 → V9  (PHANTOM)
-    Path 4: V149 → V15 → V17 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V58 → V181  (PHANTOM)
+    Path 3: V80 → V29 → V181  (PHANTOM)
+    Path 4: V80 → V58 → V29 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V15 or V17 paths will be dropped
+  Packets forwarded via phantom V58 or V29 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  DETECTION + MITIGATION
   Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V10 and V12 removed
+  Phantom reporters V53 and V24 removed
   Score: 0.1
   Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V10 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=5  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V12  (FORGED internally)
-  <V149 sees V9> as-relayed-via V76  (FORGED internally)
-  V3↔V4 link: dist=109.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V12 → V9  (PHANTOM)
-    Path 3: V149 → V76 → V9  (PHANTOM)
-    Path 4: V149 → V12 → V76 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V12 or V76 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V7 and V71 removed
-  Score: 0.1
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V7 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=6  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V13  (FORGED internally)
-  <V149 sees V9> as-relayed-via V34  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V13 → V9  (PHANTOM)
-    Path 3: V149 → V34 → V9  (PHANTOM)
-    Path 4: V149 → V13 → V34 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V13 or V34 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V8 and V29 removed
-  Score: 0.1
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V8 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=7  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V29  (FORGED internally)
-  <V149 sees V9> as-relayed-via V31  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V29 → V9  (PHANTOM)
-    Path 3: V149 → V31 → V9  (PHANTOM)
-    Path 4: V149 → V29 → V31 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V29 or V31 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V24 and V26 removed
-  Score: 0.1
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V24 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=8  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V81  (FORGED internally)
-  <V149 sees V9> as-relayed-via V79  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V81 → V9  (PHANTOM)
-    Path 3: V149 → V79 → V9  (PHANTOM)
-    Path 4: V149 → V81 → V79 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V81 or V79 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V76 and V74 removed
-  Score: 0.1
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V76 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Controller-origin] Network isolation SUPPRESSED — V53 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
   *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
   delta_t=9  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
 
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V25  (FORGED internally)
-  <V149 sees V9> as-relayed-via V30  (FORGED internally)
-  V3↔V4 link: dist=66.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V98  (FORGED internally)
+  <V80 sees V181> as-relayed-via V89  (FORGED internally)
+  V3↔V4 link: dist=51.0m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V25 → V9  (PHANTOM)
-    Path 3: V149 → V30 → V9  (PHANTOM)
-    Path 4: V149 → V25 → V30 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V98 → V181  (PHANTOM)
+    Path 3: V80 → V89 → V181  (PHANTOM)
+    Path 4: V80 → V98 → V89 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V25 or V30 paths will be dropped
+  Packets forwarded via phantom V98 or V89 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  DETECTION + MITIGATION
   Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V20 and V25 removed
+  Phantom reporters V93 and V84 removed
+  Score: 0.1
+  Latency: 0.0 ms
+  [Controller-origin] Network isolation SUPPRESSED — V93 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=14 > delta_thresh=13 (Eq. 3.48)
+
+[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
+  Controller injects forged echo observations into its topology database:
+  <V80 sees V181> as-relayed-via V25  (FORGED internally)
+  <V80 sees V181> as-relayed-via V39  (FORGED internally)
+  V3↔V4 link: dist=237.6m  IN RANGE — Path 4 inferred
+  No external packet required — purely internal manipulation
+
+[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V25 → V181  (PHANTOM)
+    Path 3: V80 → V39 → V181  (PHANTOM)
+    Path 4: V80 → V25 → V39 → V181  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V25 or V39 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=10.1]  DETECTION + MITIGATION
+  Controller internal echo fabrication (RSU variant) detected
+  Phantom reporters V20 and V34 removed
   Score: 0.1
   Latency: 0.0 ms
   [Controller-origin] Network isolation SUPPRESSED — V20 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=10  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=19 > delta_thresh=13 (Eq. 3.48)
 
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V61  (FORGED internally)
-  <V149 sees V9> as-relayed-via V77  (FORGED internally)
-  V3↔V4 link: dist=277.1m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V27  (FORGED internally)
+  <V80 sees V181> as-relayed-via V54  (FORGED internally)
+  V3↔V4 link: dist=165.2m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V61 → V9  (PHANTOM)
-    Path 3: V149 → V77 → V9  (PHANTOM)
-    Path 4: V149 → V61 → V77 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V27 → V181  (PHANTOM)
+    Path 3: V80 → V54 → V181  (PHANTOM)
+    Path 4: V80 → V27 → V54 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V61 or V77 paths will be dropped
+  Packets forwarded via phantom V27 or V54 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  DETECTION + MITIGATION
   Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V56 and V72 removed
+  Phantom reporters V22 and V49 removed
   Score: 0.1
   Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V56 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=11  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  [Controller-origin] Network isolation SUPPRESSED — V22 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=24 > delta_thresh=13 (Eq. 3.48)
 
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V51  (FORGED internally)
-  <V149 sees V9> as-relayed-via V58  (FORGED internally)
-  V3↔V4 link: dist=672.0m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V81  (FORGED internally)
+  <V80 sees V181> as-relayed-via V15  (FORGED internally)
+  V3↔V4 link: dist=135.4m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V51 → V9  (PHANTOM)
-    Path 3: V149 → V58 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V81 → V181  (PHANTOM)
+    Path 3: V80 → V15 → V181  (PHANTOM)
+    Path 4: V80 → V81 → V15 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V51 or V58 paths will be dropped
+  Packets forwarded via phantom V81 or V15 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  DETECTION + MITIGATION
   Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V46 and V53 removed
-  Score: 0.1
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V46 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=11  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V54  (FORGED internally)
-  <V149 sees V9> as-relayed-via V78  (FORGED internally)
-  V3↔V4 link: dist=659.2m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V54 → V9  (PHANTOM)
-    Path 3: V149 → V78 → V9  (PHANTOM)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V54 or V78 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V49 and V73 removed
-  Score: 0.1
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V49 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=11  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V55  (FORGED internally)
-  <V149 sees V9> as-relayed-via V72  (FORGED internally)
-  V3↔V4 link: dist=454.6m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V55 → V9  (PHANTOM)
-    Path 3: V149 → V72 → V9  (PHANTOM)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V55 or V72 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V50 and V67 removed
-  Score: 0.1
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V50 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=11  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V19  (FORGED internally)
-  <V149 sees V9> as-relayed-via V56  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V19 → V9  (PHANTOM)
-    Path 3: V149 → V56 → V9  (PHANTOM)
-    Path 4: V149 → V19 → V56 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V19 or V56 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V14 and V51 removed
+  Phantom reporters V76 and V10 removed
   Score: 0.2
   Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V14 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=12  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+  [Controller-origin] Network isolation SUPPRESSED — V76 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=29 > delta_thresh=13 (Eq. 3.48)
 
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V48  (FORGED internally)
-  <V149 sees V9> as-relayed-via V46  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V14  (FORGED internally)
+  <V80 sees V181> as-relayed-via V73  (FORGED internally)
+  V3↔V4 link: dist=14.0m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V48 → V9  (PHANTOM)
-    Path 3: V149 → V46 → V9  (PHANTOM)
-    Path 4: V149 → V48 → V46 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V14 → V181  (PHANTOM)
+    Path 3: V80 → V73 → V181  (PHANTOM)
+    Path 4: V80 → V14 → V73 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V48 or V46 paths will be dropped
+  Packets forwarded via phantom V14 or V73 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  DETECTION + MITIGATION
   Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V43 and V41 removed
+  Phantom reporters V9 and V68 removed
   Score: 0.2
   Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V43 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=13  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V9  (FORGED internally)
-  <V149 sees V9> as-relayed-via V20  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V9 → V9  (PHANTOM)
-    Path 3: V149 → V20 → V9  (PHANTOM)
-    Path 4: V149 → V9 → V20 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V9 or V20 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V4 and V15 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V4 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=12  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V45  (FORGED internally)
-  <V149 sees V9> as-relayed-via V80  (FORGED internally)
-  V3↔V4 link: dist=577.7m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V45 → V9  (PHANTOM)
-    Path 3: V149 → V80 → V9  (PHANTOM)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V45 or V80 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V40 and V75 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V40 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=13  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V15  (FORGED internally)
-  <V149 sees V9> as-relayed-via V17  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V15 → V9  (PHANTOM)
-    Path 3: V149 → V17 → V9  (PHANTOM)
-    Path 4: V149 → V15 → V17 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V15 or V17 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V10 and V12 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V10 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=13  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V50  (FORGED internally)
-  <V149 sees V9> as-relayed-via V44  (FORGED internally)
-  V3↔V4 link: dist=1838.0m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V50 → V9  (PHANTOM)
-    Path 3: V149 → V44 → V9  (PHANTOM)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V50 or V44 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V45 and V39 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V45 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=13  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V12  (FORGED internally)
-  <V149 sees V9> as-relayed-via V76  (FORGED internally)
-  V3↔V4 link: dist=109.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V12 → V9  (PHANTOM)
-    Path 3: V149 → V76 → V9  (PHANTOM)
-    Path 4: V149 → V12 → V76 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V12 or V76 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V7 and V71 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V7 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
-  delta_t=13  delta_thresh=13  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V57  (FORGED internally)
-  <V149 sees V9> as-relayed-via V64  (FORGED internally)
-  V3↔V4 link: dist=103.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V57 → V9  (PHANTOM)
-    Path 3: V149 → V64 → V9  (PHANTOM)
-    Path 4: V149 → V57 → V64 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V57 or V64 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V52 and V59 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V52 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=14 > delta_thresh=13 (Eq. 3.48)
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V13  (FORGED internally)
-  <V149 sees V9> as-relayed-via V34  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V13 → V9  (PHANTOM)
-    Path 3: V149 → V34 → V9  (PHANTOM)
-    Path 4: V149 → V13 → V34 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V13 or V34 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V8 and V29 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V8 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=14 > delta_thresh=13 (Eq. 3.48)
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V52  (FORGED internally)
-  <V149 sees V9> as-relayed-via V53  (FORGED internally)
-  V3↔V4 link: dist=21.9m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V52 → V9  (PHANTOM)
-    Path 3: V149 → V53 → V9  (PHANTOM)
-    Path 4: V149 → V52 → V53 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V52 or V53 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V47 and V48 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V47 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=15 > delta_thresh=13 (Eq. 3.48)
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V29  (FORGED internally)
-  <V149 sees V9> as-relayed-via V31  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V29 → V9  (PHANTOM)
-    Path 3: V149 → V31 → V9  (PHANTOM)
-    Path 4: V149 → V29 → V31 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V29 or V31 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V24 and V26 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V24 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=15 > delta_thresh=13 (Eq. 3.48)
-
-[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V28  (FORGED internally)
-  <V149 sees V9> as-relayed-via V69  (FORGED internally)
-  V3↔V4 link: dist=1236.9m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V28 → V9  (PHANTOM)
-    Path 3: V149 → V69 → V9  (PHANTOM)
-
-[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V28 or V69 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.1]  DETECTION + MITIGATION
-  Controller internal echo fabrication (RSU variant) detected
-  Phantom reporters V23 and V64 removed
-  Score: 0.2
-  Latency: 0.0 ms
-  [Controller-origin] Network isolation SUPPRESSED — V23 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
-  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=15 > delta_thresh=13 (Eq. 3.48)
+  [Controller-origin] Network isolation SUPPRESSED — V9 is the impersonated/reporting vehicle, not the attacker; see controller-side TrustReassignController action instead
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=34 > delta_thresh=13 (Eq. 3.48)
   [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
   [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
 
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V81  (FORGED internally)
-  <V149 sees V9> as-relayed-via V79  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V65  (FORGED internally)
+  <V80 sees V181> as-relayed-via V20  (FORGED internally)
+  V3↔V4 link: dist=6.4m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V81 → V9  (PHANTOM)
-    Path 3: V149 → V79 → V9  (PHANTOM)
-    Path 4: V149 → V81 → V79 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V65 → V181  (PHANTOM)
+    Path 3: V80 → V20 → V181  (PHANTOM)
+    Path 4: V80 → V65 → V20 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V81 or V79 paths will be dropped
+  Packets forwarded via phantom V65 or V20 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V21  (FORGED internally)
-  <V149 sees V9> as-relayed-via V47  (FORGED internally)
-  V3↔V4 link: dist=1744.7m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V74  (FORGED internally)
+  <V80 sees V181> as-relayed-via V56  (FORGED internally)
+  V3↔V4 link: dist=26.1m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V21 → V9  (PHANTOM)
-    Path 3: V149 → V47 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V74 → V181  (PHANTOM)
+    Path 3: V80 → V56 → V181  (PHANTOM)
+    Path 4: V80 → V74 → V56 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V21 or V47 paths will be dropped
+  Packets forwarded via phantom V74 or V56 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V25  (FORGED internally)
-  <V149 sees V9> as-relayed-via V30  (FORGED internally)
-  V3↔V4 link: dist=66.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V26  (FORGED internally)
+  <V80 sees V181> as-relayed-via V49  (FORGED internally)
+  V3↔V4 link: dist=568.3m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V25 → V9  (PHANTOM)
-    Path 3: V149 → V30 → V9  (PHANTOM)
-    Path 4: V149 → V25 → V30 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V26 → V181  (PHANTOM)
+    Path 3: V80 → V49 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V25 or V30 paths will be dropped
+  Packets forwarded via phantom V26 or V49 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V39  (FORGED internally)
-  <V149 sees V9> as-relayed-via V73  (FORGED internally)
-  V3↔V4 link: dist=1311.9m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V34  (FORGED internally)
+  <V80 sees V181> as-relayed-via V63  (FORGED internally)
+  V3↔V4 link: dist=621.5m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V39 → V9  (PHANTOM)
-    Path 3: V149 → V73 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V34 → V181  (PHANTOM)
+    Path 3: V80 → V63 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V39 or V73 paths will be dropped
+  Packets forwarded via phantom V34 or V63 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V61  (FORGED internally)
-  <V149 sees V9> as-relayed-via V77  (FORGED internally)
-  V3↔V4 link: dist=277.1m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V97  (FORGED internally)
+  <V80 sees V181> as-relayed-via V92  (FORGED internally)
+  V3↔V4 link: dist=11.6m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V61 → V9  (PHANTOM)
-    Path 3: V149 → V77 → V9  (PHANTOM)
-    Path 4: V149 → V61 → V77 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V97 → V181  (PHANTOM)
+    Path 3: V80 → V92 → V181  (PHANTOM)
+    Path 4: V80 → V97 → V92 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V61 or V77 paths will be dropped
+  Packets forwarded via phantom V97 or V92 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V67  (FORGED internally)
-  <V149 sees V9> as-relayed-via V66  (FORGED internally)
-  V3↔V4 link: dist=346.7m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V59  (FORGED internally)
+  <V80 sees V181> as-relayed-via V46  (FORGED internally)
+  V3↔V4 link: dist=345.2m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V67 → V9  (PHANTOM)
-    Path 3: V149 → V66 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V59 → V181  (PHANTOM)
+    Path 3: V80 → V46 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V67 or V66 paths will be dropped
+  Packets forwarded via phantom V59 or V46 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V51  (FORGED internally)
-  <V149 sees V9> as-relayed-via V58  (FORGED internally)
-  V3↔V4 link: dist=672.0m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V52  (FORGED internally)
+  <V80 sees V181> as-relayed-via V48  (FORGED internally)
+  V3↔V4 link: dist=794.3m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V51 → V9  (PHANTOM)
-    Path 3: V149 → V58 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V52 → V181  (PHANTOM)
+    Path 3: V80 → V48 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V51 or V58 paths will be dropped
+  Packets forwarded via phantom V52 or V48 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V71  (FORGED internally)
-  <V149 sees V9> as-relayed-via V74  (FORGED internally)
-  V3↔V4 link: dist=377.2m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V51  (FORGED internally)
+  <V80 sees V181> as-relayed-via V77  (FORGED internally)
+  V3↔V4 link: dist=658.3m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V71 → V9  (PHANTOM)
-    Path 3: V149 → V74 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V51 → V181  (PHANTOM)
+    Path 3: V80 → V77 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V71 or V74 paths will be dropped
+  Packets forwarded via phantom V51 or V77 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V54  (FORGED internally)
-  <V149 sees V9> as-relayed-via V78  (FORGED internally)
-  V3↔V4 link: dist=659.2m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V85  (FORGED internally)
+  <V80 sees V181> as-relayed-via V32  (FORGED internally)
+  V3↔V4 link: dist=150.5m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.2m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V54 → V9  (PHANTOM)
-    Path 3: V149 → V78 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V85 → V181  (PHANTOM)
+    Path 3: V80 → V32 → V181  (PHANTOM)
+    Path 4: V80 → V85 → V32 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V54 or V78 paths will be dropped
+  Packets forwarded via phantom V85 or V32 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V35  (FORGED internally)
-  <V149 sees V9> as-relayed-via V43  (FORGED internally)
-  V3↔V4 link: dist=826.9m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V47  (FORGED internally)
+  <V80 sees V181> as-relayed-via V69  (FORGED internally)
+  V3↔V4 link: dist=685.3m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V35 → V9  (PHANTOM)
-    Path 3: V149 → V43 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V47 → V181  (PHANTOM)
+    Path 3: V80 → V69 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V35 or V43 paths will be dropped
+  Packets forwarded via phantom V47 or V69 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V55  (FORGED internally)
-  <V149 sees V9> as-relayed-via V72  (FORGED internally)
-  V3↔V4 link: dist=454.6m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V13  (FORGED internally)
+  <V80 sees V181> as-relayed-via V38  (FORGED internally)
+  V3↔V4 link: dist=260.3m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V55 → V9  (PHANTOM)
-    Path 3: V149 → V72 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V13 → V181  (PHANTOM)
+    Path 3: V80 → V38 → V181  (PHANTOM)
+    Path 4: V80 → V13 → V38 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V55 or V72 paths will be dropped
+  Packets forwarded via phantom V13 or V38 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V26  (FORGED internally)
-  <V149 sees V9> as-relayed-via V83  (FORGED internally)
-  V3↔V4 link: dist=225.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V70  (FORGED internally)
+  <V80 sees V181> as-relayed-via V84  (FORGED internally)
+  V3↔V4 link: dist=510.4m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V26 → V9  (PHANTOM)
-    Path 3: V149 → V83 → V9  (PHANTOM)
-    Path 4: V149 → V26 → V83 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V70 → V181  (PHANTOM)
+    Path 3: V80 → V84 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V26 or V83 paths will be dropped
+  Packets forwarded via phantom V70 or V84 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V19  (FORGED internally)
-  <V149 sees V9> as-relayed-via V56  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V88  (FORGED internally)
+  <V80 sees V181> as-relayed-via V11  (FORGED internally)
+  V3↔V4 link: dist=824.4m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V19 → V9  (PHANTOM)
-    Path 3: V149 → V56 → V9  (PHANTOM)
-    Path 4: V149 → V19 → V56 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V88 → V181  (PHANTOM)
+    Path 3: V80 → V11 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V19 or V56 paths will be dropped
+  Packets forwarded via phantom V88 or V11 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V84  (FORGED internally)
-  <V149 sees V9> as-relayed-via V62  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V40  (FORGED internally)
+  <V80 sees V181> as-relayed-via V104  (FORGED internally)
+  V3↔V4 link: dist=932.6m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V84 → V9  (PHANTOM)
-    Path 3: V149 → V62 → V9  (PHANTOM)
-    Path 4: V149 → V84 → V62 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V40 → V181  (PHANTOM)
+    Path 3: V80 → V104 → V181  (PHANTOM)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V84 or V62 paths will be dropped
+  Packets forwarded via phantom V40 or V104 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V48  (FORGED internally)
-  <V149 sees V9> as-relayed-via V46  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V102  (FORGED internally)
+  <V80 sees V181> as-relayed-via V17  (FORGED internally)
+  V3↔V4 link: dist=29.4m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V48 → V9  (PHANTOM)
-    Path 3: V149 → V46 → V9  (PHANTOM)
-    Path 4: V149 → V48 → V46 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V102 → V181  (PHANTOM)
+    Path 3: V80 → V17 → V181  (PHANTOM)
+    Path 4: V80 → V102 → V17 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V48 or V46 paths will be dropped
+  Packets forwarded via phantom V102 or V17 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
+  Controller injects forged echo observations into its topology database:
+  <V80 sees V181> as-relayed-via V93  (FORGED internally)
+  <V80 sees V181> as-relayed-via V75  (FORGED internally)
+  V3↔V4 link: dist=1069.8m  OUT OF RANGE — no Path 4
+  No external packet required — purely internal manipulation
+
+[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V93 → V181  (PHANTOM)
+    Path 3: V80 → V75 → V181  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V93 or V75 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
+  Controller injects forged echo observations into its topology database:
+  <V80 sees V181> as-relayed-via V28  (FORGED internally)
+  <V80 sees V181> as-relayed-via V33  (FORGED internally)
+  V3↔V4 link: dist=510.7m  OUT OF RANGE — no Path 4
+  No external packet required — purely internal manipulation
+
+[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V28 → V181  (PHANTOM)
+    Path 3: V80 → V33 → V181  (PHANTOM)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V28 or V33 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=10.1]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
+  Controller injects forged echo observations into its topology database:
+  <V80 sees V181> as-relayed-via V101  (FORGED internally)
+  <V80 sees V181> as-relayed-via V31  (FORGED internally)
+  V3↔V4 link: dist=29.4m  IN RANGE — Path 4 inferred
+  No external packet required — purely internal manipulation
+
+[t=10.1]  STEP ⑤  FALSE MULTIPATH INFERENCE
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V101 → V181  (PHANTOM)
+    Path 3: V80 → V31 → V181  (PHANTOM)
+    Path 4: V80 → V101 → V31 → V181  (PHANTOM — V3↔V4 in range)
+
+[t=10.1]  STEP ⑥  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V101 or V31 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.1]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V65  (FORGED internally)
-  <V149 sees V9> as-relayed-via V23  (FORGED internally)
-  V3↔V4 link: dist=698.1m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V94  (FORGED internally)
+  <V80 sees V181> as-relayed-via V68  (FORGED internally)
+  V3↔V4 link: dist=133.0m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V65 → V9  (PHANTOM)
-    Path 3: V149 → V23 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V94 → V181  (PHANTOM)
+    Path 3: V80 → V68 → V181  (PHANTOM)
+    Path 4: V80 → V94 → V68 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V65 or V23 paths will be dropped
+  Packets forwarded via phantom V94 or V68 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V9  (FORGED internally)
-  <V149 sees V9> as-relayed-via V20  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V79  (FORGED internally)
+  <V80 sees V181> as-relayed-via V71  (FORGED internally)
+  V3↔V4 link: dist=628.4m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V9 → V9  (PHANTOM)
-    Path 3: V149 → V20 → V9  (PHANTOM)
-    Path 4: V149 → V9 → V20 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V79 → V181  (PHANTOM)
+    Path 3: V80 → V71 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V9 or V20 paths will be dropped
+  Packets forwarded via phantom V79 or V71 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V45  (FORGED internally)
-  <V149 sees V9> as-relayed-via V80  (FORGED internally)
-  V3↔V4 link: dist=577.7m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V23  (FORGED internally)
+  <V80 sees V181> as-relayed-via V21  (FORGED internally)
+  V3↔V4 link: dist=1249.3m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V45 → V9  (PHANTOM)
-    Path 3: V149 → V80 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V23 → V181  (PHANTOM)
+    Path 3: V80 → V21 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V45 or V80 paths will be dropped
+  Packets forwarded via phantom V23 or V21 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V75  (FORGED internally)
-  <V149 sees V9> as-relayed-via V63  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V36  (FORGED internally)
+  <V80 sees V181> as-relayed-via V41  (FORGED internally)
+  V3↔V4 link: dist=19.0m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V75 → V9  (PHANTOM)
-    Path 3: V149 → V63 → V9  (PHANTOM)
-    Path 4: V149 → V75 → V63 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V36 → V181  (PHANTOM)
+    Path 3: V80 → V41 → V181  (PHANTOM)
+    Path 4: V80 → V36 → V41 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V75 or V63 paths will be dropped
+  Packets forwarded via phantom V36 or V41 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V15  (FORGED internally)
-  <V149 sees V9> as-relayed-via V17  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V82  (FORGED internally)
+  <V80 sees V181> as-relayed-via V22  (FORGED internally)
+  V3↔V4 link: dist=249.9m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.3m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V15 → V9  (PHANTOM)
-    Path 3: V149 → V17 → V9  (PHANTOM)
-    Path 4: V149 → V15 → V17 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V82 → V181  (PHANTOM)
+    Path 3: V80 → V22 → V181  (PHANTOM)
+    Path 4: V80 → V82 → V22 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V15 or V17 paths will be dropped
+  Packets forwarded via phantom V82 or V22 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V50  (FORGED internally)
-  <V149 sees V9> as-relayed-via V44  (FORGED internally)
-  V3↔V4 link: dist=1837.9m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V16  (FORGED internally)
+  <V80 sees V181> as-relayed-via V91  (FORGED internally)
+  V3↔V4 link: dist=1185.1m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V50 → V9  (PHANTOM)
-    Path 3: V149 → V44 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V16 → V181  (PHANTOM)
+    Path 3: V80 → V91 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V50 or V44 paths will be dropped
+  Packets forwarded via phantom V16 or V91 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V68  (FORGED internally)
-  <V149 sees V9> as-relayed-via V60  (FORGED internally)
-  V3↔V4 link: dist=701.5m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V87  (FORGED internally)
+  <V80 sees V181> as-relayed-via V5  (FORGED internally)
+  V3↔V4 link: dist=929.4m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V68 → V9  (PHANTOM)
-    Path 3: V149 → V60 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V87 → V181  (PHANTOM)
+    Path 3: V80 → V5 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V68 or V60 paths will be dropped
+  Packets forwarded via phantom V87 or V5 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V12  (FORGED internally)
-  <V149 sees V9> as-relayed-via V76  (FORGED internally)
-  V3↔V4 link: dist=109.6m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V12  (FORGED internally)
+  <V80 sees V181> as-relayed-via V95  (FORGED internally)
+  V3↔V4 link: dist=502.5m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V12 → V9  (PHANTOM)
-    Path 3: V149 → V76 → V9  (PHANTOM)
-    Path 4: V149 → V12 → V76 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V12 → V181  (PHANTOM)
+    Path 3: V80 → V95 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V12 or V76 paths will be dropped
+  Packets forwarded via phantom V12 or V95 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V57  (FORGED internally)
-  <V149 sees V9> as-relayed-via V64  (FORGED internally)
-  V3↔V4 link: dist=103.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V35  (FORGED internally)
+  <V80 sees V181> as-relayed-via V61  (FORGED internally)
+  V3↔V4 link: dist=273.2m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V57 → V9  (PHANTOM)
-    Path 3: V149 → V64 → V9  (PHANTOM)
-    Path 4: V149 → V57 → V64 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V35 → V181  (PHANTOM)
+    Path 3: V80 → V61 → V181  (PHANTOM)
+    Path 4: V80 → V35 → V61 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V57 or V64 paths will be dropped
+  Packets forwarded via phantom V35 or V61 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V59  (FORGED internally)
-  <V149 sees V9> as-relayed-via V11  (FORGED internally)
-  V3↔V4 link: dist=296.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V37  (FORGED internally)
+  <V80 sees V181> as-relayed-via V6  (FORGED internally)
+  V3↔V4 link: dist=986.6m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V59 → V9  (PHANTOM)
-    Path 3: V149 → V11 → V9  (PHANTOM)
-    Path 4: V149 → V59 → V11 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V37 → V181  (PHANTOM)
+    Path 3: V80 → V6 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V59 or V11 paths will be dropped
+  Packets forwarded via phantom V37 or V6 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V13  (FORGED internally)
-  <V149 sees V9> as-relayed-via V34  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V42  (FORGED internally)
+  <V80 sees V181> as-relayed-via V83  (FORGED internally)
+  V3↔V4 link: dist=932.5m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V13 → V9  (PHANTOM)
-    Path 3: V149 → V34 → V9  (PHANTOM)
-    Path 4: V149 → V13 → V34 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V42 → V181  (PHANTOM)
+    Path 3: V80 → V83 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V13 or V34 paths will be dropped
+  Packets forwarded via phantom V42 or V83 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V52  (FORGED internally)
-  <V149 sees V9> as-relayed-via V53  (FORGED internally)
-  V3↔V4 link: dist=21.9m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V67  (FORGED internally)
+  <V80 sees V181> as-relayed-via V9  (FORGED internally)
+  V3↔V4 link: dist=1207.2m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V52 → V9  (PHANTOM)
-    Path 3: V149 → V53 → V9  (PHANTOM)
-    Path 4: V149 → V52 → V53 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V67 → V181  (PHANTOM)
+    Path 3: V80 → V9 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V52 or V53 paths will be dropped
+  Packets forwarded via phantom V67 or V9 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V38  (FORGED internally)
-  <V149 sees V9> as-relayed-via V41  (FORGED internally)
-  V3↔V4 link: dist=0.8m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V57  (FORGED internally)
+  <V80 sees V181> as-relayed-via V44  (FORGED internally)
+  V3↔V4 link: dist=57.8m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V38 → V9  (PHANTOM)
-    Path 3: V149 → V41 → V9  (PHANTOM)
-    Path 4: V149 → V38 → V41 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V57 → V181  (PHANTOM)
+    Path 3: V80 → V44 → V181  (PHANTOM)
+    Path 4: V80 → V57 → V44 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V38 or V41 paths will be dropped
+  Packets forwarded via phantom V57 or V44 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V29  (FORGED internally)
-  <V149 sees V9> as-relayed-via V31  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V86  (FORGED internally)
+  <V80 sees V181> as-relayed-via V55  (FORGED internally)
+  V3↔V4 link: dist=246.8m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V29 → V9  (PHANTOM)
-    Path 3: V149 → V31 → V9  (PHANTOM)
-    Path 4: V149 → V29 → V31 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V86 → V181  (PHANTOM)
+    Path 3: V80 → V55 → V181  (PHANTOM)
+    Path 4: V80 → V86 → V55 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V29 or V31 paths will be dropped
+  Packets forwarded via phantom V86 or V55 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V28  (FORGED internally)
-  <V149 sees V9> as-relayed-via V69  (FORGED internally)
-  V3↔V4 link: dist=1237.2m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V43  (FORGED internally)
+  <V80 sees V181> as-relayed-via V66  (FORGED internally)
+  V3↔V4 link: dist=822.6m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V28 → V9  (PHANTOM)
-    Path 3: V149 → V69 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V43 → V181  (PHANTOM)
+    Path 3: V80 → V66 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V28 or V69 paths will be dropped
+  Packets forwarded via phantom V43 or V66 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V27  (FORGED internally)
-  <V149 sees V9> as-relayed-via V22  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V96  (FORGED internally)
+  <V80 sees V181> as-relayed-via V19  (FORGED internally)
+  V3↔V4 link: dist=504.8m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V27 → V9  (PHANTOM)
-    Path 3: V149 → V22 → V9  (PHANTOM)
-    Path 4: V149 → V27 → V22 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V96 → V181  (PHANTOM)
+    Path 3: V80 → V19 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V27 or V22 paths will be dropped
+  Packets forwarded via phantom V96 or V19 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V81  (FORGED internally)
-  <V149 sees V9> as-relayed-via V79  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V90  (FORGED internally)
+  <V80 sees V181> as-relayed-via V78  (FORGED internally)
+  V3↔V4 link: dist=822.1m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V81 → V9  (PHANTOM)
-    Path 3: V149 → V79 → V9  (PHANTOM)
-    Path 4: V149 → V81 → V79 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V90 → V181  (PHANTOM)
+    Path 3: V80 → V78 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V81 or V79 paths will be dropped
+  Packets forwarded via phantom V90 or V78 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V21  (FORGED internally)
-  <V149 sees V9> as-relayed-via V47  (FORGED internally)
-  V3↔V4 link: dist=1744.7m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V24  (FORGED internally)
+  <V80 sees V181> as-relayed-via V10  (FORGED internally)
+  V3↔V4 link: dist=62.7m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V21 → V9  (PHANTOM)
-    Path 3: V149 → V47 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V24 → V181  (PHANTOM)
+    Path 3: V80 → V10 → V181  (PHANTOM)
+    Path 4: V80 → V24 → V10 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V21 or V47 paths will be dropped
+  Packets forwarded via phantom V24 or V10 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V24  (FORGED internally)
-  <V149 sees V9> as-relayed-via V18  (FORGED internally)
-  V3↔V4 link: dist=3.7m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V100  (FORGED internally)
+  <V80 sees V181> as-relayed-via V72  (FORGED internally)
+  V3↔V4 link: dist=314.6m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.4m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V24 → V9  (PHANTOM)
-    Path 3: V149 → V18 → V9  (PHANTOM)
-    Path 4: V149 → V24 → V18 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V100 → V181  (PHANTOM)
+    Path 3: V80 → V72 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V24 or V18 paths will be dropped
+  Packets forwarded via phantom V100 or V72 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V25  (FORGED internally)
-  <V149 sees V9> as-relayed-via V30  (FORGED internally)
-  V3↔V4 link: dist=66.5m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V50  (FORGED internally)
+  <V80 sees V181> as-relayed-via V62  (FORGED internally)
+  V3↔V4 link: dist=1552.9m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.5m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V25 → V9  (PHANTOM)
-    Path 3: V149 → V30 → V9  (PHANTOM)
-    Path 4: V149 → V25 → V30 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V50 → V181  (PHANTOM)
+    Path 3: V80 → V62 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V25 or V30 paths will be dropped
+  Packets forwarded via phantom V50 or V62 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V39  (FORGED internally)
-  <V149 sees V9> as-relayed-via V73  (FORGED internally)
-  V3↔V4 link: dist=1312.2m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V30  (FORGED internally)
+  <V80 sees V181> as-relayed-via V76  (FORGED internally)
+  V3↔V4 link: dist=1169.6m  OUT OF RANGE — no Path 4
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.5m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V39 → V9  (PHANTOM)
-    Path 3: V149 → V73 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V30 → V181  (PHANTOM)
+    Path 3: V80 → V76 → V181  (PHANTOM)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V39 or V73 paths will be dropped
+  Packets forwarded via phantom V30 or V76 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V16  (FORGED internally)
-  <V149 sees V9> as-relayed-via V49  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V7  (FORGED internally)
+  <V80 sees V181> as-relayed-via V8  (FORGED internally)
+  V3↔V4 link: dist=244.3m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.5m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V16 → V9  (PHANTOM)
-    Path 3: V149 → V49 → V9  (PHANTOM)
-    Path 4: V149 → V16 → V49 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V7 → V181  (PHANTOM)
+    Path 3: V80 → V8 → V181  (PHANTOM)
+    Path 4: V80 → V7 → V8 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V16 or V49 paths will be dropped
+  Packets forwarded via phantom V7 or V8 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V61  (FORGED internally)
-  <V149 sees V9> as-relayed-via V77  (FORGED internally)
-  V3↔V4 link: dist=277.2m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V103  (FORGED internally)
+  <V80 sees V181> as-relayed-via V53  (FORGED internally)
+  V3↔V4 link: dist=84.8m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.5m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V61 → V9  (PHANTOM)
-    Path 3: V149 → V77 → V9  (PHANTOM)
-    Path 4: V149 → V61 → V77 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V103 → V181  (PHANTOM)
+    Path 3: V80 → V53 → V181  (PHANTOM)
+    Path 4: V80 → V103 → V53 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V61 or V77 paths will be dropped
+  Packets forwarded via phantom V103 or V53 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V67  (FORGED internally)
-  <V149 sees V9> as-relayed-via V66  (FORGED internally)
-  V3↔V4 link: dist=346.7m  OUT OF RANGE — no Path 4
+  <V80 sees V181> as-relayed-via V64  (FORGED internally)
+  <V80 sees V181> as-relayed-via V18  (FORGED internally)
+  V3↔V4 link: dist=282.5m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.5m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V67 → V9  (PHANTOM)
-    Path 3: V149 → V66 → V9  (PHANTOM)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V64 → V181  (PHANTOM)
+    Path 3: V80 → V18 → V181  (PHANTOM)
+    Path 4: V80 → V64 → V18 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V67 or V66 paths will be dropped
+  Packets forwarded via phantom V64 or V18 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 
 [t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
 [t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
   Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V33  (FORGED internally)
-  <V149 sees V9> as-relayed-via V82  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
+  <V80 sees V181> as-relayed-via V99  (FORGED internally)
+  <V80 sees V181> as-relayed-via V60  (FORGED internally)
+  V3↔V4 link: dist=218.1m  IN RANGE — Path 4 inferred
   No external packet required — purely internal manipulation
 
 [t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
+  V80↔V181 fabricated link: dist=25.5m  IN RANGE — genuinely real
   Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V33 → V9  (PHANTOM)
-    Path 3: V149 → V82 → V9  (PHANTOM)
-    Path 4: V149 → V33 → V82 → V9  (PHANTOM — V3↔V4 in range)
+    Path 1: V80 → V181  (REAL)
+    Path 2: V80 → V99 → V181  (PHANTOM)
+    Path 3: V80 → V60 → V181  (PHANTOM)
+    Path 4: V80 → V99 → V60 → V181  (PHANTOM — V3↔V4 in range)
 
 [t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
   Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V33 or V82 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V51  (FORGED internally)
-  <V149 sees V9> as-relayed-via V58  (FORGED internally)
-  V3↔V4 link: dist=672.0m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V51 → V9  (PHANTOM)
-    Path 3: V149 → V58 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V51 or V58 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V71  (FORGED internally)
-  <V149 sees V9> as-relayed-via V74  (FORGED internally)
-  V3↔V4 link: dist=377.4m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V71 → V9  (PHANTOM)
-    Path 3: V149 → V74 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V71 or V74 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V70  (FORGED internally)
-  <V149 sees V9> as-relayed-via V40  (FORGED internally)
-  V3↔V4 link: dist=818.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V70 → V9  (PHANTOM)
-    Path 3: V149 → V40 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V70 or V40 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V54  (FORGED internally)
-  <V149 sees V9> as-relayed-via V78  (FORGED internally)
-  V3↔V4 link: dist=659.2m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V54 → V9  (PHANTOM)
-    Path 3: V149 → V78 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V54 or V78 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V35  (FORGED internally)
-  <V149 sees V9> as-relayed-via V43  (FORGED internally)
-  V3↔V4 link: dist=826.9m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V35 → V9  (PHANTOM)
-    Path 3: V149 → V43 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V35 or V43 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V6  (FORGED internally)
-  <V149 sees V9> as-relayed-via V32  (FORGED internally)
-  V3↔V4 link: dist=316.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V6 → V9  (PHANTOM)
-    Path 3: V149 → V32 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V6 or V32 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V55  (FORGED internally)
-  <V149 sees V9> as-relayed-via V72  (FORGED internally)
-  V3↔V4 link: dist=454.6m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V55 → V9  (PHANTOM)
-    Path 3: V149 → V72 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V55 or V72 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V26  (FORGED internally)
-  <V149 sees V9> as-relayed-via V83  (FORGED internally)
-  V3↔V4 link: dist=225.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V26 → V9  (PHANTOM)
-    Path 3: V149 → V83 → V9  (PHANTOM)
-    Path 4: V149 → V26 → V83 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V26 or V83 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V7  (FORGED internally)
-  <V149 sees V9> as-relayed-via V10  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V7 → V9  (PHANTOM)
-    Path 3: V149 → V10 → V9  (PHANTOM)
-    Path 4: V149 → V7 → V10 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V7 or V10 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V19  (FORGED internally)
-  <V149 sees V9> as-relayed-via V56  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V19 → V9  (PHANTOM)
-    Path 3: V149 → V56 → V9  (PHANTOM)
-    Path 4: V149 → V19 → V56 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V19 or V56 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V84  (FORGED internally)
-  <V149 sees V9> as-relayed-via V62  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V84 → V9  (PHANTOM)
-    Path 3: V149 → V62 → V9  (PHANTOM)
-    Path 4: V149 → V84 → V62 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V84 or V62 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V8  (FORGED internally)
-  <V149 sees V9> as-relayed-via V5  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V8 → V9  (PHANTOM)
-    Path 3: V149 → V5 → V9  (PHANTOM)
-    Path 4: V149 → V8 → V5 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V8 or V5 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V48  (FORGED internally)
-  <V149 sees V9> as-relayed-via V46  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V48 → V9  (PHANTOM)
-    Path 3: V149 → V46 → V9  (PHANTOM)
-    Path 4: V149 → V48 → V46 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V48 or V46 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V65  (FORGED internally)
-  <V149 sees V9> as-relayed-via V23  (FORGED internally)
-  V3↔V4 link: dist=698.1m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V65 → V9  (PHANTOM)
-    Path 3: V149 → V23 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V65 or V23 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V36  (FORGED internally)
-  <V149 sees V9> as-relayed-via V37  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V36 → V9  (PHANTOM)
-    Path 3: V149 → V37 → V9  (PHANTOM)
-    Path 4: V149 → V36 → V37 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V36 or V37 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V45  (FORGED internally)
-  <V149 sees V9> as-relayed-via V80  (FORGED internally)
-  V3↔V4 link: dist=577.7m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V45 → V9  (PHANTOM)
-    Path 3: V149 → V80 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V45 or V80 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V75  (FORGED internally)
-  <V149 sees V9> as-relayed-via V63  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V75 → V9  (PHANTOM)
-    Path 3: V149 → V63 → V9  (PHANTOM)
-    Path 4: V149 → V75 → V63 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V75 or V63 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V42  (FORGED internally)
-  <V149 sees V9> as-relayed-via V14  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V42 → V9  (PHANTOM)
-    Path 3: V149 → V14 → V9  (PHANTOM)
-    Path 4: V149 → V42 → V14 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V42 or V14 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V50  (FORGED internally)
-  <V149 sees V9> as-relayed-via V44  (FORGED internally)
-  V3↔V4 link: dist=1837.9m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V50 → V9  (PHANTOM)
-    Path 3: V149 → V44 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V50 or V44 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V68  (FORGED internally)
-  <V149 sees V9> as-relayed-via V60  (FORGED internally)
-  V3↔V4 link: dist=701.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V68 → V9  (PHANTOM)
-    Path 3: V149 → V60 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V68 or V60 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V57  (FORGED internally)
-  <V149 sees V9> as-relayed-via V64  (FORGED internally)
-  V3↔V4 link: dist=103.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V57 → V9  (PHANTOM)
-    Path 3: V149 → V64 → V9  (PHANTOM)
-    Path 4: V149 → V57 → V64 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V57 or V64 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V59  (FORGED internally)
-  <V149 sees V9> as-relayed-via V11  (FORGED internally)
-  V3↔V4 link: dist=296.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V59 → V9  (PHANTOM)
-    Path 3: V149 → V11 → V9  (PHANTOM)
-    Path 4: V149 → V59 → V11 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V59 or V11 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V52  (FORGED internally)
-  <V149 sees V9> as-relayed-via V53  (FORGED internally)
-  V3↔V4 link: dist=21.9m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V52 → V9  (PHANTOM)
-    Path 3: V149 → V53 → V9  (PHANTOM)
-    Path 4: V149 → V52 → V53 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V52 or V53 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V38  (FORGED internally)
-  <V149 sees V9> as-relayed-via V41  (FORGED internally)
-  V3↔V4 link: dist=0.8m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V38 → V9  (PHANTOM)
-    Path 3: V149 → V41 → V9  (PHANTOM)
-    Path 4: V149 → V38 → V41 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V38 or V41 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V28  (FORGED internally)
-  <V149 sees V9> as-relayed-via V69  (FORGED internally)
-  V3↔V4 link: dist=1237.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V28 → V9  (PHANTOM)
-    Path 3: V149 → V69 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V28 or V69 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V27  (FORGED internally)
-  <V149 sees V9> as-relayed-via V22  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V27 → V9  (PHANTOM)
-    Path 3: V149 → V22 → V9  (PHANTOM)
-    Path 4: V149 → V27 → V22 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V27 or V22 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V21  (FORGED internally)
-  <V149 sees V9> as-relayed-via V47  (FORGED internally)
-  V3↔V4 link: dist=1744.7m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V21 → V9  (PHANTOM)
-    Path 3: V149 → V47 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V21 or V47 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V24  (FORGED internally)
-  <V149 sees V9> as-relayed-via V18  (FORGED internally)
-  V3↔V4 link: dist=3.7m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V24 → V9  (PHANTOM)
-    Path 3: V149 → V18 → V9  (PHANTOM)
-    Path 4: V149 → V24 → V18 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V24 or V18 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V39  (FORGED internally)
-  <V149 sees V9> as-relayed-via V73  (FORGED internally)
-  V3↔V4 link: dist=1312.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V39 → V9  (PHANTOM)
-    Path 3: V149 → V73 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V39 or V73 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V16  (FORGED internally)
-  <V149 sees V9> as-relayed-via V49  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V16 → V9  (PHANTOM)
-    Path 3: V149 → V49 → V9  (PHANTOM)
-    Path 4: V149 → V16 → V49 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V16 or V49 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V67  (FORGED internally)
-  <V149 sees V9> as-relayed-via V66  (FORGED internally)
-  V3↔V4 link: dist=346.7m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V67 → V9  (PHANTOM)
-    Path 3: V149 → V66 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V67 or V66 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V33  (FORGED internally)
-  <V149 sees V9> as-relayed-via V82  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V33 → V9  (PHANTOM)
-    Path 3: V149 → V82 → V9  (PHANTOM)
-    Path 4: V149 → V33 → V82 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V33 or V82 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V71  (FORGED internally)
-  <V149 sees V9> as-relayed-via V74  (FORGED internally)
-  V3↔V4 link: dist=377.6m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V71 → V9  (PHANTOM)
-    Path 3: V149 → V74 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V71 or V74 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V70  (FORGED internally)
-  <V149 sees V9> as-relayed-via V40  (FORGED internally)
-  V3↔V4 link: dist=818.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V70 → V9  (PHANTOM)
-    Path 3: V149 → V40 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V70 or V40 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V35  (FORGED internally)
-  <V149 sees V9> as-relayed-via V43  (FORGED internally)
-  V3↔V4 link: dist=826.9m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V35 → V9  (PHANTOM)
-    Path 3: V149 → V43 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V35 or V43 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V6  (FORGED internally)
-  <V149 sees V9> as-relayed-via V32  (FORGED internally)
-  V3↔V4 link: dist=316.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V6 → V9  (PHANTOM)
-    Path 3: V149 → V32 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V6 or V32 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V26  (FORGED internally)
-  <V149 sees V9> as-relayed-via V83  (FORGED internally)
-  V3↔V4 link: dist=225.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V26 → V9  (PHANTOM)
-    Path 3: V149 → V83 → V9  (PHANTOM)
-    Path 4: V149 → V26 → V83 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V26 or V83 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V7  (FORGED internally)
-  <V149 sees V9> as-relayed-via V10  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V7 → V9  (PHANTOM)
-    Path 3: V149 → V10 → V9  (PHANTOM)
-    Path 4: V149 → V7 → V10 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V7 or V10 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V84  (FORGED internally)
-  <V149 sees V9> as-relayed-via V62  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V84 → V9  (PHANTOM)
-    Path 3: V149 → V62 → V9  (PHANTOM)
-    Path 4: V149 → V84 → V62 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V84 or V62 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V8  (FORGED internally)
-  <V149 sees V9> as-relayed-via V5  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V8 → V9  (PHANTOM)
-    Path 3: V149 → V5 → V9  (PHANTOM)
-    Path 4: V149 → V8 → V5 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V8 or V5 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V65  (FORGED internally)
-  <V149 sees V9> as-relayed-via V23  (FORGED internally)
-  V3↔V4 link: dist=698.1m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V65 → V9  (PHANTOM)
-    Path 3: V149 → V23 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V65 or V23 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V36  (FORGED internally)
-  <V149 sees V9> as-relayed-via V37  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V36 → V9  (PHANTOM)
-    Path 3: V149 → V37 → V9  (PHANTOM)
-    Path 4: V149 → V36 → V37 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V36 or V37 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V75  (FORGED internally)
-  <V149 sees V9> as-relayed-via V63  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V75 → V9  (PHANTOM)
-    Path 3: V149 → V63 → V9  (PHANTOM)
-    Path 4: V149 → V75 → V63 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V75 or V63 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V42  (FORGED internally)
-  <V149 sees V9> as-relayed-via V14  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V42 → V9  (PHANTOM)
-    Path 3: V149 → V14 → V9  (PHANTOM)
-    Path 4: V149 → V42 → V14 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V42 or V14 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V68  (FORGED internally)
-  <V149 sees V9> as-relayed-via V60  (FORGED internally)
-  V3↔V4 link: dist=701.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V68 → V9  (PHANTOM)
-    Path 3: V149 → V60 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V68 or V60 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V59  (FORGED internally)
-  <V149 sees V9> as-relayed-via V11  (FORGED internally)
-  V3↔V4 link: dist=296.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V59 → V9  (PHANTOM)
-    Path 3: V149 → V11 → V9  (PHANTOM)
-    Path 4: V149 → V59 → V11 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V59 or V11 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V38  (FORGED internally)
-  <V149 sees V9> as-relayed-via V41  (FORGED internally)
-  V3↔V4 link: dist=0.8m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V38 → V9  (PHANTOM)
-    Path 3: V149 → V41 → V9  (PHANTOM)
-    Path 4: V149 → V38 → V41 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V38 or V41 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V27  (FORGED internally)
-  <V149 sees V9> as-relayed-via V22  (FORGED internally)
-  V3↔V4 link: dist=0.6m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V27 → V9  (PHANTOM)
-    Path 3: V149 → V22 → V9  (PHANTOM)
-    Path 4: V149 → V27 → V22 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V27 or V22 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V24  (FORGED internally)
-  <V149 sees V9> as-relayed-via V18  (FORGED internally)
-  V3↔V4 link: dist=3.7m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V24 → V9  (PHANTOM)
-    Path 3: V149 → V18 → V9  (PHANTOM)
-    Path 4: V149 → V24 → V18 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V24 or V18 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V16  (FORGED internally)
-  <V149 sees V9> as-relayed-via V49  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V16 → V9  (PHANTOM)
-    Path 3: V149 → V49 → V9  (PHANTOM)
-    Path 4: V149 → V16 → V49 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V16 or V49 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V33  (FORGED internally)
-  <V149 sees V9> as-relayed-via V82  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V33 → V9  (PHANTOM)
-    Path 3: V149 → V82 → V9  (PHANTOM)
-    Path 4: V149 → V33 → V82 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V33 or V82 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V70  (FORGED internally)
-  <V149 sees V9> as-relayed-via V40  (FORGED internally)
-  V3↔V4 link: dist=818.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V70 → V9  (PHANTOM)
-    Path 3: V149 → V40 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V70 or V40 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V6  (FORGED internally)
-  <V149 sees V9> as-relayed-via V32  (FORGED internally)
-  V3↔V4 link: dist=316.5m  OUT OF RANGE — no Path 4
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V6 → V9  (PHANTOM)
-    Path 3: V149 → V32 → V9  (PHANTOM)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V6 or V32 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V7  (FORGED internally)
-  <V149 sees V9> as-relayed-via V10  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V7 → V9  (PHANTOM)
-    Path 3: V149 → V10 → V9  (PHANTOM)
-    Path 4: V149 → V7 → V10 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V7 or V10 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V8  (FORGED internally)
-  <V149 sees V9> as-relayed-via V5  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V8 → V9  (PHANTOM)
-    Path 3: V149 → V5 → V9  (PHANTOM)
-    Path 4: V149 → V8 → V5 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V8 or V5 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V36  (FORGED internally)
-  <V149 sees V9> as-relayed-via V37  (FORGED internally)
-  V3↔V4 link: dist=0.0m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V36 → V9  (PHANTOM)
-    Path 3: V149 → V37 → V9  (PHANTOM)
-    Path 4: V149 → V36 → V37 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V36 or V37 paths will be dropped
-  Expected impact: packet loss, increased delay, routing instability
-  <- ATTACK SUCCESS (no external packet required)
-
-[t=10.2]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
-[t=10.2]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)
-  Controller injects forged echo observations into its topology database:
-  <V149 sees V9> as-relayed-via V42  (FORGED internally)
-  <V149 sees V9> as-relayed-via V14  (FORGED internally)
-  V3↔V4 link: dist=1.5m  IN RANGE — Path 4 inferred
-  No external packet required — purely internal manipulation
-
-[t=10.2]  STEP ⑤  FALSE MULTIPATH INFERENCE
-  V149↔V9 fabricated link: dist=31.4m  IN RANGE — genuinely real
-  Controller incorrectly infers:
-    Path 1: V149 → V9  (REAL)
-    Path 2: V149 → V42 → V9  (PHANTOM)
-    Path 3: V149 → V14 → V9  (PHANTOM)
-    Path 4: V149 → V42 → V14 → V9  (PHANTOM — V3↔V4 in range)
-
-[t=10.2]  STEP ⑥  FAULTY ROUTING DECISIONS
-  Controller installs routing policies based on falsely inferred multipath topology
-  Packets forwarded via phantom V42 or V14 paths will be dropped
+  Packets forwarded via phantom V99 or V60 paths will be dropped
   Expected impact: packet loss, increased delay, routing instability
   <- ATTACK SUCCESS (no external packet required)
 

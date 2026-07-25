@@ -2311,8 +2311,14 @@ static bool g_enable_neighborhood_beaconing = true;
 //   TTW-S2  basic  = physical ≠ claimed      → Step 1 (MAC, Eq. 3.15) drops
 //   TTW-S2  soph.  = physical=claimed=V1     → Steps 1-3 pass (key compromise)
 //   BSHH-S1/S2 same pattern as TTW-S2
-//   ME-S1/S2 basic = reporter out of range   → Step 1b (locbind, Eqs.3.29-3.31) drops
-//   ME-S1/S2 soph. = reporter pos forged near link midpoint → Step 1b passes
+//   ME-S1/S2 have NO basic/sophisticated split at all -- removed from this
+//   mapping (was stale/aspirational, never implemented). ME's actual defense
+//   is location-binding + quorum (Eqs. 3.29-3.32), evaluated as a Stage-1/
+//   TGN detection signature AFTER logging, not a Stage-0 signing-key gate a
+//   sophistication roll could pass/fail before the event is ever recorded.
+//   See ME_S1_EchoAttack's and ME_S2_InjectEchoReports's own "does not model
+//   a sophisticated/basic split" comments -- both call PemEmitEvent
+//   unconditionally on every injection, with attack_label=true always.
 static double g_attacker_sophistication_prob = 0.5;
 static Ptr<UniformRandomVariable> g_attacker_rng;   // initialised in main() before simulation
 
@@ -9616,6 +9622,10 @@ AttackScheduleRepeatedInjection(double firstInjectionTime, double simTimeEnd,
 // Implementation note: NS-3.35's Simulator::Schedule/MakeEvent template
 // machinery does not accept a raw lambda closure directly (confirmed via
 // build failure: "no matching function for call to MakeEvent(...<lambda>&)")
+// Temporary diagnostic toggle (ME-S1 over-injection investigation) -- prints
+// the live counter state AttackScheduleAdaptiveInjection's tick reads on
+// every fire. Off by default; flip to true only for a targeted debug run.
+static bool g_debugAdaptiveInjection = true;
 // and separately has a bounded argument arity that a template function
 // pointer threading func+args through a recursive reschedule call exceeded
 // for this file's longer-argument-list injection functions. Both problems
@@ -9650,6 +9660,10 @@ AttackScheduleAdaptiveInjection(uint32_t physicalSenderId, double firstInjection
         // never-before-seen attacker isn't permanently blocked by a 0/0 check.
         const bool shouldInject =
             (totalCount == 0) || ((double)attackCount < rinj * (double)totalCount);
+        if (g_debugAdaptiveInjection)
+            std::cout << "[DEBUG-ADAPTIVE] t=" << now << " id=" << physicalSenderId
+                      << " attackCount=" << attackCount << " totalCount=" << totalCount
+                      << " rinj=" << rinj << " shouldInject=" << shouldInject << std::endl;
         if (shouldInject)
         {
             func(args...);
@@ -156916,9 +156930,22 @@ static int RoutingMain(int argc, char *argv[])
 		  
 		  //uint16_t protocolip = 0x86DD;//ethertype for Ipv4 is set here.
 		  
-		  ltehelper->EnablePhyTraces();
-		  ltehelper->EnableMacTraces();
-		  ltehelper->EnableRlcTraces();
+		  // Performance fix (confirmed root cause of multi-hundred-GB runaway
+		  // disk I/O, e.g. 299GB written / 30s sim for BSHH-S2 pct=100): these
+		  // enable NS-3's built-in per-packet ASCII trace writers (DlRsrpSinr
+		  // Stats.txt, UlMacStats.txt, UlRlcStats.txt, etc.) for LTE PHY/MAC/
+		  // RLC events across all N_Vehicles UEs. LTE measurement reporting
+		  // (RSRP/SINR) fires continuously regardless of application traffic,
+		  // so these grow enormous even though LTE data-plane scheduling is
+		  // deliberately disabled for all 12 attack scenarios (see CLAUDE.md
+		  // §19/§20 -- DSRC+CSMA is the exclusive active path; nothing in the
+		  // PEM/TGN detection pipeline reads these trace files at all). Safe
+		  // to disable: zero effect on any PEM/TGN/rinj result, eliminates a
+		  // multi-hundred-GB/run disk-I/O bottleneck that was stalling runs in
+		  // D-state (uninterruptible disk sleep), not CPU/crypto load.
+		  // ltehelper->EnablePhyTraces();
+		  // ltehelper->EnableMacTraces();
+		  // ltehelper->EnableRlcTraces();
 		  
 		  //Phy.EnablePcap ("WaveTest", wifidevices);
 	}
@@ -158244,7 +158271,13 @@ static int RoutingMain(int argc, char *argv[])
       // attack_percentage controls how many RSUs are malicious (not vehicle pairs)
       uint32_t n_malicious_rsus =
           (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
-      if (n_malicious_rsus < 1u)                        n_malicious_rsus = 1u;
+      // Bug fix (pct=0 floor): mirrors declare_attackers()'s identical fix --
+      // the floor-of-1 safety net must not force a malicious RSU into
+      // existence when attack_percentage is exactly 0 (a baseline run must
+      // never inject any attack at all). Confirmed: this unguarded floor was
+      // why TTW-S2's pct=0 dataset run still showed a genuinely-attacking
+      // RSU physical_sender_id with alert-worthy events.
+      if (attack_percentage > 0.0 && n_malicious_rsus < 1u) n_malicious_rsus = 1u;
       if (n_malicious_rsus > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus = (uint32_t)RSU_Nodes.GetN();
       if (n_malicious_rsus > N_Vehicles / 2)            n_malicious_rsus = N_Vehicles / 2;
 
@@ -159172,7 +159205,8 @@ static int RoutingMain(int argc, char *argv[])
 
       uint32_t n_malicious_rsus2 =
           (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
-      if (n_malicious_rsus2 < 1u)                          n_malicious_rsus2 = 1u;
+      // Bug fix (pct=0 floor): see TTW-S2's identical fix/comment above.
+      if (attack_percentage > 0.0 && n_malicious_rsus2 < 1u) n_malicious_rsus2 = 1u;
       if (n_malicious_rsus2 > (uint32_t)RSU_Nodes.GetN()) n_malicious_rsus2 = (uint32_t)RSU_Nodes.GetN();
       if (n_malicious_rsus2 > N_Vehicles / 2)              n_malicious_rsus2 = N_Vehicles / 2;
 
@@ -159970,7 +160004,15 @@ static int RoutingMain(int argc, char *argv[])
           return 1;
       }
       uint32_t n_mal_rsus2 = (uint32_t)std::round(N_RSUs * attack_percentage / 100.0);
-      if (n_mal_rsus2 < 1) n_mal_rsus2 = 1;
+      // Bug fix (pct=0 floor): see TTW-S2's identical fix/comment. This
+      // unguarded floor also explains why ME-S2's dataset run showed ZERO
+      // attackers at every percentage tested INCLUDING 100 -- with
+      // N_RSUs=64, round(64*100/100)=64 should never need this floor at
+      // all, so its presence here was masking a different, separate
+      // problem downstream (the phantom-reporter/echo path itself), not
+      // fixing anything real. Guarding it doesn't fix that separate issue,
+      // but removes a confound so it can be diagnosed on its own.
+      if (attack_percentage > 0.0 && n_mal_rsus2 < 1) n_mal_rsus2 = 1;
       if (n_mal_rsus2 > RSU_Nodes.GetN()) n_mal_rsus2 = RSU_Nodes.GetN();
 
             // Build phantom reporters from me_malicious_nodes (all malicious vehicles)
@@ -160121,7 +160163,40 @@ static int RoutingMain(int argc, char *argv[])
           if (phantomPool.empty()) phantomPool = s2_phantom_cidx;
 
           std::vector<uint32_t> localReal    = MeSelectMutualRangePairNearRsu(rsu_id, realPool, ME_S2_DISCOVERY_TIME);
-          std::vector<uint32_t> localPhantom = MeSortVehiclesByDistanceToRsu(rsu_id, phantomPool, ME_S2_DISCOVERY_TIME);
+          // Bug fix: s2_real_cidx and s2_phantom_cidx heavily overlap at high
+          // attack_percentage (s2_phantom_cidx is built from me_malicious_nodes,
+          // which at e.g. pct=100 covers nearly all N_Vehicles, same as
+          // s2_real_cidx's full-pool construction) -- both are then
+          // independently ranked by proximity to the SAME rsu_id, so their top
+          // picks converged on the identical vehicles. s2_used_vehicles only
+          // excludes reuse ACROSS different RSUs' iterations, never excludes
+          // THIS RSU's own just-picked real-link pair from its own phantom
+          // pool -- confirmed producing degenerate rows like "RSU_205 local
+          // link: V18<->V193  phantom(s): V18  V193" (phantom reporter IS a
+          // real-link endpoint), which silently produced zero valid attack
+          // events downstream. Filter localReal's members out of phantomPool
+          // before ranking it, so a phantom reporter can never coincide with
+          // the real link it's echoing.
+          // Bug fix (of the bug fix above): MeSelectMutualRangePairNearRsu
+          // returns the WHOLE reordered pool with the chosen pair moved to
+          // front (same convention as SelectMutualRangePair), NOT a 2-
+          // element vector -- confirmed via live debug print
+          // (localReal.size()==200, matching phantomPool.size()==200).
+          // Excluding "any c found anywhere in localReal" therefore excluded
+          // nearly the ENTIRE phantom pool (since both draw from the same
+          // ~200-vehicle set), immediately tripped the empty-pool fallback,
+          // and silently discarded the filter -- reproducing the exact
+          // degenerate phantom==real-pair output this was meant to fix. Only
+          // the two actually-chosen vehicles (localReal[0]/[1] = v1/v2) may
+          // ever coincide with a phantom reporter; exclude just those two.
+          const uint32_t chosenV1 = localReal.size() > 0 ? localReal[0] : UINT32_MAX;
+          const uint32_t chosenV2 = localReal.size() > 1 ? localReal[1] : UINT32_MAX;
+          std::vector<uint32_t> phantomPoolExRealPair;
+          for (uint32_t c : phantomPool)
+              if (c != chosenV1 && c != chosenV2)
+                  phantomPoolExRealPair.push_back(c);
+          if (phantomPoolExRealPair.empty()) phantomPoolExRealPair = phantomPool;
+          std::vector<uint32_t> localPhantom = MeSortVehiclesByDistanceToRsu(rsu_id, phantomPoolExRealPair, ME_S2_DISCOVERY_TIME);
 
           // A7 (--echo_dist_ratio): same hook as ME-S1/ME-S3/ME-S4. Applied
           // after the RSU-proximity sort above, using this RSU's own local
