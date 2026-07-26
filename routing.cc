@@ -11129,23 +11129,25 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     std::cout << "[TTW-S1][t=" << now << "]  *** ATTACK COMPLETE ***  ghost link V"
               << src_id << "<->V" << dst_id << " injected into controller table" << std::endl;
 
-    // Per-pair topology snapshot (shows cumulative state at this moment)
-    ttw_log << "  Topology Table (after this pair's replay):\n"
-            << "  Src   Dst   Timestamp   Forged?\n"
-            << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table)
-    {
-        TopologyPacket& p = e.second;
-        ttw_log << "  V" << p.src_id  << "  ->  V" << p.seen_id
-                << "    t=" << p.timestamp
-                << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
-    ttw_log << "\n";
-
-    // Print the scenario-completion banner only after the last pair completes
+    // Perf/disk fix: the full topology-table snapshot used to be dumped on
+    // EVERY injection tick (unbounded over a 300s/200-vehicle run, this grew
+    // ttw_attack_scenario4.txt to multi-GB sizes -- same class of bug already
+    // fixed for BSHH via its buffered pair_logs pattern). Only dump it once,
+    // at scenario completion, matching the completion banner below.
     ++ttw_s1_completed_pairs;
     if (ttw_s1_completed_pairs >= ttw_s1_total_pairs)
     {
+        ttw_log << "  Topology Table (final state):\n"
+                << "  Src   Dst   Timestamp   Forged?\n"
+                << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table)
+        {
+            TopologyPacket& p = e.second;
+            ttw_log << "  V" << p.src_id  << "  ->  V" << p.seen_id
+                    << "    t=" << p.timestamp
+                    << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
+        ttw_log << "\n";
         ttw_log << "========================================================\n"
                 << "  TTW ATTACK SCENARIO " << attack_scenario << " COMPLETE\n"
                 << "========================================================\n";
@@ -11577,18 +11579,20 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  Consequence : packets routed via ghost link will be DROPPED\n\n";
-    ttws2_log << "  Topology Table (after replay):\n"
-              << "  Src   Dst   Timestamp   Forged?\n"
-              << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table) {
-        TopologyPacket& p = e.second;
-        ttws2_log << "  V" << p.src_id << "  ->  V" << p.seen_id
-                  << "    t=" << p.timestamp
-                  << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
+    // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
+    // only once, at completion, not on every injection tick.
     ++ttws2_completed_pairs;
     if (ttws2_completed_pairs >= ttws2_total_pairs)
     {
+        ttws2_log << "  Topology Table (final state):\n"
+                  << "  Src   Dst   Timestamp   Forged?\n"
+                  << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table) {
+            TopologyPacket& p = e.second;
+            ttws2_log << "  V" << p.src_id << "  ->  V" << p.seen_id
+                      << "    t=" << p.timestamp
+                      << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
         ttws2_log << "\n========================================================\n"
                   << "  TTW ATTACK S2 COMPLETE\n"
                   << "========================================================\n";
@@ -11830,18 +11834,20 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
-    ttws3_log << "  Topology Table (after replay):\n"
-              << "  Src   Dst   Timestamp   Forged?\n"
-              << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table) {
-        TopologyPacket& p = e.second;
-        ttws3_log << "  V" << p.src_id << "  ->  V" << p.seen_id
-                  << "    t=" << p.timestamp
-                  << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
+    // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
+    // only once, at completion, not on every injection tick.
     ++ttws3_completed_pairs;
     if (ttws3_completed_pairs >= ttws3_total_pairs)
     {
+        ttws3_log << "  Topology Table (final state):\n"
+                  << "  Src   Dst   Timestamp   Forged?\n"
+                  << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table) {
+            TopologyPacket& p = e.second;
+            ttws3_log << "  V" << p.src_id << "  ->  V" << p.seen_id
+                      << "    t=" << p.timestamp
+                      << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
         ttws3_log << "\n========================================================\n"
                   << "  TTW ATTACK S3 COMPLETE\n"
                   << "========================================================\n";
@@ -12056,18 +12062,20 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
-    ttws4_log << "  Topology Table (after replay):\n"
-              << "  Src   Dst   Timestamp   Forged?\n"
-              << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table) {
-        TopologyPacket& p = e.second;
-        ttws4_log << "  V" << p.src_id << "  ->  V" << p.seen_id
-                  << "    t=" << p.timestamp
-                  << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
+    // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
+    // only once, at completion, not on every injection tick.
     ++ttws4_completed_pairs;
     if (ttws4_completed_pairs >= ttws4_total_pairs)
     {
+        ttws4_log << "  Topology Table (final state):\n"
+                  << "  Src   Dst   Timestamp   Forged?\n"
+                  << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table) {
+            TopologyPacket& p = e.second;
+            ttws4_log << "  V" << p.src_id << "  ->  V" << p.seen_id
+                      << "    t=" << p.timestamp
+                      << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
         ttws4_log << "\n========================================================\n"
                   << "  TTW ATTACK S4 COMPLETE\n"
                   << "========================================================\n";
