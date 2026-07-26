@@ -7,16 +7,17 @@
 # sc1/sc5/sc9 separately.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_dim192_final.bin"
+TGN="$HOME/tgn_weights_sc1_12_capped.bin"
 OUT="$HOME/ablation_sweep/a2"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
 
-for X in 1 5 10; do
-  echo "=== a2 scenario=13 x=${X} ==="
-  ISO="$OUT/sc13_x${X}"
+# FIX (audit 2026-07-26): X must be rinj, not attack_percentage -- see sweep_a1.sh.
+for X in 0.01 0.05 0.10; do
+  echo "=== a2 scenario=13 rinj=${X} ==="
+  ISO="$OUT/sc13_rinj${X}"
   mkdir -p "$ISO"
-  ./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --RngRun=999 --no_lw=1 --attack_percentage=${X} --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+  ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --RngRun=1 --no_lw=1 --attack_percentage=60 --rinj=${X} --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
   rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
 done
 

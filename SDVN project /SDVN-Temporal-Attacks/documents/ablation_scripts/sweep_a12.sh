@@ -11,7 +11,7 @@
 # no new code needed, just wider scenario coverage.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_dim192_final.bin"
+TGN="$HOME/tgn_weights_sc1_12_capped.bin"
 OUT="$HOME/ablation_sweep/a12"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -20,11 +20,12 @@ declare -A RSU_FOR_SC=( [3]=0 [4]=64 [7]=0 [8]=64 [11]=0 [12]=64 )
 
 for SC in 3 4 7 8 11 12; do
   NRSU=${RSU_FOR_SC[$SC]}
-  for X in 1 5 10; do
-    echo "=== a12 scenario=${SC} x=${X} ==="
-    ISO="$OUT/sc${SC}_x${X}"
+  # FIX (audit 2026-07-26): X must be rinj, not attack_percentage -- see sweep_a1.sh.
+  for X in 0.01 0.05 0.10; do
+    echo "=== a12 scenario=${SC} rinj=${X} ==="
+    ISO="$OUT/sc${SC}_rinj${X}"
     mkdir -p "$ISO"
-    ./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=${X} --RngRun=999 --no_divergence_detector=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+    ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=60 --rinj=${X} --RngRun=1 --no_divergence_detector=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
     rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
   done
 done

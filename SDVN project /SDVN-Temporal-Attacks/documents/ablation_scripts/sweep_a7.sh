@@ -11,7 +11,7 @@
 # was expanded.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_dim192_final.bin"
+TGN="$HOME/tgn_weights_sc1_12_capped.bin"
 OUT="$HOME/ablation_sweep/a7"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -24,7 +24,10 @@ for SC in 9 10 11 12; do
     echo "=== a7 scenario=${SC} x=${X} ==="
     ISO="$OUT/sc${SC}_x${X}"
     mkdir -p "$ISO"
-    ./waf --run "scratch/routing --simTime=30 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=50 --RngRun=999 --echo_dist_ratio=${X} --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+    # FIX (audit 2026-07-26): --no_lbs=1 added -- without it the location-binding
+    # +quorum defence (Eq 3.11/3.29/3.32) stays fully active and echo_dist_ratio
+    # only reorders candidates against an intact defence, not an ablated one.
+    ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=60 --RngRun=1 --no_lbs=1 --echo_dist_ratio=${X} --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
     rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
   done
 done

@@ -86,7 +86,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2372]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -105,7 +105,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3372]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -134,7 +134,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5372]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -153,7 +153,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6372]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -222,7 +222,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.2372]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -885,7 +885,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.226]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -1094,7 +1094,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.226]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -1407,6 +1407,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.226]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V6 impersonated V101
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.326]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V1(ns3=6)
   Victim/claimed_sender    : V96(ns3=101)
@@ -1652,6 +1661,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.106]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V7 impersonated V29
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=10.206]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V2(ns3=7)
   Victim/claimed_sender    : V24(ns3=29)
@@ -1668,7 +1686,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.306]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -1697,7 +1715,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.506]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -1886,7 +1904,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.306]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -2466,7 +2484,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2164]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -2485,7 +2503,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3164]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -2504,7 +2522,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4164]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -2523,7 +2541,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5164]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -2572,7 +2590,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9164]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -2717,7 +2735,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.1028]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -2758,7 +2776,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2164]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -3821,7 +3839,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2212]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -3840,7 +3858,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3212]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -3859,7 +3877,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4212]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -3878,7 +3896,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5212]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -4638,7 +4656,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2219]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -4667,7 +4685,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4219]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -4872,7 +4890,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.1244]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -5507,6 +5525,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.223]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V10 impersonated V62
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.3219]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V5(ns3=10)
   Victim/claimed_sender    : V13(ns3=18)
@@ -5527,6 +5554,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.323]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V10 impersonated V62
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.4219]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V5(ns3=10)
   Victim/claimed_sender    : V13(ns3=18)
@@ -5607,6 +5643,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.723]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V10 impersonated V62
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.8219]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V5(ns3=10)
   Victim/claimed_sender    : V13(ns3=18)
@@ -5627,6 +5672,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.823]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V10 impersonated V62
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.9219]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V5(ns3=10)
   Victim/claimed_sender    : V13(ns3=18)
@@ -5948,7 +6002,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2082]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -5987,7 +6041,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5082]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -6730,7 +6784,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2436]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -6789,7 +6843,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.7436]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -6818,7 +6872,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9436]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -6837,7 +6891,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.0436]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -6856,7 +6910,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.1436]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -7529,7 +7583,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.236]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -8302,7 +8356,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3483]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -9085,7 +9139,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5129]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -9828,7 +9882,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2309]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -10601,7 +10655,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2409]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -10650,7 +10704,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6409]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -10679,7 +10733,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.8409]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -10698,7 +10752,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9409]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -11391,7 +11445,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2143]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -11410,7 +11464,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3143]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -11429,7 +11483,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4143]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -11448,7 +11502,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5143]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -11497,7 +11551,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9143]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -11516,7 +11570,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.0143]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -12209,7 +12263,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2334]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -12999,7 +13053,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2403]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -13018,7 +13072,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3403]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -13037,7 +13091,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4403]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -13066,7 +13120,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6403]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -13105,7 +13159,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9403]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -13134,7 +13188,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.1403]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -13291,7 +13345,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2403]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -14848,6 +14902,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.222]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V22 impersonated V32
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.3221]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V17(ns3=22)
   Victim/claimed_sender    : V27(ns3=32)
@@ -14858,6 +14921,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.322]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V22 impersonated V32
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.4221]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V17(ns3=22)
   Victim/claimed_sender    : V27(ns3=32)
@@ -14868,6 +14940,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.422]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V22 impersonated V32
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.5221]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V17(ns3=22)
   Victim/claimed_sender    : V27(ns3=32)
@@ -14898,6 +14979,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.722]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V22 impersonated V32
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.8221]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V17(ns3=22)
   Victim/claimed_sender    : V27(ns3=32)
@@ -14908,6 +14998,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.822]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V22 impersonated V32
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.9221]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V17(ns3=22)
   Victim/claimed_sender    : V27(ns3=32)
@@ -15108,7 +15207,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2275]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -15127,7 +15226,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3275]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -15890,7 +15989,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.224]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -16099,7 +16198,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.224]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -16412,6 +16511,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.224]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V24 impersonated V38
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.324]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V19(ns3=24)
   Victim/claimed_sender    : V33(ns3=38)
@@ -16422,6 +16530,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.324]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V24 impersonated V38
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.424]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V19(ns3=24)
   Victim/claimed_sender    : V33(ns3=38)
@@ -16472,6 +16589,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.824]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V24 impersonated V38
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.924]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V19(ns3=24)
   Victim/claimed_sender    : V33(ns3=38)
@@ -16672,7 +16798,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2441]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -16691,7 +16817,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3441]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -16738,11 +16864,10 @@
   Stale heartbeat impersonation: V26 impersonated V37
   Score: 0.123
   Latency: 6.831 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V26 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V26): O(log 100) = 7 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V26 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V26): blocked from re-admission until re-authenticated
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.7441]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V21(ns3=26)
@@ -16770,7 +16895,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9441]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -16799,7 +16924,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.1441]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -17472,7 +17597,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2411]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -17541,7 +17666,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.8411]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -18967,7 +19092,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=17.0554]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -19052,7 +19177,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2445]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19071,7 +19196,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3445]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19120,7 +19245,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.7445]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19833,7 +19958,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19852,7 +19977,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19871,7 +19996,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19890,7 +20015,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19909,7 +20034,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19948,7 +20073,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19977,7 +20102,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.1375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -19996,7 +20121,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.2375]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -20704,7 +20829,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2407]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -20753,7 +20878,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6407]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -20792,7 +20917,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9407]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -21540,7 +21665,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3472]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -22293,7 +22418,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2603]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -22512,7 +22637,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.3603]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -23065,7 +23190,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2607]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -23084,7 +23209,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3607]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -23293,7 +23418,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.3607]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -23846,7 +23971,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.242]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -24607,11 +24732,10 @@
   Stale heartbeat impersonation: V37 impersonated V59
   Score: 0.123
   Latency: 6.831 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V37 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V37): O(log 100) = 7 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V37 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V37): blocked from re-admission until re-authenticated
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2609]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V32(ns3=37)
@@ -24629,7 +24753,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3609]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -24838,7 +24962,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.3609]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -25391,7 +25515,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2481]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -25410,7 +25534,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3481]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -26180,7 +26304,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2644]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -26199,7 +26323,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3644]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -26238,7 +26362,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6644]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -26257,7 +26381,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.7644]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -26286,7 +26410,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9644]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -26453,7 +26577,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2136]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -26472,7 +26596,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2644]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -28279,7 +28403,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2342]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -29099,7 +29223,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5512]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -29316,7 +29440,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2512]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -30592,7 +30716,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.0894]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -31207,6 +31331,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.088]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V30
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.143]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V38(ns3=43)
   Victim/claimed_sender    : V53(ns3=58)
@@ -31227,6 +31360,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.188]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V30
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.243]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V38(ns3=43)
   Victim/claimed_sender    : V53(ns3=58)
@@ -31247,6 +31389,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.288]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V30
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.343]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V38(ns3=43)
   Victim/claimed_sender    : V53(ns3=58)
@@ -31307,6 +31458,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.588]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V30
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.643]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V38(ns3=43)
   Victim/claimed_sender    : V53(ns3=58)
@@ -31327,6 +31487,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.688]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V30
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.743]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V38(ns3=43)
   Victim/claimed_sender    : V53(ns3=58)
@@ -31347,6 +31516,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.788]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V43 impersonated V30
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.843]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V38(ns3=43)
   Victim/claimed_sender    : V53(ns3=58)
@@ -31677,7 +31855,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2463]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -31696,7 +31874,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3463]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -32449,7 +32627,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2615]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -33210,10 +33388,11 @@
   Stale heartbeat impersonation: V46 impersonated V61
   Score: 0.123
   Latency: 6.831 ms
-  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
-  PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
-  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V46 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V46): O(log 100) = 7 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V46 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V46): blocked from re-admission until re-authenticated
 
 [t=10.2501]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V41(ns3=46)
@@ -33985,7 +34164,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3496]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -34729,7 +34908,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2628]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -35072,6 +35251,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.563]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V48 impersonated V56
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.6628]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V43(ns3=48)
   Victim/claimed_sender    : V51(ns3=56)
@@ -35082,6 +35270,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.663]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V48 impersonated V56
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.7628]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V43(ns3=48)
   Victim/claimed_sender    : V51(ns3=56)
@@ -36063,7 +36260,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2611]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -36308,11 +36505,10 @@
   Stale heartbeat impersonation: V51 impersonated V82
   Score: 0.123
   Latency: 6.831 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V51 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V51): O(log 100) = 7 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V51 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V51): blocked from re-admission until re-authenticated
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2611]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V46(ns3=51)
@@ -37364,7 +37560,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2515]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -37383,7 +37579,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3515]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -37412,7 +37608,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5515]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -37431,7 +37627,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6515]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -37470,7 +37666,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9515]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -38164,7 +38360,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3719]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -38253,7 +38449,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.1719]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -38936,7 +39132,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3487]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -38955,7 +39151,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4487]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -39706,10 +39902,11 @@
   Stale heartbeat impersonation: V55 impersonated V103
   Score: 0.123
   Latency: 6.831 ms
-  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
-  PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
-  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V55 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V55): O(log 100) = 7 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V55 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V55): blocked from re-admission until re-authenticated
 
 [t=10.363]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V50(ns3=55)
@@ -39907,7 +40104,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.263]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -40471,7 +40668,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.3437]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -40993,7 +41190,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0748]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -41051,7 +41248,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3709]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -41140,7 +41337,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.1709]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -41265,7 +41462,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.0945]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -41296,7 +41493,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.1935]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -41315,7 +41512,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2709]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -42331,6 +42528,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.077]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V58 impersonated V70
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=10.0779]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V65(ns3=70) (attacker=V53(ns3=58) replayed it back)
   Forwarder/physical       : V65(ns3=70)
@@ -42359,7 +42565,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2769]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -43122,7 +43328,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2525]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -43141,7 +43347,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3525]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -43160,7 +43366,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4525]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -43903,7 +44109,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2561]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -44602,7 +44808,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 ========================================
@@ -44642,10 +44848,11 @@
   Stale heartbeat impersonation: V65 impersonated V75
   Score: 0.123
   Latency: 6.831 ms
-  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
-  PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
-  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V65 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V65): O(log 100) = 7 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V65 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V65): blocked from re-admission until re-authenticated
 
 [t=10.0743]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V70(ns3=75) (attacker=V60(ns3=65) replayed it back)
@@ -44675,7 +44882,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2733]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -44692,11 +44899,10 @@
   Stale heartbeat impersonation: V65 impersonated V75
   Score: 0.123
   Latency: 6.831 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V65 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V65): O(log 100) = 7 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V65 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V65): blocked from re-admission until re-authenticated
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3733]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V60(ns3=65)
@@ -44724,7 +44930,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5733]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -44763,7 +44969,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.8733]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -44782,7 +44988,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9733]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -44801,7 +45007,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 37/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.0733]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -44830,7 +45036,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.2733]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -45493,7 +45699,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2624]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -45512,7 +45718,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3624]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -46025,6 +46231,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.362]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V66 impersonated V28
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.4624]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V61(ns3=66)
   Victim/claimed_sender    : V23(ns3=28)
@@ -46035,6 +46250,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.462]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V66 impersonated V28
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.5624]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V61(ns3=66)
   Victim/claimed_sender    : V23(ns3=28)
@@ -46045,6 +46269,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.562]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V66 impersonated V28
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.6624]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V61(ns3=66)
   Victim/claimed_sender    : V23(ns3=28)
@@ -46055,6 +46288,16 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: SOPHISTICATED — signs with victim's genuinely stolen key + fresh ts → Stage-0 genuinely passes → LW+TGN
+[t=15.662]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V66 impersonated V28
+  Score: 0.123
+  Latency: 6.831 ms
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V66 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V66): O(log 100) = 7 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V66 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V66): blocked from re-admission until re-authenticated
+
 [t=15.7624]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V61(ns3=66)
   Victim/claimed_sender    : V23(ns3=28)
@@ -46234,7 +46477,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0843]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -46285,7 +46528,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4833]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -46304,7 +46547,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5833]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -46323,7 +46566,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 40/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6833]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -46342,7 +46585,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.7833]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -46361,7 +46604,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.8833]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -46380,7 +46623,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9833]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47036,6 +47279,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.071]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V68 impersonated V39
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=10.0718]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V34(ns3=39) (attacker=V63(ns3=68) replayed it back)
   Forwarder/physical       : V34(ns3=39)
@@ -47064,7 +47316,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47083,7 +47335,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47112,7 +47364,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47131,7 +47383,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47150,7 +47402,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.7708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47169,7 +47421,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.8708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47208,7 +47460,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=11.1708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47327,7 +47579,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2708]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -47859,7 +48111,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0839]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -48613,7 +48865,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0807]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -49367,7 +49619,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0925]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -49398,7 +49650,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 25/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2915]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -49447,7 +49699,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6915]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -49900,6 +50152,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.091]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V72 impersonated V79
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.1915]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V67(ns3=72)
   Victim/claimed_sender    : V74(ns3=79)
@@ -49950,6 +50211,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.591]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V72 impersonated V79
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.6915]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V67(ns3=72)
   Victim/claimed_sender    : V74(ns3=79)
@@ -50139,7 +50409,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0754]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -50170,7 +50440,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2744]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -50189,7 +50459,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3744]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -50248,7 +50518,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.8744]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -50267,7 +50537,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 33/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.9744]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -50927,11 +51197,10 @@
   Stale heartbeat impersonation: V74 impersonated V67
   Score: 0.123
   Latency: 6.831 ms
-  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V74 cert fingerprint
-  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
-  [LKH] Revoke-Session-Key(V74): O(log 100) = 7 KEK updates on path to LKH root
-  [CA]  Certificate revocation: V74 excluded until re-admission via consortium CA
-  [REAUTH] FLAG_REAUTH(V74): blocked from re-admission until re-authenticated
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.075]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V62(ns3=67) (attacker=V69(ns3=74) replayed it back)
@@ -50961,7 +51230,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.274]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -50980,7 +51249,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.374]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -51009,7 +51278,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.574]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -51048,7 +51317,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.874]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -51067,7 +51336,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 32/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.974]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -51729,7 +51998,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0843]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -52025,7 +52294,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2831]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -52994,7 +53263,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=17.0831]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -53046,7 +53315,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0845]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -53567,7 +53836,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=15.1786]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -53809,7 +54078,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0865]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -53890,7 +54159,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.7802]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -54572,7 +54841,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0864]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -54603,7 +54872,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2854]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -54652,7 +54921,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 43/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6854]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -55344,7 +55613,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0807]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -56098,7 +56367,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.086]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -56129,7 +56398,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.285]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -56168,7 +56437,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 30/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 36/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.585]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -56187,7 +56456,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 42/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.685]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -56879,7 +57148,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0859]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -56910,7 +57179,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2849]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -56949,7 +57218,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 35/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5849]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -56968,7 +57237,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 41/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6849]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -57691,7 +57960,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2699]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -57710,7 +57979,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3699]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -57749,7 +58018,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 38/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6699]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -57918,7 +58187,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2699]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -58450,7 +58719,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0924]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -58481,7 +58750,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 12/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2784]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -58980,7 +59249,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=15.1784]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -59216,6 +59485,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.096]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V87 impersonated V11
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=10.0975]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V6(ns3=11) (attacker=V82(ns3=87) replayed it back)
   Forwarder/physical       : V6(ns3=11)
@@ -59244,7 +59522,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 26/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2965]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -59293,7 +59571,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 4/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6965]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -59452,7 +59730,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.1965]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -59471,7 +59749,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2965]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -60025,7 +60303,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3017]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -60044,7 +60322,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.4017]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -60233,7 +60511,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 46/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2017]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -60775,7 +61053,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0941]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -60846,7 +61124,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 48/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6931]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -61015,7 +61293,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2931]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -61541,6 +61819,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.103]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V90 impersonated V49
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=10.1036]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V44(ns3=49) (attacker=V85(ns3=90) replayed it back)
   Forwarder/physical       : V44(ns3=49)
@@ -61569,7 +61856,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 29/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.3026]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -61778,7 +62065,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.3026]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -62310,7 +62597,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0848]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -62341,7 +62628,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 13/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2838]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -62380,7 +62667,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 28/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 34/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.5838]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -62419,7 +62706,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.8838]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -63091,7 +63378,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 3/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0851]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -63122,7 +63409,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 10/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2751]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -63854,7 +64141,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 19/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0989]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -63885,7 +64172,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2965]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -64082,10 +64369,11 @@
   Stale heartbeat impersonation: V94 impersonated V89
   Score: 0.123
   Latency: 6.831 ms
-  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
-  PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
-  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V94 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V94): O(log 100) = 7 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V94 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V94): blocked from re-admission until re-authenticated
 
 [t=12.1965]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V89(ns3=94)
@@ -64620,6 +64908,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=10.088]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V98 impersonated V92
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=10.0974]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
   Originally captured from : V87(ns3=92) (attacker=V93(ns3=98) replayed it back)
   Forwarder/physical       : V87(ns3=92)
@@ -64648,7 +64945,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 23/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2876]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -64697,7 +64994,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 44/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 50/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6876]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -65389,7 +65686,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 21/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 27/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.115]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -65440,7 +65737,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 16/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 22/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.514]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -66152,7 +66449,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 7/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 9/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.083]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -66233,7 +66530,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 5/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 11/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.782]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -66915,7 +67212,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 17/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 20/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0937]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -66986,7 +67283,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 47/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.6927]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -67155,7 +67452,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 8/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 14/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=12.2927]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -67687,7 +67984,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 15/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.0917]  STEP ⑤  VICTIM FORWARDS ITS OWN REPLAYED-STALE HEARTBEAT TO CONTROLLER
@@ -67718,7 +68015,7 @@
   Latency: 6.831 ms
   *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
   PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 18/100 valid, need t=51: Fail
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 24/100 valid, need t=51: Fail
   Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
 
 [t=10.2907]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
@@ -67765,10 +68062,11 @@
   Stale heartbeat impersonation: V104 impersonated V7
   Score: 0.123
   Latency: 6.831 ms
-  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
-  PBFT consensus (n=100, f=33, need>=67): Pass
-  VERIFY_THRESHOLD_SIG (Eq. 3.28): 45/100 valid, need t=51: Fail
-  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+  [Tier 2 — no RSU] BlacklistBeacon V2V broadcast: V104 cert fingerprint
+  Propagation: ceil(diam(G_t)) ~= 7 hop(s) x 100.000 ms/hop = 700.000 ms  (eventually-consistent, NOT instant)
+  [LKH] Revoke-Session-Key(V104): O(log 100) = 7 KEK updates on path to LKH root
+  [CA]  Certificate revocation: V104 excluded until re-admission via consortium CA
+  [REAUTH] FLAG_REAUTH(V104): blocked from re-admission until re-authenticated
 
 [t=10.6907]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V99(ns3=104)
@@ -68220,6 +68518,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.091]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V104 impersonated V7
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 31/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.1907]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V99(ns3=104)
   Victim/claimed_sender    : V2(ns3=7)
@@ -68240,6 +68547,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.291]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V104 impersonated V7
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 39/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.3907]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V99(ns3=104)
   Victim/claimed_sender    : V2(ns3=7)
@@ -68270,6 +68586,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.591]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V104 impersonated V7
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 49/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.6907]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V99(ns3=104)
   Victim/claimed_sender    : V2(ns3=7)
@@ -68290,6 +68615,15 @@
   Different physical sender -> impersonation evidence
 
   Sophistication: BASIC — signs with own key, claims victim identity → DROPPED at Stage-0 (Eq. 3.15 MAC)
+[t=15.791]  DETECTION + MITIGATION
+  Stale heartbeat impersonation: V104 impersonated V7
+  Score: 0.123
+  Latency: 6.831 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=100, f=33, need>=67): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 6/100 valid, need t=51: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
 [t=15.8907]  STEP ⑥  ATTACKER HIJACKS SAME OLD HEARTBEAT TO CONTROLLER
   Attacker/physical_sender : V99(ns3=104)
   Victim/claimed_sender    : V2(ns3=7)
