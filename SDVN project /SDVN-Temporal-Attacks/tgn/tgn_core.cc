@@ -114,24 +114,35 @@ static const int    TGN_LAYERS          = 2;      // message-passing rounds L (E
 static double TGN_GAMMA = 310.0;
 
 // θ_FS — TGN detection threshold (Eq 3.25).
-// Re-calibrated 2026-07-24 (TABLE_4.9_CALIBRATION_TRACKER.md sec A.2, see
-// theta_calibration_results.md for full evidence) against the dim=192
-// canonical model, with LW disabled (--no_lw=1 ablation), attack_percentage
-// =50, N_Vehicles=200/N_RSUs=64 fairness baseline. Sweep {0.90,0.91,...,
-// 0.99,1.0} (11 points) across all 12 scenarios + combined (13), selected
-// by worst-case MCC excluding ME-S1/S2 (sc9/sc10) — both are dropped
-// upstream by the Stage-0 crypto pre-filter regardless of theta (confirmed:
-// sc10 had 0 total attack events, sc9 had 2, at every theta tested), so
-// including them just ties every candidate at worst-case=0.000 and makes
-// the comparison uninformative. theta=0.91 and 0.92 tied for best worst-
-// case MCC (0.613, bottleneck: ME-S3/sc11); 0.92 wins the tiebreak on
-// average MCC across the 11 scenarios (0.7169 vs 0.7075). This improves on
-// the prior 0.95 pick's worst-case of 0.554 (also bottlenecked at ME-S3),
-// suggesting the 2026-07-23 sweep's granularity (0.05 steps) missed this
-// tighter optimum between 0.90 and 0.95. theta=1.0 remains excluded as a
-// degenerate boundary case (score never exceeds exactly 1.0 under the
-// strict '>' comparison, collapsing every scenario to mcc=0).
-static const double TGN_THETA_FS = 0.92;
+// Re-calibrated 2026-07-26 against the NEW capped/balanced-dataset model
+// (tgn_weights_sc1_12_capped.bin, Test MCC=0.930 -- trained on the 42,177-
+// row capped/balanced dataset, pos_weight=0.32, superseding the OLD
+// tgn_weights_dim192_final.bin the previous 0.92 pick below was calibrated
+// against). A NEW model has no guarantee its OWN score distribution keeps
+// the old threshold optimal, so this re-sweeps from scratch rather than
+// reusing 0.92. Same methodology as before: --no_lw=1 ablation,
+// attack_percentage=50, N_Vehicles=200/N_RSUs=64, all 13 scenarios, ME-S1/
+// S2 (sc9/sc10) excluded from the comparison for the same reason as before
+// (zero attack events at every theta -- structurally undefined MCC, ties
+// every candidate at worst-case=0.000, making the comparison uninformative,
+// not a real detector difference between candidates).
+// Two-stage sweep: coarse {0.00,0.05,...,1.00} (21 points), then fine
+// {0.20,0.21,...,0.39} (20 points) around the two coarse local optima, all
+// 13 scenarios x 37 distinct theta values = 481 total simulation runs.
+// Worst-case MCC (the project's stated calibration criterion) peaks at
+// theta=0.21 (worst=0.650, bottleneck: TTW-S3/sc3), tied with 0.22-0.26
+// (same 0.650 plateau, sc3's own decision doesn't change across that
+// narrow range) -- 0.21 wins the tiebreak on average MCC across the 11
+// valid scenarios (0.8495, the best within the tied plateau).
+// NOTE -- alternative candidate: theta=0.32 maximises AVERAGE MCC instead
+// (0.8874, the single highest average of all 37 points swept), at the cost
+// of a lower worst-case (0.612, bottleneck: TTW-S1/sc1) than 0.21's 0.650.
+// Kept as 0.21 to match the project's own established worst-case-MCC
+// selection criterion (consistent with how the prior 0.92/0.95 picks were
+// also chosen) -- but if a future analysis prefers optimizing typical-case
+// performance over worst-case robustness, 0.32 is the documented
+// alternative, not an arbitrary unexplored value.
+static const double TGN_THETA_FS = 0.21;
 
 // W_max — TGN sliding-window event-retention bound (§3.4.3, mobility-aware design).
 // Conceptually distinct from N_beacon (Eq. 3.32, §3.4.7):

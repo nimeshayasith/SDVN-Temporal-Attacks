@@ -7639,10 +7639,32 @@ PemEvaluateEvent(PemEvent& event)
             // collisions -- closes this without repeating the too-tight
             // 0.4s regression.
             static const double kBshhS1ProximityWindowS = 2.0 * TTW_S1_REPLAY_MARGIN_S; // 4.0s
+            // Bug fix (BSHH-S1 catastrophic false-negative rate at pct=100,
+            // confirmed live: TP=139, FN=8986 -- misses ~98% of attacks).
+            // Root cause: the old !it->alert_raised guard excluded ANY
+            // already-confirmed entry from serving as a match, including
+            // ones well within this SAME kBshhS1ProximityWindowS bound. At
+            // high injection rates (rinj=1.0 means the same victim identity
+            // gets hijacked continuously for the rest of the run), the
+            // FIRST hijack correctly fires and gets alert_raised=true --
+            // then every SUBSEQUENT hijack of that identity has nothing
+            // left to match against, since the only entries in-window are
+            // now excluded. Per Eq. 3.5's own text ("the signature triggers
+            // AS SOON AS ANY SUCH PAIR IS FOUND" -- no exclusion for
+            // already-confirmed pairs), this guard was never something the
+            // formal definition required; it was an implementation
+            // heuristic for a DIFFERENT bug (a STALE entry from ~5-10s
+            // earlier spuriously matching a much later, unrelated report).
+            // That staleness case is already fully handled by this check's
+            // own proximity-window bound (anything reaching here is by
+            // definition within kBshhS1ProximityWindowS, i.e. NOT stale) --
+            // so the alert_raised guard was redundant for genuinely-recent
+            // matches and only ever fired to WRONGLY suppress them. Removed
+            // here; the time bound alone correctly distinguishes "recent,
+            // valid repeat match" from "stale, spurious match" without it.
             if (it->type == PEM_EVENT_HEARTBEAT &&
                 it->physical_sender_id != event.physical_sender_id &&
                 it->claimed_sender_id == event.claimed_sender_id &&
-                !it->alert_raised &&
                 std::fabs(event.reception_timestamp - it->reception_timestamp) <= kBshhS1ProximityWindowS)
             {
                 event.triggered[3] = true;

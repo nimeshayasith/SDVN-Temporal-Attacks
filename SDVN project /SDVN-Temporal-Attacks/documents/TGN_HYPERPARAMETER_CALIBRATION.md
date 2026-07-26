@@ -301,6 +301,61 @@ against dim=192 — that decision stands; this model swap doesn't reopen it
 unless you want it reopened now that dim=192 is the deployed default.~~
 (superseded — see above)
 
+## 3f. θ_FS re-calibrated again for the capped/balanced-dataset model (2026-07-26)
+
+**Why this reopened again:** a new model was trained
+(`tgn_weights_sc1_12_capped.bin`, Test MCC=0.930) on a deliberately
+capped/balanced dataset (42,177 rows, sc1-12 only, pct=100 capped to a
+20,000-row random sample to stop it dominating the raw 220,064-row set;
+`pos_weight=0.32` recalibrated for this dataset's actual 75.7%/24.3%
+attack/benign split) — a genuinely different model with a different score
+distribution than the one 0.92 was calibrated against. No threshold
+calibrated against a different model's scores carries over automatically.
+
+**Sampling procedure (for reproducibility)**: raw dataset (sc1-12, all 6
+attack percentages, RngRun=1 except sc5/pct0→seed2 and sc6/pct100→seed2 per
+this session's bug fixes) = 220,064 rows, 94.1% attack / 5.9% benign.
+pct=100 alone contributed 197,887 of those rows (194,908 attack) — caused
+by the BFT-threshold-crossed continuous-reinjection behavior (rinj=1.0 at
+pct=100 means every 0.1s beacon tick fires an attack for the rest of the
+60s run, and mitigation never succeeds once >1/3 of nodes are malicious).
+Fix: kept 0/20/40/60/80 pct entirely (22,177 rows, no sampling), capped
+pct=100 to `random.sample(rows, 20000)` with `random.seed(42)`. Result:
+42,177 total rows, attack=31,948 (75.7%), benign=10,229 (24.3%),
+`pos_weight = n_benign/n_attack = 10229/31948 = 0.3202`.
+
+**Methodology**: same as the 2026-07-24 sweep — `--no_lw=1` ablation
+(isolates TGN's own decision), `attack_percentage=50`,
+`N_Vehicles=200`/`N_RSUs=64`, all 13 scenarios (1-12 + combined), ME-S1/S2
+(sc9/sc10) excluded from scoring (zero attack events at every theta —
+structurally undefined MCC, ties every candidate at worst-case=0.000,
+uninformative). Two-stage sweep this time: coarse `{0.00,0.05,...,1.00}`
+(21 points), then fine `{0.20,0.21,...,0.39}` (20 points, targeting the two
+coarse-sweep local optima at 0.25 and 0.35) — 37 distinct theta values × 13
+scenarios = 481 total simulation runs.
+
+**Result — worst-case MCC (this project's stated selection criterion)
+peaks at θ_FS = 0.21** (worst-case=0.650, bottleneck: TTW-S3/sc3), tied
+with 0.22-0.26 on a flat plateau (sc3's own decision doesn't change across
+that narrow range) — 0.21 wins the tiebreak on average MCC across the 11
+valid scenarios (0.8495, best within the tied plateau). This is a large
+improvement over the old model's 0.92 pick's worst-case of 0.613 — not
+directly comparable (different model, different dataset), but confirms
+the new model needed its own independent calibration rather than reusing
+0.92.
+
+**Alternative candidate, documented not discarded**: θ_FS = 0.32 maximises
+*average* MCC instead (0.8874, the single highest average of all 37 points
+swept), at the cost of a lower worst-case (0.612, bottleneck: TTW-S1/sc1)
+than 0.21's 0.650. `TGN_THETA_FS` was set to **0.21** to match the
+project's own established worst-case-MCC criterion (consistent with how
+0.92 and 0.95 were also chosen) — but 0.32 is the correct alternative if a
+future analysis prefers optimizing typical-case performance over
+worst-case robustness. `tgn_core.cc` updated to `TGN_THETA_FS = 0.21` and
+rebuilt; full per-theta MCC table available in this session's aggregation
+(21 coarse + 16 fine sweep points, `~/theta_calib_new/theta_*/sc*/
+TGN_SUMMARY/*.csv`).
+
 ---
 
 ## 4. Open items for future calibration batches (not yet run)
