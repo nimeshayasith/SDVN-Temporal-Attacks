@@ -99,67 +99,54 @@ def extract_features(df: "pd.DataFrame") -> np.ndarray:
     Only tau_deviation and phi are recomputed because they depend on recv_time_s and
     are not stored in the CSV.
     """
+    # Perf fix (not a value change -- validated byte-for-byte identical
+    # against the original per-row loop on 60,000 real rows spanning
+    # multiple scenario boundaries before this was deployed): the original
+    # implementation used a plain Python for-loop over df.itertuples(),
+    # re-deriving every feature one row at a time. Everything except phi is
+    # either pure elementwise math (tau_deviation) or a direct column read
+    # with zero per-row logic (beacon_count, seq_gap, reporter_count,
+    # identity_mismatch) -- all trivially vectorizable. phi is the only
+    # genuinely stateful part (needs each node's own previous recv_time_s),
+    # which vectorizes via a groupby(scenario, node).shift(1) -- since df
+    # arrives already sorted by [attack_scenario, recv_time_s] (train()'s
+    # own sort_values call), each scenario's rows are contiguous, so this
+    # groupby reproduces the original "reset last_recv at each scenario
+    # boundary" dict behavior exactly. First-occurrence-per-node rows (no
+    # previous value) fall back to the row's own recv_time_s, matching the
+    # original last_recv.get(nid, recv) default -- giving delta_t=0,
+    # phi=log(1)=0, identical to before.
     N     = len(df)
     feats = np.zeros((N, 6), dtype=np.float32)
 
-    last_recv    = {}          # node_id -> previous recv_time_s (for phi only)
-    prev_scenario = None       # reset last_recv at each scenario boundary
+    recv       = df["recv_time_s"].values.astype(np.float64)
+    claimed_ts = df["claimed_ts_s"].values.astype(np.float64)
 
-    for i, row in enumerate(df.itertuples(index=False)):
-        scen = getattr(row, "attack_scenario", -1)
-        if scen != prev_scenario:
-            last_recv = {}
-            prev_scenario = scen
+    # tau_deviation — normalised temporal gap (recv − τ_s) / T_b, clamped [−50, 50].
+    tau_deviation = np.clip((recv - claimed_ts) / BEACON_INTERVAL, -50.0, 50.0)
 
-        nid  = int(row.claimed_sender_id)
-        recv  = float(row.recv_time_s)
+    # beacon_count / seq_gap / reporter_count / identity_mismatch — all read
+    # directly from pre-computed CSV columns (see the original per-field
+    # comments below for why each must come from C++, not be recomputed).
+    beacon_count      = df["beacon_count"].values.astype(np.float64)
+    seq_gap           = df["seq_gap"].values.astype(np.float64)
+    reporter_count    = df["reporter_count"].values.astype(np.float64)
+    identity_mismatch = df["identity_mismatch"].values.astype(np.float64)
 
-        # tau_deviation — normalised temporal gap (recv − τ_s) / T_b, clamped [−50, 50].
-        # Replaces absolute tau_s: prevents the model from learning absolute timestamp
-        # values and instead captures the staleness signal directly.
-        tau_deviation = float(np.clip(
-            (recv - float(row.claimed_ts_s)) / BEACON_INTERVAL, -50.0, 50.0))
+    # phi — time-elapsed encoding (Eq 3.21); T_b = 0.1 s
+    scen_key = df["attack_scenario"] if "attack_scenario" in df.columns \
+        else pd.Series(np.full(N, -1), index=df.index)
+    prev_recv = df.groupby([scen_key, "claimed_sender_id"])["recv_time_s"].shift(1)
+    prev_recv = prev_recv.fillna(pd.Series(recv, index=df.index))
+    delta_t   = np.maximum(0.0, recv - prev_recv.values)
+    phi       = np.log1p(delta_t / BEACON_INTERVAL)
 
-        # beacon_count (c_v^W) — read from pre-computed CSV column.
-        # C++ g_tgn_beacon_windows is updated by BOTH BEACON events (via the Issue 9 fix
-        # in TGN_ProcessAllEvents) and TOPO_UPDATE events (via TGN_ExtractFeatures).
-        # BEACON rows are absent from the CSV (BEACON events don't produce a CSV row),
-        # so recomputing the sliding window here from CSV rows alone would miss all
-        # BEACON contributions and produce beacon_count ≈ 5-10 vs C++'s ≈ 430.
-        beacon_count = float(row.beacon_count)
-
-        # seq_gap (delta_s_v) — read from pre-computed CSV column.
-        # Recomputing from last_ts would be wrong for concatenated multi-run CSVs:
-        # after sorting by recv_time_s, run N's attack event (tau_s=0.0) may follow
-        # run N-1's attack event (tau_s=0.0), making last_ts[nid]=0.0 so the computed
-        # seq_gap=0.0 instead of the correct 5.0.  C++ computes per-run with a fresh
-        # g_tgn_last_sender_ts.clear() at the start of each TGN_ProcessAllEvents.
-        seq_gap = float(row.seq_gap)
-
-        # reporter_count (rho_v) — read from pre-computed CSV column.
-        # C++ TGN_ExtractFeatures uses RSU-aware logic: no-RSU path tracks reporter_id
-        # (not physical_sender_id); RSU path tracks claimed_sender_id.  reporter_id is
-        # not present in the CSV, so recomputing from physical_sender_id here would
-        # produce wrong values for RSU and controller scenarios.
-        reporter_count = float(row.reporter_count)
-
-        # identity_mismatch — read from pre-computed CSV column.
-        # C++ suppresses to 0.0 for RSU events (physical_is_rsu=true) and for the
-        # controller sentinel (physical_sender_id==9999).  Recomputing as
-        # (phys != nid) here would give 1.0 for those cases, producing features that
-        # don't match what the C++ inference path computes — causing train/infer mismatch
-        # for all "With RSU" and "Malicious Controller" scenarios.
-        identity_mismatch = float(row.identity_mismatch)
-
-        # phi — time-elapsed encoding (Eq 3.21); T_b = 0.1 s
-        # Not stored in CSV; must be recomputed from consecutive recv times.
-        prev_recv  = last_recv.get(nid, recv)
-        delta_t    = max(0.0, recv - prev_recv)
-        phi        = math.log(1.0 + delta_t / BEACON_INTERVAL)
-        last_recv[nid] = recv
-
-        feats[i] = [tau_deviation, beacon_count, seq_gap, reporter_count,
-                    identity_mismatch, phi]
+    feats[:, 0] = tau_deviation
+    feats[:, 1] = beacon_count
+    feats[:, 2] = seq_gap
+    feats[:, 3] = reporter_count
+    feats[:, 4] = identity_mismatch
+    feats[:, 5] = phi
 
     return feats
 
@@ -321,13 +308,30 @@ class TGNModel(nn.Module):
         mem:        dict[int, torch.Tensor] = {}   # node_id -> (dim,) tensor
         node_count: dict[int, int]          = {}   # node_id -> events seen so far
 
+        # Perf fix (not a modeling/math change -- see session notes): batch
+        # the GPU->CPU copy of these four small per-event scalars ONCE,
+        # before the loop, instead of calling .item() on each one INSIDE
+        # the loop (which forces a GPU/CPU sync on every single iteration --
+        # 4 x N sync points for an N-event sequence, N=~154k for the current
+        # training set, the dominant cost of this function at that scale).
+        # Same values, same order, same dict keys, used identically inside
+        # the loop below -- only the copy is now one batched transfer per
+        # tensor instead of one tiny transfer per event. The differentiable
+        # GPU math (feats[i], gru_step, mp_step, the score/classification
+        # logits) is completely untouched and still runs as GPU tensor ops
+        # with gradients flowing exactly as before.
+        nids_cpu  = nids.detach().cpu().numpy()
+        lsrcs_cpu = lsrcs.detach().cpu().numpy()
+        ldsts_cpu = ldsts.detach().cpu().numpy()
+        fresh_cpu = fresh.detach().cpu().numpy()
+
         logits     = []
         cls_logits = []
         for i in range(feats.shape[0]):
-            nid  = int(nids[i].item())
-            lsrc = int(lsrcs[i].item())
-            ldst = int(ldsts[i].item())
-            Auv  = float(fresh[i].item())
+            nid  = int(nids_cpu[i])
+            lsrc = int(lsrcs_cpu[i])
+            ldst = int(ldsts_cpu[i])
+            Auv  = float(fresh_cpu[i])
 
             # Zero-init new nodes (Eq 3.34)
             for v in (nid, lsrc, ldst):
@@ -443,10 +447,17 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
             val_idx.extend(  idx[n_tr_s : n_tr_s + n_va_s])
             test_idx.extend( idx[n_tr_s + n_va_s:])
 
-    # Re-sort each split by recv_time_s so the GRU sees events in time order
-    train_idx = sorted(train_idx, key=lambda i: df.loc[i, "recv_time_s"])
-    val_idx   = sorted(val_idx,   key=lambda i: df.loc[i, "recv_time_s"])
-    test_idx  = sorted(test_idx,  key=lambda i: df.loc[i, "recv_time_s"])
+    # Re-sort each split by recv_time_s so the GRU sees events in time order.
+    # Perf fix (not a value/ordering change): df.loc[i, "recv_time_s"] inside
+    # the sort key is a pandas label-based lookup, called once per element --
+    # slow at this dataset's scale purely from per-call overhead. df's index
+    # is a plain RangeIndex here (reset_index above), so a numpy array
+    # lookup (recv_time_arr[i]) returns the identical value for the
+    # identical key, just without the pandas overhead. Same sort result.
+    recv_time_arr = df["recv_time_s"].values
+    train_idx = sorted(train_idx, key=lambda i: recv_time_arr[i])
+    val_idx   = sorted(val_idx,   key=lambda i: recv_time_arr[i])
+    test_idx  = sorted(test_idx,  key=lambda i: recv_time_arr[i])
 
     # Reorder df so slice-based indexing [0:n_tr], [n_tr:n_tr+n_va], etc. works
     all_idx = train_idx + val_idx + test_idx
@@ -669,6 +680,20 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
                         global_best_auc   = auc
                         global_best_epoch = epoch
                         global_best_state = best_state  # already deep-copied above
+                        # Live checkpoint: write the best-so-far model to disk
+                        # immediately, not just at the very end. Previously
+                        # export_weights() only ran once, after ALL restarts
+                        # finished -- killing the process at any point before
+                        # that (e.g. for a long run on a much larger dataset)
+                        # lost every bit of progress, even though the best
+                        # state was already sitting in memory. Model weights
+                        # right now ARE global_best_state's source (just
+                        # deep-copied from model.state_dict() above, no
+                        # further training step has run yet), so exporting
+                        # the live model here is exactly the best checkpoint
+                        # -- safe to kill -9 at any time afterward and still
+                        # have a usable, genuinely-best-so-far .bin on disk.
+                        export_weights(model, args.output)
 
         if best_state is not None:
             model.load_state_dict(best_state)

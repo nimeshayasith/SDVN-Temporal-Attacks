@@ -9499,6 +9499,29 @@ AttackRoll(double probability)
     return AttackGetRng()->GetValue(0.0, 1.0) < probability;
 }
 
+// Ablation studies A1/A2 (Temporal_echo_project.pdf, Table 4.2) require
+// testing rinj at very low, EXPLICIT values (1%, 5%, 10%) independent of
+// attack_percentage/penetration. Every scenario family's "first
+// demonstration" attack (the one-shot Simulator::Schedule call that always
+// fires once, showing the full HELLO/topology-update/store/replay
+// narrative, separate from AttackScheduleAdaptiveInjection's own repeat
+// mechanism) previously fired UNCONDITIONALLY regardless of rinj -- fine
+// for Experiment 1 (rinj is intentionally coupled 1:1 with attack_percentage
+// there, per Eq. 4.24, so "always fire the first one" matches a rinj that's
+// never below ~20% anyway) but wrong for A1/A2's 1%/5%/10% range, where the
+// formal PDF definition of rinj ("the fraction of beacon intervals in which
+// each malicious vehicle injects at least one false claim") requires even
+// the FIRST opportunity to be genuinely probabilistic at rinj's own rate.
+// Scoped to only change behavior when --rinj is explicitly passed
+// (g_rinj_override >= 0) -- every run using the default coupled behavior
+// (attack_percentage alone, no --rinj) is completely unaffected, so the
+// already-generated Experiment-1 dataset and current TGN training remain
+// valid; this only activates for ablation-style runs that explicitly
+// request an independent rinj.
+static inline bool ShouldFireInitialDemonstrationAttack() {
+    return (g_rinj_override < 0.0) || AttackRoll(g_rinj_override);
+}
+
 static double
 AttackSampleSignedJitter(double maxAbsSeconds)
 {
@@ -9704,9 +9727,44 @@ AttackScheduleAdaptiveInjection(uint32_t physicalSenderId, double firstInjection
         // is identical to the old always-allow behavior (AttackRoll(1.0)
         // is unconditionally true), so nothing changes for existing runs
         // that never passed --rinj.
+        //
+        // Second bug fix (still not enough on its own, confirmed live: a
+        // TTW-S1 --rinj=0.01 test still converged to ~19%, not ~1%, even
+        // WITH the bootstrap fix above): the running-average check
+        // "attackCount < rinj*totalCount" is trivially true for a long
+        // stretch regardless of rinj, because totalCount is incremented by
+        // BENIGN narrative events too (HELLO/topology-update/store, all
+        // legitimately unconditional, is_attack=0) -- with attackCount
+        // still 0, "0 < rinj*totalCount" holds for every tick until
+        // totalCount grows past ~1/rinj (100+ ticks for rinj=0.01), which
+        // real runs rarely reach. This running-average design matches
+        // Experiment 1 fine (rinj is never below ~20% there, per Eq. 4.24's
+        // coupling with attack_percentage), but not A1/A2's 1%/5%/10%
+        // ablation range. Per the PDF's own formal definition -- "rinj is
+        // the fraction of beacon intervals in which each malicious vehicle
+        // injects" -- the mathematically correct model is an INDEPENDENT
+        // Bernoulli trial at rate rinj on every tick, not a running average
+        // that needs many samples to converge. Scoped to only replace the
+        // check when an explicit --rinj override is active (g_rinj_override
+        // >= 0); the default/coupled path (used by the already-generated,
+        // already-training-on Experiment 1 dataset) keeps the exact
+        // original running-average logic, completely unchanged.
         const bool shouldInject =
-            (totalCount == 0) ? AttackRoll(rinj)
-                               : ((double)attackCount < rinj * (double)totalCount);
+            (g_rinj_override >= 0.0)
+                ? AttackRoll(rinj)
+                : ((totalCount == 0) ? AttackRoll(rinj)
+                                     : ((double)attackCount < rinj * (double)totalCount));
+        if (g_rinj_override >= 0.0) {
+            static std::map<uint32_t, std::pair<uint64_t,uint64_t>> __rinjDbg;
+            auto& d = __rinjDbg[physicalSenderId];
+            d.second++;
+            if (shouldInject) d.first++;
+            if (d.second % 50 == 0 || now >= simTimeEnd - PEM_BEACON_INTERVAL_S)
+                std::cout << "[DBG-RINJ-TICK] id=" << physicalSenderId << " ticks=" << d.second
+                          << " successes=" << d.first
+                          << " ratio=" << ((double)d.first/(double)d.second)
+                          << " target=" << rinj << std::endl;
+        }
         if (shouldInject)
         {
             func(args...);
@@ -158323,10 +158381,18 @@ static int RoutingMain(int argc, char *argv[])
                   Simulator::Schedule(Seconds(storeTime), &TTW_StorePacket,
                       mal_ns3, vic_ns3, helloTimeR, breakTime);
 
-                  // STEPS 4+5+6 — Replay attack after the REAL discovered break
+                  // STEPS 4+5+6 — Replay attack after the REAL discovered break.
+                  // Gated by ShouldFireInitialDemonstrationAttack() -- see its
+                  // declaration comment: only skips this first, otherwise-
+                  // unconditional attack when an explicit --rinj override is
+                  // in effect (ablation A1/A2 style runs), matching rinj's
+                  // formal per-interval-probability definition. No-op
+                  // (always fires) for every default/coupled run.
+                  if (ShouldFireInitialDemonstrationAttack()) {
                   Simulator::Schedule(Seconds(replayTime), &TTW_ReplayAttack,
                       Vehicle_Nodes.Get(attacker_cidx), Vehicle_Nodes.Get(victim_cidx),
                       mal_ns3, vic_ns3, replayTime, breakTime);
+                  }
                   // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
                   AttackScheduleAdaptiveInjection(mal_ns3, replayTime, simTime,
                       EffectiveRinj(), &TTW_ReplayAttack,
@@ -158558,8 +158624,12 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS2_RSUForwardAggregated, rsu_id, vA, vB, TTWS2_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS2_HELLO_TIME + 0.2 + dt),
               &TTWS2_StorePacket, vA, vB, TTWS2_HELLO_TIME, breakTime, replayTime);
+          // Gated by ShouldFireInitialDemonstrationAttack() -- see its
+          // declaration comment (same pattern as TTW-S1).
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(replayTime + dt),
               &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(rsu_id, replayTime + dt, simTime,
               EffectiveRinj(), &TTWS2_ReplayAttack, rsu_id, vA, vB, replayTime);
@@ -158759,8 +158829,10 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS3_ReceiveLegitimateUpdates, vA, vB, TTWS3_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS3_HELLO_TIME + dt + 0.1),
               &TTWS3_StorePacketInternal, vA, vB, TTWS3_HELLO_TIME, breakTime, replayTime);
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(replayTime + dt),
               &TTWS3_InternalReplay, vA, vB, replayTime);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
               EffectiveRinj(), &TTWS3_InternalReplay, vA, vB, replayTime);
@@ -158952,8 +159024,10 @@ static int RoutingMain(int argc, char *argv[])
               &TTWS4_VehiclesToRSU, vA, vB, rsu_id4, TTWS4_HELLO_TIME);
           Simulator::Schedule(Seconds(TTWS4_HELLO_TIME + dt + 0.1),
               &TTWS4_StorePacketInternal, vA, vB, TTWS4_HELLO_TIME, breakTime, replayTime);
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(replayTime + dt),
               &TTWS4_InternalReplay, vA, vB, replayTime);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
               EffectiveRinj(), &TTWS4_InternalReplay, vA, vB, replayTime);
@@ -159263,7 +159337,7 @@ static int RoutingMain(int argc, char *argv[])
                   &BSHH_S1_VictimForwardsOldHeartbeatToController, att_ns3, vic_ns3, exchangeObservedTime);
           }
           // STEP 6 — Attacker hijacks same old heartbeat to controller
-          if (hijackScheduled)
+          if (hijackScheduled && ShouldFireInitialDemonstrationAttack())
           {
               Simulator::Schedule(Seconds(hijackTime),
                   &BSHH_S1_AttackerHijacksOldHeartbeatToController, att_ns3, vic_ns3, exchangeObservedTime);
@@ -159480,8 +159554,10 @@ static int RoutingMain(int argc, char *argv[])
           // the malicious RSU suppresses it rather than forwarding it honestly.
           Simulator::Schedule(Seconds(suppressTime + dt),
               &BSHH_S2_SuppressCurrentHeartbeat, rsu_ns3, vA_ns3, suppressTime);
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(rsu_ns3, replayTime + dt, simTime,
               EffectiveRinj(), &BSHH_S2_ReplayAttack, rsu_ns3, vA_ns3, exchangeTime);
@@ -159631,8 +159707,10 @@ static int RoutingMain(int argc, char *argv[])
           // Store AFTER exchange (t=5.1), not t=0
           Simulator::Schedule(Seconds(BSHH_S3_EXCHANGE_TIME + 0.1 + dt),
               &BSHH_S3_StoreOldHeartbeats, vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S3_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S3_EXCHANGE_TIME);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
               EffectiveRinj(), &BSHH_S3_InternalReplay,
@@ -159799,8 +159877,10 @@ static int RoutingMain(int argc, char *argv[])
           // Store AFTER exchange (t=5.1), not t=0
           Simulator::Schedule(Seconds(BSHH_S4_EXCHANGE_TIME + 0.1 + dt),
               &BSHH_S4_StoreOldHeartbeats, vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(replayTime + dt),
               &BSHH_S4_InternalReplay, vA_ns3, vB_ns3, ci, BSHH_S4_EXCHANGE_TIME);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(9999u, replayTime + dt, simTime,
               EffectiveRinj(), &BSHH_S4_InternalReplay,
@@ -160124,9 +160204,11 @@ static int RoutingMain(int argc, char *argv[])
           // V3<->V4 distance itself to decide whether Path 4 is plausible.
 
           // Both vehicles in every pair always emit (reporter_mask = 0x3)
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(echoAttackTime),
               &ME_S1_EchoAttack, echo_v3_cidx, echo_v4_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x3u);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           // Bug fix (confirmed via live counter tracing): AttackScheduleAdaptive
           // Injection only tracks ONE physicalSenderId (echo_v3_cidx) but the
@@ -160203,7 +160285,8 @@ static int RoutingMain(int argc, char *argv[])
               for (size_t i = 0; i + 1 < inRange.size(); i += 2) {
                   const uint32_t v3 = inRange[i];
                   const uint32_t v4 = inRange[i+1];
-                  ME_S1_EchoAttack(v3, v4, v1_cidx, v2_cidx, now, 0x3u);
+                  if (ShouldFireInitialDemonstrationAttack())
+                      ME_S1_EchoAttack(v3, v4, v1_cidx, v2_cidx, now, 0x3u);
                   AttackScheduleAdaptiveInjection(v3, now + PEM_BEACON_INTERVAL_S, simTime,
                       EffectiveRinj(), &ME_S1_EchoAttack, v3, v4, v1_cidx, v2_cidx, now, 0x1u);
                   AttackScheduleAdaptiveInjection(v4, now + PEM_BEACON_INTERVAL_S, simTime,
@@ -160234,9 +160317,11 @@ static int RoutingMain(int argc, char *argv[])
               anim.UpdateNodeColor(Vehicle_Nodes.Get(v2_cidx), 0, 150, 255);
               anim.UpdateNodeDescription(Vehicle_Nodes.Get(v2_cidx), "V-Real");
           }
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(echoAttackTime),
               &ME_S1_EchoAttack, last_cidx, last_cidx, v1_cidx, v2_cidx,
               discoveryObservedTime, 0x1u);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(last_cidx, echoAttackTime, simTime,
               EffectiveRinj(), &ME_S1_EchoAttack,
@@ -160488,9 +160573,11 @@ static int RoutingMain(int argc, char *argv[])
           Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + dt),
               &ME_S2_LegitimateDiscovery, v1_id, v2_id, rsu_id,
               local_p0, local_p1, ME_S2_DISCOVERY_TIME);
+          if (ShouldFireInitialDemonstrationAttack()) {
           Simulator::Schedule(Seconds(ME_S2_DISCOVERY_TIME + 0.1 + dt),
               &ME_S2_InjectEchoReports, rsu_id, v1_id, v2_id,
               local_p0, local_p1, ME_S2_DISCOVERY_TIME);
+          }
           // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
           AttackScheduleAdaptiveInjection(rsu_id, ME_S2_DISCOVERY_TIME + 0.1 + dt, simTime,
               EffectiveRinj(), &ME_S2_InjectEchoReports, rsu_id, v1_id, v2_id,
@@ -160666,9 +160753,11 @@ static int RoutingMain(int argc, char *argv[])
           // All phantom reporters inject in pairs
           for (uint32_t p = 0; p + 1 < s3_phantom_cidx.size(); p += 2) {
               const double s3_inj_t = ME_S3_DISCOVERY_TIME + 0.1 + dt + p * 0.001;
+              if (ShouldFireInitialDemonstrationAttack()) {
               Simulator::Schedule(Seconds(s3_inj_t),
                   &ME_S3_InjectPhantomPaths, v1_id, v2_id,
                   s3_phantom_cidx[p], s3_phantom_cidx[p + 1], ME_S3_DISCOVERY_TIME, c);
+              }
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s3_inj_t, simTime,
                   EffectiveRinj(), &ME_S3_InjectPhantomPaths, v1_id, v2_id,
@@ -160677,9 +160766,11 @@ static int RoutingMain(int argc, char *argv[])
           if (s3_phantom_cidx.size() % 2 == 1) {
               uint32_t last_p = s3_phantom_cidx.back();
               const double s3_inj_t2 = ME_S3_DISCOVERY_TIME + 0.1 + dt + (s3_phantom_cidx.size() - 1) * 0.001;
+              if (ShouldFireInitialDemonstrationAttack()) {
               Simulator::Schedule(Seconds(s3_inj_t2),
                   &ME_S3_InjectPhantomPaths, v1_id, v2_id,
                   last_p, last_p, ME_S3_DISCOVERY_TIME, c);
+              }
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s3_inj_t2, simTime,
                   EffectiveRinj(), &ME_S3_InjectPhantomPaths, v1_id, v2_id,
@@ -160882,9 +160973,11 @@ static int RoutingMain(int argc, char *argv[])
           // All phantom reporters inject in pairs
           for (uint32_t p = 0; p + 1 < s4_phantom_cidx.size(); p += 2) {
               const double s4_inj_t = ME_S4_DISCOVERY_TIME + 0.1 + dt + p * 0.001;
+              if (ShouldFireInitialDemonstrationAttack()) {
               Simulator::Schedule(Seconds(s4_inj_t),
                   &ME_S4_InjectPhantomPaths, v1_id, v2_id,
                   s4_phantom_cidx[p], s4_phantom_cidx[p + 1], ME_S4_DISCOVERY_TIME, c);
+              }
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s4_inj_t, simTime,
                   EffectiveRinj(), &ME_S4_InjectPhantomPaths, v1_id, v2_id,
@@ -160893,9 +160986,11 @@ static int RoutingMain(int argc, char *argv[])
           if (s4_phantom_cidx.size() % 2 == 1) {
               uint32_t last_p = s4_phantom_cidx.back();
               const double s4_inj_t2 = ME_S4_DISCOVERY_TIME + 0.1 + dt + (s4_phantom_cidx.size() - 1) * 0.001;
+              if (ShouldFireInitialDemonstrationAttack()) {
               Simulator::Schedule(Seconds(s4_inj_t2),
                   &ME_S4_InjectPhantomPaths, v1_id, v2_id,
                   last_p, last_p, ME_S4_DISCOVERY_TIME, c);
+              }
               // rinj (Eq. 4.24-4.25): per-attacker injection intensity.
               AttackScheduleAdaptiveInjection(9999u, s4_inj_t2, simTime,
                   EffectiveRinj(), &ME_S4_InjectPhantomPaths, v1_id, v2_id,
