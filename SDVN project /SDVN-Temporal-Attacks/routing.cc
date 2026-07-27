@@ -11141,11 +11141,18 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     // Perf/disk fix: the full topology-table snapshot used to be dumped on
     // EVERY injection tick (unbounded over a 300s/200-vehicle run, this grew
     // ttw_attack_scenario4.txt to multi-GB sizes -- same class of bug already
-    // fixed for BSHH via its buffered pair_logs pattern). Only dump it once,
-    // at scenario completion, matching the completion banner below.
+    // fixed for BSHH via its buffered pair_logs pattern). Dump it exactly
+    // once, at scenario completion. Regression fix (2026-07-27): `>=` alone
+    // stays true on every call after the threshold is first crossed (calls
+    // continue after "completion" since completed_pairs counts events, not
+    // a monotonic one-shot signal) -- this fired the dump thousands of times
+    // per run instead of once, still producing multi-hundred-MB logs and
+    // burning significant wall-clock time. A one-shot latch fixes it.
+    static bool ttw_s1_dump_done = false;
     ++ttw_s1_completed_pairs;
-    if (ttw_s1_completed_pairs >= ttw_s1_total_pairs)
+    if (ttw_s1_completed_pairs >= ttw_s1_total_pairs && !ttw_s1_dump_done)
     {
+        ttw_s1_dump_done = true;
         ttw_log << "  Topology Table (final state):\n"
                 << "  Src   Dst   Timestamp   Forged?\n"
                 << "  ──────────────────────────────────\n";
@@ -11589,10 +11596,12 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
               << "  Physical reality : link BROKEN\n"
               << "  Consequence : packets routed via ghost link will be DROPPED\n\n";
     // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
-    // only once, at completion, not on every injection tick.
+    // exactly once, at completion (one-shot latch, not a bare >= check).
+    static bool ttws2_dump_done = false;
     ++ttws2_completed_pairs;
-    if (ttws2_completed_pairs >= ttws2_total_pairs)
+    if (ttws2_completed_pairs >= ttws2_total_pairs && !ttws2_dump_done)
     {
+        ttws2_dump_done = true;
         ttws2_log << "  Topology Table (final state):\n"
                   << "  Src   Dst   Timestamp   Forged?\n"
                   << "  ──────────────────────────────────\n";
@@ -11844,10 +11853,12 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
     // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
-    // only once, at completion, not on every injection tick.
+    // exactly once, at completion (one-shot latch, not a bare >= check).
+    static bool ttws3_dump_done = false;
     ++ttws3_completed_pairs;
-    if (ttws3_completed_pairs >= ttws3_total_pairs)
+    if (ttws3_completed_pairs >= ttws3_total_pairs && !ttws3_dump_done)
     {
+        ttws3_dump_done = true;
         ttws3_log << "  Topology Table (final state):\n"
                   << "  Src   Dst   Timestamp   Forged?\n"
                   << "  ──────────────────────────────────\n";
@@ -12072,10 +12083,12 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
     // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
-    // only once, at completion, not on every injection tick.
+    // exactly once, at completion (one-shot latch, not a bare >= check).
+    static bool ttws4_dump_done = false;
     ++ttws4_completed_pairs;
-    if (ttws4_completed_pairs >= ttws4_total_pairs)
+    if (ttws4_completed_pairs >= ttws4_total_pairs && !ttws4_dump_done)
     {
+        ttws4_dump_done = true;
         ttws4_log << "  Topology Table (final state):\n"
                   << "  Src   Dst   Timestamp   Forged?\n"
                   << "  ──────────────────────────────────\n";
