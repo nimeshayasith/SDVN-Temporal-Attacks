@@ -4925,17 +4925,26 @@ static void TrustRunDemotionPipeline(double now)
     NS_LOG_INFO("[Trust] P_active rebuilt: " << peers.size() << " eligible peers");
 }
 
-// A single confirmed controller-divergence event is within normal detection
-// noise (propagation delay, one stale beacon) — revoking on the first hit
-// would quarantine controllers over transient disagreement. Require this many
-// INDEPENDENT confirmed-divergence calls for the SAME malicious controller
-// before it is actually revoked (flagged + reassigned).
-// Runtime-configurable (not a compile-time constant): --ctrl_revoke_confirm_count
-// on the command line, so real-system runs after model training can sweep this
-// without a rebuild-per-value. Declared near the other attack parameters
-// (see CommandLine.AddValue registration in main()); defaulted here for any
-// code path that runs before CommandLine::Parse().
-uint32_t g_ctrl_revoke_confirm_count = 5u;
+// PDF fidelity fix (2026-07-27): Eq. 3.41 applies the controller trust
+// penalty "on each confirmed divergence detection" -- a pure per-event
+// decay (tau = max(0, tau - Delta_C)) with REASSIGN firing purely on
+// tau < tau_min (Eqs. 3.44-3.45). There is no "wait for N confirmations"
+// debounce in the formal model. Previously defaulted to 5, which silently
+// discarded the first 4 confirmed-divergence events for every malicious
+// controller (TrustUpdateController's Eq. 3.41 decrement never even ran
+// until the 5th) -- an undocumented engineering addition with no PDF
+// counterpart, materially delaying Tdet/Ttrust/Trevoke/Treassign for all
+// 6 controller-origin scenarios (3,4,7,8,11,12). Default is now 1, which
+// makes CtrlRegisterConfirmedDivergence return true on every confirmed
+// call (streak>=1 holds from the first event onward), so the real Eq. 3.41
+// decay-then-threshold mechanism runs at every detection event exactly as
+// specified. Runtime-configurable (not a compile-time constant):
+// --ctrl_revoke_confirm_count on the command line, so real-system runs
+// after model training can sweep this without a rebuild-per-value.
+// Declared near the other attack parameters (see CommandLine.AddValue
+// registration in main()); defaulted here for any code path that runs
+// before CommandLine::Parse().
+uint32_t g_ctrl_revoke_confirm_count = 1u;
 
 // ctrl_ns3_id -> count of confirmed-divergence calls seen so far (resets are
 // not needed: once a controller crosses the threshold it is quarantined and
@@ -11129,23 +11138,25 @@ void TTW_ReplayAttack(Ptr<Node> attacker, Ptr<Node> victim,
     std::cout << "[TTW-S1][t=" << now << "]  *** ATTACK COMPLETE ***  ghost link V"
               << src_id << "<->V" << dst_id << " injected into controller table" << std::endl;
 
-    // Per-pair topology snapshot (shows cumulative state at this moment)
-    ttw_log << "  Topology Table (after this pair's replay):\n"
-            << "  Src   Dst   Timestamp   Forged?\n"
-            << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table)
-    {
-        TopologyPacket& p = e.second;
-        ttw_log << "  V" << p.src_id  << "  ->  V" << p.seen_id
-                << "    t=" << p.timestamp
-                << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
-    ttw_log << "\n";
-
-    // Print the scenario-completion banner only after the last pair completes
+    // Perf/disk fix: the full topology-table snapshot used to be dumped on
+    // EVERY injection tick (unbounded over a 300s/200-vehicle run, this grew
+    // ttw_attack_scenario4.txt to multi-GB sizes -- same class of bug already
+    // fixed for BSHH via its buffered pair_logs pattern). Only dump it once,
+    // at scenario completion, matching the completion banner below.
     ++ttw_s1_completed_pairs;
     if (ttw_s1_completed_pairs >= ttw_s1_total_pairs)
     {
+        ttw_log << "  Topology Table (final state):\n"
+                << "  Src   Dst   Timestamp   Forged?\n"
+                << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table)
+        {
+            TopologyPacket& p = e.second;
+            ttw_log << "  V" << p.src_id  << "  ->  V" << p.seen_id
+                    << "    t=" << p.timestamp
+                    << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
+        ttw_log << "\n";
         ttw_log << "========================================================\n"
                 << "  TTW ATTACK SCENARIO " << attack_scenario << " COMPLETE\n"
                 << "========================================================\n";
@@ -11577,18 +11588,20 @@ void TTWS2_ReplayAttack(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id, double 
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  Consequence : packets routed via ghost link will be DROPPED\n\n";
-    ttws2_log << "  Topology Table (after replay):\n"
-              << "  Src   Dst   Timestamp   Forged?\n"
-              << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table) {
-        TopologyPacket& p = e.second;
-        ttws2_log << "  V" << p.src_id << "  ->  V" << p.seen_id
-                  << "    t=" << p.timestamp
-                  << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
+    // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
+    // only once, at completion, not on every injection tick.
     ++ttws2_completed_pairs;
     if (ttws2_completed_pairs >= ttws2_total_pairs)
     {
+        ttws2_log << "  Topology Table (final state):\n"
+                  << "  Src   Dst   Timestamp   Forged?\n"
+                  << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table) {
+            TopologyPacket& p = e.second;
+            ttws2_log << "  V" << p.src_id << "  ->  V" << p.seen_id
+                      << "    t=" << p.timestamp
+                      << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
         ttws2_log << "\n========================================================\n"
                   << "  TTW ATTACK S2 COMPLETE\n"
                   << "========================================================\n";
@@ -11830,18 +11843,20 @@ void TTWS3_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
-    ttws3_log << "  Topology Table (after replay):\n"
-              << "  Src   Dst   Timestamp   Forged?\n"
-              << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table) {
-        TopologyPacket& p = e.second;
-        ttws3_log << "  V" << p.src_id << "  ->  V" << p.seen_id
-                  << "    t=" << p.timestamp
-                  << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
+    // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
+    // only once, at completion, not on every injection tick.
     ++ttws3_completed_pairs;
     if (ttws3_completed_pairs >= ttws3_total_pairs)
     {
+        ttws3_log << "  Topology Table (final state):\n"
+                  << "  Src   Dst   Timestamp   Forged?\n"
+                  << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table) {
+            TopologyPacket& p = e.second;
+            ttws3_log << "  V" << p.src_id << "  ->  V" << p.seen_id
+                      << "    t=" << p.timestamp
+                      << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
         ttws3_log << "\n========================================================\n"
                   << "  TTW ATTACK S3 COMPLETE\n"
                   << "========================================================\n";
@@ -12056,18 +12071,20 @@ void TTWS4_InternalReplay(uint32_t v1_id, uint32_t v2_id, double forged_time)
               << " was ACTIVE at t=" << forged_time << " (forged — link has since broken)\n"
               << "  Physical reality : link BROKEN\n"
               << "  <- ATTACK SUCCESS\n\n";
-    ttws4_log << "  Topology Table (after replay):\n"
-              << "  Src   Dst   Timestamp   Forged?\n"
-              << "  ──────────────────────────────────\n";
-    for (auto& e : ttw_controller_table) {
-        TopologyPacket& p = e.second;
-        ttws4_log << "  V" << p.src_id << "  ->  V" << p.seen_id
-                  << "    t=" << p.timestamp
-                  << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
-    }
+    // Perf/disk fix: see comment in TTW_ReplayAttack -- dump the full table
+    // only once, at completion, not on every injection tick.
     ++ttws4_completed_pairs;
     if (ttws4_completed_pairs >= ttws4_total_pairs)
     {
+        ttws4_log << "  Topology Table (final state):\n"
+                  << "  Src   Dst   Timestamp   Forged?\n"
+                  << "  ──────────────────────────────────\n";
+        for (auto& e : ttw_controller_table) {
+            TopologyPacket& p = e.second;
+            ttws4_log << "  V" << p.src_id << "  ->  V" << p.seen_id
+                      << "    t=" << p.timestamp
+                      << "    " << (p.is_forged ? "YES <- FORGED" : "No") << "\n";
+        }
         ttws4_log << "\n========================================================\n"
                   << "  TTW ATTACK S4 COMPLETE\n"
                   << "========================================================\n";
@@ -13751,6 +13768,22 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
+    // Perf/disk fix: cap narrative-log DETAIL only (the underlying attack
+    // injection/detection behavior -- PEM/TGN CSVs, me_echo_reports,
+    // ttw_controller_table, mitigation logic below -- is completely
+    // unaffected by this). AttackScheduleAdaptiveInjection can independently
+    // arm many long-lived per-attacker chains, each firing at up to
+    // rinj-per-tick for the rest of the simulation; multiplied across many
+    // attackers this produced 100+MB narrative logs from a single link pair.
+    // Detailed illustrative narration for the first several genuine attack
+    // instances per link is sufficient for human review; repeats beyond that
+    // get a one-line summary instead of the full ~15-line block.
+    static std::map<std::string, uint32_t> meS1DetailCount;
+    static const uint32_t kMeS1MaxDetailedPerLink = 20;
+    const std::string meS1LinkKey = std::to_string(link_src) + "_" + std::to_string(link_dst);
+    uint32_t& meS1DetailN = meS1DetailCount[meS1LinkKey];
+    const bool meS1NarrateDetail = (meS1DetailN < kMeS1MaxDetailedPerLink);
+    ++meS1DetailN;
     const bool emit_v3 = (reporter_mask & 0x1u) != 0u;
     const bool emit_v4 = (reporter_mask & 0x2u) != 0u;
     uint32_t ev3_ns3  = (echo_v3  < Vehicle_Nodes.GetN()) ? Vehicle_Nodes.Get(echo_v3)->GetId()  : echo_v3;
@@ -13812,6 +13845,15 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
         }
     }
 
+    if (!meS1NarrateDetail) {
+        me_log << "[t=" << now << "]  echo repeat V" << src_ns3 << "<->V" << dst_ns3
+               << " by "
+               << (emit_v3 ? ("V" + std::to_string(ev3_ns3)) : "")
+               << ((emit_v3 && emit_v4) ? "," : "")
+               << (emit_v4 ? ("V" + std::to_string(ev4_ns3)) : "")
+               << "  [detail suppressed after " << kMeS1MaxDetailedPerLink
+               << " narrated events for this link]\n";
+    } else {
     // STEP ④: Echo reports sent to controller
     me_log << "[t=" << now << "]  STEP ④  ECHOED TOPOLOGY OBSERVATION REPORTS\n"
            << (emit_v3
@@ -13881,6 +13923,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
            << " (non-existent paths)\n"
            << "  Expected impact: packet loss, increased delay, routing instability\n"
            << "  <- ATTACK SUCCESS\n\n";
+    }
     me_log.flush();
 
     NS_LOG_INFO("[ME-S1] t=" << now << "s  echoed link V" << src_ns3
@@ -13889,6 +13932,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
                 << ((emit_v3 && emit_v4) ? " and " : "")
                 << (emit_v4 ? "V" + std::to_string(ev4_ns3) : "")
                 << (v3v4_linked ? " (V3↔V4 linked, Path4 inferred)" : ""));
+    if (meS1NarrateDetail) {
     std::cout << std::fixed << std::setprecision(3);
     if (emit_v3)
     {
@@ -13907,6 +13951,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
               << " path(s) for V" << src_ns3 << "->V" << dst_ns3
               << (v3v4_linked ? "  (Path4: V3↔V4 in range)" : "")
               << "  *** ATTACK COMPLETE ***" << std::endl;
+    }
     // ME-S1 does not model a sophisticated/basic split (per design doc — only
     // TTW-S2/BSHH-S2's RSU key-exfiltration scenarios model attacker
     // sophistication; ME's defense is location-binding + quorum, Eqs. 3.29-3.32,
@@ -13973,6 +14018,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
         if (emit_v4) me_s1_reporters.push_back(echo_v4);
         const PemQuorumEvidence me_s1_ev{v3Pos, vSrcPos, vDstPos, link_src, link_dst, me_s1_reporters};
         std::string mit = PemApplyMitigation(echo_v3, now, "ME-S1", &me_s1_ev);
+        if (meS1NarrateDetail) {
         me_log << "[t=" << now << "]  DETECTION + MITIGATION\n"
                << "  Echo reporters V" << echo_v3 << " and V" << echo_v4
                << " identified; phantom entries removed\n"
@@ -13980,6 +14026,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
                << "  Latency: " << PemGetDetectionLatencyMs() << " ms\n"
                << "  delta after mitigation: " << topology_divergence_delta << "\n"
                << mit << "\n";
+        }
         me_log.flush();
     }
 }
@@ -154985,7 +155032,9 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("ctrl_revoke_confirm_count",
                   "Number of INDEPENDENT confirmed controller-divergence events required "
                   "before a malicious controller (TTW/BSHH/ME -S3/-S4) is actually revoked "
-                  "(flagged + zone reassigned). Default 5 — sweepable post-training.",
+                  "(flagged + zone reassigned). Default 1 (PDF-faithful, Eq. 3.41: trust "
+                  "decay applied on EVERY confirmed detection, revocation purely on "
+                  "tau < tau_min) — sweepable post-training if a debounce is wanted.",
                   g_ctrl_revoke_confirm_count);
     cmd.AddValue ("Random",
                   "0=deterministic first-N attacker vehicle selection, 1=random attacker vehicle selection",
@@ -160288,8 +160337,19 @@ static int RoutingMain(int argc, char *argv[])
       if (!me_echo_cidx.empty()) {
           auto meS1PeriodicSearch = std::make_shared<std::function<void(double)>>();
           std::vector<uint32_t> meS1FullEchoPool = me_echo_cidx;
+          // Perf/disk fix: this periodic search re-scans the full candidate pool
+          // every 5s for the rest of the run and, previously, unconditionally
+          // armed a NEW AttackScheduleAdaptiveInjection chain (its own recurring
+          // ~100ms self-reschedule until simTime) for every in-range candidate
+          // on EVERY scan -- with no check for whether that candidate already
+          // had a chain running from an earlier scan. Since candidates routinely
+          // stay in range across consecutive 5s scans, chains stacked without
+          // bound (confirmed live: a 300s run produced 100+MB of me_s1_attack_log
+          // and took 35+ minutes of wall-clock time to reach t=192s). Track
+          // already-armed IDs and skip re-arming a chain for one already active.
+          auto meS1ArmedIds = std::make_shared<std::set<uint32_t>>();
           *meS1PeriodicSearch = [v1_cidx, v2_cidx, meS1FullEchoPool, attack_percentage,
-                                  simTime, meS1PeriodicSearch](double now) mutable {
+                                  simTime, meS1PeriodicSearch, meS1ArmedIds](double now) mutable {
               if (now >= simTime) return;
               Vector p1(0,0,0), p2(0,0,0);
               { Ptr<Node> n = GetVehicleByNs3Id(v1_cidx); if (n) { Ptr<MobilityModel> m = n->GetObject<MobilityModel>(); if (m) p1 = m->GetPosition(); } }
@@ -160307,12 +160367,20 @@ static int RoutingMain(int argc, char *argv[])
               for (size_t i = 0; i + 1 < inRange.size(); i += 2) {
                   const uint32_t v3 = inRange[i];
                   const uint32_t v4 = inRange[i+1];
-                  if (ShouldFireInitialDemonstrationAttack())
+                  const bool v3Armed = meS1ArmedIds->count(v3) != 0;
+                  const bool v4Armed = meS1ArmedIds->count(v4) != 0;
+                  if (!v3Armed && !v4Armed && ShouldFireInitialDemonstrationAttack())
                       ME_S1_EchoAttack(v3, v4, v1_cidx, v2_cidx, now, 0x3u);
-                  AttackScheduleAdaptiveInjection(v3, now + PEM_BEACON_INTERVAL_S, simTime,
-                      EffectiveRinj(), &ME_S1_EchoAttack, v3, v4, v1_cidx, v2_cidx, now, 0x1u);
-                  AttackScheduleAdaptiveInjection(v4, now + PEM_BEACON_INTERVAL_S, simTime,
-                      EffectiveRinj(), &ME_S1_EchoAttack, v3, v4, v1_cidx, v2_cidx, now, 0x2u);
+                  if (!v3Armed) {
+                      AttackScheduleAdaptiveInjection(v3, now + PEM_BEACON_INTERVAL_S, simTime,
+                          EffectiveRinj(), &ME_S1_EchoAttack, v3, v4, v1_cidx, v2_cidx, now, 0x1u);
+                      meS1ArmedIds->insert(v3);
+                  }
+                  if (!v4Armed) {
+                      AttackScheduleAdaptiveInjection(v4, now + PEM_BEACON_INTERVAL_S, simTime,
+                          EffectiveRinj(), &ME_S1_EchoAttack, v3, v4, v1_cidx, v2_cidx, now, 0x2u);
+                      meS1ArmedIds->insert(v4);
+                  }
               }
               Simulator::Schedule(Seconds(5.0), &AttackAdaptiveTickInvoke, meS1PeriodicSearch, now + 5.0);
           };
