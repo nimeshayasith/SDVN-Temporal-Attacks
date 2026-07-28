@@ -184,7 +184,7 @@ static const int    NP_OBU          = 8;
 // ── Command-line config globals (set by routing.cc cmd.AddValue) ─────────────
 static std::string g_tgn_weight_file = "";
 static double      g_tgn_theta_cmd   = TGN_THETA_FS;
-static double      g_tgn_l_link_cmd  = 43.0;   // L_link in seconds
+static double      g_tgn_l_link_cmd  = 20.4;   // L_link in seconds (urban, r_comm=170m: 2*170/16.67 = 20.4s per the 2026-07-27 detection-equation patch's derived-parameters table; was 43.0s, the old 300m-based value). Cosmetic/startup-seed only -- TGN_RecalibrateMobility() overwrites this live every ~1s from the actual observed v_max and g_me_detect_range, so this default has no effect beyond the first simulated second of any run.
 static int         g_tgn_dim_cmd     = TGN_DIM;
 static int         g_tgn_layers_cmd  = TGN_LAYERS;
 
@@ -1321,10 +1321,18 @@ TGN_BuildTrustedEvidence(const std::vector<PemEvent>& events)
 // Eq. 3.48: δ_thresh = ⌈(1 + τ_prop/T_b) · λ · 2r_comm⌉ + 1
 //   τ_prop ≈ T_b/10 (propagation delay ≈ 1/10 of beacon interval)
 //   λ      = 0.02 veh/m (recommended vehicle density, §4.1)
-//   r_comm = 300 m (DSRC communication range)
-//   → δ_thresh = ⌈1.1 · 0.02 · 600⌉ + 1 = ⌈13.2⌉ + 1 = 15
-//   (Note: thesis text shows 14 — a minor rounding discrepancy in the example;
-//   the formula with +1 gives 15; implementation follows the formula.)
+//   r_comm = g_me_detect_range = 170 m (2026-07-27 detection-equation patch;
+//   was TTW_COMM_RANGE=300m — this is the SAME Eq. 3.48 delta_thresh formula
+//   as routing.cc's PemComputeDeltaThreshold(), a separate/duplicate
+//   implementation that was missed in the original patch pass and only
+//   caught during this session's manual w1-w9/theta_LW/mu recalibration
+//   review. Both copies now agree.)
+//   → δ_thresh at 170m = ⌈1.1 · 0.02 · 340⌉ + 1 = ⌈7.48⌉ + 1 = 9
+//   Uses ceil (2026-07-28, explicit instruction) to match the r_comm=170m
+//   derived-parameters table's stated value exactly. The old 300m/floor
+//   path (matched the thesis's own Table 4.1 worked example, 14) is no
+//   longer runtime-reachable now that g_me_detect_range is used
+//   unconditionally, so this doesn't conflict with that historical case.
 //
 // If δ > δ_thresh: controller-origin attack flagged (Eq. 3.39 trust penalty).
 //
@@ -1341,17 +1349,22 @@ TGN_CheckControllerDivergence(const std::vector<PemEvent>& E_trusted)
     // ── Eq. 3.48: δ_thresh computation ───────────────────────────────────────
     // τ_prop ≈ T_b / 10  (propagation negligible vs beacon interval)
     // λ      = 0.02 veh/m  (recommended §4.1 vehicle density)
-    // r_comm = TTW_COMM_RANGE = 300 m
+    // r_comm = g_me_detect_range = 170 m (was TTW_COMM_RANGE=300m)
     const double tau_prop       = TGN_BEACON_INTERVAL / 10.0;
     const double lambda_veh_m   = 0.02;
-    const double r_comm         = (double)TTW_COMM_RANGE;
+    const double r_comm         = g_me_detect_range;
     const double delta_raw      = (1.0 + tau_prop / TGN_BEACON_INTERVAL)
                                   * lambda_veh_m * 2.0 * r_comm;
-    // Floor, not ceil — Table 4.1's own worked example states delta_thresh=14
-    // for these exact parameters, which only matches floor(13.2)+1=14
-    // (ceil(13.2)+1=15 does not).
-    const uint32_t delta_thresh = (uint32_t)std::floor(delta_raw) + 1u;
-    // With recommended parameters: floor(1.1 · 12) + 1 = floor(13.2) + 1 = 14.
+    // Ceil (2026-07-28, switched from floor per explicit instruction to match
+    // the r_comm=170m derived-parameters table's stated delta_thresh=9 at
+    // lambda=0.02: ceil(7.48)+1=9). Was floor at the old r_comm=300m value
+    // (matched Table 4.1's own worked example, floor(13.2)+1=14) -- that
+    // path is no longer runtime-reachable now that r_comm=g_me_detect_range
+    // is used unconditionally above, so this doesn't conflict with that
+    // historical 300m case.
+    const uint32_t delta_thresh = (uint32_t)std::ceil(delta_raw) + 1u;
+    // With recommended parameters at 170m: ceil(1.1 * 0.02 * 340) + 1
+    //   = ceil(7.48) + 1 = 8 + 1 = 9.
 
     // Staleness threshold for per-link diagnostic (§3.4.1, Eq. 3.2/3.3):
     // controller claim timestamp must not exceed trusted evidence by > 2·T_b.

@@ -2394,9 +2394,9 @@ static Ptr<UniformRandomVariable> g_attacker_rng;   // initialised in main() bef
 // See documents/TABLE_4.9_CALIBRATION_TRACKER.md §B for the full evidence
 // table and re-derivation instructions.
 static const double PEM_WEIGHTS[9] = {
-    0.1121, 0.1236, 0.1253,   // TTW-S1 (prec 0.893), TTW-S2 (0.985), TTW-S3 (0.998)
-    0.1229, 0.0796, 0.0627,   // BSHH-S1 (0.979), BSHH-S2 (0.634 — known bottleneck), BSHH-S3 (unobserved, placeholder)
-    0.1253, 0.1237, 0.1248    // ME-S1 (0.999), ME-S2 (0.986), ME-S3 (0.995)
+    0.1132, 0.1217, 0.1201,   // TTW-S1, TTW-S2, TTW-S3
+    0.1103, 0.1117, 0.0609,   // BSHH-S1, BSHH-S2, BSHH-S3
+    0.1206, 0.1203, 0.1212  // ME-S1, ME-S2, ME-S3
 };
 
 enum PemEventType
@@ -4797,10 +4797,14 @@ static uint32_t PemComputeDeltaThreshold()
     // reasoning already verified for rho_max/ME-S3).
     const double raw = (1.0 + tau_prop_s / PEM_BEACON_INTERVAL_S)
                         * lambdaHat * 2.0 * g_me_detect_range;
-    // Floor, not ceil — the paper's own Table 4.1 worked example (lambda=0.02,
-    // r_comm=300, tau_prop~=Tb/10) gives raw=13.2 and states delta_thresh=14,
-    // which only matches floor(13.2)+1=14 (ceil(13.2)+1=15 does not).
-    const uint32_t computed = (uint32_t)std::floor(raw) + 1u;
+    // Ceil (2026-07-28, switched from floor per explicit instruction to match
+    // the r_comm=170m derived-parameters table's stated delta_thresh=9 at
+    // lambda=0.02: ceil(7.48)+1=9). Was floor at the old 300m value (matched
+    // the thesis's own Table 4.1 worked example, floor(13.2)+1=14) -- that
+    // 300m/floor path is no longer runtime-reachable now that g_me_detect_range
+    // is used unconditionally, so the two conventions don't actually conflict
+    // in practice, only in the historical comment/derivation.
+    const uint32_t computed = (uint32_t)std::ceil(raw) + 1u;
     // Hard floor of 2 (report line 6778) — overrides the "+1" margin's own
     // floor of 1 (report line 4311) for sparse/low-density conditions where
     // raw collapses to ~0, so a single stray divergent edge is never enough
@@ -5227,6 +5231,17 @@ static const double PEM_BSHH3_RECAL_PERIOD_S = 1.0;   // recalibration cadence
 // adjacent-RSU pair to measure, so this falls back to the documented
 // g_rsu_overlap_frac * r_comm assumption (default 0.20, i.e. 60m at the
 // default r_comm=300m) rather than silently substituting the full r_comm.
+//
+// Uses g_rcomm/TTW_COMM_RANGE (300m), NOT g_me_detect_range (170m) — unlike
+// ME-S1's rho_max/delta_thresh, this r_comm represents each RSU's actual
+// physical coverage radius (how far an RSU can reach a vehicle), the same
+// physical quantity used for RSU serving-zone assignment elsewhere in this
+// file. That's a real geometric/hardware property, not an abstract
+// detection-algorithm threshold — it should not diverge from the 300m
+// value used everywhere else an RSU's coverage radius is needed. (Briefly
+// changed to g_me_detect_range on 2026-07-28, reverted the same session
+// after re-examining what r_comm means in this specific formula — not part
+// of the supervisor's detection-equation patch scope.)
 static double
 PemComputeRsuOverlapRadius()
 {
@@ -155158,7 +155173,7 @@ static int RoutingMain(int argc, char *argv[])
                   g_measure_vehicle_dwell);
     cmd.AddValue ("tgn_l_link",
                   "Mean link lifetime L_link in seconds; recalibrates γ and W_max "
-                  "(default 43.0 s — urban scenario, Eq 9.3)",
+                  "(default 20.4 s — urban scenario at r_comm=170m, Eq 9.3)",
                   g_tgn_l_link_cmd);
     cmd.AddValue ("tgn_dim",
                   "TGN embedding dimension d (default 32)",

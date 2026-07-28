@@ -495,11 +495,25 @@ instead of sitting exactly at the observed edge.
 
 **Status: ⚠️ CORRECTED (2026-07-23) — one half of the PDF's dual value is
 stale relative to actual code behavior; the other half is correct.**
+**SUPERSEDED IN PART (2026-07-27) — see update below; the "used throughout
+every detection formula" claim is no longer accurate for ME-S1's ρ_max.**
 
-- **300m design bound: confirmed correct and in active use.**
-  `TTW_COMM_RANGE = 300.0` and `g_rcomm = 300.0` (`routing.cc:1866,2227`) —
-  used throughout every detection formula (ME-S1 `ρ_max`, ME-S3 range
-  check, link-break/repair checks, etc.). Matches the PDF exactly.
+- **300m design bound: confirmed correct and in active use — for TTW's own
+  placement/HELLO-geometry/link-break logic and BSHH-S3's `r_overlap`
+  fallback.** `TTW_COMM_RANGE = 300.0` and `g_rcomm = 300.0`
+  (`routing.cc:1866,2227`). Matches the PDF exactly for these uses.
+- **UPDATE (2026-07-27, supervisor's detection-equation patch): NOT
+  "used throughout every detection formula" anymore.** A new
+  `g_me_detect_range = 170.0` m constant now supersedes `TTW_COMM_RANGE`
+  specifically for ME-S1's `ρ_max` (Eq. 3.8), the δ_thresh formula, and
+  ME's link-reality checks (`link12`/`link34`/`srcDstLinked`/
+  `v3v4_linked`). ME-S3's own range check and TTW's link-break/repair
+  checks still use the unchanged 300m `TTW_COMM_RANGE`/`g_rcomm` — this
+  patch only touched the specific formulas named above, not every
+  detection-side use of a communication-range constant. See
+  `CALIBRATION_VALUES.md` §1/§4 and `TGN_HYPERPARAMETER_CALIBRATION.md`
+  §3g-3h for the full scoping rationale and downstream TGN
+  retrain/recalibration this required.
 - **282.2m "NS-3 Ch.178 effective range": does NOT match actual simulated
   behavior.** The PDF derives this from COST-231 Hata @ 44dBm on Ch178 —
   but per `CALIBRATION_VALUES.md` §1-2 (an existing finding from an
@@ -516,12 +530,15 @@ stale relative to actual code behavior; the other half is correct.**
   describe what the simulation actually produces.
 
 **Corrected empirical value for the PDF: 300m (analytical design bound,
-unchanged) / 100m (real NS-3 trace-derived effective range on the 3
-channels actually used for beaconing — not 282.2m).** See
-`CALIBRATION_VALUES.md` §1 for the full measurement methodology and
-evidence (bug fixes to `ThresholdPreambleDetectionModel::MinimumRssi` and
-an ambient-broadcast contamination source that were needed to get a clean
-measurement).
+governs TTW placement/link-break + BSHH-S3 r_overlap, unchanged) / 170m
+(detection-equation-only value for ME-S1 ρ_max, δ_thresh, and ME's
+link-reality checks, as of 2026-07-27) / 100m (real NS-3 trace-derived
+effective range on the 3 channels actually used for beaconing — not
+282.2m). Three genuinely distinct constants for three genuinely distinct
+purposes.** See `CALIBRATION_VALUES.md` §1 for the full measurement
+methodology and evidence (bug fixes to
+`ThresholdPreambleDetectionModel::MinimumRssi` and an ambient-broadcast
+contamination source that were needed to get a clean measurement).
 
 ### Minimum RSSI threshold (RSSI_min, Eq. 3.31)
 
@@ -1057,7 +1074,7 @@ genuinely unaudited territory left is the batch of §H rows the PDF already
 answers with concrete values and that this session never individually
 cross-checked against the chaincode.
 | 🔍 New finding, flagged not investigated | 1 | ME-S2's fp=4/fn=4 at scenario 10 traced to an RSSI-boundary sensitivity in the ME-S3 signature (sig[8]), unrelated to µ — discovered during the µ sweep, out of scope for this calibration pass |
-| ⚠️ PDF value corrected (not a sweep — a factual mismatch found and fixed in documentation) | 1 | r_comm — the 300m design bound is correct and unchanged; the PDF's second stated value ("282.2m NS-3 Ch.178 effective") does not match actual code behavior (Ch178 is excluded from the live beacon-send path; real effective range on the 3 channels actually used is 100m, per an existing `CALIBRATION_VALUES.md` finding never previously cross-checked into this table) — corrected empirical value: 300m / 100m |
+| ⚠️ PDF value corrected (not a sweep — a factual mismatch found and fixed in documentation) | 1 | r_comm — the 300m design bound is correct for TTW placement/link-break logic and BSHH-S3's r_overlap (unchanged); the PDF's second stated value ("282.2m NS-3 Ch.178 effective") does not match actual code behavior (Ch178 is excluded from the live beacon-send path; real effective range on the 3 channels actually used is 100m, per an existing `CALIBRATION_VALUES.md` finding never previously cross-checked into this table); a 2026-07-27 detection-equation patch additionally split off a fourth value, `g_me_detect_range=170m`, used only by ME-S1 ρ_max/δ_thresh/ME link-reality checks — corrected empirical value: 300m (TTW/BSHH-S3) / 170m (ME detection-equation subset) / 100m (real achievable DSRC range) |
 | ➖ Fixed, no sweep needed | ~12 | RSSI_min, all of §E (trust mgmt), d_in, λ_m, m, MCC_target, h_GRU, train/val/test split |
 | ➖ Out of scope (explicit decision) | 1 | L_link/gamma for highway/rural — urban-only project scope, not evaluated |
 

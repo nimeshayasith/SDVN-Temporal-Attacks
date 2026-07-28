@@ -446,6 +446,58 @@ Output: `~/tgn_weights_170m_dim192_pw0.3191_seed5.bin` (2,400,808 bytes).
 
 ---
 
+## 3h. θ_FS worst-case-MCC calibration for the 170m-retrained model (2026-07-28)
+
+**Methodology**: same as §3f — `--no_lw=1` ablation (isolates TGN's own
+decision from LW's OR-combination), `attack_percentage=60` (not 50 —
+matches this session's own updated dataset-gen convention),
+`N_Vehicles=200`/`N_RSUs=64` (per-scenario), `N_Controllers=4`,
+`simTime=60` (not 30 — same updated convention), `RngRun=999`, urban
+mobility (default), all 13 scenarios (1-12 + combined), ME-S1/S2
+(sc9/sc10) excluded from scoring (structurally zero attack events at
+every theta, per §3g). Two-stage sweep: coarse `{0.00,0.05,...,1.00}`
+(21 points, 273 total runs), then fine `{0.21,0.22,...,0.29}` (9 points,
+117 total runs) targeting the coarse sweep's single clear peak at 0.25.
+
+**Coarse sweep result**: sharp, isolated peak at θ=0.25 (worst-case
+MCC=0.737, bottleneck sc12/ME-S4; avg MCC=0.9002) — winning both the
+worst-case and average criteria simultaneously, unlike the old model's
+tradeoff between 0.21 (worst-case-optimal) and 0.32 (average-optimal).
+Neighboring points (0.20: worst=0.483; 0.30: worst=0.695) confirm this
+is a genuine peak, not sampling noise.
+
+**Fine sweep result**: refining around the peak reveals a flat plateau
+at `{0.21, 0.22, 0.23, 0.24}` (all tied at worst-case MCC=0.803,
+bottleneck sc12/ME-S4) — **θ=0.21 wins the tiebreak** on highest average
+MCC (0.9127) among the tied points, same tiebreak rule as §3f's original
+calibration. Lands on the exact same numeric value (0.21) as the old
+300m model's calibration — a coincidence, not a carry-over (this was a
+fully independent sweep against the new model's own score distribution)
+— but the underlying worst-case MCC is substantially better: **0.803 vs.
+the old model's 0.650**, confirming the retrained model is more
+consistently separated across scenarios, not just luckier on the same
+threshold.
+
+**Result: θ_FS = 0.21** for `tgn_weights_170m_dim192_pw0.3191_seed5.bin`.
+Since this exactly matches the value already hardcoded in `tgn_core.cc`
+(`TGN_THETA_FS = 0.21`, set during §3f's calibration), **no code change
+is required** — the constant is already correct for this model too. No
+default weights path is hardcoded anywhere in `tgn_core.cc`/`routing.cc`
+(always passed via `--tgn_weights`), so deploying this model is purely a
+matter of which flags a run passes:
+
+```bash
+./waf --run "scratch/routing --simTime=<N> --N_Vehicles=<N> --N_RSUs=<N> \
+  --N_Controllers=4 --attack_scenario=<N> \
+  --tgn_weights=/home/sdvn_echo_topology/tgn_weights_170m_dim192_pw0.3191_seed5.bin \
+  --tgn_theta=0.21 --tgn_dim=192 --tgn_layers=2 --tgn_l_link=43.0"
+```
+
+Full per-theta MCC tables: `~/theta_calib_170m/theta_*/sc*/TGN_SUMMARY/*.csv`
+(21 coarse + 9 fine sweep points, 390 total simulation runs).
+
+---
+
 ## 4. Open items for future calibration batches (not yet run)
 
 Once the pos_weight curve (§3a) and dim sweep (§3b) are complete and their
