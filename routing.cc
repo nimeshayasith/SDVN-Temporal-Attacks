@@ -2288,6 +2288,19 @@ static const double PEM_RSSI_N_COST231 =  3.75;  // Cost231-Hata effective path-
 static double g_rcomm    = 300.0;   // metres; overridden by --rcomm
 static double g_rssi_min = -85.0;   // dBm;    overridden by --rssi_min
 
+// Detection-equation-only range for ME-S1's rho_max (Eq. 3.8) and ME-S3's
+// out-of-range check (Eq. 3.11) -- deliberately split off from g_rcomm/
+// TTW_COMM_RANGE (2026-07-27) so this can be tuned independently of RSU
+// serving-zone assignment, TTW link-break geometry, BSHH-S3's liveness
+// window, and ME's own link-reality checks (link12/link34/srcDstLinked/
+// v3v4Linked), all of which stay on g_rcomm/TTW_COMM_RANGE at 300m
+// unchanged. Verified: TGN's own 6 training features (tau_deviation,
+// beacon_count, seq_gap, reporter_count, identity_mismatch, phi) never
+// reference this value, so changing it does not require dataset
+// regeneration or retraining -- it only changes the LW signature engine's
+// own ME-S1/ME-S3 alert verdicts.
+static double g_me_detect_range = 170.0;   // metres; overridden by --me_detect_range
+
 // Definitions of the forward-declared getters used by PemVerifyQuorum() above
 // (Algorithm 4 VERIFY_QUORUM gate) so it reads the same live, possibly
 // --rcomm/--rssi_min-overridden values Stage-0 detection uses.
@@ -4776,8 +4789,14 @@ static uint32_t PemComputeDeltaThreshold()
     const double lambdaHat = (kNetworkRoadLengthEstimateM > 0.0)
         ? (double)distinctVehicles.size() / kNetworkRoadLengthEstimateM : 0.0;
 
+    // Uses g_me_detect_range (170m), split from TTW_COMM_RANGE (300m) on
+    // 2026-07-28 -- detection-equation-only, same as ME-S1/ME-S3, see
+    // g_me_detect_range's declaration. This is the mitigation-layer
+    // controller-divergence gate, not a TGN training feature, so this
+    // change does not require dataset regeneration or retraining (same
+    // reasoning already verified for rho_max/ME-S3).
     const double raw = (1.0 + tau_prop_s / PEM_BEACON_INTERVAL_S)
-                        * lambdaHat * 2.0 * TTW_COMM_RANGE;
+                        * lambdaHat * 2.0 * g_me_detect_range;
     // Floor, not ceil — the paper's own Table 4.1 worked example (lambda=0.02,
     // r_comm=300, tau_prop~=Tb/10) gives raw=13.2 and states delta_thresh=14,
     // which only matches floor(13.2)+1=14 (ceil(13.2)+1=15 does not).
@@ -5461,7 +5480,14 @@ TGN_RecalibrateMobility()
 
     if (vMaxObservedMs > 0.0)
     {
-        const double lLinkLive = 2.0 * TTW_COMM_RANGE / vMaxObservedMs;
+        // Uses g_me_detect_range (170m), split from TTW_COMM_RANGE (300m) on
+        // 2026-07-28 to match the detection-equation recalibration (see
+        // g_me_detect_range's declaration). NOTE: this changes TGN's actual
+        // beacon_count feature (via TGN_WMAX, the sliding-window size) --
+        // unlike rho_max/ME-S3, this DOES require dataset regeneration and
+        // retraining before the new value is validly reflected in training
+        // data or a deployed model's inference-time behavior.
+        const double lLinkLive = 2.0 * g_me_detect_range / vMaxObservedMs;
         TGN_GAMMA = lLinkLive / (2.0 * TGN_BEACON_INTERVAL * std::log(2.0));
         TGN_WMAX  = (int)(lLinkLive / TGN_BEACON_INTERVAL);
         if (TGN_WMAX < 1) TGN_WMAX = 1;
@@ -5685,9 +5711,11 @@ PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
     const double lambdaHat = PemComputeLambdaHat(event, ns);
 
     // rhoMax = ⌊(1+µ) · 2·r_comm · λ̂(t)⌋  (Eq. 3.8, µ = PEM_ME_TOLERANCE_MU = 0.20)
+    // Uses g_me_detect_range (170m default), split from TTW_COMM_RANGE/g_rcomm
+    // (300m) -- detection-equation-only, see g_me_detect_range's declaration.
     uint32_t rhoMax =
         static_cast<uint32_t>(
-            std::floor((1.0 + PEM_ME_TOLERANCE_MU) * 2.0 * TTW_COMM_RANGE * lambdaHat));
+            std::floor((1.0 + PEM_ME_TOLERANCE_MU) * 2.0 * g_me_detect_range * lambdaHat));
 
     // A physical link has two endpoints; below that, the density estimate is
     // under-sampled rather than physically meaningful.
@@ -7888,9 +7916,11 @@ PemEvaluateEvent(PemEvent& event)
             (event.physical_sender_id == event.link_dst_id);
 
         // Condition 1: GPS-attested position is outside communication range.
-        // Uses g_rcomm (runtime-overridable via --rcomm; default = TTW_COMM_RANGE = 300m).
+        // Uses g_me_detect_range (170m default, runtime-overridable via
+        // --me_detect_range) -- split from g_rcomm/TTW_COMM_RANGE (300m),
+        // detection-equation-only, see g_me_detect_range's declaration.
         // Exempt for self-reports (see above) — distance-to-self is always 0.
-        const bool positionOutOfRange = !is_self_report_me3 && (nearestDistance > g_rcomm);
+        const bool positionOutOfRange = !is_self_report_me3 && (nearestDistance > g_me_detect_range);
 
         // Condition 2 (signal plausibility): genuine PHY-measured RSSI from
         // Rx()'s real MonitorSnifferRx SignalNoiseDbm, NOT derived from the
@@ -13528,8 +13558,8 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
     // function — same reason ME_S1_EchoAttack below inlines it too).
     const double d12 = std::sqrt((pos1.x-pos2.x)*(pos1.x-pos2.x) + (pos1.y-pos2.y)*(pos1.y-pos2.y));
     const double d34 = std::sqrt((pos3.x-pos4.x)*(pos3.x-pos4.x) + (pos3.y-pos4.y)*(pos3.y-pos4.y));
-    const bool link12 = d12 <= TTW_COMM_RANGE;
-    const bool link34 = d34 <= TTW_COMM_RANGE;
+    const bool link12 = d12 <= g_me_detect_range;
+    const bool link34 = d34 <= g_me_detect_range;
 
     // Update controller table only with links that are actually real.
     if (link12) {
@@ -13544,7 +13574,7 @@ void ME_S1_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
     // STEP ①: Normal V2V Topology Discovery — real pair + echo pair own link
     me_log << "[t=" << now << "]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY\n"
            << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << d12
-           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << d34 << "m  (range=" << g_me_detect_range << "m)\n"
            << (link12 ? ("  V" + std::to_string(v1_ns3) + " -> V" + std::to_string(v2_ns3) +
                          " : HELLO(Sender=V" + std::to_string(v1_ns3) + ", t=" + std::to_string(t) + ")  (real link pair)\n"
                          "  V" + std::to_string(v2_ns3) + " -> V" + std::to_string(v1_ns3) +
@@ -13836,7 +13866,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
     // rather than code-forced.
     const double srcDstDist = std::sqrt((vSrcPos.x-vDstPos.x)*(vSrcPos.x-vDstPos.x) +
                                          (vSrcPos.y-vDstPos.y)*(vSrcPos.y-vDstPos.y));
-    const bool srcDstLinked = srcDstDist <= TTW_COMM_RANGE;
+    const bool srcDstLinked = srcDstDist <= g_me_detect_range;
 
     // Path 4 (V1→V3→V4→V2) exists only when V3 and V4 have a real wireless link
     // between them (distance ≤ DSRC range).  Paper: "V3 and V4 are within overhearing
@@ -13850,7 +13880,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
         double dx = v3Pos.x - v4Pos.x;
         double dy = v3Pos.y - v4Pos.y;
         v3v4_dist = std::sqrt(dx*dx + dy*dy);
-        v3v4_linked = (v3v4_dist <= TTW_COMM_RANGE);
+        v3v4_linked = (v3v4_dist <= g_me_detect_range);
         if (v3v4_linked) {
             // Register V3↔V4 as a real observed link so controller can infer Path 4.
             std::string k34 = std::to_string(echo_v3)+"_real_"+std::to_string(echo_v4);
@@ -14053,7 +14083,7 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
 // identities in the existing 2-attacker functions above).
 //
 // Which of the two topology cases applies is NOT hardcoded: it is measured
-// from the vehicles' actual simulated positions (same TTW_COMM_RANGE rule
+// from the vehicles' actual simulated positions (same g_me_detect_range rule
 // already used for the existing v3v4_linked Path-4 check), exactly per the
 // two cases the attack spec calls out:
 //   CHAIN : V1<->V2 and V2<->V3 both real (V1,V2,V3 form a connected chain),
@@ -14101,17 +14131,17 @@ static MESingle3Topology MEClassifySingle3(uint32_t v1_id, uint32_t v2_id,
     t.dA3 = MEDist2D(pA, p3);
     t.dA1 = MEDist2D(pA, p1);
     t.dA2 = MEDist2D(pA, p2);
-    bool link12 = t.d12 <= TTW_COMM_RANGE;
-    bool link23 = t.d23 <= TTW_COMM_RANGE;
-    bool linkA3 = t.dA3 <= TTW_COMM_RANGE;
+    bool link12 = t.d12 <= g_me_detect_range;
+    bool link23 = t.d23 <= g_me_detect_range;
+    bool linkA3 = t.dA3 <= g_me_detect_range;
     // Isolation from the actual echoed link (V1<->V2, and V2<->V3 for chain):
     // without this, the attacker could sit within range of the very link it
     // is echoing, in which case it would be a genuine third witness rather
     // than a false one — the ME-S1 (reporter-density) and ME-S3
     // (position/RSSI-out-of-range) signatures would then correctly find
     // nothing anomalous, silently making the attack undetectable.
-    bool linkA1 = t.dA1 <= TTW_COMM_RANGE;
-    bool linkA2 = t.dA2 <= TTW_COMM_RANGE;
+    bool linkA1 = t.dA1 <= g_me_detect_range;
+    bool linkA2 = t.dA2 <= g_me_detect_range;
     bool isolatedFromEchoedLink = !linkA1 && !linkA2;
     t.chain = link12 && link23 && isolatedFromEchoedLink;
     t.split = link12 && !link23 && linkA3 && isolatedFromEchoedLink;
@@ -14147,7 +14177,7 @@ void ME_Single3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id, uint32_t v3_
     me_log << "[t=" << now << "]  STEP ①  3-LEGITIMATE-VEHICLE TOPOLOGY DISCOVERY (single attacker)\n"
            << "  Measured distances: d(V" << v1n << ",V" << v2n << ")=" << topo.d12
            << "m  d(V" << v2n << ",V" << v3n << ")=" << topo.d23
-           << "m  d(V" << an << ",V" << v3n << ")=" << topo.dA3 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << "m  d(V" << an << ",V" << v3n << ")=" << topo.dA3 << "m  (range=" << g_me_detect_range << "m)\n"
            << "  Topology detected: "
            << (topo.chain ? ("FULL CHAIN V" + std::to_string(v1n) + "<->V" + std::to_string(v2n) +
                              "<->V" + std::to_string(v3n) + " (attacker V" + std::to_string(an) + " isolated)\n")
@@ -14623,8 +14653,8 @@ static void ME_S2_LegitimateDiscovery_Continue(uint32_t v1_id, uint32_t v2_id, u
     if (s2_ld_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) s2ld_pos4 = m->GetPosition(); }
     const double s2ld_d12 = std::sqrt((s2ld_pos1.x-s2ld_pos2.x)*(s2ld_pos1.x-s2ld_pos2.x) + (s2ld_pos1.y-s2ld_pos2.y)*(s2ld_pos1.y-s2ld_pos2.y));
     const double s2ld_d34 = std::sqrt((s2ld_pos3.x-s2ld_pos4.x)*(s2ld_pos3.x-s2ld_pos4.x) + (s2ld_pos3.y-s2ld_pos4.y)*(s2ld_pos3.y-s2ld_pos4.y));
-    const bool s2ld_link12 = s2ld_d12 <= TTW_COMM_RANGE;
-    const bool s2ld_link34 = s2_ld_have_v4 && (s2ld_d34 <= TTW_COMM_RANGE);
+    const bool s2ld_link12 = s2ld_d12 <= g_me_detect_range;
+    const bool s2ld_link34 = s2_ld_have_v4 && (s2ld_d34 <= g_me_detect_range);
 
     if (s2ld_link12) {
         ttw_controller_table[std::to_string(v1_id)+"_"+std::to_string(v2_id)] = {v1_id, v2_id, t, false};
@@ -14656,7 +14686,7 @@ static void ME_S2_LegitimateDiscovery_Continue(uint32_t v1_id, uint32_t v2_id, u
     // STEP ③: RSU aggregates
     me_log << "[t=" << now << "]  STEP ③  RSU_" << rsu_id << " AGGREGATES LEGITIMATE TOPOLOGY\n"
            << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << s2ld_d12
-           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s2ld_d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s2ld_d34 << "m  (range=" << g_me_detect_range << "m)\n"
            << (s2ld_link12 ? ("  <V" + std::to_string(v1_ns3) + " sees V" + std::to_string(v2_ns3) + ">  AGGREGATED\n"
                               "  <V" + std::to_string(v2_ns3) + " sees V" + std::to_string(v1_ns3) + ">  AGGREGATED\n")
                            : ("  V" + std::to_string(v1_ns3) + "<->V" + std::to_string(v2_ns3) + " OUT OF RANGE — no real link\n"))
@@ -14749,7 +14779,7 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pV4 = m->GetPosition(); }
         double dx = pV3.x - pV4.x, dy = pV3.y - pV4.y;
         s2_v3v4_dist = std::sqrt(dx*dx + dy*dy);
-        s2_v3v4_linked = (s2_v3v4_dist <= TTW_COMM_RANGE);
+        s2_v3v4_linked = (s2_v3v4_dist <= g_me_detect_range);
         if (s2_v3v4_linked) {
             std::string k34 = std::to_string(false_v3)+"_real_"+std::to_string(false_v4);
             ttw_controller_table[k34] = {false_v3, false_v4, t, false};
@@ -14768,7 +14798,7 @@ void ME_S2_InjectEchoReports(uint32_t rsu_id, uint32_t v1_id, uint32_t v2_id,
         if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pV2 = m->GetPosition(); }
         double dx = pV1.x - pV2.x, dy = pV1.y - pV2.y;
         s2_srcdst_dist = std::sqrt(dx*dx + dy*dy);
-        s2_srcdst_linked = (s2_srcdst_dist <= TTW_COMM_RANGE);
+        s2_srcdst_linked = (s2_srcdst_dist <= g_me_detect_range);
     }
 
     // STEP ④: RSU injects echo reports
@@ -14919,8 +14949,8 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
     if (s3_ld_have_v4 && v4_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v4_id)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     const double s3ld_d12 = std::sqrt((pos1.x-pos2.x)*(pos1.x-pos2.x) + (pos1.y-pos2.y)*(pos1.y-pos2.y));
     const double s3ld_d34 = std::sqrt((pos3.x-pos4.x)*(pos3.x-pos4.x) + (pos3.y-pos4.y)*(pos3.y-pos4.y));
-    const bool s3ld_link12 = s3ld_d12 <= TTW_COMM_RANGE;
-    const bool s3ld_link34 = s3_ld_have_v4 && (s3ld_d34 <= TTW_COMM_RANGE);
+    const bool s3ld_link12 = s3ld_d12 <= g_me_detect_range;
+    const bool s3ld_link34 = s3_ld_have_v4 && (s3ld_d34 <= g_me_detect_range);
 
     // V1↔V2 real link (only if actually in range)
     if (s3ld_link12) {
@@ -14935,7 +14965,7 @@ void ME_S3_LegitimateDiscovery(uint32_t v1_id, uint32_t v2_id,
 
     me_log << "[t=" << now << "]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY\n"
            << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << s3ld_d12
-           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s3ld_d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s3ld_d34 << "m  (range=" << g_me_detect_range << "m)\n"
            << (s3ld_link12 ? ("  V" + std::to_string(v1_ns3) + " <-> V" + std::to_string(v2_ns3) + " : HELLO exchange (real V2V link)\n")
                            : ("  V" + std::to_string(v1_ns3) + "<->V" + std::to_string(v2_ns3) + " OUT OF RANGE — no real link\n"))
            << (s3ld_link34 ? ("  V" + std::to_string(v3_ns3) + " <-> V" + std::to_string(v4_ns3) + " : HELLO exchange (own legitimate link)\n"
@@ -15080,7 +15110,7 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pV4 = m->GetPosition(); }
         double dx = pV3.x - pV4.x, dy = pV3.y - pV4.y;
         s3_v3v4_dist = std::sqrt(dx*dx + dy*dy);
-        s3_v3v4_linked = (s3_v3v4_dist <= TTW_COMM_RANGE);
+        s3_v3v4_linked = (s3_v3v4_dist <= g_me_detect_range);
         if (s3_v3v4_linked) {
             std::string k34 = std::to_string(false_v3)+"_real_"+std::to_string(false_v4);
             ttw_controller_table[k34] = {false_v3, false_v4, t, false};
@@ -15098,7 +15128,7 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) pV2 = m->GetPosition(); }
         double dx = pV1.x - pV2.x, dy = pV1.y - pV2.y;
         s3_srcdst_dist = std::sqrt(dx*dx + dy*dy);
-        s3_srcdst_linked = (s3_srcdst_dist <= TTW_COMM_RANGE);
+        s3_srcdst_linked = (s3_srcdst_dist <= g_me_detect_range);
     }
 
     me_log << "[t=" << now << "]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER\n"
@@ -15395,8 +15425,8 @@ static void ME_S4_VehiclesViaRSU_Continue(uint32_t v1_id, uint32_t v2_id, uint32
     if (s4_vr_have_v4 && false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pos4 = m->GetPosition(); }
     const double s4vr_d12 = std::sqrt((pos1.x-pos2.x)*(pos1.x-pos2.x) + (pos1.y-pos2.y)*(pos1.y-pos2.y));
     const double s4vr_d34 = std::sqrt((pos3.x-pos4.x)*(pos3.x-pos4.x) + (pos3.y-pos4.y)*(pos3.y-pos4.y));
-    const bool s4vr_link12 = s4vr_d12 <= TTW_COMM_RANGE;
-    const bool s4vr_link34 = s4_vr_have_v4 && (s4vr_d34 <= TTW_COMM_RANGE);
+    const bool s4vr_link12 = s4vr_d12 <= g_me_detect_range;
+    const bool s4vr_link34 = s4_vr_have_v4 && (s4vr_d34 <= g_me_detect_range);
 
     // V1↔V2 real link (only if actually in range)
     if (s4vr_link12) {
@@ -15411,7 +15441,7 @@ static void ME_S4_VehiclesViaRSU_Continue(uint32_t v1_id, uint32_t v2_id, uint32
 
     me_log << "[t=" << now << "]  STEP ①  V1↔V2 HELLO EXCHANGE (Normal V2V Topology Discovery)\n"
            << "  Measured distances: d(V" << v1_ns3 << ",V" << v2_ns3 << ")=" << s4vr_d12
-           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s4vr_d34 << "m  (range=" << TTW_COMM_RANGE << "m)\n"
+           << "m  d(V" << v3_ns3 << ",V" << v4_ns3 << ")=" << s4vr_d34 << "m  (range=" << g_me_detect_range << "m)\n"
            << (s4vr_link12 ? ("  V" + std::to_string(v1_ns3) + " <-> V" + std::to_string(v2_ns3) + " : HELLO exchange (real link)\n")
                            : ("  V" + std::to_string(v1_ns3) + "<->V" + std::to_string(v2_ns3) + " OUT OF RANGE — no real link\n"))
            << "  V" << v3_ns3 << (s4_vr_have_v4 ? " and V" + std::to_string(v4_ns3) : " (single)")
@@ -15513,7 +15543,7 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         if (false_v4 < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(false_v4)->GetObject<MobilityModel>(); if (m) pV4 = m->GetPosition(); }
         double dx = pV3.x - pV4.x, dy = pV3.y - pV4.y;
         s4_v3v4_dist = std::sqrt(dx*dx + dy*dy);
-        s4_v3v4_linked = (s4_v3v4_dist <= TTW_COMM_RANGE);
+        s4_v3v4_linked = (s4_v3v4_dist <= g_me_detect_range);
         if (s4_v3v4_linked) {
             std::string k34 = std::to_string(false_v3)+"_real_"+std::to_string(false_v4);
             ttw_controller_table[k34] = {false_v3, false_v4, t, false};
@@ -15526,7 +15556,7 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
     if (v1_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v1_id)->GetObject<MobilityModel>(); if (m) s4ip_pV1 = m->GetPosition(); }
     if (v2_id < Vehicle_Nodes.GetN()) { Ptr<MobilityModel> m = Vehicle_Nodes.Get(v2_id)->GetObject<MobilityModel>(); if (m) s4ip_pV2 = m->GetPosition(); }
     const double s4_srcdst_dist = std::sqrt((s4ip_pV1.x-s4ip_pV2.x)*(s4ip_pV1.x-s4ip_pV2.x) + (s4ip_pV1.y-s4ip_pV2.y)*(s4ip_pV1.y-s4ip_pV2.y));
-    const bool s4_srcdst_linked = s4_srcdst_dist <= TTW_COMM_RANGE;
+    const bool s4_srcdst_linked = s4_srcdst_dist <= g_me_detect_range;
 
     me_log << "[t=" << now << "]  STEP ④  ECHO INJECTION BY MALICIOUS CONTROLLER (RSU-path variant)\n"
            << "  Controller injects forged echo observations into its topology database:\n"
@@ -155145,6 +155175,14 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("rssi_min",
                   "Minimum RSSI threshold in dBm for ME-S3 (default -85, Table 4.7 SIM_RSSI_MIN)",
                   g_rssi_min);
+    cmd.AddValue ("me_detect_range",
+                  "Detection-equation-only range in metres for ME-S1's rho_max "
+                  "(Eq. 3.8) and ME-S3's out-of-range check (Eq. 3.11). Default "
+                  "170 -- split from --rcomm (300m default) on 2026-07-27 so this "
+                  "can be tuned independently of RSU serving-zone assignment, TTW "
+                  "link-break geometry, BSHH-S3's liveness window, and ME's own "
+                  "link-reality checks, none of which are affected by this flag.",
+                  g_me_detect_range);
     // Eq. 3.21 Case 3 (silent colluder) test hook — see g_pem_silenced_vehicle_ids.
     uint32_t silence_vehicle_id_cmd = UINT32_MAX;   // UINT32_MAX = none specified
     cmd.AddValue ("silence_vehicle_id",
