@@ -358,6 +358,94 @@ TGN_SUMMARY/*.csv`).
 
 ---
 
+## 3g. Retrain on the r_comm=170m detection-equation dataset (2026-07-28)
+
+**Why this reopened again:** the ME-S1 rho_max/delta_thresh formulas and
+TGN's own `L_link`→`gamma`/`W_max` live recalibration (`TGN_RecalibrateMobility()`)
+were switched from `TTW_COMM_RANGE` (300m) to a new dedicated
+`g_me_detect_range` (170m) constant, per the supervisor's detection-equation
+patch. Since `W_max` directly determines the `beacon_count` feature TGN
+trains on, the dataset had to be regenerated under the new code and the
+model retrained — this is the only one of the 170m-patch changes that is
+model-relevant (see the rest of this session's reasoning: ρ_max, δ_thresh,
+and ME's link-reality checks are detection-side-only and don't touch any
+of TGN's 6 training features).
+
+**Dataset regeneration**: all 12 individual scenarios (1-12; scenario 13 is
+combined/ablation-only and was never part of training data), each swept
+across `attack_percentage ∈ {0,20,40,60,80,100}` with `rinj` auto-matching
+(`EffectiveRinj()`, no `--rinj` override needed), `simTime=60`,
+`N_Vehicles=200`, `N_RSUs=64` for RSU-variant scenarios else `0`,
+`N_Controllers=4`, default urban mobility, `RngRun=1` for all 72 runs.
+Output: `~/dataset_gen_170m/sc{1..12}/pct{0,20,40,60,80,100}/`.
+
+**Combining, same capping methodology as §3f**: concatenated all 72
+`TGN_EVENTS/*.csv` files → full set of 220,434 rows (vs old 300m dataset's
+220,064 — nearly identical row count, confirming the code change didn't
+alter attack-injection mechanics, only the detection-equation constants).
+Kept pct 0/20/40/60/80 in full (22,151 rows), sampled pct=100's pool
+(198,283 rows) down to 20,000 via `random.seed(42)` — same seed as the
+original capping, for reproducibility. Result: **42,151 total rows**,
+attack=31,954 (75.9%), benign=10,197 (24.1%) — matches the old capped
+dataset's 75.7%/24.3% split almost exactly.
+Files: `~/dataset_gen_170m/combined/training_data_sc1_12_full_170m.csv`,
+`~/dataset_gen_170m/combined/training_data_sc1_12_capped_170m.csv`.
+
+**Training config**: reused the canonical anchor from §3e/§3f
+(`dim=192, layers=2, ce_weight=0.3, l_link=43`) and **seed=5** (the winning
+seed from §3e's dim=192 sweep), with `epochs=300, max_restarts=4`
+(increased from the anchor's 200/2 for this run). **`pos_weight` is the
+only variable recalibrated for this dataset**, per §3f's own methodology
+(`pos_weight = n_benign/n_attack`, computed fresh per-dataset, not reused
+across datasets): `pos_weight = 10197/31954 = 0.3191` (vs the old capped
+dataset's 0.3202 — nearly unchanged, as expected given the near-identical
+class balance).
+
+```bash
+python3 tgn_train.py training_data_sc1_12_capped_170m.csv \
+  --dim 192 --layers 2 --epochs 300 --lr 0.001 --l_link 43 --ce_weight 0.3 \
+  --pos_weight_override 0.3191 --seed 5 --max_restarts 4 \
+  --output tgn_weights_170m_dim192_pw0.3191_seed5.bin
+```
+
+**Known pre-existing gap, not introduced by this regeneration**: sc9
+(ME-S1) and sc10 (ME-S2) contribute **zero attack-labeled rows** to the
+capped set (12 and 467 total rows, all benign). This is not a capping
+artifact — the *full, unsampled* non-pct100 pool (kept 100% intact, never
+touched by the 20K sample) already contains almost no ME-S1/S2 attack
+events: only 16 and 128 total events respectively across all 6 percentage
+points combined, vs tens of thousands for TTW-S1/S2 and BSHH-S1/S2. The
+old (currently-deployed) 300m capped dataset has the identical pattern
+(15/0 and 483/0) — so this is consistent with the model already in
+production, not a regression. Root cause is upstream in `routing.cc`:
+ME-S1/S2's echo-attack logic fires far less often than TTW/BSHH's
+per-vehicle-pair replay logic, not anything about how the dataset is
+sampled or capped. Flagged here for visibility, not treated as blocking.
+
+**θ_FS**: intentionally left at auto-select (`--theta -1`) rather than
+reusing §3f's 0.21/0.32 — those were calibrated against the old 300m
+model's score distribution and don't carry over (same rule as every prior
+model swap in this document: §3e's dim=192 swap needed its own θ_FS
+resweep, §3f's capped-dataset swap needed its own resweep). A dedicated
+`--no_lw=1` worst-case-MCC sweep against this new model is the pending
+next step now that training has completed (the 0.226 below is only the
+training-time validation-set auto-pick, not that worst-case-MCC
+calibration).
+
+**Results (2026-07-28)**: converged on restart attempt 3/4 (val_bestMCC
+target ≥0.975 met). Best checkpoint at epoch 210: val_bestMCC=0.980,
+val_AUROC=0.999. **Test MCC=0.958, Test AUROC=0.995, Test ACC=0.985**
+(TP=4744, TN=1495, FP=43, FN=55) — clearly above the old capped model's
+Test MCC=0.930, and above this session's own ~0.946 expectation set
+going in. Training-time auto-selected theta = 0.226 (validation-set pick,
+superseded by the pending worst-case-MCC sweep below). Variant classifier
+(TTW/BSHH/ME 3-way, attack rows only): ACC=0.796, F1_macro=0.725, n=6337.
+Wall-clock: 15,143s (252.4 min, ~4.2h) — close to this session's own
+~5-6h estimate from prior runs of comparable scale.
+Output: `~/tgn_weights_170m_dim192_pw0.3191_seed5.bin` (2,400,808 bytes).
+
+---
+
 ## 4. Open items for future calibration batches (not yet run)
 
 Once the pos_weight curve (§3a) and dim sweep (§3b) are complete and their
