@@ -1,0 +1,491 @@
+[Bridge] Loaded 37 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Loaded 185 individual sig evidence record(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json'
+2026-07-29T11:14:23.678Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:23.679Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:23.681Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+[Bridge] Loaded 31 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 94 observation(s)
+[Bridge] Loaded 155 individual sig evidence record(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json'
+[Bridge] Loaded 65 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 30 observation(s)
+[WARN] Could not parse individual sig evidence /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json: Unexpected non-whitespace character after JSON at position 3201703
+[Bridge] Loaded 65 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 30 observation(s)
+[WARN] Could not parse individual sig evidence /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json: Unexpected non-whitespace character after JSON at position 3201703
+2026-07-29T11:14:26.683Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:26.683Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:26.683Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:28.308Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:28.309Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:28.311Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+[Bridge] Loaded 8 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[WARN] Could not parse individual sig evidence /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json: Unexpected non-whitespace character after JSON at position 394063
+[Bridge] Loaded 434 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[WARN] Could not parse individual sig evidence /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json: Unterminated string in JSON at position 1684264
+[Bridge] Loaded 0 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[WARN] Could not parse individual sig evidence /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json: Unexpected non-whitespace character after JSON at position 5
+2026-07-29T11:14:29.352Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:29.353Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:29.355Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:29.499Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:29.499Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:29.501Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:29.685Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:29.685Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:29.686Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:29.700Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:29.701Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:266:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[Bridge] Loaded 434 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[Bridge] Loaded 434 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[Bridge] Loaded 2140 individual sig evidence record(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json'
+[Bridge] Loaded 2140 individual sig evidence record(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json'
+[Bridge] Loaded 434 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[Bridge] Loaded 2140 individual sig evidence record(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json'
+2026-07-29T11:14:31.314Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:31.315Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:31.315Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:31.696Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:31.696Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:31.697Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:31.703Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:31.704Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:31.706Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+[Bridge] Loaded 434 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[Bridge] Loaded 2140 individual sig evidence record(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json'
+2026-07-29T11:14:32.357Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:32.357Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:32.358Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:32.371Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:32.371Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:32.372Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:32.504Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:32.504Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:32.504Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:33.001Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:33.002Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:33.003Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:33.015Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:33.015Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:33.016Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:33.162Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:33.163Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:33.164Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:34.316Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:34.316Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:34.317Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:34.332Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:34.333Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:34.700Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:34.700Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:34.700Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:34.709Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:34.709Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:34.709Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:34.899Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:14:34.899Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:14:34.900Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:35.359Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:35.359Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:35.359Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:35.373Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:35.373Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:35.373Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:35.376Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:35.376Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:35.506Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:35.506Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:35.507Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:35.530Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:35.531Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:36.005Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:36.005Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:36.006Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:36.018Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:36.018Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:36.018Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:36.165Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:36.165Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:36.166Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:37.701Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:37.701Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:37.701Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:37.712Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:37.712Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:37.712Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:37.714Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:37.714Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:37.727Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:37.727Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:37.903Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:14:37.903Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:14:37.903Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:38.374Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:38.374Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:38.375Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:38.388Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:38.389Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:39.008Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:39.008Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:39.008Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:39.020Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:39.020Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:39.020Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:39.021Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:39.021Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:39.041Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:39.042Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:39.167Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:39.167Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:39.167Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:39.180Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:39.181Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:40.905Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:14:40.905Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:14:40.906Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:14:40.920Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:14:40.920Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+[Bridge] Loaded 434 alert(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /tgn_alerts.json'
+[Bridge] Parsed beacon_evidence.csv: 93 observation(s)
+[Bridge] Loaded 2140 individual sig evidence record(s) from '/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /individual_sig_evidence.json'
+2026-07-29T11:23:43.584Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+2026-07-29T11:23:43.585Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu3.tetaguard.net url:grpcs://peer0.rsu3.tetaguard.net:7053 timeout:3000
+2026-07-29T11:23:43.590Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu3.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu3.tetaguard.net, url:grpcs://peer0.rsu3.tetaguard.net:7053, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:23:46.596Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+2026-07-29T11:23:46.596Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server peer0.rsu4.tetaguard.net url:grpcs://peer0.rsu4.tetaguard.net:7055 timeout:3000
+2026-07-29T11:23:46.597Z - [32minfo[39m: [NetworkConfig]: buildPeer - Unable to connect to the endorser peer0.rsu4.tetaguard.net due to Error: Failed to connect before the deadline on Endorser- name: peer0.rsu4.tetaguard.net, url:grpcs://peer0.rsu4.tetaguard.net:7055, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:23:49.598Z - [31merror[39m: [ServiceEndpoint]: Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+2026-07-29T11:23:49.599Z - [31merror[39m: [ServiceEndpoint]: waitForReady - Failed to connect to remote gRPC server orderer1.tetaguard.net url:grpcs://orderer1.tetaguard.net:7050 timeout:3000
+2026-07-29T11:23:49.599Z - [32minfo[39m: [NetworkConfig]: buildOrderer - Unable to connect to the committer orderer1.tetaguard.net due to Error: Failed to connect before the deadline on Committer- name: orderer1.tetaguard.net, url:grpcs://orderer1.tetaguard.net:7050, connected:false, connectAttempted:true
+    at checkState (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/client.js:77:26)
+    at Timeout._onTimeout (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/@grpc/grpc-js/build/src/internal-channel.js:501:17)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7) {
+  connectFailed: true
+}
+2026-07-29T11:23:49.635Z - [31merror[39m: [Endorser]: sendProposal[peer0.rsu3.tetaguard.net] - rejecting with: Error: Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+2026-07-29T11:23:49.635Z - [31merror[39m: [Transaction]: Error: No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected
+    at newEndorsementError (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:77:12)
+    at getResponsePayload (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:45:23)
+    at Transaction.submit (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/node_modules/fabric-network/lib/transaction.js:258:28)
+    at async submitTransactionWithRetry (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:81:20)
+    at async submitToFabric (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:249:13)
+    at async main (/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/blockchain/client/submitToFabric.js:737:5)
+[ERROR] No valid responses from any peers. Errors:
+    peer=peer0.rsu3.tetaguard.net, status=grpc, message=Broadcast Client peer0.rsu3.tetaguard.net grpcs://peer0.rsu3.tetaguard.net:7053 is not connected

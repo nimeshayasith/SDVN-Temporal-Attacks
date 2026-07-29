@@ -1,0 +1,8 @@
+== TGN Crypto Gate (Algorithm 3, Eq. 3.15-3.17) ==
+  Passthrough: every event in this list already survived the real
+  HMAC-SHA256/freshness/nonce gate (routing.cc::PemCryptoPreFilter ->
+  TetaGuardCryptoFilter) before reaching pem_all_events. This function
+  no longer re-derives a second, weaker verdict (Finding 14 fix) — see
+  the SECTION 6 header comment in tgn_core.cc for why the old secondary
+  pass was removed rather than kept as an independent re-check.
+  In=690  Out=690 (no drops)

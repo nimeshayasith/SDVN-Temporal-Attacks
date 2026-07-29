@@ -77,6 +77,56 @@ x-peer-env: &peer-env
   # overrides that default network-wide (Viper maps CORE_PEER_GOSSIP_STATE_*
   # to peer.gossip.state.* regardless of core.yaml on disk).
   CORE_PEER_GOSSIP_STATE_ENABLED: "true"
+  # Fix (2026-07-29, T_exec_fabric measurement debugging): core.yaml's
+  # gossip.state.checkInterval defaults to 10s. Live log tracing (matching
+  # each transaction's txID between the gateway Submit call and the peer's
+  # "StoreBlock -> Received block [N] from buffer" commit log, on both the
+  # gossip leader peer that pulls directly from the orderer's Deliver
+  # stream and non-leader peers) showed every block sitting in this
+  # buffer for ~10s before being flushed to commit, even though the
+  # orderer itself writes the block within tens of milliseconds of
+  # receiving the transaction (confirmed via orderer SmartBFT consensus
+  # logs). This was the true source of the residual ~10s T_exec_fabric
+  # floor that remained after fixing configtx.yaml's SmartBFT
+  # RequestForwardTimeout/RequestComplainTimeout (a separate, already-
+  # fixed bug). Reduced to 200ms -- still far above the <40ms observed
+  # real block-commit cost (block_and_pvtdata_commit+state_commit), so a
+  # safe margin, consistent with the 100ms beacon-interval safety budget.
+  CORE_PEER_GOSSIP_STATE_CHECKINTERVAL: "200ms"
+  # Fix (2026-07-29, same investigation): after the checkInterval fix above,
+  # the residual delay dropped from ~10s to a flat ~4s per transaction --
+  # matching core.yaml's gossip.pull.interval default of 4s exactly
+  # (peer.gossip.pull.interval, the general gossip pull-protocol cadence
+  # used as a fallback/supplementary dissemination path). Reduced to 200ms
+  # for the same reason as checkInterval above.
+  CORE_PEER_GOSSIP_PULL_INTERVAL: "200ms"
+  # Fix (2026-07-29, same investigation): pullInterval alone didn't move the
+  # measured ~4s floor -- it comes from the gossip PULL ENGINE's own
+  # per-round wait-time constants (core.yaml lines ~165-172):
+  # digestWaitTime(1s) + requestWaitTime(1500ms) + responseWaitTime(2s) =
+  # 4.5s, matching the observed ~4.0s almost exactly. Reduced all three
+  # (keeping the required digestWaitTime < requestWaitTime < responseWaitTime
+  # ordering per core.yaml's own comments).
+  CORE_PEER_GOSSIP_DIGESTWAITTIME: "50ms"
+  CORE_PEER_GOSSIP_REQUESTWAITTIME: "100ms"
+  CORE_PEER_GOSSIP_RESPONSEWAITTIME: "200ms"
+  # Fix (2026-07-29, same investigation, found via Fabric Go source read at
+  # /home/sdvn_echo_topology/fabric-src/gossip/state/state.go): the pull-engine
+  # wait times above (digestWaitTime/requestWaitTime/responseWaitTime) had no
+  # effect because they gate a DIFFERENT code path (gossip/pull's generic
+  # engine). The actual remaining ~4s came from
+  # peer.gossip.state.responseTimeout (core.yaml, requestBlocksInRange() in
+  # gossip/state/state.go) -- the ANTI-ENTROPY state-transfer response wait,
+  # a separate timeout specific to state.go. checkInterval(200ms) +
+  # responseTimeout(3s default) ~= 3.2s, matching the observed ~4s floor.
+  # Also confirmed via peer logs that antiEntropy()'s pull requests were
+  # actually being answered, but handleStateResponse() was rejecting the
+  # response ("state transfer response without payload"), forcing a full
+  # retry cycle each time -- deliverPayloads() (the normal DIRECT PUSH path
+  # from the orderer's Deliver stream) is event-driven with no interval at
+  # all, so this peer was relying entirely on the slower/buggy anti-entropy
+  # pull fallback instead of direct push. Reduced to 200ms.
+  CORE_PEER_GOSSIP_STATE_RESPONSETIMEOUT: "200ms"
   CORE_CHAINCODE_EXECUTETIMEOUT: 300s
   CORE_LEDGER_STATE_STATEDATABASE: CouchDB
   TETA_SIMULATION_MODE: "1"
