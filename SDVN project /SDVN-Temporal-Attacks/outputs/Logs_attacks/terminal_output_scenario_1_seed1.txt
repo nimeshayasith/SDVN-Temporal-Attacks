@@ -1,13 +1,13 @@
 Solution at controller cleared
-[SUMO] Peak-activity alignment: trace_t0=11.7s -> 108 vehicles active in the 60s sim window (was ~few at raw t=0)
-[SUMO] Trace time offset: 11.7s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 108 positions, scheduled 176272 exact position+velocity events
+[SUMO] Peak-activity alignment: trace_t0=360s -> 89 vehicles active in the 5s sim window (was ~few at raw t=0)
+[SUMO] Trace time offset: 360s -> waypoints shifted to NS-3 t=0
+[SUMO] Loaded 304 positions, scheduled 0 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/01_TTW_S1_Malicious_Vehicle.xml
 
 ========================================
 SCENARIO 01 - TTW-S1 ATTACK CONFIGURED
-Active attackers (20): V2 V14 V15 V7 V11 V17 V8 V13 V3 V4 V10 V12 V16 V1 V18 V0 V6 V5 V19 V9 
-Victim pool (100): V44 V37 V30 V29 V41 V31 V15 V97 V96 V70 V46 V72 V7 V78 V26 V81 V91 V42 V20 V28 V24 V18 V5 V6 V68 V64 V35 V62 V17 V9 V87 V36 V3 V73 V92 V61 V10 V95 V38 V50 V80 V45 V40 V34 V75 V63 V57 V13 V1 V88 V52 V82 V43 V58 V47 V22 V21 V25 V60 V39 V99 V77 V83 V69 V16 V51 V27 V93 V53 V65 V32 V98 V89 V14 V49 V84 V71 V11 V2 V55 V74 V54 V56 V76 V8 V94 V66 V19 V48 V4 V86 V79 V33 V23 V59 V0 V67 V90 V85 V12 
+Active attackers (6): V1 V2 V0 V3 V4 V5 
+Victim pool (10): V9 V0 V6 V7 V4 V1 V3 V5 V2 V8 
 Activation probability : 1
 Replay jitter window   : +/-0.04 s
 Support evidence prob. : 1
@@ -18,66 +18,7 @@ Timeline (Option B — real SUMO trajectories decide the break):
   [per-pair]         : Attacker replays forged packet 2s after its pair's real break
 ========================================
 
-[TTW-S1] no natural link break found for attacker V7 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V3 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V0 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V6 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V5 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V19 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V9 in round 0 — trying fallback pairing
-[TTW-S1] fallback pairing (round 0): V7 <-> V16 (no genuine break found; replaying at t=25 using real position then)
-[TTW-S1] fallback pairing (round 0): V6 <-> V18 (no genuine break found; replaying at t=25 using real position then)
-[TTW-S1] fallback pairing (round 0): V5 <-> V13 (no genuine break found; replaying at t=25 using real position then)
-[TTW-S1] fallback pairing (round 0): V19 <-> V33 (no genuine break found; replaying at t=25 using real position then)
-[TTW-S1] fallback pairing (round 0): V9 <-> V21 (no genuine break found; replaying at t=25 using real position then)
-[TTW-S1] fallback pairing (round 2): V0 <-> V3 (no genuine break found; replaying at t=35 using real position then)
-[TTW-S1] V2 <-> V43  (hello t=10s, real break at t=14.1s)
-[TTW-S1] V14 <-> V66  (hello t=10s, real break at t=15.1s)
-[TTW-S1] V15 <-> V8  (hello t=10s, real break at t=11.1s)
-[TTW-S1] V11 <-> V4  (hello t=10s, real break at t=14.9s)
-[TTW-S1] V17 <-> V41  (hello t=10s, real break at t=10.5s)
-[TTW-S1] V8 <-> V15  (hello t=10s, real break at t=11.1s)
-[TTW-S1] V13 <-> V57  (hello t=10s, real break at t=11.3s)
-[TTW-S1] V4 <-> V54  (hello t=10s, real break at t=10.7s)
-[TTW-S1] V10 <-> V78  (hello t=10s, real break at t=17.7s)
-[TTW-S1] V12 <-> V29  (hello t=10s, real break at t=13.9s)
-[TTW-S1] V16 <-> V58  (hello t=10s, real break at t=12.7s)
-[TTW-S1] V1 <-> V30  (hello t=10s, real break at t=18.7s)
-[TTW-S1] V18 <-> V1  (hello t=10s, real break at t=20.5s)
-[TTW-S1] V7 <-> V16  (hello t=10s, real break at t=25s)
-[TTW-S1] V6 <-> V18  (hello t=10s, real break at t=25s)
-[TTW-S1] V5 <-> V13  (hello t=10s, real break at t=25s)
-[TTW-S1] V19 <-> V33  (hello t=10s, real break at t=25s)
-[TTW-S1] V9 <-> V21  (hello t=10s, real break at t=25s)
-[TTW-S1] V2 <-> V51  (hello t=15s, real break at t=16.9s)
-[TTW-S1] V14 <-> V53  (hello t=15s, real break at t=16.7s)
-[TTW-S1] V15 <-> V20  (hello t=15s, real break at t=21.7s)
-[TTW-S1] V11 <-> V36  (hello t=15s, real break at t=19.7s)
-[TTW-S1] V10 <-> V61  (hello t=15s, real break at t=19.3s)
-[TTW-S1] V12 <-> V42  (hello t=15s, real break at t=16.1s)
-[TTW-S1] V1 <-> V44  (hello t=15s, real break at t=19.7s)
-[TTW-S1] V5 <-> V28  (hello t=15s, real break at t=26.5s)
-[TTW-S1] V2 <-> V11  (hello t=20s, real break at t=22.3s)
-[TTW-S1] V14 <-> V38  (hello t=20s, real break at t=22.1s)
-[TTW-S1] V15 <-> V72  (hello t=20s, real break at t=24.3s)
-[TTW-S1] V11 <-> V2  (hello t=20s, real break at t=22.3s)
-[TTW-S1] V8 <-> V0  (hello t=20s, real break at t=24.7s)
-[TTW-S1] V4 <-> V99  (hello t=20s, real break at t=34.7s)
-[TTW-S1] V1 <-> V85  (hello t=20s, real break at t=25.5s)
-[TTW-S1] V9 <-> V32  (hello t=20s, real break at t=33.7s)
-[TTW-S1] V0 <-> V3  (hello t=20s, real break at t=35s)
-[TTW-S1] V14 <-> V25  (hello t=25s, real break at t=28.9s)
-[TTW-S1] V17 <-> V27  (hello t=25s, real break at t=36.1s)
-[TTW-S1] V1 <-> V82  (hello t=25s, real break at t=31.9s)
-[TTW-S1] V14 <-> V73  (hello t=30s, real break at t=40.7s)
-[TTW-S1] V12 <-> V98  (hello t=30s, real break at t=43.7s)
-[TTW-S1] V12 <-> V50  (hello t=35s, real break at t=44.3s)
-[TTW-S1] V5 <-> V39  (hello t=35s, real break at t=45.5s)
-[TTW-S1] V10 <-> V19  (hello t=40s, real break at t=51.3s)
-[TTW-S1] V12 <-> V35  (hello t=40s, real break at t=47.7s)
-[TTW-S1] V1 <-> V96  (hello t=40s, real break at t=50.5s)
-[TTW-S1] V19 <-> V10  (hello t=40s, real break at t=51.3s)
-[TTW-S1] V4 <-> V24  (hello t=45s, real break at t=54.1s)
+[TTW-S1] no attacker-victim pair naturally exceeded comm range within simTime — running as a clean no-attack pass
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
 [CRYPTO] TETA-Guard pipeline initialised:
@@ -88,718 +29,89 @@ Timeline (Option B — real SUMO trajectories decide the break):
   [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
       kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
   [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
-      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=100)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=10)
   [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.29–3.32)
       create_location_bound_report / verify_single_witness / verify_quorum
   [6] Haversine distance (GPS consistency gate, Eq. 3.29)
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
-[KEM] Registered 100/100 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 99 handshakes timed: avg=34.2556 ms, max=37.6821 ms, over_budget=99/99 (budget=10 ms)
-[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_dim192_final.bin'  (dim=192 layers=2)
-[KEM][SimLatency][t=0.0329933] Vehicle 28 session key simulated-ready (real handshake was 32.9933 ms)
-[KEM][SimLatency][t=0.0330146] Vehicle 27 session key simulated-ready (real handshake was 33.0146 ms)
-[KEM][SimLatency][t=0.0330308] Vehicle 29 session key simulated-ready (real handshake was 33.0308 ms)
-[KEM][SimLatency][t=0.033033] Vehicle 47 session key simulated-ready (real handshake was 33.033 ms)
-[KEM][SimLatency][t=0.0331421] Vehicle 37 session key simulated-ready (real handshake was 33.1421 ms)
-[KEM][SimLatency][t=0.0331468] Vehicle 26 session key simulated-ready (real handshake was 33.1468 ms)
-[KEM][SimLatency][t=0.0332354] Vehicle 46 session key simulated-ready (real handshake was 33.2354 ms)
-[KEM][SimLatency][t=0.0332598] Vehicle 39 session key simulated-ready (real handshake was 33.2598 ms)
-[KEM][SimLatency][t=0.0333105] Vehicle 59 session key simulated-ready (real handshake was 33.3105 ms)
-[KEM][SimLatency][t=0.0333132] Vehicle 57 session key simulated-ready (real handshake was 33.3132 ms)
-[KEM][SimLatency][t=0.0333144] Vehicle 38 session key simulated-ready (real handshake was 33.3144 ms)
-[KEM][SimLatency][t=0.0334108] Vehicle 1 session key simulated-ready (real handshake was 33.4108 ms)
-[KEM][SimLatency][t=0.0334369] Vehicle 17 session key simulated-ready (real handshake was 33.4369 ms)
-[KEM][SimLatency][t=0.033472] Vehicle 40 session key simulated-ready (real handshake was 33.472 ms)
-[KEM][SimLatency][t=0.033557] Vehicle 7 session key simulated-ready (real handshake was 33.557 ms)
-[KEM][SimLatency][t=0.0335635] Vehicle 10 session key simulated-ready (real handshake was 33.5635 ms)
-[KEM][SimLatency][t=0.0335744] Vehicle 56 session key simulated-ready (real handshake was 33.5744 ms)
-[KEM][SimLatency][t=0.0335795] Vehicle 41 session key simulated-ready (real handshake was 33.5795 ms)
-[KEM][SimLatency][t=0.0335836] Vehicle 45 session key simulated-ready (real handshake was 33.5836 ms)
-[KEM][SimLatency][t=0.0335947] Vehicle 2 session key simulated-ready (real handshake was 33.5947 ms)
-[KEM][SimLatency][t=0.0336038] Vehicle 9 session key simulated-ready (real handshake was 33.6038 ms)
-[KEM][SimLatency][t=0.0336043] Vehicle 35 session key simulated-ready (real handshake was 33.6043 ms)
-[KEM][SimLatency][t=0.0336101] Vehicle 5 session key simulated-ready (real handshake was 33.6101 ms)
-[KEM][SimLatency][t=0.0336107] Vehicle 65 session key simulated-ready (real handshake was 33.6107 ms)
-[KEM][SimLatency][t=0.033623] Vehicle 62 session key simulated-ready (real handshake was 33.623 ms)
-[KEM][SimLatency][t=0.0336525] Vehicle 24 session key simulated-ready (real handshake was 33.6525 ms)
-[KEM][SimLatency][t=0.0336537] Vehicle 8 session key simulated-ready (real handshake was 33.6537 ms)
-[KEM][SimLatency][t=0.0336662] Vehicle 58 session key simulated-ready (real handshake was 33.6662 ms)
-[KEM][SimLatency][t=0.0336677] Vehicle 16 session key simulated-ready (real handshake was 33.6677 ms)
-[KEM][SimLatency][t=0.0336832] Vehicle 25 session key simulated-ready (real handshake was 33.6832 ms)
-[KEM][SimLatency][t=0.0336947] Vehicle 6 session key simulated-ready (real handshake was 33.6947 ms)
-[KEM][SimLatency][t=0.033718] Vehicle 63 session key simulated-ready (real handshake was 33.718 ms)
-[KEM][SimLatency][t=0.0337307] Vehicle 42 session key simulated-ready (real handshake was 33.7307 ms)
-[KEM][SimLatency][t=0.0337508] Vehicle 4 session key simulated-ready (real handshake was 33.7508 ms)
-[KEM][SimLatency][t=0.0337626] Vehicle 11 session key simulated-ready (real handshake was 33.7626 ms)
-[KEM][SimLatency][t=0.0337703] Vehicle 64 session key simulated-ready (real handshake was 33.7703 ms)
-[KEM][SimLatency][t=0.0337857] Vehicle 36 session key simulated-ready (real handshake was 33.7857 ms)
-[KEM][SimLatency][t=0.0337876] Vehicle 3 session key simulated-ready (real handshake was 33.7876 ms)
-[KEM][SimLatency][t=0.0338151] Vehicle 23 session key simulated-ready (real handshake was 33.8151 ms)
-[KEM][SimLatency][t=0.033817] Vehicle 21 session key simulated-ready (real handshake was 33.817 ms)
-[KEM][SimLatency][t=0.0338288] Vehicle 55 session key simulated-ready (real handshake was 33.8288 ms)
-[KEM][SimLatency][t=0.0338481] Vehicle 20 session key simulated-ready (real handshake was 33.8481 ms)
-[KEM][SimLatency][t=0.0338923] Vehicle 61 session key simulated-ready (real handshake was 33.8923 ms)
-[KEM][SimLatency][t=0.0339089] Vehicle 43 session key simulated-ready (real handshake was 33.9089 ms)
-[KEM][SimLatency][t=0.0339366] Vehicle 53 session key simulated-ready (real handshake was 33.9366 ms)
-[KEM][SimLatency][t=0.0339543] Vehicle 75 session key simulated-ready (real handshake was 33.9543 ms)
-[KEM][SimLatency][t=0.0339707] Vehicle 18 session key simulated-ready (real handshake was 33.9707 ms)
-[KEM][SimLatency][t=0.0339877] Vehicle 19 session key simulated-ready (real handshake was 33.9877 ms)
-[KEM][SimLatency][t=0.0339938] Vehicle 30 session key simulated-ready (real handshake was 33.9938 ms)
-[KEM][SimLatency][t=0.0340576] Vehicle 74 session key simulated-ready (real handshake was 34.0576 ms)
-[KEM][SimLatency][t=0.0340631] Vehicle 99 session key simulated-ready (real handshake was 34.0631 ms)
-[KEM][SimLatency][t=0.0340638] Vehicle 12 session key simulated-ready (real handshake was 34.0638 ms)
-[KEM][SimLatency][t=0.0340817] Vehicle 60 session key simulated-ready (real handshake was 34.0817 ms)
-[KEM][SimLatency][t=0.0341013] Vehicle 78 session key simulated-ready (real handshake was 34.1013 ms)
-[KEM][SimLatency][t=0.0341228] Vehicle 66 session key simulated-ready (real handshake was 34.1228 ms)
-[KEM][SimLatency][t=0.0341306] Vehicle 54 session key simulated-ready (real handshake was 34.1306 ms)
-[KEM][SimLatency][t=0.0341682] Vehicle 44 session key simulated-ready (real handshake was 34.1682 ms)
-[KEM][SimLatency][t=0.0341767] Vehicle 48 session key simulated-ready (real handshake was 34.1767 ms)
-[KEM][SimLatency][t=0.0342075] Vehicle 67 session key simulated-ready (real handshake was 34.2075 ms)
-[KEM][SimLatency][t=0.0342531] Vehicle 73 session key simulated-ready (real handshake was 34.2531 ms)
-[KEM][SimLatency][t=0.0342539] Vehicle 15 session key simulated-ready (real handshake was 34.2539 ms)
-[KEM][SimLatency][t=0.0342728] Vehicle 98 session key simulated-ready (real handshake was 34.2728 ms)
-[KEM][SimLatency][t=0.0342751] Vehicle 52 session key simulated-ready (real handshake was 34.2751 ms)
-[KEM][SimLatency][t=0.0342752] Vehicle 93 session key simulated-ready (real handshake was 34.2752 ms)
-[KEM][SimLatency][t=0.034285] Vehicle 97 session key simulated-ready (real handshake was 34.285 ms)
-[KEM][SimLatency][t=0.0342882] Vehicle 50 session key simulated-ready (real handshake was 34.2882 ms)
-[KEM][SimLatency][t=0.0343072] Vehicle 77 session key simulated-ready (real handshake was 34.3072 ms)
-[KEM][SimLatency][t=0.0343273] Vehicle 34 session key simulated-ready (real handshake was 34.3273 ms)
-[KEM][SimLatency][t=0.0343312] Vehicle 13 session key simulated-ready (real handshake was 34.3312 ms)
-[KEM][SimLatency][t=0.034375] Vehicle 22 session key simulated-ready (real handshake was 34.375 ms)
-[KEM][SimLatency][t=0.03449] Vehicle 49 session key simulated-ready (real handshake was 34.49 ms)
-[KEM][SimLatency][t=0.0344985] Vehicle 76 session key simulated-ready (real handshake was 34.4985 ms)
-[KEM][SimLatency][t=0.0345458] Vehicle 31 session key simulated-ready (real handshake was 34.5458 ms)
-[KEM][SimLatency][t=0.0345495] Vehicle 51 session key simulated-ready (real handshake was 34.5495 ms)
-[KEM][SimLatency][t=0.0345706] Vehicle 33 session key simulated-ready (real handshake was 34.5706 ms)
-[KEM][SimLatency][t=0.0346763] Vehicle 83 session key simulated-ready (real handshake was 34.6763 ms)
-[KEM][SimLatency][t=0.0346773] Vehicle 32 session key simulated-ready (real handshake was 34.6773 ms)
-[KEM][SimLatency][t=0.0348298] Vehicle 94 session key simulated-ready (real handshake was 34.8298 ms)
-[KEM][SimLatency][t=0.0348344] Vehicle 95 session key simulated-ready (real handshake was 34.8344 ms)
-[KEM][SimLatency][t=0.0348491] Vehicle 72 session key simulated-ready (real handshake was 34.8491 ms)
-[KEM][SimLatency][t=0.0348498] Vehicle 14 session key simulated-ready (real handshake was 34.8498 ms)
-[KEM][SimLatency][t=0.03487] Vehicle 92 session key simulated-ready (real handshake was 34.87 ms)
-[KEM][SimLatency][t=0.0349296] Vehicle 91 session key simulated-ready (real handshake was 34.9296 ms)
-[KEM][SimLatency][t=0.0349364] Vehicle 71 session key simulated-ready (real handshake was 34.9364 ms)
-[KEM][SimLatency][t=0.0349697] Vehicle 96 session key simulated-ready (real handshake was 34.9697 ms)
-[KEM][SimLatency][t=0.0349835] Vehicle 82 session key simulated-ready (real handshake was 34.9835 ms)
-[KEM][SimLatency][t=0.0351628] Vehicle 88 session key simulated-ready (real handshake was 35.1628 ms)
-[KEM][SimLatency][t=0.0352504] Vehicle 89 session key simulated-ready (real handshake was 35.2504 ms)
-[KEM][SimLatency][t=0.035476] Vehicle 90 session key simulated-ready (real handshake was 35.476 ms)
-[KEM][SimLatency][t=0.035577] Vehicle 84 session key simulated-ready (real handshake was 35.577 ms)
-[KEM][SimLatency][t=0.0356585] Vehicle 79 session key simulated-ready (real handshake was 35.6585 ms)
-[KEM][SimLatency][t=0.0361276] Vehicle 70 session key simulated-ready (real handshake was 36.1276 ms)
-[KEM][SimLatency][t=0.0363059] Vehicle 81 session key simulated-ready (real handshake was 36.3059 ms)
-[KEM][SimLatency][t=0.0363461] Vehicle 68 session key simulated-ready (real handshake was 36.3461 ms)
-[KEM][SimLatency][t=0.0365457] Vehicle 85 session key simulated-ready (real handshake was 36.5457 ms)
-[KEM][SimLatency][t=0.0366528] Vehicle 87 session key simulated-ready (real handshake was 36.6528 ms)
-[KEM][SimLatency][t=0.0369708] Vehicle 80 session key simulated-ready (real handshake was 36.9708 ms)
-[KEM][SimLatency][t=0.0371777] Vehicle 86 session key simulated-ready (real handshake was 37.1777 ms)
-[KEM][SimLatency][t=0.0376821] Vehicle 69 session key simulated-ready (real handshake was 37.6821 ms)
-[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=14615322844900846585 (interval=3s)
-[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=14615322844900846585 (interval=3s)
-[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=14615322844900846585 (interval=3s)
-[TTW-S1][t=10.000]  V48 --HELLO beacon--> V7  dist=33.826m  DELIVERED
-[TTW-S1][t=10.000]  V71 --HELLO beacon--> V19  dist=68.334m  DELIVERED
-[TTW-S1][t=10.000]  V13 --HELLO beacon--> V20  dist=93.322m  DELIVERED
-[TTW-S1][t=10.000]  V9 --HELLO beacon--> V16  dist=59.014m  DELIVERED
-[TTW-S1][t=10.000]  V46 --HELLO beacon--> V22  dist=99.388m  DELIVERED
-[TTW-S1][t=10.000]  V20 --HELLO beacon--> V13  dist=93.322m  DELIVERED
-[TTW-S1][t=10.000]  V62 --HELLO beacon--> V18  dist=84.485m  DELIVERED
-[TTW-S1][t=10.000]  V59 --HELLO beacon--> V9  dist=95.170m  DELIVERED
-[TTW-S1][t=10.000]  V83 --HELLO beacon--> V15  dist=23.483m  DELIVERED
-[TTW-S1][t=10.000]  V34 --HELLO beacon--> V17  dist=63.693m  DELIVERED
-[TTW-S1][t=10.000]  V63 --HELLO beacon--> V21  dist=72.901m  DELIVERED
-[TTW-S1][t=10.000]  V35 --HELLO beacon--> V6  dist=7.084m  DELIVERED
-[TTW-S1][t=10.000]  V6 --HELLO beacon--> V23  dist=36.678m  DELIVERED
-[TTW-S1][t=10.000]  V21 --HELLO beacon--> V12  dist=71.573m  DELIVERED
-[TTW-S1][t=10.000]  V23 --HELLO beacon--> V11  dist=17.275m  DELIVERED
-[TTW-S1][t=10.000]  V18 --HELLO beacon--> V10  dist=93.737m  DELIVERED
-[TTW-S1][t=10.000]  V38 --HELLO beacon--> V24  dist=27.991m  DELIVERED
-[TTW-S1][t=10.000]  V26 --HELLO beacon--> V14  dist=60.889m  DELIVERED
-[TTW-S1][t=10.001]  V7 --HELLO beacon--> V48  dist=33.838m  DELIVERED
-[TTW-S1][t=10.001]  V19 --HELLO beacon--> V71  dist=68.340m  DELIVERED
-[TTW-S1][t=10.001]  V20 --HELLO beacon--> V13  dist=93.328m  DELIVERED
-[TTW-S1][t=10.001]  V16 --HELLO beacon--> V9  dist=59.024m  DELIVERED
-[TTW-S1][t=10.001]  V22 --HELLO beacon--> V46  dist=99.394m  DELIVERED
-[TTW-S1][t=10.001]  V13 --HELLO beacon--> V20  dist=93.328m  DELIVERED
-[TTW-S1][t=10.001]  V18 --HELLO beacon--> V62  dist=84.498m  DELIVERED
-[TTW-S1][t=10.001]  V9 --HELLO beacon--> V59  dist=95.179m  DELIVERED
-[TTW-S1][t=10.001]  V15 --HELLO beacon--> V83  dist=23.490m  DELIVERED
-[TTW-S1][t=10.001]  V17 --HELLO beacon--> V34  dist=63.701m  DELIVERED
-[TTW-S1][t=10.001]  V21 --HELLO beacon--> V63  dist=72.912m  DELIVERED
-[TTW-S1][t=10.001]  V6 --HELLO beacon--> V35  dist=7.099m  DELIVERED
-[TTW-S1][t=10.001]  V23 --HELLO beacon--> V6  dist=36.694m  DELIVERED
-[TTW-S1][t=10.001]  V12 --HELLO beacon--> V21  dist=71.573m  DELIVERED
-[TTW-S1][t=10.001]  V11 --HELLO beacon--> V23  dist=17.261m  DELIVERED
-[TTW-S1][t=10.001]  V10 --HELLO beacon--> V18  dist=93.730m  DELIVERED
-[TTW-S1][t=10.001]  V24 --HELLO beacon--> V38  dist=27.992m  DELIVERED
-[TTW-S1][t=10.001]  V14 --HELLO beacon--> V26  dist=60.894m  DELIVERED
-[TTW-S1][t=10.100]  V7 --topology update--> Controller  <V7 sees V48, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V19 --topology update--> Controller  <V19 sees V71, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V20 --topology update--> Controller  <V20 sees V13, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V16 --topology update--> Controller  <V16 sees V9, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V22 --topology update--> Controller  <V22 sees V46, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V13 --topology update--> Controller  <V13 sees V20, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V18 --topology update--> Controller  <V18 sees V62, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V9 --topology update--> Controller  <V9 sees V59, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V15 --topology update--> Controller  <V15 sees V83, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V17 --topology update--> Controller  <V17 sees V34, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V21 --topology update--> Controller  <V21 sees V63, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V6 --topology update--> Controller  <V6 sees V35, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V23 --topology update--> Controller  <V23 sees V6, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V12 --topology update--> Controller  <V12 sees V21, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V11 --topology update--> Controller  <V11 sees V23, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V10 --topology update--> Controller  <V10 sees V18, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V24 --topology update--> Controller  <V24 sees V38, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V14 --topology update--> Controller  <V14 sees V26, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V48 --topology update--> Controller  <V48 sees V7, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V71 --topology update--> Controller  <V71 sees V19, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V9 --topology update--> Controller  <V9 sees V16, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V46 --topology update--> Controller  <V46 sees V22, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V62 --topology update--> Controller  <V62 sees V18, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V59 --topology update--> Controller  <V59 sees V9, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V83 --topology update--> Controller  <V83 sees V15, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V34 --topology update--> Controller  <V34 sees V17, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V63 --topology update--> Controller  <V63 sees V21, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V35 --topology update--> Controller  <V35 sees V6, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V6 --topology update--> Controller  <V6 sees V23, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V21 --topology update--> Controller  <V21 sees V12, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V23 --topology update--> Controller  <V23 sees V11, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V18 --topology update--> Controller  <V18 sees V10, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V38 --topology update--> Controller  <V38 sees V24, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V26 --topology update--> Controller  <V26 sees V14, t=10.000>  ACCEPTED
-This is tag5. Serialized size is 508
-This is tag4. Serialized size is 424
-This is tag4. Serialized size is 424
-This is tag2. Serialized size is 256
-This is tag6. Serialized size is 592
-This is tag6. Serialized size is 592
-This is tag8. Serialized size is 760
-This is tag9. Serialized size is 844
-This is tag11. Serialized size is 1012
-This is tag4. Serialized size is 424
-This is tag4. Serialized size is 424
-This is tag9. Serialized size is 844
-This is tag6. Serialized size is 592
-This is tag6. Serialized size is 592
-This is tag4. Serialized size is 424
-This is tag5. Serialized size is 508
-This is tag8. Serialized size is 760
-This is tag6. Serialized size is 592
-This is tag11. Serialized size is 1012
-This is tag1. Serialized size is 172
-This is tag6. Serialized size is 592
-This is tag9. Serialized size is 844
-This is tag2. Serialized size is 256
-This is tag3. Serialized size is 340
-This is tag5. Serialized size is 508
-This is tag3. Serialized size is 340
-This is tag4. Serialized size is 424
-This is tag6. Serialized size is 592
-[TTW-S1][t=10.181]  V18 stored old packet <V18 sees V62, t=10.000>  (will replay at t~=13.300)
-[TTW-S1][t=10.183]  V19 stored old packet <V19 sees V71, t=10.000>  (will replay at t~=17.100)
-[TTW-S1][t=10.185]  V10 stored old packet <V10 sees V18, t=10.000>  (will replay at t~=27.000)
-[TTW-S1][t=10.185]  V15 stored old packet <V15 sees V83, t=10.000>  (will replay at t~=19.700)
-[TTW-S1][t=10.186]  V11 stored old packet <V11 sees V23, t=10.000>  (will replay at t~=27.000)
-[TTW-S1][t=10.186]  V14 stored old packet <V14 sees V26, t=10.000>  (will replay at t~=27.000)
-[TTW-S1][t=10.191]  V23 stored old packet <V23 sees V6, t=10.000>  (will replay at t~=22.500)
-[TTW-S1][t=10.194]  V9 stored old packet <V9 sees V59, t=10.000>  (will replay at t~=12.700)
-[TTW-S1][t=10.196]  V20 stored old packet <V20 sees V13, t=10.000>  (will replay at t~=13.100)
-[TTW-S1][t=10.197]  V12 stored old packet <V12 sees V21, t=10.000>  (will replay at t~=27.000)
-[TTW-S1][t=10.201]  V21 stored old packet <V21 sees V63, t=10.000>  (will replay at t~=14.700)
-[TTW-S1][t=10.201]  V17 stored old packet <V17 sees V34, t=10.000>  (will replay at t~=15.900)
-[TTW-S1][t=10.204]  V24 stored old packet <V24 sees V38, t=10.000>  (will replay at t~=27.000)
-[TTW-S1][t=10.206]  V6 stored old packet <V6 sees V35, t=10.000>  (will replay at t~=20.700)
-[TTW-S1][t=10.210]  V22 stored old packet <V22 sees V46, t=10.000>  (will replay at t~=12.500)
-[TTW-S1][t=10.211]  V13 stored old packet <V13 sees V20, t=10.000>  (will replay at t~=13.100)
-[TTW-S1][t=10.213]  V7 stored old packet <V7 sees V48, t=10.000>  (will replay at t~=16.100)
-[TTW-S1][t=10.213]  V16 stored old packet <V16 sees V9, t=10.000>  (will replay at t~=16.900)
-[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=12.521]  Pipeline armed: 19 attacker(s)
-    attacker NS3-ID=5 -> victim NS3-ID=8
-    attacker NS3-ID=6 -> victim NS3-ID=101
-    attacker NS3-ID=7 -> victim NS3-ID=16
-    attacker NS3-ID=9 -> victim NS3-ID=29
-    attacker NS3-ID=10 -> victim NS3-ID=44
-    attacker NS3-ID=11 -> victim NS3-ID=23
-    attacker NS3-ID=12 -> victim NS3-ID=21
-    attacker NS3-ID=13 -> victim NS3-ID=5
-    attacker NS3-ID=14 -> victim NS3-ID=37
-    attacker NS3-ID=15 -> victim NS3-ID=24
-    attacker NS3-ID=16 -> victim NS3-ID=7
-    attacker NS3-ID=17 -> victim NS3-ID=40
-    attacker NS3-ID=18 -> victim NS3-ID=62
-    attacker NS3-ID=19 -> victim NS3-ID=78
-    attacker NS3-ID=20 -> victim NS3-ID=77
-    attacker NS3-ID=21 -> victim NS3-ID=63
-    attacker NS3-ID=22 -> victim NS3-ID=32
-    attacker NS3-ID=23 -> victim NS3-ID=6
-    attacker NS3-ID=24 -> victim NS3-ID=15
-[TTW-S1][t=12.522]  V22 --FORGED replay--> Controller  <V22 sees V46, t=12.522>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=113.236m)
-[TTW-S1][t=12.522]  *** ATTACK COMPLETE ***  ghost link V22<->V46 injected into controller table
-[TTW-S1][t=12.522]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 1/100 >= t=51 -> FAIL
-[TTW-S1][t=12.522]  FS-MITIGATE ABORTED (gate failed)  attacker=V22
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=5 injected forged neighbor=8 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=6 injected forged neighbor=101 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=7 injected forged neighbor=16 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=9 injected forged neighbor=29 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=10 injected forged neighbor=44 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=11 injected forged neighbor=23 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=12 injected forged neighbor=21 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=13 injected forged neighbor=5 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=14 injected forged neighbor=37 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=15 injected forged neighbor=24 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=16 injected forged neighbor=7 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=17 injected forged neighbor=40 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=18 injected forged neighbor=62 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=19 injected forged neighbor=78 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=20 injected forged neighbor=77 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=21 injected forged neighbor=63 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=22 injected forged neighbor=32 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=23 injected forged neighbor=6 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.600]  PIPELINE: NS3-ID=24 injected forged neighbor=15 into controller con_data_inst via UDP/7777
-[TTW-S1][t=12.685]  V9 --FORGED replay--> Controller  <V9 sees V59, t=12.685>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=124.608m)
-[TTW-S1][t=12.685]  *** ATTACK COMPLETE ***  ghost link V9<->V59 injected into controller table
-[TTW-S1][t=12.685]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 2/100 >= t=51 -> FAIL
-[TTW-S1][t=12.685]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
-[TTW-S1][t=13.113]  V13 --FORGED replay--> Controller  <V13 sees V20, t=13.113>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=115.239m)
-[TTW-S1][t=13.113]  *** ATTACK COMPLETE ***  ghost link V13<->V20 injected into controller table
-[TTW-S1][t=13.113]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 3/100 >= t=51 -> FAIL
-[TTW-S1][t=13.113]  FS-MITIGATE ABORTED (gate failed)  attacker=V13
-[TTW-S1][t=13.118]  V20 --FORGED replay--> Controller  <V20 sees V13, t=13.118>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=115.272m)
-[TTW-S1][t=13.118]  *** ATTACK COMPLETE ***  ghost link V20<->V13 injected into controller table
-[TTW-S1][t=13.118]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 4/100 >= t=51 -> FAIL
-[TTW-S1][t=13.118]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
-This is tag3. Serialized size is 340
-[TTW-S1][t=13.287]  V18 --FORGED replay--> Controller  <V18 sees V62, t=13.287>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=124.201m)
-[TTW-S1][t=13.287]  *** ATTACK COMPLETE ***  ghost link V18<->V62 injected into controller table
-[TTW-S1][t=13.287]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 5/100 >= t=51 -> FAIL
-[TTW-S1][t=13.287]  FS-MITIGATE ABORTED (gate failed)  attacker=V18
-[TTW-S1][t=14.668]  V21 --FORGED replay--> Controller  <V21 sees V63, t=14.668>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=119.282m)
-[TTW-S1][t=14.668]  *** ATTACK COMPLETE ***  ghost link V21<->V63 injected into controller table
-[TTW-S1][t=14.668]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 6/100 >= t=51 -> FAIL
-[TTW-S1][t=14.668]  FS-MITIGATE ABORTED (gate failed)  attacker=V21
-[TTW-S1][t=15.000]  V56 --HELLO beacon--> V7  dist=57.513m  DELIVERED
-[TTW-S1][t=15.000]  V58 --HELLO beacon--> V19  dist=89.621m  DELIVERED
-[TTW-S1][t=15.000]  V25 --HELLO beacon--> V20  dist=28.948m  DELIVERED
-[TTW-S1][t=15.000]  V41 --HELLO beacon--> V16  dist=46.425m  DELIVERED
-[TTW-S1][t=15.000]  V66 --HELLO beacon--> V15  dist=76.428m  DELIVERED
-[TTW-S1][t=15.000]  V47 --HELLO beacon--> V17  dist=89.027m  DELIVERED
-[TTW-S1][t=15.000]  V49 --HELLO beacon--> V6  dist=41.260m  DELIVERED
-[TTW-S1][t=15.000]  V33 --HELLO beacon--> V10  dist=97.588m  DELIVERED
-[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=15.001]  V7 --HELLO beacon--> V56  dist=57.535m  DELIVERED
-[TTW-S1][t=15.001]  V19 --HELLO beacon--> V58  dist=89.631m  DELIVERED
-[TTW-S1][t=15.001]  V20 --HELLO beacon--> V25  dist=28.949m  DELIVERED
-[TTW-S1][t=15.001]  V16 --HELLO beacon--> V41  dist=46.431m  DELIVERED
-[TTW-S1][t=15.001]  V15 --HELLO beacon--> V66  dist=76.429m  DELIVERED
-[TTW-S1][t=15.001]  V17 --HELLO beacon--> V47  dist=89.038m  DELIVERED
-[TTW-S1][t=15.001]  V6 --HELLO beacon--> V49  dist=41.273m  DELIVERED
-[TTW-S1][t=15.001]  V10 --HELLO beacon--> V33  dist=97.579m  DELIVERED
-[TTW-S1][t=15.100]  V7 --topology update--> Controller  <V7 sees V56, t=15.000>  ACCEPTED
-[TTW-S1][t=15.100]  V19 --topology update--> Controller  <V19 sees V58, t=15.000>  ACCEPTED
-[TTW-S1][t=15.100]  V20 --topology update--> Controller  <V20 sees V25, t=15.000>  ACCEPTED
-[TTW-S1][t=15.100]  V16 --topology update--> Controller  <V16 sees V41, t=15.000>  ACCEPTED
-[TTW-S1][t=15.100]  V15 --topology update--> Controller  <V15 sees V66, t=15.000>  ACCEPTED
-[TTW-S1][t=15.100]  V17 --topology update--> Controller  <V17 sees V47, t=15.000>  ACCEPTED
-[TTW-S1][t=15.100]  V6 --topology update--> Controller  <V6 sees V49, t=15.000>  ACCEPTED
-[TTW-S1][t=15.100]  V10 --topology update--> Controller  <V10 sees V33, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V56 --topology update--> Controller  <V56 sees V7, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V58 --topology update--> Controller  <V58 sees V19, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V25 --topology update--> Controller  <V25 sees V20, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V41 --topology update--> Controller  <V41 sees V16, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V66 --topology update--> Controller  <V66 sees V15, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V47 --topology update--> Controller  <V47 sees V17, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V49 --topology update--> Controller  <V49 sees V6, t=15.000>  ACCEPTED
-[TTW-S1][t=15.101]  V33 --topology update--> Controller  <V33 sees V10, t=15.000>  ACCEPTED
-[TTW-S1][t=15.188]  V15 stored old packet <V15 sees V66, t=15.000>  (will replay at t~=21.300)
-[TTW-S1][t=15.194]  V17 stored old packet <V17 sees V47, t=15.000>  (will replay at t~=18.100)
-[TTW-S1][t=15.194]  V19 stored old packet <V19 sees V58, t=15.000>  (will replay at t~=18.700)
-[TTW-S1][t=15.195]  V20 stored old packet <V20 sees V25, t=15.000>  (will replay at t~=23.700)
-[TTW-S1][t=15.206]  V7 stored old packet <V7 sees V56, t=15.000>  (will replay at t~=18.900)
-[TTW-S1][t=15.211]  V6 stored old packet <V6 sees V49, t=15.000>  (will replay at t~=21.700)
-[TTW-S1][t=15.214]  V16 stored old packet <V16 sees V41, t=15.000>  (will replay at t~=21.700)
-[TTW-S1][t=15.219]  V10 stored old packet <V10 sees V33, t=15.000>  (will replay at t~=28.500)
-[TTW-S1][t=15.876]  V17 --FORGED replay--> Controller  <V17 sees V34, t=15.876>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=123.716m)
-[TTW-S1][t=15.876]  *** ATTACK COMPLETE ***  ghost link V17<->V34 injected into controller table
-[TTW-S1][t=15.876]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 7/100 >= t=51 -> FAIL
-[TTW-S1][t=15.876]  FS-MITIGATE ABORTED (gate failed)  attacker=V17
-[TTW-S1][t=16.097]  V7 --FORGED replay--> Controller  <V7 sees V48, t=16.097>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=142.818m)
-[TTW-S1][t=16.097]  *** ATTACK COMPLETE ***  ghost link V7<->V48 injected into controller table
-[TTW-S1][t=16.097]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 8/100 >= t=51 -> FAIL
-[TTW-S1][t=16.097]  FS-MITIGATE ABORTED (gate failed)  attacker=V7
-[TTW-S1][t=16.919]  V16 --FORGED replay--> Controller  <V16 sees V9, t=16.919>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=112.664m)
-[TTW-S1][t=16.919]  *** ATTACK COMPLETE ***  ghost link V16<->V9 injected into controller table
-[TTW-S1][t=16.919]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 9/100 >= t=51 -> FAIL
-[TTW-S1][t=16.919]  FS-MITIGATE ABORTED (gate failed)  attacker=V16
-This is tag4. Serialized size is 424
-[TTW-S1][t=17.131]  V19 --FORGED replay--> Controller  <V19 sees V71, t=17.131>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=121.290m)
-[TTW-S1][t=17.131]  *** ATTACK COMPLETE ***  ghost link V19<->V71 injected into controller table
-[TTW-S1][t=17.131]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 10/100 >= t=51 -> FAIL
-[TTW-S1][t=17.131]  FS-MITIGATE ABORTED (gate failed)  attacker=V19
-[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=18.132]  V17 --FORGED replay--> Controller  <V17 sees V47, t=18.132>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=123.646m)
-[TTW-S1][t=18.132]  *** ATTACK COMPLETE ***  ghost link V17<->V47 injected into controller table
-[TTW-S1][t=18.132]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 11/100 >= t=51 -> FAIL
-[TTW-S1][t=18.132]  FS-MITIGATE ABORTED (gate failed)  attacker=V17
-[TTW-S1][t=18.713]  V19 --FORGED replay--> Controller  <V19 sees V58, t=18.713>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=109.065m)
-[TTW-S1][t=18.713]  *** ATTACK COMPLETE ***  ghost link V19<->V58 injected into controller table
-[TTW-S1][t=18.713]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 12/100 >= t=51 -> FAIL
-[TTW-S1][t=18.713]  FS-MITIGATE ABORTED (gate failed)  attacker=V19
-[TTW-S1][t=18.868]  V7 --FORGED replay--> Controller  <V7 sees V56, t=18.868>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=150.568m)
-[TTW-S1][t=18.868]  *** ATTACK COMPLETE ***  ghost link V7<->V56 injected into controller table
-[TTW-S1][t=18.868]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 13/100 >= t=51 -> FAIL
-[TTW-S1][t=18.868]  FS-MITIGATE ABORTED (gate failed)  attacker=V7
-[TTW-S1][t=19.738]  V15 --FORGED replay--> Controller  <V15 sees V83, t=19.738>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=124.059m)
-[TTW-S1][t=19.738]  *** ATTACK COMPLETE ***  ghost link V15<->V83 injected into controller table
-[TTW-S1][t=19.738]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 14/100 >= t=51 -> FAIL
-[TTW-S1][t=19.738]  FS-MITIGATE ABORTED (gate failed)  attacker=V15
-[TTW-S1][t=20.000]  V16 --HELLO beacon--> V7  dist=97.585m  DELIVERED
-[TTW-S1][t=20.000]  V43 --HELLO beacon--> V19  dist=96.942m  DELIVERED
-[TTW-S1][t=20.000]  V77 --HELLO beacon--> V20  dist=98.384m  DELIVERED
-[TTW-S1][t=20.000]  V7 --HELLO beacon--> V16  dist=97.585m  DELIVERED
-[TTW-S1][t=20.000]  V5 --HELLO beacon--> V13  dist=97.657m  DELIVERED
-[TTW-S1][t=20.000]  V104 --HELLO beacon--> V9  dist=66.309m  DELIVERED
-[TTW-S1][t=20.000]  V90 --HELLO beacon--> V6  dist=43.166m  DELIVERED
-[TTW-S1][t=20.000]  V37 --HELLO beacon--> V14  dist=94.830m  DELIVERED
-[TTW-S1][t=20.000]  V8 --HELLO beacon--> V5  dist=57.351m  DELIVERED
-[TTW-S1][t=20.001]  V7 --HELLO beacon--> V16  dist=97.585m  DELIVERED
-[TTW-S1][t=20.001]  V19 --HELLO beacon--> V43  dist=96.945m  DELIVERED
-[TTW-S1][t=20.001]  V20 --HELLO beacon--> V77  dist=98.383m  DELIVERED
-[TTW-S1][t=20.001]  V16 --HELLO beacon--> V7  dist=97.585m  DELIVERED
-[TTW-S1][t=20.001]  V13 --HELLO beacon--> V5  dist=97.649m  DELIVERED
-[TTW-S1][t=20.001]  V9 --HELLO beacon--> V104  dist=66.292m  DELIVERED
-[TTW-S1][t=20.001]  V6 --HELLO beacon--> V90  dist=43.176m  DELIVERED
-[TTW-S1][t=20.001]  V14 --HELLO beacon--> V37  dist=94.830m  DELIVERED
-[TTW-S1][t=20.001]  V5 --HELLO beacon--> V8  dist=57.350m  DELIVERED
-[TTW-S1][t=20.100]  V7 --topology update--> Controller  <V7 sees V16, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V19 --topology update--> Controller  <V19 sees V43, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V20 --topology update--> Controller  <V20 sees V77, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V16 --topology update--> Controller  <V16 sees V7, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V13 --topology update--> Controller  <V13 sees V5, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V9 --topology update--> Controller  <V9 sees V104, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V6 --topology update--> Controller  <V6 sees V90, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V14 --topology update--> Controller  <V14 sees V37, t=20.000>  ACCEPTED
-[TTW-S1][t=20.100]  V5 --topology update--> Controller  <V5 sees V8, t=20.000>  ACCEPTED
-[TTW-S1][t=20.101]  V43 --topology update--> Controller  <V43 sees V19, t=20.000>  ACCEPTED
-[TTW-S1][t=20.101]  V77 --topology update--> Controller  <V77 sees V20, t=20.000>  ACCEPTED
-[TTW-S1][t=20.101]  V5 --topology update--> Controller  <V5 sees V13, t=20.000>  ACCEPTED
-[TTW-S1][t=20.101]  V104 --topology update--> Controller  <V104 sees V9, t=20.000>  ACCEPTED
-[TTW-S1][t=20.101]  V90 --topology update--> Controller  <V90 sees V6, t=20.000>  ACCEPTED
-[TTW-S1][t=20.101]  V37 --topology update--> Controller  <V37 sees V14, t=20.000>  ACCEPTED
-[TTW-S1][t=20.101]  V8 --topology update--> Controller  <V8 sees V5, t=20.000>  ACCEPTED
-[TTW-S1][t=20.118]  V20 --FORGED replay--> Controller  <V20 sees V13, t=13.118>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=187.921m)
-[TTW-S1][t=20.118]  *** ATTACK COMPLETE ***  ghost link V20<->V13 injected into controller table
-[TTW-S1][t=20.118]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 15/100 >= t=51 -> FAIL
-[TTW-S1][t=20.118]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
-[TTW-S1][t=20.119]  V16 --FORGED replay--> Controller  <V16 sees V9, t=16.919>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=123.063m)
-[TTW-S1][t=20.119]  *** ATTACK COMPLETE ***  ghost link V16<->V9 injected into controller table
-[TTW-S1][t=20.119]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 16/100 >= t=51 -> FAIL
-[TTW-S1][t=20.119]  FS-MITIGATE ABORTED (gate failed)  attacker=V16
-[TTW-S1][t=20.181]  V20 stored old packet <V20 sees V77, t=20.000>  (will replay at t~=26.300)
-[TTW-S1][t=20.185]  V9 --FORGED replay--> Controller  <V9 sees V59, t=12.685>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=231.821m)
-[TTW-S1][t=20.185]  *** ATTACK COMPLETE ***  ghost link V9<->V59 injected into controller table
-[TTW-S1][t=20.185]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 17/100 >= t=51 -> FAIL
-[TTW-S1][t=20.185]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
-[TTW-S1][t=20.196]  V16 stored old packet <V16 sees V7, t=20.000>  (will replay at t~=24.300)
-[TTW-S1][t=20.197]  V14 stored old packet <V14 sees V37, t=20.000>  (will replay at t~=35.700)
-[TTW-S1][t=20.200]  V13 stored old packet <V13 sees V5, t=20.000>  (will replay at t~=26.700)
-[TTW-S1][t=20.203]  V7 stored old packet <V7 sees V16, t=20.000>  (will replay at t~=24.300)
-[TTW-S1][t=20.206]  V19 stored old packet <V19 sees V43, t=20.000>  (will replay at t~=24.100)
-[TTW-S1][t=20.207]  V5 stored old packet <V5 sees V8, t=20.000>  (will replay at t~=37.000)
-[TTW-S1][t=20.216]  V6 stored old packet <V6 sees V90, t=20.000>  (will replay at t~=27.500)
-[TTW-S1][t=20.218]  V9 stored old packet <V9 sees V104, t=20.000>  (will replay at t~=36.700)
-[TTW-S1][t=20.702]  V6 --FORGED replay--> Controller  <V6 sees V35, t=20.702>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=112.754m)
-[TTW-S1][t=20.702]  *** ATTACK COMPLETE ***  ghost link V6<->V35 injected into controller table
-[TTW-S1][t=20.702]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 18/100 >= t=51 -> FAIL
-[TTW-S1][t=20.702]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-This is tag5. Serialized size is 508
-[TTW-S1][t=20.802]  V6 --FORGED replay--> Controller  <V6 sees V35, t=20.702>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=113.429m)
-[TTW-S1][t=20.802]  *** ATTACK COMPLETE ***  ghost link V6<->V35 injected into controller table
-[TTW-S1][t=20.802]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 19/100 >= t=51 -> FAIL
-[TTW-S1][t=20.802]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=21.265]  V15 --FORGED replay--> Controller  <V15 sees V66, t=21.265>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=126.216m)
-[TTW-S1][t=21.265]  *** ATTACK COMPLETE ***  ghost link V15<->V66 injected into controller table
-[TTW-S1][t=21.265]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 20/100 >= t=51 -> FAIL
-[TTW-S1][t=21.265]  FS-MITIGATE ABORTED (gate failed)  attacker=V15
-[TTW-S1][t=21.668]  V6 --FORGED replay--> Controller  <V6 sees V49, t=21.668>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=129.693m)
-[TTW-S1][t=21.668]  *** ATTACK COMPLETE ***  ghost link V6<->V49 injected into controller table
-[TTW-S1][t=21.668]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 21/100 >= t=51 -> FAIL
-[TTW-S1][t=21.668]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[TTW-S1][t=21.678]  V16 --FORGED replay--> Controller  <V16 sees V41, t=21.678>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=130.537m)
-[TTW-S1][t=21.678]  *** ATTACK COMPLETE ***  ghost link V16<->V41 injected into controller table
-[TTW-S1][t=21.678]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 22/100 >= t=51 -> FAIL
-[TTW-S1][t=21.678]  FS-MITIGATE ABORTED (gate failed)  attacker=V16
-[TTW-S1][t=22.503]  V23 --FORGED replay--> Controller  <V23 sees V6, t=22.503>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=121.164m)
-[TTW-S1][t=22.503]  *** ATTACK COMPLETE ***  ghost link V23<->V6 injected into controller table
-[TTW-S1][t=22.503]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 23/100 >= t=51 -> FAIL
-[TTW-S1][t=22.503]  FS-MITIGATE ABORTED (gate failed)  attacker=V23
-This is tag5. Serialized size is 508
-[TTW-S1][t=23.693]  V20 --FORGED replay--> Controller  <V20 sees V25, t=23.693>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=134.341m)
-[TTW-S1][t=23.693]  *** ATTACK COMPLETE ***  ghost link V20<->V25 injected into controller table
-[TTW-S1][t=23.693]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 24/100 >= t=51 -> FAIL
-[TTW-S1][t=23.693]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
-[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=24.065]  V19 --FORGED replay--> Controller  <V19 sees V43, t=24.065>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=104.685m)
-[TTW-S1][t=24.065]  *** ATTACK COMPLETE ***  ghost link V19<->V43 injected into controller table
-[TTW-S1][t=24.065]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 25/100 >= t=51 -> FAIL
-[TTW-S1][t=24.065]  FS-MITIGATE ABORTED (gate failed)  attacker=V19
-[TTW-S1][t=24.291]  V7 --FORGED replay--> Controller  <V7 sees V16, t=24.291>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=103.733m)
-[TTW-S1][t=24.291]  *** ATTACK COMPLETE ***  ghost link V7<->V16 injected into controller table
-[TTW-S1][t=24.291]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 26/100 >= t=51 -> FAIL
-[TTW-S1][t=24.291]  FS-MITIGATE ABORTED (gate failed)  attacker=V7
-[TTW-S1][t=24.292]  V16 --FORGED replay--> Controller  <V16 sees V7, t=24.292>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=103.734m)
-[TTW-S1][t=24.292]  *** ATTACK COMPLETE ***  ghost link V16<->V7 injected into controller table
-[TTW-S1][t=24.292]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 27/100 >= t=51 -> FAIL
-[TTW-S1][t=24.292]  FS-MITIGATE ABORTED (gate failed)  attacker=V16
-[TTW-S1][t=25.000]  V30 --HELLO beacon--> V19  dist=73.765m  DELIVERED
-[TTW-S1][t=25.000]  V32 --HELLO beacon--> V22  dist=54.864m  DELIVERED
-[TTW-S1][t=25.000]  V87 --HELLO beacon--> V6  dist=38.805m  DELIVERED
-[TTW-S1][t=25.001]  V19 --HELLO beacon--> V30  dist=73.769m  DELIVERED
-[TTW-S1][t=25.001]  V22 --HELLO beacon--> V32  dist=54.856m  DELIVERED
-[TTW-S1][t=25.001]  V6 --HELLO beacon--> V87  dist=38.795m  DELIVERED
-[TTW-S1][t=25.100]  V19 --topology update--> Controller  <V19 sees V30, t=25.000>  ACCEPTED
-[TTW-S1][t=25.100]  V22 --topology update--> Controller  <V22 sees V32, t=25.000>  ACCEPTED
-[TTW-S1][t=25.100]  V6 --topology update--> Controller  <V6 sees V87, t=25.000>  ACCEPTED
-[TTW-S1][t=25.101]  V30 --topology update--> Controller  <V30 sees V19, t=25.000>  ACCEPTED
-[TTW-S1][t=25.101]  V32 --topology update--> Controller  <V32 sees V22, t=25.000>  ACCEPTED
-[TTW-S1][t=25.101]  V87 --topology update--> Controller  <V87 sees V6, t=25.000>  ACCEPTED
-[TTW-S1][t=25.187]  V22 stored old packet <V22 sees V32, t=25.000>  (will replay at t~=38.100)
-[TTW-S1][t=25.191]  V6 stored old packet <V6 sees V87, t=25.000>  (will replay at t~=33.900)
-[TTW-S1][t=25.207]  V19 stored old packet <V19 sees V30, t=25.000>  (will replay at t~=30.900)
-[TTW-S1][t=26.273]  V20 --FORGED replay--> Controller  <V20 sees V77, t=26.273>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=108.684m)
-[TTW-S1][t=26.273]  *** ATTACK COMPLETE ***  ghost link V20<->V77 injected into controller table
-[TTW-S1][t=26.273]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 28/100 >= t=51 -> FAIL
-[TTW-S1][t=26.273]  FS-MITIGATE ABORTED (gate failed)  attacker=V20
-[TTW-S1][t=26.732]  V13 --FORGED replay--> Controller  <V13 sees V5, t=26.732>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=115.595m)
-[TTW-S1][t=26.732]  *** ATTACK COMPLETE ***  ghost link V13<->V5 injected into controller table
-[TTW-S1][t=26.732]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 29/100 >= t=51 -> FAIL
-[TTW-S1][t=26.732]  FS-MITIGATE ABORTED (gate failed)  attacker=V13
-[TTW-S1][t=26.968]  V24 --FORGED replay--> Controller  <V24 sees V38, t=26.968>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=54.228m)
-[TTW-S1][t=26.968]  *** ATTACK COMPLETE ***  ghost link V24<->V38 injected into controller table
-[TTW-S1][t=26.968]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 30/100 >= t=51 -> FAIL
-[TTW-S1][t=26.968]  FS-MITIGATE ABORTED (gate failed)  attacker=V24
-[TTW-S1][t=26.981]  V12 --FORGED replay--> Controller  <V12 sees V21, t=26.981>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=74.710m)
-[TTW-S1][t=26.981]  *** ATTACK COMPLETE ***  ghost link V12<->V21 injected into controller table
-[TTW-S1][t=26.981]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 31/100 >= t=51 -> FAIL
-[TTW-S1][t=26.981]  FS-MITIGATE ABORTED (gate failed)  attacker=V12
-[TTW-S1][t=26.986]  V14 --FORGED replay--> Controller  <V14 sees V26, t=26.986>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=77.192m)
-[TTW-S1][t=26.986]  *** ATTACK COMPLETE ***  ghost link V14<->V26 injected into controller table
-[TTW-S1][t=26.986]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 32/100 >= t=51 -> FAIL
-[TTW-S1][t=26.986]  FS-MITIGATE ABORTED (gate failed)  attacker=V14
-[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=27.021]  V10 --FORGED replay--> Controller  <V10 sees V18, t=27.021>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=64.988m)
-[TTW-S1][t=27.021]  *** ATTACK COMPLETE ***  ghost link V10<->V18 injected into controller table
-[TTW-S1][t=27.021]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 33/100 >= t=51 -> FAIL
-[TTW-S1][t=27.021]  FS-MITIGATE ABORTED (gate failed)  attacker=V10
-[TTW-S1][t=27.036]  V11 --FORGED replay--> Controller  <V11 sees V23, t=27.036>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=54.299m)
-[TTW-S1][t=27.036]  *** ATTACK COMPLETE ***  ghost link V11<->V23 injected into controller table
-[TTW-S1][t=27.036]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 34/100 >= t=51 -> FAIL
-[TTW-S1][t=27.036]  FS-MITIGATE ABORTED (gate failed)  attacker=V11
-[TTW-S1][t=27.537]  V6 --FORGED replay--> Controller  <V6 sees V90, t=27.537>  (stored=25.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=109.154m)
-[TTW-S1][t=27.537]  *** ATTACK COMPLETE ***  ghost link V6<->V90 injected into controller table
-[TTW-S1][t=27.537]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 35/100 >= t=51 -> FAIL
-[TTW-S1][t=27.537]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[TTW-S1][t=28.504]  V10 --FORGED replay--> Controller  <V10 sees V33, t=28.504>  (stored=15.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=95.862m)
-[TTW-S1][t=28.504]  *** ATTACK COMPLETE ***  ghost link V10<->V33 injected into controller table
-[TTW-S1][t=28.504]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 36/100 >= t=51 -> FAIL
-[TTW-S1][t=28.504]  FS-MITIGATE ABORTED (gate failed)  attacker=V10
-This is tag3. Serialized size is 340
-[TTW-S1][t=30.000]  V78 --HELLO beacon--> V19  dist=66.039m  DELIVERED
-[TTW-S1][t=30.000]  V103 --HELLO beacon--> V17  dist=34.911m  DELIVERED
-[Trust][Anchor][t=30.000] Published checkpoint seq=9 block_height=270 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=30.001]  V19 --HELLO beacon--> V78  dist=66.024m  DELIVERED
-[TTW-S1][t=30.001]  V17 --HELLO beacon--> V103  dist=34.911m  DELIVERED
-[TTW-S1][t=30.100]  V19 --topology update--> Controller  <V19 sees V78, t=30.000>  ACCEPTED
-[TTW-S1][t=30.100]  V17 --topology update--> Controller  <V17 sees V103, t=30.000>  ACCEPTED
-[TTW-S1][t=30.101]  V78 --topology update--> Controller  <V78 sees V19, t=30.000>  ACCEPTED
-[TTW-S1][t=30.101]  V103 --topology update--> Controller  <V103 sees V17, t=30.000>  ACCEPTED
-[TTW-S1][t=30.185]  V17 stored old packet <V17 sees V103, t=30.000>  (will replay at t~=45.700)
-[TTW-S1][t=30.215]  V19 stored old packet <V19 sees V78, t=30.000>  (will replay at t~=42.700)
-[TTW-S1][t=30.936]  V19 --FORGED replay--> Controller  <V19 sees V30, t=30.936>  (stored=30.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=105.189m)
-[TTW-S1][t=30.936]  *** ATTACK COMPLETE ***  ghost link V19<->V30 injected into controller table
-[TTW-S1][t=30.936]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 37/100 >= t=51 -> FAIL
-[TTW-S1][t=30.936]  FS-MITIGATE ABORTED (gate failed)  attacker=V19
-[Trust][Anchor][t=33.000] Published checkpoint seq=10 block_height=300 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=33.922]  V6 --FORGED replay--> Controller  <V6 sees V87, t=33.922>  (stored=25.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=139.662m)
-[TTW-S1][t=33.922]  *** ATTACK COMPLETE ***  ghost link V6<->V87 injected into controller table
-[TTW-S1][t=33.922]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 38/100 >= t=51 -> FAIL
-[TTW-S1][t=33.922]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[TTW-S1][t=35.000]  V55 --HELLO beacon--> V17  dist=37.747m  DELIVERED
-[TTW-S1][t=35.000]  V44 --HELLO beacon--> V10  dist=51.582m  DELIVERED
-[TTW-S1][t=35.001]  V17 --HELLO beacon--> V55  dist=37.751m  DELIVERED
-[TTW-S1][t=35.001]  V10 --HELLO beacon--> V44  dist=51.572m  DELIVERED
-[TTW-S1][t=35.100]  V17 --topology update--> Controller  <V17 sees V55, t=35.000>  ACCEPTED
-[TTW-S1][t=35.100]  V10 --topology update--> Controller  <V10 sees V44, t=35.000>  ACCEPTED
-[TTW-S1][t=35.101]  V55 --topology update--> Controller  <V55 sees V17, t=35.000>  ACCEPTED
-[TTW-S1][t=35.101]  V44 --topology update--> Controller  <V44 sees V10, t=35.000>  ACCEPTED
-[TTW-S1][t=35.183]  V10 stored old packet <V10 sees V44, t=35.000>  (will replay at t~=47.500)
-[TTW-S1][t=35.213]  V17 stored old packet <V17 sees V55, t=35.000>  (will replay at t~=46.300)
-[TTW-S1][t=35.688]  V14 --FORGED replay--> Controller  <V14 sees V37, t=35.688>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=100.129m)
-[TTW-S1][t=35.688]  *** ATTACK COMPLETE ***  ghost link V14<->V37 injected into controller table
-[TTW-S1][t=35.688]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 39/100 >= t=51 -> FAIL
-[TTW-S1][t=35.688]  FS-MITIGATE ABORTED (gate failed)  attacker=V14
-[Trust][Anchor][t=36.000] Published checkpoint seq=11 block_height=330 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=36.694]  V9 --FORGED replay--> Controller  <V9 sees V104, t=36.694>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=114.697m)
-[TTW-S1][t=36.694]  *** ATTACK COMPLETE ***  ghost link V9<->V104 injected into controller table
-[TTW-S1][t=36.694]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 40/100 >= t=51 -> FAIL
-[TTW-S1][t=36.694]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
-[TTW-S1][t=36.964]  V5 --FORGED replay--> Controller  <V5 sees V8, t=36.964>  (stored=20.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=83.244m)
-[TTW-S1][t=36.964]  *** ATTACK COMPLETE ***  ghost link V5<->V8 injected into controller table
-[TTW-S1][t=36.964]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 41/100 >= t=51 -> FAIL
-[TTW-S1][t=36.964]  FS-MITIGATE ABORTED (gate failed)  attacker=V5
-[TTW-S1][t=38.122]  V22 --FORGED replay--> Controller  <V22 sees V32, t=38.122>  (stored=25.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=102.714m)
-[TTW-S1][t=38.122]  *** ATTACK COMPLETE ***  ghost link V22<->V32 injected into controller table
-[TTW-S1][t=38.122]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 42/100 >= t=51 -> FAIL
-[TTW-S1][t=38.122]  FS-MITIGATE ABORTED (gate failed)  attacker=V22
-[Trust][Anchor][t=39.000] Published checkpoint seq=12 block_height=360 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=40.000]  V24 --HELLO beacon--> V15  dist=69.493m  DELIVERED
-[TTW-S1][t=40.000]  V40 --HELLO beacon--> V17  dist=45.140m  DELIVERED
-[TTW-S1][t=40.000]  V101 --HELLO beacon--> V6  dist=43.340m  DELIVERED
-[TTW-S1][t=40.000]  V15 --HELLO beacon--> V24  dist=69.493m  DELIVERED
-[TTW-S1][t=40.001]  V15 --HELLO beacon--> V24  dist=69.504m  DELIVERED
-[TTW-S1][t=40.001]  V17 --HELLO beacon--> V40  dist=45.152m  DELIVERED
-[TTW-S1][t=40.001]  V6 --HELLO beacon--> V101  dist=43.332m  DELIVERED
-[TTW-S1][t=40.001]  V24 --HELLO beacon--> V15  dist=69.504m  DELIVERED
-[TTW-S1][t=40.032]  V17 --FORGED replay--> Controller  <V17 sees V47, t=18.132>  (stored=35.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=285.408m)
-[TTW-S1][t=40.032]  *** ATTACK COMPLETE ***  ghost link V17<->V47 injected into controller table
-[TTW-S1][t=40.032]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 43/100 >= t=51 -> FAIL
-[TTW-S1][t=40.032]  FS-MITIGATE ABORTED (gate failed)  attacker=V17
-[TTW-S1][t=40.100]  V15 --topology update--> Controller  <V15 sees V24, t=40.000>  ACCEPTED
-[TTW-S1][t=40.100]  V17 --topology update--> Controller  <V17 sees V40, t=40.000>  ACCEPTED
-[TTW-S1][t=40.100]  V6 --topology update--> Controller  <V6 sees V101, t=40.000>  ACCEPTED
-[TTW-S1][t=40.100]  V24 --topology update--> Controller  <V24 sees V15, t=40.000>  ACCEPTED
-[TTW-S1][t=40.101]  V40 --topology update--> Controller  <V40 sees V17, t=40.000>  ACCEPTED
-[TTW-S1][t=40.101]  V101 --topology update--> Controller  <V101 sees V6, t=40.000>  ACCEPTED
-[TTW-S1][t=40.180]  V15 stored old packet <V15 sees V24, t=40.000>  (will replay at t~=53.300)
-[TTW-S1][t=40.183]  V17 stored old packet <V17 sees V40, t=40.000>  (will replay at t~=49.700)
-[TTW-S1][t=40.206]  V6 stored old packet <V6 sees V101, t=40.000>  (will replay at t~=52.500)
-[TTW-S1][t=40.218]  V24 stored old packet <V24 sees V15, t=40.000>  (will replay at t~=53.300)
-[Trust][Anchor][t=42.000] Published checkpoint seq=13 block_height=390 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=42.738]  V19 --FORGED replay--> Controller  <V19 sees V78, t=42.738>  (stored=30.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=120.532m)
-[TTW-S1][t=42.738]  *** ATTACK COMPLETE ***  ghost link V19<->V78 injected into controller table
-[TTW-S1][t=42.738]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 44/100 >= t=51 -> FAIL
-[TTW-S1][t=42.738]  FS-MITIGATE ABORTED (gate failed)  attacker=V19
-[TTW-S1][t=45.000]  V29 --HELLO beacon--> V9  dist=80.149m  DELIVERED
-[Trust][Anchor][t=45.000] Published checkpoint seq=14 block_height=420 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=45.001]  V9 --HELLO beacon--> V29  dist=80.132m  DELIVERED
-[TTW-S1][t=45.100]  V9 --topology update--> Controller  <V9 sees V29, t=45.000>  ACCEPTED
-[TTW-S1][t=45.101]  V29 --topology update--> Controller  <V29 sees V9, t=45.000>  ACCEPTED
-[TTW-S1][t=45.213]  V9 stored old packet <V9 sees V29, t=45.000>  (will replay at t~=56.100)
-[TTW-S1][t=45.727]  V17 --FORGED replay--> Controller  <V17 sees V103, t=45.727>  (stored=40.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=126.498m)
-[TTW-S1][t=45.727]  *** ATTACK COMPLETE ***  ghost link V17<->V103 injected into controller table
-[TTW-S1][t=45.727]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 45/100 >= t=51 -> FAIL
-[TTW-S1][t=45.727]  FS-MITIGATE ABORTED (gate failed)  attacker=V17
-[TTW-S1][t=46.334]  V17 --FORGED replay--> Controller  <V17 sees V55, t=46.334>  (stored=40.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=118.008m)
-[TTW-S1][t=46.334]  *** ATTACK COMPLETE ***  ghost link V17<->V55 injected into controller table
-[TTW-S1][t=46.334]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 46/100 >= t=51 -> FAIL
-[TTW-S1][t=46.334]  FS-MITIGATE ABORTED (gate failed)  attacker=V17
-[TTW-S1][t=47.461]  V10 --FORGED replay--> Controller  <V10 sees V44, t=47.461>  (stored=35.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=129.509m)
-[TTW-S1][t=47.461]  *** ATTACK COMPLETE ***  ghost link V10<->V44 injected into controller table
-[TTW-S1][t=47.461]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 47/100 >= t=51 -> FAIL
-[TTW-S1][t=47.461]  FS-MITIGATE ABORTED (gate failed)  attacker=V10
-[Trust][Anchor][t=48.000] Published checkpoint seq=15 block_height=450 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=49.688]  V17 --FORGED replay--> Controller  <V17 sees V40, t=49.688>  (stored=40.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=103.269m)
-[TTW-S1][t=49.688]  *** ATTACK COMPLETE ***  ghost link V17<->V40 injected into controller table
-[TTW-S1][t=49.688]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 48/100 >= t=51 -> FAIL
-[TTW-S1][t=49.688]  FS-MITIGATE ABORTED (gate failed)  attacker=V17
-[Trust][Anchor][t=51.000] Published checkpoint seq=16 block_height=480 digest=14615322844900846585 (interval=3.000s)
-[TTW-S1][t=52.526]  V6 --FORGED replay--> Controller  <V6 sees V101, t=52.526>  (stored=40.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=132.452m)
-[TTW-S1][t=52.526]  *** ATTACK COMPLETE ***  ghost link V6<->V101 injected into controller table
-[TTW-S1][t=52.526]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 49/100 >= t=51 -> FAIL
-[TTW-S1][t=52.526]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
-[TTW-S1][t=53.288]  V24 --FORGED replay--> Controller  <V24 sees V15, t=53.288>  (stored=40.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=106.485m)
-[TTW-S1][t=53.288]  *** ATTACK COMPLETE ***  ghost link V24<->V15 injected into controller table
-[TTW-S1][t=53.288]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 50/100 >= t=51 -> FAIL
-[TTW-S1][t=53.288]  FS-MITIGATE ABORTED (gate failed)  attacker=V24
-[TTW-S1][t=53.295]  V15 --FORGED replay--> Controller  <V15 sees V24, t=53.295>  (stored=40.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=106.501m)
-[TTW-S1][t=53.295]  *** ATTACK COMPLETE ***  ghost link V15<->V24 injected into controller table
-[TTW-S1][t=53.295]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 51/100 >= t=51 -> PASS
-[TTW-S1][t=53.295]  MITIGATION Tier 2: BlacklistBeacon V2V  attacker=V15  propagation=700.000 ms
-[Trust][t=53.295]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[Trust][t=53.295]  Node 15: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
-[Trust][Anchor][t=54.000] Published checkpoint seq=17 block_height=510 digest=3109465441598114864 (interval=3.000s)
-[TTW-S1][t=56.065]  V9 --FORGED replay--> Controller  <V9 sees V29, t=56.065>  (stored=45.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=122.085m)
-[TTW-S1][t=56.065]  *** ATTACK COMPLETE ***  ghost link V9<->V29 injected into controller table
-[TTW-S1][t=56.065]  FS-MITIGATE gate: PBFT n=100 f=33 q_needed=67 -> PASS  |  VERIFY_THRESHOLD_SIG 1/100 >= t=51 -> FAIL
-[TTW-S1][t=56.065]  FS-MITIGATE ABORTED (gate failed)  attacker=V9
-[Trust][Anchor][t=57.000] Published checkpoint seq=18 block_height=540 digest=3109465441598114864 (interval=3.000s)
+[KEM] Registered 10/10 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
+[KEM][10ms budget] 9 handshakes timed: avg=33.6044 ms, max=34.713 ms, over_budget=9/9 (budget=10 ms)
+[TGN] TGN_Init() — online mode — L_link=20.4  γ_init=147.155  W_max=203
+[TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_170m_dim192_pw0.3191_seed5.bin'  (dim=192 layers=2)
+[KEM][SimLatency][t=0.0331035] Vehicle 4 session key simulated-ready (real handshake was 33.1035 ms)
+[KEM][SimLatency][t=0.0331226] Vehicle 1 session key simulated-ready (real handshake was 33.1226 ms)
+[KEM][SimLatency][t=0.033265] Vehicle 3 session key simulated-ready (real handshake was 33.265 ms)
+[KEM][SimLatency][t=0.0333776] Vehicle 7 session key simulated-ready (real handshake was 33.3776 ms)
+[KEM][SimLatency][t=0.0334008] Vehicle 2 session key simulated-ready (real handshake was 33.4008 ms)
+[KEM][SimLatency][t=0.0336116] Vehicle 8 session key simulated-ready (real handshake was 33.6116 ms)
+[KEM][SimLatency][t=0.0337038] Vehicle 5 session key simulated-ready (real handshake was 33.7038 ms)
+[KEM][SimLatency][t=0.0341418] Vehicle 9 session key simulated-ready (real handshake was 34.1418 ms)
+[KEM][SimLatency][t=0.034713] Vehicle 6 session key simulated-ready (real handshake was 34.713 ms)
+[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=16593805399286292755 (interval=3s)
 [PEM] /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/SCENARIO_VALIDITY/01_TTW_S1_Malicious_Vehicle_seed1.csv written: 0 event(s) excluded (invalid RSU neighborhood, not detector error); 0 benign event(s) flagged no_real_reception_at_reporter (diagnostic only, STILL COUNTED in confusion matrix — confirmed real channel-contention loss, not a scenario artifact)
-[M11][FSR sweep] written to /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/M11_FSR_SWEEP/01_TTW_S1_Malicious_Vehicle_seed1.csv (51 f_c value(s) exercised)
-[M2][TDRR] mean_topology_divergence=0.356  (samples=146)  unprotected=1.000 (n=52)  mitigated=0.000 (n=58)  TDRR=100.000%
-[M3][T_stale] mean=0.000 ms (samples=0)
-[M4][PIR] mean=2.000 (links tracked=44)
-[M5][T_pipeline] mean=6.848 ms  max=10.497 ms  over_budget=0/52
-[M5][T_pbft] mean=3.094 ms  max=6.240 ms (n=52)
-[M5][T_exec_flowmod] mean=0.006 ms  max=0.006 ms (n=1)
-[M7][Omega] omega_lw=5.941%  omega_fs=572.649%
-[M9][F1] TTW=1.000 BSHH=1.000 ME=1.000 macro=1.000
-[M10][FRA/FRR] FRA=0.000 FRR=0.085
-[M11][FSR] attempts=52 success=1 FSR=0.019
-[M12][Trust] t_trust=40773.711 ms  t_revoke=40773.711 ms  t_reassign=0.000 ms
+[M2][TDRR] mean_topology_divergence=0  (samples=0)  unprotected=0 (n=0)  mitigated=0 (n=0)  TDRR=0%
+[M3][T_stale] mean=0 ms (samples=0)
+[M4][PIR] mean=1 (links tracked=0)
+[M5][T_pipeline] mean=0 ms  max=0 ms  over_budget=0/0
+[M5][T_pbft] mean=0 ms  max=0 ms (n=0)
+[M5][T_exec_flowmod] mean=0 ms  max=0 ms (n=0)
+[M7][Omega] omega_lw=5.94059%  omega_fs=572.649%
+[M9][F1] TTW=1 BSHH=1 ME=1 macro=1
+[M10][FRA/FRR] FRA=1 FRR=0
+[M11][FSR] attempts=0 success=0 FSR=0
+[M12][Trust] t_trust=0 ms  t_revoke=0 ms  t_reassign=0 ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (1146 events)
-[CRYPTO] crypto_latency_summary.csv written  (18 distinct operations)
-[CRYPTO] Beacon TX signed: 94   RX verified: 94
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=286  reject=694
-[TGN] Online mode — 222 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 8/32 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 8 25 26 29 30 32 33 34 ctrl 
-[TGN] |E_t^trusted|=170 (Tier 2: 170 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 310 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 58 alert(s) → tgn_alerts.json
-[TGN] individual_sig_evidence.json written: 290 record(s) → individual_sig_evidence.json
-[TGN] beacon_evidence.csv written: 88 observation(s)
-[TGN] ctrl_topo.json written: 41 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2  (dispatch output: /tmp/submitToFabric_dispatch.log)
+[CRYPTO] crypto_latency_sumo.csv written    (14 events)
+[CRYPTO] crypto_latency_summary.csv written  (6 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] No PEM events — all attacks blocked at Stage 0 (0 blocked). Writing summary.
 
 ========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
   Scenario  : 1 — TTW-S1: Malicious Vehicle, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 43 / 155 / 15 / 9
+  TP/TN/FP/FN : 0 / 0 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 43 / 155 / 15 / 9
-  MCC         : 0.712
-  [comb] TP/TN/FP/FN : 52 / 155 / 15 / 0   MCC=0.841  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.924
-  ACR         : 89.189 %
-  Tdet        : 0.000 ms
-  θ_FS        : 0.920  [calibrated]
-  θ_MCC_opt   : 0.940  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 258.192  [Eq. 3.22 init; validation-tuned hyperparameter]
-  W_max       : 357  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 222
+  [beh]  TP/TN/FP/FN : 0 / 0 / 0 / 0
+  MCC         : 0.000
+  [comb] TP/TN/FP/FN : 0 / 0 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 0.500
+  ACR         : 0.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.210  [calibrated]
+  θ_MCC_opt   : 0.210  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 147.155  [Eq. 3.22 init; validation-tuned hyperparameter]
+  W_max       : 203  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 0
   Stage-0 blocked (attacks): 0
   Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 170
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
 
-Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
-  Events processed: 334
-  Avg wall-clock time: 2.7 ms
-  Max wall-clock time: 5.1 ms
-  Events exceeding budget: 0 / 334
+  Events processed: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Events exceeding budget: 0 / 0
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
-  Mitigations applied: 52
-  Avg wall-clock time: 3.1 ms
-  Max wall-clock time: 6.2 ms
+  Mitigations applied: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
-  Triggered events: 52
-  Avg wall-clock time: 6.8 ms
-  Max wall-clock time: 10 ms
-  Events exceeding 1e+02 ms budget: 0 / 52  -- full pipeline stays within the T_b budget on this hardware
+  Triggered events: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Events exceeding 100 ms budget: 0 / 0  -- no mitigation was triggered this run
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
-  Calls: 188
-  Avg wall-clock time: 0.022 ms
-  Max wall-clock time: 0.056 ms
-  Calls exceeding budget: 0 / 188
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 0
@@ -808,40 +120,40 @@ RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls exceeding budget: 0 / 0
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
-  Calls: 188
-  Avg wall-clock time: 0.069 ms
-  Max wall-clock time: 0.28 ms
-  Calls exceeding budget: 0 / 188
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
-  Calls: 52
-  Avg wall-clock time: 0.28 ms
-  Max wall-clock time: 0.55 ms
-  Calls exceeding budget: 0 / 52
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
-  Calls: 52
-  Avg wall-clock time: 0.0035 ms
-  Max wall-clock time: 0.073 ms
-  Calls exceeding budget: 0 / 52
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.022) + beacon-crypto(0.069) + rsu-forward(0) + detect(2.7) + detection-crypto(0.28) + mitigate(3.1) + lkh-crypto(0.0035) = 6.1 ms
-  -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
+  beacon-send(0) + beacon-crypto(0) + rsu-forward(0) + detect(0) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 0 ms
+  -- approximate combined estimate stays within the 100 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
 ---------------------------------
-Candidate pairs checked: 4950000
-Successful neighbor observations: 137706
-Average neighbors/vehicle: 2.8
-Maximum neighbors observed at once: 10
+Candidate pairs checked: 0
+Successful neighbor observations: 0
+Average neighbors/vehicle: 0
+Maximum neighbors observed at once: 0
 
-Real-time (wall-clock) budget check — T_b=1e+02 ms:
-  Ticks executed: 500
-  Avg tick wall-clock time: 0.52 ms
-  Max tick wall-clock time: 0.97 ms
-  Ticks exceeding 1e+02 ms budget: 0 / 500  -- pipeline stays within the T_b budget on this hardware
+Real-time (wall-clock) budget check — T_b=100 ms:
+  Ticks executed: 0
+  Avg tick wall-clock time: 0 ms
+  Max tick wall-clock time: 0 ms
+  Ticks exceeding 100 ms budget: 0 / 0  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.52) + beacon-send(0.022) + beacon-crypto(0.069) + rsu-forward(0) + detect(2.7) + detection-crypto(0.28) + mitigate(3.1) + lkh-crypto(0.0035) = 6.7 ms
-  -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
+  neighborhood(0) + beacon-send(0) + beacon-crypto(0) + rsu-forward(0) + detect(0) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 0 ms
+  -- grand total stays within the 100 ms beacon-interval budget (T_b) on this hardware

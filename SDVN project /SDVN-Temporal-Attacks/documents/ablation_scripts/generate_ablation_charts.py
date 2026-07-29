@@ -49,6 +49,7 @@ CONFIG_META = {
     "a3":  {"title": "A3 — Static GCN (Tobs sweep)",            "xlabel": "Observation window Tobs (s)", "xtype": float},
     "a4":  {"title": "A4 — Vehicle Density (N_Vehicles proxy)", "xlabel": "N_Vehicles (proxy for lambda)", "xtype": int},
     "a5":  {"title": "A5 — No Crypto Pre-Filter (attacker origin)", "xlabel": "Attacker origin", "xtype": str},
+    "a6":  {"title": "A6 — No Threshold Aggregate Signature (fc sweep)", "xlabel": "Colluding vehicles f_c", "xtype": int},
     "a7":  {"title": "A7 — ME Echo Distance Ratio",             "xlabel": "Echo distance ratio (x r_comm)", "xtype": float},
     "a8":  {"title": "A8 — Mitigation Delay Intervals",         "xlabel": "Post-alert grace (beacon intervals k)", "xtype": float},
     "a9":  {"title": "A9 — Byzantine PBFT Peers",                "xlabel": "Byzantine peers f_b", "xtype": float},
@@ -59,32 +60,31 @@ CONFIG_META = {
     "a14": {"title": "A14 — Compromised Controllers",            "xlabel": "Compromised controllers n_C", "xtype": float},
 }
 
-def find_pem_summary(run_dir):
-    matches = glob.glob(os.path.join(run_dir, "PEM_RUN_SUMMARY", "*.csv"))
-    return matches[0] if matches else None
-
 def find_tgn_summary(run_dir):
     matches = glob.glob(os.path.join(run_dir, "TGN_SUMMARY", "*.csv"))
     return matches[0] if matches else None
 
-# A2 (--no_lw=1) forces event.alert_raised=false unconditionally (routing.cc
-# ~line 7920), which is what feeds PEM_RUN_SUMMARY's tp/tn/fp/fn/mcc -- so
-# that file's mcc is always exactly 0 for A2, regardless of how well TGN
-# itself is actually detecting. TGN's real standalone performance is tracked
-# separately (tgn_core.cc's g_tgn_tp/tn/fp/fn) and written to its own
-# TGN_SUMMARY/*.csv, which is what must be read here instead. Confirmed via
-# manual inspection: PEM_RUN_SUMMARY showed mcc=0.000 while TGN_SUMMARY's own
-# mcc was 0.766 for the same run (sc13, A2, x=1).
-CONFIGS_USE_TGN_SUMMARY = {"a2"}
-
-def read_mcc(csv_path):
+# PDF Table 4.4, M1 (MCC): design components listed as "LW signature scoring
+# (Eq. 3.12); FS binary scorer (Eq. 3.25)" -- i.e. M1's confusion matrix is
+# meant to come from the COMBINED alert decision (LW OR TGN fires), not
+# either stage read in isolation. TGN_SUMMARY's comb_tp/tn/fp/fn/comb_mcc
+# columns implement exactly this (.tgn_src/tgn_core.cc: `comb_alert =
+# e.alert_raised || tgn_alert`) -- confirmed live/non-dead via direct data
+# inspection (comb_tp=189, comb_mcc=1.000 for a real run), contrary to an
+# earlier, now-superseded calibration-doc note that called it dead code
+# (that note was checking a different, non-compiled copy of tgn_core.cc).
+# comb_mcc self-corrects for A1/A2 automatically: A1 (--no_tgn=1) never
+# raises tgn_alert, so comb_alert reduces to pure LW; A2 (--no_lw=1) forces
+# e.alert_raised false, so comb_alert reduces to pure TGN. One column,
+# uniformly, for every config -- no more per-config special-casing needed.
+def read_comb_mcc(csv_path):
     with open(csv_path, newline="") as f:
         rows = list(csv.DictReader(f))
     if not rows:
         return None
     row = rows[-1]
     try:
-        return float(row["mcc"]), float(row.get("tp", 0)), float(row.get("fn", 0)), float(row.get("fp", 0))
+        return float(row["comb_mcc"])
     except (KeyError, ValueError):
         return None
 
@@ -109,10 +109,10 @@ def parse_dirname(cid, name):
     m = re.match(r"(veh|rsu|ctrl)_sc\d+$", name)
     if m:
         return m.group(1), m.group(1)
-    # a6 pattern: sc<N> (no x-value — handled separately via M11_FSR_SWEEP)
-    m = re.match(r"sc(\d+)$", name)
-    if m:
-        return f"sc{m.group(1)}", None
+    # a6 pattern: fc<N> (colluding-vehicle count, --bshh_s1_fc sweep on sc5)
+    m = re.match(r"fc(\d+)$", name)
+    if m and cid == "a6":
+        return "sc5", m.group(1)
     # generic: x<val>
     m = re.match(r"x([\d.]+)$", name)
     if m:
@@ -125,7 +125,7 @@ def plot_config(cid, meta):
         print(f"[SKIP] {cid}: no sweep directory found")
         return None
 
-    series = {}  # scenario_key -> list of (x, mcc)
+    series = {}  # scenario_key -> list of (x, comb_mcc)
     for sub in sorted(os.listdir(cdir)):
         subpath = os.path.join(cdir, sub)
         if not os.path.isdir(subpath):
@@ -133,26 +133,20 @@ def plot_config(cid, meta):
         scen_key, xval = parse_dirname(cid, sub)
         if xval is None:
             continue
-        if cid in CONFIGS_USE_TGN_SUMMARY:
-            summary = find_tgn_summary(subpath)
-            if not summary:
-                print(f"[WARN] {cid}/{sub}: no TGN_SUMMARY found, skipping")
-                continue
-        else:
-            summary = find_pem_summary(subpath)
-            if not summary:
-                print(f"[WARN] {cid}/{sub}: no PEM_RUN_SUMMARY found, skipping")
-                continue
-        result = read_mcc(summary)
-        if result is None:
-            print(f"[WARN] {cid}/{sub}: could not parse mcc, skipping")
-            continue
-        mcc, tp, fn, fp = result
-        key = scen_key if scen_key else "single"
         try:
             xnum = meta["xtype"](xval) if meta["xtype"] != str else xval
         except ValueError:
             xnum = xval
+        key = scen_key if scen_key else "single"
+
+        summary = find_tgn_summary(subpath)
+        if not summary:
+            print(f"[WARN] {cid}/{sub}: no TGN_SUMMARY found, skipping")
+            continue
+        mcc = read_comb_mcc(summary)
+        if mcc is None:
+            print(f"[WARN] {cid}/{sub}: could not parse comb_mcc, skipping")
+            continue
         series.setdefault(key, []).append((xnum, mcc))
 
     if not series:
@@ -180,8 +174,7 @@ def plot_config(cid, meta):
     ax.grid(True, linestyle="--", alpha=0.35, linewidth=0.8)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    if len(series) > 1 or "single" not in series:
-        ax.legend(fontsize=9, loc="best", frameon=False)
+    ax.legend(fontsize=9, loc="best", frameon=False)
 
     fig.tight_layout()
     outpath = os.path.join(OUT_DIR, f"{cid}_mcc_vs_x.png")
@@ -191,37 +184,42 @@ def plot_config(cid, meta):
     return series
 
 def plot_a6():
-    """A6 uses M11_FSR_SWEEP's own f_c auto-sweep instead of a directory-per-x."""
+    """A6 supplementary chart: M11 FSR(f_c) (Eq. 4.18), separate from the
+    M1/comb_mcc chart plot_config() already produces for a6 via the
+    standard path. Reads the new fc<N> directory structure (sweep_a6.sh,
+    rewritten 2026-07-29 to actually sweep --bshh_s1_fc against sc5/
+    BSHH-S1) -- was previously sc5/sc6/sc7/sc8, stale since that rewrite."""
     cdir = os.path.join(SWEEP_ROOT, "a6")
     if not os.path.isdir(cdir):
-        print("[SKIP] a6: no sweep directory found")
+        print("[SKIP] a6 (FSR): no sweep directory found")
         return
     fig, ax = plt.subplots(figsize=(7, 4.5))
     any_data = False
-    scen_dirs = [s for s in sorted(os.listdir(cdir)) if re.match(r"sc(\d+)$", s)]
-    for i, sub in enumerate(scen_dirs):
+    fc_dirs = [s for s in sorted(os.listdir(cdir)) if re.match(r"fc(\d+)$", s)]
+    pts = []
+    for sub in fc_dirs:
         subpath = os.path.join(cdir, sub)
         if not os.path.isdir(subpath):
             continue
-        m = re.match(r"sc(\d+)$", sub)
-        scen_key = f"sc{m.group(1)}"
         fsr_files = glob.glob(os.path.join(subpath, "M11_FSR_SWEEP", "*.csv"))
         if not fsr_files:
-            print(f"[WARN] a6/{sub}: no M11_FSR_SWEEP found")
+            print(f"[WARN] a6 (FSR)/{sub}: no M11_FSR_SWEEP found")
             continue
         with open(fsr_files[0], newline="") as f:
             rows = list(csv.DictReader(f))
-        pts = sorted([(int(r["f_c"]), float(r["fsr_fc"])) for r in rows], key=lambda p: p[0])
-        if not pts:
-            continue
+        for r in rows:
+            try:
+                pts.append((int(r["f_c"]), float(r["fsr_fc"])))
+            except (KeyError, ValueError):
+                continue
+    pts = sorted(set(pts), key=lambda p: p[0])
+    if pts:
         any_data = True
         xs, ys = zip(*pts)
-        color = CATEGORICAL_PALETTE[i % len(CATEGORICAL_PALETTE)]
-        ls = LINESTYLES[i % len(LINESTYLES)]
-        ax.plot(xs, ys, color=color, linestyle=ls, linewidth=2.2, marker="o", markersize=7,
-                label=SCEN_LABEL.get(scen_key, scen_key))
+        ax.plot(xs, ys, color=CATEGORICAL_PALETTE[0], linestyle="-", linewidth=2.2,
+                marker="o", markersize=7, label="BSHH-S1")
     if not any_data:
-        print("[SKIP] a6: no data points found yet")
+        print("[SKIP] a6 (FSR): no data points found yet")
         plt.close(fig)
         return
     ax.set_xlabel("Colluding signers f_c", fontsize=11)

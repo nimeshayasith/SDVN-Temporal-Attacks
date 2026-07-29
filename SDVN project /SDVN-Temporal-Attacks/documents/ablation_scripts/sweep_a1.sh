@@ -11,7 +11,7 @@
 # load, not three isolated single-family instances).
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_sc1_12_capped.bin"
+TGN="$HOME/tgn_weights_170m_dim192_pw0.3191_seed5.bin"
 OUT="$HOME/ablation_sweep/a1"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -24,7 +24,7 @@ for X in 0.01 0.05 0.10; do
   echo "=== a1 scenario=13 rinj=${X} ==="
   ISO="$OUT/sc13_rinj${X}"
   mkdir -p "$ISO"
-  ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --RngRun=1 --no_tgn=1 --attack_percentage=60 --rinj=${X} --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+  ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --RngRun=1 --no_tgn=1 --attack_percentage=60 --rinj=${X} --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
   rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
 done
 

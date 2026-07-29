@@ -167,9 +167,25 @@ BuildScenarioCsvPath(const std::string& folder, uint32_t scenario)
            + "_seed" + std::to_string(RngSeedManager::GetRun()) + ".csv";
 }
 
+// --skip_logs: skip the 8 unconditional full packet-capture PCAP traces (1
+// CSMA + 7 DSRC channels), redirect the NetAnim XML writer to /dev/null, and
+// (via BuildLogPath below) redirect all 12 per-scenario attack-log .txt
+// files (ttw_attack_scenario4.txt, bshh_s1_attack_log.txt, etc.) to
+// /dev/null too. These are pure I/O overhead for ablation/comparison sweeps
+// that only read the CSV summary outputs -- at N_Vehicles=200/simTime=300s
+// this was previously a significant chunk of per-run wall-clock cost, with
+// scripts writing the full PCAP/XML/Logs_attacks tree then immediately
+// rm -rf'ing it. Redirecting each ofstream's target path to /dev/null (one
+// central change here for all 12 text logs, plus the PCAP/anim call sites
+// below) turns every write into an instant OS-level discard instead of real
+// disk I/O, with no changes needed at any individual log-writing call site.
+// Default false = unchanged behavior.
+bool skip_logs = false;
+
 static std::string
 BuildLogPath(const std::string& filename)
 {
+    if (skip_logs) { return "/dev/null"; }
     EnsureScenarioOutputDir("Logs_attacks");
     std::string tagged = filename;
     const std::size_t dot = tagged.find_last_of('.');
@@ -331,6 +347,9 @@ double mu3 = 0.50;
 bool training       = false;
 bool training_delay = false;
 bool skip_npfads    = true;   // --skip_npfads: disable NPFADS BSM collection+detection (speeds up data-gen runs); pass --skip_npfads=false to re-enable
+// skip_logs is declared earlier (before BuildLogPath, ~line 170) so that
+// function can redirect all 12 per-scenario attack-log .txt files to
+// /dev/null too -- see its declaration comment there for the full rationale.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ATTACK PARAMETERS
@@ -1064,6 +1083,14 @@ struct AblationFlags {
     // set, f_b in {0,1,2}. 0 (default) = only the attacker-as-peer withholds
     // its vote (prior behaviour). See PemApplyMitigation's PBFT voting loop.
     uint32_t byzantine_peer_count = 0;
+    // A6 X-variable (Table 4.2): colluding Byzantine vehicles fc in {1,2,
+    // f=2} that simultaneously claim the SAME victim identity within one
+    // observation window (Eq. 3.5's Va != Vb / tau_r_Va ~= tau_r_Vb test).
+    // 0 (default) = natural behaviour unchanged: each attacker targets its
+    // own distinct, genuinely-mutual-range victim (no forced collision).
+    // See the BSHH-S1 scheduling block's post-TtwFindMutualRangePairs
+    // override for round 0.
+    uint32_t bshh_s1_fc = 0;
     // A10 X-variable (Table 4.2): synthetic detector false-positive rate,
     // p_FP in {0.0, 0.02, 0.05} (paper sweep 0%/2%/5%). 0.0 (default) =
     // disabled, unchanged from prior behaviour. See PemRecordObservation.
@@ -2220,7 +2247,7 @@ static const double PEM_BEACON_INTERVAL_S = 0.100;
 // documents/TABLE_4.9_CALIBRATION_TRACKER.md section D for full evidence.
 static const double PEM_PROPAGATION_EPSILON_S = 0.101;
 static const double PEM_HEARTBEAT_WINDOW_S = 0.400;
-static double PEM_SCORE_THRESHOLD = 0.075;   // θ_LW — overridable via --lw_threshold
+static double PEM_SCORE_THRESHOLD = 0.11;   // θ_LW — overridable via --lw_threshold (recalibrated 2026-07-29 for the new w1-w9/170m-patch weights; was 0.075)
 static double PEM_ME_TOLERANCE_MU = 0.20;   // µ = 0.20 per Eq. 3.8 — overridable via --pem_me_mu
 // PEM_ME_DELTA_MAX: fallback used only under A4 (--no_mobility_adapt).
 // Live detection computes δ_max dynamically per Eq. 3.10 — see
@@ -155050,6 +155077,7 @@ static int RoutingMain(int argc, char *argv[])
     cmd.AddValue ("experiment_number", "experiment_number", experiment_number);
     cmd.AddValue ("routing_test", "routing_test", routing_test);
     cmd.AddValue ("skip_npfads", "Skip NPFADS BSM collection and detection (faster data-gen runs)", skip_npfads);
+    cmd.AddValue ("skip_logs", "Skip 8-channel PCAP capture + redirect NetAnim XML to /dev/null (faster CSV-only sweep runs); default false", skip_logs);
     cmd.AddValue ("routing_algorithm", "routing_algorithm", routing_algorithm);
     cmd.AddValue ("qf", "qf", qf);
     cmd.AddValue ("ttw_link_lifetime_bound",
@@ -155276,6 +155304,13 @@ static int RoutingMain(int argc, char *argv[])
                   "still counted as present for quorum sizing, just dishonest. Use with "
                   "--equal_weight_pbft=1 for A9's full comparison.",
                   g_abl.byzantine_peer_count);
+    cmd.AddValue ("bshh_s1_fc",
+                  "A6 X-variable (Table 4.2): colluding Byzantine vehicles fc in {1,2,"
+                  "f=2} that all simultaneously claim the SAME victim identity within one "
+                  "observation window (Eq. 3.5 test). 0 (default) = natural behaviour: "
+                  "each attacker gets its own distinct, genuinely-mutual-range victim. "
+                  "Use with --no_threshold_sig=1 for A6's full comparison.",
+                  g_abl.bshh_s1_fc);
     cmd.AddValue ("mitigation_delay_intervals",
                   "A8 X-variable (Table 4.2): intervals post-alert without enforcement, "
                   "k in {0,1,5,10} beacon intervals (paper sweep). 0 (default) = immediate "
@@ -155816,7 +155851,7 @@ static int RoutingMain(int argc, char *argv[])
 	  csma_nodes.Add(controller_Node);
 	  csma_nodes.Add(management_Node);  
 	  csmaDevices = csma.Install (csma_nodes);
-	  csma.EnablePcapAll (BuildPcapPrefix("csma_trace", attack_scenario));
+	  if (!skip_logs) { csma.EnablePcapAll (BuildPcapPrefix("csma_trace", attack_scenario)); }
   	  address.SetBase ("10.1.1.0", "255.255.255.0");
   	  stack.Install (csma_nodes);
   	  csmaInterfaces = address.Assign (csmaDevices);
@@ -157186,6 +157221,7 @@ static int RoutingMain(int argc, char *argv[])
   wifidevices_182 = wifi_182.Install (Phy_182, Mac_182, dsrc_Nodes);
   wifidevices_184 = wifi_184.Install (Phy_184, Mac_184, dsrc_Nodes);
 
+	  if (!skip_logs) {
 	  Phy.EnablePcapAll (BuildPcapPrefix("dsrc_ch178", attack_scenario));
 	  Phy_172.EnablePcapAll (BuildPcapPrefix("dsrc_ch172", attack_scenario));
 	  Phy_174.EnablePcapAll (BuildPcapPrefix("dsrc_ch174", attack_scenario));
@@ -157193,6 +157229,7 @@ static int RoutingMain(int argc, char *argv[])
 	  Phy_180.EnablePcapAll (BuildPcapPrefix("dsrc_ch180", attack_scenario));
 	  Phy_182.EnablePcapAll (BuildPcapPrefix("dsrc_ch182", attack_scenario));
 	  Phy_184.EnablePcapAll (BuildPcapPrefix("dsrc_ch184", attack_scenario));
+	  }
 
   // Connect per-channel Phy traces for channel_delivery_analysis.csv.
   // PhyTxBegin fires on the transmitting node when the Phy begins sending.
@@ -157979,9 +158016,19 @@ static int RoutingMain(int argc, char *argv[])
   // ── Build per-scenario NetAnim XML filename ──────────────────────────────────
   // Creates: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/XML/<attack_name>.xml
   // The XML/ directory is created automatically if it does not exist.
-  EnsureScenarioOutputDir("XML");
-  std::string anim_xml_path = std::string(OUTPUT_ROOT_DIR) + "/XML/"
-                              + GetScenarioOutputName(attack_scenario) + ".xml";
+  std::string anim_xml_path;
+  if (skip_logs) {
+      // Redirect to /dev/null instead of skipping construction entirely --
+      // anim.Update*()/SetMobilityPollInterval()/EnablePacketMetadata() calls
+      // are woven through ~14 attack-scenario blocks further down and can't
+      // be cleanly no-op'd without touching every call site. Every write
+      // becomes an instant OS-level discard instead of real XML disk I/O.
+      anim_xml_path = "/dev/null";
+  } else {
+      EnsureScenarioOutputDir("XML");
+      anim_xml_path = std::string(OUTPUT_ROOT_DIR) + "/XML/"
+                     + GetScenarioOutputName(attack_scenario) + ".xml";
+  }
   std::cout << "[NetAnim] Writing animation to: " << anim_xml_path << std::endl;
 
   AnimationInterface anim(anim_xml_path);
@@ -159318,6 +159365,27 @@ static int RoutingMain(int argc, char *argv[])
 
               std::vector<TtwAssignedPair> roundPairs = TtwFindMutualRangePairs(
                   orderedAttackers, bshh_s1_remainingVictims, atTime, kEffectiveReceptionRadius);
+              // A6 X-variable (Table 4.2, Eq. 3.5 test): --bshh_s1_fc=N forces
+              // the first N round-0 pairs to all claim the SAME shared victim
+              // identity (round0's first naturally-matched victim) instead of
+              // each attacker's own distinct real match, so N distinct
+              // physical senders (Va!=Vb) claim one identity Vk within the
+              // same observation window -- exactly Eq. 3.5's existential
+              // test. Each attacker still only fires if it had a genuine
+              // real mutual-range capture opportunity (breakTime unchanged,
+              // never fabricated) -- only the CLAIMED identity is
+              // overridden to collide with its round-0 peers.
+              if (g_abl.bshh_s1_fc > 0 && round == 0 && !roundPairs.empty()) {
+                  const uint32_t sharedVictim = roundPairs[0].victimCidx;
+                  const uint32_t fcApply = std::min((uint32_t)roundPairs.size(), g_abl.bshh_s1_fc);
+                  for (uint32_t pi = 0; pi < fcApply; pi++) {
+                      roundPairs[pi].victimCidx = sharedVictim;
+                  }
+                  std::cout << "[BSHH-S1][A6] bshh_s1_fc=" << g_abl.bshh_s1_fc
+                            << " -- forced " << fcApply << " distinct attacker(s) to all "
+                            << "claim victim V" << sharedVictim << "'s identity simultaneously"
+                            << std::endl;
+              }
               std::cout << "[BSHH-S1][DEBUG] round " << round << " atTime=" << atTime
                         << " attackers=" << orderedAttackers.size()
                         << " victimPool=" << bshh_s1_remainingVictims.size()

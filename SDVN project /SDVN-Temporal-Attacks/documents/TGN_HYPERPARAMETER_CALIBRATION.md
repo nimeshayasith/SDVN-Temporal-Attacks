@@ -490,11 +490,216 @@ matter of which flags a run passes:
 ./waf --run "scratch/routing --simTime=<N> --N_Vehicles=<N> --N_RSUs=<N> \
   --N_Controllers=4 --attack_scenario=<N> \
   --tgn_weights=/home/sdvn_echo_topology/tgn_weights_170m_dim192_pw0.3191_seed5.bin \
-  --tgn_theta=0.21 --tgn_dim=192 --tgn_layers=2 --tgn_l_link=43.0"
+  --tgn_theta=0.21 --tgn_dim=192 --tgn_layers=2 --tgn_l_link=20.4"
 ```
 
 Full per-theta MCC tables: `~/theta_calib_170m/theta_*/sc*/TGN_SUMMARY/*.csv`
 (21 coarse + 9 fine sweep points, 390 total simulation runs).
+
+---
+
+## 3i. LW-side recalibration for the 170m-patch (w1-w9, θ_LW, µ, δ_thresh) (2026-07-29)
+
+**Why this was needed**: the 2026-07-27/28 detection-equation patch moved
+ρ_max, δ_thresh, and ME's link-reality checks from `TTW_COMM_RANGE`(300m)
+to `g_me_detect_range`(170m). These are PEM/LW-side signature
+computations, not TGN features — so while §3a-3h (TGN retrain/θ_FS)
+covered the TGN side, the LW-side parameters calibrated against the OLD
+formula output (w1-w9's precision evidence, θ_LW, µ) were never
+re-verified against the new formula's actual behavior. This session did
+that, plus caught and fixed a second, previously-missed copy of the
+δ_thresh formula.
+
+### w1-w9 (LW signature weights, Eq. 3.12)
+
+**Methodology**: same as the original calibration — precision-based,
+Laplace-smoothed `(TP+1)/(TP+FP+2)` per signature, normalized to sum to
+1, measured across all 12 individual scenarios (not the combined
+scenario 13 — see below), `simTime=60`, `N_Vehicles=200`,
+`N_RSUs=64`(RSU scenarios)/`0`, `attack_percentage=40`, `RngRun=999`,
+`--no_blockchain=1` (mitigation-layer only, doesn't affect signature
+triggering), narrative logs discarded (`/dev/null`, pure I/O overhead
+never read by this measurement).
+
+**Result** (new weights, written to `routing.cc`'s `PEM_WEIGHTS[9]` and
+rebuilt):
+
+| Signature | Old weight | New weight |
+|---|---|---|
+| w1 TTW-S1 | 0.1121 | **0.1132** |
+| w2 TTW-S2 | 0.1236 | **0.1217** |
+| w3 TTW-S3 | 0.1253 | **0.1201** |
+| w4 BSHH-S1 | 0.1229 | **0.1103** |
+| w5 BSHH-S2 | 0.0796 | **0.1117** |
+| w6 BSHH-S3 | 0.0627 | **0.0609** |
+| w7 ME-S1 | 0.1253 | **0.1206** |
+| w8 ME-S2 | 0.1237 | **0.1203** |
+| w9 ME-S3 | 0.1248 | **0.1212** |
+
+Notable shift: BSHH-S2 (formerly the second-lowest, "known bottleneck"
+at 0.0796) rose to 0.1117 — a real precision improvement, consistent
+with the more accurate 170m-based ρ_max/δ_thresh behavior. The ME family
+weights converged much closer together (0.1203-0.1212 vs. the old
+0.1237-0.1253 spread), consistent with all three ME signatures now
+sharing the same, more geometrically-coherent 170m detection range.
+w6/BSHH-S3 remains the Laplace-smoothed neutral prior (TP=FP=0) — same
+documented structural non-firer as before (2s replay margin « ~7.2s
+W_BSHH window), unaffected by this patch.
+
+**Note on scenario 13**: initially included, then dropped after live
+measurement showed it costs 30-65+ minutes per point (all 12 attack
+families running concurrently inherits TTW-S1's own unavoidable
+Stage-0-bypass-by-construction cost, multiplied across every family) vs.
+single-digit minutes for any individual scenario — while contributing
+nothing, since its output is a single blended tp/tn/fp/fn across all 12
+attack types with no per-family breakdown, unusable for either the
+worst-case or average selection criteria this project uses. Dropped from
+this and future LW-side calibration passes; not part of the w1-w9
+evidence base going forward.
+
+### θ_LW (LW alert threshold)
+
+**Methodology**: full-range grid sweep, `{0.00,0.05,...,1.00}` step 0.05
+(coarse), then a targeted fine sweep — same run parameters as w1-w9
+above, plus `--no_tgn=1` (isolates LW's own decision from TGN's OR
+contribution — TGN was masking θ_LW's effect entirely at first attempt:
+every coarse point produced an identical combined MCC regardless of
+θ_LW, until `--no_tgn=1` was added). MCC computed directly from
+`PEM_EVENT_LOG`'s raw per-event `attack_label`/`alert_raised` columns,
+**not** `TGN_SUMMARY`'s `mcc`/`comb_mcc` columns — a real, pre-existing
+(not introduced this session) gap was found: `TGN_SUMMARY`'s plain
+`tp/tn/fp/fn` are TGN-only counters that never increment under
+`--no_tgn=1`, and its `comb_tp/tn/fp/fn/mcc` columns are dead code
+(`g_comb_tp` etc. declared once in `tgn_core.cc`, never incremented
+anywhere in the codebase — confirmed via grep). `PEM_EVENT_LOG`'s
+`alert_raised` is computed directly from PEM's own score vs.
+`PEM_SCORE_THRESHOLD` (θ_LW itself), independent of both broken paths,
+so it's the only correct source for an LW-only MCC.
+
+**Selection criterion** (deliberately different from θ_FS/w1-w9's
+worst-case-first rule, per explicit instruction for θ_LW/µ specifically):
+**maximize average MCC** across the 10 scored scenarios (1-8, 11, 12 —
+ME-S1/S2 excluded, same as always), tiebreak = highest θ value among
+ties (not lowest).
+
+**Coarse sweep**: flat plateau at avg=0.5605 across θ∈{0.00,0.05,0.10}
+(worst-case bottleneck sc5/BSHH-S1, MCC=-0.105 — BSHH-S1's ~50% "basic"
+sophistication-coinflip attempts generate noisy low scores that clear
+any near-zero threshold, dragging its own MCC negative), then dropping
+sharply: 0.15-0.20 → avg=0.3266, 0.25-0.35 → avg=0.1220, peaking again
+narrowly at 0.40-0.45 → avg=0.0608 before continuing to decay.
+
+**Fine sweep, and an important caught error**: refining (0.10, 0.15)
+initially showed θ=0.12 with avg=0.6128 — higher than the entire
+coarse plateau — but this was a **false signal caused by scenario
+dropout, not a genuine improvement**: at θ=0.12, sc7 (BSHH-S3) and sc8
+(BSHH-S4) both collapsed to `tp=0, fp=0` (zero positive predictions
+despite 14,000+ real attack events — every single one missed),
+producing a structurally undefined MCC that gets excluded from the
+average the same way ME-S1/S2's *zero-attack-event* scenarios are — but
+that exclusion rule is only valid when there's no signal to measure in
+the first place, not when a scenario's detection has *catastrophically
+failed*. Averaging over the remaining 8 scenarios instead of the correct
+10 silently hid a total detection collapse and made it look like an
+improvement. Caught by manually inspecting the reported `n=` (valid
+scenario count) between fine-sweep points — 0.11 had n=10, 0.12 had
+n=8 — and confirmed by re-running both points with the same seed
+(`RngRun=999`, reproducible, not noise).
+
+**Result: θ_LW = 0.11** (part of the honest, fully-10-scenario-scored
+plateau; avg_mcc=0.5605, worst-case sc5=-0.105). θ=0.12 explicitly
+rejected despite its higher raw number, for the reason above. Written to
+`routing.cc`'s `PEM_SCORE_THRESHOLD` (was 0.075) and rebuilt.
+
+**Open finding, not investigated further this session**: BSHH-S1
+(sc5)'s consistently negative worst-case MCC across the entire sweep —
+driven by its own basic/sophisticated coin-flip's basic-path noise —
+means θ_LW alone can never make BSHH-S1's worst-case positive; some
+other layer (crypto Stage-0 filtering, or a BSHH-S1-specific signature
+adjustment) would be needed to address it. Flagged for a future session,
+not blocking this calibration.
+
+### µ (ME-S1 density margin, Eq. 3.8)
+
+**Methodology, first pass**: full-range sweep alongside θ_LW=0.12 (see
+caveat above), same combined-scenario setup — completely flat,
+avg_mcc=0.6128 (== θ_LW's own value) at every µ from 0.00 to 1.00,
+because µ only affects ME-S1 (sc9), which is excluded from scoring.
+
+**Methodology, direct/isolated pass** (to get a real answer despite
+sc9 being excluded from the main sweep): re-ran the sweep scoring sc9
+and sc10 directly (not excluded), with `--no_tgn=1 --no_blockchain=1
+--no_crypto=1 --no_lbs=1` — stripping every other detection/mitigation
+layer, including crypto Stage-0 (which the original old-model µ
+calibration also had to disable, per §D of
+`TABLE_4.9_CALIBRATION_TRACKER.md`, to get real attack signal through to
+the µ-gated check at all) and ME-S3's own signature (`--no_lbs`, to
+remove a different ME signature's noise from the picture entirely).
+
+**Result**: sc9 (ME-S1, the actual µ-gated scenario) shows **identical
+MCC=0.894** (`tp=16125, tn=4, fp=0, fn=1`) at all 21 swept values from
+0.00 to 1.00 — zero differentiation, even under maximally clean
+conditions. sc10 (ME-S2) shows undefined MCC throughout (`tp=0` always)
+— expected, ME-S2's own signature (path-count, sig[7]) isn't µ-gated at
+all, included only for comparison. This is the same "verified-safe
+across a wide range, no differentiating signal" finding the project's
+original calibration made against the old 300m model — now independently
+reconfirmed against the new 170m-based ρ_max formula.
+
+**Result: µ = 0.20** — kept at the existing default. Structurally
+undifferentiated results don't provide evidence for any particular
+value; picking an edge value (e.g. 1.00, which the mechanical
+highest-on-tie rule would otherwise select from a flat line) would be
+an arbitrary choice dressed up as a calibrated one. No code change
+needed — `PEM_ME_TOLERANCE_MU` was already 0.20.
+
+### δ_thresh (controller-origin divergence threshold, Eq. 3.47/3.48)
+
+**A real, previously-missed bug found and fixed**: `PemComputeDeltaThreshold()`
+(`routing.cc`) had already been updated to use `g_me_detect_range` during
+the original 170m patch pass — but a **second, independent
+implementation of the same Eq. 3.48 formula**, `TGN_CheckControllerDivergence()`
+in `tgn_core.cc`, was missed and still hardcoded `TTW_COMM_RANGE`(300m).
+Found via `grep`-auditing for `delta_thresh` across both files during
+this session's manual recalibration review. Fixed to use
+`g_me_detect_range`, matching the `routing.cc` copy.
+
+**Rounding convention**: both copies originally used `floor`, chosen to
+match the thesis's own Table 4.1 worked example at 300m
+(`floor(13.2)+1=14`, not `ceil(13.2)+1=15`). At 170m, `floor` gives
+δ_thresh=8, but the patch's own derived-parameters table states 9 — per
+explicit instruction, both copies were switched to `ceil`
+(`ceil(7.48)+1=9`, matching the patch exactly). This doesn't reintroduce
+a conflict with the old 300m/floor case, since that code path is no
+longer reachable now that `g_me_detect_range` is used unconditionally.
+
+**Live verification**: re-ran with `θ_LW=0.11`/`µ=1.00` (pre-dating the
+µ=0.20 decision above, doesn't affect δ_thresh) across the 6
+controller-origin scenarios. δ_thresh correctly varies per scenario
+family based on live-measured vehicle density (not a fixed constant):
+**9** (sc3/4, TTW), **3** (sc7/8, BSHH), **8** (sc11/12, ME). The gate
+was confirmed genuinely firing and correctly classifying divergence
+(`delta_t=144 > delta_thresh=9 → CONFIRMED DIVERGENCE`, found via
+`FS-MITIGATE gate:` narrative lines) — an earlier "gate fired 0 times"
+report was a false negative from this session's own verification script
+searching for the wrong literal string (`"CONTROLLER DIVERGENCE GATE"`,
+which doesn't appear in the live per-tick output; the real line is
+`FS-MITIGATE gate: ... -> CONFIRMED DIVERGENCE`), not an actual absence
+of gate activity.
+
+### Summary of code changes this section
+
+| File | Change | Was | Now |
+|---|---|---|---|
+| `routing.cc` | `PEM_WEIGHTS[9]` | old evidence-based values | new 170m-patch evidence-based values (table above) |
+| `routing.cc` | `PEM_SCORE_THRESHOLD` (θ_LW) | 0.075 | **0.11** |
+| `routing.cc` | `PEM_ME_TOLERANCE_MU` (µ) | 0.20 | 0.20 (unchanged, reconfirmed) |
+| `routing.cc` | `PemComputeDeltaThreshold()` | `g_me_detect_range`, floor | `g_me_detect_range`, **ceil** |
+| `tgn_core.cc` | `TGN_CheckControllerDivergence()` | `TTW_COMM_RANGE`(300m), floor | **`g_me_detect_range`(170m)**, **ceil** |
+
+None of these required dataset regeneration or TGN retraining — all are
+PEM/LW-side detection/mitigation computations, not TGN training
+features.
 
 ---
 

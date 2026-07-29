@@ -1874,7 +1874,6 @@ int main(int argc, char* argv[])
     // actually covers the full auto-expanded simTime instead of stopping at
     // the pre-expansion duration when many malicious nodes require staggered
     // attack windows beyond the caller's --simTime.
-    static const double ATTACK_STAGGER_S = 20.0;
     // Per-family malicious counts (vehicle-based S1/S5/S9, RSU-based
     // S2/S6/S10, controller-based S3/S4/S7/S8/S11/S12) computed unconditionally
     // rather than gated to the single matching attack_scenario. For a standalone
@@ -1892,13 +1891,32 @@ int main(int argc, char* argv[])
         g_n_mal_ctrl = ComputeNMalicious(N_Controllers, attack_percentage);
     }
     g_n_malicious = std::max({g_n_mal_veh, g_n_mal_rsu, g_n_mal_ctrl});
+    // ATTACK_STAGGER_S is now DYNAMIC (2026-07-29, bugfix) -- it used to be a
+    // fixed 20.0s regardless of g_n_malicious. Combined with the fixed-simTime
+    // policy above (auto-expansion disabled), a fixed 20s gap meant only the
+    // FIRST staggered attacker ever fired within a 30s simTime (TTW_REPLAY_TIME
+    // =20s + 1*20s = 40s > 30s), for EVERY attack_percentage > the minimum --
+    // i.e. the entire percentage sweep silently collapsed to "exactly 1 real
+    // attacker" regardless of whether attack_percentage implied 40 or 200
+    // malicious nodes. Confirmed via identical byte-for-byte pairs.csv output
+    // (and identical downstream tp/tn/fp/fn) across pct=20..100 for scenario 13.
+    // Fix: shrink the stagger so all g_n_malicious attackers actually fit
+    // inside the available window before simTime ends, using TTW_REPLAY_TIME
+    // (the latest per-family base start time) as the conservative reference —
+    // BSHH/ME families start earlier (more slack), so this stays safe for them too.
+    double ATTACK_STAGGER_S = 20.0;
     if (g_n_malicious > 1) {
-        double last_t = TTW_REPLAY_TIME + (g_n_malicious - 1) * ATTACK_STAGGER_S;
-        if (simTime < last_t + 5.0) {
-            simTime = last_t + 5.0;
-            std::cout << "[Info] Adjusted simTime to " << simTime
-                      << " s for " << g_n_malicious << " malicious nodes.\n";
+        double available_window = simTime - TTW_REPLAY_TIME - 2.0;  // 2s safety buffer
+        if (available_window < 0.0) available_window = 0.0;
+        double fitted_stagger = available_window / (double)(g_n_malicious - 1);
+        if (fitted_stagger < ATTACK_STAGGER_S) {
+            ATTACK_STAGGER_S = fitted_stagger;
         }
+        if (ATTACK_STAGGER_S < 0.001) ATTACK_STAGGER_S = 0.001;
+        double last_t = TTW_REPLAY_TIME + (g_n_malicious - 1) * ATTACK_STAGGER_S;
+        std::cout << "[Info] " << g_n_malicious << " malicious nodes staggered "
+                  << ATTACK_STAGGER_S << " s apart (fitted to simTime=" << simTime
+                  << " s); last attacker fires at t=" << last_t << " s.\n";
     }
 
     TVRC_InitLogs();

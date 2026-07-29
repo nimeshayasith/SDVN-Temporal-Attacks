@@ -1,0 +1,114 @@
+========================================================
+  TTW Attack S2 — Malicious RSU                        
+========================================================
+
+  t=10    ①  V2V HELLO + vehicles -> RSU
+  t=10    ②  RSU aggregates + forwards to controller
+  t=10    ③  Malicious RSU stores old packet <V1 sees V2, t=10>
+  t=15        Link breaks physically
+  t=20    ④  RSU forges timestamp t=10→t=20, replays to controller
+  t=20    ⑤  Forged packet <V1 sees V2, t=20> accepted by controller
+  t=20    ⑥  Controller routing poisoned (ghost link active)
+
+========================================================
+
+[t=10.000]  STEP ①  V2V HELLO + topology updates to RSU_22
+  V2 -> RSU : <V2 sees V5, t=10.000>
+  V5 -> RSU : <V5 sees V2, t=10.000>
+
+[t=10.100]  STEP ②  RSU_22 aggregated forward to controller
+  [<V2 sees V5, t=10.000>, <V5 sees V2, t=10.000>]
+  Result : ACCEPTED (legitimate aggregate)
+
+[t=10.200]  STEP ③  MALICIOUS RSU STORES PACKET
+  old_packet : <V2 sees V5, t=10.000>
+  Awaiting replay at t=14.000
+  Link physically breaks at t≈12.0s (dist > 300.0m, real SUMO trajectory)
+
+[t=14.000]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_22)
+  Stored packet : <V2 sees V5, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V2 sees V5, t=14.000>  timestamp changed 10.000 -> 14.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=14.000
+
+[t=14.000]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_22)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=14.000]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V2<->V5 was ACTIVE at t=14.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+  Topology Table (final state):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V2  ->  V5    t=14.000    YES <- FORGED
+  V5  ->  V2    t=10.000    No
+
+========================================================
+  TTW ATTACK S2 COMPLETE
+========================================================
+[t=14.000]  TTW-S2 RSU attacker  forged fresh ts=14.000  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=14.100]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_22)
+  Stored packet : <V2 sees V5, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V2 sees V5, t=14.000>  timestamp changed 10.000 -> 14.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=14.100
+
+[t=14.100]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_22)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=14.100]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V2<->V5 was ACTIVE at t=14.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+[t=14.100]  TTW-S2 RSU attacker  forged fresh ts=14.100  identity: BASIC [no keys held] — RSU signs with its own key, claims V1 identity (RSU!=V1) -> Step 1 MAC genuinely fails -> DROPPED at Stage-0
+[t=14.200]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_22)
+  Stored packet : <V2 sees V5, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V2 sees V5, t=14.000>  timestamp changed 10.000 -> 14.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=14.200
+
+[t=14.200]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_22)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=14.200]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V2<->V5 was ACTIVE at t=14.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+[t=14.200]  [KEY-EXFIL] TTW-S2 sophistication: V2 (complicit) -> RSU V22 : session_key K_{V2,nk} + private signing key SK_V2 handed over (collusion)
+  RSU now holds V2's real credentials -> can produce messages cryptographically indistinguishable from V2's own genuine self-report
+[t=14.200]  TTW-S2 RSU attacker  forged fresh ts=14.200  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=14.200]  DETECTION + MITIGATION
+  Ghost link V2<->V5 removed
+  Score: 0.363
+  Latency: 200.000 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=4, f=1, need>=3): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/20 valid, need t=11: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+
+[t=14.300]  STEP ④  TIMESTAMP FORGE + REPLAY ATTACK (via RSU_22)
+  Stored packet : <V2 sees V5, t=10.000>  (original RSU-aggregated observation at t=10.000)
+  Forged packet : <V2 sees V5, t=14.000>  timestamp changed 10.000 -> 14.000
+  Forge action  : RSU changes timestamp to appear current, injects to controller at t=14.300
+
+[t=14.300]  STEP ⑤  FORGED PACKET → CONTROLLER (via RSU_22)
+  Controller ACCEPTED forged packet (no timestamp-integrity protection)
+
+[t=14.300]  STEP ⑥  FAULTY ROUTING DECISION
+  Controller believes V2<->V5 was ACTIVE at t=14.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  Consequence : packets routed via ghost link will be DROPPED
+
+[t=14.300]  [KEY-EXFIL] TTW-S2 sophistication: V2 (complicit) -> RSU V22 : session_key K_{V2,nk} + private signing key SK_V2 handed over (collusion)
+  RSU now holds V2's real credentials -> can produce messages cryptographically indistinguishable from V2's own genuine self-report
+[t=14.300]  TTW-S2 RSU attacker  forged fresh ts=14.300  identity: SOPHISTICATED [key-exfiltration] — RSU signs with V1's genuinely stolen key, claims V1 identity -> Step 1 MAC genuinely matches -> LW+TGN
+[t=14.300]  DETECTION + MITIGATION
+  Ghost link V2<->V5 removed
+  Score: 0.363
+  Latency: 200.000 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=4, f=1, need>=3): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 2/20 valid, need t=11: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+

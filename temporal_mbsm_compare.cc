@@ -1761,6 +1761,7 @@ static std::string GetScenarioName(uint32_t sc)
         case 10: return "ME-S2: Malicious RSU";
         case 11: return "ME-S3: Malicious Controller, No RSU";
         case 12: return "ME-S4: Malicious Controller, With RSU";
+        case 13: return "COMBINED: All 12 Scenarios";
         default: return "Baseline (no attack)";
     }
 }
@@ -2034,9 +2035,13 @@ int main(int argc, char* argv[])
     cmd.AddValue("runNum",           "RNG run index for multi-run averaging (1-40)",               runNum);
     cmd.Parse(argc, argv);
 
-    // Bounds check — must be 0-12 matching the 12 Temporal-Echo scenarios
-    if (attack_scenario > 12) {
-        NS_FATAL_ERROR("attack_scenario must be 0-12; got " << attack_scenario);
+    // Bounds check — 0-12 (the 12 individual Temporal-Echo scenarios) or 13
+    // (combined, all 12 firing simultaneously — added to match
+    // temporal_veremi_compare.cc's own scenario-13 support, for a genuine
+    // 4-way apples-to-apples comparison against our method and VeReMi,
+    // both of which already support it).
+    if (attack_scenario > 13) {
+        NS_FATAL_ERROR("attack_scenario must be 0-13; got " << attack_scenario);
     }
 
     // Reproducible RNG: seed=1 fixed, run index varies per experiment
@@ -2048,6 +2053,9 @@ int main(int argc, char* argv[])
     // Scenario numbering convention (from attack model definition):
     //   Odd  (1,3,5,7,9,11)  = S1/S3 variants = no RSU in attack path → force N_RSUs=0
     //   Even (2,4,6,8,10,12) = S2/S4 variants = RSU present           → force N_RSUs=1
+    //   13 (combined, added to match temporal_veremi_compare.cc's own scenario-13
+    //   support) = every family fires at once, including the RSU-based S2/S4
+    //   variants → force N_RSUs=64, same as routing.cc's own scenario-13 convention.
     // These overrides apply regardless of what the caller passes on the command line.
     if (attack_scenario >= 1 && attack_scenario <= 12) {
         if (attack_scenario % 2 == 1) {
@@ -2065,8 +2073,15 @@ int main(int argc, char* argv[])
                 N_RSUs = 64;
             }
         }
+    } else if (attack_scenario == 13) {
+        if (N_RSUs == 0) {
+            std::cout << "[Info] Combined scenario 13 (includes RSU-based families): "
+                         "overriding N_RSUs=0 → 64.\n";
+            N_RSUs = 64;
+        }
     }
-    if (attack_scenario >= 9 && attack_scenario <= 12 && N_Vehicles < 4) {
+    if (((attack_scenario >= 9 && attack_scenario <= 12) || attack_scenario == 13)
+        && N_Vehicles < 4) {
         N_Vehicles = 4;
         std::cout << "[Warning] ME scenarios require N_Vehicles >= 4; set to 4.\n";
     }
@@ -2080,11 +2095,20 @@ int main(int argc, char* argv[])
     // actually covers the full auto-expanded simTime instead of stopping at
     // the pre-expansion duration when many malicious nodes require staggered
     // attack windows beyond the caller's --simTime.
-    static const double ATTACK_STAGGER_S = 20.0;
     {
         uint32_t n_total = 0;
         if (attack_percentage > 0 && attack_scenario >= 1) {
-            if      (attack_scenario == 1 || attack_scenario == 5 || attack_scenario == 9)
+            if (attack_scenario == 13) {
+                // Combined scenario: unlike temporal_veremi_compare.cc (which
+                // keeps separate per-family g_n_mal_veh/rsu/ctrl counts),
+                // MBSM_Detect uses one shared g_n_malicious across every
+                // family's dispatch block, and every one of those blocks
+                // ultimately indexes into Vehicle_Nodes (a/b/c/d are all
+                // vehicle handles regardless of which family fires) -- so
+                // N_Vehicles is the correct basis here, matching the
+                // S1/S5/S9-family formula, not a per-family split.
+                n_total = N_Vehicles;
+            } else if (attack_scenario == 1 || attack_scenario == 5 || attack_scenario == 9)
                 n_total = N_Vehicles;
             else if (attack_scenario == 2 || attack_scenario == 6 || attack_scenario == 10)
                 n_total = N_RSUs;
@@ -2093,13 +2117,25 @@ int main(int argc, char* argv[])
         }
         g_n_malicious = ComputeNMalicious(n_total, attack_percentage);
     }
+    // ATTACK_STAGGER_S is now DYNAMIC (2026-07-29, bugfix) -- same issue and
+    // fix as temporal_veremi_compare.cc: a fixed 20s gap combined with fixed
+    // simTime meant only the FIRST staggered attacker ever fired regardless
+    // of g_n_malicious, silently collapsing the entire attack_percentage
+    // sweep to "exactly 1 real attacker" above the minimum percentage.
+    // Confirmed via identical tp/tn/fp/fn across pct=20..100 for scenario 13.
+    double ATTACK_STAGGER_S = 20.0;
     if (g_n_malicious > 1) {
-        double last_t = TTW_REPLAY_TIME + (g_n_malicious - 1) * ATTACK_STAGGER_S;
-        if (simTime < last_t + 5.0) {
-            simTime = last_t + 5.0;
-            std::cout << "[Info] Adjusted simTime to " << simTime
-                      << " s for " << g_n_malicious << " malicious nodes.\n";
+        double available_window = simTime - TTW_REPLAY_TIME - 2.0;  // 2s safety buffer
+        if (available_window < 0.0) available_window = 0.0;
+        double fitted_stagger = available_window / (double)(g_n_malicious - 1);
+        if (fitted_stagger < ATTACK_STAGGER_S) {
+            ATTACK_STAGGER_S = fitted_stagger;
         }
+        if (ATTACK_STAGGER_S < 0.001) ATTACK_STAGGER_S = 0.001;
+        double last_t = TTW_REPLAY_TIME + (g_n_malicious - 1) * ATTACK_STAGGER_S;
+        std::cout << "[Info] " << g_n_malicious << " malicious nodes staggered "
+                  << ATTACK_STAGGER_S << " s apart (fitted to simTime=" << simTime
+                  << " s); last attacker fires at t=" << last_t << " s.\n";
     }
 
     TEMP_InitLogs();
@@ -2240,7 +2276,12 @@ int main(int argc, char* argv[])
     // (n_malicious/simTime auto-expansion already computed above, before the
     // startup banner and legit-BSM t_end calculation — see comment there.)
 
-    if (attack_scenario == 1) {
+    // Converted from a mutually-exclusive if/else-if chain to independent if
+    // blocks, each also matching attack_scenario==13 -- added so scenario 13
+    // (combined, all 12 families firing simultaneously) works, matching
+    // temporal_veremi_compare.cc's own established pattern for the same
+    // scenario exactly.
+    if (attack_scenario == 1 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2256,8 +2297,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(TTW_REPLAY_TIME + dt),
                 &TEMP_TTW_ReplayAttack, a, b, TTW_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 2) {
+    }
+    if (attack_scenario == 2 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2269,8 +2310,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(TTW_REPLAY_TIME + dt),
                 &TEMP_TTW_S2_RSUReplayAttack, b, a, TTW_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 3) {
+    }
+    if (attack_scenario == 3 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2282,8 +2323,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(TTW_REPLAY_TIME + dt),
                 &TEMP_TTW_S3_ControllerInternalReplay, b, a, TTW_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 4) {
+    }
+    if (attack_scenario == 4 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2295,8 +2336,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(TTW_REPLAY_TIME + dt),
                 &TEMP_TTW_S4_ControllerInternalReplay, b, a, TTW_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 5) {
+    }
+    if (attack_scenario == 5 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2308,8 +2349,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_ReplayAttack, a, b, BSHH_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 6) {
+    }
+    if (attack_scenario == 6 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2321,8 +2362,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_S2_RSUReplayAttack, a, BSHH_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 7) {
+    }
+    if (attack_scenario == 7 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2334,8 +2375,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_S3_ControllerInternalReplay, a, b, BSHH_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 8) {
+    }
+    if (attack_scenario == 8 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2347,8 +2388,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(BSHH_REPLAY_TIME + dt),
                 &TEMP_BSHH_S4_ControllerInternalReplay, a, b, BSHH_REPLAY_TIME + dt);
         }
-
-    } else if (attack_scenario == 9) {
+    }
+    if (attack_scenario == 9 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2360,8 +2401,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(ME_ECHO_TIME + dt),
                 &TEMP_ME_InjectEchoReports, c, d, a, b, ME_ECHO_TIME + dt);
         }
-
-    } else if (attack_scenario == 10) {
+    }
+    if (attack_scenario == 10 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2373,8 +2414,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(ME_ECHO_TIME + dt),
                 &TEMP_ME_S2_RSUInjectEchoReports, c, d, a, b, ME_ECHO_TIME + dt);
         }
-
-    } else if (attack_scenario == 11) {
+    }
+    if (attack_scenario == 11 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
@@ -2386,8 +2427,8 @@ int main(int argc, char* argv[])
             Simulator::Schedule(Seconds(ME_ECHO_TIME + dt),
                 &TEMP_ME_S3_ControllerCreatePhantom, c, d, a, b, ME_ECHO_TIME + dt);
         }
-
-    } else if (attack_scenario == 12) {
+    }
+    if (attack_scenario == 12 || attack_scenario == 13) {
         for (uint32_t i = 0; i < g_n_malicious; i++) {
             uint32_t a = Vehicle_Nodes.Get(i % N_Vehicles)->GetId();
             uint32_t b = Vehicle_Nodes.Get((i + 1) % N_Vehicles)->GetId();
