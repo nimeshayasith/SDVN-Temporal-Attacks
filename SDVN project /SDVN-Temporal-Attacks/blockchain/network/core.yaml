@@ -141,13 +141,13 @@ peer:
         propagatePeerNum: 3
         # Determines frequency of pull phases(unit: second)
         # Must be greater than digestWaitTime + responseWaitTime
-        pullInterval: 4s
+        pullInterval: 200ms
         # Number of peers to pull from
         pullPeerNum: 3
         # Determines frequency of pulling state info messages from peers(unit: second)
-        requestStateInfoInterval: 4s
+        requestStateInfoInterval: 200ms
         # Determines frequency of pushing state info messages to peers(unit: second)
-        publishStateInfoInterval: 4s
+        publishStateInfoInterval: 200ms
         # Maximum time a stateInfo message is kept until expired
         stateInfoRetentionInterval:
         # Time from startup certificates are included in Alive messages(unit: second)
@@ -164,12 +164,12 @@ peer:
         sendBuffSize: 200
         # Time to wait before pull engine processes incoming digests (unit: second)
         # Should be slightly smaller than requestWaitTime
-        digestWaitTime: 1s
+        digestWaitTime: 50ms
         # Time to wait before pull engine removes incoming nonce (unit: milliseconds)
         # Should be slightly bigger than digestWaitTime
-        requestWaitTime: 1500ms
+        requestWaitTime: 100ms
         # Time to wait before pull engine ends pull (unit: second)
-        responseWaitTime: 2s
+        responseWaitTime: 200ms
         # Alive check interval(unit: second)
         aliveTimeInterval: 5s
         # Alive expiration timeout(unit: second)
@@ -255,10 +255,10 @@ peer:
             enabled: true
             # checkInterval interval to check whether peer is lagging behind enough to
             # request blocks via state transfer from another peer.
-            checkInterval: 10s
+            checkInterval: 200ms
             # responseTimeout amount of time to wait for state transfer response from
             # other peers
-            responseTimeout: 3s
+            responseTimeout: 200ms
             # batchSize the number of blocks to request via state transfer from another peer
             batchSize: 10
             # blockBufferSize reflects the size of the re-ordering buffer

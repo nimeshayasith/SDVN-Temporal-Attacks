@@ -1401,6 +1401,40 @@ static void CryptoPrintKEMSummary(uint32_t n)
                   << "/" << g_kem_handshake_timed_count << " (budget="
                   << KEM_HANDSHAKE_BUDGET_MS << " ms)\n";
     }
+    // A13 (Table 4.2): dedicated KEM-only latency breakdown, separate from
+    // PEM_RUN_SUMMARY's generic aggregate t_pipeline_mean_ms/max -- the PDF's
+    // Applicable PEMs for A13 specifically call out "M5 (Tpipeline, KEM
+    // sub-component)", which the generic pipeline figure doesn't isolate.
+    // The underlying per-handshake measurement (g_kem_handshake_ms_sum/max/
+    // timed_count/over_budget, via kem_get_last_handshake_only_ms()) was
+    // already being computed correctly for every vehicle registration --
+    // only the dedicated CSV export was missing (previously stdout-only via
+    // the [KEM] print above).
+    {
+        const std::string filename =
+            BuildScenarioCsvPath("KEM_HANDSHAKE_SUMMARY", attack_scenario);
+        const bool writeHdr = !std::ifstream(filename).good();
+        std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
+        if (writeHdr) {
+            fout << "attack_scenario,single_kem,kem_handshake_rate,n_vehicles,"
+                    "n_handshakes_timed,avg_handshake_ms,max_handshake_ms,"
+                    "over_budget_count,over_budget_pct,budget_ms\n";
+        }
+        const double avg_ms = (g_kem_handshake_timed_count > 0)
+            ? (g_kem_handshake_ms_sum / (double)g_kem_handshake_timed_count) : 0.0;
+        const double over_budget_pct = (g_kem_handshake_timed_count > 0)
+            ? (100.0 * (double)g_kem_handshake_over_budget / (double)g_kem_handshake_timed_count) : 0.0;
+        fout << attack_scenario << ","
+             << (g_abl.single_kem ? 1 : 0) << ","
+             << g_abl.kem_handshake_rate << ","
+             << n << ","
+             << g_kem_handshake_timed_count << ","
+             << avg_ms << ","
+             << g_kem_handshake_ms_max << ","
+             << g_kem_handshake_over_budget << ","
+             << over_budget_pct << ","
+             << KEM_HANDSHAKE_BUDGET_MS << "\n";
+    }
 }
 #endif
 
@@ -2345,7 +2379,11 @@ static double PemGetRssiMin() { return g_rssi_min; }
 // single-RSU runs) — overridable via --rsu_overlap_frac. When >= 2 RSUs ARE
 // deployed, PemComputeRsuOverlapRadius() below uses their REAL nearest-
 // neighbour spacing instead of this fallback.
-static double g_rsu_overlap_frac = 0.20;   // metres/metres; overridden by --rsu_overlap_frac
+// Supervisor-specified reference value (2026-07-30): r_overlap = 67m at
+// r_comm = 170m (g_me_detect_range), not 300m -- i.e. frac = 67/170 (was
+// 0.20 -> 60m at 300m). PemComputeRsuOverlapRadius() below was updated to
+// use g_me_detect_range as its base for this reason.
+static double g_rsu_overlap_frac = 67.0 / 170.0;   // metres/metres; overridden by --rsu_overlap_frac
 
 // ── Continuous mobility-derived neighborhood beaconing (default ON) ─────────
 // Feeds only g_rsu_beacon_log (ME's lambda_hat/rho_max/delta_max) and TGN's
@@ -5256,25 +5294,89 @@ static const double PEM_BSHH3_RECAL_PERIOD_S = 1.0;   // recalibration cadence
 // When < 2 RSUs are deployed (true for every scenario in this project's
 // current 12-scenario test matrix — all use N_RSUs in {0,1}), there is no
 // adjacent-RSU pair to measure, so this falls back to the documented
-// g_rsu_overlap_frac * r_comm assumption (default 0.20, i.e. 60m at the
-// default r_comm=300m) rather than silently substituting the full r_comm.
+// g_rsu_overlap_frac * r_comm assumption -- SUPERVISOR-SPECIFIED (2026-07-30):
+// r_overlap = 67m at r_comm = g_me_detect_range = 170m (frac = 67/170),
+// matching the exact r_overlap/W_ho/W_BSHH reference numbers used in
+// FINAL_CALIBRATED_VALUES_2026-07-29.md's Issue-3 writeup.
 //
-// Uses g_rcomm/TTW_COMM_RANGE (300m), NOT g_me_detect_range (170m) — unlike
-// ME-S1's rho_max/delta_thresh, this r_comm represents each RSU's actual
-// physical coverage radius (how far an RSU can reach a vehicle), the same
-// physical quantity used for RSU serving-zone assignment elsewhere in this
-// file. That's a real geometric/hardware property, not an abstract
-// detection-algorithm threshold — it should not diverge from the 300m
-// value used everywhere else an RSU's coverage radius is needed. (Briefly
-// changed to g_me_detect_range on 2026-07-28, reverted the same session
-// after re-examining what r_comm means in this specific formula — not part
-// of the supervisor's detection-equation patch scope.)
+// History: this previously used g_rcomm (300m, the RSU physical-coverage-
+// radius constant) on the reasoning that RSU-to-RSU overlap is a hardware
+// geometry property, not a detection-algorithm threshold -- tried
+// g_me_detect_range briefly on 2026-07-28 and reverted same-session, then
+// re-tried and reverted again on 2026-07-30 after confirming it doesn't
+// change Issue 3's relative shortfall (both sides of the bound/empirical
+// ratio scale together). The supervisor has now specified 170m/67m as the
+// authoritative reference values for this formula, superseding that
+// earlier reasoning -- kept at g_me_detect_range per that instruction.
+// Live, position-based r_overlap for the N_RSUs in {0,1} case (2026-07-30,
+// supervisor-requested: r_overlap must be computed from real vehicle/RSU
+// positions each recalibration tick, not a fixed constant). "RSU-to-RSU
+// overlap" is undefined with fewer than 2 RSUs, so this uses the closest
+// available live physical analog instead of falling back to a static
+// fraction:
+//   N_RSUs == 1: for each vehicle currently inside the single RSU's
+//     coverage disc, compute its live distance-to-edge (r_comm - dist).
+//     The vehicle CLOSEST to the edge (smallest remaining margin) is the
+//     one experiencing the narrowest live overlap; mirroring that margin
+//     (as if a second RSU existed just past the boundary) gives
+//     r_overlap = 2*(r_comm - dist_to_edge), matching the same
+//     "2*r_comm - spacing" structure used in the real >=2 RSU case below,
+//     just with the vehicle's own live position standing in for the
+//     mirror point instead of a second RSU's fixed position.
+//   N_RSUs == 0: no RSU position exists at all, so the nearest-vehicle-pair
+//     live spacing is used as the geometric analog of "nearest neighbouring
+//     coverage source spacing" -- same max(0, 2*r_comm - spacing) formula
+//     as the real RSU case, just applied to the two closest vehicles'
+//     reception zones instead of two RSUs'.
+static double
+PemComputeRsuOverlapRadiusLiveSingleOrNoRsu(double rcommForOverlap)
+{
+    if (RSU_Nodes.GetN() == 1u)
+    {
+        Ptr<MobilityModel> rsuM = RSU_Nodes.Get(0)->GetObject<MobilityModel>();
+        if (!rsuM) return g_rsu_overlap_frac * rcommForOverlap;
+        Vector rsuPos = rsuM->GetPosition();
+
+        double narrowestMargin = -1.0;
+        for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i)
+        {
+            Ptr<MobilityModel> vm = Vehicle_Nodes.Get(i)->GetObject<MobilityModel>();
+            if (!vm) continue;
+            const double dist = PemDistance2d(vm->GetPosition(), rsuPos);
+            if (dist >= rcommForOverlap) continue;   // outside coverage, not relevant
+            const double margin = rcommForOverlap - dist;
+            if (narrowestMargin < 0.0 || margin < narrowestMargin) narrowestMargin = margin;
+        }
+        if (narrowestMargin < 0.0)
+        {
+            // No vehicle currently inside coverage — fall back to the
+            // documented fraction rather than treating this as zero overlap.
+            return g_rsu_overlap_frac * rcommForOverlap;
+        }
+        return 2.0 * narrowestMargin;
+    }
+
+    // N_RSUs == 0: reverted (2026-07-30) from a nearest-vehicle-pair-spacing
+    // live formula back to the static fallback. That formula was tried and
+    // found semantically broken: vehicle-to-vehicle proximity is not a
+    // valid physical stand-in for "RSU coverage overlap distance" — dense
+    // traffic routinely puts some vehicle pair very close together for
+    // reasons unrelated to any liveness/handover event, which pushed
+    // r_overlap toward its 2*r_comm ceiling and produced W_BSHH ~38-43s
+    // (vs. the intended ~7-8s handover-window magnitude) in a direct test.
+    // With zero RSUs deployed there is no RSU-pair geometry to legitimately
+    // be "live" about, so this case uses the supervisor-specified 67m/170m
+    // reference fraction directly rather than a broken live proxy.
+    return g_rsu_overlap_frac * rcommForOverlap;
+}
+
 static double
 PemComputeRsuOverlapRadius()
 {
+    const double rcommForOverlap = g_me_detect_range;
     if (RSU_Nodes.GetN() < 2u)
     {
-        return g_rsu_overlap_frac * g_rcomm;
+        return PemComputeRsuOverlapRadiusLiveSingleOrNoRsu(rcommForOverlap);
     }
 
     double nearestSpacing = -1.0;
@@ -5294,10 +5396,10 @@ PemComputeRsuOverlapRadius()
     {
         // No RSU pair had a valid MobilityModel — fall back to the documented
         // fraction rather than treating this as a real zero-spacing overlap.
-        return g_rsu_overlap_frac * g_rcomm;
+        return g_rsu_overlap_frac * rcommForOverlap;
     }
 
-    const double overlap = 2.0 * g_rcomm - nearestSpacing;
+    const double overlap = 2.0 * rcommForOverlap - nearestSpacing;
     return (overlap > 0.0) ? overlap : 0.0;
 }
 
@@ -156370,6 +156472,24 @@ static int RoutingMain(int argc, char *argv[])
       // behavior — its synthetic 20-vehicle trace is hand-placed and already
       // active from t=0, so peak-alignment must not disturb it.
       double trace_t0 = -1.0;
+      // Gap: id-to-index remap. Vehicle_Nodes are indexed 0..N_Vehicles-1 by
+      // NS-3 creation order, but a SUMO trace's own $node_(%d) IDs are
+      // whatever the SUMO run assigned them (often NOT a clean 0..N-1
+      // range, especially once peak-activity alignment (below) picks a time
+      // window where the *active* IDs are some arbitrary subset of the
+      // trace's full vehicle population). The waypoint-scheduling loop below
+      // originally assumed trace ID == NS-3 index directly via
+      // wp_map.count(i), so whenever the peak-window's active IDs weren't
+      // literally {0,1,2,...}, EVERY NS-3 vehicle silently got zero
+      // waypoints (position stayed at its static fallback, velocity stayed
+      // exactly 0 forever) despite the trace loading "successfully" and
+      // reporting a nonzero position count from the unconditional
+      // sumo_x/sumo_y parse below. sumoIndexToId maps NS-3 index i -> the
+      // i-th actually-active trace vehicle ID for i < activeIds.size();
+      // falls back to identity (i -> i) beyond that so requesting more
+      // vehicles than were active in the window doesn't crash, it just
+      // reuses the old (likely-static) behavior for the excess.
+      std::vector<int> activeIds;
       if (test_network == 1)
       {
           std::ifstream probe_in(trace_file);
@@ -156410,11 +156530,31 @@ static int RoutingMain(int argc, char *argv[])
                         << "s -> " << best << " vehicles active in the "
                         << simTime << "s sim window (was ~"
                         << "few at raw t=0)\n";
+              // Collect exactly which trace IDs are active in [bestT, bestT+simTime)
+              // -- the same condition just used to count "best" -- for the
+              // index remap. Sorted for deterministic NS-3-index assignment.
+              for (std::map<int,double>::const_iterator jt = pf.begin(); jt != pf.end(); ++jt) {
+                  if (jt->second <= bestT + simTime && pl[jt->first] >= bestT) {
+                      activeIds.push_back(jt->first);
+                  }
+              }
+              std::sort(activeIds.begin(), activeIds.end());
           }
       }
       if (trace_t0 < 0.0) trace_t0 = 0.0;
       std::cout << "[SUMO] Trace time offset: " << trace_t0
                 << "s -> waypoints shifted to NS-3 t=0\n";
+      auto sumoIndexToId = [&activeIds](uint32_t i) -> int {
+          return (i < activeIds.size()) ? activeIds[i] : static_cast<int>(i);
+      };
+      if (!activeIds.empty()) {
+          std::cout << "[SUMO] Index remap active: " << activeIds.size()
+                    << " trace vehicle IDs mapped to NS-3 indices 0.."
+                    << (activeIds.size() - 1)
+                    << (activeIds.size() < Vehicle_Nodes.GetN()
+                        ? " (remaining NS-3 indices fall back to identity mapping)"
+                        : "") << "\n";
+      }
 
       // Parse the full trace
       std::ifstream tcl_in(trace_file);
@@ -156441,8 +156581,9 @@ static int RoutingMain(int argc, char *argv[])
       // Install initial positions from SUMO trace
       Ptr<ListPositionAllocator> sumoAlloc = CreateObject<ListPositionAllocator>();
       for (uint32_t i=0; i<Vehicle_Nodes.GetN(); i++) {
-          double px = sumo_x.count(i) ? sumo_x[i] : 750.0+(double)(i*13%1500);
-          double py = sumo_y.count(i) ? sumo_y[i] : 1200.0+(double)(i*17%1500);
+          int id = sumoIndexToId(i);
+          double px = sumo_x.count(id) ? sumo_x[id] : 750.0+(double)(i*13%1500);
+          double py = sumo_y.count(id) ? sumo_y[id] : 1200.0+(double)(i*17%1500);
           sumoAlloc->Add(Vector(px,py,0.0));
       }
       vehicle_mobility.SetPositionAllocator(sumoAlloc);
@@ -156452,12 +156593,13 @@ static int RoutingMain(int argc, char *argv[])
       // Position snap corrects any drift; velocity gives smooth interpolation between snaps.
       uint32_t total_wps = 0;
       for (uint32_t i=0; i<Vehicle_Nodes.GetN(); i++) {
-          if (!wp_map.count(i)) continue;
+          int id = sumoIndexToId(i);
+          if (!wp_map.count(id)) continue;
           Ptr<ConstantVelocityMobilityModel> mdl =
               DynamicCast<ConstantVelocityMobilityModel>(
                   Vehicle_Nodes.Get(i)->GetObject<MobilityModel>());
           if (!mdl) continue;
-          const std::vector<SumoWP>& wps = wp_map[i];
+          const std::vector<SumoWP>& wps = wp_map[id];
           for (size_t w = 0; w < wps.size(); ++w) {
               const SumoWP& cur = wps[w];
               // 1. Snap to exact SUMO position
@@ -156488,16 +156630,25 @@ static int RoutingMain(int argc, char *argv[])
 
       // TTW-S1 (Option B): hoist the parsed trajectory to file scope so the
       // S1 attacker/victim natural-break search (later in this function) can
-      // read real per-vehicle positions over time.
-      for (const auto& kv : wp_map) {
+      // read real per-vehicle positions over time. TtwSumoPositionAt() looks
+      // these maps up by NS-3 Vehicle_Nodes container index (cidx), so they
+      // must be keyed the same way as the position/velocity scheduling loop
+      // above -- via sumoIndexToId(i), not the raw trace ID -- for the same
+      // reason (see sumoIndexToId's comment above).
+      for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i) {
+          int id = sumoIndexToId(i);
+          auto wpIt = wp_map.find(id);
+          if (wpIt == wp_map.end()) continue;
           std::vector<SumoWaypoint> converted;
-          converted.reserve(kv.second.size());
-          for (const auto& wp : kv.second) converted.push_back({wp.t, wp.x, wp.y});
-          g_sumo_wp_map[(uint32_t)kv.first] = std::move(converted);
+          converted.reserve(wpIt->second.size());
+          for (const auto& wp : wpIt->second) converted.push_back({wp.t, wp.x, wp.y});
+          g_sumo_wp_map[i] = std::move(converted);
       }
-      for (const auto& kv : sumo_x) {
-          double py = sumo_y.count(kv.first) ? sumo_y[kv.first] : 0.0;
-          g_sumo_initial_pos[(uint32_t)kv.first] = Vector(kv.second, py, 0.0);
+      for (uint32_t i = 0; i < Vehicle_Nodes.GetN(); ++i) {
+          int id = sumoIndexToId(i);
+          if (!sumo_x.count(id)) continue;
+          double py = sumo_y.count(id) ? sumo_y[id] : 0.0;
+          g_sumo_initial_pos[i] = Vector(sumo_x[id], py, 0.0);
       }
       g_sumo_trace_loaded = true;
   }

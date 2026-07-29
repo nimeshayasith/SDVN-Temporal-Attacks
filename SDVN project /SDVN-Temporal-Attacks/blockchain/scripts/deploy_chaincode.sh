@@ -18,20 +18,26 @@ NETWORK_DIR="$SCRIPT_DIR/../network"
 CHAINCODE_DIR="$SCRIPT_DIR/../chaincode/temporalecho"
 
 export FABRIC_CFG_PATH="$NETWORK_DIR"
-export PATH="$PATH:/home/sdvn_echo_topology/Group_33/teta-guard/fabric-samples/bin"
+# fabric-bin first: its configtxgen is Fabric 3.x (SmartBFT/ConsenterMapping-aware).
+# The Group_33 fabric-samples/bin configtxgen is v2.5.0 and predates BFT support,
+# so it must come after (used only for peer/osnadmin/cryptogen, not configtxgen).
+export PATH="/home/sdvn_echo_topology/fabric-bin:$PATH:/home/sdvn_echo_topology/Group_33/teta-guard/fabric-samples/bin"
 
 CHANNEL="teta-channel"
 CHAINCODE="temporalecho"
 # Upgrade to 2.1/3: unconditional per-caller RSU/OBU trust checks in
 # ZeroTrust, DemotePeerToClient, SubmitLWDetectionResult,
-# Upgrade to 2.3/5: AnchorIntervalBlocksUrban/Highway fixed from 215/45
+# Upgrade to 2.3: AnchorIntervalBlocksUrban/Highway fixed from 215/45
 # (wrong formula, matched Llink/(2*Tb) instead of floor(Tmin/Tb)) to 30/30
 # (matches Table 4.9's actual formula, Tmin=3000ms/Tb=100ms). See
-# TABLE_4.9_CALIBRATION_TRACKER.md sec H for the full finding. 2.2/4 is
-# already committed on this channel; Fabric requires sequence to increment
-# by exactly 1 per upgrade.
+# TABLE_4.9_CALIBRATION_TRACKER.md sec H for the full finding.
+# CC_SEQUENCE reset to 1 (2026-07-29): the channel ledger was regenerated
+# from a fresh genesis block (RequestForwardTimeout/RequestComplainTimeout
+# fix required new genesis), so the prior sequence=5 history no longer
+# exists on this channel — Fabric requires the first commit on a new
+# channel to be sequence=1 regardless of the chaincode version label.
 CC_VERSION="2.3"
-CC_SEQUENCE=5
+CC_SEQUENCE=1
 CC_LABEL="${CHAINCODE}_${CC_VERSION}"
 # orderer1.tetaguard.net (not the old singular "orderer.tetaguard.net" — leftover
 # from the pre-migration single-orderer topology; its cert CN doesn't match any of

@@ -1,7 +1,10 @@
 # crypto-config.yaml — MSP certificate configuration for TETA-Guard
 #
-# SmartBFT orderer: 4 orderer nodes (3f+1 = 4 for f=1 Byzantine fault tolerance).
-# This replaces the single orderer used with etcdraft.
+# SmartBFT orderer: 4 orderer nodes (3f+1 = 4 for f=1 Byzantine fault
+# tolerance). This replaces the single orderer used with etcdraft.
+# Note: the PDF's f=2 governs the 8-peer application/endorsement layer
+# (FaultToleranceF in trust.go), not this orderer-cluster node count
+# (clarified 2026-07-29).
 #
 # Two deployment modes — both share the same TetaGuardOrg:
 #
@@ -20,7 +23,8 @@ OrdererOrgs:
   - Name: OrdererOrg
     Domain: orderer.tetaguard.net
     EnableNodeOUs: true
-    # 4 orderer nodes for SmartBFT: 3f+1 = 4 satisfies f=1 Byzantine fault tolerance.
+    # 4 orderer nodes for SmartBFT: 3f+1 = 4 satisfies f=1 Byzantine fault
+    # tolerance at the ordering layer.
     Specs:
       - Hostname: orderer1
         CommonName: orderer1.tetaguard.net

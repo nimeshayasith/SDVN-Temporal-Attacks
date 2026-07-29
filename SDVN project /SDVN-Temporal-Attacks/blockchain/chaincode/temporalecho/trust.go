@@ -15,7 +15,11 @@ import (
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const (
+// Sweep-target trust parameters (τ_min, τ_min^gt, τ_min^C, Δ+, Δ-, T_quar) are
+// `var`, not `const`: identical default values to before, but mutable so
+// trust_sweep_test.go can override them per candidate value without touching
+// production call sites. Production behavior is unchanged (same defaults).
+var (
 	TrustDeltaPlus  = 0.05
 	TrustDeltaMinus = 0.10
 	TrustDeltaCtrl  = 0.20
@@ -24,15 +28,18 @@ const (
 	TrustMinGT   = 0.50
 	TrustCtrlMin = 0.30
 
+	QuarantineMonitorMs = int64(30000) // 30 s monitoring window before permanent removal
+)
+
+const (
 	TrustInitTier1 = 1.00
 	TrustInitTier2 = 0.10
 
-	TrustMinDwellMs     = 3000
-	HWCapacityMinMB     = 2048  // ≥ 2 GB RAM (Cmin RAM floor)
-	HWStorageMinGB      = 8     // ≥ 8 GB storage (Cmin storage floor)
-	FaultToleranceF     = 2     // tolerate f=2 Byzantine peers
-	NpConsensus         = 8  // active peer slots: np ≥ 3f+1=7, rounded up to 8 for redundancy
-	QuarantineMonitorMs = int64(30000) // 30 s monitoring window before permanent removal
+	TrustMinDwellMs = 3000
+	HWCapacityMinMB = 2048 // ≥ 2 GB RAM (Cmin RAM floor)
+	HWStorageMinGB  = 8    // ≥ 8 GB storage (Cmin storage floor)
+	FaultToleranceF = 2    // tolerate f=2 Byzantine peers
+	NpConsensus     = 8    // active peer slots: np ≥ 3f+1=7, rounded up to 8 for redundancy
 )
 
 // ═══════════════════════════════════════════════════════════════════════════

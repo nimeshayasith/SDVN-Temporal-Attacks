@@ -500,6 +500,20 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     if args.variant_exclude_me:
         variant_label = np.where(variant_label == 2, -1, variant_label)
 
+    # Control-plane vs. data-plane origin labels, derived from the SAME `sc`
+    # scenario array as variant_label above (no dataset regen needed --
+    # attack_scenario/origin_scenario already encode this). Per the project's
+    # established scenario numbering (Section 6): S1=malicious vehicle,
+    # S2=malicious RSU (both data-plane / non-controller origin);
+    # S3=malicious controller no RSU, S4=malicious controller with RSU (both
+    # control-plane / controller-compromise origin) -- identically true
+    # across all three families (TTW 1-4, BSHH 5-8, ME 9-12), i.e. S1/S2-slot
+    # scenarios {1,2,5,6,9,10} are data-plane, S3/S4-slot {3,4,7,8,11,12} are
+    # control-plane. -1 = benign (excluded), same sentinel convention as
+    # variant_label.
+    origin_label = np.where(np.isin(sc, [1, 2, 5, 6, 9, 10]),  0,
+                    np.where(np.isin(sc, [3, 4, 7, 8, 11, 12]), 1, -1)).astype(np.int64)
+
     n_tr = len(train_idx)
     n_va = len(val_idx)
     N    = len(all_idx)
@@ -809,6 +823,7 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     te_fr  = tt(fresh[a:b])
     te_l   = labels[a:b]
     te_var = variant_label[a:b]
+    te_origin = origin_label[a:b]
 
     model.eval()
     with torch.no_grad():
@@ -819,6 +834,70 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
     tp, tn, fp, fn, mcc, auc, acc = compute_metrics(te_l, te_scores, args.theta)
     print(f"\n[TGN] Test  MCC={mcc:.3f}  AUROC={auc:.3f}  ACC={acc:.3f}  "
           f"TP={tp} TN={tn} FP={fp} FN={fn}")
+
+    # Per-variant detection MCC (TTW-only / BSHH-only / ME-only), on request:
+    # the headline Test/Val MCC above is the OVERALL pooled binary MCC (all
+    # attack families mixed into one confusion matrix vs. benign) -- it does
+    # NOT say how well the detector separates e.g. TTW-vs-benign specifically
+    # from BSHH-vs-benign or ME-vs-benign. This block reuses the SAME
+    # already-computed te_l/te_scores/te_var arrays from the test split
+    # above (no retraining, no dataset regen) -- for each family F, the MCC
+    # subset is (that family's attack rows) UNION (all benign rows), so each
+    # per-variant MCC answers "how well does the model separate THIS family
+    # from benign," independent of how it does on the other two families.
+    # variant_label encoding (set above): -1=benign, 0=TTW, 1=BSHH, 2=ME.
+    VARIANT_NAMES = {0: "TTW", 1: "BSHH", 2: "ME"}
+    benign_mask = (te_var == -1)
+    print("[TGN] Per-variant detection MCC (family-vs-benign, independent subsets):")
+    for variant_id, variant_name in VARIANT_NAMES.items():
+        fam_mask = (te_var == variant_id) | benign_mask
+        if fam_mask.sum() == 0 or (te_var == variant_id).sum() == 0:
+            print(f"  {variant_name}: no rows in test split — skipped")
+            continue
+        fam_l      = te_l[fam_mask]
+        fam_scores = te_scores[fam_mask]
+        f_tp, f_tn, f_fp, f_fn, f_mcc, f_auc, f_acc = compute_metrics(fam_l, fam_scores, args.theta)
+        print(f"  {variant_name}: MCC={f_mcc:.3f}  AUROC={f_auc:.3f}  ACC={f_acc:.3f}  "
+              f"TP={f_tp} TN={f_tn} FP={f_fp} FN={f_fn}  n_attack={int((te_var == variant_id).sum())}")
+
+    # Per-origin detection MCC (control-plane / data-plane, independent
+    # subsets, same construction as the per-variant block above): does the
+    # model separate controller-compromise attacks (S3/S4, scenarios
+    # {3,4,7,8,11,12}) from benign as well as it separates vehicle/RSU-origin
+    # attacks (S1/S2, scenarios {1,2,5,6,9,10}) from benign? Same reused
+    # te_l/te_scores, plus te_origin sliced above -- no retraining needed.
+    ORIGIN_NAMES = {0: "Data-plane (vehicle/RSU-origin, S1/S2)", 1: "Control-plane (controller-origin, S3/S4)"}
+    print("[TGN] Per-origin detection MCC (control-plane vs. data-plane, independent subsets):")
+    for origin_id, origin_name in ORIGIN_NAMES.items():
+        org_mask = (te_origin == origin_id) | benign_mask
+        if org_mask.sum() == 0 or (te_origin == origin_id).sum() == 0:
+            print(f"  {origin_name}: no rows in test split — skipped")
+            continue
+        org_l      = te_l[org_mask]
+        org_scores = te_scores[org_mask]
+        o_tp, o_tn, o_fp, o_fn, o_mcc, o_auc, o_acc = compute_metrics(org_l, org_scores, args.theta)
+        print(f"  {origin_name}: MCC={o_mcc:.3f}  AUROC={o_auc:.3f}  ACC={o_acc:.3f}  "
+              f"TP={o_tp} TN={o_tn} FP={o_fp} FN={o_fn}  n_attack={int((te_origin == origin_id).sum())}")
+
+    # Per-variant x per-origin detection MCC (the full cross, e.g. "TTW
+    # control-plane" / "TTW data-plane" / "BSHH control-plane" / ... / "ME
+    # data-plane" — 6 cells, each an independent (family AND origin) subset
+    # unioned with all benign rows). Finest-grained breakdown requested;
+    # reuses the exact same te_l/te_scores/te_var/te_origin arrays as the
+    # two coarser breakdowns above — still no retraining or dataset regen.
+    print("[TGN] Per-variant x per-origin detection MCC (finest-grained, independent subsets):")
+    for variant_id, variant_name in VARIANT_NAMES.items():
+        for origin_id, origin_name_short in ((0, "data-plane"), (1, "control-plane")):
+            cell_mask = ((te_var == variant_id) & (te_origin == origin_id)) | benign_mask
+            n_cell_attack = int(((te_var == variant_id) & (te_origin == origin_id)).sum())
+            if n_cell_attack == 0:
+                print(f"  {variant_name} ({origin_name_short}): no attack rows in test split — skipped")
+                continue
+            cell_l      = te_l[cell_mask]
+            cell_scores = te_scores[cell_mask]
+            c_tp, c_tn, c_fp, c_fn, c_mcc, c_auc, c_acc = compute_metrics(cell_l, cell_scores, args.theta)
+            print(f"  {variant_name} ({origin_name_short}): MCC={c_mcc:.3f}  AUROC={c_auc:.3f}  "
+                  f"ACC={c_acc:.3f}  TP={c_tp} TN={c_tn} FP={c_fp} FN={c_fn}  n_attack={n_cell_attack}")
 
     # Variant (TTW/BSHH/ME) classification head — Section 4.7 / metric M9.
     # Only meaningful on attack rows (variant_label >= 0; benign rows are -1

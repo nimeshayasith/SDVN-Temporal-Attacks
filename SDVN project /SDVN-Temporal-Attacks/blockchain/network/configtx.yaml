@@ -1,9 +1,14 @@
 # configtx.yaml — Fabric channel and endorsement policy for TETA-Guard
 #
 # SmartBFT ordering (Fabric 3.x, §7): OrdererType: BFT with 4 ordering nodes.
-# For f=1 Byzantine fault tolerance at the ordering layer: 3f+1 = 4 orderers.
-# Endorsement policy (peer layer): MAJORITY of 5 RSU peers = 3-of-5 endorsements,
-# independently tolerating 1 additional Byzantine peer (⌊(5-1)/3⌋ = 1).
+# The ordering-layer node count is an infrastructure choice, not derived from
+# the PDF's f=2 formula: f = floor((Peertotal-1)/3) governs Byzantine fault
+# tolerance among the 8 application/endorsing peers (5 RSU + 3 OBU), via
+# FaultToleranceF=2 in trust.go, not the SmartBFT orderer cluster size
+# (clarified 2026-07-29).
+# Endorsement policy (peer layer): MAJORITY of the 8-peer TetaGuardOrg
+# consortium (5 RSU + 3 OBU) = 5-of-8 endorsements, tolerating f =
+# ⌊(8-1)/3⌋ = 2 Byzantine peers, matching FaultToleranceF in trust.go.
 #
 # Requires Fabric 3.1 binaries:
 #   curl -sSL https://bit.ly/2ysbOFE | bash -s -- 3.1.0
@@ -106,7 +111,10 @@ Application: &ApplicationDefaults
 
 Orderer: &OrdererDefaults
   # SmartBFT (Byzantine Fault Tolerant) ordering — Fabric 3.x §7.
-  # 4 orderer nodes satisfy 3f+1 = 4 for f=1 Byzantine fault tolerance.
+  # 4 orderer nodes satisfy 3f+1 = 4 for f=1 Byzantine fault tolerance at the
+  # ordering layer. This node count is an infrastructure choice independent
+  # of the PDF's f=2, which governs the 8-peer application/endorsement
+  # layer (see FaultToleranceF in trust.go) — clarified 2026-07-29.
   # This replaces the etcdraft (crash-fault-tolerant) orderer used in Fabric 2.x.
   OrdererType: BFT
   # Global Addresses removed: Fabric 3.0's V3_0 channel capability (enabled
@@ -125,8 +133,22 @@ Orderer: &OrdererDefaults
     # SmartBFT consensus parameters (§7, Algorithm 4 ordering layer).
     RequestBatchMaxCount:      50
     RequestBatchMaxInterval:   20ms
-    RequestForwardTimeout:     2s
-    RequestComplainTimeout:    20s
+    # Fix (2026-07-29, real T_exec_fabric measurement debugging): the
+    # ORIGINAL RequestForwardTimeout=2s / RequestComplainTimeout=20s values
+    # were the dominant cost in every measured Fabric commit latency
+    # (10-20s observed per transaction), NOT the actual BFT consensus round
+    # itself -- live orderer log tracing (docker logs -f on all orderers
+    # during a real transaction) confirmed the entire
+    # processProposal->processPrepares->processCommits->decide->Deliver
+    # sequence completes in under 20ms once a non-leader orderer actually
+    # forwards the client's request to the leader; the multi-second delay
+    # was purely a non-leader orderer sitting on the request before its own
+    # OnRequestTimeout handler fired (observed baseline ~10s matched ~5
+    # internal retries at the old 2s forward timeout). Reduced by roughly 2
+    # orders of magnitude, still far above the <20ms observed real
+    # consensus cost, so this remains a safe/generous margin.
+    RequestForwardTimeout:     200ms
+    RequestComplainTimeout:    3s
     RequestAutoRemoveTimeout:  3m0s
     ViewChangeResendInterval:  5s
     ViewChangeTimeout:         20s

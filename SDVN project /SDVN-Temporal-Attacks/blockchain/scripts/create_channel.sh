@@ -14,7 +14,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NETWORK_DIR="$SCRIPT_DIR/../network"
 
 export FABRIC_CFG_PATH="$NETWORK_DIR"
-export PATH="$PATH:/home/sdvn_echo_topology/Group_33/teta-guard/fabric-samples/bin"
+# fabric-bin first: its configtxgen is Fabric 3.x (SmartBFT/ConsenterMapping-aware).
+# The Group_33 fabric-samples/bin configtxgen is v2.5.0 and predates BFT support,
+# so it must come after (used only for peer/osnadmin/cryptogen, not configtxgen).
+export PATH="/home/sdvn_echo_topology/fabric-bin:$PATH:/home/sdvn_echo_topology/Group_33/teta-guard/fabric-samples/bin"
 
 CHANNEL="teta-channel"
 CHANNEL_BLOCK="$NETWORK_DIR/channel-artifacts/${CHANNEL}.block"
