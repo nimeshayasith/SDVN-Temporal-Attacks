@@ -102,6 +102,52 @@ lucky combined-average pick. Scenarios 10 and 11 have pre-existing,
 threshold-independent gaps (structurally degenerate / fn=3) — flagged as
 separate open issues, not θ_LW calibration problems.
 
+**SUPERSEDED (2026-07-29) — re-calibrated for the 170m-patch w1-w9
+weights.** The θ_LW=0.05 result above was calibrated against the *old*
+w1-w9 weights (pre-170m-patch). Once w1-w9 were re-measured under the new
+ρ_max/δ_thresh formulas (§B below), θ_LW needed its own fresh sweep
+against the new weighted-score distribution — same rule this project has
+applied to every parameter whose input formula changed (θ_FS after each
+model swap, etc.).
+
+**Methodology**: full-range grid sweep `{0.00,...,1.00}` step 0.05
+(coarse) + targeted fine sweep, `--no_tgn=1` (isolates LW's own decision
+— without it, TGN's much stronger post-retrain performance completely
+masked θ_LW's effect: every coarse point gave an identical combined MCC
+regardless of θ_LW), `simTime=60`, `N_Vehicles=200`, `N_RSUs=64`(RSU
+scenarios)/`0`, `attack_percentage=40`, `RngRun=999`, individual
+scenarios 1-12 only (**scenario 13 dropped** — costs 30-65+ minutes per
+point for zero scoring benefit, since its output is a single blended
+tp/tn/fp/fn with no per-family breakdown; see §B below for the full
+reasoning). MCC computed directly from `PEM_EVENT_LOG`'s per-event
+`attack_label`/`alert_raised` (not `TGN_SUMMARY`'s `mcc`/`comb_mcc` —
+both broken under `--no_tgn=1`; see §3i of
+`TGN_HYPERPARAMETER_CALIBRATION.md` for the full explanation). Selection
+criterion **switched to maximize average MCC** (not worst-case) for
+θ_LW/µ specifically, per explicit instruction — tiebreak: highest θ
+among ties, not lowest.
+
+**Coarse result**: flat plateau avg_mcc=0.5605 at θ∈{0.00,0.05,0.10}
+(worst-case bottleneck sc5/BSHH-S1, mcc=-0.105), sharp drop to 0.3266 at
+0.15-0.20, continuing to decay with a small secondary bump at 0.40-0.45
+(avg=0.0608).
+
+**Fine sweep caught a real methodological trap**: (0.10,0.15) initially
+showed θ=0.12 at avg=0.6128 — apparently better than the whole coarse
+plateau — but this was an artifact: at θ=0.12, sc7 (BSHH-S3) and sc8
+(BSHH-S4) both collapsed to zero true positives (`tp=0` despite 14,000+
+real attack events, every one missed) — a genuine detection failure, not
+"no signal to measure" like ME-S1/S2's exclusion. Their MCC became
+undefined and got silently dropped from the average (n=8 instead of the
+correct n=10), hiding a total collapse and making θ=0.12 look like an
+improvement. Caught by comparing the reported `n=` scenario count
+between fine-sweep points and confirmed via same-seed re-run
+(reproducible, not noise).
+
+**Result: θ_LW = 0.11** — the honest, fully-10-scenario plateau value.
+θ=0.12 explicitly rejected. **Code updated**: `PEM_SCORE_THRESHOLD`
+(`routing.cc`) changed from 0.075 to **0.11**, rebuilt.
+
 ---
 
 ### 2. FS anomaly score threshold (θ_FS)
@@ -345,6 +391,47 @@ as an unexplained gap.** Investigated why this signature never fires
   *because* the reason it's unobserved is now a documented, understood
   structural property of the attack model — not an unexplored gap that
   happened to never come up.
+
+**SUPERSEDED (2026-07-29) — re-measured for the 170m-patch.** The
+table above was calibrated against the pre-patch ρ_max/δ_thresh/ME
+link-reality formulas (300m-based). Once those moved to
+`g_me_detect_range`(170m), the underlying signature-firing behavior
+they drive changed, so the precision evidence needed re-measuring —
+same methodology (Laplace-smoothed `(TP+1)/(TP+FP+2)`, normalized to
+sum to 1), against `simTime=60`, `N_Vehicles=200`, `N_RSUs=64`(RSU)/`0`,
+`attack_percentage=40`, `RngRun=999`, `--no_blockchain=1`, individual
+scenarios 1-12 (**scenario 13 excluded from this and all future
+LW-side measurement passes** — see note below).
+
+| # | Weight | Signature | Old value | **New value** | Note |
+|---|---|---|---|---|---|
+| 1 | w1 | TTW-S1 | 0.1121 | **0.1132** | stable |
+| 2 | w2 | TTW-S2 | 0.1236 | **0.1217** | stable |
+| 3 | w3 | TTW-S3 | 0.1253 | **0.1201** | stable |
+| 4 | w4 | BSHH-S1 | 0.1229 | **0.1103** | stable |
+| 5 | w5 | BSHH-S2 | 0.0796 | **0.1117** | **rose substantially** — no longer the bottleneck |
+| 6 | w6 | BSHH-S3 | 0.0627 | **0.0609** | still the Laplace-smoothed neutral prior; structural non-firer finding above still applies unchanged |
+| 7 | w7 | ME-S1 | 0.1253 | **0.1206** | stable |
+| 8 | w8 | ME-S2 | 0.1237 | **0.1203** | stable |
+| 9 | w9 | ME-S3 | 0.1248 | **0.1212** | stable |
+
+BSHH-S2's rise (0.0796→0.1117, was the second-lowest/"known bottleneck",
+now solidly mid-pack) is consistent with the 170m formulas producing
+more geometrically-accurate detection conditions. The ME family also
+converged much tighter (0.1203-0.1212 vs. the old 0.1237-0.1253 spread)
+— all three ME signatures now share the same detection range, reducing
+inter-signature precision variance. **Code updated**: `PEM_WEIGHTS[9]`
+(`routing.cc`) changed to the new values, rebuilt.
+
+**Scenario 13 exclusion note**: live-measured this session to cost
+30-65+ minutes per run (all 12 attack families running concurrently
+inherits TTW-S1's own unavoidable Stage-0-bypass-by-construction cost —
+see `CALIBRATION_VALUES.md` — multiplied across every family) vs.
+single-digit minutes for any individual scenario, while contributing
+zero usable evidence: its `PEM_EVENT_LOG` mixes all 12 attack types'
+events together with no per-family attribution, so precision can't be
+attributed back to any single signature from it anyway. Dropped from
+this measurement and all downstream θ_LW/µ sweeps this session.
 
 ---
 
@@ -591,6 +678,33 @@ calibration pass).
 this range justifies moving it in either direction; the scenario that
 could show a real signal (ME-S1) is already perfect across the whole
 tested range.
+
+**RECONFIRMED (2026-07-29) against the 170m-patch ρ_max formula.**
+Since µ's own multiplier sits directly inside ρ_max = `(1+µ)·2·r_comm·λ̂(t)`,
+and `r_comm` in that formula moved from 300m to `g_me_detect_range`(170m)
+this session, the old finding above (measured against the pre-patch
+formula) needed independent re-verification, not just an assumption
+that "flat before" implies "flat after."
+
+Re-swept the full range `{0.00,...,1.00}` step 0.05 (21 points, finer
+than the original 8-point sweep), directly against ME-S1 (sc9) and
+ME-S2 (sc10) — not excluded this time, scored directly — with
+`--no_tgn=1 --no_blockchain=1 --no_crypto=1 --no_lbs=1` (same
+Stage-0-bypass rationale as the original sweep, plus stripping TGN,
+blockchain, and ME-S3's own signature to isolate ME-S1's ρ_max as
+cleanly as possible), `simTime=60`, `attack_percentage=40`, `RngRun=999`.
+
+**Result: still completely flat.** sc9 (ME-S1) shows identical
+MCC=0.894 (`tp=16125, tn=4, fp=0, fn=1`) at all 21 values from 0.00 to
+1.00 — zero differentiation, even finer-grained and under stricter
+isolation than the original sweep. sc10 (ME-S2) shows undefined MCC
+throughout (`tp=0` always) — expected, its own signature (path-count,
+sig[7]) was never µ-gated.
+
+**Decision unchanged: µ = 0.20.** Independently reconfirmed against the
+new formula — this isn't a stale finding being carried forward
+unverified, it was re-measured from scratch and gives the identical
+verdict. No code change (`PEM_ME_TOLERANCE_MU` was already 0.20).
 
 ---
 

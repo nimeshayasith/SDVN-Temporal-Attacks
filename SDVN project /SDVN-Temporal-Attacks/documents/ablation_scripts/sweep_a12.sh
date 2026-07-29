@@ -11,7 +11,7 @@
 # no new code needed, just wider scenario coverage.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_sc1_12_capped.bin"
+TGN="$HOME/tgn_weights_170m_dim192_pw0.3191_seed5.bin"
 OUT="$HOME/ablation_sweep/a12"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -25,7 +25,7 @@ for SC in 3 4 7 8 11 12; do
     echo "=== a12 scenario=${SC} rinj=${X} ==="
     ISO="$OUT/sc${SC}_rinj${X}"
     mkdir -p "$ISO"
-    ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=60 --rinj=${X} --RngRun=1 --no_divergence_detector=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+    ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=60 --rinj=${X} --RngRun=1 --no_divergence_detector=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
     rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
   done
 done
