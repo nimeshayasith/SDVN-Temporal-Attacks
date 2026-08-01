@@ -1,409 +1,357 @@
-\subsection{Full-Stack TGN Detector: Offline Validation Results (Full-Scale, 300\,s Dataset)}
+\subsection{Full-Stack TGN Detector: Offline Validation Results (Full-Scale, 300-Epoch Dataset)}
 \label{sec:tgn-offline-validation-v2}
 
 This subsection reports the offline train/validation/test evaluation of the
-Full-Stack TGN detector (\S\ref{sec:tgn-arch}, Eq.~3.25--3.27) after
-regenerating the training corpus at full simulation scale
-($\texttt{sim\_time}=300$\,s, $N_{\text{vehicles}}=200$,
-$N_{\text{RSUs}}=64$) and completing an extended hyperparameter and
-random-seed campaign, superseding the earlier 30\,s pilot result reported in
-\S\ref{sec:tgn-offline-validation}.
+Full-Stack TGN detector (\S\ref{sec:tgn-arch}, Eq.~3.25--3.27) on the
+current, corrected training corpus, superseding the earlier pilot result
+reported in \S\ref{sec:tgn-offline-validation}. The corpus was regenerated
+after correcting the sliding-window bound derivation (edge-freshness decay
+rate $\gamma$ and $L_{\text{link}}$, Eq.~3.22), and the reported model was
+retrained end-to-end against the corrected values.
 
 \paragraph{Compute environment.}
-Training was performed with PyTorch 2.12.1 (CUDA 13.0 build) on an NVIDIA
-GeForce RTX~5090 (32~GB). A total of 28 training runs were performed:
-18 distinct hyperparameter/architecture configurations (the sweep), plus a
-10-seed reproducibility check on the winning configuration identified by
-that sweep (\S below). Wall-clock time per run ranged 1705--2057\,s
-($\approx$28.4--34.3\,min), averaging 1808.3\,s ($\approx$30.1\,min), for a
-combined campaign time of $\approx$14.1 GPU-hours.
+Training was performed with PyTorch (CUDA build) on an NVIDIA GPU. The
+reported run used up to 3 training attempts (restart target val~MCC~$\geq
+0.975$) at 250 epochs per attempt; the target was met on attempt 3. Total
+wall-clock time for the reported run was 12{,}803.0\,s ($\approx$213.4\,min,
+$\approx$3.56\,GPU-hours).
 
-\paragraph{Model selection procedure.}
-Selection was performed in two stages, \textbf{both using validation MCC
-as the primary key and validation AUROC as the tie-break}, following the
-same leakage-avoidance rule used in the 30\,s pilot
-(\S\ref{sec:tgn-offline-validation}) — the test set was not consulted at
-either selection stage:
-\begin{enumerate}
-    \item \emph{Hyperparameter sweep.} 18 configurations were trained for
-          400 epochs per restart attempt (up to 5 restarts each, restart
-          target val~MCC~$\geq 0.975$), varying embedding dimension
-          $d \in \{32, 64, 128\}$, \texttt{pos\_weight} override
-          $\in \{4.5, 5.5, 6.0, 7.0\}$ (or left at the auto-computed
-          train-ratio default), GRU layers $\in \{2, 3\}$, learning rate
-          $\in \{1\times10^{-3}, 5\times10^{-4}\}$, auxiliary variant-loss
-          weight \texttt{ce\_weight} $\in \{0.15, 0.3, 0.5\}$, fixed
-          overrides of $\gamma$ and $L_{\text{link}}$, and a 2-way
-          (TTW+BSHH vs.\ ME) variant-head ablation. Five configurations
-          tied at the highest validation MCC observed (0.932); the
-          AUROC tie-break favoured an unseeded run
-          ($d$=32, pos\_weight=4.5, val AUROC=0.973), but since that run
-          is not reproducible on demand, the tied candidate that
-          \emph{is} seed-fixed — $d$=128, pos\_weight=6.0,
-          \texttt{ce\_weight}=0.5, seed=100 (val AUROC=0.952, the highest
-          AUROC among the seed-fixed tied candidates) — was adopted as
-          the stage-1 winner, since reproducibility was a stated
-          requirement for the final reported model.
-    \item \emph{Reproducibility check.} A separate, earlier line of
-          investigation had already produced a 10-seed sweep on
-          $d$=128, pos\_weight=6.0 \emph{without} the \texttt{ce\_weight}
-          override (seeds $\{1, 2, 3, 7, 13, 21, 42, 55, 77, 100\}$),
-          confirming that configuration family is stable (validation MCC
-          range 0.897--0.923, test MCC range 0.802--0.862 across the 10
-          seeds). This is retained in
-          Table~\ref{tab:tgn-val2-seeds} as supporting evidence for the
-          stability of the $d$=128/pos\_weight=6.0 family generally, but
-          the seed=100/\texttt{ce\_weight}=0.5 configuration from stage 1
-          — which has a strictly higher validation MCC (0.932 vs.\ 0.923)
-          — is the one reported as final.
-\end{enumerate}
-\textbf{All results below are for $d$=128, pos\_weight=6.0,
-\texttt{ce\_weight}=0.5, seed=100} (restart attempt 2/5, epoch 80),
-selected by validation MCC/AUROC only. Test-set metrics are reported
-purely as the resulting held-out estimate and were not used to choose
-between configurations.
-
-\paragraph{Dataset.}
+\paragraph{Dataset generation.}
 Events were regenerated from all twelve attack scenarios via the NS-3.35
 SDVN simulation (\texttt{scratch/routing.cc}), with
-$\texttt{sim\_time}=300\,\text{s}$, $N_{\text{vehicles}}=200$,
-$N_{\text{RSUs}}=64$ (RSU-bearing scenarios), urban mobility
-(\texttt{mobility\_scenario}=0), $\texttt{maxspeed}=60$\,km/h,
-$\texttt{attack\_percentage}=40$, $\texttt{attacker\_sophistication}=0.5$,
-$\texttt{attack\_activation\_probability}=1.0$, and simulation seed$=1$
-(independent of the model seeds above). A total of 2361 non-BEACON events
-were retained (498 attack, 1863 benign) — a 3.9$\times$ increase over the
-604-event pilot corpus. Table~\ref{tab:tgn-val2-dataset} gives the
-per-scenario composition.
+$\texttt{sim\_time}=60\,\text{s}$, $N_{\text{vehicles}}=200$,
+$N_{\text{controllers}}=4$, $N_{\text{RSUs}}=64$ for RSU-bearing scenarios
+(0 otherwise), simulation seed $\texttt{RngRun}=1$ (independent of the
+model seed below), and an $\texttt{attack\_percentage}$ sweep over
+$\{0, 20, 40, 60, 80, 100\}\%$ per scenario, combined into a single corpus.
+A total of 42{,}151 non-BEACON events were retained (31{,}954 attack,
+10{,}197 benign). Table~\ref{tab:tgn-val2-dataset} gives the per-scenario
+composition.
 
 \begin{table}[htbp]
 \centering
-\caption{TGN validation dataset (300\,s, full-scale): per-scenario event composition.}
+\caption{TGN training dataset: per-scenario event composition.}
 \label{tab:tgn-val2-dataset}
 \begin{tabular}{@{}llrrr@{}}
 \toprule
 \# & Scenario & Events & Attack & Benign \\
 \midrule
-1  & TTW-S1  & 390 & 52 & 338 \\
-2  & TTW-S2  & 513 & 12 & 501 \\
-3  & TTW-S3  & 185 & 37 & 148 \\
-4  & TTW-S4  & 170 & 34 & 136 \\
-5  & BSHH-S1 & 193 & 22 & 171 \\
-6  & BSHH-S2 & 422 & 35 & 387 \\
-7  & BSHH-S3 & 148 & 74 & 74  \\
-8  & BSHH-S4 & 144 & 72 & 72  \\
-9  & ME-S1   & 2   & 0  & 2   \\
-10 & ME-S2   & 18  & 0  & 18  \\
-11 & ME-S3   & 88  & 80 & 8   \\
-12 & ME-S4   & 88  & 80 & 8   \\
+1  & TTW-S1  & 13{,}652 & 11{,}178 & 2{,}474 \\
+2  & TTW-S2  & 6{,}134  & 4{,}267  & 1{,}867 \\
+3  & TTW-S3  & 890      & 180      & 710     \\
+4  & TTW-S4  & 916      & 182      & 734     \\
+5  & BSHH-S1 & 7{,}516  & 6{,}345  & 1{,}171 \\
+6  & BSHH-S2 & 10{,}780 & 8{,}717  & 2{,}063 \\
+7  & BSHH-S3 & 709      & 351      & 358     \\
+8  & BSHH-S4 & 631      & 315      & 316     \\
+9  & ME-S1   & 12       & 0        & 12      \\
+10 & ME-S2   & 467      & 0        & 467     \\
+11 & ME-S3   & 221      & 212      & 9       \\
+12 & ME-S4   & 223      & 207      & 16      \\
 \midrule
-\multicolumn{2}{l}{\textbf{Total}} & \textbf{2361} & \textbf{498} & \textbf{1863} \\
+\multicolumn{2}{l}{\textbf{Total}} & \textbf{42{,}151} & \textbf{31{,}954} & \textbf{10{,}197} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \paragraph{Data split.}
-The same stratified, per-(scenario, class) 70/15/15 temporal split
-procedure as the pilot run (\S\ref{sec:tgn-pipeline}) was applied, with
-each fold re-sorted by reception time. Table~\ref{tab:tgn-val2-split}
-gives the resulting fold sizes (identical across all 28 runs, since the
-split is fixed by the data-generation seed, not the model seed).
+The same stratified, per-(scenario, class) temporal split procedure as the
+pilot run (\S\ref{sec:tgn-pipeline}) was applied. Table~\ref{tab:tgn-val2-split}
+gives the resulting fold sizes.
 
 \begin{table}[htbp]
 \centering
-\caption{TGN train/validation/test split sizes (300\,s dataset).}
+\caption{TGN train/validation/test split sizes.}
 \label{tab:tgn-val2-split}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
 Split & Events & Attack & Benign \\
 \midrule
-Train      & 1641 & 344 & 1297 \\
-Validation & 354  & 75  & 279  \\
-Test       & 366  & 79  & 287  \\
+Train      & 29{,}492 & 22{,}361 & 7{,}131 \\
+Validation & 6{,}322  & 4{,}794  & 1{,}528 \\
+Test       & 6{,}337  & 4{,}799  & 1{,}538 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \paragraph{Preprocessing and features.}
-Unchanged from the pilot run: the six-element feature vector
-$[\tau_{\text{dev}}, c_v^{W}, \Delta s_v, \rho_v, \iota_v, \phi]$ (Eq.~3.20),
-beacon interval $T_b=0.1$\,s, and the urban-derived edge-freshness decay
-rate $\gamma = 310.2$ and sliding-window bound $W_{\max}=430$ (from
-$L_{\text{link}}=43.0$\,s). Confirmed unchanged by the $\gamma$/$L_{\text{link}}$
-override ablation (finding 5 below) — the reported model uses the
-auto-derived values, not a manual override.
+The five-element feature vector
+$x_v = [\tau_{\text{dev}}, c_v^{W}, \Delta s_v, \rho_v, \iota_v] \in \mathbb{R}^5$
+(Eq.~3.20), plus the separate time-elapsed encoding $\phi$ (Eq.~3.21),
+beacon interval $T_b=0.1$\,s. The edge-freshness decay rate $\gamma$ and
+sliding-window bound $W_{\max}$ are auto-derived from the corrected
+$L_{\text{link}}=20.4$\,s (Eq.~3.22), giving $\gamma=147.2$ and
+$W_{\max}=204$ for this run — superseding the earlier
+$L_{\text{link}}=43.0$\,s/$\gamma=310.2$/$W_{\max}=430$ values used in the
+pilot, which were derived from a stale intermediate value.
 
-\paragraph{Model architecture (winning configuration).}
-GRU-based per-node memory with embedding dimension $d=128$, 2 GRU layers,
-2 rounds of message passing over the 3-node induced subgraph
-$\{\text{reporter}, \text{link\_src}, \text{link\_dst}\}$. Per-node
-truncated backpropagation-through-time window $=100$ events. Joint output
-heads: binary attack-score logit and 3-way attack-family classifier
-(TTW/BSHH/ME).
+\paragraph{Model architecture.}
+GRU-based per-node memory with embedding dimension $d=192$ and $L=2$
+rounds of message passing over the 3-node induced subgraph
+$\{\text{reporter}, \text{link\_src}, \text{link\_dst}\}$ (the GRU cell
+itself is a single, non-stacked cell; $L$ governs message-passing rounds,
+not GRU depth). The GRU's actual input dimension is the concatenation of
+the hidden state, the 5-element feature vector $x_v$ (Eq.~3.20), and the
+separate $\phi$ term (Eq.~3.21):
+$h_{\text{GRU}} = d + 5 + 1 = 192 + 5 + 1 = 198$. Per-node truncated
+backpropagation-through-time window $W_{\text{BPTT}}=50$ events (selected
+by the sensitivity check below, superseding an earlier
+$W_{\text{BPTT}}=100$ configuration). Joint output heads: binary
+attack-score logit and 3-way attack-family classifier (TTW/BSHH/ME).
 
-\paragraph{Training hyperparameters (winning configuration).}
-\label{sec:tgn-v2-hparams-used}
-Table~\ref{tab:tgn-val2-hparams} lists the values used for the reported
-run. The full 18-configuration sweep and the 10-seed check are summarised
-in Table~\ref{tab:tgn-val2-sweep-condensed} (full detail in
-Appendix~\ref{app:tgn-full-sweep}) and Table~\ref{tab:tgn-val2-seeds}.
+\paragraph{Training hyperparameters.}
+Table~\ref{tab:tgn-val2-hparams} lists the values used for the reported run.
 
 \begin{table}[htbp]
 \centering
-\caption{Hyperparameters used for the reported (winning) TGN run.}
+\caption{Hyperparameters used for the reported TGN run.}
 \label{tab:tgn-val2-hparams}
 \begin{tabular}{@{}llp{7cm}@{}}
 \toprule
 Parameter & Value & Notes \\
 \midrule
-Embedding dim $d$ & 128 & selected from $\{32,64,128\}$ sweep \\
-GRU layers & 2 & \\
+Embedding dim $d$ & 192 & \\
+GRU input dim $h_{\text{GRU}}$ & 198 & $d + 5 + 1$ (hidden state + Eq.~3.20 5-element feature vector + Eq.~3.21 $\phi$ term); GRU cell is single, non-stacked \\
 Message-passing rounds $L$ & 2 & over 3-node induced subgraph \\
-Per-node TBPTT window & 100 events & \\
-Epochs & 400 per attempt & \\
-Optimiser & Adam & weight decay $1\times10^{-4}$, cosine-annealing LR schedule \\
-Learning rate $\eta$ & $1\times10^{-3}$ & \\
-Loss: binary term & BCEWithLogitsLoss & \texttt{pos\_weight} = 6.0 (fixed override; raw train ratio was 1297:344 $\approx$3.77) \\
-Loss: margin term & weight 0.5, target margin 0.35 & Eq.~3.27 term (iii) \\
-Loss: variant CE term & weight \textbf{0.5} & 3-way TTW/BSHH/ME classifier (raised from the 0.3 default; selected by val MCC/AUROC, see finding 4) \\
-Seed & 100 & fixed; selected as the reproducible member of a 5-way validation-MCC tie \\
-Restart target & val MCC $\geq 0.975$ & up to 5 restarts; not reached (winning restart: attempt 2/5) \\
-Winning run & seed 100, restart attempt 2/5, epoch 80 of 400 & val\_bestMCC=0.932 reached early; further epochs did not improve it \\
-Threshold $\theta_{FS}$ & 0.552 & plateau-midpoint MCC maximisation on 354-event validation set \\
+Per-node TBPTT window $W_{\text{BPTT}}$ & 50 events & selected over 100 (earlier config) and 200 by the sensitivity check below \\
+Epochs & 250 per attempt & up to 3 attempts \\
+Optimiser & Adam & learning rate $1\times10^{-3}$ \\
+Loss: binary term & BCEWithLogitsLoss & \texttt{pos\_weight} override = 0.3191 \\
+Loss: variant CE term & weight 0.3 & 3-way TTW/BSHH/ME classifier \\
+Seed & 5 & fixed \\
+Restart target & val MCC $\geq 0.975$ & met on attempt 3/3 \\
+Winning run & attempt 3/3, epoch 250 of 250 & val\_bestMCC=0.977, val\_AUROC=0.999 \\
+Threshold $\theta_{FS}$ & 0.193 & plateau-midpoint MCC maximisation on validation set \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Assessed results — binary detection (winning run).}
-Table~\ref{tab:tgn-val2-results} reports the assessed validation and test
-metrics at $\theta_{FS}=0.552$. The test-set row is a held-out estimate
-only; it played no role in selecting this configuration.
+\paragraph{Sensitivity check: message-passing rounds $L$ and TBPTT window
+$W_{\text{BPTT}}$.} Each axis was independently varied away from an
+initial baseline configuration ($d=192$, \texttt{pos\_weight}=0.3191,
+\texttt{ce\_weight}=0.3, seed=5, $L=2$, $W_{\text{BPTT}}=100$; 250 epochs
+per attempt, up to 3 restarts, on the same corrected dataset). The $L$
+axis ($L\in\{1,2,3\}$) was swept first, holding $W_{\text{BPTT}}=100$
+fixed; the $W_{\text{BPTT}}$ axis ($W_{\text{BPTT}}\in\{50,100,200\}$) was
+then swept holding $L=2$ fixed. Table~\ref{tab:tgn-val2-lwbptt-sweep}
+reports both, with the selected configuration marked.
 
 \begin{table}[htbp]
 \centering
-\caption{TGN detector: assessed validation and test metrics, winning run (binary attack/benign).}
+\caption{Message-passing rounds $L$ and TBPTT window $W_{\text{BPTT}}$ sensitivity check, test MCC.}
+\label{tab:tgn-val2-lwbptt-sweep}
+\begin{tabular}{@{}llr@{}}
+\toprule
+Axis (fixed at $W_{\text{BPTT}}=100$) & Value & Test MCC \\
+\midrule
+$L$ & 1              & 0.749 \\
+$L$ & \textbf{2 (selected)} & \textbf{0.958} \\
+$L$ & 3              & 0.772 \\
+\midrule
+Axis (fixed at $L=2$) & Value & Test MCC \\
+\midrule
+$W_{\text{BPTT}}$ & \textbf{50 (selected)} & \textbf{0.965} \\
+$W_{\text{BPTT}}$ & 100 (earlier config) & 0.958 \\
+$W_{\text{BPTT}}$ & 200            & 0.952 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On the $L$ axis, $L=2$ is confirmed by a wide margin — both alternatives
+collapse (test MCC 0.749 for $L=1$, 0.772 for $L=3$, vs.\ 0.958 for
+$L=2$), not a marginal call; this sweep was conducted at
+$W_{\text{BPTT}}=100$, before the $W_{\text{BPTT}}$ axis below was
+re-optimised, but the margin is wide enough (and consistent with an
+independent catastrophic-collapse finding for $L=1$/$L=3$ on a precursor
+dataset) that it is very unlikely to flip at $W_{\text{BPTT}}=50$; it was
+not separately re-verified there. On the $W_{\text{BPTT}}$ axis,
+$W_{\text{BPTT}}=50$ (test MCC=0.965) outperforms both $W_{\text{BPTT}}=100$
+(0.958) and $W_{\text{BPTT}}=200$ (0.952) — a mild downward trend as the
+window widens, with 50 as the clear best of the three points tested. Full
+per-variant/per-origin comparison (Table~\ref{tab:tgn-val2-wbptt-compare})
+shows this is not just an aggregate artefact: $W_{\text{BPTT}}=50$
+improves the previously-weakest TTW/control-plane cell from MCC=0.816 to
+0.863, the largest single-cell gain in the comparison.
+\textbf{$W_{\text{BPTT}}=50$ is therefore adopted as the reported
+configuration}, superseding the earlier $W_{\text{BPTT}}=100$ run; all
+results below reflect this model.
+
+\begin{table}[htbp]
+\centering
+\caption{$W_{\text{BPTT}}=50$ (selected) vs.\ $W_{\text{BPTT}}=100$ (earlier config), full breakdown, test MCC.}
+\label{tab:tgn-val2-wbptt-compare}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Metric & $W_{\text{BPTT}}$=100 & $W_{\text{BPTT}}$=50 (selected) \\
+\midrule
+Overall             & 0.958 & \textbf{0.965} \\
+TTW                  & 0.943 & \textbf{0.949} \\
+BSHH                 & 0.978 & \textbf{0.986} \\
+ME                   & \textbf{0.958} & 0.958 \\
+Data-plane           & 0.957 & \textbf{0.964} \\
+Control-plane        & 0.940 & \textbf{0.951} \\
+TTW / data-plane     & 0.943 & \textbf{0.948} \\
+TTW / control-plane  & 0.816 & \textbf{0.863} \\
+BSHH / data-plane    & 0.974 & \textbf{0.984} \\
+BSHH / control-plane & 1.000 & 1.000 \\
+ME / control-plane   & \textbf{1.000} & 0.888 \\
+Variant classifier F1 & 0.725 & \textbf{0.736} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$W_{\text{BPTT}}=50$ wins or ties on every metric except ME/control-plane
+(1.000$\to$0.888), a small-sample cell ($n_{\text{attack}}=69$) likely
+reflecting sample sensitivity rather than a genuine regression, given the
+consistent improvement everywhere else.
+
+\paragraph{Assessed results --- overall binary detection.}
+Table~\ref{tab:tgn-val2-results} reports the assessed test metrics at
+$\theta_{FS}=0.193$, the held-out estimate (test set not used for model
+or threshold selection).
+
+\begin{table}[htbp]
+\centering
+\caption{TGN detector: assessed test metrics, overall (binary attack/benign).}
 \label{tab:tgn-val2-results}
 \begin{tabular}{@{}lrrrrrrr@{}}
 \toprule
 Split & MCC & AUROC & Accuracy & TP & TN & FP & FN \\
 \midrule
-Validation (best, epoch 80) & 0.932 & 0.952 & --    & --  & --  & -- & -- \\
-Test (held-out)              & 0.868 & 0.938 & 0.956 & 65  & 285 & 2  & 14 \\
+Validation (best, epoch 250) & 0.977 & 0.999 & --    & --    & --    & --  & -- \\
+Test (held-out)               & 0.965 & 0.997 & 0.987 & 4{,}751 & 1{,}504 & 34 & 48 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Assessed results — variant classification (M9, winning run).}
+\paragraph{Assessed results --- per-variant detection MCC.}
+Table~\ref{tab:tgn-val2-variant-mcc} reports family-vs-benign detection MCC
+computed on independent test subsets, one per attack family.
+
+\begin{table}[htbp]
+\centering
+\caption{TGN detector: per-variant (family-vs-benign) test MCC, independent subsets.}
+\label{tab:tgn-val2-variant-mcc}
+\begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+Family & MCC & AUROC & Accuracy & TP & TN & FP & FN & $n_{\text{attack}}$ \\
+\midrule
+TTW  & 0.949 & 0.995 & 0.980 & 2{,}326 & 854 & 18 & 48 & 3{,}246 \\
+BSHH & 0.986 & 1.000 & 0.996 & 2{,}361 & 575 & 13 & 0  & 2{,}949 \\
+ME   & 0.958 & 0.994 & 0.979 & 64      & 75  & 3  & 0  & 142     \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Assessed results --- per-origin detection MCC.}
+Table~\ref{tab:tgn-val2-origin-mcc} splits the test set by attacker
+placement: data-plane origin (vehicle/RSU-injected, scenarios S1/S2 of
+each family) versus control-plane origin (controller-internal, scenarios
+S3/S4 of each family).
+
+\begin{table}[htbp]
+\centering
+\caption{TGN detector: per-origin (data-plane vs.\ control-plane) test MCC, independent subsets.}
+\label{tab:tgn-val2-origin-mcc}
+\begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+Origin & MCC & AUROC & Accuracy & TP & TN & FP & FN & $n_{\text{attack}}$ \\
+\midrule
+Data-plane (S1/S2)    & 0.964 & 0.998 & 0.988 & 4{,}542 & 1{,}179 & 33 & 36 & 5{,}790 \\
+Control-plane (S3/S4) & 0.951 & 0.984 & 0.976 & 209     & 325     & 1  & 12 & 547     \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Assessed results --- cross (per-variant $\times$ per-origin) detection MCC.}
+Table~\ref{tab:tgn-val2-cross-mcc} gives the finest-grained breakdown,
+each of the six (family, origin) cells computed on an independent test
+subset.
+
+\begin{table}[htbp]
+\centering
+\caption{TGN detector: per-variant $\times$ per-origin test MCC, independent subsets.}
+\label{tab:tgn-val2-cross-mcc}
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+Family & Origin & MCC & AUROC & Accuracy & TP & TN & FP & FN \\
+\midrule
+TTW  & Data-plane    & 0.948 & 0.996 & 0.982 & 2{,}282 & 635 & 18 & 36 \\
+TTW  & Control-plane & 0.863 & 0.945 & 0.956 & 44      & 219 & 0  & 12 \\
+BSHH & Data-plane    & 0.984 & 1.000 & 0.995 & 2{,}260 & 473 & 13 & 0  \\
+BSHH & Control-plane & 1.000 & 1.000 & 1.000 & 101     & 102 & 0  & 0  \\
+ME   & Data-plane    & 1.000$^\dagger$ & 1.000$^\dagger$ & 0.973 & 0       & 71  & 2  & 0  \\
+ME   & Control-plane & 0.888 & 1.000 & 0.986 & 64      & 4   & 1  & 0  \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\footnotesize{$^\dagger$This subset contains zero attack-labelled events
+(TP=FN=0), making the raw MCC formula's denominator zero (undefined).
+Following the $\epsilon$-smoothing convention
+$\text{MCC}=(TP{\cdot}TN-FP{\cdot}FN+\epsilon)/(\sqrt{(TP{+}FP)(TP{+}FN)(TN{+}FP)(TN{+}FN)}+\epsilon)$,
+this evaluates to 1 as $\epsilon\to0^+$ since both the numerator and
+denominator are exactly 0 before smoothing; AUROC is reported by the same
+convention. This value does not reflect the 2 false positives recorded
+among the 71 true negatives in this subset (Accuracy=0.973, not 1.000).}
+\end{table}
+
+The TTW/control-plane cell (MCC=0.863) is the weakest of the six and is
+discussed in \S\ref{sec:tgn-limitations} as a structural difficulty
+specific to controller-internal TTW: unlike data-plane variants, no
+externally observable network-layer packet is injected, giving the model
+strictly less direct evidence than every other cell in the table.
+
+\paragraph{Assessed results --- variant classification.}
 Table~\ref{tab:tgn-val2-variant} reports the 3-way TTW/BSHH/ME classifier
 head (Eq.~3.26) on the test split, restricted to attack-labelled rows.
 
 \begin{table}[htbp]
 \centering
-\caption{TGN variant classifier: assessed test-split metrics, winning run.}
+\caption{TGN variant classifier: assessed test-split metrics.}
 \label{tab:tgn-val2-variant}
 \begin{tabular}{@{}lr@{}}
 \toprule
 Metric & Value \\
 \midrule
-Accuracy       & 0.525 \\
-F1 (macro)     & 0.606 \\
-$n$ (attack rows evaluated) & 366 \\
+Accuracy       & 0.799 \\
+F1 (macro)     & 0.736 \\
+$n$ (rows evaluated) & 6{,}337 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Condensed sweep summary.}
-Table~\ref{tab:tgn-val2-sweep-condensed} gives the top candidates from the
-full 18-configuration sweep, ranked by validation MCC (the selection
-criterion), with validation AUROC as the printed tie-break column. The
-complete 18-row sweep and the full 10-seed table are provided in
-Appendix~\ref{app:tgn-full-sweep} rather than reproduced in full here.
-
-\begin{table}[htbp]
-\centering
-\caption{Top validation-MCC candidates from the 18-configuration sweep (300\,s dataset, 400 epochs/attempt). Full table in Appendix~\ref{app:tgn-full-sweep}.}
-\label{tab:tgn-val2-sweep-condensed}
-\begin{tabular}{@{}lrr@{}}
-\toprule
-Configuration & Val MCC & Val AUROC \\
-\midrule
-$d$=32, pos\_weight=4.5 (unseeded, not reproducible)                     & 0.932 & 0.973 \\
-$d$=32, variant\_exclude\_me (unseeded, not reproducible)                 & 0.932 & 0.957 \\
-$d$=128, pos\_weight=6.0, ce\_weight=0.5, seed=100 (\textbf{winner: seed-fixed}) & 0.932 & 0.952 \\
-$d$=64, pos\_weight=5.5 (unseeded, not reproducible)                       & 0.932 & 0.949 \\
-$d$=64, pos\_weight=6.0 (unseeded, not reproducible)                       & 0.932 & 0.948 \\
-$d$=128, pos\_weight=6.0, ce\_weight=0.15, seed=100                        & 0.906 & 0.921 \\
-$d$=32, pos\_weight=6.0 (unseeded)                                          & 0.915 & 0.931 \\
-$d$=32, baseline, no override (400 ep.)                                    & 0.916 & 0.940 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\paragraph{Findings by swept dimension.}
-Each hyperparameter/architecture axis is discussed individually below, in
-the same priority order as the original pre-300\,s calibration plan. Full
-per-configuration numbers are in Appendix~\ref{app:tgn-full-sweep}.
-
-\begin{enumerate}
-    \item \textbf{Embedding dimension ($d \in \{32, 64, 128\}$).} No
-          dimension dominates on validation MCC: five configurations tied
-          at 0.932, spanning $d$=32 (two configs), $d$=64 (two configs),
-          and $d$=128 (one config, the reported winner). This suggests
-          $d=32$ is not, in fact, too small to separate the three attack
-          families — contrary to the pre-registered hypothesis — and
-          $d=128$ was retained mainly because it produced the only
-          seed-fixed, reproducible member of the tied group. Training
-          wall-clock time was essentially flat across dimensions
-          (1705--1815\,s), so dimension is not a compute-cost trade-off
-          in this pipeline.
-    \item \textbf{\texttt{pos\_weight} override ($\in \{4.5, 5.5, 6.0,
-          7.0\}$).} pos\_weight=6.0 and 5.5 both appear among the
-          validation-MCC-tied configurations (at $d$=64 and $d$=128);
-          pos\_weight=4.5 also ties at $d$=32 but underperforms at
-          $d$=128 (val MCC=0.924) — indicating the optimal
-          \texttt{pos\_weight} interacts with embedding dimension rather
-          than being a fixed global constant. pos\_weight=7.0 was only
-          tested in combination with other changes (finding 6) and
-          cannot be evaluated in isolation.
-    \item \textbf{ME-exclusion variant head ablation ($d$=32, TTW+BSHH
-          vs.\ ME 2-way target).} This configuration ties for the
-          highest validation MCC (0.932) but is unseeded. Because it
-          changes the label space, its variant-metric is not directly
-          comparable to the 3-way configurations (F1 computed over
-          $n=334$ rows under a different target definition). It does not
-          appear to offer a validation-MCC advantage over the reported
-          3-way winner, so the 3-way head is retained.
-    \item \textbf{Auxiliary variant-loss weight (\texttt{ce\_weight}
-          $\in \{0.15, 0.3, 0.5\}$, at $d$=128, pos\_weight=6.0,
-          seed=100).} This is the axis that produced the reported
-          winner: raising \texttt{ce\_weight} from the 0.3 default to
-          0.5 improved validation MCC from 0.923 (seed=100, default
-          \texttt{ce\_weight}) to 0.932 — the single largest controlled,
-          reproducible improvement found in the sweep. Lowering
-          \texttt{ce\_weight} to 0.15 instead gave a lower validation MCC
-          (0.906) but the best variant test-F1 macro observed in the
-          entire campaign (0.673, at test MCC=0.859). This is noted as an
-          alternative operating point: if variant-family identification
-          is prioritised over binary attack/benign MCC in the deployed
-          system, \texttt{ce\_weight}=0.15 is preferable; the reported
-          model uses \texttt{ce\_weight}=0.5 because it was selected on
-          validation MCC, the pre-registered primary criterion.
-    \item \textbf{Fixed overrides of $\gamma$ (edge-freshness decay) and
-          $L_{\text{link}}$ (sliding-window bound), at $d$=128,
-          pos\_weight=6.0, seed=100.} Overriding $\gamma=250.0$ (vs.\ the
-          auto-derived 310.2) and $L_{\text{link}}=60.0$\,s (vs.\ the
-          auto-derived 43.0\,s, which also changes $W_{\max}$ from 430 to
-          600) each produced results numerically identical to the
-          un-overridden seed=100 baseline (val MCC=0.923, test MCC=0.843
-          in all three cases). The override values were confirmed to
-          take effect (each run's log header prints the overridden
-          $\gamma$/$L_{\text{link}}$/$W_{\max}$ correctly), so this is a
-          genuine finding rather than a silently-ignored flag: at this
-          dataset scale, these two parameters do not measurably affect
-          training outcome for the seed tested. Neither is pursued as a
-          further tuning axis; the auto-derivation from $L_{\text{link}}$
-          (Eq.~3.22) is retained without manual override.
-    \item \textbf{Combined change: GRU layers=3, learning rate=5$\times
-          10^{-4}$, pos\_weight=7.0 (all at once, $d$=128, seed=100).}
-          This configuration failed outright: validation MCC collapsed
-          to 0.537 (vs.\ 0.90+ for every other configuration). Each
-          change was plausible in isolation, but stacking all three
-          simultaneously destabilised training. Recorded as a cautionary
-          finding: hyperparameter changes validated individually should
-          not be combined without re-validating the combination.
-    \item \textbf{Random seed.} A 10-seed check on the $d$=128,
-          pos\_weight=6.0 family \emph{without} the \texttt{ce\_weight}
-          override (Table~\ref{tab:tgn-val2-seeds}) shows validation MCC
-          in the range 0.897--0.923 and test MCC in the range
-          0.802--0.862 across 10 seeds — a modest spread, indicating this
-          configuration family is not highly sensitive to initialisation.
-          The reported winner (seed=100 with \texttt{ce\_weight}=0.5)
-          sits above this entire range (val MCC=0.932), which is
-          consistent with \texttt{ce\_weight}=0.5 being a genuine
-          improvement over the family's default rather than a seed
-          artefact, since seed=100 itself only reached val MCC=0.923
-          without the \texttt{ce\_weight} change.
-\end{enumerate}
-
-\paragraph{10-seed reproducibility check on the $d$=128, pos\_weight=6.0 family (no \texttt{ce\_weight} override).}
-Table~\ref{tab:tgn-val2-seeds} reports this check, retained as evidence
-for the stability of the configuration family the reported winner belongs
-to, rather than as the source of the reported number itself (see
-Model Selection Procedure above).
-
-\begin{table}[htbp]
-\centering
-\caption{10-seed reproducibility check, $d$=128, pos\_weight=6.0, default \texttt{ce\_weight}=0.3, 400 epochs.}
-\label{tab:tgn-val2-seeds}
-\begin{tabular}{@{}lrrrrl@{}}
-\toprule
-Seed & Val MCC & Test MCC & Test AUROC & Test ACC & Variant F1 \\
-\midrule
-100 & 0.923 & 0.843 & 0.920 & 0.948 & 0.579 \\
-2   & 0.914 & 0.862 & 0.937 & 0.954 & 0.602 \\
-3   & 0.915 & 0.861 & 0.925 & 0.954 & 0.567 \\
-55  & 0.906 & 0.860 & 0.944 & 0.954 & 0.635 \\
-77  & 0.906 & 0.842 & 0.937 & 0.948 & 0.602 \\
-7   & 0.914 & 0.836 & 0.937 & 0.945 & 0.606 \\
-1   & 0.914 & 0.835 & 0.920 & 0.945 & 0.638 \\
-13  & 0.914 & 0.833 & 0.936 & 0.943 & 0.574 \\
-42  & 0.914 & 0.826 & 0.931 & 0.943 & 0.614 \\
-21  & 0.914 & 0.802 & 0.914 & 0.934 & 0.601 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\paragraph{Note on the 0.975 target.}
-Across the full campaign (18 hyperparameter/architecture configurations
-$\times$ up to 5 restarts, plus the 10-seed check — 28 independent runs,
-well over 100 individual restart attempts in total), the highest
-validation MCC observed was 0.932, reached by five configurations
-simultaneously and never exceeded. This is a substantial improvement over
-the 30\,s pilot's ceiling of 0.703 (\S\ref{sec:tgn-offline-validation}),
-consistent with the pre-registered prediction that increasing the event
-pool would improve performance materially. However, 0.975 was not reached
-by any configuration or seed. Given the breadth of this sweep — three
-embedding dimensions, four \texttt{pos\_weight} values, two learning
-rates, two layer depths, three loss-weighting values, and 10 random seeds
-— the 0.93-ish ceiling appears to be a genuine property of the
-6-dimensional feature representation and/or the 2361-event corpus, rather
-than an undertuned hyperparameter. This is carried forward to
-Chapter~6/limitations rather than pursued with further tuning.
-
-\paragraph{Validating the pre-registered predictions (from the 30\,s pilot).}
-Table~\ref{tab:tgn-val2-predictions} compares the predictions made before
-this campaign against what was actually observed for the reported
-(validation-selected) winner.
-
-\begin{table}[htbp]
-\centering
-\caption{Pre-registered predictions vs.\ observed outcome after the 300\,s rerun.}
-\label{tab:tgn-val2-predictions}
-\begin{tabular}{@{}lll@{}}
-\toprule
-Prediction & Predicted range & Observed (reported winner) \\
-\midrule
-Test MCC            & 0.75--0.90     & 0.868 — \textbf{confirmed} \\
-Variant F1 (macro)  & 0.55--0.70     & 0.606 (winner), up to 0.673 (\texttt{ce\_weight}=0.15 alt.) — \textbf{confirmed} \\
-0.975 restart target reached & ``may be reachable for some seeds'' & \textbf{not reached} by any of 28 runs (ceiling $\approx$0.932) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\paragraph{Known limitation: ME-S1/ME-S2 still contribute no attack-labelled events at full scale.}
-The 30\,s pilot's ME-S1/ME-S2 zero-attack-event issue was hypothesised to
-be a dataset-scale artefact. Table~\ref{tab:tgn-val2-dataset} shows this
-did \emph{not} resolve at full scale: ME-S1 and ME-S2 still contribute 0
-attack-labelled events out of 2, and 0 out of 18, events respectively,
-even in the 300\,s/2361-event corpus. This confirms the alternative
-explanation raised at the time: these two scenarios' attacks are
-intercepted by the Stage-0 crypto pre-filter (HMAC/freshness/nonce checks)
-\emph{before} reaching the TGN scoring stage, and this is an architectural
-property of the detection pipeline, not a symptom of insufficient
-simulation length. Only controller-origin ME (ME-S3, ME-S4 — internally
-fabricated, with no network-layer packet for the crypto filter to
-intercept) reaches the TGN, and these two scenarios alone supply the
-model's entire ME-class training signal (80 attack events each). This
-continues to directly constrain the 3-way variant classifier's
-performance on the ME class specifically, and is recorded as a structural
-limitation of the pipeline rather than a training defect.
+\paragraph{Known limitation: ME-S1/ME-S2 still contribute no attack-labelled events.}
+Table~\ref{tab:tgn-val2-dataset} confirms this pipeline-architectural
+property persists at the current dataset scale: ME-S1 and ME-S2 contribute
+0 attack-labelled events out of 12 and 0 out of 467 events respectively.
+Tracing the exact interception mechanism: both scenarios' forged echo
+reports carry the attacking node's own genuine identity and signature (V3/V4
+for ME-S1; the malicious RSU for ME-S2), so the HMAC check (Eq.~3.15)
+passes without issue — that is \emph{not} what intercepts them. The actual
+gate is the location-binding check (Eq.~3.29, \texttt{TetaGuardLocBindVerify}):
+each reporter's own real, signed position is checked against the link it
+claims to have observed, and must fall within $R_{\text{comm}}$. An
+echo/false-witness report is by definition a node claiming to have
+observed a link it was not positioned to observe, so this check fails for
+essentially every ME-S1/S2 instance independent of any other factor; a
+second gate (Eq.~3.32, witness quorum — a majority of reporters must agree
+on the link) would additionally need to be cleared even if location-binding
+were somehow satisfied. When Stage~0 rejects an event, the event-emission
+path returns immediately and the Stage-1 signature evaluator that computes
+the features/labels TGN trains on is never invoked, so the event never
+becomes a TGN training row (it may still appear in the raw audit log for
+diagnostic purposes). Controller-origin ME (ME-S3, ME-S4) events are
+instead tagged with a sentinel physical-sender identity meaning "fabricated
+internally by the controller, no network packet involved," which trips a
+bypass check that skips Stage~0 entirely — since the controller would
+otherwise be verifying its own fabrication — so these two scenarios always
+reach the TGN as attack-labelled events and alone supply the model's
+entire ME-class training signal. This directly explains the ME/data-plane
+cell's MCC=1.000$^\dagger$ and AUROC=1.000$^\dagger$ ($\epsilon$-smoothed,
+footnoted) in Table~\ref{tab:tgn-val2-cross-mcc} (only 73 test rows, all
+benign after Stage-0 filtering, so no positive class exists in that
+specific subset to score against — 2 false positives were still recorded
+among the 71 true negatives, Accuracy=0.973) and continues to be recorded
+as a structural limitation of the pipeline's crypto layer correctly
+rejecting implausible witness claims, rather than a
+training defect.

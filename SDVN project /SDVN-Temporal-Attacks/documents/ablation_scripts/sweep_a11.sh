@@ -1,29 +1,30 @@
 #!/bin/bash
+# sweep_a11.sh
+# A11 (Table 4.2): Naive Flat Re-Keying (No LKH Hierarchy), via --no_lkh=1.
+# X variable: network size n in {50,100,150,200} vehicles. Applicable PEMs:
+# M12 (Trevoke), M5 (TFlowMod) -- general, no single-family restriction;
+# this tests LKH revocation cost scaling, not attack-family detection.
+#
+# UPDATED (dropped combined mode): no longer uses attack_scenario=13 -- see
+# sweep_a1.sh's comment for the full rationale. Uses attack_scenario=2
+# (TTW-S2, RSU-present) as the representative -- revocation needs an actual
+# attack/alert to trigger, and RSU infrastructure needs to be present for
+# LKH group re-keying to have peers to re-key.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_170m_dim192_pw0.3191_seed5.bin"
+BIN="$NS3_DIR/build/scratch/routing"
+export LD_LIBRARY_PATH="$NS3_DIR/build/lib"
+TGN="$HOME/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin"
 OUT="$HOME/ablation_sweep/a11"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
 
-echo "=== a11 N_Vehicles=50 ==="
-mkdir -p "$OUT/n50"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=50 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --no_lkh=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/n50" > "$OUT/n50.log" 2>&1
-rm -rf "$OUT/n50/PCAP_FILES" "$OUT/n50/XML"
-
-echo "=== a11 N_Vehicles=100 ==="
-mkdir -p "$OUT/n100"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=100 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --no_lkh=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/n100" > "$OUT/n100.log" 2>&1
-rm -rf "$OUT/n100/PCAP_FILES" "$OUT/n100/XML"
-
-echo "=== a11 N_Vehicles=150 ==="
-mkdir -p "$OUT/n150"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=150 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --no_lkh=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/n150" > "$OUT/n150.log" 2>&1
-rm -rf "$OUT/n150/PCAP_FILES" "$OUT/n150/XML"
-
-echo "=== a11 N_Vehicles=200 ==="
-mkdir -p "$OUT/n200"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --no_lkh=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/n200" > "$OUT/n200.log" 2>&1
-rm -rf "$OUT/n200/PCAP_FILES" "$OUT/n200/XML"
+for N in 50 100 150 200; do
+  echo "=== a11 N_Vehicles=$N ==="
+  ISO="$OUT/n${N}"
+  mkdir -p "$ISO"
+  "$BIN" --simTime=310 --N_Vehicles=${N} --N_RSUs=64 --N_Controllers=4 --attack_scenario=2 --attack_percentage=60 --RngRun=1 --no_lkh=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --tgn_theta=0.26 --output_root=${ISO} > /dev/null 2>&1
+  rm -rf "${ISO}/PCAP_FILES" "${ISO}/XML"
+done
 
 echo "=== a11 sweep complete ==="

@@ -1,6 +1,6 @@
 ============================================================
   TGN DETECTOR — Step-by-Step Log
-  Attack  : COMBINED: All 12 Scenarios
+  Attack  : BSHH-S4: Malicious Controller, With RSU
   Eq refs : 3.15(MAC) 3.16(fresh) 3.17(nonce) 3.20(feat)
             3.21(Auv) 3.22(GRU) 3.23(MP) 3.24(score) 3.25(class)
   θ_FS    : 0.2600  [calibrated — worst-case MCC across scenarios, no_lw ablation]

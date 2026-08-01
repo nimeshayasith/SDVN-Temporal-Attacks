@@ -1113,6 +1113,13 @@ static AblationFlags g_abl;
 // via lkh_is_revoked-equivalent bookkeeping at the caller (g_lkh_already_revoked).
 static void PemRevokeVehicleKeys(uint32_t leaf_idx)
 {
+    static uint64_t __dbg_prvk_count = 0;
+    __dbg_prvk_count++;
+    if (__dbg_prvk_count <= 20 || __dbg_prvk_count % 1000 == 0) {
+        std::cout << "[PRVK-DBG] PemRevokeVehicleKeys call #" << __dbg_prvk_count
+                  << " leaf_idx=" << leaf_idx
+                  << " t=" << Simulator::Now().GetSeconds() << std::endl;
+    }
     if (g_abl.no_lkh) {
         uint32_t rekeyed = 0;
         for (uint32_t i = 0; i < g_lkh_n_leaves; ++i) {
@@ -1896,6 +1903,18 @@ bool ttw_malicious_controllers[4]  = {false, false, false, false};
 bool bshh_malicious_controllers[4] = {false, false, false, false};
 bool me_malicious_controllers[4]   = {false, false, false, false};
 
+// PDF §4.4: "total simulation time is 310 s (10 s warm-up + 300 s observation
+// window)". PEM_WARMUP_S is that 10s. Every attack-scheduling anchor time in
+// this file (the 3 TTW_* globals below, plus the BSHH_S*/ME_S*_*_TIME locals
+// declared inline inside each attack_scenario==N block further down) is
+// shifted by +PEM_WARMUP_S so attacks fire within the 300s observation
+// window, at the same time relative to observation-start that they used to
+// fire relative to simulation-start. PemRecordObservation() (the tp/tn/fp/fn
+// accumulation site) separately gates on Simulator::Now() >= PEM_WARMUP_S so
+// warm-up-window events build TGN/network state but never contribute to the
+// formal confusion matrix / MCC / AUROC -- see its own comment for that half.
+static const double PEM_WARMUP_S = 10.0;
+
 // Attack timing constants — now safe to use Seconds() because
 // "using namespace ns3" is already declared above
 // ERROR 4 FIX: uncommented now that namespace is declared earlier
@@ -2157,6 +2176,17 @@ bool            bshh_heartbeat_stored = false;
 HeartbeatPacket bshh_s2_even_older_heartbeat;
 bool            bshh_s2_even_older_stored = false;
 std::map<uint32_t, HeartbeatPacket> bshh_controller_liveness_table;
+// Divergence-gate evidence (Eq. 3.47, E_C(t)) for BSHH impersonation claims,
+// separate from bshh_controller_liveness_table above. The liveness table is
+// correctly single-slot-per-vehicle-ID (latest heartbeat per node, matching
+// what a real liveness table represents); this is a SEPARATE, pair-keyed
+// structure ("claimed_id_physical_id" -> last-observed timestamp) so that
+// E_C(t) can accumulate ALL currently-active impersonation pairs the
+// controller has been told about, not just whichever pair most recently
+// overwrote each node's own liveness slot. Bounded by
+// BSHH_DIVERGENCE_CLAIM_TTL_S (not infinite retention) -- see that
+// constant's declaration for the chosen window.
+std::map<std::string, double> bshh_controller_divergence_claims;
 std::map<uint32_t, HeartbeatPacket> bshh_stored_heartbeats;
 std::map<uint32_t, std::string> bshh_s1_pair_logs;
 uint32_t bshh_s1_completed_pairs = 0;
@@ -2297,10 +2327,17 @@ static const double PEM_SIGNAL_PLACEHOLDER = -9999.0;
 static double g_pem_v_rel_ms = 14.0;
 
 // ── BSHH-S3 liveness window (Eq. 3.7) ───────────────────────────────────────
-// W > 2·W_ho, where W_ho = r_comm / v_max (RSU handover duration in seconds).
-// Calibrated at runtime in main() once maxspeed is parsed:
-//   g_pem_bshh3_liveness_window_s = 2 × (TTW_COMM_RANGE / v_max_m_s)
-// Default (80 km/h → v_max = 22.22 m/s): W = 2 × (300/22.22) ≈ 27.0 s.
+// W > 2·W_ho, where W_ho = r_overlap / v_max (RSU handover duration in
+// seconds). Calibrated at runtime in main() once maxspeed is parsed, and
+// periodically re-armed via PemRecalibrateBshh3Window:
+//   g_pem_bshh3_liveness_window_s = 2 × (PemComputeRsuOverlapRadius() / v_max_m_s)
+// PemComputeRsuOverlapRadius() uses g_me_detect_range (170m), not
+// TTW_COMM_RANGE/g_rcomm (300m) -- see g_me_detect_range's own declaration
+// for the split rationale. With <2 RSUs deployed it falls back to
+// g_rsu_overlap_frac * g_me_detect_range (default 67/170 * 170 = 67m); with
+// >=2 RSUs it uses their real nearest-neighbour spacing instead. 27.0 below
+// is just a pre-calibration placeholder, overwritten at runtime before any
+// detection logic reads this value.
 // PemTrimSlidingWindow uses max(PEM_HEARTBEAT_WINDOW_S, g_pem_bshh3_liveness_window_s)
 // so beacons stay in the event_window long enough for BSHH-S3's lookback.
 static double g_pem_bshh3_liveness_window_s = 27.0;
@@ -3617,6 +3654,23 @@ PemRecordObservation(bool actualAttack, double score, bool alertRaised)
     pem_last_detection_score = score;
     pem_last_alert = alertRaised;
 
+    // PDF §4.4 warm-up correction: events observed before PEM_WARMUP_S (the
+    // 10s network-settling/TGN-memory-building period) still drive detection
+    // and mitigation normally (pem_last_alert above is unconditional, so any
+    // downstream "if (pem_last_alert) { ...PemApplyMitigation... }" call
+    // site still functions during warm-up), but must NOT contribute to the
+    // formal tp/tn/fp/fn confusion matrix, score lists, MCC, AUROC, or first-
+    // alert-time (Tdet) -- those are the paper's 300s observation-window
+    // metrics. All attack-scheduling anchor times (TTW_*/BSHH_S*/ME_S*)
+    // were themselves shifted by +PEM_WARMUP_S so no genuine attack should
+    // fire before this point by construction; this gate exists to stop
+    // ordinary benign early-window traffic (before the TGN has built up
+    // enough history) from being scored into the formal metrics.
+    if (Simulator::Now().GetSeconds() < PEM_WARMUP_S)
+    {
+        return;
+    }
+
     if (actualAttack)
     {
         pem_positive_scores.push_back(score);
@@ -3711,6 +3765,21 @@ static double   g_pem_detect_total_ms = 0.0;
 static double   g_pem_detect_max_ms = 0.0;
 static uint64_t g_pem_detect_count = 0;
 static uint64_t g_pem_detect_over_budget_count = 0;
+
+// M5 fix (PDF Eqs. 4.7/4.8): the paper defines T_LW_det and T_FS_det as
+// genuinely SEPARATE detector latencies -- T_LW_pipeline = T_LW_det (Eq.
+// 4.7, checked against the 100ms budget) and T_FS_pipeline = T_FS_det +
+// TPBFT + T_Fabric_exec + TFlowMod (Eq. 4.8, no such constraint). But
+// g_pem_detect_total_ms above (the PemStageTimer kDetect branch, wrapping
+// PemEmitEvent's entire body) measures crypto + LW + TGN COMBINED -- see
+// its own declaration comment a few lines up. This timer isolates ONLY the
+// TGN_ProcessEventInline() call (routing.cc's PemEvaluateEvent, its sole
+// real call site, right before PemWriteEventCsv) -- true T_LW_det is then
+// g_pem_detect_total_ms minus this, computed once per run in
+// PemWriteRunSummaryCsv rather than re-derived per event.
+static double   g_pem_fs_det_total_ms = 0.0;
+static double   g_pem_fs_det_max_ms = 0.0;
+static uint64_t g_pem_fs_det_count = 0;
 
 static double   g_pem_mitigate_total_ms = 0.0;
 static double   g_pem_mitigate_max_ms = 0.0;
@@ -4732,7 +4801,19 @@ static uint32_t PemComputeControllerDivergenceDelta(double now,
                 const PemBeaconEvidenceRecord& b = evidence[j];
                 if (a.vehicle_id == b.vehicle_id) continue;
                 if (std::fabs(a.timestamp - b.timestamp) > PEM_BEACON_INTERVAL_S) continue;
-                if (PemDistance2d(a.position, b.position) > TTW_COMM_RANGE) continue;
+                // Bug fix (TTW-S4 divergence_recall=0.036 investigation):
+                // this trusted-edge ground truth is itself part of the
+                // controller-divergence DETECTION equation (Eq. 3.46/3.47,
+                // E_trusted(t)), the same category as ME-S1/ME-S3's own
+                // range checks -- both of which were deliberately split to
+                // g_me_detect_range (170m) from the protocol-level
+                // TTW_COMM_RANGE (300m) on 2026-07-28 (see g_me_detect_range's
+                // declaration comment: "detection-equation-only, same as
+                // ME-S1/ME-S3"). This site was missed in that migration,
+                // leaving delta_thresh (Eq. 3.48, calibrated against
+                // g_me_detect_range) and trustedEdges (this ground-truth
+                // graph) built from two different range assumptions.
+                if (PemDistance2d(a.position, b.position) > g_me_detect_range) continue;
                 uint32_t lo = (a.vehicle_id < b.vehicle_id) ? a.vehicle_id : b.vehicle_id;
                 uint32_t hi = (a.vehicle_id < b.vehicle_id) ? b.vehicle_id : a.vehicle_id;
                 trustedEdges.insert(std::to_string(lo) + "_" + std::to_string(hi));
@@ -4742,41 +4823,69 @@ static uint32_t PemComputeControllerDivergenceDelta(double now,
         s_trustedEdgesCachedAt = now;
     }
 
+    // Bug fix (S4 divergence_recall=0.036 investigation): Algorithm 4's own
+    // procedure signature -- FS-MITIGATE(A, sigma, L, theta_FS, t, G^C_t,
+    // {B_nk(t)}) -- passes G^C_t (the controller's CURRENT topology graph)
+    // as a plain input parameter, with no freshness/staleness qualifier
+    // attached to it anywhere in Eq. 3.47 or the algorithm text (only
+    // E_trusted, via getTrustedEvidence(tau_min^gt), is filtered -- by TRUST
+    // threshold, not by time window). E_C(t) is the controller's full
+    // current topology belief, not a rolling recent-activity slice. The
+    // previous 200ms freshness filter here meant controllerEdges almost
+    // always contained just the ONE pair currently being evaluated (via the
+    // claim_a/claim_b block below), never the controller's actual full
+    // poisoned-topology state -- structurally incapable of ever
+    // accumulating enough divergence to cross a delta_thresh calibrated
+    // against network-wide density (Eq. 3.48), regardless of scenario.
+    // Removed for all three tables (TTW/BSHH/ME) for the same reason.
     std::set<std::string> controllerEdges;
     for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
          it != ttw_controller_table.end(); ++it)
     {
-        if ((now - it->second.timestamp) > (2.0 * PEM_BEACON_INTERVAL_S)) continue;
         uint32_t a = it->second.src_id, b = it->second.seen_id;
         uint32_t lo = (a < b) ? a : b, hi = (a < b) ? b : a;
         controllerEdges.insert(std::to_string(lo) + "_" + std::to_string(hi));
     }
-    // Eq. 3.47 scoping fix: E_C(t) must cover everything the controller
-    // currently claims across ALL THREE attack vectors, not just TTW's
-    // ttw_controller_table -- BSHH poisons bshh_controller_liveness_table
-    // (a claimed_sender_id/physical_sender_id impersonation pair, not a
-    // src/seen edge) and ME poisons me_echo_reports (phantom link_src <->
-    // false_reporter <-> link_dst paths). Previously only the single
-    // just-triggered claim_a/claim_b pair below covered these two vectors,
-    // so delta only ever reflected the ONE attack event currently being
-    // evaluated instead of every concurrent divergent claim the controller
-    // is holding right now -- exactly why delta stayed ~1 instead of
-    // aggregating toward delta_thresh under concurrent multi-family attack
-    // load (see scenario-13 divergence_recall=0 finding). Same freshness
-    // window and edge-set semantics as the ttw_controller_table scan above.
+    // Bug fix (BSHH divergence_recall=0, promoted from the A/B experiment
+    // that confirmed it: |E_C| 1 -> 45, divergence_recall 0 -> 0.82, with
+    // delta_thresh held fixed throughout, isolating the cause to this
+    // representation). bshh_controller_liveness_table is correctly
+    // single-slot-per-vehicle-ID (it models the real liveness-table
+    // semantics: latest heartbeat per node) -- but that means each new
+    // impersonation round overwrites the previous one's evidence, so at
+    // most 1-2 impersonation edges could ever be live simultaneously for
+    // E_C(t), regardless of how many rounds occurred historically. Per the
+    // codebase's own prior "Eq. 3.47 scoping fix" comment (BSHH was always
+    // intended to contribute to E_C(t)), this is corrected here by
+    // recording every genuine impersonation edge into a SEPARATE, pair-
+    // keyed structure (bshh_controller_divergence_claims) that survives
+    // the liveness table's own per-node overwrites.
+    //
+    // No freshness/expiry bound is applied here, matching (not inventing a
+    // new parameter beyond) the ttw_controller_table/me_echo_reports scans
+    // just above/below, which are also unbounded per the Algorithm 4 G^C_t
+    // fix -- E_C(t) persists until the controller's belief is explicitly
+    // corrected (matching PemApplyMitigation's own removal semantics for
+    // the TTW table), not until some arbitrary timer expires. An earlier
+    // version of this fix reused TRUST_TQUAR_S (T_quar, 30s) for this
+    // purpose; that was reverted -- T_quar has a distinct, already-defined
+    // meaning in the PDF (quarantine duration, Table 3.4) unrelated to
+    // divergence-claim retention, and reusing it here would have silently
+    // introduced a new, PDF-unjustified methodological parameter rather
+    // than an implementation-only fix.
     for (std::map<uint32_t, HeartbeatPacket>::const_iterator it = bshh_controller_liveness_table.begin();
          it != bshh_controller_liveness_table.end(); ++it)
     {
         const HeartbeatPacket& hb = it->second;
         if (hb.claimed_sender_id == hb.physical_sender_id) continue; // no impersonation claimed
-        if ((now - hb.timestamp) > (2.0 * PEM_BEACON_INTERVAL_S)) continue;
         uint32_t a = hb.claimed_sender_id, b = hb.physical_sender_id;
         uint32_t lo = (a < b) ? a : b, hi = (a < b) ? b : a;
-        controllerEdges.insert(std::to_string(lo) + "_" + std::to_string(hi));
+        bshh_controller_divergence_claims[std::to_string(lo) + "_" + std::to_string(hi)] = now;
     }
+    for (const auto& kv : bshh_controller_divergence_claims)
+        controllerEdges.insert(kv.first);
     for (const MEEchoReport& r : me_echo_reports)
     {
-        if ((now - r.timestamp) > (2.0 * PEM_BEACON_INTERVAL_S)) continue;
         uint32_t a1 = r.link_src, b1 = r.false_reporter;
         uint32_t lo1 = (a1 < b1) ? a1 : b1, hi1 = (a1 < b1) ? b1 : a1;
         controllerEdges.insert(std::to_string(lo1) + "_" + std::to_string(hi1));
@@ -5734,6 +5843,26 @@ PemDistance2d(const Vector& a, const Vector& b)
 // defined above; PemWriteRunSummaryCsv and PemCryptoPreFilter below need it.
 #include ".crypto_src/teta_guard_filter.h"
 
+// Bug fix (TTW-S2/S3 false ME-S1 positives, confirmed against isolated-run
+// data): the PDF defines R(e_ij,t) as "vehicles claiming to have witnessed
+// link e_ij at time t" (notation table) and explicitly requires
+// "per-channel beacon events from the SAME VEHICLE are de-duplicated before
+// computing |R(e_ij,t)|" (Eq. 3.8 implementation note). This function used
+// to collect distinct reporter_id values -- but reporter_id in this
+// codebase's own established convention is the RELAY/transport identity
+// (e.g. the RSU physically forwarding a hop), not the claimant vehicle's
+// identity (that's claimed_sender_id) -- see TTWS2_RunDetection's own
+// comment on this exact distinction. TTW-S2's V1/V2 HELLO exchange reports
+// claimed_sender_id=v1_id/v2_id directly; its later RSU-forwarded replay of
+// the SAME v1_id claim used to add a THIRD, spurious "reporter_id=rsu_id"
+// entry for what the PDF says should still de-duplicate to the same
+// witness (v1_id) -- inflating |R(e_ij,t)| past rho_max for a link that
+// only ever had 2 genuine witnesses. Switching to claimed_sender_id fixes
+// this while remaining safe for genuine ME echo/phantom attacks: confirmed
+// every ME_S*_EchoAttack call site sets claimed_sender_id to the
+// ATTACKER's own identity (echo_v3/echo_v4/false_v3/false_v4), never to
+// the real link's own endpoints, so real attackers still count as
+// genuinely distinct witnesses.
 static std::set<uint32_t>
 PemCollectReportersForLink(const PemEvent& event, const PemNodeLWState& ns)
 {
@@ -5747,10 +5876,10 @@ PemCollectReportersForLink(const PemEvent& event, const PemNodeLWState& ns)
              it != linkIt->second.end();
              ++it)
         {
-            reporters.insert(it->reporter_id);
+            reporters.insert(it->claimed_sender_id);
         }
     }
-    reporters.insert(event.reporter_id);
+    reporters.insert(event.claimed_sender_id);
     return reporters;
 }
 
@@ -5922,9 +6051,21 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
     std::map<uint32_t, Vector> nodePos;
     nodePos[event.link_src_id] = event.link_src_position;
     nodePos[event.link_dst_id] = event.link_dst_position;
+    // Bug fix (TTW-S2/S3 false ME-S2 positives, same class as
+    // PemCollectReportersForLink's fix): physical_sender_id alone can't
+    // recognize a self-report relayed via a transport identity that isn't
+    // itself a link endpoint (TTW-S2's RSU-relay convention sets
+    // physical_sender_id=rsu_id always, even for a genuine V1-self-report
+    // it is faithfully relaying) -- see is_self_report_me3's declaration
+    // comment for the full rationale. claimed_sender_id correctly identifies
+    // the original claimant regardless of relay path, and is confirmed safe
+    // for genuine ME echo attacks (they set claimed_sender_id to the
+    // attacker's own identity, never to the real link's endpoints).
     const bool eventIsSelfReport =
         (event.physical_sender_id == event.link_src_id) ||
-        (event.physical_sender_id == event.link_dst_id);
+        (event.physical_sender_id == event.link_dst_id) ||
+        (event.claimed_sender_id == event.link_src_id) ||
+        (event.claimed_sender_id == event.link_dst_id);
     if (!eventIsSelfReport)
     {
         nodePos[event.reporter_id] = event.reporter_position;
@@ -5940,7 +6081,9 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
         {
             const bool histIsSelfReport =
                 (it->physical_sender_id == it->link_src_id) ||
-                (it->physical_sender_id == it->link_dst_id);
+                (it->physical_sender_id == it->link_dst_id) ||
+                (it->claimed_sender_id == it->link_src_id) ||
+                (it->claimed_sender_id == it->link_dst_id);
             if (!histIsSelfReport)
             {
                 nodePos[it->reporter_id] = it->reporter_position;
@@ -5948,9 +6091,17 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
         }
     }
 
-    // Build adjacency: any two distinct nodes within TTW_COMM_RANGE of each
-    // other are connected, plus the direct link_src<->link_dst edge (the
-    // physically observed link itself) is always present.
+    // Build adjacency: any two distinct nodes within g_me_detect_range of
+    // each other are connected, plus the direct link_src<->link_dst edge
+    // (the physically observed link itself) is always present.
+    // Migrated from TTW_COMM_RANGE (300m) to g_me_detect_range (170m) to
+    // match every other ME-S1/S2/S3 detection-equation call site (the
+    // 2026-07-27/28 patch) -- this was the one remaining holdout. Safe
+    // without retraining/regeneration: this function's only output feeds
+    // event.triggered[7] (ME-S2), which drives PEM's own static rule-based
+    // weighted-sum scorer (PEM_WEIGHTS/PEM_SCORE_THRESHOLD), not any TGN
+    // model input -- confirmed event.triggered[] is read only for JSON/
+    // console reporting in tgn_core.cc, never as a feature into the network.
     std::vector<uint32_t> nodeIds;
     for (std::map<uint32_t, Vector>::const_iterator it = nodePos.begin();
          it != nodePos.end(); ++it)
@@ -5997,7 +6148,7 @@ PemComputeReporterInferredPathCount(const PemEvent& event, const PemNodeLWState&
                 (a == event.link_src_id && b == event.link_dst_id) ||
                 (a == event.link_dst_id && b == event.link_src_id);
             if (isDirectEndpointPair ||
-                PemDistance2d(nodePos[a], nodePos[b]) <= TTW_COMM_RANGE)
+                PemDistance2d(nodePos[a], nodePos[b]) <= g_me_detect_range)
             {
                 adj[a].insert(b);
                 adj[b].insert(a);
@@ -6412,7 +6563,9 @@ PemWriteRunSummaryCsv()
         "total_events,crypto_drop_mac,crypto_drop_stale,crypto_drop_nonce,crypto_drop_quorum,tp_event,"
         "qrr_echo_attempts,qrr_echo_pass,qrr_echo_blocked,qrr,"
         "mean_topology_divergence,mean_t_stale_ms,mean_pir,"
+        "t_lw_pipeline_mean_ms,t_lw_pipeline_max_ms,t_lw_pipeline_over_budget_count,"
         "t_pipeline_mean_ms,t_pipeline_max_ms,t_pipeline_over_budget_count,"
+        "t_fs_det_mean_ms,t_fs_det_max_ms,"
         "t_pbft_mean_ms,t_pbft_max_ms,t_exec_flowmod_mean_ms,t_exec_flowmod_max_ms,"
         "tdrr_pct,"
         "omega_lw_pct,omega_fs_pct,"
@@ -6550,21 +6703,47 @@ PemWriteRunSummaryCsv()
         if (n > 0) meanPir = sum / (double)n;
     }
 
-    // M5: full detect+mitigate pipeline wall-clock stats — these globals were
-    // already accumulated by PemStageTimer (kMitigate branch) but never
-    // exported to this CSV; just reading them out here.
-    const double tPipelineMeanMs = (g_pem_full_pipeline_count > 0)
-        ? (g_pem_full_pipeline_total_ms / (double)g_pem_full_pipeline_count)
+    // M5 (Eq. 4.7-4.9, PDF §4.3.3): the paper splits the pipeline into two
+    // PARALLEL paths, each with its own latency, NOT one combined figure:
+    //   T_LW_pipeline = T_LW_det                                     (4.7)
+    //   T_FS_pipeline = T_FS_det + TPBFT + T_Fabric_exec + TFlowMod   (4.8)
+    // Only T_LW_pipeline is checked against the 100ms beacon-interval
+    // budget (Eq. 4.9) -- the FS/blockchain path runs in parallel and has
+    // no such constraint.
+    //
+    // g_pem_detect_total_ms (the kDetect PemStageTimer branch, wrapping
+    // PemEmitEvent's entire body) measures crypto + LW + TGN COMBINED, not
+    // LW alone -- see its own declaration comment. g_pem_fs_det_total_ms
+    // isolates ONLY the TGN_ProcessEventInline() call within that (see its
+    // declaration comment). True T_LW_det is therefore the combined detect
+    // time minus the isolated FS/TGN time -- a genuine subtraction, not a
+    // relabeling of the old combined figure (which the earlier version of
+    // this fix incorrectly did).
+    const double tFsDetMeanMs = (g_pem_fs_det_count > 0)
+        ? (g_pem_fs_det_total_ms / (double)g_pem_fs_det_count) : 0.0;
+    const double tLwDetTotalMs = g_pem_detect_total_ms - g_pem_fs_det_total_ms;
+    const double tLwPipelineMeanMs = (g_pem_detect_count > 0)
+        ? (tLwDetTotalMs / (double)g_pem_detect_count)
         : 0.0;
+    // Max T_LW_det can't be reconstructed exactly per-event from the two
+    // running maxima (the event with the largest combined time isn't
+    // necessarily the one with the largest LW-only share) -- report the
+    // combined-detect max as a conservative upper bound, documented as such.
+    const double tLwPipelineMaxMsUpperBound = g_pem_detect_max_ms;
 
-    // M5 sub-components: Tdet is already reported separately (tdet_ms
-    // column above); TPBFT and Texec+TFlowMod are the two remaining
-    // segments of Tpipeline, timed via g_pem_pbft_* / g_pem_exec_flowmod_*
-    // in PemApplyMitigation(). 0.0 when mitigation never ran this run.
+    // M5 sub-components for T_FS_pipeline (Eq. 4.8): TPBFT and
+    // Texec+TFlowMod are timed via g_pem_pbft_* / g_pem_exec_flowmod_* in
+    // PemApplyMitigation(). 0.0 when mitigation never ran this run.
     const double tPbftMeanMs = (g_pem_pbft_count > 0)
         ? (g_pem_pbft_total_ms / (double)g_pem_pbft_count) : 0.0;
     const double tExecFlowModMeanMs = (g_pem_exec_flowmod_count > 0)
         ? (g_pem_exec_flowmod_total_ms / (double)g_pem_exec_flowmod_count) : 0.0;
+    // T_FS_pipeline = T_FS_det + TPBFT + T_Fabric_exec + TFlowMod (Eq. 4.8),
+    // built from genuinely separate sub-component means -- NOT the old
+    // g_pem_full_pipeline_* figure (which was detect(crypto+LW+TGN
+    // combined) + mitigate, an entirely different and incorrect quantity
+    // relative to Eq. 4.8's definition).
+    const double tPipelineMeanMs = tFsDetMeanMs + tPbftMeanMs + tExecFlowModMeanMs;
 
     // M2 (Eq. 4.2): TDRR = (delta_bar_unprotected - delta_bar_mitigated) /
     // delta_bar_unprotected x 100%. 0.0 when either bucket has no samples
@@ -6656,9 +6835,23 @@ PemWriteRunSummaryCsv()
     const double combinedRecall = (combinedTotal > 0)
         ? (double)pem_combined_true_positive / (double)combinedTotal : 1.0;
 
+    // T_FS_pipeline max: conservative upper-bound estimate, sum of each
+    // sub-component's own max (not a true per-event max of the sum, since
+    // the event with the largest T_FS_det isn't necessarily the same event
+    // with the largest TPBFT/Texec+TFlowMod) -- same convention as
+    // tLwPipelineMaxMsUpperBound above. over_budget_count is 0 by
+    // definition: Eq. 4.9 explicitly does NOT apply the 100ms constraint to
+    // T_FS_pipeline (it runs in parallel with the time-critical LW path),
+    // so there is no violation condition to count here -- kept as a column
+    // for schema stability, always 0.
+    const double tFsPipelineMaxMsUpperBound =
+        g_pem_fs_det_max_ms + g_pem_pbft_max_ms + g_pem_exec_flowmod_max_ms;
     fout << meanTopoDivergence << "," << meanTStaleMs << "," << meanPir << ","
-         << tPipelineMeanMs << "," << g_pem_full_pipeline_max_ms << ","
-         << g_pem_full_pipeline_over_budget_count << ","
+         << tLwPipelineMeanMs << "," << tLwPipelineMaxMsUpperBound << ","
+         << g_pem_detect_over_budget_count << ","
+         << tPipelineMeanMs << "," << tFsPipelineMaxMsUpperBound << ","
+         << 0 << ","
+         << tFsDetMeanMs << "," << g_pem_fs_det_max_ms << ","
          << tPbftMeanMs << "," << g_pem_pbft_max_ms << ","
          << tExecFlowModMeanMs << "," << g_pem_exec_flowmod_max_ms << ","
          << tdrrPct << ","
@@ -6699,9 +6892,19 @@ PemWriteRunSummaryCsv()
               << pem_stale_duration_count << ")\n"
               << "[M4][PIR] mean=" << meanPir << " (links tracked="
               << pem_link_reporters.size() << ")\n"
-              << "[M5][T_pipeline] mean=" << tPipelineMeanMs << " ms  max="
-              << g_pem_full_pipeline_max_ms << " ms  over_budget="
-              << g_pem_full_pipeline_over_budget_count << "/" << g_pem_full_pipeline_count << "\n"
+              << "[M5][T_LW_pipeline] mean=" << tLwPipelineMeanMs << " ms  max<="
+              << tLwPipelineMaxMsUpperBound << " ms  over_budget<="
+              << g_pem_detect_over_budget_count << "/" << g_pem_detect_count
+              << "  (Eq. 4.7/4.9; T_LW_det only, checked against 100ms budget;"
+              << " max/over_budget are conservative upper bounds from the"
+              << " combined crypto+LW+TGN timer, true T_LW_det is <= this)\n"
+              << "[M5][T_FS_pipeline] mean=" << tPipelineMeanMs << " ms  max<="
+              << tFsPipelineMaxMsUpperBound << " ms"
+              << "  (Eq. 4.8: T_FS_det+TPBFT+T_Fabric_exec+TFlowMod,"
+              << " no 100ms constraint -- max is sum of per-component maxima,"
+              << " a conservative upper bound not a true joint max)\n"
+              << "[M5][T_FS_det] mean=" << tFsDetMeanMs << " ms  max="
+              << g_pem_fs_det_max_ms << " ms (n=" << g_pem_fs_det_count << ")\n"
               << "[M5][T_pbft] mean=" << tPbftMeanMs << " ms  max=" << g_pem_pbft_max_ms
               << " ms (n=" << g_pem_pbft_count << ")\n"
               << "[M5][T_exec_flowmod] mean=" << tExecFlowModMeanMs << " ms  max="
@@ -7883,10 +8086,51 @@ PemEvaluateEvent(PemEvent& event)
                 ns.heartbeat_history.find(event.claimed_sender_id);
             if (priorIt != ns.heartbeat_history.end() && !priorIt->second.empty())
             {
-                const PemEvent& priorGenuine = priorIt->second.back();
-                if (priorGenuine.physical_sender_id == priorGenuine.claimed_sender_id &&
-                    priorGenuine.reception_timestamp < event.reception_timestamp &&
-                    !priorGenuine.alert_raised)
+                // Bug fix (BSHH-S1 companion check systematically missing
+                // every repeat forgery of an already-once-caught identity
+                // pair -- confirmed live: sc5/sc6 fn~40%, e.g. attacker V5
+                // re-forging claimed=V195 every ~100ms was caught ONCE at
+                // t=20.02 then missed at t=20.12, t=20.32, ... for the rest
+                // of the run). Root cause: .back() was assumed to be the
+                // most recent GENUINE self-report, but every heartbeat --
+                // genuine or forged -- is unconditionally pushed to this
+                // same per-identity vector (see the push_back a few hundred
+                // lines below this file's PemEvaluateEvent). After the
+                // FIRST forged heartbeat is appended, .back() becomes that
+                // forged entry itself (physical!=claimed), so the
+                // physical==claimed guard below permanently fails for every
+                // subsequent forgery of the same identity, even though this
+                // check's own comment above already established that a
+                // genuine anchor remains valid "regardless of how old that
+                // prior report is." Fixed by searching backward for the
+                // actual most recent GENUINE entry instead of blindly
+                // trusting .back() -- same fix philosophy as this file's
+                // other "attacker's own forged data must not clobber the
+                // genuine baseline" fixes (BSHH-S4's divergence-claims
+                // structure, ME-S1/S2/S3's claimed_sender_id broadening),
+                // applied here to a single-vector history instead of a
+                // single-slot map. PDF-consistent: Eq. 3.5's ∃-quantifier
+                // triggers "as soon as any such pair is found" with no
+                // exclusion for already-confirmed pairs, and §3.4.4 states
+                // BSHH-S1 "provides a strong detection signal" -- a ~40% FN
+                // rate for exact repeats of an already-caught pair
+                // contradicts both. No retraining/regeneration required:
+                // event.triggered[] only feeds PEM's own static rule-based
+                // scorer (PEM_WEIGHTS/PEM_SCORE_THRESHOLD), confirmed not
+                // consumed as a TGN input feature anywhere in tgn_core.cc.
+                const PemEvent* priorGenuine = nullptr;
+                for (std::vector<PemEvent>::const_reverse_iterator rit = priorIt->second.rbegin();
+                     rit != priorIt->second.rend(); ++rit)
+                {
+                    if (rit->physical_sender_id == rit->claimed_sender_id)
+                    {
+                        priorGenuine = &(*rit);
+                        break;
+                    }
+                }
+                if (priorGenuine &&
+                    priorGenuine->reception_timestamp < event.reception_timestamp &&
+                    !priorGenuine->alert_raised)
                 {
                     event.triggered[3] = true;
                 }
@@ -7973,9 +8217,15 @@ PemEvaluateEvent(PemEvent& event)
         {
             event.triggered[7] = true;
         }
+        // Same claimed_sender_id broadening as eventIsSelfReport in
+        // PemComputeReporterInferredPathCount above -- keeps this baseline
+        // gate consistent with the graph-building self-report test it
+        // mirrors.
         const bool is_self_report_me2 =
             (event.physical_sender_id == event.link_src_id) ||
-            (event.physical_sender_id == event.link_dst_id);
+            (event.physical_sender_id == event.link_dst_id) ||
+            (event.claimed_sender_id == event.link_src_id) ||
+            (event.claimed_sender_id == event.link_dst_id);
         if (is_self_report_me2)
         {
             ns.previous_path_counts[linkKey] = static_cast<double>(currentPathCount);
@@ -8055,9 +8305,25 @@ PemEvaluateEvent(PemEvent& event)
         // has no reason to satisfy for a link between two OTHER vehicles,
         // producing exactly the false positives seen in TTW-S4 (e.g. V94/V118
         // mutual HELLO exchange flagged as ME-S3, sig[8]).
+        // Bug fix (TTW-S2 false positive, confirmed against S2's isolated-run
+        // data: 124+120+... events showing ME-S3 fired on a pure-TTW run with
+        // zero real ME attacks, collapsing f1_me to 0): TTW-S2's own event
+        // construction (TTWS2_RunDetection) sets physical_sender_id=rsu_id
+        // ALWAYS (ground truth — the RSU genuinely is the last-hop physical
+        // transmitter), unlike TTW-S4's convention (physical_sender_id=v1_id
+        // directly), so physical_sender_id alone can never recognize TTW-S2's
+        // relayed self-reports as self-reports. claimed_sender_id, however,
+        // correctly identifies the ORIGINAL claimant regardless of which node
+        // physically relays the last hop -- extending the exemption to check
+        // it too is safe: verified every ME echo/phantom-link attack site
+        // (ME_S1_EchoAttack etc.) sets claimed_sender_id to the ATTACKER's
+        // own identity, never to the real link's own endpoints, so this
+        // change cannot exempt a genuine ME attack.
         const bool is_self_report_me3 =
             (event.physical_sender_id == event.link_src_id) ||
-            (event.physical_sender_id == event.link_dst_id);
+            (event.physical_sender_id == event.link_dst_id) ||
+            (event.claimed_sender_id == event.link_src_id) ||
+            (event.claimed_sender_id == event.link_dst_id);
 
         // Condition 1: GPS-attested position is outside communication range.
         // Uses g_me_detect_range (170m default, runtime-overridable via
@@ -8445,7 +8711,16 @@ PemEvaluateEvent(PemEvent& event)
 
     // Issue 8.1 (online mode): process the event through the TGN immediately.
     // A1/A2 (--no_tgn=1): skip — LW signatures are still scored; TGN score = 0.
-    if (!g_abl.no_tgn) TGN_ProcessEventInline(event);
+    // M5 fix (PDF Eq. 4.8): time ONLY this call for T_FS_det -- see
+    // g_pem_fs_det_total_ms's declaration comment.
+    if (!g_abl.no_tgn) {
+        const auto __fsDetStart = HiResClock::now();
+        TGN_ProcessEventInline(event);
+        const double __fsDetMs = MicroSec(HiResClock::now() - __fsDetStart).count() / 1000.0;
+        g_pem_fs_det_total_ms += __fsDetMs;
+        ++g_pem_fs_det_count;
+        if (__fsDetMs > g_pem_fs_det_max_ms) g_pem_fs_det_max_ms = __fsDetMs;
+    }
 
     PemWriteEventCsv(event);
 }
@@ -8811,25 +9086,22 @@ PemEmitEvent(PemEventType type,
                                        Simulator::Now().GetSeconds(), attackLabel);
 
         // M3 T_stale: detect a break transition on the ground-truth edge.
+        // This half only records WHEN the link actually broke (ground truth,
+        // independent of detection) -- the correction half is deliberately
+        // NOT here. See the fix below, applied after PemEvaluateEvent(event)
+        // runs, for why: attackLabel is ground truth about the packet, not
+        // the controller's belief state, so using it as the "corrected"
+        // signal made tau_correct collapse to the exact same timestamp as
+        // tau_break whenever the first evidence of a real ground-truth break
+        // was itself an attack-labeled event (the common case for TTW-style
+        // replays) -- producing a systematic dur=0.0 for every sample
+        // instead of a real detection-latency-driven duration.
         auto prevIt = pem_link_prev_real_state.find(linkKey);
         const bool hadPrev = (prevIt != pem_link_prev_real_state.end());
         if (hadPrev && prevIt->second && !realEdge)
         {
             // Link just broke physically.
             pem_link_break_time[linkKey] = Simulator::Now().GetSeconds();
-        }
-        // Controller correction: once believesEdge also reflects "false" for a
-        // link with a pending break time, that's tau_correct.
-        auto breakIt = pem_link_break_time.find(linkKey);
-        if (breakIt != pem_link_break_time.end() && !believesEdge)
-        {
-            const double dur = Simulator::Now().GetSeconds() - breakIt->second;
-            if (dur >= 0.0)
-            {
-                pem_stale_duration_sum += dur;
-                pem_stale_duration_count++;
-            }
-            pem_link_break_time.erase(breakIt);
         }
         pem_link_prev_real_state[linkKey] = realEdge;
     }
@@ -8935,6 +9207,35 @@ PemEmitEvent(PemEventType type,
 
     // Stage 1 — Signature Detector (Algorithm 1, Eq. 3.12).
     PemEvaluateEvent(event);
+
+    // M3 T_stale correction half — tau_correct is the moment the controller's
+    // belief actually changes, i.e. a REAL alert fires for this link (the
+    // same signal that gates ttw_controller_table.erase()/PemApplyMitigation
+    // at every scenario's own call site), not merely "this packet's ground-
+    // truth attackLabel is true". Using the real alert_raised outcome (now
+    // available post-PemEvaluateEvent) instead of attackLabel fixes the
+    // previous dur=0.0-every-time bug: the break-detection half above runs
+    // BEFORE Stage-0/1/2, at the same timestamp as this correction check only
+    // when detection is instantaneous; in general tau_correct now reflects
+    // real detection+mitigation latency.
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && linkSrcId != linkDstId && event.alert_raised)
+    {
+        const uint32_t linkKeyLo = (linkSrcId < linkDstId) ? linkSrcId : linkDstId;
+        const uint32_t linkKeyHi = (linkSrcId < linkDstId) ? linkDstId : linkSrcId;
+        const std::string linkKey =
+            std::to_string(linkKeyLo) + "_" + std::to_string(linkKeyHi);
+        auto breakIt = pem_link_break_time.find(linkKey);
+        if (breakIt != pem_link_break_time.end())
+        {
+            const double dur = Simulator::Now().GetSeconds() - breakIt->second;
+            if (dur >= 0.0)
+            {
+                pem_stale_duration_sum += dur;
+                pem_stale_duration_count++;
+            }
+            pem_link_break_time.erase(breakIt);
+        }
+    }
 }
 
 static void
@@ -13952,6 +14253,13 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
 {
     PemFamilyOriginScope __pemOrigin(9u);
     double now = Simulator::Now().GetSeconds();
+    static uint64_t __dbg_mes1_count = 0;
+    __dbg_mes1_count++;
+    if (__dbg_mes1_count <= 40 || __dbg_mes1_count % 500 == 0) {
+        std::cout << "[MES1-DBG] ME_S1_EchoAttack call #" << __dbg_mes1_count
+                  << " v3=" << echo_v3 << " v4=" << echo_v4
+                  << " mask=" << reporter_mask << " t=" << now << std::endl;
+    }
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -155476,6 +155784,16 @@ static int RoutingMain(int argc, char *argv[])
                   g_attacker_sophistication_prob);
     cmd.Parse (argc, argv);
 
+    // PDF §4.4 warm-up correction: shift the 3 TTW anchor times (default or
+    // CLI-overridden, either way) so TTW-S1..S4's attack timeline is defined
+    // relative to observation-start (t=PEM_WARMUP_S), not simulation-start
+    // (t=0) -- matching how BSHH_S*/ME_S*_*_TIME's own declarations are
+    // shifted at their point of definition further down. See PEM_WARMUP_S's
+    // declaration comment for the full rationale.
+    TTW_HELLO_TIME  += PEM_WARMUP_S;
+    TTW_LINK_BREAK  += PEM_WARMUP_S;
+    TTW_REPLAY_TIME += PEM_WARMUP_S;
+
     // Eq. 3.21 Case 3 test hook — see g_pem_silenced_vehicle_ids declaration.
     if (silence_vehicle_id_cmd != UINT32_MAX)
     {
@@ -159460,11 +159778,11 @@ static int RoutingMain(int argc, char *argv[])
           bshh_attacker_idx.resize(half);
       }
 
-      static const double BSHH_S1_EXCHANGE_TIME       = 5.0;
-      static const double BSHH_S1_FORWARD_TIME        = 5.010;
-      static const double BSHH_S1_STORE_TIME          = 5.050;
-      static const double BSHH_S1_VICTIM_FORWARD_TIME = 10.010;
-      static const double BSHH_S1_HIJACK_TIME         = 10.020;
+      static const double BSHH_S1_EXCHANGE_TIME       = (5.0 + PEM_WARMUP_S);
+      static const double BSHH_S1_FORWARD_TIME        = (5.010 + PEM_WARMUP_S);
+      static const double BSHH_S1_STORE_TIME          = (5.050 + PEM_WARMUP_S);
+      static const double BSHH_S1_VICTIM_FORWARD_TIME = (10.010 + PEM_WARMUP_S);
+      static const double BSHH_S1_HIJACK_TIME         = (10.020 + PEM_WARMUP_S);
 
       // Bug fix (BSHH doesn't need a physical break): BSHH's attack premise
       // (a stored heartbeat replayed later under the victim's identity) only
@@ -159772,8 +160090,8 @@ static int RoutingMain(int argc, char *argv[])
       }
       BSHH_S2_InitLog();
 
-      static const double BSHH_S2_EARLIER_EXCHANGE_TIME = 2.0;
-      static const double BSHH_S2_EXCHANGE_TIME = 5.0;
+      static const double BSHH_S2_EARLIER_EXCHANGE_TIME = (2.0 + PEM_WARMUP_S);
+      static const double BSHH_S2_EXCHANGE_TIME = (5.0 + PEM_WARMUP_S);
 
       uint32_t n_malicious_rsus2 =
           (uint32_t)std::round(RSU_Nodes.GetN() * attack_percentage / 100.0);
@@ -159967,7 +160285,7 @@ static int RoutingMain(int argc, char *argv[])
       BSHH_S3_InitLog();
       is_malicious_controller = true;
 
-      static const double BSHH_S3_EXCHANGE_TIME = 5.0;
+      static const double BSHH_S3_EXCHANGE_TIME = (5.0 + PEM_WARMUP_S);
 
       // attack_percentage-derived n_malicious_ctrl3b is display/coloring only
       // (see matching comment in the TTW-S3 block).
@@ -160129,7 +160447,7 @@ static int RoutingMain(int argc, char *argv[])
       BSHH_S4_InitLog();
       is_malicious_controller = true;
 
-      static const double BSHH_S4_EXCHANGE_TIME = 5.0;
+      static const double BSHH_S4_EXCHANGE_TIME = (5.0 + PEM_WARMUP_S);
 
       // attack_percentage-derived n_malicious_ctrl4b is display/coloring only
       // (see matching comment in the TTW-S3 block). Its RSU_Nodes.GetN() cap
@@ -160350,7 +160668,7 @@ static int RoutingMain(int argc, char *argv[])
           std::vector<uint32_t> active_real_pair = {v1_cidx, v2_cidx};
           ME_S1_InitLog(N_Vehicles, 1u, (uint32_t)me_real_cidx.size(), 1u, me_echo_cidx, active_real_pair);
 
-          static const double ME_S1_DISCOVERY_TIME = 10.0;
+          static const double ME_S1_DISCOVERY_TIME = (10.0 + PEM_WARMUP_S);
           const double discoveryObservedTime =
               ME_S1_DISCOVERY_TIME + AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
 
@@ -160509,7 +160827,7 @@ static int RoutingMain(int argc, char *argv[])
       ME_S1_InitLog(N_Vehicles, (uint32_t)me_echo_cidx.size(), (uint32_t)me_real_cidx.size(),
                     n_me_groups, me_echo_cidx, active_real_pair);
 
-      static const double ME_S1_DISCOVERY_TIME = 10.0;
+      static const double ME_S1_DISCOVERY_TIME = (10.0 + PEM_WARMUP_S);
       const double discoveryObservedTime =
           ME_S1_DISCOVERY_TIME + AttackSampleSignedJitter(attack_time_jitter_s * 0.5);
 
@@ -160760,7 +161078,7 @@ static int RoutingMain(int argc, char *argv[])
           std::cout << "[ERROR] ME-S2 needs at least 1 phantom reporter. Increase attack_percentage or N_Vehicles.\n";
           return 1;
       }
-      static const double ME_S2_DISCOVERY_TIME = 10.0;
+      static const double ME_S2_DISCOVERY_TIME = (10.0 + PEM_WARMUP_S);
 
       // Select which vehicles play the "real link"/"phantom reporter" roles
       // by actual proximity to the fixed malicious RSU (RSU_Nodes.Get(0)),
@@ -161028,7 +161346,7 @@ static int RoutingMain(int argc, char *argv[])
       if (s3_phantom_cidx.empty()) {
           std::cout << "[ME-S3] attack_percentage=0 -- no malicious controller, ME-S3 attack skipped (baseline run).\n";
       } else {
-      static const double ME_S3_DISCOVERY_TIME = 10.0;
+      static const double ME_S3_DISCOVERY_TIME = (10.0 + PEM_WARMUP_S);
 
       // Genuine single-attacker case: exactly 1 impersonated identity declared
       // with >=3 real vehicles available — run the dedicated 3-legit model
@@ -161229,7 +161547,7 @@ static int RoutingMain(int argc, char *argv[])
       if (s4_phantom_cidx.empty()) {
           std::cout << "[ME-S4] attack_percentage=0 -- no malicious controller, ME-S4 attack skipped (baseline run).\n";
       } else {
-      static const double ME_S4_DISCOVERY_TIME = 10.0;
+      static const double ME_S4_DISCOVERY_TIME = (10.0 + PEM_WARMUP_S);
       // Pick whichever RSU actually has a viable local neighborhood for this
       // run/seed, instead of blindly using RSU_Nodes.Get(0) (see
       // SelectRsuWithViableNeighborhood's declaration comment — this is the

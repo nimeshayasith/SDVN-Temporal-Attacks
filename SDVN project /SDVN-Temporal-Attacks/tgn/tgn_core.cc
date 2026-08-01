@@ -114,35 +114,31 @@ static const int    TGN_LAYERS          = 2;      // message-passing rounds L (E
 static double TGN_GAMMA = 310.0;
 
 // θ_FS — TGN detection threshold (Eq 3.25).
-// Re-calibrated 2026-07-26 against the NEW capped/balanced-dataset model
-// (tgn_weights_sc1_12_capped.bin, Test MCC=0.930 -- trained on the 42,177-
-// row capped/balanced dataset, pos_weight=0.32, superseding the OLD
-// tgn_weights_dim192_final.bin the previous 0.92 pick below was calibrated
-// against). A NEW model has no guarantee its OWN score distribution keeps
-// the old threshold optimal, so this re-sweeps from scratch rather than
-// reusing 0.92. Same methodology as before: --no_lw=1 ablation,
-// attack_percentage=50, N_Vehicles=200/N_RSUs=64, all 13 scenarios, ME-S1/
-// S2 (sc9/sc10) excluded from the comparison for the same reason as before
-// (zero attack events at every theta -- structurally undefined MCC, ties
-// every candidate at worst-case=0.000, making the comparison uninformative,
-// not a real detector difference between candidates).
+// Re-calibrated 2026-07-31 against the WBPTT50 model
+// (tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin, dim=192, layers=2,
+// tbptt_window=50, l_link=20.4, pos_weight=0.3191, seed=5, offline test
+// MCC=0.965 -- the winner of the W_BPTT sensitivity sweep, superseding
+// the OLD tgn_weights_sc1_12_capped.bin the previous 0.21 pick below was
+// calibrated against). A NEW model has no guarantee its OWN score
+// distribution keeps the old threshold optimal, so this re-sweeps from
+// scratch rather than reusing 0.21. Same methodology as before: --no_lw=1
+// ablation, attack_percentage=50, N_Vehicles=200/N_RSUs=64, simTime=30,
+// RngRun=999, all 13 scenarios, ME-S1/S2 (sc9/sc10) excluded from the
+// comparison for the same reason as before (zero attack events at every
+// theta -- structurally undefined MCC, ties every candidate at
+// worst-case=0.000, making the comparison uninformative, not a real
+// detector difference between candidates).
 // Two-stage sweep: coarse {0.00,0.05,...,1.00} (21 points), then fine
-// {0.20,0.21,...,0.39} (20 points) around the two coarse local optima, all
-// 13 scenarios x 37 distinct theta values = 481 total simulation runs.
-// Worst-case MCC (the project's stated calibration criterion) peaks at
-// theta=0.21 (worst=0.650, bottleneck: TTW-S3/sc3), tied with 0.22-0.26
-// (same 0.650 plateau, sc3's own decision doesn't change across that
-// narrow range) -- 0.21 wins the tiebreak on average MCC across the 11
-// valid scenarios (0.8495, the best within the tied plateau).
-// NOTE -- alternative candidate: theta=0.32 maximises AVERAGE MCC instead
-// (0.8874, the single highest average of all 37 points swept), at the cost
-// of a lower worst-case (0.612, bottleneck: TTW-S1/sc1) than 0.21's 0.650.
-// Kept as 0.21 to match the project's own established worst-case-MCC
-// selection criterion (consistent with how the prior 0.92/0.95 picks were
-// also chosen) -- but if a future analysis prefers optimizing typical-case
-// performance over worst-case robustness, 0.32 is the documented
-// alternative, not an arbitrary unexplored value.
-static const double TGN_THETA_FS = 0.21;
+// {0.15,0.16,...,0.35} (21 points) around the coarse local optimum
+// (theta=0.30, worst=0.693), all 11 valid scenarios x 42 distinct theta
+// values = 462 total simulation runs.
+// Worst-case MCC (the project's stated calibration criterion) peaks
+// sharply at theta=0.26 (worst=0.800, a step up from 0.480 at theta=0.25
+// -- the point where the bottleneck scenario's decision boundary flips),
+// and theta=0.26 is ALSO the single highest AVERAGE MCC of all 42 points
+// swept (avg=0.9112) -- both criteria agree exactly, no tiebreak needed,
+// unlike the previous 0.21 calibration which required one.
+static const double TGN_THETA_FS = 0.26;
 
 // W_max — TGN sliding-window event-retention bound (§3.4.3, mobility-aware design).
 // Conceptually distinct from N_beacon (Eq. 3.32, §3.4.7):
@@ -1705,7 +1701,15 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
         // must be gated the same way.
         const bool tgn_excluded_invalid_neighborhood =
             g_scenario_invalid_neighborhood_rsus.count(PemResolveVehicleGlobalId(e.reporter_id)) > 0;
-        if (!tgn_excluded_invalid_neighborhood) {
+        // PDF §4.4 warm-up correction: same PEM_WARMUP_S gate as
+        // PemRecordObservation (routing.cc) -- events before the 10s
+        // warm-up/observation boundary still feed the TGN's own temporal
+        // memory (TGN_ProcessEventInline runs unconditionally above), but
+        // must not contribute to g_tgn_tp/tn/fp/fn/g_comb_*/score lists,
+        // which are this file's own separate confusion-matrix mechanism
+        // from PEM's (see the comment above this block).
+        const bool tgn_excluded_warmup = e.reception_timestamp < PEM_WARMUP_S;
+        if (!tgn_excluded_invalid_neighborhood && !tgn_excluded_warmup) {
         if (e.attack_label) {
             if (g_tgn_attack_start_time < 0.0) g_tgn_attack_start_time = e.reception_timestamp;
             if (tgn_alert) {
@@ -2616,7 +2620,10 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     // g_scenario_invalid_neighborhood_rsus gate in routing.cc).
     const bool tgn_excluded_invalid_neighborhood2 =
         g_scenario_invalid_neighborhood_rsus.count(PemResolveVehicleGlobalId(e.reporter_id)) > 0;
-    if (!tgn_excluded_invalid_neighborhood2) {
+    // PDF §4.4 warm-up correction — see the other TGN_ProcessEventInline
+    // call site's tgn_excluded_warmup comment above for the rationale.
+    const bool tgn_excluded_warmup2 = e.reception_timestamp < PEM_WARMUP_S;
+    if (!tgn_excluded_invalid_neighborhood2 && !tgn_excluded_warmup2) {
     if (e.attack_label) {
         if (g_tgn_attack_start_time < 0.0) g_tgn_attack_start_time = e.reception_timestamp;
         if (tgn_alert) {

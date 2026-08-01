@@ -1,33 +1,11 @@
 ============================================================
   TGN Detector — Temporal-Echo Attack Analysis
   Attack    : COMBINED: All 12 Scenarios
-  Vehicles  : 30  RSUs: 8
+  Vehicles  : 200  RSUs: 64
   TGN dim   : 192  layers: 2
   γ         : 147.155  [init L_link/(2·T_b·ln2) from Eq. 3.31; validation-tuned §3.4.3]
-  θ_FS      : 0.210  [calibrated — worst-case MCC across scenarios, no_lw ablation]
+  θ_FS      : 0.260  [calibrated — worst-case MCC across scenarios, no_lw ablation]
   W_max     : 203  [§3.4.3 window = N_beacon (Eq. 3.32) = floor(L_link/T_b)]
   RSU mode  : WITH RSU — ME via claimed_sender_count; BSHH via seq_gap/staleness
 ============================================================
 
-
-========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
-  Scenario  : 13 — COMBINED: All 12 Scenarios
-  RSU mode  : WITH RSU
-  TP/TN/FP/FN : 327 / 141 / 17 / 5
-  [ctrl] TP/TN/FP/FN : 80 / 0 / 0 / 2
-  [beh]  TP/TN/FP/FN : 247 / 141 / 17 / 3
-  MCC         : 0.897
-  [comb] TP/TN/FP/FN : 330 / 141 / 17 / 2   MCC=0.911  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.986
-  ACR         : 95.510 %
-  Tdet        : 0.000 ms
-  θ_FS        : 0.210  [calibrated]
-  θ_MCC_opt   : 0.418  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 147.155  [Eq. 3.22 init; validation-tuned hyperparameter]
-  W_max       : 203  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 490
-  Stage-0 blocked (attacks): 2100
-  Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 107
-  Divergence-only detections: 4  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
-============================================================

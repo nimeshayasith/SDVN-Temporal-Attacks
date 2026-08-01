@@ -1,29 +1,31 @@
 #!/bin/bash
+# sweep_a13.sh
+# A13 (Table 4.2): Single KEM (ML-KEM-1024 Only, No HQC-5), via
+# --single_kem=1. X variable: KEM handshake rate rhs in {10,50,100,200}/s.
+# Applicable PEMs: M7 (Omega), M5 (Tpipeline, KEM sub-component). Per the
+# PDF's own text: "This does not test detection quality (unaffected) but
+# evaluates the latency and overhead cost" -- so scenario choice barely
+# matters for this ablation.
+#
+# UPDATED (dropped combined mode): no longer uses attack_scenario=13 -- see
+# sweep_a1.sh's comment for the full rationale. Uses attack_scenario=2
+# (TTW-S2, RSU-present -- KEM handshakes happen on the RSU/controller CSMA
+# path) as the representative, matching sweep_a11.sh's reasoning.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_170m_dim192_pw0.3191_seed5.bin"
+BIN="$NS3_DIR/build/scratch/routing"
+export LD_LIBRARY_PATH="$NS3_DIR/build/lib"
+TGN="$HOME/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin"
 OUT="$HOME/ablation_sweep/a13"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
 
-echo "=== a13 x=10 ==="
-mkdir -p "$OUT/x10"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --single_kem=1 --kem_handshake_rate=10 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/x10" > "$OUT/x10.log" 2>&1
-rm -rf "$OUT/x10/PCAP_FILES" "$OUT/x10/XML"
-
-echo "=== a13 x=50 ==="
-mkdir -p "$OUT/x50"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --single_kem=1 --kem_handshake_rate=50 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/x50" > "$OUT/x50.log" 2>&1
-rm -rf "$OUT/x50/PCAP_FILES" "$OUT/x50/XML"
-
-echo "=== a13 x=100 ==="
-mkdir -p "$OUT/x100"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --single_kem=1 --kem_handshake_rate=100 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/x100" > "$OUT/x100.log" 2>&1
-rm -rf "$OUT/x100/PCAP_FILES" "$OUT/x100/XML"
-
-echo "=== a13 x=200 ==="
-mkdir -p "$OUT/x200"
-./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --single_kem=1 --kem_handshake_rate=200 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$OUT/x200" > "$OUT/x200.log" 2>&1
-rm -rf "$OUT/x200/PCAP_FILES" "$OUT/x200/XML"
+for X in 10 50 100 200; do
+  echo "=== a13 x=${X} ==="
+  ISO="$OUT/x${X}"
+  mkdir -p "$ISO"
+  "$BIN" --simTime=310 --N_Vehicles=200 --N_RSUs=64 --N_Controllers=4 --attack_scenario=2 --attack_percentage=60 --RngRun=1 --single_kem=1 --kem_handshake_rate=${X} --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --tgn_theta=0.26 --output_root=$ISO > /dev/null 2>&1
+  rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
+done
 
 echo "=== a13 sweep complete ==="

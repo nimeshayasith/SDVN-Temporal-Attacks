@@ -9,7 +9,9 @@
 # own detection functions, so no new code needed, just wider coverage.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_170m_dim192_pw0.3191_seed5.bin"
+BIN="$NS3_DIR/build/scratch/routing"
+export LD_LIBRARY_PATH="$NS3_DIR/build/lib"
+TGN="$HOME/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin"
 OUT="$HOME/ablation_sweep/a14"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -26,7 +28,7 @@ for SC in 3 4 7 8 11 12; do
     # TrustReassignController still runs normally, so this measured ordinary
     # reassignment behavior under varying compromise count, not "No
     # Controller Reassignment Mechanism" as A14's title states.
-    ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=60 --RngRun=1 --no_reassign=1 --compromised_controllers=${X} --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+    "$BIN" --simTime=310 --N_Vehicles=200 --N_RSUs=${NRSU} --N_Controllers=4 --attack_scenario=${SC} --attack_percentage=60 --RngRun=1 --no_reassign=1 --compromised_controllers=${X} --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --tgn_theta=0.26 --output_root=$ISO > /dev/null 2>&1
     rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
   done
 done

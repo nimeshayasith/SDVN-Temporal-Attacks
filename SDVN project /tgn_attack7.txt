@@ -1,6 +1,6 @@
 ============================================================
   TGN Detector — Temporal-Echo Attack Analysis
-  Attack    : TTW-S3: Malicious Controller, No RSU
+  Attack    : BSHH-S3: Malicious Controller, No RSU
   Vehicles  : 200  RSUs: 0
   TGN dim   : 192  layers: 2
   γ         : 147.155  [init L_link/(2·T_b·ln2) from Eq. 3.31; validation-tuned §3.4.3]
@@ -11,23 +11,23 @@
 
 
 ========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
-  Scenario  : 3 — TTW-S3: Malicious Controller, No RSU
+  Scenario  : 7 — BSHH-S3: Malicious Controller, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 56 / 224 / 0 / 0
-  [ctrl] TP/TN/FP/FN : 56 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 224 / 0 / 0
+  TP/TN/FP/FN : 110 / 110 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 110 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 110 / 0 / 0
   MCC         : 1.000
-  [comb] TP/TN/FP/FN : 56 / 224 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 110 / 110 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 1.000
   ACR         : 100.000 %
   Tdet        : 0.000 ms
   θ_FS        : 0.260  [calibrated]
-  θ_MCC_opt   : 0.251  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  θ_MCC_opt   : 0.146  [MCC-maximising on this run's scores — §3.4.3 criterion]
   γ_init      : 147.452  [Eq. 3.22 init; validation-tuned hyperparameter]
   W_max       : 204  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 280
+  Events      : 220
   Stage-0 blocked (attacks): 0
   Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 224
+  |E_t^trusted|  : 110
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================

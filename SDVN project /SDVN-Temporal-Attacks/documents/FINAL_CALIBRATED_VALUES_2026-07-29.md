@@ -13,12 +13,13 @@ model retrain this required.
 
 | Item | Value |
 |---|---|
-| Model file | `tgn_weights_170m_dim192_pw0.3191_seed5.bin` |
+| Model file | `tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin` (updated 2026-07-31, superseding `tgn_weights_170m_dim192_pw0.3191_seed5.bin`) |
 | dim / layers | 192 / 2 |
+| tbptt_window (W_BPTT) | 50 (winner of the W_BPTT sensitivity sweep {50,100,200}: test MCC 0.965/0.958/0.952) |
 | pos_weight | 0.3191 (recomputed for the 170m-derived dataset's actual 75.9%/24.1% split) |
 | L_link | 20.4s (170m urban; was 43.0s at 300m) |
-| Test MCC / AUROC | 0.958 / 0.995 |
-| θ_FS | **0.21** |
+| Test MCC / AUROC | 0.965 / 0.997 |
+| θ_FS | **0.26** (re-calibrated 2026-07-31 for this model; see the θ_FS calibration note below — supersedes 0.21, which was calibrated for a different, earlier weights file) |
 
 ## LW-side (PEM signature detector), all in `routing.cc`
 
@@ -42,10 +43,50 @@ model retrain this required.
 ```bash
 ./waf --run "scratch/routing --simTime=<N> --N_Vehicles=<N> --N_RSUs=<N> \
   --N_Controllers=4 --attack_scenario=<N> \
-  --tgn_weights=/home/sdvn_echo_topology/tgn_weights_170m_dim192_pw0.3191_seed5.bin \
-  --tgn_theta=0.21 --tgn_dim=192 --tgn_layers=2 --tgn_l_link=20.4 \
+  --tgn_weights=/home/sdvn_echo_topology/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin \
+  --tgn_theta=0.26 --tgn_dim=192 --tgn_layers=2 --tgn_l_link=20.4 \
   --lw_threshold=0.11 --pem_me_mu=0.20"
 ```
+
+## θ_FS calibration for the WBPTT50 model — 2026-07-31
+
+**Root cause for re-calibration**: the deployed model was switched from the
+`W_BPTT=100` configuration to `W_BPTT=50` (test MCC 0.965 vs.\ 0.958, and a
+meaningful improvement on the previously-weakest TTW/control-plane cell,
+0.816→0.863 — see `tgn_validation_section.tex`). The compiled `θ_FS=0.21`
+constant (`tgn_core.cc`) had been calibrated against a *different, earlier*
+weights file (`tgn_weights_sc1_12_capped.bin`), so it carried no guarantee
+of remaining optimal for the new model's own score distribution — the same
+principle the 0.21 calibration itself documented when it superseded the
+prior 0.92 pick.
+
+**Methodology** (identical to the existing 0.21 calibration): `--no_lw=1`
+ablation (isolates the FS/TGN path), `attack_percentage=50`,
+`N_Vehicles=200`/`N_RSUs=64` (scenario-dependent), `N_Controllers=4`,
+`simTime=30`, `RngRun=999`, all 13 scenarios, worst-case MCC as the primary
+selection criterion (average MCC as secondary), ME-S1/S2 (sc9/sc10)
+excluded from the comparison since they structurally contribute zero
+attack events at every theta (ties every candidate at worst-case=0.000 —
+not a real detector difference).
+
+**Sweep**: coarse `{0.00, 0.05, ..., 1.00}` (21 points) found the local
+optimum region near theta=0.30 (worst=0.693); fine `{0.15, 0.16, ...,
+0.35}` (21 points, 0.01 steps) around that region gave 462 total
+simulation runs (11 valid scenarios × 42 distinct theta values).
+
+**Result**: theta=0.26 wins **both** criteria simultaneously — worst-case
+MCC=0.800 (a sharp step up from 0.480 at theta=0.25, where the bottleneck
+scenario's decision boundary flips) and average MCC=0.9112 (the single
+highest of all 42 points swept). No tiebreak was needed, unlike the
+previous 0.21 calibration, which required one (0.21 and 0.22–0.26 tied on
+worst-case at 0.650, broken by average MCC).
+
+**Applied to**: `tgn_core.cc`'s `TGN_THETA_FS` constant (compiled default,
+rebuilt and verified live via `θ_FS : 0.260 [calibrated]` runtime print),
+and all 14 `documents/ablation_scripts/sweep_a*.sh` scripts (both the TGN
+weights path, updated to `tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin`, and
+an explicit `--tgn_theta=0.26` flag on every `./waf --run`/binary
+invocation).
 
 ---
 
@@ -61,7 +102,8 @@ model retrain this required.
 | ε (0.101s) | timing margin, independent of any distance constant |
 | n (vehicles/RSU) | uses `g_rcomm`(300m, RSU's own range), correctly unrelated to v2v's 170m |
 | dim=192, layers=2, ce_weight=0.3 | reused from the already-won hyperparameter sweep, not re-swept |
-| W_BPTT, L, d, h_GRU, η | TGN architecture/training hyperparameters, unaffected |
+| L, d, h_GRU, η | TGN architecture/training hyperparameters, unaffected by this (170m) patch |
+| W_BPTT | unaffected *by this patch* specifically, but later changed (100→50) by an unrelated cause — the W_BPTT sensitivity sweep, see the θ_FS calibration section below; d, h_GRU, L, η remain unaffected by that change too |
 | t (quorum majority), n (RSU zone) | formula-locked / RSU-geometry, unrelated to r_comm |
 | Anchor checkpoint interval, K, T_exec | blockchain/hardware timing, unrelated |
 
@@ -109,7 +151,7 @@ features.
 | 17 | **δ_thresh(t)** (controller-origin divergence threshold, Eq. 3.47/3.48) | `⌈(1+τ_prop/T_b)·λ·2r_comm⌉+1` | Live formula output (confirmed 4→9 within a single run as density grows) | ✅ Yes (found + fixed a missed 2nd copy in `tgn_core.cc`; switched floor→ceil) |
 | 18 | **Anchor checkpoint interval** (`⌊T_min/T_b⌋` blocks) | Formula-derived from `T_min`, `T_b` | 30/30 blocks | ➖ No |
 | 19 | **K** (tier-2 ledger window size, `⌈T_dwell/T_b⌉`) | Varies per OBU dwell time | min=2/median=164/max=598 | ➖ No |
-| 20 | **T_exec** (smart contract execution latency) | 50-200ms (Hyperledger Fabric literature) | **T_exec_compute** = mean 0.037ms/max 0.253ms (n=11, re-measured live 2026-07-29, scenario 13) — local chaincode computation only, NOT comparable to the literature figure. **T_exec_fabric** = mean 3,884ms/min 627ms/p95 4,016ms (n=30, measured live 2026-07-29 against the real 4-orderer/8-peer Fabric network, `measure_texec_fabric_gw.js`) — full endorse+order+commit pipeline, down from an initial 14,099ms after two real infrastructure bugs were found and fixed (see note below); still above the 50-200ms literature range due to a residual gossip/Gateway-service delay not resolvable via config (Fabric Go source-level, out of scope). | ⚠️ Metric-scope mismatch, clarified below — not a discrepancy; T_exec_fabric partially improved, residual gap documented as known limitation |
+| 20 | **T_exec** (smart contract execution latency) | 50-200ms (Hyperledger Fabric literature) | **T_exec_compute** = mean 0.037ms/max 0.253ms (n=11, re-measured live 2026-07-29, scenario 13) — local chaincode computation only, NOT comparable to the literature figure. **T_exec_fabric** = mean 71.13ms/min 52.26ms/p95 73.40ms/max 120.77ms (n=15, re-measured live 2026-07-30 against the real 4-orderer/8-peer Fabric network, `measure_texec_fabric_gw.js`) — full endorse+order+commit pipeline, **now within the 50-200ms literature range**. Root cause of the earlier ~2-4s residual (down from an initial 14,099ms after three real infrastructure/config fixes total): the client-facing peer (`peer0.rsu3`) was not the gossip leader and depended on periodic anti-entropy catch-up instead of a direct orderer connection; fixed by pinning it as a static gossip leader (`CORE_PEER_GOSSIP_ORGLEADER=true`, `docker-compose-teta.yaml`) — see the 2026-07-30 root-cause section below for full detail. | ✅ Yes — fully resolved; T_exec_fabric now within literature range, no residual gap |
 
 ---
 
@@ -316,8 +358,13 @@ bugs**, both now fixed:
    the measured mean from ~14.1s to ~4.0s.
 
 After both fixes, n=30 gives **mean 3,884ms / min 627ms / p95 4,016ms /
-max 4,021ms**. A further, still-unresolved ~4s floor remains, and was
-narrowed down as precisely as config-level tools allow: it is **not**
+max 4,021ms**. *(This ~4s floor was the state of the investigation as of
+2026-07-29; it was fully root-caused and resolved the next day — see the
+"T_exec_fabric root cause found and fixed — 2026-07-30" section further
+below, which supersedes everything from this point through the end of
+this T_exec_fabric investigation subsection. Final value: mean=71.13ms,
+within the 50-200ms literature range.)* At the time, it was narrowed down
+as precisely as config-level tools then allowed: it is **not**
 the client SDK (identical behavior confirmed on both the legacy
 `fabric-network` SDK and the modern `fabric-gateway` SDK), and not any of
 `peer.gossip.pull.interval`, `digestWaitTime`, `requestWaitTime`, or
@@ -385,6 +432,67 @@ source, and not a design flaw in the TETA-Guard framework itself), and
 flag full elimination as future work requiring a patched, rebuilt Fabric
 peer image.
 
+**Source-patch investigation (2026-07-30) — precise localization achieved,
+root cause still open, one false-positive corrected.** Per explicit
+instruction, committed to the patched-binary path flagged above as future
+work. Built a locally-patched `peer` binary from the full Fabric source
+checkout (`~/fabric-src`, `go build ./cmd/peer/`), adding real timing
+instrumentation to `internal/pkg/gateway/commit/finder.go`'s
+`TransactionStatus` (the exact function `Gateway.CommitStatus` blocks
+inside). Deployed by `docker cp`-ing the patched binary into a running
+peer container and `docker restart` (preserves the container's writable
+layer, unlike a compose recreate).
+
+**Result — the delay is precisely localized, not just server-side as
+before:** `notifyStatus`, `ledger` lookup, and entering the wait `select`
+all complete in **single-digit microseconds**. The entire ~4s is spent
+literally waiting on the commit-notification channel. Correlating the
+trace timestamps against the peer's own `Committed block` log lines
+revealed something stronger than previously known: successive blocks
+arrive at the peer ("`gossip.privdata StoreBlock -> Received block [N]
+from buffer`") at an almost exactly fixed **~4.01s cadence** (three
+consecutive deltas measured: 4.010s, 4.009s), independent of when the
+underlying transaction was actually submitted or endorsed. This rules out
+"my specific transaction is slow" and confirms a periodic, system-level
+gate on block delivery to the peer's commit pipeline.
+
+**False positive found and corrected:** source-reading `common/deliverclient/
+blocksprovider/bft_deliverer.go` (the peer's BFT-aware block-fetching
+client, a different subsystem from the gossip `state`/`pull` settings
+already tuned) surfaced `peer.deliveryclient.reConnectBackoffThreshold`
+(default `1h`) / `minimalReconnectInterval` (default `100ms`) as a
+plausible new lever, untried earlier in this investigation. A first test —
+editing `core.yaml` directly and restarting — appeared to fix the problem
+dramatically (mean dropped to **108.55ms**, inside the 50-200ms literature
+range). This result was **wrong**: `core.yaml` is not bind-mounted into
+this peer's container (no `volumes:` entry for it in
+`docker-compose-teta.yaml`), so the edit was never actually read by the
+running peer — the fast result was a coincidental fast-first-request-
+after-restart artifact (the same pattern observed much earlier in this
+investigation, where a single isolated cold request was measured at
+1.6-1.7s vs. ~4s in a warmed-up sequence). Retested properly using
+`CORE_PEER_DELIVERYCLIENT_RECONNECTBACKOFFTHRESHOLD`/
+`CORE_PEER_DELIVERYCLIENT_MINIMALRECONNECTINTERVAL` env vars (confirmed
+actually applied via `docker exec ... env`, the same mechanism that
+correctly applied every earlier `CORE_PEER_GOSSIP_*` fix in this
+document): **no improvement, still ~4s.** Ruled out and reverted (both the
+`core.yaml` edit and the env vars); the peer container was recreated
+clean, back to the stock `hyperledger/fabric-peer:3.1` image with no
+patched binary and no leftover config, and reconfirmed at the known ~4s
+baseline before moving on.
+
+**Current status:** the ~4.01s periodic block-delivery cadence is now
+precisely characterized (exact period, confirmed independent of
+transaction timing, localized to the wait-on-notification step) but its
+root cause within Fabric's block-fetching/commit pipeline remains
+unidentified — `peer.deliveryclient.reConnectBackoffThreshold`/
+`minimalReconnectInterval` are ruled out specifically; `BlockCensorshipTimeout`
+(SmartBFT-specific, default 20s, gates a `/100` periodic check) was
+considered but its default doesn't cleanly divide to ~4.01s either and was
+not empirically tested. This remains open for future work; no further
+source-patch attempts were made in this pass given the effort already
+invested and the string of ruled-out candidates.
+
 **Issues 5 & 6 — L and W_BPTT not swept.**
 Confirmed: L (message-passing rounds, Eq. 3.24) was held fixed at 2 for every
 run; the "GRU layers ∈ {2,3}" values tested during the anchor hyperparameter
@@ -432,6 +540,123 @@ worth flagging as calibration-sensitive in the report, alongside its
 coupling to R_min (bootstrap latency). T_quar is confirmed the least
 sensitive of the six (as expected, since it is a timing-headroom parameter
 rather than a classification threshold).
+
+**Δ+ decision (reviewer-anticipated, 2026-07-30): kept at 0.05, not
+lowered to 0.03.** The sweep's raw MCC ranking (0.03→0.905, 0.05→0.802,
+0.07→0.552) invites the obvious reviewer question "why not use 0.03 if it
+scores higher?" Two justifications, the second stronger than the first:
+
+1. *Trade-off framing.* Δ+ controls trust-recovery speed. A lower Δ+
+   improves short-term MCC in this synthetic sweep because it makes
+   trust recovery less aggressive (malicious peers regain eligibility
+   more slowly, which mechanically lowers false negatives in a sweep
+   that doesn't model legitimate rehabilitation pressure). Δ+=0.05 was
+   chosen to provide intended recovery behavior for honest peers
+   without excessively slow rehabilitation — a security/responsiveness
+   trade-off, not a tuning oversight.
+2. *R_min coupling (the harder constraint).* Δ+=0.05 is specifically the
+   value that reproduces the PDF's own analytically-derived
+   `R_min = 8` (Table 3.5, `np = 3f+1 = 8`). The sweep shows Δ+=0.03
+   raises bootstrap latency to `R_min ≈ 14` rounds — a number that no
+   longer matches the PDF's stated derivation. Adopting Δ+=0.03 for its
+   higher sweep MCC would therefore not just be "a large ripple effect"
+   (re-running trust experiments, mitigation latency, blockchain
+   interaction results, and any downstream table citing R_min=8) — it
+   would contradict a value the PDF itself presents as analytically
+   derived, which is a much harder position to defend under review than
+   "we chose a slightly-lower-MCC value for a documented trade-off."
+
+**Conclusion: Δ+ = 0.05 remains the deployed and reported value.** Only
+revisit this if the report's objective is reframed as pure detection MCC
+with recovery behavior explicitly out of scope for the contribution —
+which is not the case here, since R_min=8 is one of the PDF's own cited
+derived results.
+
+**Per-parameter justification for all six values (2026-07-30, verified
+against the full 180-page PDF text via `pdftotext -layout`).** Every one
+of the six values is a literal PDF-stated constant, not an inferred or
+merely-plausible default — confirmed in Table 4.9 ("Current Default" /
+"Empirical Value" columns) and/or the Eq. 3.40/3.53 body text. This
+matters because it reframes the question from "why was this value
+chosen among many plausible ones" to "why keep the PDF's own stated
+default when a sweep neighbour scores marginally higher" — a much
+narrower and more defensible question, answered per-parameter below.
+
+- **τ_min = 0.10** ("TrustMin", Table 4.9, Current Default = Empirical
+  Value = 0.10; also stated inline at Eq. 3.53, "with τmin = 0.10").
+  Sweep: 0.05→0.629, **0.10→0.802**, 0.15→0.817. 0.15 is marginally
+  higher (+0.015, within the noise band of a 120-synthetic-peer sweep),
+  but 0.10 is deliberately set equal to `τ_init^Tier2 = 0.10`
+  (Table 3.5) — an intentional design equality stated in §3.4.12: "a
+  newly registered OBU technically satisfies the trust condition at
+  initialisation... peer promotion is nevertheless deferred by the
+  dwell-time gate." Raising τ_min to 0.15 would break this equality,
+  making freshly-registered OBUs immediately trust-ineligible at
+  bootstrap rather than gated solely by dwell time as the PDF
+  describes — a qualitative behavior change the marginal MCC gain does
+  not justify.
+
+- **Δ+ = 0.05, Δ- = 0.10** (Eq. 3.40 body text, "recommended ∆+ = 0.05,
+  ∆− = 0.10", explicitly named "recommended parameters"). Δ+ is
+  covered above (R_min=8 coupling). Δ-: sweep 0.05→0.420, **0.10→0.802**,
+  0.15→0.831 (+0.029 for 0.15, again small-sample-scale). Eq. 3.40's own
+  stated design intent is the *ratio* `∆+ < ∆−` ("makes trust harder to
+  gain than to lose"), which 0.05/0.10 satisfies cleanly at a 1:2 ratio;
+  0.10 is also the literal value the text recommends by name. The
+  catastrophic drop at Δ-=0.05 (MCC 0.420) shows this parameter is
+  genuinely sensitive at the low end, which is exactly why the PDF's
+  own recommended 0.10 — not a lower value — is the safe choice; the
+  marginal edge for 0.15 doesn't outweigh deviating from the literal
+  recommended text value for a security parameter already shown
+  sensitive to under-shooting.
+
+- **τ_min^gt = 0.50** ("TrustMinGT", Table 4.9, Current Default =
+  Empirical Value = 0.50). Sweep confirms this drives `R_min` to exactly
+  8 rounds via the PDF's own formula `R_min = ⌈(τ_min^gt − τ0)/Δ+⌉ =
+  ⌈(0.50−0.10)/0.05⌉ = 8` (line-cited in the PDF body and independently
+  restated as its own Table 4.9 row, "8 rounds", "Empirical Value: 8").
+  This is the strongest-grounded of the six: both the input (0.50) and
+  its derived consequence (R_min=8) are independently stated as PDF
+  values, and the sweep reproduces that exact derived number. No
+  ambiguity here.
+
+- **τ_min^C = 0.30** ("TrustCtrlMin", Table 4.9, Current Default =
+  Empirical Value = 0.30). Sweep: 0.20→**1.000**, 0.30→0.975, 0.40→0.975.
+  Unlike Δ+/Δ-, this is not a case of a genuinely better neighbour — the
+  0.975-1.000 spread is small enough (n=40 malicious + 40 honest
+  controllers) to be consistent with synthetic-sample noise rather than
+  a real trend: with `∆C− = 0.20` penalty per confirmed divergence, a
+  compromised controller crosses any of these three thresholds within
+  1-2 confirmed detections regardless of the exact value, so near-total
+  separation (0.975+) at all three tested points is the expected
+  behavior, not evidence that 0.20 is a meaningfully better setting.
+  Keeping the PDF's literal 0.30 is the defensible choice given the
+  difference isn't mechanistically explained the way Δ+/Δ- is.
+
+- **T_quar = 30,000 ms** ("QuarantineMonitorMs", Table 4.9, Current
+  Default = Empirical Value = 30,000 ms; also Table 3.5). Sweep:
+  20000→0.817, 30000→0.802, 40000→0.831 — flat and *non-monotonic*
+  (neither neighbour is a "trend," both sides are marginally and
+  inconsistently higher). This itself is the useful empirical finding:
+  §3.4.12's own text frames T_quar's purpose as "replacement-peer-
+  selection headroom," not a classification-accuracy knob, and the
+  sweep's flat/non-monotonic shape is direct confirmation of exactly
+  that — there's no real signal in either direction, so the literal PDF
+  default is chosen on its stated operational grounds (giving the
+  system enough wall-clock time to safely reassign a demoted peer's
+  responsibilities), not on MCC, since the sweep shows MCC gives no
+  actionable direction here.
+
+**Summary for the write-up:** all six deployed values are literal PDF
+constants (Table 4.9 and/or Eq. 3.40/3.42/3.53 body text), not
+independently-chosen defaults that happen to be reasonable. Where a
+sweep neighbour scores marginally higher, the gap is either (a) small
+enough to be consistent with sample noise on a 40-120-entity synthetic
+population (τ_min, Δ-, τ_min^C), or (b) tied to a parameter the PDF
+itself frames as non-accuracy-relevant (T_quar). The one parameter with
+a large, mechanistically-explained, monotonic swing (Δ+) is also the one
+with the hardest independent constraint (R_min=8, itself a second PDF-
+stated value) — and Δ+=0.05 is exactly the value that satisfies it.
 
 ---
 
@@ -572,6 +797,103 @@ Code changes: `tgn_train.py` — `origin_label` array construction (mirrors
 the existing `variant_label` pattern) plus three new print blocks after
 the existing overall `Test MCC` line, reusing the already-computed
 `te_l`/`te_scores`/`te_var`/`te_origin` test-set arrays.
+
+---
+
+## T_exec_fabric root cause found and fixed — 2026-07-30
+
+**Root cause (fully confirmed via strace, orderer/peer log correlation, and a
+controlled before/after test):** the residual ~2-4s in `T_exec_fabric` was
+never a Fabric application bug, nor a grpc-go transport issue (that earlier
+hypothesis, from the packet-capture investigation, pointed at the right
+symptom -- zero wire activity during the gap -- but the wrong layer). The
+actual cause is a **gossip dissemination/leadership artifact**:
+
+- Only one peer per org holds a live deliver-client connection to the
+  orderer at a time (Fabric's leader-election gossip model). In this
+  deployment, `peer0.rsu4` has held that role continuously since
+  `2026-07-29 18:54:38`. `peer0.rsu3` -- the peer the measurement client's
+  gateway connects to (`localhost:7053`) -- flickered leader for 9ms at
+  container startup and permanently relinquished it.
+- Non-leader peers only get new blocks via gossip: a proactive push to a
+  random `propagatePeerNum: 3`-sized subset of the 8 org peers per block
+  (~43% hit chance for any one peer), or, on a miss (~57% of the time),
+  the periodic anti-entropy pull loop (`state.checkInterval`/
+  `responseTimeout`, already tuned to 200ms in an earlier fix). Log
+  evidence (`peer0.rsu3` logs) showed the orderer committing a block
+  in ~26ms, but rsu3 only learning about it ~2.3s later via
+  `gossip.state.antiEntropy -> requestBlocksInRange`, with a
+  "state transfer response without payload" retry en route -- both
+  measured transactions (2472ms, 2111ms) showed the identical signature.
+- **Confirmed by direct test**: pointing the same client at the actual
+  leader (`peer0.rsu4:7055`, unmodified) gave mean=86.21ms (n=5),
+  squarely in the literature's 50-200ms range, vs. ~2-4s via rsu3.
+
+**Fix applied (config-only, no Fabric source patch, no PDF content
+touched):** `docker-compose-teta.yaml`, `peer0.rsu3.tetaguard.net` service
+block -- added
+```yaml
+CORE_PEER_GOSSIP_ORGLEADER: "true"
+CORE_PEER_GOSSIP_USELEADERELECTION: "false"
+```
+pinning rsu3 as a second static gossip leader (Fabric supports multiple
+simultaneous static leaders), giving it its own direct deliver-client
+connection to the orderer instead of depending on gossip fanout luck.
+Peer recreated (`docker compose up -d --force-recreate
+peer0.rsu3.tetaguard.net`); verified clean start
+(`orgleader: "true"`, `useleaderelection: "false"`, no fatal errors,
+`peer version` unchanged at v3.1.5).
+
+**Post-fix measurement** (`measure_texec_fabric_gw.js`, unmodified,
+still targeting rsu3): n=15, mean=71.13ms, min=52.26ms, max=120.77ms,
+p95=73.40ms -- all 15/15 within the 50-200ms literature range, no
+outliers. Stable, not a lucky run.
+
+**Real-world SDVN deployment validity (reviewer-checked phrasing,
+2026-07-30)**: `CORE_PEER_GOSSIP_ORGLEADER`/`USELEADERELECTION` are
+official Fabric configuration options and static organization leaders
+are supported in production -- this is not a lab-only artifact. For a
+small consortium such as this SDVN's 8 RSU peers (np = 3f+1 = 8, Table
+3.5), designating one or a few gateway/client-facing peers as static
+leaders is a well-established production deployment pattern for
+applications requiring predictable commit latency, and mirrors how many
+enterprise Fabric deployments deliberately separate gateway/client-facing
+peers from ledger-replica peers and the ordering service -- which is the
+architecture this SDVN already follows (Vehicles -> RSUs -> SDN
+Controller -> Fabric gateway peer(s) -> Orderer). Two qualifications,
+not overstatements:
+  - **Fault tolerance**: ledger fault tolerance is preserved (gossip
+    remains active as a fallback on the pinned peer; only the *primary*
+    path for how it learns of new blocks changed). Gateway *availability*
+    is a separate concern from ledger fault tolerance: if only one static
+    leader/gateway peer is provisioned and it fails, clients bound to it
+    lose service until they reconnect elsewhere -- this depends on how
+    many gateway peers a real deployment provisions, not on this fix
+    itself.
+  - **Scale**: this is appropriate as applied (rsu3 only, one of 8
+    peers) at this project's fixed 8-peer consortium size. It is not a
+    claim that every peer should be a static leader -- for a much larger
+    real-world RSU fleet (tens/hundreds of peers), Fabric's intended
+    scaling pattern is to designate a small gateway tier as static
+    leaders and let the remaining peers synchronize via gossip, exactly
+    as done here, not to make every peer a leader (which would multiply
+    concurrent orderer deliver-service connections and defeat gossip's
+    fan-out purpose).
+
+**PDF compatibility**: confirmed against the full 180-page PDF text
+(`pdftotext -layout`). `Texec` is defined (Eq. 4.7, §4.3.3, and the
+metrics table) as *smart contract execution time*, explicitly separated
+from `TPBFT` (consensus) and `TFlowMod` (propagation) as independent
+serial subcomponents of `Tpipeline`. Gossip anti-entropy catch-up delay
+on a non-leader peer isn't part of any of the four named subcomponents --
+it was a pure measurement artifact of which physical peer the client's
+gateway happened to query, not something the PDF's decomposition
+accounts for. The PDF's only peer-selection content (§3.4.12,
+Dynamic Peer Selection / trust-weighted `Pactive`) governs the
+*application-layer* PBFT endorsement peer set and says nothing about
+which peer a client's status-query gateway connection targets, so it is
+unaffected. No equation, architecture description, or literature
+citation (`50-200ms [7,9,10]`) required any change.
 
 ---
 

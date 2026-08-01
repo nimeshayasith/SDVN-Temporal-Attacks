@@ -110,6 +110,18 @@ x-peer-env: &peer-env
   CORE_PEER_GOSSIP_DIGESTWAITTIME: "50ms"
   CORE_PEER_GOSSIP_REQUESTWAITTIME: "100ms"
   CORE_PEER_GOSSIP_RESPONSEWAITTIME: "200ms"
+  # Tried and RULED OUT (2026-07-30): peer.deliveryclient.reConnectBackoffThreshold
+  # / minimalReconnectInterval as the cause of T_exec_fabric's ~4s delay.
+  # An initial core.yaml file edit appeared to fix it dramatically (~108ms),
+  # but that was a false positive -- core.yaml is not bind-mounted into this
+  # peer's container, so the edit was never actually read; the fast result
+  # was a coincidental fast-first-request-after-restart artifact. Retested
+  # properly with these two env vars (confirmed applied via `docker exec ...
+  # env`, same working pattern as the CORE_PEER_GOSSIP_* fixes above): no
+  # improvement, still ~4s. Removed after ruling out -- see
+  # FINAL_CALIBRATED_VALUES_2026-07-29.md for the full trace-based
+  # investigation (exact ~4.01s periodic block-buffer-flush cadence,
+  # confirmed via a patched, traced peer binary, root cause still open).
   # Fix (2026-07-29, same investigation, found via Fabric Go source read at
   # /home/sdvn_echo_topology/fabric-src/gossip/state/state.go): the pull-engine
   # wait times above (digestWaitTime/requestWaitTime/responseWaitTime) had no
@@ -411,6 +423,18 @@ services:
       CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7153
       CORE_PEER_GOSSIP_BOOTSTRAP: peer0.rsu1.tetaguard.net:7051
       CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.rsu3.tetaguard.net:7053
+      # Fix (2026-07-30): pin this peer as a static gossip org-leader too.
+      # Root cause of T_exec_fabric's ~2-4s residual: only the dynamically-
+      # elected leader (peer0.rsu4) held a direct deliver-client connection
+      # to the orderer; peer0.rsu3 (used by client gateway connections)
+      # relinquished leadership 9ms after startup and thereafter depended on
+      # gossip's propagatePeerNum=3 push fanout (~43% hit chance per block
+      # across 8 org peers) or, on a miss, the periodic anti-entropy pull
+      # loop -- adding the observed 2-4s. Making rsu3 a static leader gives
+      # it its own real-time orderer deliver connection, bypassing gossip
+      # catch-up entirely for client-facing queries on this peer.
+      CORE_PEER_GOSSIP_ORGLEADER: "true"
+      CORE_PEER_GOSSIP_USELEADERELECTION: "false"
       CORE_PEER_LOCALMSPID: TetaGuardMSP
       CORE_PEER_TLS_CERT_FILE: /etc/hyperledger/fabric/tls/server.crt
       CORE_PEER_TLS_KEY_FILE: /etc/hyperledger/fabric/tls/server.key

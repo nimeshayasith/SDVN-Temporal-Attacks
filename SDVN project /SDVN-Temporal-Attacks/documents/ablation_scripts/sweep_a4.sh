@@ -16,10 +16,16 @@
 #
 # N=400 is genuinely heavier (larger PBFT consensus, more events) — no
 # internal timeout here; let it run as long as it needs.
+#
+# UPDATED (dropped combined mode): no longer uses attack_scenario=13 -- see
+# sweep_a1.sh's comment for the full rationale. M4 (PIR) is ME-specific, so
+# this uses attack_scenario=9 (ME-S1) as the representative scenario.
 
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_170m_dim192_pw0.3191_seed5.bin"
+BIN="$NS3_DIR/build/scratch/routing"
+export LD_LIBRARY_PATH="$NS3_DIR/build/lib"
+TGN="$HOME/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin"
 OUT="$HOME/ablation_sweep/a4"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -28,7 +34,7 @@ for N in 100 200 400; do
   echo "=== a4 N_Vehicles=$N (lambda proxy) ==="
   ISO="$OUT/n${N}"
   mkdir -p "$ISO"
-  ./waf --run "scratch/routing --simTime=300 --N_Vehicles=${N} --N_RSUs=64 --N_Controllers=4 --attack_scenario=13 --attack_percentage=60 --RngRun=1 --no_mobility_adapt=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=${ISO}" > "${ISO}.log" 2>&1
+  "$BIN" --simTime=310 --N_Vehicles=${N} --N_RSUs=0 --N_Controllers=4 --attack_scenario=9 --attack_percentage=60 --RngRun=1 --no_mobility_adapt=1 --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --tgn_theta=0.26 --output_root=${ISO} > /dev/null 2>&1
   rm -rf "${ISO}/PCAP_FILES" "${ISO}/XML"
 done
 

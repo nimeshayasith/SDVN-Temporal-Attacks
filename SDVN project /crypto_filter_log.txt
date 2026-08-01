@@ -5,4 +5,4 @@
   no longer re-derives a second, weaker verdict (Finding 14 fix) — see
   the SECTION 6 header comment in tgn_core.cc for why the old secondary
   pass was removed rather than kept as an independent re-check.
-  In=690  Out=690 (no drops)
+  In=2  Out=2 (no drops)

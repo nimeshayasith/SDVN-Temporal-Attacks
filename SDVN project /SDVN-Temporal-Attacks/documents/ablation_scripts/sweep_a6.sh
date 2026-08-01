@@ -26,7 +26,9 @@
 # real X-values.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
-TGN="$HOME/tgn_weights_170m_dim192_pw0.3191_seed5.bin"
+BIN="$NS3_DIR/build/scratch/routing"
+export LD_LIBRARY_PATH="$NS3_DIR/build/lib"
+TGN="$HOME/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin"
 OUT="$HOME/ablation_sweep/a6"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
@@ -35,7 +37,7 @@ for FC in 1 2; do
   echo "=== a6 scenario=5 bshh_s1_fc=${FC} ==="
   ISO="$OUT/fc${FC}"
   mkdir -p "$ISO"
-  ./waf --run "scratch/routing --simTime=300 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=5 --attack_percentage=60 --RngRun=1 --no_threshold_sig=1 --bshh_s1_fc=${FC} --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --output_root=$ISO" > "$ISO.log" 2>&1
+  "$BIN" --simTime=310 --N_Vehicles=200 --N_RSUs=0 --N_Controllers=4 --attack_scenario=5 --attack_percentage=60 --RngRun=1 --no_threshold_sig=1 --bshh_s1_fc=${FC} --skip_npfads=true --skip_logs=1 --tgn_weights=$TGN --tgn_theta=0.26 --output_root=$ISO > /dev/null 2>&1
   rm -rf "$ISO/PCAP_FILES" "$ISO/XML"
 done
 

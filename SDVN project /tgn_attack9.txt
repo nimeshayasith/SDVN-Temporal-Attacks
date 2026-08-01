@@ -1,10 +1,10 @@
 ============================================================
   TGN Detector — Temporal-Echo Attack Analysis
   Attack    : ME-S1: Malicious Vehicles, No RSU
-  Vehicles  : 30  RSUs: 0
+  Vehicles  : 200  RSUs: 0
   TGN dim   : 192  layers: 2
   γ         : 147.155  [init L_link/(2·T_b·ln2) from Eq. 3.31; validation-tuned §3.4.3]
-  θ_FS      : 0.210  [calibrated — worst-case MCC across scenarios, no_lw ablation]
+  θ_FS      : 0.260  [calibrated — worst-case MCC across scenarios, no_lw ablation]
   W_max     : 203  [§3.4.3 window = N_beacon (Eq. 3.32) = floor(L_link/T_b)]
   RSU mode  : NO RSU   — ME via reporter_count; BSHH via identity_mismatch
 ============================================================
@@ -13,21 +13,21 @@
 ========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
   Scenario  : 9 — ME-S1: Malicious Vehicles, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  TP/TN/FP/FN : 0 / 2 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 0 / 4 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
   MCC         : 0.000
-  [comb] TP/TN/FP/FN : 0 / 4 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  [comb] TP/TN/FP/FN : 0 / 2 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
   AUROC       : 0.500
   ACR         : 100.000 %
   Tdet        : -1.000 ms
-  θ_FS        : 0.210  [calibrated]
-  θ_MCC_opt   : 0.210  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 260.854  [Eq. 3.22 init; validation-tuned hyperparameter]
-  W_max       : 361  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 4
-  Stage-0 blocked (attacks): 5140
+  θ_FS        : 0.260  [calibrated]
+  θ_MCC_opt   : 0.260  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 147.452  [Eq. 3.22 init; validation-tuned hyperparameter]
+  W_max       : 204  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 2
+  Stage-0 blocked (attacks): 218843
   Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 4
+  |E_t^trusted|  : 2
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================

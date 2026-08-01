@@ -208,6 +208,12 @@ void distribute_kek_updates(LKHTree *tree) {
  * ══════════════════════════════════════════════════════════════════════════ */
 
 void lkh_revoke_vehicle(LKHTree *tree, const uint8_t vehicle_id[16]) {
+    static uint64_t __dbg_call_count = 0;
+    __dbg_call_count++;
+    if (__dbg_call_count <= 20 || __dbg_call_count % 1000 == 0) {
+        printf("[LKH-DBG] lkh_revoke_vehicle call #%lu vehicle_id=%02x%02x%02x%02x...\n",
+               (unsigned long)__dbg_call_count, vehicle_id[0], vehicle_id[1], vehicle_id[2], vehicle_id[3]);
+    }
     uint32_t leaf_idx = find_leaf_by_vehicle_id(tree, vehicle_id);
     if (leaf_idx == UINT32_MAX) {
         printf("[LKH] Vehicle not found: %s\n", (const char *)vehicle_id);
