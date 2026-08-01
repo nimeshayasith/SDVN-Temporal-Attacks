@@ -1,6 +1,6 @@
 {
   "controller_id": "sdn-controller",
-  "interval_ts": 999,
+  "interval_ts": 4999,
   "links": [
 
   ]

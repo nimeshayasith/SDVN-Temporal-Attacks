@@ -1,8 +1,8 @@
 Solution at controller cleared
-[SUMO] Peak-activity alignment: trace_t0=357.3s -> 97 vehicles active in the 20s sim window (was ~few at raw t=0)
-[SUMO] Trace time offset: 357.3s -> waypoints shifted to NS-3 t=0
-[SUMO] Index remap active: 97 trace vehicle IDs mapped to NS-3 indices 0..96
-[SUMO] Loaded 304 positions, scheduled 7597 exact position+velocity events
+[SUMO] Peak-activity alignment: trace_t0=360s -> 89 vehicles active in the 5s sim window (was ~few at raw t=0)
+[SUMO] Trace time offset: 360s -> waypoints shifted to NS-3 t=0
+[SUMO] Index remap active: 89 trace vehicle IDs mapped to NS-3 indices 0..88
+[SUMO] Loaded 304 positions, scheduled 7291 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/01_TTW_S1_Malicious_Vehicle.xml
 
 ========================================
@@ -19,16 +19,7 @@ Timeline (Option B — real SUMO trajectories decide the break):
   [per-pair]         : Attacker replays forged packet 2s after its pair's real break
 ========================================
 
-[TTW-S1] no natural link break found for attacker V1 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V0 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V2 in round 0 — trying fallback pairing
-[TTW-S1] no natural link break found for attacker V3 in round 0 — trying fallback pairing
-[TTW-S1] fallback pairing (round 0): V1 <-> V2 (no genuine break found; replaying at t=17 using real position then)
-[TTW-S1] fallback pairing (round 0): V2 <-> V3 (no genuine break found; replaying at t=17 using real position then)
-[TTW-S1] fallback pairing (round 0): V3 <-> V1 (no genuine break found; replaying at t=17 using real position then)
-[TTW-S1] V1 <-> V2  (hello t=10s, real break at t=17s)
-[TTW-S1] V2 <-> V3  (hello t=10s, real break at t=17s)
-[TTW-S1] V3 <-> V1  (hello t=10s, real break at t=17s)
+[TTW-S1] no attacker-victim pair naturally exceeded comm range within simTime — running as a clean no-attack pass
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
 [PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
 [CRYPTO] TETA-Guard pipeline initialised:
@@ -46,142 +37,93 @@ Timeline (Option B — real SUMO trajectories decide the break):
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 20/20 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 19 handshakes timed: avg=34.4988 ms, max=34.7686 ms, over_budget=19/19 (budget=10 ms)
+[KEM][10ms budget] 19 handshakes timed: avg=33.633 ms, max=36.7268 ms, over_budget=19/19 (budget=10 ms)
 [TGN] TGN_Init() — online mode — L_link=20.4  γ_init=147.155  W_max=203
-[KEM][SimLatency][t=0.0341331] Vehicle 10 session key simulated-ready (real handshake was 34.1331 ms)
-[KEM][SimLatency][t=0.0342169] Vehicle 11 session key simulated-ready (real handshake was 34.2169 ms)
-[KEM][SimLatency][t=0.0342529] Vehicle 2 session key simulated-ready (real handshake was 34.2529 ms)
-[KEM][SimLatency][t=0.0343486] Vehicle 5 session key simulated-ready (real handshake was 34.3486 ms)
-[KEM][SimLatency][t=0.034365] Vehicle 9 session key simulated-ready (real handshake was 34.365 ms)
-[KEM][SimLatency][t=0.0344095] Vehicle 6 session key simulated-ready (real handshake was 34.4095 ms)
-[KEM][SimLatency][t=0.0344278] Vehicle 3 session key simulated-ready (real handshake was 34.4278 ms)
-[KEM][SimLatency][t=0.0344551] Vehicle 1 session key simulated-ready (real handshake was 34.4551 ms)
-[KEM][SimLatency][t=0.0344692] Vehicle 8 session key simulated-ready (real handshake was 34.4692 ms)
-[KEM][SimLatency][t=0.0344979] Vehicle 4 session key simulated-ready (real handshake was 34.4979 ms)
-[KEM][SimLatency][t=0.0345044] Vehicle 12 session key simulated-ready (real handshake was 34.5044 ms)
-[KEM][SimLatency][t=0.0345693] Vehicle 19 session key simulated-ready (real handshake was 34.5693 ms)
-[KEM][SimLatency][t=0.0345724] Vehicle 18 session key simulated-ready (real handshake was 34.5724 ms)
-[KEM][SimLatency][t=0.0346305] Vehicle 13 session key simulated-ready (real handshake was 34.6305 ms)
-[KEM][SimLatency][t=0.0346852] Vehicle 16 session key simulated-ready (real handshake was 34.6852 ms)
-[KEM][SimLatency][t=0.0347067] Vehicle 17 session key simulated-ready (real handshake was 34.7067 ms)
-[KEM][SimLatency][t=0.0347275] Vehicle 14 session key simulated-ready (real handshake was 34.7275 ms)
-[KEM][SimLatency][t=0.0347377] Vehicle 7 session key simulated-ready (real handshake was 34.7377 ms)
-[KEM][SimLatency][t=0.0347686] Vehicle 15 session key simulated-ready (real handshake was 34.7686 ms)
+[KEM][SimLatency][t=0.0329338] Vehicle 19 session key simulated-ready (real handshake was 32.9338 ms)
+[KEM][SimLatency][t=0.032937] Vehicle 18 session key simulated-ready (real handshake was 32.937 ms)
+[KEM][SimLatency][t=0.0329472] Vehicle 17 session key simulated-ready (real handshake was 32.9472 ms)
+[KEM][SimLatency][t=0.0331018] Vehicle 8 session key simulated-ready (real handshake was 33.1018 ms)
+[KEM][SimLatency][t=0.0331453] Vehicle 16 session key simulated-ready (real handshake was 33.1453 ms)
+[KEM][SimLatency][t=0.0331865] Vehicle 7 session key simulated-ready (real handshake was 33.1865 ms)
+[KEM][SimLatency][t=0.0332616] Vehicle 10 session key simulated-ready (real handshake was 33.2616 ms)
+[KEM][SimLatency][t=0.0332738] Vehicle 5 session key simulated-ready (real handshake was 33.2738 ms)
+[KEM][SimLatency][t=0.0333834] Vehicle 1 session key simulated-ready (real handshake was 33.3834 ms)
+[KEM][SimLatency][t=0.033409] Vehicle 15 session key simulated-ready (real handshake was 33.409 ms)
+[KEM][SimLatency][t=0.03342] Vehicle 6 session key simulated-ready (real handshake was 33.42 ms)
+[KEM][SimLatency][t=0.0334645] Vehicle 9 session key simulated-ready (real handshake was 33.4645 ms)
+[KEM][SimLatency][t=0.0335897] Vehicle 4 session key simulated-ready (real handshake was 33.5897 ms)
+[KEM][SimLatency][t=0.0336749] Vehicle 11 session key simulated-ready (real handshake was 33.6749 ms)
+[KEM][SimLatency][t=0.0338164] Vehicle 14 session key simulated-ready (real handshake was 33.8164 ms)
+[KEM][SimLatency][t=0.0339015] Vehicle 2 session key simulated-ready (real handshake was 33.9015 ms)
+[KEM][SimLatency][t=0.0343501] Vehicle 3 session key simulated-ready (real handshake was 34.3501 ms)
+[KEM][SimLatency][t=0.0345045] Vehicle 13 session key simulated-ready (real handshake was 34.5045 ms)
+[KEM][SimLatency][t=0.0367268] Vehicle 12 session key simulated-ready (real handshake was 36.7268 ms)
 [Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=13538188438608392505 (interval=3s)
-[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=13538188438608392505 (interval=3s)
-[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=13538188438608392505 (interval=3s)
-[TTW-S1][t=10.000]  V7 --HELLO beacon--> V6  dist=44.906m  DELIVERED
-[TTW-S1][t=10.000]  V8 --HELLO beacon--> V7  dist=20.042m  DELIVERED
-[TTW-S1][t=10.000]  V6 --HELLO beacon--> V8  dist=60.752m  DELIVERED
-[TTW-S1][t=10.001]  V6 --HELLO beacon--> V7  dist=44.906m  DELIVERED
-[TTW-S1][t=10.001]  V7 --HELLO beacon--> V8  dist=20.041m  DELIVERED
-[TTW-S1][t=10.001]  V8 --HELLO beacon--> V6  dist=60.754m  DELIVERED
-[TTW-S1][t=10.100]  V6 --topology update--> Controller  <V6 sees V7, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V7 --topology update--> Controller  <V7 sees V8, t=10.000>  ACCEPTED
-[TTW-S1][t=10.100]  V8 --topology update--> Controller  <V8 sees V6, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V7 --topology update--> Controller  <V7 sees V6, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V8 --topology update--> Controller  <V8 sees V7, t=10.000>  ACCEPTED
-[TTW-S1][t=10.101]  V6 --topology update--> Controller  <V6 sees V8, t=10.000>  ACCEPTED
-This is tag3. Serialized size is 340
-[TTW-S1][t=10.183]  V8 stored old packet <V8 sees V6, t=10.000>  (will replay at t~=19.000)
-[TTW-S1][t=10.186]  V7 stored old packet <V7 sees V8, t=10.000>  (will replay at t~=19.000)
-[TTW-S1][t=10.193]  V6 stored old packet <V6 sees V7, t=10.000>  (will replay at t~=19.000)
-[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=13538188438608392505 (interval=3.000s)
-[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=13538188438608392505 (interval=3.000s)
-[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=13538188438608392505 (interval=3.000s)
-[TTW-S1][t=18.984]  Pipeline armed: 3 attacker(s)
-    attacker NS3-ID=6 -> victim NS3-ID=7
-    attacker NS3-ID=7 -> victim NS3-ID=8
-    attacker NS3-ID=8 -> victim NS3-ID=6
-[TTW-S1][t=18.985]  V7 --FORGED replay--> Controller  <V7 sees V8, t=18.985>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=18.176m)
-[TTW-S1][t=18.985]  *** ATTACK COMPLETE ***  ghost link V7<->V8 injected into controller table
-[TTW-S1][t=18.985]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 1/20 >= t=11 -> FAIL
-[TTW-S1][t=18.985]  FS-MITIGATE ABORTED (gate failed)  attacker=V7
-[TTW-S1][t=19.000]  PIPELINE: NS3-ID=6 injected forged neighbor=7 into controller con_data_inst via UDP/7777
-[TTW-S1][t=19.000]  PIPELINE: NS3-ID=7 injected forged neighbor=8 into controller con_data_inst via UDP/7777
-[TTW-S1][t=19.000]  PIPELINE: NS3-ID=8 injected forged neighbor=6 into controller con_data_inst via UDP/7777
-[TTW-S1][t=19.004]  V8 --FORGED replay--> Controller  <V8 sees V6, t=19.004>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=39.427m)
-[TTW-S1][t=19.004]  *** ATTACK COMPLETE ***  ghost link V8<->V6 injected into controller table
-[TTW-S1][t=19.004]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 2/20 >= t=11 -> FAIL
-[TTW-S1][t=19.004]  FS-MITIGATE ABORTED (gate failed)  attacker=V8
-Current neighbor size is 1Received neighborset from 8
-[TTW-S1][t=19.037]  V6 --FORGED replay--> Controller  <V6 sees V7, t=19.037>  (stored=10.000)  CONTROLLER DECEIVED  (link physically BROKEN  dist=20.982m)
-[TTW-S1][t=19.037]  *** ATTACK COMPLETE ***  ghost link V6<->V7 injected into controller table
-[TTW-S1][t=19.037]  FS-MITIGATE gate: PBFT n=20 f=6 q_needed=13 -> PASS  |  VERIFY_THRESHOLD_SIG 3/20 >= t=11 -> FAIL
-[TTW-S1][t=19.037]  FS-MITIGATE ABORTED (gate failed)  attacker=V6
 [PEM] /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/SCENARIO_VALIDITY/01_TTW_S1_Malicious_Vehicle_seed1.csv written: 0 event(s) excluded (invalid RSU neighborhood, not detector error); 0 benign event(s) flagged no_real_reception_at_reporter (diagnostic only, STILL COUNTED in confusion matrix — confirmed real channel-contention loss, not a scenario artifact)
-[M11][FSR sweep] written to /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/M11_FSR_SWEEP/01_TTW_S1_Malicious_Vehicle_seed1.csv (3 f_c value(s) exercised)
-[M2][TDRR] mean_topology_divergence=0.333  (samples=9)  unprotected=1.000 (n=3)  mitigated=0.000 (n=0)  TDRR=100.000%
-[M3][T_stale] mean=0.000 ms (samples=0)
-[M4][PIR] mean=2.000 (links tracked=3)
-[M5][T_pipeline] mean=2.968 ms  max=3.443 ms  over_budget=0/3
-[M5][T_pbft] mean=0.222 ms  max=0.377 ms (n=3)
-[M5][T_exec_flowmod] mean=0.000 ms  max=0.000 ms (n=0)
-[M7][Omega] omega_lw=5.941%  omega_fs=572.649%
-[M9][F1] TTW=1.000 BSHH=1.000 ME=1.000 macro=1.000
-[M10][FRA/FRR] FRA=0.000 FRR=0.167
-[M11][FSR] attempts=3 success=0 FSR=0.000
-[M12][Trust] t_trust=0.000 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
+[M2][TDRR] mean_topology_divergence=0  (samples=0)  unprotected=0 (n=0)  mitigated=0 (n=0)  TDRR=0%
+[M3][T_stale] mean=0 ms (samples=0)
+[M4][PIR] mean=1 (links tracked=0)
+[M5][T_LW_pipeline] mean=0 ms  max<=0 ms  over_budget<=0/0  (Eq. 4.7/4.9; T_LW_det only, checked against 100ms budget; max/over_budget are conservative upper bounds from the combined crypto+LW+TGN timer, true T_LW_det is <= this)
+[M5][T_FS_pipeline] mean=0 ms  max<=0 ms  (Eq. 4.8: T_FS_det+TPBFT+T_Fabric_exec+TFlowMod, no 100ms constraint -- max is sum of per-component maxima, a conservative upper bound not a true joint max)
+[M5][T_FS_det] mean=0 ms  max=0 ms (n=0)
+[M5][T_pbft] mean=0 ms  max=0 ms (n=0)
+[M5][T_exec_flowmod] mean=0 ms  max=0 ms (n=0)
+[M7][Omega] omega_lw=5.94059%  omega_fs=572.649%
+[M9][F1] TTW=1 BSHH=1 ME=1 macro=1
+[M10][FRA/FRR] FRA=1 FRR=0
+[M11][FSR] attempts=0 success=0 FSR=0
+[M12][Trust] t_trust=0 ms  t_revoke=0 ms  t_reassign=0 ms
 
-[CRYPTO] crypto_latency_sumo.csv written    (87 events)
-[CRYPTO] crypto_latency_summary.csv written  (18 distinct operations)
-[CRYPTO] Beacon TX signed: 6   RX verified: 6
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=18  reject=33
-[TGN] Online mode — 12 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: E_t^trusted=empty (tau_min_gt=0.50, startup blind window) — controller-origin detection blind
-[TGN] Trusted nodes (Tier 2 OBU): ctrl 
-[TGN] |E_t^trusted|=9 (Tier 2: 9 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 18 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 6 alert(s) → tgn_alerts.json
-[TGN] individual_sig_evidence.json written: 30 record(s) → individual_sig_evidence.json
-[TGN] beacon_evidence.csv written: 6 observation(s)
-[TGN] ctrl_topo.json written: 3 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
+[CRYPTO] crypto_latency_sumo.csv written    (24 events)
+[CRYPTO] crypto_latency_summary.csv written  (6 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=0  reject=0
+[TGN] No PEM events — all attacks blocked at Stage 0 (0 blocked). Writing summary.
 
 ========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
   Scenario  : 1 — TTW-S1: Malicious Vehicle, No RSU
   RSU mode  : NO RSU
-  TP/TN/FP/FN : 3 / 6 / 3 / 0
+  TP/TN/FP/FN : 0 / 0 / 0 / 0
   [ctrl] TP/TN/FP/FN : 0 / 0 / 0 / 0
-  [beh]  TP/TN/FP/FN : 3 / 6 / 3 / 0
-  MCC         : 0.577
-  [comb] TP/TN/FP/FN : 3 / 6 / 3 / 0   MCC=0.577  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.667
-  ACR         : 75.000 %
-  Tdet        : 0.000 ms
-  θ_FS        : 0.210  [calibrated]
-  θ_MCC_opt   : 0.121  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 153.864  [Eq. 3.22 init; validation-tuned hyperparameter]
-  W_max       : 213  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 12
+  [beh]  TP/TN/FP/FN : 0 / 0 / 0 / 0
+  MCC         : 0.000
+  [comb] TP/TN/FP/FN : 0 / 0 / 0 / 0   MCC=0.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 0.500
+  ACR         : 0.000 %
+  Tdet        : -1.000 ms
+  θ_FS        : 0.260  [calibrated]
+  θ_MCC_opt   : 0.260  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 74.315  [Eq. 3.22 init; validation-tuned hyperparameter]
+  W_max       : 103  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 0
   Stage-0 blocked (attacks): 0
   Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 9
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
 
-Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
-  Events processed: 21
-  Avg wall-clock time: 2.1 ms
-  Max wall-clock time: 3.3 ms
-  Events exceeding budget: 0 / 21
+  Events processed: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Events exceeding budget: 0 / 0
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
-  Mitigations applied: 3
-  Avg wall-clock time: 0.22 ms
-  Max wall-clock time: 0.38 ms
+  Mitigations applied: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
-  Triggered events: 3
-  Avg wall-clock time: 3 ms
-  Max wall-clock time: 3.4 ms
-  Events exceeding 1e+02 ms budget: 0 / 3  -- full pipeline stays within the T_b budget on this hardware
+  Triggered events: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Events exceeding 100 ms budget: 0 / 0  -- no mitigation was triggered this run
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
-  Calls: 12
-  Avg wall-clock time: 0.017 ms
-  Max wall-clock time: 0.036 ms
-  Calls exceeding budget: 0 / 12
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 0
@@ -190,40 +132,40 @@ RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls exceeding budget: 0 / 0
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
-  Calls: 12
-  Avg wall-clock time: 0.07 ms
-  Max wall-clock time: 0.16 ms
-  Calls exceeding budget: 0 / 12
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
-  Calls: 3
-  Avg wall-clock time: 0.37 ms
-  Max wall-clock time: 0.53 ms
-  Calls exceeding budget: 0 / 3
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
-  Calls: 3
-  Avg wall-clock time: 0.005 ms
-  Max wall-clock time: 0.013 ms
-  Calls exceeding budget: 0 / 3
+  Calls: 0
+  Avg wall-clock time: 0 ms
+  Max wall-clock time: 0 ms
+  Calls exceeding budget: 0 / 0
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.017) + beacon-crypto(0.07) + rsu-forward(0) + detect(2.1) + detection-crypto(0.37) + mitigate(0.22) + lkh-crypto(0.005) = 2.7 ms
-  -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
+  beacon-send(0) + beacon-crypto(0) + rsu-forward(0) + detect(0) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 0 ms
+  -- approximate combined estimate stays within the 100 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
 ---------------------------------
-Candidate pairs checked: 38000
-Successful neighbor observations: 2838
-Average neighbors/vehicle: 1.4
-Maximum neighbors observed at once: 3
+Candidate pairs checked: 0
+Successful neighbor observations: 0
+Average neighbors/vehicle: 0
+Maximum neighbors observed at once: 0
 
-Real-time (wall-clock) budget check — T_b=1e+02 ms:
-  Ticks executed: 100
-  Avg tick wall-clock time: 0.024 ms
-  Max tick wall-clock time: 0.039 ms
-  Ticks exceeding 1e+02 ms budget: 0 / 100  -- pipeline stays within the T_b budget on this hardware
+Real-time (wall-clock) budget check — T_b=100 ms:
+  Ticks executed: 0
+  Avg tick wall-clock time: 0 ms
+  Max tick wall-clock time: 0 ms
+  Ticks exceeding 100 ms budget: 0 / 0  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(0.024) + beacon-send(0.017) + beacon-crypto(0.07) + rsu-forward(0) + detect(2.1) + detection-crypto(0.37) + mitigate(0.22) + lkh-crypto(0.005) = 2.8 ms
-  -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
+  neighborhood(0) + beacon-send(0) + beacon-crypto(0) + rsu-forward(0) + detect(0) + detection-crypto(0) + mitigate(0) + lkh-crypto(0) = 0 ms
+  -- grand total stays within the 100 ms beacon-interval budget (T_b) on this hardware

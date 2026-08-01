@@ -475,6 +475,39 @@ static VehicleKeyRecord g_lkh_keystore[MAX_VEHICLES] __attribute__((unused));
 static uint8_t          g_lkh_vids[MAX_VEHICLES][16] __attribute__((unused));
 static uint32_t         g_lkh_n_leaves __attribute__((unused)) = 0;
 static bool             g_lkh_ready __attribute__((unused)) = false;
+// Bug fix (ME-S1 severe slowdown at scale, confirmed live via debug
+// instrumentation: lkh_revoke_vehicle() called 29,500+ times by t=62s,
+// nearly all "[LKH] Vehicle not found", stalling simulated-time progress).
+// Root cause: TimedLkhRevoke() below is a crypto-latency MICROBENCHMARK
+// (feeds M5's "mitigate" stage average, PemPipelineStage::kMitigate) --
+// not the real per-attacker mitigation action, which correctly goes
+// through PemRevokeVehicleKeys()/PemApplyMitigation() and is unaffected
+// by this fix (confirmed via a separate debug counter: 0 calls during the
+// same run, i.e. this bug never touched real Eq. 3.18 mitigation state).
+// TimedLkhRevoke used to call lkh_revoke_vehicle() directly on the REAL,
+// persistent g_lkh_tree/g_lkh_vids with a FIXED index every call -- the
+// first call genuinely revoked that leaf (real O(log n) cost, matching
+// Eq. 3.18), but find_leaf_by_vehicle_id() explicitly skips already-
+// revoked leaves (see its own comment in lkh_mgmt.cc), so every
+// subsequent call on the same fixed index was a guaranteed-fail lookup:
+// cheap individually, but this benchmark runs on essentially every
+// detection-crypto event (all 200 vehicles' routine beacon traffic
+// included, not just actual attacks), so it compounds into tens of
+// thousands of wasted calls over a run -- and, separately, silently
+// corrupts the M5 metric itself: nearly all "measurements" after the
+// first were timing a fast failed-lookup short-circuit, not the genuine
+// O(log n) tree-walk Eq. 3.18 actually describes.
+// Fix: a completely separate scratch tree, touched ONLY by this
+// benchmark -- the real g_lkh_tree/g_lkh_vids used by
+// PemRevokeVehicleKeys()/PemApplyMitigation() (the real Eq. 3.18/4.21
+// Trevoke measurement path) are never read or written here, so no
+// PDF-specified formula, threshold, or the real mitigation pipeline is
+// touched by this change -- this is purely an internal timing-utility
+// implementation detail the PDF does not specify the mechanics of.
+static LKHTree          g_lkh_bench_tree;
+static uint8_t          g_lkh_bench_vids[MAX_VEHICLES][16];
+static uint32_t         g_lkh_bench_n_leaves = 0;
+static bool             g_lkh_bench_ready = false;
 static uint8_t          g_pipeline_session_key[SESSION_KEY_LEN] __attribute__((unused)) = {};
 static NonceCache       g_pipeline_nonce_cache __attribute__((unused)) = {};
 // ── Real per-vehicle K_{Vi,nk} session keys (Eq. 3.15), derived from a genuine
@@ -1113,13 +1146,6 @@ static AblationFlags g_abl;
 // via lkh_is_revoked-equivalent bookkeeping at the caller (g_lkh_already_revoked).
 static void PemRevokeVehicleKeys(uint32_t leaf_idx)
 {
-    static uint64_t __dbg_prvk_count = 0;
-    __dbg_prvk_count++;
-    if (__dbg_prvk_count <= 20 || __dbg_prvk_count % 1000 == 0) {
-        std::cout << "[PRVK-DBG] PemRevokeVehicleKeys call #" << __dbg_prvk_count
-                  << " leaf_idx=" << leaf_idx
-                  << " t=" << Simulator::Now().GetSeconds() << std::endl;
-    }
     if (g_abl.no_lkh) {
         uint32_t rekeyed = 0;
         for (uint32_t i = 0; i < g_lkh_n_leaves; ++i) {
@@ -1143,13 +1169,31 @@ static void PemRevokeVehicleKeys(uint32_t leaf_idx)
 
 static double __attribute__((unused)) TimedLkhRevoke(uint32_t n)
 {
-    // Uses lkh_revoke_vehicle() from lkh_mgmt.cc — real O(log n) tree revocation
-    if (!g_lkh_ready || g_lkh_n_leaves == 0u) return 0.0;
-    // Modulo the ACTUAL registered leaf count (g_lkh_n_leaves), not a fixed 16 —
-    // otherwise this benchmark could index an unregistered leaf when N_Vehicles < 16.
-    uint32_t idx = (n > 0 ? (n - 1) : 0) % g_lkh_n_leaves;
+    // Uses lkh_revoke_vehicle() on the dedicated g_lkh_bench_tree (see its
+    // declaration comment) — never the real g_lkh_tree used by actual
+    // per-attacker mitigation (PemRevokeVehicleKeys/PemApplyMitigation,
+    // Eq. 3.18/4.21's real Trevoke path), so this benchmark cannot affect
+    // real revocation state either way.
+    if (!g_lkh_bench_ready || g_lkh_bench_n_leaves == 0u) return 0.0;
+    // Rotate through every leaf so each call is a genuine, previously-
+    // unrevoked leaf — a real O(log n) tree-walk cost every time, matching
+    // Eq. 3.18, instead of degenerating into a fast failed-lookup on an
+    // already-revoked leaf (the bug this replaces — see g_lkh_bench_tree's
+    // declaration comment). `n` (the caller's n_rep) no longer selects the
+    // index directly since a fixed index was the root cause; kept as a
+    // parameter for call-site compatibility only.
+    (void)n;
+    static uint32_t s_benchCallCount = 0;
+    uint32_t idx = s_benchCallCount % g_lkh_bench_n_leaves;
+    if (idx == 0 && s_benchCallCount > 0) {
+        // Wrapped around — every leaf has been revoked once; reset the
+        // scratch tree so future calls keep measuring genuine successful
+        // revokes indefinitely, for the rest of the run.
+        lkh_init(&g_lkh_bench_tree, (const uint8_t (*)[16])g_lkh_bench_vids, g_lkh_bench_n_leaves);
+    }
+    s_benchCallCount++;
     auto t0 = HiResClock::now();
-    lkh_revoke_vehicle(&g_lkh_tree, g_lkh_vids[idx]);
+    lkh_revoke_vehicle(&g_lkh_bench_tree, g_lkh_bench_vids[idx]);
     return MicroSec(HiResClock::now() - t0).count();
 }
 
@@ -1546,6 +1590,18 @@ static void CryptoInitKeys()
     lkh_set_keystore(g_lkh_keystore, g_lkh_n_leaves);
     lkh_init(&g_lkh_tree, (const uint8_t (*)[16])g_lkh_vids, g_lkh_n_leaves);
     g_lkh_ready = true;
+
+    // Separate scratch tree for TimedLkhRevoke's benchmark use only -- see
+    // g_lkh_bench_tree's declaration comment for the full root-cause/fix
+    // rationale. Same n_leaves as the real tree so it measures the same
+    // O(log n) tree depth Eq. 3.18 describes.
+    g_lkh_bench_n_leaves = g_lkh_n_leaves;
+    memset(g_lkh_bench_vids, 0, sizeof(g_lkh_bench_vids));
+    for (uint32_t i = 0; i < g_lkh_bench_n_leaves; i++) {
+        g_lkh_bench_vids[i][0] = (uint8_t)i;
+    }
+    lkh_init(&g_lkh_bench_tree, (const uint8_t (*)[16])g_lkh_bench_vids, g_lkh_bench_n_leaves);
+    g_lkh_bench_ready = true;
 
 #ifdef HAVE_LIBOQS
     if (!enable_crypto_latency) return;
@@ -3343,7 +3399,25 @@ PemRecordBeaconEvidence(uint32_t senderId, const Vector& senderPosition, double 
             // placement pre-detection crypto filtering cannot reach. Gating
             // here means every consumer inherits the correct semantics for
             // free, instead of each read site needing its own range check.
-            if (d > PemGetRcomm())
+            //
+            // Bug fix (r_comm inconsistency between Eq. 3.46/3.47's numerator
+            // and Eq. 3.48's denominator): tgn_core.cc's delta_thresh formula
+            // (Eq. 3.48) already computes r_comm = g_me_detect_range (170m,
+            // the 2026-07-27 patch), but this B_nk(t) write-site gate --
+            // which determines E_trusted, the actual delta numerator Eq. 3.47
+            // compares against that threshold -- was still using
+            // g_rcomm/PemGetRcomm() (300m). Comparing a 300m-built numerator
+            // against a 170m-calibrated threshold is an internal
+            // inconsistency, not two independently-correct constants (unlike
+            // g_rcomm's other, genuinely-distinct uses -- RSU serving-zone
+            // assignment, general edge-reality checks -- which correctly
+            // stay at 300m). Switched to g_me_detect_range so both sides of
+            // Eq. 3.47's comparison share the same r_comm definition Eq. 3.48
+            // already assumes. Rule-based FS-layer gate only (delta vs
+            // delta_thresh comparison in PemControllerDivergenceGate) --
+            // does not touch PemEmitEvent, any TGN input feature, or any
+            // trained weight, so no retraining/dataset regeneration required.
+            if (d > g_me_detect_range)
             {
                 continue;
             }
@@ -14253,13 +14327,6 @@ void ME_S1_EchoAttack(uint32_t echo_v3, uint32_t echo_v4,
 {
     PemFamilyOriginScope __pemOrigin(9u);
     double now = Simulator::Now().GetSeconds();
-    static uint64_t __dbg_mes1_count = 0;
-    __dbg_mes1_count++;
-    if (__dbg_mes1_count <= 40 || __dbg_mes1_count % 500 == 0) {
-        std::cout << "[MES1-DBG] ME_S1_EchoAttack call #" << __dbg_mes1_count
-                  << " v3=" << echo_v3 << " v4=" << echo_v4
-                  << " mask=" << reporter_mask << " t=" << now << std::endl;
-    }
     if (pem_attack_injection_time < 0.0) pem_attack_injection_time = now;
     pem_attack_active = true;
     pem_mitigation_active = false;
@@ -137379,7 +137446,7 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	// simulation — attack-relevant and ambient alike — comes from one
 	// consistent, calibrated radio model. ch_devs[3..6] (Ch178 CCH, 180, 182,
 	// 184) are intentionally left unused here.
-	static const int kLiveAmbientChannels = 3;
+	static const int kLiveAmbientChannels = 7;  // TEMP Q16 regression test — revert to 3
 	uint64_t cnt[7] = {0,0,0,0,0,0,0};
 	{
 		Vector myPos = posi;
@@ -138583,13 +138650,28 @@ Vector previous_velocity_LTE[total_size];
 
 void send_LTE_routing_data_alone(Ptr <SimpleUdpApplication> udp_app, Ptr <Node> node_source, Ptr <Node> destination_node, uint32_t node_index)
 {
-  	Ptr <Ipv4> ipv4;  	
-  	ipv4 = destination_node->GetObject<Ipv4>();
-	Ipv4InterfaceAddress iaddr = ipv4->GetAddress(2,0);//2nd IPv4 interface,0th address index
-	Ipv4Address dest_ip = iaddr.GetLocal();
+	// Bug fix (Ch178 leak, confirmed live via PhyTxBegin trace on Ch178: 40
+	// spurious CustomStatusDataUplinkTag1 transmissions per run, all at the
+	// TTW-S1 HELLO moment). Root cause: the hardcoded ipv4->GetAddress(2,0)
+	// assumed a fixed "2nd IPv4 interface" layout that doesn't hold for
+	// every N_RSUs/N_Vehicles configuration -- for N_RSUs=0 runs, index 2
+	// resolved to the DSRC (Ch178, wifidevices) subnet address instead of
+	// the controller's intended CSMA/uplink address, so ns-3's IP routing
+	// picked the Ch178 WifiNetDevice as the outgoing interface for this
+	// UDP socket send. AttackGetControllerIP() (declared above, already
+	// used correctly elsewhere for the RSU->controller CSMA path) is the
+	// proven, config-aware replacement -- it already handles the
+	// N_Vehicles>0 interface-index shift correctly. This function only
+	// feeds routing_data_at_nodes_inst (display/bookkeeping) and channel
+	// statistics, not PemEmitEvent/ttw_controller_table/
+	// bshh_controller_liveness_table/me_echo_reports, so this fix does not
+	// touch the PEM/TGN detection pipeline, ground truth, or any feature
+	// the trained model consumes -- no retraining or dataset regeneration
+	// required.
+	Ipv4Address dest_ip = AttackGetControllerIP();
 	Ptr <Node> nu = DynamicCast <Node> (node_source);
 	Ptr <Packet> packet1 = Create <Packet> (0);
-	
+
 	uint32_t nid;
         Vector posi[2];
 	Vector veli[2];
