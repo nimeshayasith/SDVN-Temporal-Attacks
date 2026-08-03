@@ -846,6 +846,23 @@ static uint64_t g_tgn_tp = 0, g_tgn_tn = 0, g_tgn_fp = 0, g_tgn_fn = 0;
 // crypto+LW+TGN pipeline actually catches, since LW (e.alert_raised, Stage-1
 // Algorithm 1 signatures) can independently flag events TGN's score misses.
 static uint64_t g_comb_tp = 0, g_comb_tn = 0, g_comb_fp = 0, g_comb_fn = 0;
+// Bug fix (2026-08-03): dual-mode detection latency (comb_tdet_ms). Before
+// this, TGN_SUMMARY's only tdet_ms column was sourced from
+// g_tgn_first_alert_time, which is set ONLY when tgn_alert fires -- ignoring
+// e.alert_raised (LW) entirely. In an OR-gate dual-mode system (A6, "full
+// dual-mode"), the correct per-event detection instant is whichever path
+// (LW or TGN) fires FIRST, and the reported latency should be the mean over
+// each event's own min(LW-time, TGN-time) -- not "whenever TGN's own score
+// happened to cross its own threshold," which silently discards every case
+// where LW caught something faster (or caught something TGN never flagged
+// at all). Confirmed via ablation review: A6 reported tdet_ms identical to
+// A4 (TGN alone) despite A3 (LW alone) reporting a faster tdet_ms on the
+// same underlying event stream -- impossible under genuine OR-gate
+// semantics, since the combined latency can never exceed either path's own.
+// g_comb_first_alert_time is set the first time comb_alert (e.alert_raised
+// || tgn_alert) is true, i.e. the true first-detection instant of the
+// combined system.
+static double g_comb_first_alert_time = -1.0;
 // Attack events caught at Stage 0 (crypto pre-filter) — never reached TGN.
 // Incremented in PemEmitEvent's Stage-0 drop branch (routing.cc).
 static uint64_t g_tgn_stage0_blocked_attacks = 0;
@@ -1229,17 +1246,24 @@ static double TGN_ComputeAUROC()
 // the adaptive injection decision checks the SAME ground truth a post-hoc
 // analysis of TGN_EVENTS.csv would compute -- not a separate, potentially
 // inconsistent estimate.
+//
+// Bug fix (2026-08-03): the increment that used to live HERE (only reached
+// when TGN is active, !g_abl.no_tgn) has been moved to routing.cc's
+// PemEvaluateEvent, at the point every event unconditionally reaches
+// (pem_all_events.push_back), so this counter -- and the
+// AttackScheduleAdaptiveInjection rate-limiting it drives -- is no longer
+// accidentally coupled to whether TGN happens to be enabled. See that call
+// site's comment for the full root-cause writeup (confirmed via live A/B
+// test: BSHH-S1, --no_tgn flipped, otherwise identical scenario/seed/pct,
+// produced a 14x difference in actual injected-attack counts before this
+// fix). g_attackerEventCounts itself stays declared here since TGN's own
+// per-node feature extraction also reads it.
 std::map<uint32_t, std::pair<uint32_t,uint32_t>> g_attackerEventCounts;
 
 static void TGN_WriteEventRow(const PemEvent& e, const tgn::NodeFeatures& feat,
                                double ef, double tgn_score, bool tgn_alert)
 {
     if (!g_tgn_events_csv.is_open()) return;
-    {
-        auto& counts = g_attackerEventCounts[e.physical_sender_id];
-        counts.second += 1;               // total_event_count
-        if (e.attack_label) counts.first += 1;  // attack_event_count
-    }
     auto sig_str = [&]() -> std::string {
         static const char* names[] = {
             "TTW-S1","TTW-S2","TTW-S3","BSHH-S1","BSHH-S2","BSHH-S3","ME-S1","ME-S2","ME-S3"};
@@ -1766,6 +1790,13 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
         const bool comb_alert = e.alert_raised || tgn_alert;
         if (e.attack_label) { if (comb_alert) ++g_comb_tp; else ++g_comb_fn; }
         else                { if (comb_alert) ++g_comb_fp; else ++g_comb_tn; }
+        // Bug fix (2026-08-03): dual-mode Tdet -- see g_comb_first_alert_time's
+        // declaration comment. First TRUE-POSITIVE comb_alert (attack-labelled,
+        // caught by either path) sets the combined system's first-detection
+        // instant, matching Eq. 4.7's "alert raised by the LW or FS detector."
+        if (e.attack_label && comb_alert && g_comb_first_alert_time < 0.0) {
+            g_comb_first_alert_time = e.reception_timestamp;
+        }
 
         const bool is_ctrl = (e.physical_sender_id == 9999u);
         if (e.attack_label) {
@@ -1988,7 +2019,18 @@ static void TGN_WriteSummary()
     double tp=(double)g_tgn_tp, tn=(double)g_tgn_tn,
            fp=(double)g_tgn_fp, fn=(double)g_tgn_fn;
     double denom = std::sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn));
-    double mcc   = denom > 0.0 ? (tp*tn - fp*fn) / denom : 0.0;
+    // Degenerate-case fix (2026-08-03): fp==0 && fn==0 means every event was
+    // classified correctly (whether tp>0 or the whole run is attack-free,
+    // e.g. ME-S1/ME-S2 where Stage-0 crypto intercepts every attack event
+    // before TGN ever sees one -- an architectural property, not a
+    // detection failure). The raw formula's denom==0 in that case (all-tn,
+    // tp=fp=fn=0) previously fell through to mcc=0.0, silently scoring a
+    // perfect run as "random performance" and confounding cross-config MCC
+    // comparisons for those scenarios. PEM_RUN_SUMMARY (PemWriteRunSummaryCsv)
+    // already special-cases this identical situation to 1.0 -- match that
+    // convention here so TGN_SUMMARY and PEM_RUN_SUMMARY are comparable.
+    double mcc   = (fn == 0.0 && fp == 0.0) ? 1.0
+                 : (denom > 0.0 ? (tp*tn - fp*fn) / denom : 0.0);
     double total = tp+tn+fp+fn;
     double acr   = total > 0.0 ? (tp+tn)/total*100.0 : 0.0;
     double prec  = (tp+fp > 0.0) ? tp/(tp+fp) : 0.0;
@@ -2008,7 +2050,17 @@ static void TGN_WriteSummary()
     double ctp=(double)g_comb_tp, ctn=(double)g_comb_tn,
            cfp=(double)g_comb_fp, cfn=(double)g_comb_fn;
     double cdenom = std::sqrt((ctp+cfp)*(ctp+cfn)*(ctn+cfp)*(ctn+cfn));
-    double cmcc   = cdenom > 0.0 ? (ctp*ctn - cfp*cfn) / cdenom : 0.0;
+    // Same degenerate-case fix as mcc above, applied to the combined
+    // LW+TGN metric for the same reason (consistency with PEM_RUN_SUMMARY).
+    double cmcc   = (cfn == 0.0 && cfp == 0.0) ? 1.0
+                  : (cdenom > 0.0 ? (ctp*ctn - cfp*cfn) / cdenom : 0.0);
+    // Bug fix (2026-08-03): comb_tdet_ms -- see g_comb_first_alert_time's
+    // declaration comment. Uses the SAME attack_start reference as tdet
+    // (g_tgn_attack_start_time, "first attack event reaching TGN") since
+    // both e.alert_raised and tgn_alert are decided over the identical
+    // post-Stage-0 event stream -- only the first-alert instant differs.
+    double comb_tdet = (g_tgn_attack_start_time >= 0.0 && g_comb_first_alert_time >= 0.0)
+                        ? (g_comb_first_alert_time - g_tgn_attack_start_time)*1000.0 : -1.0;
 
     // Bug fix (same class as TGN_EVENTS above): this used to open a bare
     // "tgn_summary.csv" — a fixed relative path shared by every
@@ -2022,7 +2074,7 @@ static void TGN_WriteSummary()
         << "tdet_ms,auroc,theta_fs,theta_mcc_optimal,dim,layers,n_rsu,gamma,wmax,"
         << "ctrl_tp,ctrl_tn,ctrl_fp,ctrl_fn,beh_tp,beh_tn,beh_fp,beh_fn,"
         << "stage0_blocked_attacks,e_trusted_n,blind_window,divergence_only_detections,"
-        << "comb_tp,comb_tn,comb_fp,comb_fn,comb_mcc\n"
+        << "comb_tp,comb_tn,comb_fp,comb_fn,comb_mcc,comb_tdet_ms\n"
         << std::fixed << std::setprecision(3)
         << attack_scenario << ",\"" << TGN_AttackName(attack_scenario) << "\","
         << g_tgn_tp << "," << g_tgn_tn << "," << g_tgn_fp << "," << g_tgn_fn << ","
@@ -2037,7 +2089,8 @@ static void TGN_WriteSummary()
         << "," << g_tgn_E_trusted_n
         << "," << (g_tgn_E_was_ever_nonempty ? 0 : 1)
         << "," << g_tgn_divergence_only_detections
-        << "," << g_comb_tp << "," << g_comb_tn << "," << g_comb_fp << "," << g_comb_fn << "," << cmcc << "\n";
+        << "," << g_comb_tp << "," << g_comb_tn << "," << g_comb_fp << "," << g_comb_fn << "," << cmcc
+        << "," << comb_tdet << "\n";
         // blind_window=1 means E_t^trusted was ALWAYS empty (full startup blind window)
         // divergence_only_detections: controller-origin attacks caught SOLELY by the
         // blockchain divergence audit (TGN's own score never crossed theta_FS for
@@ -2058,7 +2111,8 @@ static void TGN_WriteSummary()
         << "   MCC=" << cmcc << "  [LW-signature OR TGN-score — overall pipeline detection]\n"
         << "  AUROC       : " << auroc << "\n"
         << "  ACR         : " << acr   << " %\n"
-        << "  Tdet        : " << tdet  << " ms\n"
+        << "  Tdet        : " << tdet  << " ms  [TGN-only, i.e. tgn_alert first-fire]\n"
+        << "  Comb Tdet   : " << comb_tdet << " ms  [dual-mode, first of LW-or-TGN to fire — Eq. 4.7]\n"
         << "  θ_FS        : " << g_tgn_params.theta_fs << "  [calibrated]\n"
         << "  θ_MCC_opt   : " << theta_opt << "  [MCC-maximising on this run's scores — §3.4.3 criterion]\n"
         << "  γ_init      : " << g_tgn_params.gamma << "  [Eq. 3.22 init; validation-tuned hyperparameter]\n"
@@ -2715,6 +2769,12 @@ static void TGN_ProcessEventInline(const PemEvent& e)
         const bool comb_alert = e.alert_raised || tgn_alert;
         if (e.attack_label) { if (comb_alert) ++g_comb_tp; else ++g_comb_fn; }
         else                { if (comb_alert) ++g_comb_fp; else ++g_comb_tn; }
+        // Bug fix (2026-08-03): dual-mode Tdet -- see g_comb_first_alert_time's
+        // declaration comment (same fix as TGN_ProcessEventsForNode's matching
+        // block above; this is the live per-event call site).
+        if (e.attack_label && comb_alert && g_comb_first_alert_time < 0.0) {
+            g_comb_first_alert_time = e.reception_timestamp;
+        }
     }
 
     const bool is_ctrl = (e.physical_sender_id == 9999u);

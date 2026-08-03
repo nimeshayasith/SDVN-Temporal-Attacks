@@ -3759,7 +3759,20 @@ PemRecordObservation(bool actualAttack, double score, bool alertRaised)
     // didn't already flag (actualAttack==false && alertRaised==false) —
     // doesn't touch real attack events or real detector false positives.
     if (!actualAttack && !alertRaised && g_abl.detector_fp_rate > 0.0) {
+        // Bug fix (2026-08-03, "Bug 2" ablation-comparability investigation):
+        // pinned to an explicit, fixed stream number -- see AttackGetRng()'s
+        // matching fix for the full root-cause writeup. Without this, ns-3's
+        // default auto-stream-assignment (based on RandomVariableStream
+        // construction ORDER) makes this object's actual draw sequence
+        // depend on which OTHER RandomVariableStream objects happened to be
+        // constructed earlier in the same run -- which varies with ablation
+        // flags (e.g. whether TGN's own init path constructs any), silently
+        // breaking the "only the detector differs" comparison assumption
+        // across ablation configs. Stream 1000003 is arbitrary but fixed and
+        // unique among this file's 4 explicitly-pinned streams (1000001-4).
         static Ptr<UniformRandomVariable> abl_fp_rng = CreateObject<UniformRandomVariable>();
+        static bool __abl_fp_rng_stream_pinned = (abl_fp_rng->SetStream(1000003), true);
+        (void)__abl_fp_rng_stream_pinned;
         if (abl_fp_rng->GetValue(0.0, 1.0) < g_abl.detector_fp_rate) {
             alertRaised = true;
         }
@@ -6798,11 +6811,29 @@ PemWriteRunSummaryCsv()
     uint64_t summaryTn = pem_true_negative;
     uint64_t summaryFp = pem_false_positive;
     uint64_t summaryFn = pem_false_negative;
-    double summaryMcc   = (pem_false_negative == 0 && pem_false_positive == 0)
+    // Bug fix (2026-08-03, diagnostic ablation A1 review): the fp==0&&fn==0
+    // degenerate case legitimately means "detector got everything right"
+    // ONLY when a real detector (LW and/or TGN) was actually active to get
+    // anything right. In A1/A5-style configs (no_lw && no_tgn -- zero
+    // behavioral detection, crypto pre-filter only), fp==0&&fn==0 for a
+    // given sub-scenario just means every attack-labelled event was
+    // silently dropped by Stage-0 crypto before any alert mechanism could
+    // ever fire (confirmed: ME-S1/S2's ~84-100% Stage-0 blocking rate hits
+    // this exact case, while TTW/BSHH's lower blocking rate leaves real
+    // fn>0 and correctly reports MCC=0 -- same "no alert ever raised"
+    // situation, inconsistently scored). Reporting MCC=1.0/AUROC=1.0 here
+    // credits a "perfect" score to a config that structurally could not
+    // have gotten anything wrong OR right, since no anomaly-scoring engine
+    // ever ran. Skip the degenerate special-case in that mode; the raw
+    // formula's own 0-denominator default (0.0) then matches TTW/BSHH's
+    // real fn-driven 0.0, exactly as required for A1's "no anomaly
+    // scoring" semantics to be internally consistent across families.
+    const bool __noDetectorActive = g_abl.no_lw && g_abl.no_tgn;
+    double summaryMcc   = (!__noDetectorActive && pem_false_negative == 0 && pem_false_positive == 0)
                         ? 1.0
                         : PemComputeMccFromCounts(pem_true_positive, pem_true_negative,
                                                   pem_false_positive, pem_false_negative);
-    double summaryAuroc = (pem_false_negative == 0 && pem_false_positive == 0) ? 1.0 : pem_last_auroc;
+    double summaryAuroc = (!__noDetectorActive && pem_false_negative == 0 && pem_false_positive == 0) ? 1.0 : pem_last_auroc;
 
     std::ofstream fout(filename.c_str(), std::ios::out | std::ios::app);
     fout << RngSeedManager::GetRun() << ","
@@ -9108,6 +9139,34 @@ PemEvaluateEvent(PemEvent& event)
     // pem_all_events is the global cross-node accumulator for TGN post-processing
     pem_all_events.push_back(event);
 
+    // Bug fix (2026-08-03, "Bug 2" ablation-comparability investigation):
+    // g_attackerEventCounts (declared in .tgn_src/tgn_core.cc, drives
+    // AttackScheduleAdaptiveInjection's rinj rate-limiting in this file) was
+    // previously updated ONLY inside TGN_WriteEventRow (tgn_core.cc), which
+    // is only ever reached when TGN is active (!g_abl.no_tgn). CONFIRMED
+    // ROOT CAUSE via live instrumented A/B test (BSHH-S1, identical
+    // scenario/seed/pct, only --no_tgn flipped): with no_tgn=1, this counter
+    // never left (0,0), so AttackScheduleAdaptiveInjection's tick permanently
+    // used its unthrottled "roll AttackRoll(rinj) every tick, no memory"
+    // bootstrap branch; with TGN active, the counter grew normally and the
+    // tick quickly switched to the self-limiting running-average branch
+    // ("inject only while attackCount < rinj*totalCount") -- producing a 14x
+    // difference in actual injected-attack counts (8921 vs 587 for this
+    // scenario) despite the tick chain itself firing an IDENTICAL number of
+    // times with an IDENTICAL RNG sequence in both configs (verified
+    // separately, see AttackGetRng()'s own fix). This made attack-scenario
+    // CONSTRUCTION depend on which detector was enabled -- moved the
+    // increment here, which runs unconditionally for every event that
+    // reaches this point regardless of no_tgn, so the rate-limiting ground
+    // truth is now genuinely detector-independent. Removed from
+    // TGN_WriteEventRow (tgn_core.cc) to avoid double-counting when TGN is
+    // active.
+    {
+        auto& __rinjCounts = g_attackerEventCounts[event.physical_sender_id];
+        __rinjCounts.second += 1;
+        if (event.attack_label) __rinjCounts.first += 1;
+    }
+
     // Issue 8.1 (online mode): process the event through the TGN immediately.
     // A1/A2 (--no_tgn=1): skip — LW signatures are still scored; TGN score = 0.
     // M5 fix (PDF Eq. 4.8): time ONLY this call for T_FS_det -- see
@@ -9503,6 +9562,58 @@ PemEmitEvent(PemEventType type,
             pem_link_break_time[linkKey] = Simulator::Now().GetSeconds();
         }
         pem_link_prev_real_state[linkKey] = realEdge;
+    }
+
+    // M6 (Eq. 4.8/4.9) event-driven companion for BSHH: mirrors the
+    // PEM_EVENT_TOPOLOGY_UPDATE block above via PemCheckRoutingDeliverability,
+    // but that block is unreachable for heartbeats -- PemEmitHeartbeatEvent
+    // calls this function with linkSrcId==linkDstId==claimedSenderId (a
+    // heartbeat has no link, only a liveness claim), which fails both the
+    // `type == PEM_EVENT_TOPOLOGY_UPDATE` and `linkSrcId != linkDstId` gates
+    // above by construction. Root cause of BSHH's pdr_under_attack_pct/
+    // pdr_post_mitigation_pct/te2e_* staying permanently 0/0/0/0 in every run
+    // (confirmed via the A8 mitigation-delay sweep, sc5 BSHH-S1, across every
+    // condition including no_blockchain): the only existing M6 call site is
+    // type-gated to topology events and BSHH never reaches it.
+    //
+    // The BSHH analogue of a topology edge's "does the controller's believed
+    // link correspond to a real, in-range physical connection" test is: does
+    // the physical sender of this liveness claim (physicalSenderId) sit
+    // within real communication range of the identity it claims
+    // (claimedSenderId)? For a genuine heartbeat these are the same vehicle
+    // (distance 0, trivially deliverable); for a real BSHH forgery they
+    // differ, exactly mirroring how a ghost topology edge differs from a
+    // real one. Uses the same attackLabel/pem_attack_injection_time bucket
+    // split as PemCheckRoutingDeliverability for consistency.
+    if (type == PEM_EVENT_HEARTBEAT)
+    {
+        Ptr<Node> nClaimed = GetVehicleByNs3Id(claimedSenderId);
+        Ptr<Node> nPhysical = GetVehicleByNs3Id(physicalSenderId);
+        bool hbDelivered = false;
+        if (nClaimed && nPhysical)
+        {
+            Ptr<MobilityModel> mClaimed = nClaimed->GetObject<MobilityModel>();
+            Ptr<MobilityModel> mPhysical = nPhysical->GetObject<MobilityModel>();
+            if (mClaimed && mPhysical &&
+                PemDistance2d(mPhysical->GetPosition(), mClaimed->GetPosition()) <= g_rcomm)
+            {
+                hbDelivered = true;
+            }
+        }
+        const double te2eMs = hbDelivered ? PEM_ROUTING_PER_HOP_DELAY_MS : 0.0;
+
+        if (attackLabel)
+        {
+            pem_under_attack_pdr_sum += hbDelivered ? 1.0 : 0.0;
+            pem_under_attack_te2e_sum += te2eMs / 1000.0;
+            pem_under_attack_snapshots++;
+        }
+        else if (pem_attack_injection_time >= 0.0)
+        {
+            pem_post_mitigation_pdr_sum += hbDelivered ? 1.0 : 0.0;
+            pem_post_mitigation_te2e_sum += te2eMs / 1000.0;
+            pem_post_mitigation_snapshots++;
+        }
     }
 
     PemEvent event;
@@ -10321,10 +10432,35 @@ void declare_attack_states()
     // ATTACK_NONE (0): all flags remain false — baseline run.
 }
 
+// Bug fix (2026-08-03, "Bug 2" ablation-comparability investigation):
+// stream pinned to an explicit, fixed number instead of ns-3's default
+// auto-assignment (Stream=-1). CONFIRMED ROOT CAUSE via live instrumented
+// A/B test (BSHH-S1, identical scenario/seed/pct, only --no_tgn flipped):
+// the recurring attack-injection tick chain (AttackScheduleAdaptiveInjection)
+// fires an IDENTICAL number of ticks in both configs (14,500, same final
+// timestamp t=29.882 to 3 decimal places) -- but the Bernoulli success rate
+// of AttackRoll() draws at those ticks differed wildly (~62% vs ~4.3%
+// against the same rinj=0.6 target), producing a 14x difference in actual
+// attack-event counts (8,989 vs 626) for supposedly-identical scenario
+// construction. Root cause: with Stream=-1 (auto-assign), ns-3 assigns this
+// RandomVariableStream's actual stream number by construction ORDER among
+// all RandomVariableStream objects created in the process -- so whether
+// TGN's own init path happens to construct any such objects before this
+// one's first use (it may, indirectly, depending on ablation flags) shifts
+// this object's entire draw sequence, breaking the "only the detector
+// differs" comparison assumption across ablation configs (A1-A6 etc). This
+// affected attack-SCENARIO-CONSTRUCTION randomness, not detector behavior --
+// confirmed via the tick-count-identical evidence above; the chain itself
+// was never cut short, only its RNG outcomes changed. Stream 1000001 is
+// arbitrary but fixed and unique among this file's 4 explicitly-pinned
+// streams (1000001-4, see AttackShuffleVector/g_attacker_rng/
+// g_pem_routing_pair_rng/abl_fp_rng's matching fixes).
 static Ptr<UniformRandomVariable>
 AttackGetRng()
 {
     static Ptr<UniformRandomVariable> rng = CreateObject<UniformRandomVariable>();
+    static bool __attack_rng_stream_pinned = (rng->SetStream(1000001), true);
+    (void)__attack_rng_stream_pinned;
     return rng;
 }
 
@@ -156215,6 +156351,15 @@ static int RoutingMain(int argc, char *argv[])
     g_attacker_rng = CreateObject<UniformRandomVariable>();
     g_attacker_rng->SetAttribute("Min", DoubleValue(0.0));
     g_attacker_rng->SetAttribute("Max", DoubleValue(1.0));
+    // Bug fix (2026-08-03): pinned to an explicit, fixed stream number --
+    // see AttackGetRng()'s matching fix (routing.cc) for the full root-cause
+    // writeup. Without this, ns-3's default auto-stream-assignment
+    // (construction order among ALL RandomVariableStream objects in the
+    // process) makes this object's draw sequence depend on which other such
+    // objects happen to get constructed earlier -- including conditionally,
+    // based on ablation flags like --no_tgn -- silently breaking scenario-
+    // construction reproducibility/comparability across ablation configs.
+    g_attacker_rng->SetStream(1000002);
     std::cout << "[AttackerModel] Sophistication probability: " << g_attacker_sophistication_prob
               << " (each S1/S2 injection independently rolls — 0=all basic, 1=all sophisticated)\n";
 
@@ -156222,6 +156367,9 @@ static int RoutingMain(int argc, char *argv[])
     // the same NS-3 RngSeedManager convention as g_attacker_rng above, for
     // reproducible-but-independent pair sampling across --RngRun values.
     g_pem_routing_pair_rng = CreateObject<UniformRandomVariable>();
+    // Bug fix (2026-08-03): pinned to a fixed stream, same reason/writeup as
+    // g_attacker_rng's matching fix immediately above.
+    g_pem_routing_pair_rng->SetStream(1000004);
 
     // ── §3.4.5 Eq. 3.29 — TTW link lifetime bound L_link ────────────────────
     // L_link = 2 · r_comm / v_rel  (Eq. 3.29)
