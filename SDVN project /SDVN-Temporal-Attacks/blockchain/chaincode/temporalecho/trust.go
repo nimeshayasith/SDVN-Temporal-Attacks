@@ -337,11 +337,25 @@ func demotePeerToClient(ctx contractapi.TransactionContextInterface, peerID stri
 	if err := saveTrust(ctx, r); err != nil {
 		return err
 	}
+	// Bug fix (Q46, 2026-08-02): the paper requires LKH session-key revocation
+	// at Stage 1 (QUARANTINED_CLIENT), not deferred to Stage 3 (REMOVED). The
+	// only revokeSessionKey() call site used to be the separate per-vehicle
+	// TGN-alert mitigation path (temporalecho.go), which this RSU consensus-
+	// peer demotion pipeline never reached — so a demoted RSU peer's session
+	// key was never revoked by this pipeline at all, at any stage. Fixed by
+	// calling revokeSessionKey() here, at the moment of transition into
+	// QUARANTINED_CLIENT, so the compromised peer loses group-key access
+	// immediately on demotion rather than continuing to hold a valid LKH
+	// session key throughout the monitoring window up to eventual removal.
+	if err := revokeSessionKey(ctx, peerID); err != nil {
+		return err
+	}
 	payload, _ := json.Marshal(map[string]interface{}{
 		"type":          "PEER_QUARANTINED",
 		"peer_id":       peerID,
 		"demoted_at_ms": nowMs,
-		"message":       "RSU peer demoted to QUARANTINED_CLIENT — monitoring trust score",
+		"key_revoked":   true,
+		"message":       "RSU peer demoted to QUARANTINED_CLIENT — session key revoked, monitoring trust score",
 	})
 	ctx.GetStub().SetEvent("PeerQuarantined", payload)
 	return nil

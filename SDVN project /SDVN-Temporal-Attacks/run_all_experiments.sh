@@ -4,7 +4,7 @@
 # Temporal-Echo Topology Attack — Full Experimental Pipeline
 #
 # Runs both comparison detectors (Multi-BSM and VeReMi/KNN+Bagging) against
-# all 12 attack scenarios × 11 attack percentages (0–100 % step 10) × 3 seeds.
+# all 12 attack scenarios × 11 attack percentages (0–100 % step 10) × 5 seeds.
 # Trains KNN+Bagging on accumulated VeReMi pairs CSV.
 # Generates MCC vs attack%, T_det vs attack%, PDR vs attack% graphs.
 #
@@ -37,7 +37,12 @@ PYTHON="${PYTHON:-python3}"
 
 # ── Sweep parameters ─────────────────────────────────────────────────────────
 ATTACK_PERCENTAGES=(0 10 20 30 40 50 60 70 80 90 100)
-SEEDS=(1 2 3)
+# Q49 fix (2026-08-02): was (1 2 3), inconsistent with CLAUDE.md Section 14's
+# documented 5-seed experimental protocol (run_5_experiments.sh). Running
+# only 3 seeds here would silently invalidate any "5-seed" claim in reported
+# results even though the mean/std aggregation logic itself (per-seed MCC,
+# not a pooled confusion matrix) is correct.
+SEEDS=(1 2 3 4 5)
 ALL_SCENARIOS=(0 1 2 3 4 5 6 7 8 9 10 11 12)   # 0 = baseline
 
 # ── Per-scenario NS-3 parameters ─────────────────────────────────────────────

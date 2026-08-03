@@ -492,6 +492,37 @@ public:
 
         // Step 3 — L rounds of message passing (Eq 3.24)
         std::set<uint32_t> active = {feat.node_id, link_src, link_dst};
+
+        // Q34 assertion: {reporter, link_src, link_dst} is an INDUCED
+        // subgraph over up to 3 DISTINCT node IDs -- std::set naturally
+        // collapses duplicates, so active.size() is 2 for a genuine
+        // self-report (reporter IS one of the link endpoints -- the common,
+        // correct case) and 3 for a genuine third-party report (echo
+        // attacks, RSU-relayed reports). Asserting "always exactly 3" would
+        // be WRONG and would fire on every legitimate self-report event --
+        // the correct invariant is active.size() in {2,3}, with the exact
+        // value determined by whether the reporter is a link endpoint.
+        {
+            static uint64_t s_q34_size2 = 0, s_q34_size3 = 0, s_q34_other = 0;
+            const bool __expectSelfReport = (feat.node_id == link_src || feat.node_id == link_dst);
+            if (active.size() == 2 && __expectSelfReport) {
+                s_q34_size2++;
+            } else if (active.size() == 3 && !__expectSelfReport) {
+                s_q34_size3++;
+            } else {
+                s_q34_other++;
+                std::cout << "[Q34-VIOLATION] active.size()=" << active.size()
+                          << " reporter=" << feat.node_id << " link_src=" << link_src
+                          << " link_dst=" << link_dst << std::endl;
+            }
+            static uint64_t s_q34_total = 0;
+            if (++s_q34_total % 2000 == 0 || (s_q34_total < 20)) {
+                std::cout << "[Q34] subgraph size tally: size2(self-report)="
+                          << s_q34_size2 << "  size3(third-party)=" << s_q34_size3
+                          << "  violations=" << s_q34_other << std::endl;
+            }
+        }
+
         std::unordered_map<uint32_t, Vec> H;
         for (uint32_t v : active) H[v] = states_[v].memory;
         for (int l = 0; l < params_.layers; ++l)
@@ -1711,10 +1742,19 @@ static void TGN_ProcessEventsForNode(const std::vector<PemEvent>& node_events,
         const bool tgn_excluded_warmup = e.reception_timestamp < PEM_WARMUP_S;
         if (!tgn_excluded_invalid_neighborhood && !tgn_excluded_warmup) {
         if (e.attack_label) {
-            if (g_tgn_attack_start_time < 0.0) g_tgn_attack_start_time = e.reception_timestamp;
+            if (g_tgn_attack_start_time < 0.0) {
+                g_tgn_attack_start_time = e.reception_timestamp;
+                std::cout << "[Q_TDET] first attack event reaches TGN: t=" << e.reception_timestamp
+                          << " reporter=" << e.physical_sender_id << " tgn_alert=" << tgn_alert
+                          << " score=" << tgn_score << std::endl;
+            }
             if (tgn_alert) {
                 ++g_tgn_tp;
-                if (g_tgn_first_alert_time < 0.0) g_tgn_first_alert_time = e.reception_timestamp;
+                if (g_tgn_first_alert_time < 0.0) {
+                    g_tgn_first_alert_time = e.reception_timestamp;
+                    std::cout << "[Q_TDET] first TGN alert fires: t=" << e.reception_timestamp
+                              << " reporter=" << e.physical_sender_id << " score=" << tgn_score << std::endl;
+                }
             } else { ++g_tgn_fn; }
             g_tgn_pos_scores.push_back(tgn_score);
         } else {
@@ -2445,8 +2485,33 @@ static void TGN_Init()
 {
     if (g_tgn_online_mode) return; // idempotent
 
+    // Bug fix: g_tgn_l_link_cmd's default (20.4) was a hardcoded literal
+    // (2*170/16.67) that only happened to match --maxspeed's own default
+    // (60 km/h = 16.67 m/s) coincidentally -- it never tracked an actual
+    // --maxspeed override for the brief startup window before
+    // TGN_RecalibrateMobility()'s first live recalibration (~1s in). Same
+    // fix as g_pem_v_rel_ms (routing.cc, Q25): recompute from the real,
+    // post-cmd.Parse() maxspeed/g_me_detect_range here, unless the user
+    // explicitly set --tgn_l_link themselves (sentinel check on the
+    // unmodified 20.4 default, same pattern as ttw_link_lifetime_bound's
+    // 3.52 sentinel). No retraining/regeneration required: this only
+    // affects TGN_GAMMA/TGN_WMAX's transient startup seed for the first
+    // ~1 simulated second of any run -- TGN_RecalibrateMobility() already
+    // overwrites both from genuinely live-observed velocities every
+    // ~1s afterward, for the entire rest of the run, regardless of this
+    // seed's exact value.
+    if (g_tgn_l_link_cmd == 20.4) {
+        g_tgn_l_link_cmd = 2.0 * g_me_detect_range / ((double)maxspeed / 3.6);
+    }
+
+    // Bug fix (2026-08-02): same duplicate-init-site class of bug as the
+    // other TGN_Init() copy below -- this is a SEPARATE function (the
+    // "online mode" init actually used for live simulation runs, confirmed
+    // via its own distinct log line) with its own independent, previously-
+    // unfixed truncating (int) cast. std::ceil() applied here too, matching
+    // LW's g_pem_w_max_events convention.
     TGN_GAMMA = g_tgn_l_link_cmd / (2.0 * TGN_BEACON_INTERVAL * std::log(2.0));
-    TGN_WMAX  = (int)(g_tgn_l_link_cmd / TGN_BEACON_INTERVAL);
+    TGN_WMAX  = (int)std::ceil(g_tgn_l_link_cmd / TGN_BEACON_INTERVAL);
     std::cout << "[TGN] TGN_Init() — online mode — L_link=" << g_tgn_l_link_cmd
               << "  γ_init=" << TGN_GAMMA << "  W_max=" << TGN_WMAX << "\n";
 
@@ -2625,10 +2690,19 @@ static void TGN_ProcessEventInline(const PemEvent& e)
     const bool tgn_excluded_warmup2 = e.reception_timestamp < PEM_WARMUP_S;
     if (!tgn_excluded_invalid_neighborhood2 && !tgn_excluded_warmup2) {
     if (e.attack_label) {
-        if (g_tgn_attack_start_time < 0.0) g_tgn_attack_start_time = e.reception_timestamp;
+        if (g_tgn_attack_start_time < 0.0) {
+            g_tgn_attack_start_time = e.reception_timestamp;
+            std::cout << "[Q_TDET] first attack event reaches TGN (inline): t=" << e.reception_timestamp
+                      << " reporter=" << e.physical_sender_id << " tgn_alert=" << tgn_alert
+                      << " score=" << tgn_score << std::endl;
+        }
         if (tgn_alert) {
             ++g_tgn_tp;
-            if (g_tgn_first_alert_time < 0.0) g_tgn_first_alert_time = e.reception_timestamp;
+            if (g_tgn_first_alert_time < 0.0) {
+                g_tgn_first_alert_time = e.reception_timestamp;
+                std::cout << "[Q_TDET] first TGN alert fires (inline): t=" << e.reception_timestamp
+                          << " reporter=" << e.physical_sender_id << " score=" << tgn_score << std::endl;
+            }
         } else { ++g_tgn_fn; }
         g_tgn_pos_scores.push_back(tgn_score);
     } else {
@@ -2803,12 +2877,25 @@ static void TGN_RunPipeline()
     //   Condition: A_uv ≈ 0.5 when age = L_link/2  →  γ_init = L_link/(2·T_b·ln2)
     //   Must be tuned by sweeping on held-out validation data (tgn_train.py --sweep_gamma).
     //
-    // W_max — §3.4.3 sliding-window event-retention bound (distinct from Eq. 3.32):
-    //   Set equal to N_beacon = ⌊L_link/T_b⌋ (Eq. 3.32) so the window spans one
-    //   link lifetime — a principled choice, but W_max and N_beacon are conceptually
-    //   different quantities (§3.4.3 window bound vs. §3.4.7 mobility beacon count).
+    // W_max — §3.4.3 sliding-window event-retention bound, set equal to
+    // N_beacon = ceil(L_link/T_b) (§3.4.7) so the window spans one link
+    // lifetime, matching LW's own g_pem_w_max_events computation exactly
+    // (routing.cc, std::ceil(ttw_link_lifetime_bound / PEM_BEACON_INTERVAL_S)).
+    //
+    // Bug fix (2026-08-02, found via LW/TGN W_max discrepancy: 204 vs 203):
+    // this previously cited "Eq. 3.32" for a floor-based N_beacon formula --
+    // that citation was simply wrong. Eq. 3.32 in the PDF (§3.4.6) is the ME
+    // quorum-acceptance rule (Accept(eij) <=> |{Vk : AcceptVk(eij)=1}| >= t),
+    // entirely unrelated to any window-size/beacon-count formula -- there is
+    // no genuine PDF-documented floor-based alternative to LW's ceil-based
+    // W_max. The real bug was a plain truncating (int) cast: in IEEE 754
+    // double precision, 20.4/0.1 == 203.99999999999997 (not exactly 204.0),
+    // so the old (int)(...) cast silently truncated to 203 instead of the
+    // correct 204, creating an LW/TGN W_max mismatch. Switched to
+    // std::ceil() to match LW's own convention and correctly round up
+    // through floating-point imprecision, same as the routing.cc fix.
     TGN_GAMMA = g_tgn_l_link_cmd / (2.0 * TGN_BEACON_INTERVAL * std::log(2.0));
-    TGN_WMAX  = (int)(g_tgn_l_link_cmd / TGN_BEACON_INTERVAL);  // N_beacon (Eq. 3.32) used as W_max
+    TGN_WMAX  = (int)std::ceil(g_tgn_l_link_cmd / TGN_BEACON_INTERVAL);
     std::cout << "[TGN] L_link=" << g_tgn_l_link_cmd << "s (Eq. 3.31)"
               << "  γ_init=" << TGN_GAMMA << " (Eq. 3.22, validation-tuned)"
               << "  W_max=" << TGN_WMAX << " (=N_beacon, §3.4.3)\n";

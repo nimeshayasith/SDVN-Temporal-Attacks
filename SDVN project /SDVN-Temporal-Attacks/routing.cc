@@ -2793,6 +2793,25 @@ uint64_t pem_qrr_echo_blocked  = 0;   // correctly rejected (quorum success)
 // test run that stages that collusion size will exercise it correctly.
 uint64_t pem_fsr_attempts = 0;
 uint64_t pem_fsr_success  = 0;
+
+// A6 fix (2026-08-02, found on user challenge -- "A6 doesn't change with
+// f_c?"): pem_fsr_attempts/success above are fed ONLY by the generic
+// FS-MITIGATE gate's own internally-cycled f_c_this_call (routing.cc's
+// PemApplyMitigation, ~line 4187) -- a synthetic sweep unrelated to
+// --bshh_s1_fc, the actual attacker-collusion-size CLI parameter A6's
+// X-axis is supposed to represent. That generic gate never reads
+// g_abl.bshh_s1_fc at all, so changing --bshh_s1_fc from 1 to 2 had
+// literally no path to affect the reported "fsr" column -- confirmed
+// empirically (identical fsr at fc=1 and fc=2, both ablated and real-
+// defense conditions). These dedicated counters instead accumulate at
+// BSHH-S1's own attack-construction site (where fcApply distinct
+// colluding vehicles are actually assembled), using the SAME
+// PemVerifyThresholdSig mechanism but with genuine bshh_s1_fc and a
+// PDF-consistent n_p=8 RSU/PBFT-peer threshold basis (t=floor(8/2)+1=5,
+// matching sweep_a6.sh's own f=floor((n_p-1)/3)=2 derivation), so the
+// reported FSR is now genuinely a function of the collusion size tested.
+uint64_t pem_bshh_s1_fc_fsr_attempts = 0;
+uint64_t pem_bshh_s1_fc_fsr_success  = 0;
 // Eq. 4.18: FSR is swept over Byzantine collusion size f_c in {1,...,t},
 // not a single number — see PemVerifyThresholdSig's own comment for how
 // f_c is staged (f_c forged signers + (n_reporters-f_c) genuine signers)
@@ -2844,6 +2863,27 @@ double   pem_topo_divergence_unprotected_sum   = 0.0;
 uint64_t pem_topo_divergence_unprotected_count = 0;
 double   pem_topo_divergence_mitigated_sum     = 0.0;
 uint64_t pem_topo_divergence_mitigated_count   = 0;
+
+// Q48 fix (2026-08-02): the divergence above (pem_topo_divergence_sum and
+// its unprotected/mitigated split) is computed in PemEmitEvent, BEFORE
+// detection ever runs, using believesEdge = !attackLabel -- i.e. it is
+// GROUND-TRUTH-ONLY by design (see PemEmitEvent's own comment) and is
+// therefore structurally identical whether --detection_enabled is 0 or 1,
+// since ground-truth attack labels don't depend on detector state. That
+// makes it unusable for computing the paper's real Eq. 4.2 TDRR (confirmed
+// empirically: paired unprotected/mitigated runs produced byte-identical
+// mean_topology_divergence). This second signal instead uses
+// believesEdge = !event.alert_raised (the controller's REAL post-detection
+// belief -- alert_raised is what actually gates PemApplyMitigation() in
+// this simulation, confirmed via the "PemEmitEvent(...); if (pem_last_alert)
+// { PemApplyMitigation(...); }" pattern used at every scenario's detection
+// call site), so it genuinely differs between a --detection_enabled=0 run
+// (alert_raised always false -> controller always believes forged data,
+// same as ground truth) and a --detection_enabled=1 run (alert_raised
+// fires on real detections -> controller correctly rejects them). This is
+// the signal compute_tdrr.py should read for the real Eq. 4.2 TDRR.
+double   pem_topo_divergence_postdetection_sum   = 0.0;
+uint64_t pem_topo_divergence_postdetection_count = 0;
 
 // ── M3: T_stale — mean elapsed time between a link's physical break
 // (ground-truth edge goes false) and the controller correcting its
@@ -4169,20 +4209,18 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
             if (crypto_ok) bucket.second++;
         }
 
-        // M11 QRR (Eq. 4.19): every ME FS-MITIGATE call here is a genuine
-        // echo-injection attempt (attacker_id is always the real attacker at
-        // every ME call site) — crypto_ok==true means the forged echo met
-        // quorum and was admitted (N_echo-pass, the defense's failure case);
-        // crypto_ok==false means quorum correctly rejected it (N_echo-blocked,
-        // the defense's success/TP case). See pem_qrr_echo_* declaration.
-        // Bug fix: only count QRR attempts when VERIFY_QUORUM actually ran —
-        // a bypassed controller-origin ME call has no real echo-forgery
-        // attempt to measure (crypto_ok=true there is a bypass default, not
-        // a genuine quorum admission) and must not inflate N_echo-pass.
+        // M11 QRR (Eq. 4.19) bookkeeping REMOVED from here (2026-08-02, A7
+        // fix part 3): this was gated on ran_verify_quorum, which itself
+        // requires !g_abl.no_lbs -- making pem_qrr_echo_attempts
+        // STRUCTURALLY zero during A7's own ablation (--no_lbs=1),
+        // contradicting Eq. 4.19's "admitted to the controller topology"
+        // definition, which belongs to the crypto-layer Stage-0 gate, not
+        // this later mitigation-layer re-check. QRR accumulation now lives
+        // in teta_guard_filter.h's quorum check instead (see
+        // pem_qrr_echo_attempts's own declaration comment) -- kept here
+        // only as a no-op branch to preserve the FSR fallthrough below.
         if (ran_verify_quorum) {
-            pem_qrr_echo_attempts++;
-            if (crypto_ok) pem_qrr_echo_pass++;
-            else           pem_qrr_echo_blocked++;
+            // (QRR bookkeeping intentionally not duplicated here — see above.)
         } else if (family != "ME") {
             // M11 FSR: same pattern, but for the t-of-n ML-DSA-87 threshold
             // aggregate signature path (TTW/BSHH). crypto_ok==true means the
@@ -4250,9 +4288,31 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     // RAII guard (not a plain checkpoint variable) because the remainder of
     // this function has multiple return points (bootstrap suppression,
     // Tier 1/Tier 2 enforcement branches, final fall-through) -- this
-    // guarantees the Texec+TFlowMod phase is recorded exactly once no
-    // matter which path is taken, the same pattern PemStageTimer already
-    // uses for the whole-function kMitigate measurement.
+    // guarantees the local enforcement-decision + FlowMod-propagation phase
+    // is recorded exactly once no matter which path is taken, the same
+    // pattern PemStageTimer already uses for the whole-function kMitigate
+    // measurement.
+    //
+    // T_exec labeling fix (2026-08-02, per PDF Table [Texec row] and
+    // §Consensus-and-Execution-Latency): this timer is a LOCAL in-process
+    // std::chrono measurement of the enforcement-decision C++ code path --
+    // it never makes a real network call to Hyperledger Fabric, so it
+    // cannot and does not measure genuine smart-contract execution latency
+    // on Fabric. The PDF's own methodology explicitly treats Texec as an
+    // externally-obtained empirical quantity ("obtained from Fabric
+    // deployment measurements," "empirical value is TBD," literature range
+    // 50-200ms) -- NOT something derived by blocking simulation calls to a
+    // live network mid-run. Genuine Texec_fabric is measured separately by
+    // blockchain/client/measure_texec_fabric.js against the real running
+    // Fabric network and logged to documents/T_EXEC_FABRIC_MEASURED.csv;
+    // compute_tpipeline.py merges that empirical value with this run's own
+    // Tdet/TPBFT (both genuinely simulated) to report the real Eq. 4.7
+    // Tpipeline = Tdet + TPBFT + Texec + TFlowMod. What this local timer
+    // measures is better understood as an approximation of TFlowMod
+    // (propagation to RSU OpenFlow agents via the emergency channel) plus
+    // negligible local overhead -- kept under its original column name
+    // (t_exec_flowmod_mean_ms) for CSV-schema backward compatibility, but
+    // should NOT be read as Texec on its own.
     struct __PemExecFlowModTimer {
         std::chrono::steady_clock::time_point start_ = std::chrono::steady_clock::now();
         ~__PemExecFlowModTimer() {
@@ -5022,6 +5082,17 @@ static const double kNetworkRoadLengthEstimateM = 2.0 * (2460.0 + 2377.0);
 
 static uint32_t PemComputeDeltaThreshold()
 {
+    // A4 (--no_mobility_adapt=1): per the PDF (Table 4.2), A4 replaces "the
+    // dynamic mobility-adaptive divergence threshold (Eq. 3.48) with a fixed
+    // constant equal to its urban-scenario median value" -- the PDF's own
+    // worked example (line 4454) gives that constant explicitly:
+    // delta_thresh = ceil(1.1*12)+1 = 14, "for both urban and highway
+    // conditions." Previously this function had no gate on no_mobility_adapt
+    // at all, so A4 never actually touched Eq. 3.48 -- it only froze ME's
+    // rho_max/delta_max and the BSHH-S3 liveness window, a different set of
+    // adaptive parameters. This fixes that scope mismatch.
+    if (g_abl.no_mobility_adapt) return 14u;
+
     // Eq. 3.48: tau_prop is the propagation delay between vehicles, RSUs,
     // and the controller -- a physical-layer signal delay, not a multi-hop
     // network-diameter traversal. Matches the paper's own worked example.
@@ -5816,7 +5887,13 @@ TGN_RecalibrateMobility()
         // data or a deployed model's inference-time behavior.
         const double lLinkLive = 2.0 * g_me_detect_range / vMaxObservedMs;
         TGN_GAMMA = lLinkLive / (2.0 * TGN_BEACON_INTERVAL * std::log(2.0));
-        TGN_WMAX  = (int)(lLinkLive / TGN_BEACON_INTERVAL);
+        // Bug fix (2026-08-02): same truncating-(int)-cast class of bug as
+        // TGN_Init()'s two copies (tgn_core.cc) -- IEEE 754 double precision
+        // can land just under an exact integer boundary (e.g. 20.4/0.1 ==
+        // 203.99999999999997), so a plain (int) cast silently rounds DOWN
+        // instead of to the intended ceiling. std::ceil() matches LW's own
+        // g_pem_w_max_events convention (routing.cc, std::ceil(...)).
+        TGN_WMAX  = (int)std::ceil(lLinkLive / TGN_BEACON_INTERVAL);
         if (TGN_WMAX < 1) TGN_WMAX = 1;
         // Keep g_tgn_params in sync too, since TGN_RunPipeline's summary/CSV
         // output reports gamma/wmax from there.
@@ -6627,16 +6704,35 @@ PemWriteFsrSweepCsv()
 static void
 PemWriteRunSummaryCsv()
 {
+    // Q21 diagnostic: how many ME-S1 attack events reached Stage 0's
+    // location-binding gate (Eqs. 3.29-3.31) vs how many passed it.
+    if (attack_scenario == 9u) {
+        std::cout << "[Q21] ME-S1 Stage-0 location-binding gate: reached="
+                  << g_q21_mes1_stage0_reached << "  passed="
+                  << g_q21_mes1_stage0_passed << "  rejected="
+                  << (g_q21_mes1_stage0_reached - g_q21_mes1_stage0_passed)
+                  << std::endl;
+    }
     PemWriteScenarioValidityReport();
     const std::string filename =
         BuildScenarioCsvPath("PEM_RUN_SUMMARY", attack_scenario);
+    // Q50 fix (2026-08-02): reconstruction of a run's exact conditions from
+    // this CSV row alone previously required trusting that attack_scenario's
+    // fixed enum mapping (CLAUDE.md Section 6) still held -- which silently
+    // breaks if a run overrode --malicious_vehicle_id/--victim_neighbor_id
+    // from their defaults. sim_time and the TGN model identity (weights
+    // file path + theta) were also not recorded anywhere in this row. All
+    // four are added below so every row is self-describing without relying
+    // on external convention.
     PemWriteCsvHeaderIfNeeded(
         filename,
-        "run_id,attack_scenario,attack_percentage,detection_enabled,tp,tn,fp,fn,mcc,auroc,tdet_ms,"
+        "run_id,attack_scenario,attack_percentage,detection_enabled,sim_time_s,"
+        "malicious_vehicle_id,victim_neighbor_id,tgn_weights_file,tgn_theta,"
+        "tp,tn,fp,fn,mcc,auroc,tdet_ms,"
         "pdr_under_attack_pct,pdr_post_mitigation_pct,te2e_under_attack_ms,te2e_post_mitigation_ms,"
         "total_events,crypto_drop_mac,crypto_drop_stale,crypto_drop_nonce,crypto_drop_quorum,tp_event,"
         "qrr_echo_attempts,qrr_echo_pass,qrr_echo_blocked,qrr,"
-        "mean_topology_divergence,mean_t_stale_ms,mean_pir,"
+        "mean_topology_divergence,mean_topology_divergence_postdetection,mean_t_stale_ms,mean_pir,"
         "t_lw_pipeline_mean_ms,t_lw_pipeline_max_ms,t_lw_pipeline_over_budget_count,"
         "t_pipeline_mean_ms,t_pipeline_max_ms,t_pipeline_over_budget_count,"
         "t_fs_det_mean_ms,t_fs_det_max_ms,"
@@ -6646,6 +6742,7 @@ PemWriteRunSummaryCsv()
         "f1_ttw,f1_bshh,f1_me,f1_macro,"
         "fra,frr,"
         "fsr_attempts,fsr_success,fsr,"
+        "bshh_s1_fc_fsr_attempts,bshh_s1_fc_fsr_success,bshh_s1_fc_fsr,"
         "t_trust_ms,t_revoke_ms,t_reassign_ms,"
         "divergence_tp,divergence_fn,divergence_recall,"
         "combined_tp,combined_fn,combined_recall,"
@@ -6712,6 +6809,11 @@ PemWriteRunSummaryCsv()
          << attack_scenario << ","
          << attack_percentage << ","
          << (detection_enabled ? 1 : 0) << ","
+         << simTime << ","
+         << malicious_vehicle_id << ","
+         << victim_neighbor_id << ","
+         << (g_tgn_weight_file.empty() ? "heuristic" : g_tgn_weight_file) << ","
+         << g_tgn_theta_cmd << ","
          << summaryTp << ","
          << summaryTn << ","
          << summaryFp << ","
@@ -6753,6 +6855,12 @@ PemWriteRunSummaryCsv()
     // site (pem_topo_divergence_sum, ~line 6496) for what counts as a sample.
     const double meanTopoDivergence = (pem_topo_divergence_count > 0)
         ? (pem_topo_divergence_sum / (double)pem_topo_divergence_count)
+        : 0.0;
+    // Q48 fix: the detection-outcome-aware companion signal — see
+    // pem_topo_divergence_postdetection_sum's declaration comment. This is
+    // the column compute_tdrr.py reads for the real Eq. 4.2 TDRR.
+    const double meanTopoDivergencePostDetection = (pem_topo_divergence_postdetection_count > 0)
+        ? (pem_topo_divergence_postdetection_sum / (double)pem_topo_divergence_postdetection_count)
         : 0.0;
 
     // M3: mean T_stale (ms) between a link's physical break and the
@@ -6819,10 +6927,27 @@ PemWriteRunSummaryCsv()
     // relative to Eq. 4.8's definition).
     const double tPipelineMeanMs = tFsDetMeanMs + tPbftMeanMs + tExecFlowModMeanMs;
 
-    // M2 (Eq. 4.2): TDRR = (delta_bar_unprotected - delta_bar_mitigated) /
-    // delta_bar_unprotected x 100%. 0.0 when either bucket has no samples
-    // this run (e.g. non-topology scenarios, or a run with no attack ever
-    // injected so the "mitigated" bucket never opens).
+    // Q48 fix (2026-08-02) — IMPORTANT: this column is NOT the paper's real
+    // Eq. 4.2 TDRR and must not be reported as such. The PDF defines
+    // delta_bar_unprotected / delta_bar_mitigated as the mean divergence
+    // over the SAME 300s observation window under two SEPARATE conditions
+    // of the SAME scenario+seed: detection disabled vs detection enabled
+    // (--detection_enabled=0 vs =1). A single simulation process can only
+    // run with one detection_enabled state at a time, so that comparison
+    // cannot be computed from inside one run at all -- it requires two
+    // paired runs. What this in-run quantity actually measures instead is
+    // a DIFFERENT split: attack-labeled events (raw, pre-mitigation) vs
+    // benign events occurring after the first attack injection, WITHIN one
+    // protected run. That's a real, meaningful diagnostic on its own, but
+    // it is not delta_bar_unprotected vs delta_bar_mitigated as the PDF
+    // defines them, and reporting it as "tdrr_pct" (implying Eq. 4.2)
+    // overstates what it measures. The genuine Eq. 4.2 TDRR must be
+    // computed by compute_tdrr.py from a matched pair of PEM_RUN_SUMMARY
+    // rows (same attack_scenario, same run_id/seed, detection_enabled=0
+    // and =1), using each run's own unsplit mean_topology_divergence
+    // column (already correct and unaffected by this issue). Kept under
+    // the same column name/position for backward CSV-schema compatibility
+    // with existing consumers, but see compute_tdrr.py for the real metric.
     const double meanDivergenceUnprotected = (pem_topo_divergence_unprotected_count > 0)
         ? (pem_topo_divergence_unprotected_sum / (double)pem_topo_divergence_unprotected_count)
         : 0.0;
@@ -6879,6 +7004,8 @@ PemWriteRunSummaryCsv()
     // was staged this run (the common case — requires collusion size f_c>=t).
     const double fsr = (pem_fsr_attempts > 0)
         ? (double)pem_fsr_success / (double)pem_fsr_attempts : 0.0;
+    const double bshhS1FcFsr = (pem_bshh_s1_fc_fsr_attempts > 0)
+        ? (double)pem_bshh_s1_fc_fsr_success / (double)pem_bshh_s1_fc_fsr_attempts : 0.0;
     PemWriteFsrSweepCsv();
 
     // M12: trust/revocation/reassignment timing, derived from the tau_*
@@ -6920,7 +7047,7 @@ PemWriteRunSummaryCsv()
     // for schema stability, always 0.
     const double tFsPipelineMaxMsUpperBound =
         g_pem_fs_det_max_ms + g_pem_pbft_max_ms + g_pem_exec_flowmod_max_ms;
-    fout << meanTopoDivergence << "," << meanTStaleMs << "," << meanPir << ","
+    fout << meanTopoDivergence << "," << meanTopoDivergencePostDetection << "," << meanTStaleMs << "," << meanPir << ","
          << tLwPipelineMeanMs << "," << tLwPipelineMaxMsUpperBound << ","
          << g_pem_detect_over_budget_count << ","
          << tPipelineMeanMs << "," << tFsPipelineMaxMsUpperBound << ","
@@ -6933,6 +7060,7 @@ PemWriteRunSummaryCsv()
          << f1_class[0] << "," << f1_class[1] << "," << f1_class[2] << "," << f1Macro << ","
          << fra << "," << frr << ","
          << pem_fsr_attempts << "," << pem_fsr_success << "," << fsr << ","
+         << pem_bshh_s1_fc_fsr_attempts << "," << pem_bshh_s1_fc_fsr_success << "," << bshhS1FcFsr << ","
          << tTrustMs << "," << tRevokeMs << "," << tReassignMs << ","
          << pem_divergence_true_positive << "," << pem_divergence_false_negative << ","
          << divergenceRecall << ","
@@ -7000,6 +7128,20 @@ PemWriteRunSummaryCsv()
 // family (TTW: indices 0-2, BSHH: 3-5, ME: 6-8), return the family with the
 // highest count.  Tie-break: TTW > BSHH > ME (earliest family wins).
 // Returns the α label: "TTW", "BSHH", or "ME".
+//
+// SIMULATION-SETTINGS NOTE (added 2026-08-02, per review): this deterministic
+// tie-break priority (TTW > BSHH > ME for an EXACT equal-count tie across all
+// three families) is a CODE-ONLY design choice -- it is not specified,
+// mentioned, or implied anywhere in the PDF/thesis or in any other simulation
+// settings document. It matters operationally because alpha (the classified
+// family) determines which mitigation branch fires in Algorithm 4 (TTW/BSHH ->
+// VERIFY_THRESHOLD_SIG + FlowMod DROP + key revocation; ME -> VERIFY_QUORUM +
+// path invalidation + reroute) -- a tied event is always routed to the TTW
+// branch, never BSHH or ME, by this ordering alone. Empirically, exact
+// cross-family ties are rare (each family's own weighted-sum score rarely
+// lands exactly equal to another's), but the rule is deterministic and
+// unconditional whenever a tie does occur, so it should be treated as a
+// documented implementation detail, not an emergent/negligible edge case.
 // =============================================================================
 static std::string
 PemClassifyAttack(const bool triggered[9])
@@ -7690,6 +7832,123 @@ PemBuildBelievedAdjacency(double now)
     return adj;
 }
 
+// Q48 fix (2026-08-02): genuine Eq. 4.2 TDRR/M2 divergence, per the PDF's
+// own definition -- "delta_bar = (1/|T|) * sum_{t in T} delta(Gt^C, Gt^R),
+// where T is the set of beacon intervals in the 300s observation window."
+// That is an explicit TIME-AVERAGE OVER PERIODIC SNAPSHOTS of the
+// controller's ACTUAL graph state, not a per-event computation -- the
+// previous implementation (both the original ground-truth-only version and
+// an interim per-event "post-detection" fix) computed divergence once per
+// PemEmitEvent call, which conflates "this one forged packet was rejected"
+// with "the controller now disbelieves the entire link" and produced a
+// confirmed-backwards result for TTW-S1 (mitigated runs showing MORE
+// divergence than unprotected, because replayed links are usually still
+// geometrically in range at replay time -- rejecting them is structurally
+// correct but reads as a spatial "mismatch" under a per-event framing).
+//
+// This tick instead samples the controller's REAL persistent topology
+// belief (ttw_controller_table, the same structure TTW/BSHH/ME attacks
+// poison and mitigation repairs, already driving M1/M5/M6) once per T_b,
+// and compares it against live ground truth for EVERY vehicle pair --
+// symmetric with Eq. 3.1's |EtC triangle EtR|: both "ghost" links (believed
+// but not physically real) and "missed" links (physically real but the
+// controller has no fresh belief of them, e.g. a wrongly-quarantined
+// legitimate vehicle) count as divergence.
+uint64_t g_pem_divergence_tick_count = 0;
+
+// Q48 fix, part 2 (2026-08-02, found via [Q48DBG2]): persistent, run-wide
+// set of every link key that has EVER appeared in ttw_controller_table.
+// Scoping fix -- the full N^2 all-vehicle-pairs comparison was dominated by
+// "missed" (realEdge=true, believesEdge=false) for the ~19800 pairs the
+// controller was never even scripted to report on at all in this attack
+// scenario (ttw_controller_table only ever holds entries for the specific
+// attacker-victim relationships the scenario constructs, not a
+// comprehensive network-wide topology database) -- that irrelevant baseline
+// (~2000 pairs/tick) swamped the real, much smaller attack-relevant ghost
+// signal (~100 pairs/tick), even though the ghost signal itself was
+// confirmed real and detection-sensitive (94 mitigated vs 107 unprotected
+// at t=60s). Restricting the comparison to only links the controller has
+// EVER had an opinion about makes "does belief match reality" a
+// well-posed question -- for pairs outside this set, the controller's
+// belief was never in question in the first place.
+std::set<std::string> g_pem_ever_known_links;
+
+static void PemDivergenceSnapshotTick()
+{
+    const double now = Simulator::Now().GetSeconds();
+    if (now >= PEM_WARMUP_S)
+    {
+        std::set<std::string> believedLinks;
+        for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
+             it != ttw_controller_table.end(); ++it)
+        {
+            const TopologyPacket& tp = it->second;
+            const uint32_t a = (tp.src_id < tp.seen_id) ? tp.src_id : tp.seen_id;
+            const uint32_t b = (tp.src_id < tp.seen_id) ? tp.seen_id : tp.src_id;
+            const std::string linkKey = std::to_string(a) + "_" + std::to_string(b);
+            believedLinks.insert(linkKey);
+            g_pem_ever_known_links.insert(linkKey);
+        }
+
+        uint64_t ghostThisTick = 0, missedThisTick = 0, matchThisTick = 0;
+        for (const std::string& linkKey : g_pem_ever_known_links)
+        {
+            const std::size_t sep = linkKey.find('_');
+            const uint32_t a = (uint32_t)std::stoul(linkKey.substr(0, sep));
+            const uint32_t b = (uint32_t)std::stoul(linkKey.substr(sep + 1));
+            Ptr<Node> na = GetVehicleByNs3Id(a);
+            Ptr<Node> nb = GetVehicleByNs3Id(b);
+            Ptr<MobilityModel> ma = na ? na->GetObject<MobilityModel>() : nullptr;
+            Ptr<MobilityModel> mb = nb ? nb->GetObject<MobilityModel>() : nullptr;
+            if (!ma || !mb) continue;
+
+            // Q48 fix, part 3 (2026-08-02, user's own diagnosis): realEdge
+            // was using g_rcomm (300m, TTW_COMM_RANGE) -- the ground-truth
+            // "is this link physically broken" radius -- but TTW-S1's own
+            // attacker-victim PAIR SELECTION (TtwFindMutualRangePairs) uses
+            // a much tighter kEffectiveReceptionRadius (100m) to decide
+            // which pairs are "genuinely mutually in range" for the HELLO
+            // exchange. With ~TTW_S1_REPLAY_MARGIN_S (2.0s) between HELLO
+            // and replay, a pair selected at <100m apart frequently hasn't
+            // drifted past 300m by replay time -- confirmed empirically via
+            // [Q48DBG3] (realEdge=true for the vast majority of attack
+            // events under the 300m check), producing the paradox where a
+            // correctly-rejected forged claim still reads as a spatial
+            // mismatch. Aligning the ground-truth check to the SAME radius
+            // actually used for pair selection makes "is this link real"
+            // consistent with "was this pair selected because it was
+            // close" -- not guaranteed to eliminate the paradox entirely
+            // (some pairs may still be <100m apart even after the replay
+            // margin), but expected to meaningfully reduce it.
+            const bool believesEdge = believedLinks.count(linkKey) > 0;
+            const bool realEdge = PemDistance2d(ma->GetPosition(), mb->GetPosition()) <= kEffectiveReceptionRadius;
+            const double divergenceDelta = (believesEdge != realEdge) ? 1.0 : 0.0;
+            pem_topo_divergence_postdetection_sum += divergenceDelta;
+            pem_topo_divergence_postdetection_count++;
+            if (believesEdge && !realEdge) ghostThisTick++;
+            else if (!believesEdge && realEdge) missedThisTick++;
+            else matchThisTick++;
+        }
+        // Q48DBG3: same breakdown as Q48DBG2, now scoped to
+        // g_pem_ever_known_links instead of all N^2 pairs.
+        static uint64_t s_q48dbg3_tick = 0;
+        s_q48dbg3_tick++;
+        if (s_q48dbg3_tick <= 20 || s_q48dbg3_tick % 50 == 0) {
+            std::cout << "[Q48DBG3] t=" << now << " tick=" << s_q48dbg3_tick
+                      << " everKnown.size()=" << g_pem_ever_known_links.size()
+                      << " believedLinks.size()=" << believedLinks.size()
+                      << " ttw_controller_table.size()=" << ttw_controller_table.size()
+                      << " ghost=" << ghostThisTick << " missed=" << missedThisTick
+                      << " match=" << matchThisTick << std::endl;
+        }
+    }
+    ++g_pem_divergence_tick_count;
+    if (now + PEM_BEACON_INTERVAL_S < simTime)
+    {
+        Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemDivergenceSnapshotTick);
+    }
+}
+
 // BFS shortest (min-hop) path over the believed adjacency -- Dijkstra with
 // all edge weights = 1 hop reduces exactly to BFS; using BFS directly here
 // avoids dragging in the legacy dijkstra()'s global-array dependencies
@@ -8215,20 +8474,74 @@ PemEvaluateEvent(PemEvent& event)
             ns.heartbeat_history.find(event.claimed_sender_id);
         if (hbIt != ns.heartbeat_history.end() && !hbIt->second.empty())
         {
-            const PemEvent& previousHeartbeat = hbIt->second.back();
             // Eq. 3.6 — BSHH-S2: heartbeat sender_timestamp is less than the
             // most recent known timestamp for this identity — out-of-order replay.
-            // Bug fix (same class as sig[3]'s fix above): if the most recent
-            // recorded heartbeat for this identity was itself an already-
-            // confirmed attack (alert_raised == true — e.g. a forged replay
-            // from an earlier round that reused this same victim identity,
-            // already caught and revoked), it shouldn't stand as the ordering
-            // baseline for a later, genuinely-legitimate report. A once-
-            // revoked identity's forged timestamp is stale/resolved evidence,
-            // not a live reference point real ambient traffic must stay
-            // "in order" relative to.
-            if (event.sender_timestamp < previousHeartbeat.sender_timestamp &&
-                !previousHeartbeat.alert_raised)
+            //
+            // Bug fix (2026-08-02, found via user challenge to A1's rising
+            // BSHH fn rate with rinj): this used to compare against
+            // hbIt->second.back() directly, excluded via !alert_raised if
+            // that back() entry was itself an already-confirmed attack. That
+            // is the EXACT same bug already diagnosed and fixed for sig[3]
+            // a few hundred lines above (see that fix's comment) but never
+            // carried over here: after the FIRST hijack of an identity is
+            // caught (alert_raised=true), it becomes .back(), and every
+            // SUBSEQUENT repeat hijack of that same identity then finds
+            // previousHeartbeat.alert_raised==true and is silently excluded
+            // from this signature — at low rinj this rarely matters (few
+            // identities get re-hijacked), but at higher rinj the same
+            // identities are hijacked repeatedly within one run and this
+            // signature goes permanently blind to them after the first hit.
+            // Confirmed live: A1/BSHH fn grew from 20 (rinj=0.01) to 2615
+            // (rinj=0.10) as repeat hijacks accumulated.
+            //
+            // Fixed the same way as sig[3]: search backward for the most
+            // recent GENUINE entry (physical_sender_id == claimed_sender_id)
+            // to use as the ordering baseline, instead of blindly trusting
+            // .back() which may itself be a forged entry. This preserves the
+            // original guard's real intent (never use a resolved/forged
+            // entry's timestamp as the "must stay in order" baseline) while
+            // no longer losing that baseline permanently after the first
+            // confirmed hit — a genuine self-report remains available to
+            // compare against for as long as one has ever been observed for
+            // this identity, exactly as sig[3]'s companion check already
+            // established is safe "regardless of how old that prior report
+            // is."
+            const PemEvent* priorGenuineHb = nullptr;
+            for (std::vector<PemEvent>::const_reverse_iterator rit = hbIt->second.rbegin();
+                 rit != hbIt->second.rend(); ++rit)
+            {
+                if (rit->physical_sender_id == rit->claimed_sender_id)
+                {
+                    priorGenuineHb = &(*rit);
+                    break;
+                }
+            }
+            // Q_SIG4 diagnostic: compare against what the OLD .back()-based
+            // logic would have done, to empirically confirm this fix's code
+            // path actually diverges from the old behavior for a given run
+            // (added after an A1/BSHH re-run showed an unexpectedly
+            // unchanged fn count at rinj=0.05 -- need to know whether the
+            // fix's branch is even being exercised differently there).
+            {
+                static uint64_t s_q_sig4_old_would_exclude = 0;
+                static uint64_t s_q_sig4_new_included = 0;
+                static uint64_t s_q_sig4_total = 0;
+                s_q_sig4_total++;
+                const PemEvent& oldBack = hbIt->second.back();
+                const bool oldWouldExclude = oldBack.alert_raised;
+                const bool newIncludes = (priorGenuineHb != nullptr);
+                if (oldWouldExclude) s_q_sig4_old_would_exclude++;
+                if (newIncludes) s_q_sig4_new_included++;
+                if (s_q_sig4_total % 500 == 0 || s_q_sig4_total < 10) {
+                    std::cout << "[Q_SIG4] total=" << s_q_sig4_total
+                              << " old_would_exclude=" << s_q_sig4_old_would_exclude
+                              << " new_included=" << s_q_sig4_new_included
+                              << " (divergence = cases where fix actually changes sig[4] eligibility)"
+                              << std::endl;
+                }
+            }
+            if (priorGenuineHb &&
+                event.sender_timestamp < priorGenuineHb->sender_timestamp)
             {
                 event.triggered[4] = true;
             }
@@ -8507,6 +8820,18 @@ PemEvaluateEvent(PemEvent& event)
     // FS/TGN path (TGN_ProcessEventInline's own g_tgn_tp/fp/fn/tn and
     // g_comb_* below, unaffected by this flag) can raise a detection.
     if (g_abl.no_lw) { event.alert_raised = false; }
+
+    // Q48 fix: per-event divergence bookkeeping REMOVED from here. Replaced
+    // by PemDivergenceSnapshotTick(), a periodic (every T_b) snapshot of the
+    // controller's ACTUAL persistent topology belief (ttw_controller_table),
+    // matching the PDF's own Eq. 4.2 definition (delta_bar = time-average
+    // over beacon intervals T, not per-event). See that function's
+    // declaration comment for the full rationale -- the per-event approach
+    // conflated "this one packet was rejected" with "the controller now
+    // disbelieves the whole link forever", producing a confirmed-backwards
+    // result (mitigated runs showing MORE divergence than unprotected) for
+    // TTW-S1, where replayed links are usually still geometrically in range
+    // at replay time.
 
     // Live blockchain wiring (no-op unless g_live_blockchain=1): stream this
     // alert to fabricServer.js immediately, instead of only at end-of-run.
@@ -137446,7 +137771,7 @@ void centralized_dsrc_data_broadcast(Ptr <NetDevice> nd, Ptr <Node> node, uint32
 	// simulation — attack-relevant and ambient alike — comes from one
 	// consistent, calibrated radio model. ch_devs[3..6] (Ch178 CCH, 180, 182,
 	// 184) are intentionally left unused here.
-	static const int kLiveAmbientChannels = 7;  // TEMP Q16 regression test — revert to 3
+	static const int kLiveAmbientChannels = 3;
 	uint64_t cnt[7] = {0,0,0,0,0,0,0};
 	{
 		Vector myPos = posi;
@@ -155900,16 +156225,36 @@ static int RoutingMain(int argc, char *argv[])
 
     // ── §3.4.5 Eq. 3.29 — TTW link lifetime bound L_link ────────────────────
     // L_link = 2 · r_comm / v_rel  (Eq. 3.29)
-    // v_rel: urban ≈ 14 m/s (30 km/h relative), highway ≈ 67 m/s (240 km/h relative)
     // g_pem_v_rel_ms is set unconditionally (Eq. 3.10's δ_max needs it even
     // when the user overrode --ttw_link_lifetime_bound directly).
-    g_pem_v_rel_ms = (mobility_scenario == 2) ? 67.0 :   // highway
-                     (mobility_scenario == 1) ? 30.0 :   // rural
-                                                14.0;      // urban (default)
+    //
+    // Bug fix: was a fixed per-mobility-scenario table (urban=14, rural=30,
+    // highway=67 m/s) that never tracked the actual --maxspeed CLI value —
+    // e.g. running --maxspeed=100 still silently used 14 m/s here. Derived
+    // from the actual configured maxspeed instead (matching tgn_core.cc's
+    // own TGN_RecalibrateMobility, which already uses the live observed
+    // max speed, not a fixed table) so PEM's L_link/W_max genuinely reflects
+    // whichever mobility profile was actually run, not a stale illustrative
+    // approximation. PDF's Eq. 3.33 gives v_rel~14 m/s only as a worked
+    // numeric example at its own assumed urban speed; deriving from the
+    // real configured maxspeed generalizes that same formula correctly
+    // instead of hardcoding the example's specific number.
+    g_pem_v_rel_ms = (double)maxspeed / 3.6;
     // Only override L_link if the user did not supply --ttw_link_lifetime_bound.
+    // Bug fix (W_max inconsistency, Q25): this formula was still using
+    // TTW_COMM_RANGE (300m), giving L_link~43s/W_max~429 -- stale relative to
+    // tgn_core.cc's own g_tgn_l_link_cmd, which already migrated to
+    // g_me_detect_range (170m) on 2026-07-27, giving L_link=20.4s/W_max~204.
+    // Switched to g_me_detect_range so PEM's own Algorithm 1 sliding-window
+    // cap (g_pem_w_max_events, used only by PemTrimSlidingWindow's rule-based
+    // event_window trim -- not a TGN input feature) agrees with the TGN's
+    // already-correct L_link/W_max. No retraining/regeneration required:
+    // g_pem_w_max_events only bounds PEM's own Stage-1 event_window size, a
+    // pure runtime bookkeeping cap, not anything read by TGN_Init/TGN_WMAX
+    // (those use tgn_core.cc's own separately-migrated g_tgn_l_link_cmd).
     if (ttw_link_lifetime_bound == 3.52)  // 3.52 is the sentinel "not set by user"
     {
-        ttw_link_lifetime_bound = 2.0 * TTW_COMM_RANGE / g_pem_v_rel_ms;
+        ttw_link_lifetime_bound = 2.0 * g_me_detect_range / g_pem_v_rel_ms;
     }
     NS_LOG_INFO("[TTW] L_link (ttw_link_lifetime_bound) = " << ttw_link_lifetime_bound
                 << " s  (mobility_scenario=" << mobility_scenario << ", v_rel="
@@ -155957,6 +156302,30 @@ static int RoutingMain(int argc, char *argv[])
     // both the compile-time default and the mobility-adaptive recompute above.
     if (g_pem_w_max_override >= 0) {
         g_pem_w_max_events = static_cast<uint32_t>(g_pem_w_max_override);
+    }
+
+    // Q26 diagnostic: print the actual runtime sum of PEM_WEIGHTS[9] (w1-w9),
+    // at full double precision, to show any floating-point drift from the
+    // nominal 1.0000 the weights were chosen to sum to.
+    {
+        double __w_sum = 0.0;
+        for (int __wi = 0; __wi < 9; __wi++) __w_sum += PEM_WEIGHTS[__wi];
+        std::cout << "[Q26] PEM_WEIGHTS sum = " << std::setprecision(17) << __w_sum
+                  << std::setprecision(6) << std::endl;
+    }
+
+    // Q28 diagnostic: evaluate ME-S1's rho_max formula (Eq. 3.8, 1D
+    // road-segment model: floor((1+mu)*2*r_comm*lambda)) at the reference
+    // point lambda=0.02, r_comm=g_me_detect_range, to confirm at runtime it
+    // reads 8, not the old 2D-disk-model value.
+    {
+        const double __q28_lambda = 0.02;
+        const double __q28_rho = std::floor((1.0 + PEM_ME_TOLERANCE_MU) * 2.0
+                                              * g_me_detect_range * __q28_lambda);
+        std::cout << "[Q28] rho_max(lambda=0.02, r_comm=" << g_me_detect_range
+                  << "m, mu=" << PEM_ME_TOLERANCE_MU << ") = " << __q28_rho
+                  << "  (1D road-segment formula: floor((1+mu)*2*r_comm*lambda))"
+                  << std::endl;
     }
 
     // Synchronise g_rssi_min with the --rssi_min override (if any).
@@ -156010,6 +156379,12 @@ static int RoutingMain(int argc, char *argv[])
     if (g_enable_neighborhood_beaconing) {
         Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemNeighborhoodDiscoveryTick);
     }
+
+    // Q48 fix: M2/TDRR divergence snapshot tick — unconditional (not gated
+    // behind an opt-in flag like the neighborhood-discovery tick above),
+    // since every run's pem_run_summary.csv reports mean_topology_divergence.
+    // See PemDivergenceSnapshotTick's own declaration comment.
+    Simulator::Schedule(Seconds(PEM_BEACON_INTERVAL_S), &PemDivergenceSnapshotTick);
 
     // ── Ablation: propagate flags that cross the routing.cc / tgn_core.cc boundary ─
     if (g_abl.static_gcn)   TGN_SetStaticGCN(true);
@@ -159935,6 +160310,27 @@ static int RoutingMain(int argc, char *argv[])
                   std::cout << "[BSHH-S1][A6] bshh_s1_fc=" << g_abl.bshh_s1_fc
                             << " -- forced " << fcApply << " distinct attacker(s) to all "
                             << "claim victim V" << sharedVictim << "'s identity simultaneously"
+                            << std::endl;
+
+                  // A6 fix: genuine forgery-attempt test for THIS collusion
+                  // size, using PemVerifyThresholdSig with n_p=8 RSU/PBFT
+                  // peers as the threshold basis (PDF-consistent, see
+                  // pem_bshh_s1_fc_fsr_attempts's declaration comment).
+                  // g_abl.no_threshold_sig (A6's own ablation flag) bypasses
+                  // verification entirely -- unconditional success, matching
+                  // the same bypass semantics already used at the generic
+                  // FS-MITIGATE gate for this flag.
+                  static const uint32_t kBshhS1FsrPeerBasis = 8u;
+                  uint32_t c_out = 0, t_out = 0;
+                  const bool forgerySucceeded = g_abl.no_threshold_sig
+                      ? true
+                      : PemVerifyThresholdSig(kBshhS1FsrPeerBasis, roundPairs[0].attackerCidx,
+                                               atTime, c_out, t_out, fcApply);
+                  pem_bshh_s1_fc_fsr_attempts++;
+                  if (forgerySucceeded) pem_bshh_s1_fc_fsr_success++;
+                  std::cout << "[BSHH-S1][A6][FSR] fc=" << fcApply << " (of n_p="
+                            << kBshhS1FsrPeerBasis << ", t=" << (kBshhS1FsrPeerBasis / 2u + 1u)
+                            << ") -> " << (forgerySucceeded ? "FORGERY SUCCEEDED" : "correctly rejected")
                             << std::endl;
               }
               std::cout << "[BSHH-S1][DEBUG] round " << round << " atTime=" << atTime

@@ -249,6 +249,14 @@ static uint64_t tg_crypto_drop_quorum = 0;
 // already-written analysis scripts. Exposed via its own getter below.
 static uint64_t tg_crypto_drop_revoked = 0;
 
+// Q21 diagnostic counters: how many ME-S1 attack events reach Stage 0's
+// location-binding gate (TetaGuardLocBindVerify, Eqs. 3.29-3.31) and how
+// many pass it. Scoped to attack_scenario==9 (ME-S1) and attack_label==true
+// so this only counts genuine ME-S1 attack injections, not benign traffic
+// or other families sharing this same Stage-0 gate.
+static uint64_t g_q21_mes1_stage0_reached = 0;
+static uint64_t g_q21_mes1_stage0_passed  = 0;
+
 // ── Algorithm 3 (LW-MITIGATE) — live per-event enforcement ──────────────────
 // Thesis name : Algorithm 3 (LW-MITIGATE), §3.4.2, Fig. 3.15
 // Thesis steps: (1) HMAC-SHA256(K_{Vi,nk}, m‖τs‖nonce) Eq. 3.15
@@ -661,7 +669,31 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
 
         // Eqs. 3.29-3.31: full crypto path — position + RSSI bound in signature.
         // tg_crypto_drop_mac accumulates rejections at this gate (identity+location).
-        if (!TetaGuardLocBindVerify(event, ep_x, ep_y))
+        //
+        // A7 fix (2026-08-02, found on user challenge to A7's degenerate
+        // ME-S1/S2 data): this is the Stage-0 crypto-layer location-binding
+        // gate (Eqs. 3.29-3.31) -- per this function's own comment above
+        // ("this closes the identical oracle in the Stage-0 crypto gate
+        // that actually accepts/rejects the packet, a strictly more
+        // consequential instance of it"), THIS is the gate that actually
+        // decides whether an ME echo reaches Stage-1/TGN at all. A7
+        // (--no_lbs=1) is supposed to remove the location-binding defense
+        // entirely, but this file had ZERO references to g_abl before this
+        // fix -- only the LATER LW-layer sig[8] check (routing.cc) and the
+        // VERIFY_QUORUM gate were actually gated by --no_lbs. This gate
+        // stayed unconditionally active regardless of the ablation flag,
+        // silently blocking ~99% of ME-S1/S2 attack traffic even with A7
+        // "on" -- confirmed empirically: qrr_echo_attempts=0 across all A7
+        // sc9/sc10 runs (crypto_drop_mac=201000 for sc9 alone), producing
+        // vacuous mcc=1/qrr=1 defaults from zero real classified events,
+        // not genuine 100% detection. Now correctly bypassed under
+        // --no_lbs=1, matching the LW-layer and quorum gates' existing
+        // ablation behavior.
+        const bool __q21_isMes1Attack = (attack_scenario == 9u) && event.attack_label;
+        if (__q21_isMes1Attack) g_q21_mes1_stage0_reached++;
+        const bool __q21_locBindPassed = g_abl.no_lbs ? true : TetaGuardLocBindVerify(event, ep_x, ep_y);
+        if (__q21_isMes1Attack && __q21_locBindPassed) g_q21_mes1_stage0_passed++;
+        if (!__q21_locBindPassed)
         {
             tg_crypto_drop_mac++;
             return false;
@@ -676,6 +708,20 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
         state.link_all_reporters[lkey_a].insert(event.reporter_id);
 
         // Eq. 3.32: compute dynamic quorum t = ⌊n/2⌋ + 1
+        //
+        // A7 fix, part 2 (2026-08-02): same bug class as the location-
+        // binding gate above -- this Stage-0 geographic-consistency quorum
+        // check (Eq. 3.32) is the SECOND of the two mechanisms the PDF's
+        // A7 row explicitly requires removing ("Remove both the ML-DSA-87
+        // location-binding message (Eq. 3.29) AND the geographic
+        // consistency quorum check (Eq. 3.32)"). It had no g_abl.no_lbs
+        // gate either, so after fixing only the location-binding half,
+        // ME-S1/S2 traffic that now passed that gate was immediately
+        // blocked here instead (confirmed empirically: crypto_drop_mac
+        // dropped to 0, but crypto_drop_quorum rose to the exact same
+        // 218845 that crypto_drop_mac had shown before). Now bypassed
+        // under --no_lbs=1 too, matching the LW-layer sig[8] and
+        // VERIFY_QUORUM (FS-layer) gates' existing ablation behavior.
         const uint32_t n_total   = static_cast<uint32_t>(
             state.link_all_reporters.at(lkey_a).size());
         const uint32_t quorum_t  = (n_total / 2u) + 1u;
@@ -683,7 +729,26 @@ TetaGuardCryptoFilter(const PemEvent& event, uint32_t reporter_id)
             state.link_witnesses.count(lkey_a)
                 ? static_cast<uint32_t>(state.link_witnesses.at(lkey_a).size())
                 : 0u;
-        if (legit_count < quorum_t)
+        const bool quorumWouldPass = (legit_count >= quorum_t);
+
+        // QRR bookkeeping fix (2026-08-02, part 3 of the A7 fix set): per
+        // Eq. 4.19, QRR is defined over echoes "admitted to the controller
+        // topology" -- i.e. THIS crypto-layer gate, not the mitigation-layer
+        // VERIFY_QUORUM re-check in routing.cc's PemApplyMitigation (whose
+        // own pem_qrr_echo_attempts++ is itself gated on !g_abl.no_lbs, so
+        // it is STRUCTURALLY always zero during A7's own ablation --
+        // confirmed empirically: qrr_echo_attempts=0 even after real echo
+        // traffic started reaching classification, tp=125). Moved the
+        // accumulation here instead, where it's actually exercised
+        // regardless of --no_lbs: under the ablation, the gate is bypassed
+        // (echo always admitted -- pass/defense-failure case); under the
+        // real defense, admission follows the genuine legit_count>=quorum_t
+        // outcome.
+        pem_qrr_echo_attempts++;
+        if (g_abl.no_lbs || quorumWouldPass) { pem_qrr_echo_pass++; }
+        else                                 { pem_qrr_echo_blocked++; }
+
+        if (!g_abl.no_lbs && !quorumWouldPass)
         {
             tg_crypto_drop_quorum++;
             return false;   // Eq. 3.32: legitimate witnesses < ⌊n/2⌋+1

@@ -291,9 +291,14 @@ class TGNModel(nn.Module):
         lsrcs:  torch.Tensor,   # (N,)  int64  link_src_id
         ldsts:  torch.Tensor,   # (N,)  int64  link_dst_id
         fresh:  torch.Tensor,   # (N,)  float  edge freshness A_uv (Eq 3.20)
+        on_chunk=None,          # optional callback(logits_chunk, cls_logits_chunk, start_idx, end_idx)
+        chunk_size: int = 0,    # if >0, invoke on_chunk every chunk_size events (see below)
     ) -> torch.Tensor:
         """
-        Process N events in reception-time order.
+        Process N events in STRICT reception-time order (never shuffled --
+        required for both the per-node TBPTT memory chain and the time-
+        dependent features (phi(dt), edge freshness A_uv) that assume real
+        elapsed simulated time between consecutive events).
         Returns raw logits (N,) and classification logits (N, 3) before
         sigmoid/softmax — use BCEWithLogitsLoss + CrossEntropyLoss for training.
         New nodes are zero-initialized (Eq 3.34).
@@ -303,6 +308,31 @@ class TGNModel(nn.Module):
         counter would give ~0.5 events per node per window (≈ 1-step TBPTT);
         per-node counting guarantees each node accumulates exactly W gradient
         steps through its own temporal trajectory before detachment.
+
+        Q37 fix (2026-08-02): optional chunked-gradient-update support via
+        on_chunk/chunk_size, WITHOUT shuffling or breaking temporal order.
+        Previously the ENTIRE 29,492-event training split was processed as
+        one forward pass with exactly ONE backward()/optimizer.step() per
+        epoch -- full-batch gradient descent, not genuine mini-batching, and
+        the margin loss's mean(attack_scores) - mean(benign_scores) was
+        computed over the WHOLE split at once, diluting its per-batch signal
+        (per the original critique this fix addresses). True i.i.d. shuffled
+        mini-batching is NOT compatible with this architecture -- Algorithm
+        1 requires the global event stream in strict reception-time order,
+        and phi(dt)/A_uv(t) are only meaningful relative to real elapsed
+        time between ADJACENT events in that order, not a randomly-sampled
+        subset. Instead: process events in the SAME strict order as always,
+        but every chunk_size events, hand the accumulated chunk's logits
+        back to the caller via on_chunk() so it can compute loss/backward/
+        step on just that chunk (a stronger, more localized margin-loss
+        signal, more frequent gradient updates per epoch -- the actual
+        benefit mini-batching was meant to provide), then this function
+        detaches the ENTIRE mem dict (not just the current node's own TBPTT
+        boundary) before continuing, so the next chunk's forward pass does
+        not try to backward through an already-consumed graph. When
+        chunk_size==0 (default), behaves exactly as before: one accumulated
+        pass, no internal backward, caller does it once at the end -- used
+        for validation/test scoring where no training step should happen.
         """
         device = feats.device
         mem:        dict[int, torch.Tensor] = {}   # node_id -> (dim,) tensor
@@ -347,9 +377,30 @@ class TGNModel(nn.Module):
             # (same map entry) — already reflecting h_new after UpdateNodeMemory ran,
             # not the pre-update value — so h_lsrc must use h_new here too, not the
             # stale mem[lsrc].
+            #
+            # Bug fix (2026-08-02, per PDF's explicit requirement — see the
+            # "TBPTT window size per node" row of Table F and the body text
+            # right after it: "the hidden states h_link_src and h_link_dst
+            # must be treated as detached context — frozen constants
+            # contributing to the forward-pass aggregation but excluded from
+            # the backward graph for this event. Allowing gradient flow
+            # through both h_v and the context node states in the same
+            # backward pass entangles the per-node gradient horizons and
+            # breaks the independence property.") Previously mem[lsrc] and
+            # mem[ldst] were passed into mp_step un-detached whenever they
+            # were genuine THIRD-PARTY context nodes (lsrc/ldst != nid), so
+            # this event's backward pass leaked gradient into those other
+            # nodes' live memory tensors -- entangling their per-node TBPTT
+            # windows with this node's, exactly the failure mode the PDF
+            # warns about. Only the reporting node's own h_new (used when
+            # lsrc == nid, i.e. this is that node's own self-report) must
+            # stay attached, since that IS this event's real gradient
+            # target -- true context tensors (a different node's memory)
+            # are detached here.
             same_node_src = (lsrc == nid)
-            h_lsrc_in = h_new if same_node_src else mem[lsrc]
-            h_final = self.mp_step(h_new, h_lsrc_in, mem[ldst], same_node_src, Auv)
+            h_lsrc_in = h_new if same_node_src else mem[lsrc].detach()
+            h_ldst_in = h_new if (ldst == nid) else mem[ldst].detach()
+            h_final = self.mp_step(h_new, h_lsrc_in, h_ldst_in, same_node_src, Auv)
 
             # Binary score logit (sigmoid applied by loss/caller)  — Eq 3.23
             logits.append(torch.dot(self.w_score, h_final) + self.b_score)
@@ -364,6 +415,57 @@ class TGNModel(nn.Module):
             else:
                 mem[nid] = h_new
 
+            # Q37 fix: chunk boundary -- hand this chunk's events to the
+            # caller for its own loss/backward/step, then detach ALL live
+            # memory tensors so the freed graph from this chunk's backward()
+            # is never referenced again by the next chunk's forward pass.
+            # This does NOT reset node_count (per-node TBPTT windows keep
+            # counting across chunk boundaries exactly as before) or mem's
+            # VALUES (only their gradient-graph attachment) -- the temporal
+            # memory chain itself is fully continuous across chunks.
+            #
+            # 2026-08-03 correction: an earlier version of this fix tried a
+            # SELECTIVE detach (only detach a node here if it also happened
+            # to be at its own natural TBPTT_WINDOW boundary this chunk,
+            # otherwise leave it attached + retain_graph=True on the
+            # caller's backward()) so gradient history would "survive" into
+            # later chunks. That is NOT viable: Adam's optim.step() updates
+            # parameters IN PLACE, so once step() runs on chunk k's
+            # backward, any node left attached (referencing those same
+            # parameter tensors at their pre-step version) makes chunk
+            # k+1's backward() fail with "one of the variables needed for
+            # gradient computation has been modified by an inplace
+            # operation" -- confirmed empirically, RuntimeError on version
+            # mismatch (param at version 2, expected version 1).
+            #
+            # Detaching ALL live memory at every chunk boundary is in fact
+            # the textbook truncated-BPTT technique, not a bug: detach()
+            # only severs the gradient GRAPH, never the memory's numerical
+            # VALUE, so the temporal state chain across chunks is exactly
+            # as continuous as the no-chunking baseline -- only the
+            # backward pass's gradient history is truncated to at most
+            # chunk_size steps (which is the whole point of chunking: it
+            # bounds the backward graph size). A node's per-event TBPTT
+            # window (its OWN 50-event mark, tracked by node_count) still
+            # governs how many of ITS OWN events accumulate gradient
+            # within whichever chunk(s) they fall in; chunk boundaries
+            # additionally truncate at chunk_size regardless of a node's
+            # own count, which only ever makes the effective gradient
+            # window <= TBPTT_WINDOW, never violates it.
+            if chunk_size > 0 and len(logits) >= chunk_size:
+                if on_chunk is not None:
+                    on_chunk(torch.stack(logits), torch.stack(cls_logits),
+                              i - len(logits) + 1, i + 1)
+                logits = []
+                cls_logits = []
+                for k in mem:
+                    mem[k] = mem[k].detach()
+
+        if chunk_size > 0:
+            if logits and on_chunk is not None:
+                on_chunk(torch.stack(logits), torch.stack(cls_logits),
+                          feats.shape[0] - len(logits), feats.shape[0])
+            return None, None
         return torch.stack(logits), torch.stack(cls_logits)   # (N,), (N, 3)
 
 
@@ -607,40 +709,83 @@ def train(df: "pd.DataFrame", args: argparse.Namespace) -> TGNModel:
               f"dim={args.dim} layers={args.layers} "
               f"epochs={args.epochs} lr={args.lr} theta={args.theta}\n")
 
+        MARGIN        = 0.35   # minimum required separation between class means
+        MARGIN_LAMBDA = 0.50   # weight relative to BCE
+
+        def compute_loss_and_step(logits_chunk, cls_logits_chunk, start_idx, end_idx,
+                                    retain_graph=False):
+            """Shared loss computation, used for both the chunked (batch_size>0)
+            and full-pass (batch_size==0) paths so the loss formula itself is
+            identical either way -- only the update frequency differs.
+
+            retain_graph defaults to False: forward_sequence detaches ALL
+            live memory tensors at every chunk boundary (see its comment,
+            2026-08-03), so each chunk's backward graph is self-contained
+            and safe to free immediately -- retaining it would reference
+            parameter tensors that optim_.step() then mutates in place,
+            breaking the NEXT chunk's backward()."""
+            l_chunk   = tr_l[start_idx:end_idx]
+            var_chunk = tr_var[start_idx:end_idx]
+            bce_loss_c = crit(logits_chunk, l_chunk)
+
+            atk_mask_c = (l_chunk == 1)
+            ben_mask_c = (l_chunk == 0)
+            if atk_mask_c.any() and ben_mask_c.any():
+                atk_mean_c = torch.sigmoid(logits_chunk[atk_mask_c]).mean()
+                ben_mean_c = torch.sigmoid(logits_chunk[ben_mask_c]).mean()
+                margin_loss_c = torch.clamp(MARGIN - (atk_mean_c - ben_mean_c), min=0.0)
+            else:
+                margin_loss_c = torch.tensor(0.0, device=device)
+
+            cls_mask_c = var_chunk >= 0
+            if cls_mask_c.any():
+                ce_loss_c = nn.CrossEntropyLoss()(cls_logits_chunk[cls_mask_c], var_chunk[cls_mask_c])
+                loss_c = bce_loss_c + args.ce_weight * ce_loss_c + MARGIN_LAMBDA * margin_loss_c
+            else:
+                loss_c = bce_loss_c + MARGIN_LAMBDA * margin_loss_c
+
+            optim_.zero_grad()
+            loss_c.backward(retain_graph=retain_graph)
+            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optim_.step()
+            return loss_c.detach()
+
         for epoch in range(1, args.epochs + 1):
             model.train()
-            optim_.zero_grad()
 
-            logits, cls_logits = model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr)
-            bce_loss = crit(logits, tr_l)
+            if args.batch_size > 0:
+                # Q37 fix: chunked updates, same strict temporal order as
+                # always -- see forward_sequence's on_chunk/chunk_size
+                # docstring. loss/logits below are the LAST chunk's values,
+                # used only for this epoch's log line.
+                last_loss = [torch.tensor(0.0, device=device)]
+                def _on_chunk(lg, cg, s, e):
+                    last_loss[0] = compute_loss_and_step(lg, cg, s, e)
+                model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr,
+                                        on_chunk=_on_chunk, chunk_size=args.batch_size)
+                sched.step()
+                loss = last_loss[0]
+                # Full pass needed for the epoch-boundary log line below
+                # (gap/margin display, TP/TN/etc on the whole train split) --
+                # re-run without chunking, no_grad, cheap relative to the
+                # chunked training pass above.
+                with torch.no_grad():
+                    logits, cls_logits = model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr)
+                bce_loss = crit(logits, tr_l)
+            else:
+                logits, cls_logits = model.forward_sequence(tr_f, tr_n, tr_ls, tr_ld, tr_fr)
+                loss = compute_loss_and_step(logits, cls_logits, 0, tr_f.shape[0])
+                sched.step()
+                bce_loss = crit(logits.detach(), tr_l)
 
-            # Margin loss: force mean(score_attack) - mean(score_benign) >= MARGIN.
-            # This directly targets gap_width=0 (overlapping distributions).
-            # When scores overlap, the gradient pulls attack scores up and benign
-            # scores down simultaneously — something BCE alone cannot do because
-            # it only cares about individual labels, not relative separation.
-            MARGIN        = 0.35   # minimum required separation between class means
-            MARGIN_LAMBDA = 0.50   # weight relative to BCE
             atk_mask = (tr_l == 1)
             ben_mask = (tr_l == 0)
             if atk_mask.any() and ben_mask.any():
-                atk_mean    = torch.sigmoid(logits[atk_mask]).mean()
-                ben_mean    = torch.sigmoid(logits[ben_mask]).mean()
-                margin_loss = torch.clamp(MARGIN - (atk_mean - ben_mean), min=0.0)
+                margin_loss = torch.clamp(
+                    MARGIN - (torch.sigmoid(logits[atk_mask]).mean()
+                              - torch.sigmoid(logits[ben_mask]).mean()), min=0.0)
             else:
                 margin_loss = torch.tensor(0.0, device=device)
-
-            # Joint multi-class CE loss for attack events only (Section 4.7)
-            cls_mask = tr_var >= 0
-            if cls_mask.any():
-                ce_loss = nn.CrossEntropyLoss()(cls_logits[cls_mask], tr_var[cls_mask])
-                loss = bce_loss + args.ce_weight * ce_loss + MARGIN_LAMBDA * margin_loss
-            else:
-                loss = bce_loss + MARGIN_LAMBDA * margin_loss
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optim_.step()
-            sched.step()
 
             if epoch % log_every == 0 or epoch == args.epochs:
                 model.eval()
@@ -975,6 +1120,14 @@ def main():
     ap.add_argument("--ce_weight", type=float, default=0.3,
                     help="Variant-classification cross-entropy loss weight "
                          "(Table 3.2 CE weight, Eq 3.27 term ii; default: 0.3)")
+    ap.add_argument("--batch_size", type=int, default=0,
+                    help="Q37 fix: events per chunked gradient update, processed "
+                         "in the SAME strict temporal order (never shuffled -- "
+                         "see forward_sequence's on_chunk/chunk_size docstring). "
+                         "0 = original full-pass behavior (one backward/step per "
+                         "epoch over all events). 256-512 recommended for a "
+                         "genuine mini-batch-style update frequency and a "
+                         "stronger, more localized margin-loss signal.")
     ap.add_argument("--scenario", type=int,   default=-1,
                     help="Filter to one attack_scenario; -1 = all (default: -1)")
     ap.add_argument("--output",   default="tgn_weights.bin",
