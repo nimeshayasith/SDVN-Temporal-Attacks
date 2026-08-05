@@ -1,0 +1,484 @@
+========================================================
+  ME Attack S3 — Malicious Controller, No RSU           
+========================================================
+
+  Simulation Parameters:
+    Total vehicles      : 200
+    Total controllers   : 4
+    Attack percentage   : 40%
+    Malicious controllers: 2
+
+  Attack Steps:
+  t=10  ①  V1 ↔ V2 HELLO exchange; V1,V2,V3,V4 report to controller
+  t=10  ②  Legitimate link V1↔V2 accepted; V3/V4 own links accepted
+  t=10+ ③  Malicious controller injects forged echo observations
+  t=10+ ④  Controller infers phantom paths via V3, V4
+  t=10+ ⑤  Controller installs faulty routes (no external packet)
+
+========================================================
+
+[t=20.000]  STEP ①  NORMAL V2V TOPOLOGY DISCOVERY
+  Measured distances: d(V5,V34)=45.288m  d(V5,V6)=1051.113m  (range=170.000m)
+  V5 <-> V34 : HELLO exchange (real V2V link)
+  V5<->V6 OUT OF RANGE — no own link pair
+
+[t=20.000]  STEP ②  LEGITIMATE TOPOLOGY UPDATES TO CONTROLLER
+  V5 -> Controller : <V5 sees V34, t=20.000000>  ACCEPTED
+  V34 -> Controller : <V34 sees V5, t=20.000000>  ACCEPTED
+  V5 -> Controller : <own position, t=20.000000>  ACCEPTED
+
+[t=20.100]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.000> as-relayed-via V5  (FORGED internally)
+  <V5 sees V34, t=20.000> as-relayed-via V6  (FORGED internally)
+  V3↔V4 link: dist=1052.0m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.100]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V5 → V34  (PHANTOM)
+    Path 3: V5 → V6 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V5 or V6 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V7  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V8  (FORGED internally)
+  V3↔V4 link: dist=191.9m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V7 → V34  (PHANTOM)
+    Path 3: V5 → V8 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V7 or V8 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  DETECTION (monitoring — controller not yet quarantined)
+  Controller internal echo fabrication detected
+  Score: 0.1
+  *** CONTROLLER DIVERGENCE GATE — Algorithm 4 line 4 (delta_t<=delta_thresh) ***
+  delta_t=8  delta_thresh=9  — trusted-peer evidence does not exceed the normal propagation-delay margin; controller NOT flagged, zone reassignment skipped this event.
+
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V9  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V10  (FORGED internally)
+  V3↔V4 link: dist=1363.2m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V9 → V34  (PHANTOM)
+    Path 3: V5 → V10 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V9 or V10 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  DETECTION (monitoring — controller not yet quarantined)
+  Controller internal echo fabrication detected
+  Score: 0.1
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=12 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V11  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V12  (FORGED internally)
+  V3↔V4 link: dist=1289.4m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V11 → V34  (PHANTOM)
+    Path 3: V5 → V12 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V11 or V12 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  DETECTION (monitoring — controller not yet quarantined)
+  Controller internal echo fabrication detected
+  Score: 0.1
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=16 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.600 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.600 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V13  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V14  (FORGED internally)
+  V3↔V4 link: dist=92.8m  IN RANGE — Path 4 inferred
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V13 → V34  (PHANTOM)
+    Path 3: V5 → V14 → V34  (PHANTOM)
+    Path 4: V5 → V13 → V14 → V34  (PHANTOM — V3↔V4 in range)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V13 or V14 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  DETECTION (monitoring — controller not yet quarantined)
+  Controller internal echo fabrication detected
+  Score: 0.1
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=21 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.400 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.400 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V15  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V16  (FORGED internally)
+  V3↔V4 link: dist=539.9m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V15 → V34  (PHANTOM)
+    Path 3: V5 → V16 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V15 or V16 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  DETECTION + MITIGATION
+  Controller internal echo fabrication detected
+  Phantom reporters V10 and V11 removed
+  Score: 0.2
+  Latency: 2.0 ms
+[A8: blockchain mitigation suppressed (--no_blockchain=1)]
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=25 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.200 after Eq.3.39 (Delta_C=0.200)
+  [Trust] REASSIGN(Z_0 -> C_4)  tau_{C_j}=0.200 < tau_min^C=0.300
+  [Trust] C_0: active -> QUARANTINED  (Stage 1 demotion, T_quar=30.000s)
+  [Trust] C_4 takes over zone 0 (tau=1.000)
+  [Trust] ControllerRevokedBeacon V2V broadcast: revoked=C_0  backup=C_4  propagation=800.000 ms (diam=8 hops)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V17  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V18  (FORGED internally)
+  V3↔V4 link: dist=1198.3m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V17 → V34  (PHANTOM)
+    Path 3: V5 → V18 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V17 or V18 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V19  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V20  (FORGED internally)
+  V3↔V4 link: dist=717.9m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V19 → V34  (PHANTOM)
+    Path 3: V5 → V20 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V19 or V20 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V21  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V22  (FORGED internally)
+  V3↔V4 link: dist=251.9m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V21 → V34  (PHANTOM)
+    Path 3: V5 → V22 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V21 or V22 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V23  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V24  (FORGED internally)
+  V3↔V4 link: dist=1115.0m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V23 → V34  (PHANTOM)
+    Path 3: V5 → V24 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V23 or V24 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V25  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V26  (FORGED internally)
+  V3↔V4 link: dist=214.9m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V25 → V34  (PHANTOM)
+    Path 3: V5 → V26 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V25 or V26 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V27  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V28  (FORGED internally)
+  V3↔V4 link: dist=657.8m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V27 → V34  (PHANTOM)
+    Path 3: V5 → V28 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V27 or V28 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V29  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V30  (FORGED internally)
+  V3↔V4 link: dist=1038.3m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V29 → V34  (PHANTOM)
+    Path 3: V5 → V30 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V29 or V30 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V31  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V32  (FORGED internally)
+  V3↔V4 link: dist=1140.9m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V31 → V34  (PHANTOM)
+    Path 3: V5 → V32 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V31 or V32 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V33  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V34  (FORGED internally)
+  V3↔V4 link: dist=562.7m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V33 → V34  (PHANTOM)
+    Path 3: V5 → V34 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V33 or V34 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V35  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V36  (FORGED internally)
+  V3↔V4 link: dist=713.8m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V35 → V34  (PHANTOM)
+    Path 3: V5 → V36 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V35 or V36 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V37  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V38  (FORGED internally)
+  V3↔V4 link: dist=553.7m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V37 → V34  (PHANTOM)
+    Path 3: V5 → V38 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V37 or V38 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V39  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V40  (FORGED internally)
+  V3↔V4 link: dist=524.7m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V39 → V34  (PHANTOM)
+    Path 3: V5 → V40 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V39 or V40 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V41  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V42  (FORGED internally)
+  V3↔V4 link: dist=860.8m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V41 → V34  (PHANTOM)
+    Path 3: V5 → V42 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V41 or V42 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+
+[t=20.1]  Controller C_0 already revoked/quarantined — submission still recorded for detection purposes, but no new mitigation action will be taken (Algorithm 4 REVOKE_CTRL_CRED — mitigation only, not a detection gate)
+[t=20.1]  STEP ③  ECHO INJECTION BY MALICIOUS CONTROLLER
+  Controller injects forged observations into its internal topology database:
+  <V5 sees V34, t=20.0> as-relayed-via V43  (FORGED internally)
+  <V5 sees V34, t=20.0> as-relayed-via V44  (FORGED internally)
+  V3↔V4 link: dist=657.0m  OUT OF RANGE — no Path 4
+  Note: No external packet sent — manipulation is purely internal
+
+[t=20.1]  STEP ④  FALSE MULTIPATH INFERENCE
+  V5↔V34 fabricated link: dist=45.3m  IN RANGE — genuinely real
+  Controller incorrectly infers:
+    Path 1: V5 → V34  (REAL)
+    Path 2: V5 → V43 → V34  (PHANTOM)
+    Path 3: V5 → V44 → V34  (PHANTOM)
+
+[t=20.1]  STEP ⑤  FAULTY ROUTING DECISIONS
+  Controller installs routing policies based on falsely inferred multipath topology
+  Packets forwarded via phantom V43 or V44 paths will be dropped
+  Expected impact: packet loss, increased delay, routing instability
+  <- ATTACK SUCCESS (no external packet required)
+

@@ -13,43 +13,2282 @@
   Every selected malicious controller executes STEP ④, ⑤, ⑥.
 
 ========================================
-  PAIR: ATTACKER=Ctrl0(ns3=0)  VICTIMS=V1(ns3=6)/V2(ns3=7)
+  PAIR: ATTACKER=Ctrl0(ns3=0)  VICTIMS=V18(ns3=23)/V187(ns3=192)
 ========================================
-[t=5.000]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
-  V1(ns3=6) -> V2(ns3=7) : Heartbeat(Sender=V1(ns3=6), beacon_sending_time=5.000)
-  V2(ns3=7) -> V1(ns3=6) : Heartbeat(Sender=V2(ns3=7), beacon_sending_time=5.000)
+[t=15.000]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V18(ns3=23) -> V187(ns3=192) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=15.000)
+  V187(ns3=192) -> V18(ns3=23) : Heartbeat(Sender=V187(ns3=192), beacon_sending_time=15.000)
 
-[t=5.000]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
-  V1(ns3=6) -> Ctrl0(ns3=0) : Heartbeat(Sender=V1(ns3=6), beacon_sending_time=5.000)
-  V2(ns3=7) -> Ctrl0(ns3=0) : Heartbeat(Sender=V2(ns3=7), beacon_sending_time=5.000)
+[t=15.000]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V18(ns3=23) -> Ctrl0(ns3=0) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=15.000)
+  V187(ns3=192) -> Ctrl0(ns3=0) : Heartbeat(Sender=V187(ns3=192), beacon_sending_time=15.000)
 
-[t=5.010]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+[t=15.010]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
   Ctrl0(ns3=0) liveness table updated:
-    V1(ns3=6) : beacon_sending_time=5.000  ACCEPTED
-    V2(ns3=7) : beacon_sending_time=5.000  ACCEPTED
+    V18(ns3=23) : beacon_sending_time=15.000  ACCEPTED
+    V187(ns3=192) : beacon_sending_time=15.000  ACCEPTED
 
-[t=5.100]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+[t=15.100]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
   Attacker Controller : Ctrl0(ns3=0)
-  captured_packet for V1(ns3=6) : Heartbeat(Sender=V1(ns3=6), beacon_sending_time=5.000)  (from STEP ② legitimate exchange)
-  captured_packet for V2(ns3=7) : Heartbeat(Sender=V2(ns3=7), beacon_sending_time=5.000)  (from STEP ② legitimate exchange)
+  captured_packet for V18(ns3=23) : Heartbeat(Sender=V18(ns3=23), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V187(ns3=192) : Heartbeat(Sender=V187(ns3=192), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
   Action : Ctrl0(ns3=0) stores both stale copies for internal replay (STEP ⑤)
 
-[t=7.000]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+[t=17.000]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
   Attacker Controller : Ctrl0(ns3=0)
   Packet source       : stored STEP ④ stale copies
-  Overwrites V1(ns3=6) liveness with V1(ns3=6)'s own stale beacon_sending_time=5.000 (correctly attributed, just old)
-  Overwrites V2(ns3=7) liveness SLOT with a FORGED heartbeat
-    physical_sender (true slot owner) = V2(ns3=7)
-    claimed_sender  (forged identity)  = V1(ns3=6)
-    Ctrl0(ns3=0) topology DB[V2(ns3=7)] <- Heartbeat(Sender=V1(ns3=6), beacon_sending_time=5.000)  IMPERSONATING V1(ns3=6)
+  Overwrites V18(ns3=23) liveness with V18(ns3=23)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V187(ns3=192) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V187(ns3=192)
+    claimed_sender  (forged identity)  = V18(ns3=23)
+    Ctrl0(ns3=0) topology DB[V187(ns3=192)] <- Heartbeat(Sender=V18(ns3=23), beacon_sending_time=15.000)  IMPERSONATING V18(ns3=23)
   Different claimed vs. slot identity -> impersonation evidence
   No external packet sent — attack is entirely internal to Ctrl0(ns3=0)
 
-[t=7.000]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+[t=17.000]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
   Ctrl0(ns3=0) now holds conflicting liveness:
-    V1(ns3=6) : beacon_sending_time=5.000 < current t=7.000  [STALE]
-    V2(ns3=7) : beacon_sending_time=5.000 < current t=7.000  [STALE/FORGED — claims to be V1(ns3=6)]
+    V18(ns3=23) : beacon_sending_time=15.000 < current t=17.000  [STALE]
+    V187(ns3=192) : beacon_sending_time=15.000 < current t=17.000  [STALE/FORGED — claims to be V18(ns3=23)]
+  Two liveness entries now assert the same identity (V18(ns3=23)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl1(ns3=1)  VICTIMS=V36(ns3=41)/V88(ns3=93)
+========================================
+[t=15.001]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V36(ns3=41) -> V88(ns3=93) : Heartbeat(Sender=V36(ns3=41), beacon_sending_time=15.000)
+  V88(ns3=93) -> V36(ns3=41) : Heartbeat(Sender=V88(ns3=93), beacon_sending_time=15.000)
+
+[t=15.001]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V36(ns3=41) -> Ctrl1(ns3=1) : Heartbeat(Sender=V36(ns3=41), beacon_sending_time=15.000)
+  V88(ns3=93) -> Ctrl1(ns3=1) : Heartbeat(Sender=V88(ns3=93), beacon_sending_time=15.000)
+
+[t=15.011]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl1(ns3=1) liveness table updated:
+    V36(ns3=41) : beacon_sending_time=15.000  ACCEPTED
+    V88(ns3=93) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.101]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl1(ns3=1)
+  captured_packet for V36(ns3=41) : Heartbeat(Sender=V36(ns3=41), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V88(ns3=93) : Heartbeat(Sender=V88(ns3=93), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl1(ns3=1) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.001]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl1(ns3=1)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V36(ns3=41) liveness with V36(ns3=41)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V88(ns3=93) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V88(ns3=93)
+    claimed_sender  (forged identity)  = V36(ns3=41)
+    Ctrl1(ns3=1) topology DB[V88(ns3=93)] <- Heartbeat(Sender=V36(ns3=41), beacon_sending_time=15.000)  IMPERSONATING V36(ns3=41)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl1(ns3=1)
+
+[t=17.001]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl1(ns3=1) now holds conflicting liveness:
+    V36(ns3=41) : beacon_sending_time=15.000 < current t=17.001  [STALE]
+    V88(ns3=93) : beacon_sending_time=15.000 < current t=17.001  [STALE/FORGED — claims to be V36(ns3=41)]
+  Two liveness entries now assert the same identity (V36(ns3=41)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl2(ns3=2)  VICTIMS=V64(ns3=69)/V101(ns3=106)
+========================================
+[t=15.002]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V64(ns3=69) -> V101(ns3=106) : Heartbeat(Sender=V64(ns3=69), beacon_sending_time=15.000)
+  V101(ns3=106) -> V64(ns3=69) : Heartbeat(Sender=V101(ns3=106), beacon_sending_time=15.000)
+
+[t=15.002]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V64(ns3=69) -> Ctrl2(ns3=2) : Heartbeat(Sender=V64(ns3=69), beacon_sending_time=15.000)
+  V101(ns3=106) -> Ctrl2(ns3=2) : Heartbeat(Sender=V101(ns3=106), beacon_sending_time=15.000)
+
+[t=15.012]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl2(ns3=2) liveness table updated:
+    V64(ns3=69) : beacon_sending_time=15.000  ACCEPTED
+    V101(ns3=106) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.102]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl2(ns3=2)
+  captured_packet for V64(ns3=69) : Heartbeat(Sender=V64(ns3=69), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V101(ns3=106) : Heartbeat(Sender=V101(ns3=106), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl2(ns3=2) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.002]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl2(ns3=2)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V64(ns3=69) liveness with V64(ns3=69)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V101(ns3=106) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V101(ns3=106)
+    claimed_sender  (forged identity)  = V64(ns3=69)
+    Ctrl2(ns3=2) topology DB[V101(ns3=106)] <- Heartbeat(Sender=V64(ns3=69), beacon_sending_time=15.000)  IMPERSONATING V64(ns3=69)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl2(ns3=2)
+
+[t=17.002]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl2(ns3=2) now holds conflicting liveness:
+    V64(ns3=69) : beacon_sending_time=15.000 < current t=17.002  [STALE]
+    V101(ns3=106) : beacon_sending_time=15.000 < current t=17.002  [STALE/FORGED — claims to be V64(ns3=69)]
+  Two liveness entries now assert the same identity (V64(ns3=69)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl3(ns3=3)  VICTIMS=V58(ns3=63)/V31(ns3=36)
+========================================
+[t=15.003]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V58(ns3=63) -> V31(ns3=36) : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=15.000)
+  V31(ns3=36) -> V58(ns3=63) : Heartbeat(Sender=V31(ns3=36), beacon_sending_time=15.000)
+
+[t=15.003]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V58(ns3=63) -> Ctrl3(ns3=3) : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=15.000)
+  V31(ns3=36) -> Ctrl3(ns3=3) : Heartbeat(Sender=V31(ns3=36), beacon_sending_time=15.000)
+
+[t=15.013]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl3(ns3=3) liveness table updated:
+    V58(ns3=63) : beacon_sending_time=15.000  ACCEPTED
+    V31(ns3=36) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.103]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl3(ns3=3)
+  captured_packet for V58(ns3=63) : Heartbeat(Sender=V58(ns3=63), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V31(ns3=36) : Heartbeat(Sender=V31(ns3=36), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl3(ns3=3) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.003]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl3(ns3=3)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V58(ns3=63) liveness with V58(ns3=63)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V31(ns3=36) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V31(ns3=36)
+    claimed_sender  (forged identity)  = V58(ns3=63)
+    Ctrl3(ns3=3) topology DB[V31(ns3=36)] <- Heartbeat(Sender=V58(ns3=63), beacon_sending_time=15.000)  IMPERSONATING V58(ns3=63)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl3(ns3=3)
+
+[t=17.003]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl3(ns3=3) now holds conflicting liveness:
+    V58(ns3=63) : beacon_sending_time=15.000 < current t=17.003  [STALE]
+    V31(ns3=36) : beacon_sending_time=15.000 < current t=17.003  [STALE/FORGED — claims to be V58(ns3=63)]
+  Two liveness entries now assert the same identity (V58(ns3=63)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl4(?)  VICTIMS=V19(ns3=24)/V81(ns3=86)
+========================================
+[t=15.004]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V19(ns3=24) -> V81(ns3=86) : Heartbeat(Sender=V19(ns3=24), beacon_sending_time=15.000)
+  V81(ns3=86) -> V19(ns3=24) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=15.000)
+
+[t=15.004]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V19(ns3=24) -> Ctrl4(?) : Heartbeat(Sender=V19(ns3=24), beacon_sending_time=15.000)
+  V81(ns3=86) -> Ctrl4(?) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=15.000)
+
+[t=15.014]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl4(?) liveness table updated:
+    V19(ns3=24) : beacon_sending_time=15.000  ACCEPTED
+    V81(ns3=86) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.104]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl4(?)
+  captured_packet for V19(ns3=24) : Heartbeat(Sender=V19(ns3=24), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V81(ns3=86) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl4(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.004]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl4(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V19(ns3=24) liveness with V19(ns3=24)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V81(ns3=86) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V81(ns3=86)
+    claimed_sender  (forged identity)  = V19(ns3=24)
+    Ctrl4(?) topology DB[V81(ns3=86)] <- Heartbeat(Sender=V19(ns3=24), beacon_sending_time=15.000)  IMPERSONATING V19(ns3=24)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl4(?)
+
+[t=17.004]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl4(?) now holds conflicting liveness:
+    V19(ns3=24) : beacon_sending_time=15.000 < current t=17.004  [STALE]
+    V81(ns3=86) : beacon_sending_time=15.000 < current t=17.004  [STALE/FORGED — claims to be V19(ns3=24)]
+  Two liveness entries now assert the same identity (V19(ns3=24)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl5(?)  VICTIMS=V84(ns3=89)/V151(ns3=156)
+========================================
+[t=15.005]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V84(ns3=89) -> V151(ns3=156) : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=15.000)
+  V151(ns3=156) -> V84(ns3=89) : Heartbeat(Sender=V151(ns3=156), beacon_sending_time=15.000)
+
+[t=15.005]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V84(ns3=89) -> Ctrl5(?) : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=15.000)
+  V151(ns3=156) -> Ctrl5(?) : Heartbeat(Sender=V151(ns3=156), beacon_sending_time=15.000)
+
+[t=15.015]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl5(?) liveness table updated:
+    V84(ns3=89) : beacon_sending_time=15.000  ACCEPTED
+    V151(ns3=156) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.105]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl5(?)
+  captured_packet for V84(ns3=89) : Heartbeat(Sender=V84(ns3=89), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V151(ns3=156) : Heartbeat(Sender=V151(ns3=156), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl5(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.005]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl5(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V84(ns3=89) liveness with V84(ns3=89)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V151(ns3=156) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V151(ns3=156)
+    claimed_sender  (forged identity)  = V84(ns3=89)
+    Ctrl5(?) topology DB[V151(ns3=156)] <- Heartbeat(Sender=V84(ns3=89), beacon_sending_time=15.000)  IMPERSONATING V84(ns3=89)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl5(?)
+
+[t=17.005]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl5(?) now holds conflicting liveness:
+    V84(ns3=89) : beacon_sending_time=15.000 < current t=17.005  [STALE]
+    V151(ns3=156) : beacon_sending_time=15.000 < current t=17.005  [STALE/FORGED — claims to be V84(ns3=89)]
+  Two liveness entries now assert the same identity (V84(ns3=89)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl6(?)  VICTIMS=V28(ns3=33)/V57(ns3=62)
+========================================
+[t=15.006]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V28(ns3=33) -> V57(ns3=62) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=15.000)
+  V57(ns3=62) -> V28(ns3=33) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=15.000)
+
+[t=15.006]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V28(ns3=33) -> Ctrl6(?) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=15.000)
+  V57(ns3=62) -> Ctrl6(?) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=15.000)
+
+[t=15.016]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl6(?) liveness table updated:
+    V28(ns3=33) : beacon_sending_time=15.000  ACCEPTED
+    V57(ns3=62) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.106]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl6(?)
+  captured_packet for V28(ns3=33) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V57(ns3=62) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl6(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.006]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl6(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V28(ns3=33) liveness with V28(ns3=33)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V57(ns3=62) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V57(ns3=62)
+    claimed_sender  (forged identity)  = V28(ns3=33)
+    Ctrl6(?) topology DB[V57(ns3=62)] <- Heartbeat(Sender=V28(ns3=33), beacon_sending_time=15.000)  IMPERSONATING V28(ns3=33)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl6(?)
+
+[t=17.006]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl6(?) now holds conflicting liveness:
+    V28(ns3=33) : beacon_sending_time=15.000 < current t=17.006  [STALE]
+    V57(ns3=62) : beacon_sending_time=15.000 < current t=17.006  [STALE/FORGED — claims to be V28(ns3=33)]
+  Two liveness entries now assert the same identity (V28(ns3=33)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl7(?)  VICTIMS=V173(ns3=178)/V23(ns3=28)
+========================================
+[t=15.007]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V173(ns3=178) -> V23(ns3=28) : Heartbeat(Sender=V173(ns3=178), beacon_sending_time=15.000)
+  V23(ns3=28) -> V173(ns3=178) : Heartbeat(Sender=V23(ns3=28), beacon_sending_time=15.000)
+
+[t=15.007]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V173(ns3=178) -> Ctrl7(?) : Heartbeat(Sender=V173(ns3=178), beacon_sending_time=15.000)
+  V23(ns3=28) -> Ctrl7(?) : Heartbeat(Sender=V23(ns3=28), beacon_sending_time=15.000)
+
+[t=15.017]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl7(?) liveness table updated:
+    V173(ns3=178) : beacon_sending_time=15.000  ACCEPTED
+    V23(ns3=28) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.107]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl7(?)
+  captured_packet for V173(ns3=178) : Heartbeat(Sender=V173(ns3=178), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V23(ns3=28) : Heartbeat(Sender=V23(ns3=28), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl7(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.007]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl7(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V173(ns3=178) liveness with V173(ns3=178)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V23(ns3=28) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V23(ns3=28)
+    claimed_sender  (forged identity)  = V173(ns3=178)
+    Ctrl7(?) topology DB[V23(ns3=28)] <- Heartbeat(Sender=V173(ns3=178), beacon_sending_time=15.000)  IMPERSONATING V173(ns3=178)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl7(?)
+
+[t=17.007]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl7(?) now holds conflicting liveness:
+    V173(ns3=178) : beacon_sending_time=15.000 < current t=17.007  [STALE]
+    V23(ns3=28) : beacon_sending_time=15.000 < current t=17.007  [STALE/FORGED — claims to be V173(ns3=178)]
+  Two liveness entries now assert the same identity (V173(ns3=178)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+========================================
+  PAIR: ATTACKER=Ctrl8(?)  VICTIMS=V14(ns3=19)/V119(ns3=124)
+========================================
+[t=15.008]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V14(ns3=19) -> V119(ns3=124) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=15.000)
+  V119(ns3=124) -> V14(ns3=19) : Heartbeat(Sender=V119(ns3=124), beacon_sending_time=15.000)
+
+[t=15.008]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V14(ns3=19) -> Ctrl8(?) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=15.000)
+  V119(ns3=124) -> Ctrl8(?) : Heartbeat(Sender=V119(ns3=124), beacon_sending_time=15.000)
+
+[t=15.018]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl8(?) liveness table updated:
+    V14(ns3=19) : beacon_sending_time=15.000  ACCEPTED
+    V119(ns3=124) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.108]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl8(?)
+  captured_packet for V14(ns3=19) : Heartbeat(Sender=V14(ns3=19), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V119(ns3=124) : Heartbeat(Sender=V119(ns3=124), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl8(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.008]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl8(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V14(ns3=19) liveness with V14(ns3=19)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V119(ns3=124) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V119(ns3=124)
+    claimed_sender  (forged identity)  = V14(ns3=19)
+    Ctrl8(?) topology DB[V119(ns3=124)] <- Heartbeat(Sender=V14(ns3=19), beacon_sending_time=15.000)  IMPERSONATING V14(ns3=19)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl8(?)
+
+[t=17.008]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl8(?) now holds conflicting liveness:
+    V14(ns3=19) : beacon_sending_time=15.000 < current t=17.008  [STALE]
+    V119(ns3=124) : beacon_sending_time=15.000 < current t=17.008  [STALE/FORGED — claims to be V14(ns3=19)]
+  Two liveness entries now assert the same identity (V14(ns3=19)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.008000]  DETECTION + MITIGATION  (via divergence mechanism only — LW/TGN score did not cross threshold)
+  Controller internal HB replay detected
+  Score: 0.120400
+  Latency: -1.000000 ms
+  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***
+  PBFT consensus (n=200, f=66, need>=133): Pass
+  VERIFY_THRESHOLD_SIG (Eq. 3.28): 1/200 valid, need t=101: Fail
+  Enforcement action suppressed; single-peer/insufficient-signature evidence is not sufficient to act (Algorithm 4 line 9-11 abort path)
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=10 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+========================================
+  PAIR: ATTACKER=Ctrl9(?)  VICTIMS=V125(ns3=130)/V24(ns3=29)
+========================================
+[t=15.009]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V125(ns3=130) -> V24(ns3=29) : Heartbeat(Sender=V125(ns3=130), beacon_sending_time=15.000)
+  V24(ns3=29) -> V125(ns3=130) : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=15.000)
+
+[t=15.009]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V125(ns3=130) -> Ctrl9(?) : Heartbeat(Sender=V125(ns3=130), beacon_sending_time=15.000)
+  V24(ns3=29) -> Ctrl9(?) : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=15.000)
+
+[t=15.019]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl9(?) liveness table updated:
+    V125(ns3=130) : beacon_sending_time=15.000  ACCEPTED
+    V24(ns3=29) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.109]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl9(?)
+  captured_packet for V125(ns3=130) : Heartbeat(Sender=V125(ns3=130), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V24(ns3=29) : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl9(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.009]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl9(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V125(ns3=130) liveness with V125(ns3=130)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V24(ns3=29) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V24(ns3=29)
+    claimed_sender  (forged identity)  = V125(ns3=130)
+    Ctrl9(?) topology DB[V24(ns3=29)] <- Heartbeat(Sender=V125(ns3=130), beacon_sending_time=15.000)  IMPERSONATING V125(ns3=130)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl9(?)
+
+[t=17.009]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl9(?) now holds conflicting liveness:
+    V125(ns3=130) : beacon_sending_time=15.000 < current t=17.009  [STALE]
+    V24(ns3=29) : beacon_sending_time=15.000 < current t=17.009  [STALE/FORGED — claims to be V125(ns3=130)]
+  Two liveness entries now assert the same identity (V125(ns3=130)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.009000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl10(?)  VICTIMS=V92(ns3=97)/V125(ns3=130)
+========================================
+[t=15.010]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V92(ns3=97) -> V125(ns3=130) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=15.000)
+  V125(ns3=130) -> V92(ns3=97) : Heartbeat(Sender=V125(ns3=130), beacon_sending_time=15.000)
+
+[t=15.010]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V92(ns3=97) -> Ctrl10(?) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=15.000)
+  V125(ns3=130) -> Ctrl10(?) : Heartbeat(Sender=V125(ns3=130), beacon_sending_time=15.000)
+
+[t=15.020]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl10(?) liveness table updated:
+    V92(ns3=97) : beacon_sending_time=15.000  ACCEPTED
+    V125(ns3=130) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.110]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl10(?)
+  captured_packet for V92(ns3=97) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V125(ns3=130) : Heartbeat(Sender=V125(ns3=130), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl10(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.010]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl10(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V92(ns3=97) liveness with V92(ns3=97)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V125(ns3=130) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V125(ns3=130)
+    claimed_sender  (forged identity)  = V92(ns3=97)
+    Ctrl10(?) topology DB[V125(ns3=130)] <- Heartbeat(Sender=V92(ns3=97), beacon_sending_time=15.000)  IMPERSONATING V92(ns3=97)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl10(?)
+
+[t=17.010]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl10(?) now holds conflicting liveness:
+    V92(ns3=97) : beacon_sending_time=15.000 < current t=17.010  [STALE]
+    V125(ns3=130) : beacon_sending_time=15.000 < current t=17.010  [STALE/FORGED — claims to be V92(ns3=97)]
+  Two liveness entries now assert the same identity (V92(ns3=97)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.010000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl11(?)  VICTIMS=V135(ns3=140)/V115(ns3=120)
+========================================
+[t=15.011]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V135(ns3=140) -> V115(ns3=120) : Heartbeat(Sender=V135(ns3=140), beacon_sending_time=15.000)
+  V115(ns3=120) -> V135(ns3=140) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=15.000)
+
+[t=15.011]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V135(ns3=140) -> Ctrl11(?) : Heartbeat(Sender=V135(ns3=140), beacon_sending_time=15.000)
+  V115(ns3=120) -> Ctrl11(?) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=15.000)
+
+[t=15.021]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl11(?) liveness table updated:
+    V135(ns3=140) : beacon_sending_time=15.000  ACCEPTED
+    V115(ns3=120) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.111]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl11(?)
+  captured_packet for V135(ns3=140) : Heartbeat(Sender=V135(ns3=140), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V115(ns3=120) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl11(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.011]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl11(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V135(ns3=140) liveness with V135(ns3=140)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V115(ns3=120) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V115(ns3=120)
+    claimed_sender  (forged identity)  = V135(ns3=140)
+    Ctrl11(?) topology DB[V115(ns3=120)] <- Heartbeat(Sender=V135(ns3=140), beacon_sending_time=15.000)  IMPERSONATING V135(ns3=140)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl11(?)
+
+[t=17.011]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl11(?) now holds conflicting liveness:
+    V135(ns3=140) : beacon_sending_time=15.000 < current t=17.011  [STALE]
+    V115(ns3=120) : beacon_sending_time=15.000 < current t=17.011  [STALE/FORGED — claims to be V135(ns3=140)]
+  Two liveness entries now assert the same identity (V135(ns3=140)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.011000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl12(?)  VICTIMS=V114(ns3=119)/V141(ns3=146)
+========================================
+[t=15.012]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V114(ns3=119) -> V141(ns3=146) : Heartbeat(Sender=V114(ns3=119), beacon_sending_time=15.000)
+  V141(ns3=146) -> V114(ns3=119) : Heartbeat(Sender=V141(ns3=146), beacon_sending_time=15.000)
+
+[t=15.012]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V114(ns3=119) -> Ctrl12(?) : Heartbeat(Sender=V114(ns3=119), beacon_sending_time=15.000)
+  V141(ns3=146) -> Ctrl12(?) : Heartbeat(Sender=V141(ns3=146), beacon_sending_time=15.000)
+
+[t=15.022]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl12(?) liveness table updated:
+    V114(ns3=119) : beacon_sending_time=15.000  ACCEPTED
+    V141(ns3=146) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.112]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl12(?)
+  captured_packet for V114(ns3=119) : Heartbeat(Sender=V114(ns3=119), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V141(ns3=146) : Heartbeat(Sender=V141(ns3=146), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl12(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.012]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl12(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V114(ns3=119) liveness with V114(ns3=119)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V141(ns3=146) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V141(ns3=146)
+    claimed_sender  (forged identity)  = V114(ns3=119)
+    Ctrl12(?) topology DB[V141(ns3=146)] <- Heartbeat(Sender=V114(ns3=119), beacon_sending_time=15.000)  IMPERSONATING V114(ns3=119)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl12(?)
+
+[t=17.012]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl12(?) now holds conflicting liveness:
+    V114(ns3=119) : beacon_sending_time=15.000 < current t=17.012  [STALE]
+    V141(ns3=146) : beacon_sending_time=15.000 < current t=17.012  [STALE/FORGED — claims to be V114(ns3=119)]
+  Two liveness entries now assert the same identity (V114(ns3=119)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.012000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl13(?)  VICTIMS=V56(ns3=61)/V116(ns3=121)
+========================================
+[t=15.013]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V56(ns3=61) -> V116(ns3=121) : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=15.000)
+  V116(ns3=121) -> V56(ns3=61) : Heartbeat(Sender=V116(ns3=121), beacon_sending_time=15.000)
+
+[t=15.013]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V56(ns3=61) -> Ctrl13(?) : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=15.000)
+  V116(ns3=121) -> Ctrl13(?) : Heartbeat(Sender=V116(ns3=121), beacon_sending_time=15.000)
+
+[t=15.023]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl13(?) liveness table updated:
+    V56(ns3=61) : beacon_sending_time=15.000  ACCEPTED
+    V116(ns3=121) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.113]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl13(?)
+  captured_packet for V56(ns3=61) : Heartbeat(Sender=V56(ns3=61), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V116(ns3=121) : Heartbeat(Sender=V116(ns3=121), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl13(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.013]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl13(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V56(ns3=61) liveness with V56(ns3=61)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V116(ns3=121) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V116(ns3=121)
+    claimed_sender  (forged identity)  = V56(ns3=61)
+    Ctrl13(?) topology DB[V116(ns3=121)] <- Heartbeat(Sender=V56(ns3=61), beacon_sending_time=15.000)  IMPERSONATING V56(ns3=61)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl13(?)
+
+[t=17.013]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl13(?) now holds conflicting liveness:
+    V56(ns3=61) : beacon_sending_time=15.000 < current t=17.013  [STALE]
+    V116(ns3=121) : beacon_sending_time=15.000 < current t=17.013  [STALE/FORGED — claims to be V56(ns3=61)]
+  Two liveness entries now assert the same identity (V56(ns3=61)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.013000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl14(?)  VICTIMS=V57(ns3=62)/V28(ns3=33)
+========================================
+[t=15.014]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V57(ns3=62) -> V28(ns3=33) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=15.000)
+  V28(ns3=33) -> V57(ns3=62) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=15.000)
+
+[t=15.014]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V57(ns3=62) -> Ctrl14(?) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=15.000)
+  V28(ns3=33) -> Ctrl14(?) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=15.000)
+
+[t=15.024]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl14(?) liveness table updated:
+    V57(ns3=62) : beacon_sending_time=15.000  ACCEPTED
+    V28(ns3=33) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.114]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl14(?)
+  captured_packet for V57(ns3=62) : Heartbeat(Sender=V57(ns3=62), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V28(ns3=33) : Heartbeat(Sender=V28(ns3=33), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl14(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.014]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl14(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V57(ns3=62) liveness with V57(ns3=62)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V28(ns3=33) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V28(ns3=33)
+    claimed_sender  (forged identity)  = V57(ns3=62)
+    Ctrl14(?) topology DB[V28(ns3=33)] <- Heartbeat(Sender=V57(ns3=62), beacon_sending_time=15.000)  IMPERSONATING V57(ns3=62)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl14(?)
+
+[t=17.014]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl14(?) now holds conflicting liveness:
+    V57(ns3=62) : beacon_sending_time=15.000 < current t=17.014  [STALE]
+    V28(ns3=33) : beacon_sending_time=15.000 < current t=17.014  [STALE/FORGED — claims to be V57(ns3=62)]
+  Two liveness entries now assert the same identity (V57(ns3=62)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.014000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl15(?)  VICTIMS=V156(ns3=161)/V137(ns3=142)
+========================================
+[t=15.015]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V156(ns3=161) -> V137(ns3=142) : Heartbeat(Sender=V156(ns3=161), beacon_sending_time=15.000)
+  V137(ns3=142) -> V156(ns3=161) : Heartbeat(Sender=V137(ns3=142), beacon_sending_time=15.000)
+
+[t=15.015]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V156(ns3=161) -> Ctrl15(?) : Heartbeat(Sender=V156(ns3=161), beacon_sending_time=15.000)
+  V137(ns3=142) -> Ctrl15(?) : Heartbeat(Sender=V137(ns3=142), beacon_sending_time=15.000)
+
+[t=15.025]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl15(?) liveness table updated:
+    V156(ns3=161) : beacon_sending_time=15.000  ACCEPTED
+    V137(ns3=142) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.115]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl15(?)
+  captured_packet for V156(ns3=161) : Heartbeat(Sender=V156(ns3=161), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V137(ns3=142) : Heartbeat(Sender=V137(ns3=142), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl15(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.015]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl15(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V156(ns3=161) liveness with V156(ns3=161)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V137(ns3=142) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V137(ns3=142)
+    claimed_sender  (forged identity)  = V156(ns3=161)
+    Ctrl15(?) topology DB[V137(ns3=142)] <- Heartbeat(Sender=V156(ns3=161), beacon_sending_time=15.000)  IMPERSONATING V156(ns3=161)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl15(?)
+
+[t=17.015]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl15(?) now holds conflicting liveness:
+    V156(ns3=161) : beacon_sending_time=15.000 < current t=17.015  [STALE]
+    V137(ns3=142) : beacon_sending_time=15.000 < current t=17.015  [STALE/FORGED — claims to be V156(ns3=161)]
+  Two liveness entries now assert the same identity (V156(ns3=161)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.015000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl16(?)  VICTIMS=V62(ns3=67)/V26(ns3=31)
+========================================
+[t=15.016]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V62(ns3=67) -> V26(ns3=31) : Heartbeat(Sender=V62(ns3=67), beacon_sending_time=15.000)
+  V26(ns3=31) -> V62(ns3=67) : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=15.000)
+
+[t=15.016]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V62(ns3=67) -> Ctrl16(?) : Heartbeat(Sender=V62(ns3=67), beacon_sending_time=15.000)
+  V26(ns3=31) -> Ctrl16(?) : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=15.000)
+
+[t=15.026]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl16(?) liveness table updated:
+    V62(ns3=67) : beacon_sending_time=15.000  ACCEPTED
+    V26(ns3=31) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.116]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl16(?)
+  captured_packet for V62(ns3=67) : Heartbeat(Sender=V62(ns3=67), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V26(ns3=31) : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl16(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.016]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl16(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V62(ns3=67) liveness with V62(ns3=67)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V26(ns3=31) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V26(ns3=31)
+    claimed_sender  (forged identity)  = V62(ns3=67)
+    Ctrl16(?) topology DB[V26(ns3=31)] <- Heartbeat(Sender=V62(ns3=67), beacon_sending_time=15.000)  IMPERSONATING V62(ns3=67)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl16(?)
+
+[t=17.016]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl16(?) now holds conflicting liveness:
+    V62(ns3=67) : beacon_sending_time=15.000 < current t=17.016  [STALE]
+    V26(ns3=31) : beacon_sending_time=15.000 < current t=17.016  [STALE/FORGED — claims to be V62(ns3=67)]
+  Two liveness entries now assert the same identity (V62(ns3=67)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.016000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl17(?)  VICTIMS=V61(ns3=66)/V178(ns3=183)
+========================================
+[t=15.017]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V61(ns3=66) -> V178(ns3=183) : Heartbeat(Sender=V61(ns3=66), beacon_sending_time=15.000)
+  V178(ns3=183) -> V61(ns3=66) : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.000)
+
+[t=15.017]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V61(ns3=66) -> Ctrl17(?) : Heartbeat(Sender=V61(ns3=66), beacon_sending_time=15.000)
+  V178(ns3=183) -> Ctrl17(?) : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.000)
+
+[t=15.027]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl17(?) liveness table updated:
+    V61(ns3=66) : beacon_sending_time=15.000  ACCEPTED
+    V178(ns3=183) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.117]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl17(?)
+  captured_packet for V61(ns3=66) : Heartbeat(Sender=V61(ns3=66), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V178(ns3=183) : Heartbeat(Sender=V178(ns3=183), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl17(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.017]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl17(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V61(ns3=66) liveness with V61(ns3=66)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V178(ns3=183) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V178(ns3=183)
+    claimed_sender  (forged identity)  = V61(ns3=66)
+    Ctrl17(?) topology DB[V178(ns3=183)] <- Heartbeat(Sender=V61(ns3=66), beacon_sending_time=15.000)  IMPERSONATING V61(ns3=66)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl17(?)
+
+[t=17.017]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl17(?) now holds conflicting liveness:
+    V61(ns3=66) : beacon_sending_time=15.000 < current t=17.017  [STALE]
+    V178(ns3=183) : beacon_sending_time=15.000 < current t=17.017  [STALE/FORGED — claims to be V61(ns3=66)]
+  Two liveness entries now assert the same identity (V61(ns3=66)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.017000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl18(?)  VICTIMS=V183(ns3=188)/V153(ns3=158)
+========================================
+[t=15.018]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V183(ns3=188) -> V153(ns3=158) : Heartbeat(Sender=V183(ns3=188), beacon_sending_time=15.000)
+  V153(ns3=158) -> V183(ns3=188) : Heartbeat(Sender=V153(ns3=158), beacon_sending_time=15.000)
+
+[t=15.018]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V183(ns3=188) -> Ctrl18(?) : Heartbeat(Sender=V183(ns3=188), beacon_sending_time=15.000)
+  V153(ns3=158) -> Ctrl18(?) : Heartbeat(Sender=V153(ns3=158), beacon_sending_time=15.000)
+
+[t=15.028]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl18(?) liveness table updated:
+    V183(ns3=188) : beacon_sending_time=15.000  ACCEPTED
+    V153(ns3=158) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.118]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl18(?)
+  captured_packet for V183(ns3=188) : Heartbeat(Sender=V183(ns3=188), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V153(ns3=158) : Heartbeat(Sender=V153(ns3=158), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl18(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.018]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl18(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V183(ns3=188) liveness with V183(ns3=188)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V153(ns3=158) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V153(ns3=158)
+    claimed_sender  (forged identity)  = V183(ns3=188)
+    Ctrl18(?) topology DB[V153(ns3=158)] <- Heartbeat(Sender=V183(ns3=188), beacon_sending_time=15.000)  IMPERSONATING V183(ns3=188)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl18(?)
+
+[t=17.018]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl18(?) now holds conflicting liveness:
+    V183(ns3=188) : beacon_sending_time=15.000 < current t=17.018  [STALE]
+    V153(ns3=158) : beacon_sending_time=15.000 < current t=17.018  [STALE/FORGED — claims to be V183(ns3=188)]
+  Two liveness entries now assert the same identity (V183(ns3=188)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.018000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl19(?)  VICTIMS=V53(ns3=58)/V176(ns3=181)
+========================================
+[t=15.019]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V53(ns3=58) -> V176(ns3=181) : Heartbeat(Sender=V53(ns3=58), beacon_sending_time=15.000)
+  V176(ns3=181) -> V53(ns3=58) : Heartbeat(Sender=V176(ns3=181), beacon_sending_time=15.000)
+
+[t=15.019]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V53(ns3=58) -> Ctrl19(?) : Heartbeat(Sender=V53(ns3=58), beacon_sending_time=15.000)
+  V176(ns3=181) -> Ctrl19(?) : Heartbeat(Sender=V176(ns3=181), beacon_sending_time=15.000)
+
+[t=15.029]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl19(?) liveness table updated:
+    V53(ns3=58) : beacon_sending_time=15.000  ACCEPTED
+    V176(ns3=181) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.119]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl19(?)
+  captured_packet for V53(ns3=58) : Heartbeat(Sender=V53(ns3=58), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V176(ns3=181) : Heartbeat(Sender=V176(ns3=181), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl19(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.019]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl19(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V53(ns3=58) liveness with V53(ns3=58)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V176(ns3=181) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V176(ns3=181)
+    claimed_sender  (forged identity)  = V53(ns3=58)
+    Ctrl19(?) topology DB[V176(ns3=181)] <- Heartbeat(Sender=V53(ns3=58), beacon_sending_time=15.000)  IMPERSONATING V53(ns3=58)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl19(?)
+
+[t=17.019]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl19(?) now holds conflicting liveness:
+    V53(ns3=58) : beacon_sending_time=15.000 < current t=17.019  [STALE]
+    V176(ns3=181) : beacon_sending_time=15.000 < current t=17.019  [STALE/FORGED — claims to be V53(ns3=58)]
+  Two liveness entries now assert the same identity (V53(ns3=58)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.019000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl20(?)  VICTIMS=V100(ns3=105)/V52(ns3=57)
+========================================
+[t=15.020]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V100(ns3=105) -> V52(ns3=57) : Heartbeat(Sender=V100(ns3=105), beacon_sending_time=15.000)
+  V52(ns3=57) -> V100(ns3=105) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=15.000)
+
+[t=15.020]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V100(ns3=105) -> Ctrl20(?) : Heartbeat(Sender=V100(ns3=105), beacon_sending_time=15.000)
+  V52(ns3=57) -> Ctrl20(?) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=15.000)
+
+[t=15.030]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl20(?) liveness table updated:
+    V100(ns3=105) : beacon_sending_time=15.000  ACCEPTED
+    V52(ns3=57) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.120]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl20(?)
+  captured_packet for V100(ns3=105) : Heartbeat(Sender=V100(ns3=105), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V52(ns3=57) : Heartbeat(Sender=V52(ns3=57), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl20(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.020]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl20(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V100(ns3=105) liveness with V100(ns3=105)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V52(ns3=57) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V52(ns3=57)
+    claimed_sender  (forged identity)  = V100(ns3=105)
+    Ctrl20(?) topology DB[V52(ns3=57)] <- Heartbeat(Sender=V100(ns3=105), beacon_sending_time=15.000)  IMPERSONATING V100(ns3=105)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl20(?)
+
+[t=17.020]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl20(?) now holds conflicting liveness:
+    V100(ns3=105) : beacon_sending_time=15.000 < current t=17.020  [STALE]
+    V52(ns3=57) : beacon_sending_time=15.000 < current t=17.020  [STALE/FORGED — claims to be V100(ns3=105)]
+  Two liveness entries now assert the same identity (V100(ns3=105)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.020000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl21(?)  VICTIMS=V2(ns3=7)/V113(ns3=118)
+========================================
+[t=15.021]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V2(ns3=7) -> V113(ns3=118) : Heartbeat(Sender=V2(ns3=7), beacon_sending_time=15.000)
+  V113(ns3=118) -> V2(ns3=7) : Heartbeat(Sender=V113(ns3=118), beacon_sending_time=15.000)
+
+[t=15.021]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V2(ns3=7) -> Ctrl21(?) : Heartbeat(Sender=V2(ns3=7), beacon_sending_time=15.000)
+  V113(ns3=118) -> Ctrl21(?) : Heartbeat(Sender=V113(ns3=118), beacon_sending_time=15.000)
+
+[t=15.031]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl21(?) liveness table updated:
+    V2(ns3=7) : beacon_sending_time=15.000  ACCEPTED
+    V113(ns3=118) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.121]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl21(?)
+  captured_packet for V2(ns3=7) : Heartbeat(Sender=V2(ns3=7), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V113(ns3=118) : Heartbeat(Sender=V113(ns3=118), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl21(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.021]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl21(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V2(ns3=7) liveness with V2(ns3=7)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V113(ns3=118) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V113(ns3=118)
+    claimed_sender  (forged identity)  = V2(ns3=7)
+    Ctrl21(?) topology DB[V113(ns3=118)] <- Heartbeat(Sender=V2(ns3=7), beacon_sending_time=15.000)  IMPERSONATING V2(ns3=7)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl21(?)
+
+[t=17.021]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl21(?) now holds conflicting liveness:
+    V2(ns3=7) : beacon_sending_time=15.000 < current t=17.021  [STALE]
+    V113(ns3=118) : beacon_sending_time=15.000 < current t=17.021  [STALE/FORGED — claims to be V2(ns3=7)]
+  Two liveness entries now assert the same identity (V2(ns3=7)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.021000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl22(?)  VICTIMS=V48(ns3=53)/V87(ns3=92)
+========================================
+[t=15.022]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V48(ns3=53) -> V87(ns3=92) : Heartbeat(Sender=V48(ns3=53), beacon_sending_time=15.000)
+  V87(ns3=92) -> V48(ns3=53) : Heartbeat(Sender=V87(ns3=92), beacon_sending_time=15.000)
+
+[t=15.022]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V48(ns3=53) -> Ctrl22(?) : Heartbeat(Sender=V48(ns3=53), beacon_sending_time=15.000)
+  V87(ns3=92) -> Ctrl22(?) : Heartbeat(Sender=V87(ns3=92), beacon_sending_time=15.000)
+
+[t=15.032]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl22(?) liveness table updated:
+    V48(ns3=53) : beacon_sending_time=15.000  ACCEPTED
+    V87(ns3=92) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.122]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl22(?)
+  captured_packet for V48(ns3=53) : Heartbeat(Sender=V48(ns3=53), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V87(ns3=92) : Heartbeat(Sender=V87(ns3=92), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl22(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.022]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl22(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V48(ns3=53) liveness with V48(ns3=53)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V87(ns3=92) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V87(ns3=92)
+    claimed_sender  (forged identity)  = V48(ns3=53)
+    Ctrl22(?) topology DB[V87(ns3=92)] <- Heartbeat(Sender=V48(ns3=53), beacon_sending_time=15.000)  IMPERSONATING V48(ns3=53)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl22(?)
+
+[t=17.022]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl22(?) now holds conflicting liveness:
+    V48(ns3=53) : beacon_sending_time=15.000 < current t=17.022  [STALE]
+    V87(ns3=92) : beacon_sending_time=15.000 < current t=17.022  [STALE/FORGED — claims to be V48(ns3=53)]
+  Two liveness entries now assert the same identity (V48(ns3=53)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.022000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl23(?)  VICTIMS=V4(ns3=9)/V43(ns3=48)
+========================================
+[t=15.023]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V4(ns3=9) -> V43(ns3=48) : Heartbeat(Sender=V4(ns3=9), beacon_sending_time=15.000)
+  V43(ns3=48) -> V4(ns3=9) : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.000)
+
+[t=15.023]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V4(ns3=9) -> Ctrl23(?) : Heartbeat(Sender=V4(ns3=9), beacon_sending_time=15.000)
+  V43(ns3=48) -> Ctrl23(?) : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.000)
+
+[t=15.033]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl23(?) liveness table updated:
+    V4(ns3=9) : beacon_sending_time=15.000  ACCEPTED
+    V43(ns3=48) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.123]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl23(?)
+  captured_packet for V4(ns3=9) : Heartbeat(Sender=V4(ns3=9), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V43(ns3=48) : Heartbeat(Sender=V43(ns3=48), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl23(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.023]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl23(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V4(ns3=9) liveness with V4(ns3=9)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V43(ns3=48) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V43(ns3=48)
+    claimed_sender  (forged identity)  = V4(ns3=9)
+    Ctrl23(?) topology DB[V43(ns3=48)] <- Heartbeat(Sender=V4(ns3=9), beacon_sending_time=15.000)  IMPERSONATING V4(ns3=9)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl23(?)
+
+[t=17.023]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl23(?) now holds conflicting liveness:
+    V4(ns3=9) : beacon_sending_time=15.000 < current t=17.023  [STALE]
+    V43(ns3=48) : beacon_sending_time=15.000 < current t=17.023  [STALE/FORGED — claims to be V4(ns3=9)]
+  Two liveness entries now assert the same identity (V4(ns3=9)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.023000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl24(?)  VICTIMS=V39(ns3=44)/V55(ns3=60)
+========================================
+[t=15.024]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V39(ns3=44) -> V55(ns3=60) : Heartbeat(Sender=V39(ns3=44), beacon_sending_time=15.000)
+  V55(ns3=60) -> V39(ns3=44) : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=15.000)
+
+[t=15.024]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V39(ns3=44) -> Ctrl24(?) : Heartbeat(Sender=V39(ns3=44), beacon_sending_time=15.000)
+  V55(ns3=60) -> Ctrl24(?) : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=15.000)
+
+[t=15.034]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl24(?) liveness table updated:
+    V39(ns3=44) : beacon_sending_time=15.000  ACCEPTED
+    V55(ns3=60) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.124]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl24(?)
+  captured_packet for V39(ns3=44) : Heartbeat(Sender=V39(ns3=44), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V55(ns3=60) : Heartbeat(Sender=V55(ns3=60), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl24(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.024]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl24(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V39(ns3=44) liveness with V39(ns3=44)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V55(ns3=60) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V55(ns3=60)
+    claimed_sender  (forged identity)  = V39(ns3=44)
+    Ctrl24(?) topology DB[V55(ns3=60)] <- Heartbeat(Sender=V39(ns3=44), beacon_sending_time=15.000)  IMPERSONATING V39(ns3=44)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl24(?)
+
+[t=17.024]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl24(?) now holds conflicting liveness:
+    V39(ns3=44) : beacon_sending_time=15.000 < current t=17.024  [STALE]
+    V55(ns3=60) : beacon_sending_time=15.000 < current t=17.024  [STALE/FORGED — claims to be V39(ns3=44)]
+  Two liveness entries now assert the same identity (V39(ns3=44)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.024000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl25(?)  VICTIMS=V83(ns3=88)/V30(ns3=35)
+========================================
+[t=15.025]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V83(ns3=88) -> V30(ns3=35) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=15.000)
+  V30(ns3=35) -> V83(ns3=88) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=15.000)
+
+[t=15.025]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V83(ns3=88) -> Ctrl25(?) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=15.000)
+  V30(ns3=35) -> Ctrl25(?) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=15.000)
+
+[t=15.035]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl25(?) liveness table updated:
+    V83(ns3=88) : beacon_sending_time=15.000  ACCEPTED
+    V30(ns3=35) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.125]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl25(?)
+  captured_packet for V83(ns3=88) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V30(ns3=35) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl25(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.025]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl25(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V83(ns3=88) liveness with V83(ns3=88)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V30(ns3=35) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V30(ns3=35)
+    claimed_sender  (forged identity)  = V83(ns3=88)
+    Ctrl25(?) topology DB[V30(ns3=35)] <- Heartbeat(Sender=V83(ns3=88), beacon_sending_time=15.000)  IMPERSONATING V83(ns3=88)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl25(?)
+
+[t=17.025]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl25(?) now holds conflicting liveness:
+    V83(ns3=88) : beacon_sending_time=15.000 < current t=17.025  [STALE]
+    V30(ns3=35) : beacon_sending_time=15.000 < current t=17.025  [STALE/FORGED — claims to be V83(ns3=88)]
+  Two liveness entries now assert the same identity (V83(ns3=88)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.025000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl26(?)  VICTIMS=V26(ns3=31)/V62(ns3=67)
+========================================
+[t=15.026]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V26(ns3=31) -> V62(ns3=67) : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=15.000)
+  V62(ns3=67) -> V26(ns3=31) : Heartbeat(Sender=V62(ns3=67), beacon_sending_time=15.000)
+
+[t=15.026]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V26(ns3=31) -> Ctrl26(?) : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=15.000)
+  V62(ns3=67) -> Ctrl26(?) : Heartbeat(Sender=V62(ns3=67), beacon_sending_time=15.000)
+
+[t=15.036]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl26(?) liveness table updated:
+    V26(ns3=31) : beacon_sending_time=15.000  ACCEPTED
+    V62(ns3=67) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.126]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl26(?)
+  captured_packet for V26(ns3=31) : Heartbeat(Sender=V26(ns3=31), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V62(ns3=67) : Heartbeat(Sender=V62(ns3=67), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl26(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.026]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl26(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V26(ns3=31) liveness with V26(ns3=31)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V62(ns3=67) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V62(ns3=67)
+    claimed_sender  (forged identity)  = V26(ns3=31)
+    Ctrl26(?) topology DB[V62(ns3=67)] <- Heartbeat(Sender=V26(ns3=31), beacon_sending_time=15.000)  IMPERSONATING V26(ns3=31)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl26(?)
+
+[t=17.026]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl26(?) now holds conflicting liveness:
+    V26(ns3=31) : beacon_sending_time=15.000 < current t=17.026  [STALE]
+    V62(ns3=67) : beacon_sending_time=15.000 < current t=17.026  [STALE/FORGED — claims to be V26(ns3=31)]
+  Two liveness entries now assert the same identity (V26(ns3=31)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.026000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl27(?)  VICTIMS=V7(ns3=12)/V44(ns3=49)
+========================================
+[t=15.027]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V7(ns3=12) -> V44(ns3=49) : Heartbeat(Sender=V7(ns3=12), beacon_sending_time=15.000)
+  V44(ns3=49) -> V7(ns3=12) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=15.000)
+
+[t=15.027]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V7(ns3=12) -> Ctrl27(?) : Heartbeat(Sender=V7(ns3=12), beacon_sending_time=15.000)
+  V44(ns3=49) -> Ctrl27(?) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=15.000)
+
+[t=15.037]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl27(?) liveness table updated:
+    V7(ns3=12) : beacon_sending_time=15.000  ACCEPTED
+    V44(ns3=49) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.127]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl27(?)
+  captured_packet for V7(ns3=12) : Heartbeat(Sender=V7(ns3=12), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V44(ns3=49) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl27(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.027]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl27(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V7(ns3=12) liveness with V7(ns3=12)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V44(ns3=49) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V44(ns3=49)
+    claimed_sender  (forged identity)  = V7(ns3=12)
+    Ctrl27(?) topology DB[V44(ns3=49)] <- Heartbeat(Sender=V7(ns3=12), beacon_sending_time=15.000)  IMPERSONATING V7(ns3=12)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl27(?)
+
+[t=17.027]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl27(?) now holds conflicting liveness:
+    V7(ns3=12) : beacon_sending_time=15.000 < current t=17.027  [STALE]
+    V44(ns3=49) : beacon_sending_time=15.000 < current t=17.027  [STALE/FORGED — claims to be V7(ns3=12)]
+  Two liveness entries now assert the same identity (V7(ns3=12)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.027000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl28(?)  VICTIMS=V66(ns3=71)/V8(ns3=13)
+========================================
+[t=15.028]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V66(ns3=71) -> V8(ns3=13) : Heartbeat(Sender=V66(ns3=71), beacon_sending_time=15.000)
+  V8(ns3=13) -> V66(ns3=71) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=15.000)
+
+[t=15.028]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V66(ns3=71) -> Ctrl28(?) : Heartbeat(Sender=V66(ns3=71), beacon_sending_time=15.000)
+  V8(ns3=13) -> Ctrl28(?) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=15.000)
+
+[t=15.038]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl28(?) liveness table updated:
+    V66(ns3=71) : beacon_sending_time=15.000  ACCEPTED
+    V8(ns3=13) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.128]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl28(?)
+  captured_packet for V66(ns3=71) : Heartbeat(Sender=V66(ns3=71), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V8(ns3=13) : Heartbeat(Sender=V8(ns3=13), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl28(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.028]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl28(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V66(ns3=71) liveness with V66(ns3=71)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V8(ns3=13) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V8(ns3=13)
+    claimed_sender  (forged identity)  = V66(ns3=71)
+    Ctrl28(?) topology DB[V8(ns3=13)] <- Heartbeat(Sender=V66(ns3=71), beacon_sending_time=15.000)  IMPERSONATING V66(ns3=71)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl28(?)
+
+[t=17.028]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl28(?) now holds conflicting liveness:
+    V66(ns3=71) : beacon_sending_time=15.000 < current t=17.028  [STALE]
+    V8(ns3=13) : beacon_sending_time=15.000 < current t=17.028  [STALE/FORGED — claims to be V66(ns3=71)]
+  Two liveness entries now assert the same identity (V66(ns3=71)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.028000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl29(?)  VICTIMS=V142(ns3=147)/V146(ns3=151)
+========================================
+[t=15.029]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V142(ns3=147) -> V146(ns3=151) : Heartbeat(Sender=V142(ns3=147), beacon_sending_time=15.000)
+  V146(ns3=151) -> V142(ns3=147) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=15.000)
+
+[t=15.029]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V142(ns3=147) -> Ctrl29(?) : Heartbeat(Sender=V142(ns3=147), beacon_sending_time=15.000)
+  V146(ns3=151) -> Ctrl29(?) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=15.000)
+
+[t=15.039]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl29(?) liveness table updated:
+    V142(ns3=147) : beacon_sending_time=15.000  ACCEPTED
+    V146(ns3=151) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.129]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl29(?)
+  captured_packet for V142(ns3=147) : Heartbeat(Sender=V142(ns3=147), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V146(ns3=151) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl29(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.029]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl29(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V142(ns3=147) liveness with V142(ns3=147)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V146(ns3=151) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V146(ns3=151)
+    claimed_sender  (forged identity)  = V142(ns3=147)
+    Ctrl29(?) topology DB[V146(ns3=151)] <- Heartbeat(Sender=V142(ns3=147), beacon_sending_time=15.000)  IMPERSONATING V142(ns3=147)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl29(?)
+
+[t=17.029]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl29(?) now holds conflicting liveness:
+    V142(ns3=147) : beacon_sending_time=15.000 < current t=17.029  [STALE]
+    V146(ns3=151) : beacon_sending_time=15.000 < current t=17.029  [STALE/FORGED — claims to be V142(ns3=147)]
+  Two liveness entries now assert the same identity (V142(ns3=147)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.029000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl30(?)  VICTIMS=V119(ns3=124)/V123(ns3=128)
+========================================
+[t=15.030]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V119(ns3=124) -> V123(ns3=128) : Heartbeat(Sender=V119(ns3=124), beacon_sending_time=15.000)
+  V123(ns3=128) -> V119(ns3=124) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.000)
+
+[t=15.030]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V119(ns3=124) -> Ctrl30(?) : Heartbeat(Sender=V119(ns3=124), beacon_sending_time=15.000)
+  V123(ns3=128) -> Ctrl30(?) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.000)
+
+[t=15.040]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl30(?) liveness table updated:
+    V119(ns3=124) : beacon_sending_time=15.000  ACCEPTED
+    V123(ns3=128) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.130]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl30(?)
+  captured_packet for V119(ns3=124) : Heartbeat(Sender=V119(ns3=124), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V123(ns3=128) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl30(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.030]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl30(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V119(ns3=124) liveness with V119(ns3=124)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V123(ns3=128) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V123(ns3=128)
+    claimed_sender  (forged identity)  = V119(ns3=124)
+    Ctrl30(?) topology DB[V123(ns3=128)] <- Heartbeat(Sender=V119(ns3=124), beacon_sending_time=15.000)  IMPERSONATING V119(ns3=124)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl30(?)
+
+[t=17.030]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl30(?) now holds conflicting liveness:
+    V119(ns3=124) : beacon_sending_time=15.000 < current t=17.030  [STALE]
+    V123(ns3=128) : beacon_sending_time=15.000 < current t=17.030  [STALE/FORGED — claims to be V119(ns3=124)]
+  Two liveness entries now assert the same identity (V119(ns3=124)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.030000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl31(?)  VICTIMS=V42(ns3=47)/V69(ns3=74)
+========================================
+[t=15.031]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V42(ns3=47) -> V69(ns3=74) : Heartbeat(Sender=V42(ns3=47), beacon_sending_time=15.000)
+  V69(ns3=74) -> V42(ns3=47) : Heartbeat(Sender=V69(ns3=74), beacon_sending_time=15.000)
+
+[t=15.031]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V42(ns3=47) -> Ctrl31(?) : Heartbeat(Sender=V42(ns3=47), beacon_sending_time=15.000)
+  V69(ns3=74) -> Ctrl31(?) : Heartbeat(Sender=V69(ns3=74), beacon_sending_time=15.000)
+
+[t=15.041]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl31(?) liveness table updated:
+    V42(ns3=47) : beacon_sending_time=15.000  ACCEPTED
+    V69(ns3=74) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.131]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl31(?)
+  captured_packet for V42(ns3=47) : Heartbeat(Sender=V42(ns3=47), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V69(ns3=74) : Heartbeat(Sender=V69(ns3=74), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl31(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.031]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl31(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V42(ns3=47) liveness with V42(ns3=47)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V69(ns3=74) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V69(ns3=74)
+    claimed_sender  (forged identity)  = V42(ns3=47)
+    Ctrl31(?) topology DB[V69(ns3=74)] <- Heartbeat(Sender=V42(ns3=47), beacon_sending_time=15.000)  IMPERSONATING V42(ns3=47)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl31(?)
+
+[t=17.031]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl31(?) now holds conflicting liveness:
+    V42(ns3=47) : beacon_sending_time=15.000 < current t=17.031  [STALE]
+    V69(ns3=74) : beacon_sending_time=15.000 < current t=17.031  [STALE/FORGED — claims to be V42(ns3=47)]
+  Two liveness entries now assert the same identity (V42(ns3=47)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.031000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl32(?)  VICTIMS=V30(ns3=35)/V83(ns3=88)
+========================================
+[t=15.032]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V30(ns3=35) -> V83(ns3=88) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=15.000)
+  V83(ns3=88) -> V30(ns3=35) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=15.000)
+
+[t=15.032]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V30(ns3=35) -> Ctrl32(?) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=15.000)
+  V83(ns3=88) -> Ctrl32(?) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=15.000)
+
+[t=15.042]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl32(?) liveness table updated:
+    V30(ns3=35) : beacon_sending_time=15.000  ACCEPTED
+    V83(ns3=88) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.132]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl32(?)
+  captured_packet for V30(ns3=35) : Heartbeat(Sender=V30(ns3=35), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V83(ns3=88) : Heartbeat(Sender=V83(ns3=88), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl32(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.032]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl32(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V30(ns3=35) liveness with V30(ns3=35)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V83(ns3=88) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V83(ns3=88)
+    claimed_sender  (forged identity)  = V30(ns3=35)
+    Ctrl32(?) topology DB[V83(ns3=88)] <- Heartbeat(Sender=V30(ns3=35), beacon_sending_time=15.000)  IMPERSONATING V30(ns3=35)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl32(?)
+
+[t=17.032]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl32(?) now holds conflicting liveness:
+    V30(ns3=35) : beacon_sending_time=15.000 < current t=17.032  [STALE]
+    V83(ns3=88) : beacon_sending_time=15.000 < current t=17.032  [STALE/FORGED — claims to be V30(ns3=35)]
+  Two liveness entries now assert the same identity (V30(ns3=35)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.032000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl33(?)  VICTIMS=V148(ns3=153)/V107(ns3=112)
+========================================
+[t=15.033]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V148(ns3=153) -> V107(ns3=112) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=15.000)
+  V107(ns3=112) -> V148(ns3=153) : Heartbeat(Sender=V107(ns3=112), beacon_sending_time=15.000)
+
+[t=15.033]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V148(ns3=153) -> Ctrl33(?) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=15.000)
+  V107(ns3=112) -> Ctrl33(?) : Heartbeat(Sender=V107(ns3=112), beacon_sending_time=15.000)
+
+[t=15.043]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl33(?) liveness table updated:
+    V148(ns3=153) : beacon_sending_time=15.000  ACCEPTED
+    V107(ns3=112) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.133]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl33(?)
+  captured_packet for V148(ns3=153) : Heartbeat(Sender=V148(ns3=153), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V107(ns3=112) : Heartbeat(Sender=V107(ns3=112), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl33(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.033]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl33(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V148(ns3=153) liveness with V148(ns3=153)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V107(ns3=112) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V107(ns3=112)
+    claimed_sender  (forged identity)  = V148(ns3=153)
+    Ctrl33(?) topology DB[V107(ns3=112)] <- Heartbeat(Sender=V148(ns3=153), beacon_sending_time=15.000)  IMPERSONATING V148(ns3=153)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl33(?)
+
+[t=17.033]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl33(?) now holds conflicting liveness:
+    V148(ns3=153) : beacon_sending_time=15.000 < current t=17.033  [STALE]
+    V107(ns3=112) : beacon_sending_time=15.000 < current t=17.033  [STALE/FORGED — claims to be V148(ns3=153)]
+  Two liveness entries now assert the same identity (V148(ns3=153)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.033000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl34(?)  VICTIMS=V146(ns3=151)/V142(ns3=147)
+========================================
+[t=15.034]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V146(ns3=151) -> V142(ns3=147) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=15.000)
+  V142(ns3=147) -> V146(ns3=151) : Heartbeat(Sender=V142(ns3=147), beacon_sending_time=15.000)
+
+[t=15.034]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V146(ns3=151) -> Ctrl34(?) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=15.000)
+  V142(ns3=147) -> Ctrl34(?) : Heartbeat(Sender=V142(ns3=147), beacon_sending_time=15.000)
+
+[t=15.044]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl34(?) liveness table updated:
+    V146(ns3=151) : beacon_sending_time=15.000  ACCEPTED
+    V142(ns3=147) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.134]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl34(?)
+  captured_packet for V146(ns3=151) : Heartbeat(Sender=V146(ns3=151), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V142(ns3=147) : Heartbeat(Sender=V142(ns3=147), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl34(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.034]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl34(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V146(ns3=151) liveness with V146(ns3=151)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V142(ns3=147) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V142(ns3=147)
+    claimed_sender  (forged identity)  = V146(ns3=151)
+    Ctrl34(?) topology DB[V142(ns3=147)] <- Heartbeat(Sender=V146(ns3=151), beacon_sending_time=15.000)  IMPERSONATING V146(ns3=151)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl34(?)
+
+[t=17.034]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl34(?) now holds conflicting liveness:
+    V146(ns3=151) : beacon_sending_time=15.000 < current t=17.034  [STALE]
+    V142(ns3=147) : beacon_sending_time=15.000 < current t=17.034  [STALE/FORGED — claims to be V146(ns3=151)]
+  Two liveness entries now assert the same identity (V146(ns3=151)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.034000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl35(?)  VICTIMS=V198(ns3=203)/V139(ns3=144)
+========================================
+[t=15.035]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V198(ns3=203) -> V139(ns3=144) : Heartbeat(Sender=V198(ns3=203), beacon_sending_time=15.000)
+  V139(ns3=144) -> V198(ns3=203) : Heartbeat(Sender=V139(ns3=144), beacon_sending_time=15.000)
+
+[t=15.035]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V198(ns3=203) -> Ctrl35(?) : Heartbeat(Sender=V198(ns3=203), beacon_sending_time=15.000)
+  V139(ns3=144) -> Ctrl35(?) : Heartbeat(Sender=V139(ns3=144), beacon_sending_time=15.000)
+
+[t=15.045]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl35(?) liveness table updated:
+    V198(ns3=203) : beacon_sending_time=15.000  ACCEPTED
+    V139(ns3=144) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.135]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl35(?)
+  captured_packet for V198(ns3=203) : Heartbeat(Sender=V198(ns3=203), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V139(ns3=144) : Heartbeat(Sender=V139(ns3=144), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl35(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.035]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl35(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V198(ns3=203) liveness with V198(ns3=203)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V139(ns3=144) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V139(ns3=144)
+    claimed_sender  (forged identity)  = V198(ns3=203)
+    Ctrl35(?) topology DB[V139(ns3=144)] <- Heartbeat(Sender=V198(ns3=203), beacon_sending_time=15.000)  IMPERSONATING V198(ns3=203)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl35(?)
+
+[t=17.035]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl35(?) now holds conflicting liveness:
+    V198(ns3=203) : beacon_sending_time=15.000 < current t=17.035  [STALE]
+    V139(ns3=144) : beacon_sending_time=15.000 < current t=17.035  [STALE/FORGED — claims to be V198(ns3=203)]
+  Two liveness entries now assert the same identity (V198(ns3=203)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.035000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl36(?)  VICTIMS=V34(ns3=39)/V106(ns3=111)
+========================================
+[t=15.036]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V34(ns3=39) -> V106(ns3=111) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=15.000)
+  V106(ns3=111) -> V34(ns3=39) : Heartbeat(Sender=V106(ns3=111), beacon_sending_time=15.000)
+
+[t=15.036]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V34(ns3=39) -> Ctrl36(?) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=15.000)
+  V106(ns3=111) -> Ctrl36(?) : Heartbeat(Sender=V106(ns3=111), beacon_sending_time=15.000)
+
+[t=15.046]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl36(?) liveness table updated:
+    V34(ns3=39) : beacon_sending_time=15.000  ACCEPTED
+    V106(ns3=111) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.136]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl36(?)
+  captured_packet for V34(ns3=39) : Heartbeat(Sender=V34(ns3=39), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V106(ns3=111) : Heartbeat(Sender=V106(ns3=111), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl36(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.036]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl36(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V34(ns3=39) liveness with V34(ns3=39)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V106(ns3=111) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V106(ns3=111)
+    claimed_sender  (forged identity)  = V34(ns3=39)
+    Ctrl36(?) topology DB[V106(ns3=111)] <- Heartbeat(Sender=V34(ns3=39), beacon_sending_time=15.000)  IMPERSONATING V34(ns3=39)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl36(?)
+
+[t=17.036]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl36(?) now holds conflicting liveness:
+    V34(ns3=39) : beacon_sending_time=15.000 < current t=17.036  [STALE]
+    V106(ns3=111) : beacon_sending_time=15.000 < current t=17.036  [STALE/FORGED — claims to be V34(ns3=39)]
+  Two liveness entries now assert the same identity (V34(ns3=39)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.036000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl37(?)  VICTIMS=V77(ns3=82)/V32(ns3=37)
+========================================
+[t=15.037]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V77(ns3=82) -> V32(ns3=37) : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=15.000)
+  V32(ns3=37) -> V77(ns3=82) : Heartbeat(Sender=V32(ns3=37), beacon_sending_time=15.000)
+
+[t=15.037]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V77(ns3=82) -> Ctrl37(?) : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=15.000)
+  V32(ns3=37) -> Ctrl37(?) : Heartbeat(Sender=V32(ns3=37), beacon_sending_time=15.000)
+
+[t=15.047]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl37(?) liveness table updated:
+    V77(ns3=82) : beacon_sending_time=15.000  ACCEPTED
+    V32(ns3=37) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.137]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl37(?)
+  captured_packet for V77(ns3=82) : Heartbeat(Sender=V77(ns3=82), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V32(ns3=37) : Heartbeat(Sender=V32(ns3=37), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl37(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.037]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl37(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V77(ns3=82) liveness with V77(ns3=82)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V32(ns3=37) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V32(ns3=37)
+    claimed_sender  (forged identity)  = V77(ns3=82)
+    Ctrl37(?) topology DB[V32(ns3=37)] <- Heartbeat(Sender=V77(ns3=82), beacon_sending_time=15.000)  IMPERSONATING V77(ns3=82)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl37(?)
+
+[t=17.037]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl37(?) now holds conflicting liveness:
+    V77(ns3=82) : beacon_sending_time=15.000 < current t=17.037  [STALE]
+    V32(ns3=37) : beacon_sending_time=15.000 < current t=17.037  [STALE/FORGED — claims to be V77(ns3=82)]
+  Two liveness entries now assert the same identity (V77(ns3=82)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.037000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl38(?)  VICTIMS=V1(ns3=6)/V165(ns3=170)
+========================================
+[t=15.038]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V1(ns3=6) -> V165(ns3=170) : Heartbeat(Sender=V1(ns3=6), beacon_sending_time=15.000)
+  V165(ns3=170) -> V1(ns3=6) : Heartbeat(Sender=V165(ns3=170), beacon_sending_time=15.000)
+
+[t=15.038]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V1(ns3=6) -> Ctrl38(?) : Heartbeat(Sender=V1(ns3=6), beacon_sending_time=15.000)
+  V165(ns3=170) -> Ctrl38(?) : Heartbeat(Sender=V165(ns3=170), beacon_sending_time=15.000)
+
+[t=15.048]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl38(?) liveness table updated:
+    V1(ns3=6) : beacon_sending_time=15.000  ACCEPTED
+    V165(ns3=170) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.138]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl38(?)
+  captured_packet for V1(ns3=6) : Heartbeat(Sender=V1(ns3=6), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V165(ns3=170) : Heartbeat(Sender=V165(ns3=170), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl38(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.038]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl38(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V1(ns3=6) liveness with V1(ns3=6)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V165(ns3=170) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V165(ns3=170)
+    claimed_sender  (forged identity)  = V1(ns3=6)
+    Ctrl38(?) topology DB[V165(ns3=170)] <- Heartbeat(Sender=V1(ns3=6), beacon_sending_time=15.000)  IMPERSONATING V1(ns3=6)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl38(?)
+
+[t=17.038]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl38(?) now holds conflicting liveness:
+    V1(ns3=6) : beacon_sending_time=15.000 < current t=17.038  [STALE]
+    V165(ns3=170) : beacon_sending_time=15.000 < current t=17.038  [STALE/FORGED — claims to be V1(ns3=6)]
   Two liveness entries now assert the same identity (V1(ns3=6)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.038000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl39(?)  VICTIMS=V75(ns3=80)/V104(ns3=109)
+========================================
+[t=15.039]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V75(ns3=80) -> V104(ns3=109) : Heartbeat(Sender=V75(ns3=80), beacon_sending_time=15.000)
+  V104(ns3=109) -> V75(ns3=80) : Heartbeat(Sender=V104(ns3=109), beacon_sending_time=15.000)
+
+[t=15.039]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V75(ns3=80) -> Ctrl39(?) : Heartbeat(Sender=V75(ns3=80), beacon_sending_time=15.000)
+  V104(ns3=109) -> Ctrl39(?) : Heartbeat(Sender=V104(ns3=109), beacon_sending_time=15.000)
+
+[t=15.049]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl39(?) liveness table updated:
+    V75(ns3=80) : beacon_sending_time=15.000  ACCEPTED
+    V104(ns3=109) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.139]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl39(?)
+  captured_packet for V75(ns3=80) : Heartbeat(Sender=V75(ns3=80), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V104(ns3=109) : Heartbeat(Sender=V104(ns3=109), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl39(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.039]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl39(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V75(ns3=80) liveness with V75(ns3=80)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V104(ns3=109) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V104(ns3=109)
+    claimed_sender  (forged identity)  = V75(ns3=80)
+    Ctrl39(?) topology DB[V104(ns3=109)] <- Heartbeat(Sender=V75(ns3=80), beacon_sending_time=15.000)  IMPERSONATING V75(ns3=80)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl39(?)
+
+[t=17.039]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl39(?) now holds conflicting liveness:
+    V75(ns3=80) : beacon_sending_time=15.000 < current t=17.039  [STALE]
+    V104(ns3=109) : beacon_sending_time=15.000 < current t=17.039  [STALE/FORGED — claims to be V75(ns3=80)]
+  Two liveness entries now assert the same identity (V75(ns3=80)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.039000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl40(?)  VICTIMS=V132(ns3=137)/V105(ns3=110)
+========================================
+[t=15.040]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V132(ns3=137) -> V105(ns3=110) : Heartbeat(Sender=V132(ns3=137), beacon_sending_time=15.000)
+  V105(ns3=110) -> V132(ns3=137) : Heartbeat(Sender=V105(ns3=110), beacon_sending_time=15.000)
+
+[t=15.040]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V132(ns3=137) -> Ctrl40(?) : Heartbeat(Sender=V132(ns3=137), beacon_sending_time=15.000)
+  V105(ns3=110) -> Ctrl40(?) : Heartbeat(Sender=V105(ns3=110), beacon_sending_time=15.000)
+
+[t=15.050]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl40(?) liveness table updated:
+    V132(ns3=137) : beacon_sending_time=15.000  ACCEPTED
+    V105(ns3=110) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.140]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl40(?)
+  captured_packet for V132(ns3=137) : Heartbeat(Sender=V132(ns3=137), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V105(ns3=110) : Heartbeat(Sender=V105(ns3=110), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl40(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.040]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl40(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V132(ns3=137) liveness with V132(ns3=137)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V105(ns3=110) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V105(ns3=110)
+    claimed_sender  (forged identity)  = V132(ns3=137)
+    Ctrl40(?) topology DB[V105(ns3=110)] <- Heartbeat(Sender=V132(ns3=137), beacon_sending_time=15.000)  IMPERSONATING V132(ns3=137)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl40(?)
+
+[t=17.040]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl40(?) now holds conflicting liveness:
+    V132(ns3=137) : beacon_sending_time=15.000 < current t=17.040  [STALE]
+    V105(ns3=110) : beacon_sending_time=15.000 < current t=17.040  [STALE/FORGED — claims to be V132(ns3=137)]
+  Two liveness entries now assert the same identity (V132(ns3=137)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.040000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl41(?)  VICTIMS=V60(ns3=65)/V103(ns3=108)
+========================================
+[t=15.041]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V60(ns3=65) -> V103(ns3=108) : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=15.000)
+  V103(ns3=108) -> V60(ns3=65) : Heartbeat(Sender=V103(ns3=108), beacon_sending_time=15.000)
+
+[t=15.041]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V60(ns3=65) -> Ctrl41(?) : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=15.000)
+  V103(ns3=108) -> Ctrl41(?) : Heartbeat(Sender=V103(ns3=108), beacon_sending_time=15.000)
+
+[t=15.051]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl41(?) liveness table updated:
+    V60(ns3=65) : beacon_sending_time=15.000  ACCEPTED
+    V103(ns3=108) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.141]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl41(?)
+  captured_packet for V60(ns3=65) : Heartbeat(Sender=V60(ns3=65), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V103(ns3=108) : Heartbeat(Sender=V103(ns3=108), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl41(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.041]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl41(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V60(ns3=65) liveness with V60(ns3=65)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V103(ns3=108) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V103(ns3=108)
+    claimed_sender  (forged identity)  = V60(ns3=65)
+    Ctrl41(?) topology DB[V103(ns3=108)] <- Heartbeat(Sender=V60(ns3=65), beacon_sending_time=15.000)  IMPERSONATING V60(ns3=65)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl41(?)
+
+[t=17.041]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl41(?) now holds conflicting liveness:
+    V60(ns3=65) : beacon_sending_time=15.000 < current t=17.041  [STALE]
+    V103(ns3=108) : beacon_sending_time=15.000 < current t=17.041  [STALE/FORGED — claims to be V60(ns3=65)]
+  Two liveness entries now assert the same identity (V60(ns3=65)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.041000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl42(?)  VICTIMS=V90(ns3=95)/V73(ns3=78)
+========================================
+[t=15.042]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V90(ns3=95) -> V73(ns3=78) : Heartbeat(Sender=V90(ns3=95), beacon_sending_time=15.000)
+  V73(ns3=78) -> V90(ns3=95) : Heartbeat(Sender=V73(ns3=78), beacon_sending_time=15.000)
+
+[t=15.042]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V90(ns3=95) -> Ctrl42(?) : Heartbeat(Sender=V90(ns3=95), beacon_sending_time=15.000)
+  V73(ns3=78) -> Ctrl42(?) : Heartbeat(Sender=V73(ns3=78), beacon_sending_time=15.000)
+
+[t=15.052]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl42(?) liveness table updated:
+    V90(ns3=95) : beacon_sending_time=15.000  ACCEPTED
+    V73(ns3=78) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.142]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl42(?)
+  captured_packet for V90(ns3=95) : Heartbeat(Sender=V90(ns3=95), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V73(ns3=78) : Heartbeat(Sender=V73(ns3=78), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl42(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.042]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl42(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V90(ns3=95) liveness with V90(ns3=95)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V73(ns3=78) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V73(ns3=78)
+    claimed_sender  (forged identity)  = V90(ns3=95)
+    Ctrl42(?) topology DB[V73(ns3=78)] <- Heartbeat(Sender=V90(ns3=95), beacon_sending_time=15.000)  IMPERSONATING V90(ns3=95)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl42(?)
+
+[t=17.042]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl42(?) now holds conflicting liveness:
+    V90(ns3=95) : beacon_sending_time=15.000 < current t=17.042  [STALE]
+    V73(ns3=78) : beacon_sending_time=15.000 < current t=17.042  [STALE/FORGED — claims to be V90(ns3=95)]
+  Two liveness entries now assert the same identity (V90(ns3=95)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.042000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl43(?)  VICTIMS=V12(ns3=17)/V54(ns3=59)
+========================================
+[t=15.043]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V12(ns3=17) -> V54(ns3=59) : Heartbeat(Sender=V12(ns3=17), beacon_sending_time=15.000)
+  V54(ns3=59) -> V12(ns3=17) : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=15.000)
+
+[t=15.043]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V12(ns3=17) -> Ctrl43(?) : Heartbeat(Sender=V12(ns3=17), beacon_sending_time=15.000)
+  V54(ns3=59) -> Ctrl43(?) : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=15.000)
+
+[t=15.053]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl43(?) liveness table updated:
+    V12(ns3=17) : beacon_sending_time=15.000  ACCEPTED
+    V54(ns3=59) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.143]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl43(?)
+  captured_packet for V12(ns3=17) : Heartbeat(Sender=V12(ns3=17), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V54(ns3=59) : Heartbeat(Sender=V54(ns3=59), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl43(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.043]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl43(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V12(ns3=17) liveness with V12(ns3=17)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V54(ns3=59) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V54(ns3=59)
+    claimed_sender  (forged identity)  = V12(ns3=17)
+    Ctrl43(?) topology DB[V54(ns3=59)] <- Heartbeat(Sender=V12(ns3=17), beacon_sending_time=15.000)  IMPERSONATING V12(ns3=17)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl43(?)
+
+[t=17.043]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl43(?) now holds conflicting liveness:
+    V12(ns3=17) : beacon_sending_time=15.000 < current t=17.043  [STALE]
+    V54(ns3=59) : beacon_sending_time=15.000 < current t=17.043  [STALE/FORGED — claims to be V12(ns3=17)]
+  Two liveness entries now assert the same identity (V12(ns3=17)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.043000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl44(?)  VICTIMS=V115(ns3=120)/V135(ns3=140)
+========================================
+[t=15.044]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V115(ns3=120) -> V135(ns3=140) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=15.000)
+  V135(ns3=140) -> V115(ns3=120) : Heartbeat(Sender=V135(ns3=140), beacon_sending_time=15.000)
+
+[t=15.044]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V115(ns3=120) -> Ctrl44(?) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=15.000)
+  V135(ns3=140) -> Ctrl44(?) : Heartbeat(Sender=V135(ns3=140), beacon_sending_time=15.000)
+
+[t=15.054]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl44(?) liveness table updated:
+    V115(ns3=120) : beacon_sending_time=15.000  ACCEPTED
+    V135(ns3=140) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.144]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl44(?)
+  captured_packet for V115(ns3=120) : Heartbeat(Sender=V115(ns3=120), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V135(ns3=140) : Heartbeat(Sender=V135(ns3=140), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl44(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.044]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl44(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V115(ns3=120) liveness with V115(ns3=120)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V135(ns3=140) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V135(ns3=140)
+    claimed_sender  (forged identity)  = V115(ns3=120)
+    Ctrl44(?) topology DB[V135(ns3=140)] <- Heartbeat(Sender=V115(ns3=120), beacon_sending_time=15.000)  IMPERSONATING V115(ns3=120)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl44(?)
+
+[t=17.044]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl44(?) now holds conflicting liveness:
+    V115(ns3=120) : beacon_sending_time=15.000 < current t=17.044  [STALE]
+    V135(ns3=140) : beacon_sending_time=15.000 < current t=17.044  [STALE/FORGED — claims to be V115(ns3=120)]
+  Two liveness entries now assert the same identity (V115(ns3=120)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.044000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl45(?)  VICTIMS=V81(ns3=86)/V19(ns3=24)
+========================================
+[t=15.045]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V81(ns3=86) -> V19(ns3=24) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=15.000)
+  V19(ns3=24) -> V81(ns3=86) : Heartbeat(Sender=V19(ns3=24), beacon_sending_time=15.000)
+
+[t=15.045]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V81(ns3=86) -> Ctrl45(?) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=15.000)
+  V19(ns3=24) -> Ctrl45(?) : Heartbeat(Sender=V19(ns3=24), beacon_sending_time=15.000)
+
+[t=15.055]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl45(?) liveness table updated:
+    V81(ns3=86) : beacon_sending_time=15.000  ACCEPTED
+    V19(ns3=24) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.145]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl45(?)
+  captured_packet for V81(ns3=86) : Heartbeat(Sender=V81(ns3=86), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V19(ns3=24) : Heartbeat(Sender=V19(ns3=24), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl45(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.045]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl45(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V81(ns3=86) liveness with V81(ns3=86)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V19(ns3=24) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V19(ns3=24)
+    claimed_sender  (forged identity)  = V81(ns3=86)
+    Ctrl45(?) topology DB[V19(ns3=24)] <- Heartbeat(Sender=V81(ns3=86), beacon_sending_time=15.000)  IMPERSONATING V81(ns3=86)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl45(?)
+
+[t=17.045]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl45(?) now holds conflicting liveness:
+    V81(ns3=86) : beacon_sending_time=15.000 < current t=17.045  [STALE]
+    V19(ns3=24) : beacon_sending_time=15.000 < current t=17.045  [STALE/FORGED — claims to be V81(ns3=86)]
+  Two liveness entries now assert the same identity (V81(ns3=86)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.045000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl46(?)  VICTIMS=V22(ns3=27)/V127(ns3=132)
+========================================
+[t=15.046]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V22(ns3=27) -> V127(ns3=132) : Heartbeat(Sender=V22(ns3=27), beacon_sending_time=15.000)
+  V127(ns3=132) -> V22(ns3=27) : Heartbeat(Sender=V127(ns3=132), beacon_sending_time=15.000)
+
+[t=15.046]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V22(ns3=27) -> Ctrl46(?) : Heartbeat(Sender=V22(ns3=27), beacon_sending_time=15.000)
+  V127(ns3=132) -> Ctrl46(?) : Heartbeat(Sender=V127(ns3=132), beacon_sending_time=15.000)
+
+[t=15.056]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl46(?) liveness table updated:
+    V22(ns3=27) : beacon_sending_time=15.000  ACCEPTED
+    V127(ns3=132) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.146]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl46(?)
+  captured_packet for V22(ns3=27) : Heartbeat(Sender=V22(ns3=27), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V127(ns3=132) : Heartbeat(Sender=V127(ns3=132), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl46(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.046]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl46(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V22(ns3=27) liveness with V22(ns3=27)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V127(ns3=132) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V127(ns3=132)
+    claimed_sender  (forged identity)  = V22(ns3=27)
+    Ctrl46(?) topology DB[V127(ns3=132)] <- Heartbeat(Sender=V22(ns3=27), beacon_sending_time=15.000)  IMPERSONATING V22(ns3=27)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl46(?)
+
+[t=17.046]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl46(?) now holds conflicting liveness:
+    V22(ns3=27) : beacon_sending_time=15.000 < current t=17.046  [STALE]
+    V127(ns3=132) : beacon_sending_time=15.000 < current t=17.046  [STALE/FORGED — claims to be V22(ns3=27)]
+  Two liveness entries now assert the same identity (V22(ns3=27)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.046000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl47(?)  VICTIMS=V123(ns3=128)/V143(ns3=148)
+========================================
+[t=15.047]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V123(ns3=128) -> V143(ns3=148) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.000)
+  V143(ns3=148) -> V123(ns3=128) : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=15.000)
+
+[t=15.047]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V123(ns3=128) -> Ctrl47(?) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.000)
+  V143(ns3=148) -> Ctrl47(?) : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=15.000)
+
+[t=15.057]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl47(?) liveness table updated:
+    V123(ns3=128) : beacon_sending_time=15.000  ACCEPTED
+    V143(ns3=148) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.147]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl47(?)
+  captured_packet for V123(ns3=128) : Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V143(ns3=148) : Heartbeat(Sender=V143(ns3=148), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl47(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.047]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl47(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V123(ns3=128) liveness with V123(ns3=128)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V143(ns3=148) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V143(ns3=148)
+    claimed_sender  (forged identity)  = V123(ns3=128)
+    Ctrl47(?) topology DB[V143(ns3=148)] <- Heartbeat(Sender=V123(ns3=128), beacon_sending_time=15.000)  IMPERSONATING V123(ns3=128)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl47(?)
+
+[t=17.047]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl47(?) now holds conflicting liveness:
+    V123(ns3=128) : beacon_sending_time=15.000 < current t=17.047  [STALE]
+    V143(ns3=148) : beacon_sending_time=15.000 < current t=17.047  [STALE/FORGED — claims to be V123(ns3=128)]
+  Two liveness entries now assert the same identity (V123(ns3=128)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.047000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl48(?)  VICTIMS=V98(ns3=103)/V133(ns3=138)
+========================================
+[t=15.048]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V98(ns3=103) -> V133(ns3=138) : Heartbeat(Sender=V98(ns3=103), beacon_sending_time=15.000)
+  V133(ns3=138) -> V98(ns3=103) : Heartbeat(Sender=V133(ns3=138), beacon_sending_time=15.000)
+
+[t=15.048]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V98(ns3=103) -> Ctrl48(?) : Heartbeat(Sender=V98(ns3=103), beacon_sending_time=15.000)
+  V133(ns3=138) -> Ctrl48(?) : Heartbeat(Sender=V133(ns3=138), beacon_sending_time=15.000)
+
+[t=15.058]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl48(?) liveness table updated:
+    V98(ns3=103) : beacon_sending_time=15.000  ACCEPTED
+    V133(ns3=138) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.148]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl48(?)
+  captured_packet for V98(ns3=103) : Heartbeat(Sender=V98(ns3=103), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V133(ns3=138) : Heartbeat(Sender=V133(ns3=138), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl48(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.048]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl48(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V98(ns3=103) liveness with V98(ns3=103)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V133(ns3=138) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V133(ns3=138)
+    claimed_sender  (forged identity)  = V98(ns3=103)
+    Ctrl48(?) topology DB[V133(ns3=138)] <- Heartbeat(Sender=V98(ns3=103), beacon_sending_time=15.000)  IMPERSONATING V98(ns3=103)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl48(?)
+
+[t=17.048]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl48(?) now holds conflicting liveness:
+    V98(ns3=103) : beacon_sending_time=15.000 < current t=17.048  [STALE]
+    V133(ns3=138) : beacon_sending_time=15.000 < current t=17.048  [STALE/FORGED — claims to be V98(ns3=103)]
+  Two liveness entries now assert the same identity (V98(ns3=103)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.048000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl49(?)  VICTIMS=V24(ns3=29)/V92(ns3=97)
+========================================
+[t=15.049]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V24(ns3=29) -> V92(ns3=97) : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=15.000)
+  V92(ns3=97) -> V24(ns3=29) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=15.000)
+
+[t=15.049]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V24(ns3=29) -> Ctrl49(?) : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=15.000)
+  V92(ns3=97) -> Ctrl49(?) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=15.000)
+
+[t=15.059]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl49(?) liveness table updated:
+    V24(ns3=29) : beacon_sending_time=15.000  ACCEPTED
+    V92(ns3=97) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.149]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl49(?)
+  captured_packet for V24(ns3=29) : Heartbeat(Sender=V24(ns3=29), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V92(ns3=97) : Heartbeat(Sender=V92(ns3=97), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl49(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.049]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl49(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V24(ns3=29) liveness with V24(ns3=29)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V92(ns3=97) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V92(ns3=97)
+    claimed_sender  (forged identity)  = V24(ns3=29)
+    Ctrl49(?) topology DB[V92(ns3=97)] <- Heartbeat(Sender=V24(ns3=29), beacon_sending_time=15.000)  IMPERSONATING V24(ns3=29)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl49(?)
+
+[t=17.049]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl49(?) now holds conflicting liveness:
+    V24(ns3=29) : beacon_sending_time=15.000 < current t=17.049  [STALE]
+    V92(ns3=97) : beacon_sending_time=15.000 < current t=17.049  [STALE/FORGED — claims to be V24(ns3=29)]
+  Two liveness entries now assert the same identity (V24(ns3=29)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.049000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl50(?)  VICTIMS=V44(ns3=49)/V39(ns3=44)
+========================================
+[t=15.050]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V44(ns3=49) -> V39(ns3=44) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=15.000)
+  V39(ns3=44) -> V44(ns3=49) : Heartbeat(Sender=V39(ns3=44), beacon_sending_time=15.000)
+
+[t=15.050]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V44(ns3=49) -> Ctrl50(?) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=15.000)
+  V39(ns3=44) -> Ctrl50(?) : Heartbeat(Sender=V39(ns3=44), beacon_sending_time=15.000)
+
+[t=15.060]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl50(?) liveness table updated:
+    V44(ns3=49) : beacon_sending_time=15.000  ACCEPTED
+    V39(ns3=44) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.150]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl50(?)
+  captured_packet for V44(ns3=49) : Heartbeat(Sender=V44(ns3=49), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V39(ns3=44) : Heartbeat(Sender=V39(ns3=44), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl50(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.050]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl50(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V44(ns3=49) liveness with V44(ns3=49)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V39(ns3=44) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V39(ns3=44)
+    claimed_sender  (forged identity)  = V44(ns3=49)
+    Ctrl50(?) topology DB[V39(ns3=44)] <- Heartbeat(Sender=V44(ns3=49), beacon_sending_time=15.000)  IMPERSONATING V44(ns3=49)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl50(?)
+
+[t=17.050]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl50(?) now holds conflicting liveness:
+    V44(ns3=49) : beacon_sending_time=15.000 < current t=17.050  [STALE]
+    V39(ns3=44) : beacon_sending_time=15.000 < current t=17.050  [STALE/FORGED — claims to be V44(ns3=49)]
+  Two liveness entries now assert the same identity (V44(ns3=49)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.050000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl51(?)  VICTIMS=V194(ns3=199)/V75(ns3=80)
+========================================
+[t=15.051]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V194(ns3=199) -> V75(ns3=80) : Heartbeat(Sender=V194(ns3=199), beacon_sending_time=15.000)
+  V75(ns3=80) -> V194(ns3=199) : Heartbeat(Sender=V75(ns3=80), beacon_sending_time=15.000)
+
+[t=15.051]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V194(ns3=199) -> Ctrl51(?) : Heartbeat(Sender=V194(ns3=199), beacon_sending_time=15.000)
+  V75(ns3=80) -> Ctrl51(?) : Heartbeat(Sender=V75(ns3=80), beacon_sending_time=15.000)
+
+[t=15.061]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl51(?) liveness table updated:
+    V194(ns3=199) : beacon_sending_time=15.000  ACCEPTED
+    V75(ns3=80) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.151]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl51(?)
+  captured_packet for V194(ns3=199) : Heartbeat(Sender=V194(ns3=199), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V75(ns3=80) : Heartbeat(Sender=V75(ns3=80), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl51(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.051]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl51(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V194(ns3=199) liveness with V194(ns3=199)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V75(ns3=80) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V75(ns3=80)
+    claimed_sender  (forged identity)  = V194(ns3=199)
+    Ctrl51(?) topology DB[V75(ns3=80)] <- Heartbeat(Sender=V194(ns3=199), beacon_sending_time=15.000)  IMPERSONATING V194(ns3=199)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl51(?)
+
+[t=17.051]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl51(?) now holds conflicting liveness:
+    V194(ns3=199) : beacon_sending_time=15.000 < current t=17.051  [STALE]
+    V75(ns3=80) : beacon_sending_time=15.000 < current t=17.051  [STALE/FORGED — claims to be V194(ns3=199)]
+  Two liveness entries now assert the same identity (V194(ns3=199)) under different slots
+  Packets may be routed using stale/non-existent liveness
+  Expected impact: packet loss, added delay, degraded PDR
+  <- ATTACK SUCCESS (no external packet)
+
+[t=17.051000]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+========================================
+  PAIR: ATTACKER=Ctrl52(?)  VICTIMS=V17(ns3=22)/V0(ns3=5)
+========================================
+[t=15.052]  STEP ①  NORMAL V2V HEARTBEAT EXCHANGE
+  V17(ns3=22) -> V0(ns3=5) : Heartbeat(Sender=V17(ns3=22), beacon_sending_time=15.000)
+  V0(ns3=5) -> V17(ns3=22) : Heartbeat(Sender=V0(ns3=5), beacon_sending_time=15.000)
+
+[t=15.052]  STEP ②  VEHICLES SEND HBs DIRECTLY TO CONTROLLER (no RSU)
+  V17(ns3=22) -> Ctrl52(?) : Heartbeat(Sender=V17(ns3=22), beacon_sending_time=15.000)
+  V0(ns3=5) -> Ctrl52(?) : Heartbeat(Sender=V0(ns3=5), beacon_sending_time=15.000)
+
+[t=15.062]  STEP ③  CONTROLLER ACCEPTS LEGITIMATE HBs
+  Ctrl52(?) liveness table updated:
+    V17(ns3=22) : beacon_sending_time=15.000  ACCEPTED
+    V0(ns3=5) : beacon_sending_time=15.000  ACCEPTED
+
+[t=15.152]  STEP ④  MALICIOUS CONTROLLER STORES STALE COPIES
+  Attacker Controller : Ctrl52(?)
+  captured_packet for V17(ns3=22) : Heartbeat(Sender=V17(ns3=22), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  captured_packet for V0(ns3=5) : Heartbeat(Sender=V0(ns3=5), beacon_sending_time=15.000)  (from STEP ② legitimate exchange)
+  Action : Ctrl52(?) stores both stale copies for internal replay (STEP ⑤)
+
+[t=17.052]  STEP ⑤  CONTROLLER INTERNAL REPLAY (no external packet)
+  Attacker Controller : Ctrl52(?)
+  Packet source       : stored STEP ④ stale copies
+  Overwrites V17(ns3=22) liveness with V17(ns3=22)'s own stale beacon_sending_time=15.000 (correctly attributed, just old)
+  Overwrites V0(ns3=5) liveness SLOT with a FORGED heartbeat
+    physical_sender (true slot owner) = V0(ns3=5)
+    claimed_sender  (forged identity)  = V17(ns3=22)
+    Ctrl52(?) topology DB[V0(ns3=5)] <- Heartbeat(Sender=V17(ns3=22), beacon_sending_time=15.000)  IMPERSONATING V17(ns3=22)
+  Different claimed vs. slot identity -> impersonation evidence
+  No external packet sent — attack is entirely internal to Ctrl52(?)
+
+[t=17.052]  STEP ⑥  FAULTY ROUTING CONSEQUENCES
+  Ctrl52(?) now holds conflicting liveness:
+    V17(ns3=22) : beacon_sending_time=15.000 < current t=17.052  [STALE]
+    V0(ns3=5) : beacon_sending_time=15.000 < current t=17.052  [STALE/FORGED — claims to be V17(ns3=22)]
+  Two liveness entries now assert the same identity (V17(ns3=22)) under different slots
   Packets may be routed using stale/non-existent liveness
   Expected impact: packet loss, added delay, degraded PDR
   <- ATTACK SUCCESS (no external packet)

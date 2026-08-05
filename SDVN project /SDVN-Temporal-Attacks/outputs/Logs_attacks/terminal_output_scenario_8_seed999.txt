@@ -1,0 +1,934 @@
+Solution at controller cleared
+[SUMO] Peak-activity alignment: trace_t0=58s -> 208 vehicles active in the 60s sim window (was ~few at raw t=0)
+[SUMO] Trace time offset: 58s -> waypoints shifted to NS-3 t=0
+[SUMO] Index remap active: 208 trace vehicle IDs mapped to NS-3 indices 0..207
+[SUMO] Loaded 211 positions, scheduled 281855 exact position+velocity events
+[NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/08_BSHH_S4_Malicious_Controller_With_RSU.xml
+
+========================================
+SCENARIO 08 - BSHH-S4 ATTACK CONFIGURED
+Malicious controllers : 33 / 4
+RSUs in path          : 33
+Stored HB time        : t=15
+Replay timing         : Option B — 2s after each pair's real SUMO break
+========================================
+
+[Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
+[PQC] liboqs linked — ML-KEM-1024 + ML-DSA-87 + HQC-5 active (Eqs. 3.15-3.17, 3.28-3.30).
+[CRYPTO] TETA-Guard pipeline initialised:
+  [1] ML-DSA-87 / Dilithium5  — SK_Vk long-term signing keys (Eq. 3.28)
+      dilithium5_sign / dilithium5_verify / dilithium5_thresh
+  [2] HMAC-SHA256(K_Vi,nk, m') — beacon auth using session key (Eq. 3.15)
+      beacon_hmac_sign / lw_mitigate  [K_Vi,nk from ML-KEM below]
+  [3] ML-KEM-1024 (Kyber-1024) + HQC-5 hybrid — K_Vi,nk session key (Eq. 3.15)
+      kem_register / kem_vehicle_keygen / kem_rsu_encapsulate / kem_vehicle_decapsulate
+  [4] LKH binary-tree key hierarchy — O(log n) revocation (Eq. 3.18)
+      lkh_revoke_vehicle / lkh_is_revoked / lkh_get_session_key  (n=200)
+  [5] Location-binding — m'_Vk = eij‖pos‖RSSI‖τs‖nonce, signed ML-DSA-87 (Eq. 3.29–3.32)
+      create_location_bound_report / verify_single_witness / verify_quorum
+  [6] Haversine distance (GPS consistency gate, Eq. 3.29)
+  All modules from .crypto_src/
+[CRYPTO][t=0] Keys initialised. KEM session measured.
+[KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
+[KEM][10ms budget] 199 handshakes timed: avg=41.3559 ms, max=107.714 ms, over_budget=199/199 (budget=10 ms)
+[TGN] TGN_Init() — online mode — L_link=20.4  γ_init=147.155  W_max=204
+[KEM][SimLatency][t=0.0344838] Vehicle 159 session key simulated-ready (real handshake was 34.4838 ms)
+[KEM][SimLatency][t=0.0346058] Vehicle 36 session key simulated-ready (real handshake was 34.6058 ms)
+[KEM][SimLatency][t=0.0346508] Vehicle 26 session key simulated-ready (real handshake was 34.6508 ms)
+[KEM][SimLatency][t=0.0346625] Vehicle 37 session key simulated-ready (real handshake was 34.6625 ms)
+[KEM][SimLatency][t=0.0346704] Vehicle 160 session key simulated-ready (real handshake was 34.6704 ms)
+[KEM][SimLatency][t=0.0346846] Vehicle 35 session key simulated-ready (real handshake was 34.6846 ms)
+[KEM][SimLatency][t=0.0346853] Vehicle 44 session key simulated-ready (real handshake was 34.6853 ms)
+[KEM][SimLatency][t=0.0347154] Vehicle 163 session key simulated-ready (real handshake was 34.7154 ms)
+[KEM][SimLatency][t=0.0347308] Vehicle 94 session key simulated-ready (real handshake was 34.7308 ms)
+[KEM][SimLatency][t=0.034731] Vehicle 41 session key simulated-ready (real handshake was 34.731 ms)
+[KEM][SimLatency][t=0.0347402] Vehicle 38 session key simulated-ready (real handshake was 34.7402 ms)
+[KEM][SimLatency][t=0.0347464] Vehicle 27 session key simulated-ready (real handshake was 34.7464 ms)
+[KEM][SimLatency][t=0.0347528] Vehicle 33 session key simulated-ready (real handshake was 34.7528 ms)
+[KEM][SimLatency][t=0.0347614] Vehicle 162 session key simulated-ready (real handshake was 34.7614 ms)
+[KEM][SimLatency][t=0.0347807] Vehicle 43 session key simulated-ready (real handshake was 34.7807 ms)
+[KEM][SimLatency][t=0.0347867] Vehicle 31 session key simulated-ready (real handshake was 34.7867 ms)
+[KEM][SimLatency][t=0.0347923] Vehicle 42 session key simulated-ready (real handshake was 34.7923 ms)
+[KEM][SimLatency][t=0.034795] Vehicle 48 session key simulated-ready (real handshake was 34.795 ms)
+[KEM][SimLatency][t=0.0347959] Vehicle 95 session key simulated-ready (real handshake was 34.7959 ms)
+[KEM][SimLatency][t=0.0348091] Vehicle 133 session key simulated-ready (real handshake was 34.8091 ms)
+[KEM][SimLatency][t=0.0348136] Vehicle 32 session key simulated-ready (real handshake was 34.8136 ms)
+[KEM][SimLatency][t=0.0348151] Vehicle 113 session key simulated-ready (real handshake was 34.8151 ms)
+[KEM][SimLatency][t=0.034821] Vehicle 164 session key simulated-ready (real handshake was 34.821 ms)
+[KEM][SimLatency][t=0.0348244] Vehicle 46 session key simulated-ready (real handshake was 34.8244 ms)
+[KEM][SimLatency][t=0.0348312] Vehicle 30 session key simulated-ready (real handshake was 34.8312 ms)
+[KEM][SimLatency][t=0.0348341] Vehicle 170 session key simulated-ready (real handshake was 34.8341 ms)
+[KEM][SimLatency][t=0.0348432] Vehicle 93 session key simulated-ready (real handshake was 34.8432 ms)
+[KEM][SimLatency][t=0.0348578] Vehicle 161 session key simulated-ready (real handshake was 34.8578 ms)
+[KEM][SimLatency][t=0.0348583] Vehicle 34 session key simulated-ready (real handshake was 34.8583 ms)
+[KEM][SimLatency][t=0.0348644] Vehicle 130 session key simulated-ready (real handshake was 34.8644 ms)
+[KEM][SimLatency][t=0.0348721] Vehicle 40 session key simulated-ready (real handshake was 34.8721 ms)
+[KEM][SimLatency][t=0.0348728] Vehicle 39 session key simulated-ready (real handshake was 34.8728 ms)
+[KEM][SimLatency][t=0.034879] Vehicle 112 session key simulated-ready (real handshake was 34.879 ms)
+[KEM][SimLatency][t=0.0348879] Vehicle 111 session key simulated-ready (real handshake was 34.8879 ms)
+[KEM][SimLatency][t=0.0348953] Vehicle 97 session key simulated-ready (real handshake was 34.8953 ms)
+[KEM][SimLatency][t=0.0348968] Vehicle 71 session key simulated-ready (real handshake was 34.8968 ms)
+[KEM][SimLatency][t=0.0349023] Vehicle 86 session key simulated-ready (real handshake was 34.9023 ms)
+[KEM][SimLatency][t=0.0349033] Vehicle 168 session key simulated-ready (real handshake was 34.9033 ms)
+[KEM][SimLatency][t=0.0349053] Vehicle 47 session key simulated-ready (real handshake was 34.9053 ms)
+[KEM][SimLatency][t=0.0349103] Vehicle 128 session key simulated-ready (real handshake was 34.9103 ms)
+[KEM][SimLatency][t=0.0349158] Vehicle 92 session key simulated-ready (real handshake was 34.9158 ms)
+[KEM][SimLatency][t=0.0349177] Vehicle 119 session key simulated-ready (real handshake was 34.9177 ms)
+[KEM][SimLatency][t=0.0349337] Vehicle 45 session key simulated-ready (real handshake was 34.9337 ms)
+[KEM][SimLatency][t=0.0349382] Vehicle 116 session key simulated-ready (real handshake was 34.9382 ms)
+[KEM][SimLatency][t=0.0349451] Vehicle 166 session key simulated-ready (real handshake was 34.9451 ms)
+[KEM][SimLatency][t=0.0349492] Vehicle 84 session key simulated-ready (real handshake was 34.9492 ms)
+[KEM][SimLatency][t=0.0349559] Vehicle 167 session key simulated-ready (real handshake was 34.9559 ms)
+[KEM][SimLatency][t=0.0349603] Vehicle 165 session key simulated-ready (real handshake was 34.9603 ms)
+[KEM][SimLatency][t=0.0349667] Vehicle 131 session key simulated-ready (real handshake was 34.9667 ms)
+[KEM][SimLatency][t=0.034973] Vehicle 67 session key simulated-ready (real handshake was 34.973 ms)
+[KEM][SimLatency][t=0.0349809] Vehicle 115 session key simulated-ready (real handshake was 34.9809 ms)
+[KEM][SimLatency][t=0.0349844] Vehicle 59 session key simulated-ready (real handshake was 34.9844 ms)
+[KEM][SimLatency][t=0.0349874] Vehicle 63 session key simulated-ready (real handshake was 34.9874 ms)
+[KEM][SimLatency][t=0.0349935] Vehicle 49 session key simulated-ready (real handshake was 34.9935 ms)
+[KEM][SimLatency][t=0.034997] Vehicle 60 session key simulated-ready (real handshake was 34.997 ms)
+[KEM][SimLatency][t=0.0349981] Vehicle 87 session key simulated-ready (real handshake was 34.9981 ms)
+[KEM][SimLatency][t=0.0349982] Vehicle 57 session key simulated-ready (real handshake was 34.9982 ms)
+[KEM][SimLatency][t=0.0350084] Vehicle 72 session key simulated-ready (real handshake was 35.0084 ms)
+[KEM][SimLatency][t=0.035016] Vehicle 98 session key simulated-ready (real handshake was 35.016 ms)
+[KEM][SimLatency][t=0.0350202] Vehicle 56 session key simulated-ready (real handshake was 35.0202 ms)
+[KEM][SimLatency][t=0.0350219] Vehicle 127 session key simulated-ready (real handshake was 35.0219 ms)
+[KEM][SimLatency][t=0.035022] Vehicle 124 session key simulated-ready (real handshake was 35.022 ms)
+[KEM][SimLatency][t=0.0350354] Vehicle 129 session key simulated-ready (real handshake was 35.0354 ms)
+[KEM][SimLatency][t=0.0350374] Vehicle 99 session key simulated-ready (real handshake was 35.0374 ms)
+[KEM][SimLatency][t=0.0350429] Vehicle 65 session key simulated-ready (real handshake was 35.0429 ms)
+[KEM][SimLatency][t=0.0350456] Vehicle 62 session key simulated-ready (real handshake was 35.0456 ms)
+[KEM][SimLatency][t=0.0350474] Vehicle 126 session key simulated-ready (real handshake was 35.0474 ms)
+[KEM][SimLatency][t=0.0350483] Vehicle 109 session key simulated-ready (real handshake was 35.0483 ms)
+[KEM][SimLatency][t=0.0350568] Vehicle 58 session key simulated-ready (real handshake was 35.0568 ms)
+[KEM][SimLatency][t=0.0350588] Vehicle 110 session key simulated-ready (real handshake was 35.0588 ms)
+[KEM][SimLatency][t=0.0350825] Vehicle 50 session key simulated-ready (real handshake was 35.0825 ms)
+[KEM][SimLatency][t=0.0350825] Vehicle 91 session key simulated-ready (real handshake was 35.0825 ms)
+[KEM][SimLatency][t=0.0350963] Vehicle 89 session key simulated-ready (real handshake was 35.0963 ms)
+[KEM][SimLatency][t=0.0351005] Vehicle 117 session key simulated-ready (real handshake was 35.1005 ms)
+[KEM][SimLatency][t=0.0351014] Vehicle 68 session key simulated-ready (real handshake was 35.1014 ms)
+[KEM][SimLatency][t=0.0351032] Vehicle 102 session key simulated-ready (real handshake was 35.1032 ms)
+[KEM][SimLatency][t=0.0351072] Vehicle 85 session key simulated-ready (real handshake was 35.1072 ms)
+[KEM][SimLatency][t=0.0351081] Vehicle 52 session key simulated-ready (real handshake was 35.1081 ms)
+[KEM][SimLatency][t=0.035116] Vehicle 64 session key simulated-ready (real handshake was 35.116 ms)
+[KEM][SimLatency][t=0.0351199] Vehicle 51 session key simulated-ready (real handshake was 35.1199 ms)
+[KEM][SimLatency][t=0.0351326] Vehicle 108 session key simulated-ready (real handshake was 35.1326 ms)
+[KEM][SimLatency][t=0.035136] Vehicle 90 session key simulated-ready (real handshake was 35.136 ms)
+[KEM][SimLatency][t=0.0351368] Vehicle 121 session key simulated-ready (real handshake was 35.1368 ms)
+[KEM][SimLatency][t=0.0351375] Vehicle 66 session key simulated-ready (real handshake was 35.1375 ms)
+[KEM][SimLatency][t=0.0351395] Vehicle 61 session key simulated-ready (real handshake was 35.1395 ms)
+[KEM][SimLatency][t=0.0351407] Vehicle 96 session key simulated-ready (real handshake was 35.1407 ms)
+[KEM][SimLatency][t=0.0351493] Vehicle 107 session key simulated-ready (real handshake was 35.1493 ms)
+[KEM][SimLatency][t=0.0351514] Vehicle 101 session key simulated-ready (real handshake was 35.1514 ms)
+[KEM][SimLatency][t=0.0351522] Vehicle 88 session key simulated-ready (real handshake was 35.1522 ms)
+[KEM][SimLatency][t=0.0351527] Vehicle 83 session key simulated-ready (real handshake was 35.1527 ms)
+[KEM][SimLatency][t=0.035156] Vehicle 105 session key simulated-ready (real handshake was 35.156 ms)
+[KEM][SimLatency][t=0.0351669] Vehicle 104 session key simulated-ready (real handshake was 35.1669 ms)
+[KEM][SimLatency][t=0.0351696] Vehicle 122 session key simulated-ready (real handshake was 35.1696 ms)
+[KEM][SimLatency][t=0.0351731] Vehicle 73 session key simulated-ready (real handshake was 35.1731 ms)
+[KEM][SimLatency][t=0.0351808] Vehicle 114 session key simulated-ready (real handshake was 35.1808 ms)
+[KEM][SimLatency][t=0.0351963] Vehicle 81 session key simulated-ready (real handshake was 35.1963 ms)
+[KEM][SimLatency][t=0.0352] Vehicle 77 session key simulated-ready (real handshake was 35.2 ms)
+[KEM][SimLatency][t=0.0352095] Vehicle 132 session key simulated-ready (real handshake was 35.2095 ms)
+[KEM][SimLatency][t=0.0352118] Vehicle 53 session key simulated-ready (real handshake was 35.2118 ms)
+[KEM][SimLatency][t=0.0352277] Vehicle 103 session key simulated-ready (real handshake was 35.2277 ms)
+[KEM][SimLatency][t=0.0352481] Vehicle 100 session key simulated-ready (real handshake was 35.2481 ms)
+[KEM][SimLatency][t=0.0352535] Vehicle 118 session key simulated-ready (real handshake was 35.2535 ms)
+[KEM][SimLatency][t=0.03527] Vehicle 69 session key simulated-ready (real handshake was 35.27 ms)
+[KEM][SimLatency][t=0.035271] Vehicle 70 session key simulated-ready (real handshake was 35.271 ms)
+[KEM][SimLatency][t=0.0352743] Vehicle 106 session key simulated-ready (real handshake was 35.2743 ms)
+[KEM][SimLatency][t=0.0352743] Vehicle 75 session key simulated-ready (real handshake was 35.2743 ms)
+[KEM][SimLatency][t=0.0352749] Vehicle 120 session key simulated-ready (real handshake was 35.2749 ms)
+[KEM][SimLatency][t=0.0352785] Vehicle 78 session key simulated-ready (real handshake was 35.2785 ms)
+[KEM][SimLatency][t=0.0352905] Vehicle 80 session key simulated-ready (real handshake was 35.2905 ms)
+[KEM][SimLatency][t=0.0353384] Vehicle 82 session key simulated-ready (real handshake was 35.3384 ms)
+[KEM][SimLatency][t=0.0353646] Vehicle 79 session key simulated-ready (real handshake was 35.3646 ms)
+[KEM][SimLatency][t=0.0355745] Vehicle 123 session key simulated-ready (real handshake was 35.5745 ms)
+[KEM][SimLatency][t=0.0356125] Vehicle 55 session key simulated-ready (real handshake was 35.6125 ms)
+[KEM][SimLatency][t=0.0356483] Vehicle 54 session key simulated-ready (real handshake was 35.6483 ms)
+[KEM][SimLatency][t=0.0357208] Vehicle 76 session key simulated-ready (real handshake was 35.7208 ms)
+[KEM][SimLatency][t=0.0357548] Vehicle 169 session key simulated-ready (real handshake was 35.7548 ms)
+[KEM][SimLatency][t=0.0358085] Vehicle 29 session key simulated-ready (real handshake was 35.8085 ms)
+[KEM][SimLatency][t=0.0361892] Vehicle 1 session key simulated-ready (real handshake was 36.1892 ms)
+[KEM][SimLatency][t=0.0363573] Vehicle 25 session key simulated-ready (real handshake was 36.3573 ms)
+[KEM][SimLatency][t=0.0364004] Vehicle 125 session key simulated-ready (real handshake was 36.4004 ms)
+[KEM][SimLatency][t=0.0377719] Vehicle 158 session key simulated-ready (real handshake was 37.7719 ms)
+[KEM][SimLatency][t=0.0400557] Vehicle 134 session key simulated-ready (real handshake was 40.0557 ms)
+[KEM][SimLatency][t=0.0415482] Vehicle 171 session key simulated-ready (real handshake was 41.5482 ms)
+[KEM][SimLatency][t=0.0425924] Vehicle 143 session key simulated-ready (real handshake was 42.5924 ms)
+[KEM][SimLatency][t=0.0427061] Vehicle 156 session key simulated-ready (real handshake was 42.7061 ms)
+[KEM][SimLatency][t=0.0428561] Vehicle 138 session key simulated-ready (real handshake was 42.8561 ms)
+[KEM][SimLatency][t=0.0429685] Vehicle 142 session key simulated-ready (real handshake was 42.9685 ms)
+[KEM][SimLatency][t=0.0430114] Vehicle 141 session key simulated-ready (real handshake was 43.0114 ms)
+[KEM][SimLatency][t=0.04314] Vehicle 139 session key simulated-ready (real handshake was 43.14 ms)
+[KEM][SimLatency][t=0.0431639] Vehicle 154 session key simulated-ready (real handshake was 43.1639 ms)
+[KEM][SimLatency][t=0.0432723] Vehicle 146 session key simulated-ready (real handshake was 43.2723 ms)
+[KEM][SimLatency][t=0.0432784] Vehicle 17 session key simulated-ready (real handshake was 43.2784 ms)
+[KEM][SimLatency][t=0.0432814] Vehicle 28 session key simulated-ready (real handshake was 43.2814 ms)
+[KEM][SimLatency][t=0.0432914] Vehicle 137 session key simulated-ready (real handshake was 43.2914 ms)
+[KEM][SimLatency][t=0.0434083] Vehicle 140 session key simulated-ready (real handshake was 43.4083 ms)
+[KEM][SimLatency][t=0.0435277] Vehicle 149 session key simulated-ready (real handshake was 43.5277 ms)
+[KEM][SimLatency][t=0.0435339] Vehicle 144 session key simulated-ready (real handshake was 43.5339 ms)
+[KEM][SimLatency][t=0.0435409] Vehicle 135 session key simulated-ready (real handshake was 43.5409 ms)
+[KEM][SimLatency][t=0.0435902] Vehicle 155 session key simulated-ready (real handshake was 43.5902 ms)
+[KEM][SimLatency][t=0.0436431] Vehicle 153 session key simulated-ready (real handshake was 43.6431 ms)
+[KEM][SimLatency][t=0.0436828] Vehicle 18 session key simulated-ready (real handshake was 43.6828 ms)
+[KEM][SimLatency][t=0.0437024] Vehicle 136 session key simulated-ready (real handshake was 43.7024 ms)
+[KEM][SimLatency][t=0.043712] Vehicle 152 session key simulated-ready (real handshake was 43.712 ms)
+[KEM][SimLatency][t=0.0437126] Vehicle 151 session key simulated-ready (real handshake was 43.7126 ms)
+[KEM][SimLatency][t=0.0437363] Vehicle 19 session key simulated-ready (real handshake was 43.7363 ms)
+[KEM][SimLatency][t=0.0437488] Vehicle 22 session key simulated-ready (real handshake was 43.7488 ms)
+[KEM][SimLatency][t=0.0438397] Vehicle 147 session key simulated-ready (real handshake was 43.8397 ms)
+[KEM][SimLatency][t=0.0439913] Vehicle 148 session key simulated-ready (real handshake was 43.9913 ms)
+[KEM][SimLatency][t=0.0440387] Vehicle 20 session key simulated-ready (real handshake was 44.0387 ms)
+[KEM][SimLatency][t=0.0441331] Vehicle 5 session key simulated-ready (real handshake was 44.1331 ms)
+[KEM][SimLatency][t=0.0441642] Vehicle 21 session key simulated-ready (real handshake was 44.1642 ms)
+[KEM][SimLatency][t=0.044178] Vehicle 145 session key simulated-ready (real handshake was 44.178 ms)
+[KEM][SimLatency][t=0.0442456] Vehicle 10 session key simulated-ready (real handshake was 44.2456 ms)
+[KEM][SimLatency][t=0.0442509] Vehicle 12 session key simulated-ready (real handshake was 44.2509 ms)
+[KEM][SimLatency][t=0.0443733] Vehicle 7 session key simulated-ready (real handshake was 44.3733 ms)
+[KEM][SimLatency][t=0.0443939] Vehicle 13 session key simulated-ready (real handshake was 44.3939 ms)
+[KEM][SimLatency][t=0.044579] Vehicle 150 session key simulated-ready (real handshake was 44.579 ms)
+[KEM][SimLatency][t=0.0446796] Vehicle 3 session key simulated-ready (real handshake was 44.6796 ms)
+[KEM][SimLatency][t=0.0448332] Vehicle 4 session key simulated-ready (real handshake was 44.8332 ms)
+[KEM][SimLatency][t=0.0448472] Vehicle 2 session key simulated-ready (real handshake was 44.8472 ms)
+[KEM][SimLatency][t=0.0451076] Vehicle 11 session key simulated-ready (real handshake was 45.1076 ms)
+[KEM][SimLatency][t=0.0451644] Vehicle 6 session key simulated-ready (real handshake was 45.1644 ms)
+[KEM][SimLatency][t=0.0451816] Vehicle 74 session key simulated-ready (real handshake was 45.1816 ms)
+[KEM][SimLatency][t=0.0452563] Vehicle 9 session key simulated-ready (real handshake was 45.2563 ms)
+[KEM][SimLatency][t=0.0456553] Vehicle 8 session key simulated-ready (real handshake was 45.6553 ms)
+[KEM][SimLatency][t=0.0456975] Vehicle 15 session key simulated-ready (real handshake was 45.6975 ms)
+[KEM][SimLatency][t=0.0472682] Vehicle 16 session key simulated-ready (real handshake was 47.2682 ms)
+[KEM][SimLatency][t=0.0473278] Vehicle 14 session key simulated-ready (real handshake was 47.3278 ms)
+[KEM][SimLatency][t=0.0573819] Vehicle 185 session key simulated-ready (real handshake was 57.3819 ms)
+[KEM][SimLatency][t=0.0578853] Vehicle 174 session key simulated-ready (real handshake was 57.8853 ms)
+[KEM][SimLatency][t=0.0579067] Vehicle 180 session key simulated-ready (real handshake was 57.9067 ms)
+[KEM][SimLatency][t=0.0579633] Vehicle 176 session key simulated-ready (real handshake was 57.9633 ms)
+[KEM][SimLatency][t=0.0579658] Vehicle 175 session key simulated-ready (real handshake was 57.9658 ms)
+[KEM][SimLatency][t=0.0579869] Vehicle 181 session key simulated-ready (real handshake was 57.9869 ms)
+[KEM][SimLatency][t=0.0581313] Vehicle 172 session key simulated-ready (real handshake was 58.1313 ms)
+[KEM][SimLatency][t=0.0581634] Vehicle 182 session key simulated-ready (real handshake was 58.1634 ms)
+[KEM][SimLatency][t=0.0581906] Vehicle 173 session key simulated-ready (real handshake was 58.1906 ms)
+[KEM][SimLatency][t=0.0583651] Vehicle 178 session key simulated-ready (real handshake was 58.3651 ms)
+[KEM][SimLatency][t=0.0585416] Vehicle 177 session key simulated-ready (real handshake was 58.5416 ms)
+[KEM][SimLatency][t=0.0586012] Vehicle 184 session key simulated-ready (real handshake was 58.6012 ms)
+[KEM][SimLatency][t=0.058707] Vehicle 183 session key simulated-ready (real handshake was 58.707 ms)
+[KEM][SimLatency][t=0.0589366] Vehicle 187 session key simulated-ready (real handshake was 58.9366 ms)
+[KEM][SimLatency][t=0.0589884] Vehicle 195 session key simulated-ready (real handshake was 58.9884 ms)
+[KEM][SimLatency][t=0.059032] Vehicle 179 session key simulated-ready (real handshake was 59.032 ms)
+[KEM][SimLatency][t=0.0590359] Vehicle 186 session key simulated-ready (real handshake was 59.0359 ms)
+[KEM][SimLatency][t=0.0590748] Vehicle 193 session key simulated-ready (real handshake was 59.0748 ms)
+[KEM][SimLatency][t=0.0591886] Vehicle 192 session key simulated-ready (real handshake was 59.1886 ms)
+[KEM][SimLatency][t=0.0592272] Vehicle 191 session key simulated-ready (real handshake was 59.2272 ms)
+[KEM][SimLatency][t=0.0592391] Vehicle 197 session key simulated-ready (real handshake was 59.2391 ms)
+[KEM][SimLatency][t=0.0592406] Vehicle 196 session key simulated-ready (real handshake was 59.2406 ms)
+[KEM][SimLatency][t=0.0593742] Vehicle 199 session key simulated-ready (real handshake was 59.3742 ms)
+[KEM][SimLatency][t=0.0593828] Vehicle 188 session key simulated-ready (real handshake was 59.3828 ms)
+[KEM][SimLatency][t=0.0593933] Vehicle 194 session key simulated-ready (real handshake was 59.3933 ms)
+[KEM][SimLatency][t=0.0594276] Vehicle 189 session key simulated-ready (real handshake was 59.4276 ms)
+[KEM][SimLatency][t=0.059524] Vehicle 198 session key simulated-ready (real handshake was 59.524 ms)
+[KEM][SimLatency][t=0.0597146] Vehicle 190 session key simulated-ready (real handshake was 59.7146 ms)
+[KEM][SimLatency][t=0.0753218] Vehicle 24 session key simulated-ready (real handshake was 75.3218 ms)
+[KEM][SimLatency][t=0.0914712] Vehicle 23 session key simulated-ready (real handshake was 91.4712 ms)
+[KEM][SimLatency][t=0.107714] Vehicle 157 session key simulated-ready (real handshake was 107.714 ms)
+[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=7130952753768428489 (interval=3s)
+[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=7130952753768428489 (interval=3s)
+[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=7130952753768428489 (interval=3s)
+[Q48DBG3] t=10 tick=1 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.1 tick=2 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.2 tick=3 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.3 tick=4 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.4 tick=5 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.5 tick=6 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.6 tick=7 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.7 tick=8 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.8 tick=9 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.9 tick=10 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11 tick=11 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.1 tick=12 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.2 tick=13 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.3 tick=14 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.4 tick=15 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.5 tick=16 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.6 tick=17 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.7 tick=18 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.8 tick=19 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.9 tick=20 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=12] Published checkpoint seq=3 block_height=90 digest=7130952753768428489 (interval=3s)
+[Q48DBG3] t=14.9 tick=50 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[BSHH-S4][t=15.000]  V145(ns3=150)/V51(ns3=56) --DSRC--> RSU0(ns3=205) --CSMA--> Ctrl0(ns3=0)  HB(V145(ns3=150), t=15.000)  HB(V51(ns3=56), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=150 link_src=150 link_dst=150
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=1
+[Q34-VIOLATION] active.size()=1 reporter=56 link_src=56 link_dst=56
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=2
+[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=7130952753768428489 (interval=3.000s)
+[BSHH-S4][t=15.001]  V4(ns3=9)/V43(ns3=48) --DSRC--> RSU1(ns3=206) --CSMA--> Ctrl1(ns3=1)  HB(V4(ns3=9), t=15.000)  HB(V43(ns3=48), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=9 link_src=9 link_dst=9
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=3
+[Q34-VIOLATION] active.size()=1 reporter=48 link_src=48 link_dst=48
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=4
+[BSHH-S4][t=15.002]  V125(ns3=130)/V24(ns3=29) --DSRC--> RSU2(ns3=207) --CSMA--> Ctrl2(ns3=2)  HB(V125(ns3=130), t=15.000)  HB(V24(ns3=29), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=130 link_src=130 link_dst=130
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=5
+[Q34-VIOLATION] active.size()=1 reporter=29 link_src=29 link_dst=29
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=6
+[BSHH-S4][t=15.003]  V134(ns3=139)/V29(ns3=34) --DSRC--> RSU3(ns3=208) --CSMA--> Ctrl3(ns3=3)  HB(V134(ns3=139), t=15.000)  HB(V29(ns3=34), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=139 link_src=139 link_dst=139
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=7
+[Q34-VIOLATION] active.size()=1 reporter=34 link_src=34 link_dst=34
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=8
+[BSHH-S4][t=15.004]  V103(ns3=108)/V128(ns3=133) --DSRC--> RSU4(ns3=209) --CSMA--> Ctrl4(?)  HB(V103(ns3=108), t=15.000)  HB(V128(ns3=133), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=108 link_src=108 link_dst=108
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=9
+[Q34-VIOLATION] active.size()=1 reporter=133 link_src=133 link_dst=133
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=10
+Current neighbor size is 0Received packet from 206 of size 12packet timestamp 15.001s with delay 1ms
+[BSHH-S4][t=15.005]  V152(ns3=157)/V143(ns3=148) --DSRC--> RSU5(ns3=210) --CSMA--> Ctrl5(?)  HB(V152(ns3=157), t=15.000)  HB(V143(ns3=148), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=157 link_src=157 link_dst=157
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=11
+[Q34-VIOLATION] active.size()=1 reporter=148 link_src=148 link_dst=148
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=12
+Current neighbor size is 0Received packet from 209 of size 12packet timestamp 15.004s with delay 1ms
+[BSHH-S4][t=15.006]  V108(ns3=113)/V163(ns3=168) --DSRC--> RSU6(ns3=211) --CSMA--> Ctrl6(?)  HB(V108(ns3=113), t=15.000)  HB(V163(ns3=168), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=113 link_src=113 link_dst=113
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=13
+[Q34-VIOLATION] active.size()=1 reporter=168 link_src=168 link_dst=168
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=14
+Current neighbor size is 0Received packet from 205 of size 12packet timestamp 15.000s with delay 1ms
+Current neighbor size is 0Received packet from 207 of size 12packet timestamp 15.002s with delay 1ms
+[BSHH-S4][t=15.007]  V148(ns3=153)/V107(ns3=112) --DSRC--> RSU7(ns3=212) --CSMA--> Ctrl7(?)  HB(V148(ns3=153), t=15.000)  HB(V107(ns3=112), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=153 link_src=153 link_dst=153
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=15
+[Q34-VIOLATION] active.size()=1 reporter=112 link_src=112 link_dst=112
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=16
+Current neighbor size is 0Received packet from 211 of size 12packet timestamp 15.006s with delay 1ms
+[BSHH-S4][t=15.008]  V91(ns3=96)/V133(ns3=138) --DSRC--> RSU8(ns3=213) --CSMA--> Ctrl8(?)  HB(V91(ns3=96), t=15.000)  HB(V133(ns3=138), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=96 link_src=96 link_dst=96
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=17
+[Q34-VIOLATION] active.size()=1 reporter=138 link_src=138 link_dst=138
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=18
+[BSHH-S4][t=15.009]  V191(ns3=196)/V13(ns3=18) --DSRC--> RSU9(ns3=214) --CSMA--> Ctrl9(?)  HB(V191(ns3=196), t=15.000)  HB(V13(ns3=18), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=196 link_src=196 link_dst=196
+[Q34] subgraph size tally: size2(self-report)=0  size3(third-party)=0  violations=19
+[Q34-VIOLATION] active.size()=1 reporter=18 link_src=18 link_dst=18
+Current neighbor size is 0Received packet from 208 of size 12packet timestamp 15.003s with delay 1ms
+[BSHH-S4][t=15.010]  V178(ns3=183)/V61(ns3=66) --DSRC--> RSU10(ns3=215) --CSMA--> Ctrl10(?)  HB(V178(ns3=183), t=15.000)  HB(V61(ns3=66), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=183 link_src=183 link_dst=183
+[Q34-VIOLATION] active.size()=1 reporter=66 link_src=66 link_dst=66
+[BSHH-S4][t=15.011]  V111(ns3=116)/V70(ns3=75) --DSRC--> RSU11(ns3=216) --CSMA--> Ctrl11(?)  HB(V111(ns3=116), t=15.000)  HB(V70(ns3=75), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=116 link_src=116 link_dst=116
+[Q34-VIOLATION] active.size()=1 reporter=75 link_src=75 link_dst=75
+Current neighbor size is 0Received packet from 210 of size 12packet timestamp 15.005s with delay 1ms
+Current neighbor size is 0Received packet from 215 of size 12packet timestamp 15.010s with delay 1ms
+Current neighbor size is 0Received packet from 213 of size 12packet timestamp 15.008s with delay 1ms
+[BSHH-S4][t=15.012]  V144(ns3=149)/V150(ns3=155) --DSRC--> RSU12(ns3=217) --CSMA--> Ctrl12(?)  HB(V144(ns3=149), t=15.000)  HB(V150(ns3=155), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=149 link_src=149 link_dst=149
+[Q34-VIOLATION] active.size()=1 reporter=155 link_src=155 link_dst=155
+[BSHH-S4][t=15.013]  V24(ns3=29)/V125(ns3=130) --DSRC--> RSU13(ns3=218) --CSMA--> Ctrl13(?)  HB(V24(ns3=29), t=15.000)  HB(V125(ns3=130), t=15.000)  ACCEPTED
+[Q_SIG4] total=1 old_would_exclude=0 new_included=1 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=29 link_src=29 link_dst=29
+[Q_SIG4] total=2 old_would_exclude=0 new_included=2 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=130 link_src=130 link_dst=130
+Current neighbor size is 0Received packet from 214 of size 12packet timestamp 15.009s with delay 1ms
+[BSHH-S4][t=15.014]  V83(ns3=88)/V30(ns3=35) --DSRC--> RSU14(ns3=219) --CSMA--> Ctrl14(?)  HB(V83(ns3=88), t=15.000)  HB(V30(ns3=35), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=88 link_src=88 link_dst=88
+[Q34-VIOLATION] active.size()=1 reporter=35 link_src=35 link_dst=35
+Current neighbor size is 0Received packet from 212 of size 12packet timestamp 15.007s with delay 1ms
+[BSHH-S4][t=15.015]  V81(ns3=86)/V19(ns3=24) --DSRC--> RSU15(ns3=220) --CSMA--> Ctrl15(?)  HB(V81(ns3=86), t=15.000)  HB(V19(ns3=24), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=86 link_src=86 link_dst=86
+[Q34-VIOLATION] active.size()=1 reporter=24 link_src=24 link_dst=24
+[BSHH-S4][t=15.016]  V73(ns3=78)/V130(ns3=135) --DSRC--> RSU16(ns3=221) --CSMA--> Ctrl16(?)  HB(V73(ns3=78), t=15.000)  HB(V130(ns3=135), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=78 link_src=78 link_dst=78
+[Q34-VIOLATION] active.size()=1 reporter=135 link_src=135 link_dst=135
+[BSHH-S4][t=15.017]  V117(ns3=122)/V82(ns3=87) --DSRC--> RSU17(ns3=222) --CSMA--> Ctrl17(?)  HB(V117(ns3=122), t=15.000)  HB(V82(ns3=87), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=122 link_src=122 link_dst=122
+[Q34-VIOLATION] active.size()=1 reporter=87 link_src=87 link_dst=87
+Current neighbor size is 0Received packet from 216 of size 12packet timestamp 15.011s with delay 1ms
+Current neighbor size is 0Received packet from 220 of size 12packet timestamp 15.015s with delay 1ms
+[BSHH-S4][t=15.018]  V119(ns3=124)/V123(ns3=128) --DSRC--> RSU18(ns3=223) --CSMA--> Ctrl18(?)  HB(V119(ns3=124), t=15.000)  HB(V123(ns3=128), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=124 link_src=124 link_dst=124
+[Q34-VIOLATION] active.size()=1 reporter=128 link_src=128 link_dst=128
+Current neighbor size is 0Received packet from 218 of size 12packet timestamp 15.013s with delay 1ms
+[BSHH-S4][t=15.019]  V82(ns3=87)/V117(ns3=122) --DSRC--> RSU19(ns3=224) --CSMA--> Ctrl19(?)  HB(V82(ns3=87), t=15.000)  HB(V117(ns3=122), t=15.000)  ACCEPTED
+[Q_SIG4] total=3 old_would_exclude=0 new_included=3 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=87 link_src=87 link_dst=87
+[Q_SIG4] total=4 old_would_exclude=0 new_included=4 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=122 link_src=122 link_dst=122
+Current neighbor size is 0Received packet from 221 of size 12packet timestamp 15.016s with delay 1ms
+Current neighbor size is 0Received packet from 224 of size 12packet timestamp 15.019s with delay 1ms
+[BSHH-S4][t=15.020]  V166(ns3=171)/V182(ns3=187) --DSRC--> RSU20(ns3=225) --CSMA--> Ctrl20(?)  HB(V166(ns3=171), t=15.000)  HB(V182(ns3=187), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=171 link_src=171 link_dst=171
+[Q34-VIOLATION] active.size()=1 reporter=187 link_src=187 link_dst=187
+Current neighbor size is 0Received packet from 217 of size 12packet timestamp 15.012s with delay 1ms
+[BSHH-S4][t=15.021]  V59(ns3=64)/V50(ns3=55) --DSRC--> RSU21(ns3=226) --CSMA--> Ctrl21(?)  HB(V59(ns3=64), t=15.000)  HB(V50(ns3=55), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=64 link_src=64 link_dst=64
+[Q34-VIOLATION] active.size()=1 reporter=55 link_src=55 link_dst=55
+[BSHH-S4][t=15.022]  V147(ns3=152)/V159(ns3=164) --DSRC--> RSU22(ns3=227) --CSMA--> Ctrl22(?)  HB(V147(ns3=152), t=15.000)  HB(V159(ns3=164), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=152 link_src=152 link_dst=152
+[Q34-VIOLATION] active.size()=1 reporter=164 link_src=164 link_dst=164
+Current neighbor size is 0Received packet from 225 of size 12packet timestamp 15.020s with delay 1ms
+[BSHH-S4][t=15.023]  V182(ns3=187)/V166(ns3=171) --DSRC--> RSU23(ns3=228) --CSMA--> Ctrl23(?)  HB(V182(ns3=187), t=15.000)  HB(V166(ns3=171), t=15.000)  ACCEPTED
+[Q_SIG4] total=5 old_would_exclude=0 new_included=5 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=187 link_src=187 link_dst=187
+[Q_SIG4] total=6 old_would_exclude=0 new_included=6 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=171 link_src=171 link_dst=171
+Current neighbor size is 0Received packet from 219 of size 12packet timestamp 15.014s with delay 1ms
+Current neighbor size is 0Received packet from 226 of size 12packet timestamp 15.021s with delay 1ms
+Current neighbor size is 0Received packet from 222 of size 12packet timestamp 15.017s with delay 1ms
+[BSHH-S4][t=15.024]  V72(ns3=77)/V38(ns3=43) --DSRC--> RSU24(ns3=229) --CSMA--> Ctrl24(?)  HB(V72(ns3=77), t=15.000)  HB(V38(ns3=43), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=77 link_src=77 link_dst=77
+[Q34-VIOLATION] active.size()=1 reporter=43 link_src=43 link_dst=43
+[BSHH-S4][t=15.025]  V139(ns3=144)/V25(ns3=30) --DSRC--> RSU25(ns3=230) --CSMA--> Ctrl25(?)  HB(V139(ns3=144), t=15.000)  HB(V25(ns3=30), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=144 link_src=144 link_dst=144
+[Q34-VIOLATION] active.size()=1 reporter=30 link_src=30 link_dst=30
+[BSHH-S4][t=15.026]  V34(ns3=39)/V106(ns3=111) --DSRC--> RSU26(ns3=231) --CSMA--> Ctrl26(?)  HB(V34(ns3=39), t=15.000)  HB(V106(ns3=111), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=39 link_src=39 link_dst=39
+[Q34-VIOLATION] active.size()=1 reporter=111 link_src=111 link_dst=111
+Current neighbor size is 0Received packet from 227 of size 12packet timestamp 15.022s with delay 1ms
+[BSHH-S4][t=15.027]  V30(ns3=35)/V83(ns3=88) --DSRC--> RSU27(ns3=232) --CSMA--> Ctrl27(?)  HB(V30(ns3=35), t=15.000)  HB(V83(ns3=88), t=15.000)  ACCEPTED
+[Q_SIG4] total=7 old_would_exclude=0 new_included=7 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=35 link_src=35 link_dst=35
+[Q_SIG4] total=8 old_would_exclude=0 new_included=8 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=88 link_src=88 link_dst=88
+Current neighbor size is 0Received packet from 223 of size 12packet timestamp 15.018s with delay 1ms
+Current neighbor size is 0Received packet from 229 of size 12packet timestamp 15.024s with delay 1ms
+[BSHH-S4][t=15.028]  V7(ns3=12)/V44(ns3=49) --DSRC--> RSU28(ns3=233) --CSMA--> Ctrl28(?)  HB(V7(ns3=12), t=15.000)  HB(V44(ns3=49), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=12 link_src=12 link_dst=12
+[Q34-VIOLATION] active.size()=1 reporter=49 link_src=49 link_dst=49
+Current neighbor size is 0Received packet from 228 of size 12packet timestamp 15.023s with delay 1ms
+Current neighbor size is 0Received packet from 233 of size 12packet timestamp 15.028s with delay 1ms
+[BSHH-S4][t=15.029]  V156(ns3=161)/V137(ns3=142) --DSRC--> RSU29(ns3=234) --CSMA--> Ctrl29(?)  HB(V156(ns3=161), t=15.000)  HB(V137(ns3=142), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=161 link_src=161 link_dst=161
+[Q34-VIOLATION] active.size()=1 reporter=142 link_src=142 link_dst=142
+Current neighbor size is 0Received packet from 231 of size 12packet timestamp 15.026s with delay 1ms
+[BSHH-S4][t=15.030]  V90(ns3=95)/V73(ns3=78) --DSRC--> RSU30(ns3=235) --CSMA--> Ctrl30(?)  HB(V90(ns3=95), t=15.000)  HB(V73(ns3=78), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=95 link_src=95 link_dst=95
+[Q_SIG4] total=9 old_would_exclude=0 new_included=9 (divergence = cases where fix actually changes sig[4] eligibility)
+[Q34-VIOLATION] active.size()=1 reporter=78 link_src=78 link_dst=78
+Current neighbor size is 0Received packet from 230 of size 12packet timestamp 15.025s with delay 1ms
+[BSHH-S4][t=15.031]  V143(ns3=148)/V152(ns3=157) --DSRC--> RSU31(ns3=236) --CSMA--> Ctrl31(?)  HB(V143(ns3=148), t=15.000)  HB(V152(ns3=157), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=148 link_src=148 link_dst=148
+[Q34-VIOLATION] active.size()=1 reporter=157 link_src=157 link_dst=157
+[BSHH-S4][t=15.032]  V18(ns3=23)/V187(ns3=192) --DSRC--> RSU32(ns3=237) --CSMA--> Ctrl32(?)  HB(V18(ns3=23), t=15.000)  HB(V187(ns3=192), t=15.000)  ACCEPTED
+[Q34-VIOLATION] active.size()=1 reporter=23 link_src=23 link_dst=23
+[Q34-VIOLATION] active.size()=1 reporter=192 link_src=192 link_dst=192
+Current neighbor size is 0Received packet from 234 of size 12packet timestamp 15.029s with delay 1ms
+Current neighbor size is 0Received packet from 232 of size 12packet timestamp 15.027s with delay 1ms
+Current neighbor size is 0Received packet from 236 of size 12packet timestamp 15.031s with delay 1ms
+Current neighbor size is 0Received packet from 237 of size 12packet timestamp 15.032s with delay 1ms
+Current neighbor size is 0Received packet from 235 of size 12packet timestamp 15.030s with delay 1ms
+[BSHH-S4][t=15.100]  Ctrl0(ns3=0) stores stale copies (from RSU aggregate)  HB(V145(ns3=150), t=15.000)  HB(V51(ns3=56), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.101]  Ctrl1(ns3=1) stores stale copies (from RSU aggregate)  HB(V4(ns3=9), t=15.000)  HB(V43(ns3=48), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.102]  Ctrl2(ns3=2) stores stale copies (from RSU aggregate)  HB(V125(ns3=130), t=15.000)  HB(V24(ns3=29), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.103]  Ctrl3(ns3=3) stores stale copies (from RSU aggregate)  HB(V134(ns3=139), t=15.000)  HB(V29(ns3=34), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.104]  Ctrl4(?) stores stale copies (from RSU aggregate)  HB(V103(ns3=108), t=15.000)  HB(V128(ns3=133), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.105]  Ctrl5(?) stores stale copies (from RSU aggregate)  HB(V152(ns3=157), t=15.000)  HB(V143(ns3=148), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.106]  Ctrl6(?) stores stale copies (from RSU aggregate)  HB(V108(ns3=113), t=15.000)  HB(V163(ns3=168), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.107]  Ctrl7(?) stores stale copies (from RSU aggregate)  HB(V148(ns3=153), t=15.000)  HB(V107(ns3=112), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.108]  Ctrl8(?) stores stale copies (from RSU aggregate)  HB(V91(ns3=96), t=15.000)  HB(V133(ns3=138), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.109]  Ctrl9(?) stores stale copies (from RSU aggregate)  HB(V191(ns3=196), t=15.000)  HB(V13(ns3=18), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.110]  Ctrl10(?) stores stale copies (from RSU aggregate)  HB(V178(ns3=183), t=15.000)  HB(V61(ns3=66), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.111]  Ctrl11(?) stores stale copies (from RSU aggregate)  HB(V111(ns3=116), t=15.000)  HB(V70(ns3=75), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.112]  Ctrl12(?) stores stale copies (from RSU aggregate)  HB(V144(ns3=149), t=15.000)  HB(V150(ns3=155), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.113]  Ctrl13(?) stores stale copies (from RSU aggregate)  HB(V24(ns3=29), t=15.000)  HB(V125(ns3=130), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.114]  Ctrl14(?) stores stale copies (from RSU aggregate)  HB(V83(ns3=88), t=15.000)  HB(V30(ns3=35), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.115]  Ctrl15(?) stores stale copies (from RSU aggregate)  HB(V81(ns3=86), t=15.000)  HB(V19(ns3=24), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.116]  Ctrl16(?) stores stale copies (from RSU aggregate)  HB(V73(ns3=78), t=15.000)  HB(V130(ns3=135), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.117]  Ctrl17(?) stores stale copies (from RSU aggregate)  HB(V117(ns3=122), t=15.000)  HB(V82(ns3=87), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.118]  Ctrl18(?) stores stale copies (from RSU aggregate)  HB(V119(ns3=124), t=15.000)  HB(V123(ns3=128), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.119]  Ctrl19(?) stores stale copies (from RSU aggregate)  HB(V82(ns3=87), t=15.000)  HB(V117(ns3=122), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.120]  Ctrl20(?) stores stale copies (from RSU aggregate)  HB(V166(ns3=171), t=15.000)  HB(V182(ns3=187), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.121]  Ctrl21(?) stores stale copies (from RSU aggregate)  HB(V59(ns3=64), t=15.000)  HB(V50(ns3=55), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.122]  Ctrl22(?) stores stale copies (from RSU aggregate)  HB(V147(ns3=152), t=15.000)  HB(V159(ns3=164), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.123]  Ctrl23(?) stores stale copies (from RSU aggregate)  HB(V182(ns3=187), t=15.000)  HB(V166(ns3=171), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.124]  Ctrl24(?) stores stale copies (from RSU aggregate)  HB(V72(ns3=77), t=15.000)  HB(V38(ns3=43), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.125]  Ctrl25(?) stores stale copies (from RSU aggregate)  HB(V139(ns3=144), t=15.000)  HB(V25(ns3=30), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.126]  Ctrl26(?) stores stale copies (from RSU aggregate)  HB(V34(ns3=39), t=15.000)  HB(V106(ns3=111), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.127]  Ctrl27(?) stores stale copies (from RSU aggregate)  HB(V30(ns3=35), t=15.000)  HB(V83(ns3=88), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.128]  Ctrl28(?) stores stale copies (from RSU aggregate)  HB(V7(ns3=12), t=15.000)  HB(V44(ns3=49), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.129]  Ctrl29(?) stores stale copies (from RSU aggregate)  HB(V156(ns3=161), t=15.000)  HB(V137(ns3=142), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.130]  Ctrl30(?) stores stale copies (from RSU aggregate)  HB(V90(ns3=95), t=15.000)  HB(V73(ns3=78), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.131]  Ctrl31(?) stores stale copies (from RSU aggregate)  HB(V143(ns3=148), t=15.000)  HB(V152(ns3=157), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=15.132]  Ctrl32(?) stores stale copies (from RSU aggregate)  HB(V18(ns3=23), t=15.000)  HB(V187(ns3=192), t=15.000)  (internal replay at t=10)
+[BSHH-S4][t=17.000]  Ctrl0(ns3=0) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V145(ns3=150), slot=V145(ns3=150), t=15.000)  HB(claimed=V145(ns3=150), slot=V51(ns3=56), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=150 link_src=150 link_dst=150
+[Q_TDET] first attack event reaches TGN (inline): t=17.000 reporter=9999 tgn_alert=1 score=0.928
+[Q_TDET] first TGN alert fires (inline): t=17.000 reporter=9999 score=0.928
+[Q34-VIOLATION] active.size()=2 reporter=150 link_src=56 link_dst=56
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[Trust][Anchor][t=17.000] Peer synced from checkpoint seq=4 (published t=15.000, sync latency=2.000s)
+[BSHH-S4][t=17.000]  FS-MITIGATE gate: delta_t=1 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.001]  Ctrl1(ns3=1) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V4(ns3=9), slot=V4(ns3=9), t=15.000)  HB(claimed=V4(ns3=9), slot=V43(ns3=48), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=9 link_src=9 link_dst=9
+[Q34-VIOLATION] active.size()=2 reporter=9 link_src=48 link_dst=48
+[BSHH-S4][t=17.001]  FS-MITIGATE gate: delta_t=2 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.002]  Ctrl2(ns3=2) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V125(ns3=130), slot=V125(ns3=130), t=15.000)  HB(claimed=V125(ns3=130), slot=V24(ns3=29), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=130 link_src=130 link_dst=130
+[Q34-VIOLATION] active.size()=2 reporter=130 link_src=29 link_dst=29
+[BSHH-S4][t=17.002]  FS-MITIGATE gate: delta_t=3 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.003]  Ctrl3(ns3=3) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V134(ns3=139), slot=V134(ns3=139), t=15.000)  HB(claimed=V134(ns3=139), slot=V29(ns3=34), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=139 link_src=139 link_dst=139
+[Q34-VIOLATION] active.size()=2 reporter=139 link_src=34 link_dst=34
+[BSHH-S4][t=17.003]  FS-MITIGATE gate: delta_t=4 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.004]  Ctrl4(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V103(ns3=108), slot=V103(ns3=108), t=15.000)  HB(claimed=V103(ns3=108), slot=V128(ns3=133), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=108 link_src=108 link_dst=108
+[Q34-VIOLATION] active.size()=2 reporter=108 link_src=133 link_dst=133
+[BSHH-S4][t=17.004]  FS-MITIGATE gate: delta_t=5 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.005]  Ctrl5(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V152(ns3=157), slot=V152(ns3=157), t=15.000)  HB(claimed=V152(ns3=157), slot=V143(ns3=148), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=157 link_src=157 link_dst=157
+[Q34-VIOLATION] active.size()=2 reporter=157 link_src=148 link_dst=148
+[BSHH-S4][t=17.005]  FS-MITIGATE gate: delta_t=6 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.006]  Ctrl6(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V108(ns3=113), slot=V108(ns3=113), t=15.000)  HB(claimed=V108(ns3=113), slot=V163(ns3=168), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=113 link_src=113 link_dst=113
+[Q34-VIOLATION] active.size()=2 reporter=113 link_src=168 link_dst=168
+[BSHH-S4][t=17.006]  FS-MITIGATE gate: delta_t=7 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.007]  Ctrl7(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V148(ns3=153), slot=V148(ns3=153), t=15.000)  HB(claimed=V148(ns3=153), slot=V107(ns3=112), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=153 link_src=153 link_dst=153
+[Q34-VIOLATION] active.size()=2 reporter=153 link_src=112 link_dst=112
+[BSHH-S4][t=17.007]  FS-MITIGATE gate: delta_t=8 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.008]  Ctrl8(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V91(ns3=96), slot=V91(ns3=96), t=15.000)  HB(claimed=V91(ns3=96), slot=V133(ns3=138), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=96 link_src=96 link_dst=96
+[Q34-VIOLATION] active.size()=2 reporter=96 link_src=138 link_dst=138
+[BSHH-S4][t=17.008]  FS-MITIGATE gate: delta_t=9 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[BSHH-S4][t=17.009]  Ctrl9(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V191(ns3=196), slot=V191(ns3=196), t=15.000)  HB(claimed=V191(ns3=196), slot=V13(ns3=18), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=196 link_src=196 link_dst=196
+[Q34-VIOLATION] active.size()=2 reporter=196 link_src=18 link_dst=18
+[BSHH-S4][t=17.009]  FS-MITIGATE gate: delta_t=10 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=17.009]  C_0 tau=0.800 >= tau_min^C — monitoring
+[BSHH-S4][t=17.010]  Ctrl10(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V178(ns3=183), slot=V178(ns3=183), t=15.000)  HB(claimed=V178(ns3=183), slot=V61(ns3=66), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=183 link_src=183 link_dst=183
+[Q34-VIOLATION] active.size()=2 reporter=183 link_src=66 link_dst=66
+[BSHH-S4][t=17.010]  FS-MITIGATE gate: delta_t=11 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=17.010]  C_0 tau=0.600 >= tau_min^C — monitoring
+[BSHH-S4][t=17.011]  Ctrl11(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V111(ns3=116), slot=V111(ns3=116), t=15.000)  HB(claimed=V111(ns3=116), slot=V70(ns3=75), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=116 link_src=116 link_dst=116
+[Q34-VIOLATION] active.size()=2 reporter=116 link_src=75 link_dst=75
+[BSHH-S4][t=17.011]  FS-MITIGATE gate: delta_t=12 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=17.011]  C_0 tau=0.400 >= tau_min^C — monitoring
+[BSHH-S4][t=17.012]  Ctrl12(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V144(ns3=149), slot=V144(ns3=149), t=15.000)  HB(claimed=V144(ns3=149), slot=V150(ns3=155), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=149 link_src=149 link_dst=149
+[Q34-VIOLATION] active.size()=2 reporter=149 link_src=155 link_dst=155
+[BSHH-S4][t=17.012]  FS-MITIGATE gate: delta_t=13 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=17.012]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[Trust][t=17.012]  REASSIGN(Z_0 -> C_4)  tau=0.200 < tau_min^C=0.300
+[BSHH-S4][t=17.013]  Ctrl13(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V24(ns3=29), slot=V24(ns3=29), t=15.000)  HB(claimed=V24(ns3=29), slot=V125(ns3=130), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=29 link_src=29 link_dst=29
+[Q34-VIOLATION] active.size()=2 reporter=29 link_src=130 link_dst=130
+[BSHH-S4][t=17.013]  FS-MITIGATE gate: delta_t=13 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.014]  Ctrl14(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V83(ns3=88), slot=V83(ns3=88), t=15.000)  HB(claimed=V83(ns3=88), slot=V30(ns3=35), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=88 link_src=88 link_dst=88
+[Q34-VIOLATION] active.size()=2 reporter=88 link_src=35 link_dst=35
+[BSHH-S4][t=17.014]  FS-MITIGATE gate: delta_t=14 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.015]  Ctrl15(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V81(ns3=86), slot=V81(ns3=86), t=15.000)  HB(claimed=V81(ns3=86), slot=V19(ns3=24), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=86 link_src=86 link_dst=86
+[Q34-VIOLATION] active.size()=2 reporter=86 link_src=24 link_dst=24
+[BSHH-S4][t=17.015]  FS-MITIGATE gate: delta_t=15 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.016]  Ctrl16(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V73(ns3=78), slot=V73(ns3=78), t=15.000)  HB(claimed=V73(ns3=78), slot=V130(ns3=135), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=78 link_src=78 link_dst=78
+[Q34-VIOLATION] active.size()=2 reporter=78 link_src=135 link_dst=135
+[BSHH-S4][t=17.016]  FS-MITIGATE gate: delta_t=16 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.017]  Ctrl17(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V117(ns3=122), slot=V117(ns3=122), t=15.000)  HB(claimed=V117(ns3=122), slot=V82(ns3=87), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=122 link_src=122 link_dst=122
+[Q34-VIOLATION] active.size()=2 reporter=122 link_src=87 link_dst=87
+[BSHH-S4][t=17.017]  FS-MITIGATE gate: delta_t=17 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.018]  Ctrl18(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V119(ns3=124), slot=V119(ns3=124), t=15.000)  HB(claimed=V119(ns3=124), slot=V123(ns3=128), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=124 link_src=124 link_dst=124
+[Q34-VIOLATION] active.size()=2 reporter=124 link_src=128 link_dst=128
+[BSHH-S4][t=17.018]  FS-MITIGATE gate: delta_t=18 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.019]  Ctrl19(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V82(ns3=87), slot=V82(ns3=87), t=15.000)  HB(claimed=V82(ns3=87), slot=V117(ns3=122), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=87 link_src=87 link_dst=87
+[Q34-VIOLATION] active.size()=2 reporter=87 link_src=122 link_dst=122
+[BSHH-S4][t=17.019]  FS-MITIGATE gate: delta_t=18 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.020]  Ctrl20(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V166(ns3=171), slot=V166(ns3=171), t=15.000)  HB(claimed=V166(ns3=171), slot=V182(ns3=187), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=171 link_src=171 link_dst=171
+[Q34-VIOLATION] active.size()=2 reporter=171 link_src=187 link_dst=187
+[BSHH-S4][t=17.020]  FS-MITIGATE gate: delta_t=19 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.021]  Ctrl21(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V59(ns3=64), slot=V59(ns3=64), t=15.000)  HB(claimed=V59(ns3=64), slot=V50(ns3=55), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=64 link_src=64 link_dst=64
+[Q34-VIOLATION] active.size()=2 reporter=64 link_src=55 link_dst=55
+[BSHH-S4][t=17.021]  FS-MITIGATE gate: delta_t=20 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.022]  Ctrl22(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V147(ns3=152), slot=V147(ns3=152), t=15.000)  HB(claimed=V147(ns3=152), slot=V159(ns3=164), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=152 link_src=152 link_dst=152
+[Q34-VIOLATION] active.size()=2 reporter=152 link_src=164 link_dst=164
+[BSHH-S4][t=17.022]  FS-MITIGATE gate: delta_t=21 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.023]  Ctrl23(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V182(ns3=187), slot=V182(ns3=187), t=15.000)  HB(claimed=V182(ns3=187), slot=V166(ns3=171), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=187 link_src=187 link_dst=187
+[Q34-VIOLATION] active.size()=2 reporter=187 link_src=171 link_dst=171
+[BSHH-S4][t=17.023]  FS-MITIGATE gate: delta_t=21 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.024]  Ctrl24(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V72(ns3=77), slot=V72(ns3=77), t=15.000)  HB(claimed=V72(ns3=77), slot=V38(ns3=43), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=77 link_src=77 link_dst=77
+[Q34-VIOLATION] active.size()=2 reporter=77 link_src=43 link_dst=43
+[BSHH-S4][t=17.024]  FS-MITIGATE gate: delta_t=22 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.025]  Ctrl25(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V139(ns3=144), slot=V139(ns3=144), t=15.000)  HB(claimed=V139(ns3=144), slot=V25(ns3=30), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=144 link_src=144 link_dst=144
+[Q34-VIOLATION] active.size()=2 reporter=144 link_src=30 link_dst=30
+[BSHH-S4][t=17.025]  FS-MITIGATE gate: delta_t=23 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.026]  Ctrl26(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V34(ns3=39), slot=V34(ns3=39), t=15.000)  HB(claimed=V34(ns3=39), slot=V106(ns3=111), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=39 link_src=39 link_dst=39
+[Q34-VIOLATION] active.size()=2 reporter=39 link_src=111 link_dst=111
+[BSHH-S4][t=17.026]  FS-MITIGATE gate: delta_t=24 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.027]  Ctrl27(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V30(ns3=35), slot=V30(ns3=35), t=15.000)  HB(claimed=V30(ns3=35), slot=V83(ns3=88), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=35 link_src=35 link_dst=35
+[Q34-VIOLATION] active.size()=2 reporter=35 link_src=88 link_dst=88
+[BSHH-S4][t=17.027]  FS-MITIGATE gate: delta_t=24 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.028]  Ctrl28(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V7(ns3=12), slot=V7(ns3=12), t=15.000)  HB(claimed=V7(ns3=12), slot=V44(ns3=49), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=12 link_src=12 link_dst=12
+[Q34-VIOLATION] active.size()=2 reporter=12 link_src=49 link_dst=49
+[BSHH-S4][t=17.028]  FS-MITIGATE gate: delta_t=25 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.029]  Ctrl29(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V156(ns3=161), slot=V156(ns3=161), t=15.000)  HB(claimed=V156(ns3=161), slot=V137(ns3=142), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=161 link_src=161 link_dst=161
+[Q34-VIOLATION] active.size()=2 reporter=161 link_src=142 link_dst=142
+[BSHH-S4][t=17.029]  FS-MITIGATE gate: delta_t=26 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.030]  Ctrl30(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V90(ns3=95), slot=V90(ns3=95), t=15.000)  HB(claimed=V90(ns3=95), slot=V73(ns3=78), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=95 link_src=95 link_dst=95
+[Q34-VIOLATION] active.size()=2 reporter=95 link_src=78 link_dst=78
+[BSHH-S4][t=17.030]  FS-MITIGATE gate: delta_t=27 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.031]  Ctrl31(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V143(ns3=148), slot=V143(ns3=148), t=15.000)  HB(claimed=V143(ns3=148), slot=V152(ns3=157), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=148 link_src=148 link_dst=148
+[Q34-VIOLATION] active.size()=2 reporter=148 link_src=157 link_dst=157
+[BSHH-S4][t=17.031]  FS-MITIGATE gate: delta_t=27 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[BSHH-S4][t=17.032]  Ctrl32(?) --INTERNAL REPLAY (RSU path)--> own liveness table  HB(claimed=V18(ns3=23), slot=V18(ns3=23), t=15.000)  HB(claimed=V18(ns3=23), slot=V187(ns3=192), t=15.000)  IMPERSONATION  TABLE POISONED  *** ATTACK COMPLETE *** (no external packet)
+[Q34-VIOLATION] active.size()=1 reporter=23 link_src=23 link_dst=23
+[Q34-VIOLATION] active.size()=2 reporter=23 link_src=192 link_dst=192
+[BSHH-S4][t=17.032]  FS-MITIGATE gate: delta_t=28 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=6886953355523513478 (interval=3.000s)
+[Q48DBG3] t=19.900 tick=100 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=6886953355523513478 (interval=3.000s)
+[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=6886953355523513478 (interval=3.000s)
+[Q48DBG3] t=24.900 tick=150 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=6886953355523513478 (interval=3.000s)
+[Q48DBG3] t=29.900 tick=200 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=30.000] Published checkpoint seq=9 block_height=270 digest=6886953355523513478 (interval=3.000s)
+[Trust][Anchor][t=33.000] Published checkpoint seq=10 block_height=300 digest=6886953355523513478 (interval=3.000s)
+[Q48DBG3] t=34.900 tick=250 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=36.000] Published checkpoint seq=11 block_height=330 digest=6886953355523513478 (interval=3.000s)
+[Trust][Anchor][t=39.000] Published checkpoint seq=12 block_height=360 digest=6886953355523513478 (interval=3.000s)
+[Q48DBG3] t=39.900 tick=300 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=42.000] Published checkpoint seq=13 block_height=390 digest=6886953355523513478 (interval=3.000s)
+[Q48DBG3] t=44.900 tick=350 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=45.000] Published checkpoint seq=14 block_height=420 digest=6886953355523513478 (interval=3.000s)
+[Trust][t=47.012]  Node 0: QUARANTINE -> REMOVED  (Stage-2 tick, tau=0.000 after T_quar=30.000000s)
+[Trust][t=47.012]  Stage-2 monitor disarmed (no active quarantines)
+[Trust][Anchor][t=48.000] Published checkpoint seq=15 block_height=450 digest=10060976004258259523 (interval=3.000s)
+[Q48DBG3] t=49.900 tick=400 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=51.000] Published checkpoint seq=16 block_height=480 digest=10060976004258259523 (interval=3.000s)
+[Trust][Anchor][t=54.000] Published checkpoint seq=17 block_height=510 digest=10060976004258259523 (interval=3.000s)
+[Q48DBG3] t=54.900 tick=450 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=57.000] Published checkpoint seq=18 block_height=540 digest=10060976004258259523 (interval=3.000s)
+[Q48DBG3] t=59.900 tick=500 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[PEM] /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/SCENARIO_VALIDITY/08_BSHH_S4_Malicious_Controller_With_RSU_seed999.csv written: 0 event(s) excluded (invalid RSU neighborhood, not detector error); 0 benign event(s) flagged no_real_reception_at_reporter (diagnostic only, STILL COUNTED in confusion matrix — confirmed real channel-contention loss, not a scenario artifact)
+[M2][TDRR] mean_topology_divergence=0.000  (samples=0)  unprotected=0.000 (n=0)  mitigated=0.000 (n=0)  TDRR=0.000%
+[M3][T_stale] mean=0.000 ms (samples=0)
+[M4][PIR] mean=1.000 (links tracked=0)
+[M5][T_LW_pipeline] mean=7.028 ms  max<=9.216 ms  over_budget<=0/165  (Eq. 4.7/4.9; T_LW_det only, checked against 100ms budget; max/over_budget are conservative upper bounds from the combined crypto+LW+TGN timer, true T_LW_det is <= this)
+[M5][T_FS_pipeline] mean=0.255 ms  max<=0.953 ms  (Eq. 4.8: T_FS_det+TPBFT+T_Fabric_exec+TFlowMod, no 100ms constraint -- max is sum of per-component maxima, a conservative upper bound not a true joint max)
+[M5][T_FS_det] mean=0.255 ms  max=0.953 ms (n=165)
+[M5][T_pbft] mean=0.000 ms  max=0.000 ms (n=0)
+[M5][T_exec_flowmod] mean=0.000 ms  max=0.000 ms (n=0)
+[M7][Omega] omega_lw=5.941%  omega_fs=572.649%
+[M9][F1] TTW=1.000 BSHH=1.000 ME=1.000 macro=1.000
+[M10][FRA/FRR] FRA=0.000 FRR=0.000
+[M11][FSR] attempts=0 success=0 FSR=0.000
+[M12][Trust] t_trust=0.000 ms  t_revoke=0.000 ms  t_reassign=3.000 ms
+
+[CRYPTO] crypto_latency_sumo.csv written    (230 events)
+[CRYPTO] crypto_latency_summary.csv written  (8 distinct operations)
+[CRYPTO] Beacon TX signed: 0   RX verified: 0
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=292  reject=583
+[TGN] Online mode — 132 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 165 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 66 alert(s) → tgn_alerts.json
+[TGN] individual_sig_evidence.json written: 330 record(s) → individual_sig_evidence.json
+[TGN] beacon_evidence.csv written: 33 observation(s)
+[TGN] ctrl_topo.json written: 0 link(s)
+[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
+
+========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
+  Scenario  : 8 — BSHH-S4: Malicious Controller, With RSU
+  RSU mode  : WITH RSU
+  TP/TN/FP/FN : 66 / 66 / 0 / 0
+  [ctrl] TP/TN/FP/FN : 66 / 0 / 0 / 0
+  [beh]  TP/TN/FP/FN : 0 / 66 / 0 / 0
+  MCC         : 1.000
+  [comb] TP/TN/FP/FN : 66 / 66 / 0 / 0   MCC=1.000  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 1.000
+  ACR         : 100.000 %
+  Tdet        : 0.000 ms  [TGN-only, i.e. tgn_alert first-fire]
+  Comb Tdet   : 0.000 ms  [dual-mode, first of LW-or-TGN to fire — Eq. 4.7]
+  θ_FS        : 0.260  [calibrated]
+  θ_MCC_opt   : 0.120  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 68.123  [Eq. 3.22 init; validation-tuned hyperparameter]
+  W_max       : 95  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 132
+  Stage-0 blocked (attacks): 0
+  Stage-0 blocked (revoked, TEMP DEBUG): 0
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
+  Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
+============================================================
+
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
+----------------------------------------------------------
+Detect stage (crypto+LW+TGN, PemEmitEvent):
+  Events processed: 165
+  Avg wall-clock time: 7.283 ms
+  Max wall-clock time: 9.216 ms
+  Events exceeding budget: 0 / 165
+Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
+  Mitigations applied: 13
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.001 ms
+Full pipeline (detect+mitigate combined, when mitigation fired):
+  Triggered events: 13
+  Avg wall-clock time: 7.709 ms
+  Max wall-clock time: 8.540 ms
+  Events exceeding 100.000 ms budget: 0 / 13  -- full pipeline stays within the T_b budget on this hardware
+
+Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
+  Calls: 66
+  Avg wall-clock time: 0.064 ms
+  Max wall-clock time: 0.139 ms
+  Calls exceeding budget: 0 / 66
+
+RSU-forward (CSMA dispatch, AttackSendRSUToController):
+  Calls: 33
+  Avg wall-clock time: 0.003 ms
+  Max wall-clock time: 0.005 ms
+  Calls exceeding budget: 0 / 33
+
+Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
+  Calls: 0
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
+  Calls exceeding budget: 0 / 0
+
+Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
+  Calls: 0
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
+  Calls exceeding budget: 0 / 0
+
+LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
+  Calls: 13
+  Avg wall-clock time: 0.399 ms
+  Max wall-clock time: 0.412 ms
+  Calls exceeding budget: 0 / 13
+
+Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
+  beacon-send(0.064) + beacon-crypto(0.000) + rsu-forward(0.003) + detect(7.283) + detection-crypto(0.000) + mitigate(0.000) + lkh-crypto(0.399) = 7.751 ms
+  -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
+
+Continuous Neighborhood Statistics
+---------------------------------
+Candidate pairs checked: 19900000
+Successful neighbor observations: 433608
+Average neighbors/vehicle: 4.336
+Maximum neighbors observed at once: 15
+
+Real-time (wall-clock) budget check — T_b=100.000 ms:
+  Ticks executed: 500
+  Avg tick wall-clock time: 2.601 ms
+  Max tick wall-clock time: 4.486 ms
+  Ticks exceeding 100.000 ms budget: 0 / 500  -- pipeline stays within the T_b budget on this hardware
+
+Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
+  neighborhood(2.601) + beacon-send(0.064) + beacon-crypto(0.000) + rsu-forward(0.003) + detect(7.283) + detection-crypto(0.000) + mitigate(0.000) + lkh-crypto(0.399) = 10.351 ms
+  -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

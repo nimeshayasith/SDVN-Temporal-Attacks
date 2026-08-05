@@ -1,4 +1,6 @@
-=== a6 (f_c auto-sweep) scenario=5 ===
-=== a6 (f_c auto-sweep) scenario=6 ===
-=== a6 (f_c auto-sweep) scenario=7 ===
-=== a6 (f_c auto-sweep) scenario=8 ===
+=== a6 scenario=5 bshh_s1_fc=1 (threshold-sig ACTIVE, t=5) ===
+=== a6 scenario=5 bshh_s1_fc=3 (threshold-sig ACTIVE, t=5) ===
+=== a6 scenario=5 bshh_s1_fc=5 (threshold-sig ACTIVE, t=5) ===
+=== a6 scenario=5 bshh_s1_fc=7 (threshold-sig ACTIVE, t=5) ===
+=== a6 scenario=5 bshh_s1_fc=9 (threshold-sig ACTIVE, t=5) ===
+=== a6 sweep complete ===

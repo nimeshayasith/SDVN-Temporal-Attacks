@@ -5,7 +5,7 @@
             3.21(Auv) 3.22(GRU) 3.23(MP) 3.24(score) 3.25(class)
   θ_FS    : 0.2600  [calibrated — worst-case MCC across scenarios, no_lw ablation]
   γ       : 147.1549  [init: L_link/(2·T_b·ln2); validation-tuned hyperparameter (§3.4.3, Eq. 3.22)]
-  W_max   : 203  [§3.4.3 sliding window = N_beacon = floor(L_link/T_b) from Eq. 3.32]
+  W_max   : 204  [§3.4.3 sliding window = N_beacon = floor(L_link/T_b) from Eq. 3.32]
   RSU mode: NO RSU  — reporter_count=reporter_id, identity_mismatch active
 ============================================================
 

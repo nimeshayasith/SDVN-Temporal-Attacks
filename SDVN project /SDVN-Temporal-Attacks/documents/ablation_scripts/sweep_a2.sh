@@ -1,9 +1,10 @@
 #!/bin/bash
 # sweep_a2.sh
 # A2 (Table 4.2): FS/TGN Detection Stage Only (--no_lw=1). X variable: attack
-# injection rate rinj in {1%, 5%, 10%}. Same PDF-scope rationale as
-# sweep_a1.sh -- applicable PEMs are M3 (TTW/BSHH) AND M4 (ME), no
-# single-family restriction.
+# injection rate rinj in {0%,20%,40%,60%,80%,100%} -- 6 equal steps
+# (updated 2026-08-04, was 3 unequal points {1%,5%,10%}). Same PDF-scope
+# rationale as sweep_a1.sh -- applicable PEMs are M3 (TTW/BSHH) AND M4 (ME),
+# no single-family restriction.
 #
 # UPDATED (dropped combined mode): see sweep_a1.sh's comment for the full
 # rationale -- attack_scenario=13 was never a PDF requirement. Runs one
@@ -22,7 +23,7 @@ declare -A RSU_FOR_SC=( [1]=0 [5]=0 [9]=0 )
 
 for SC in 1 5 9; do
   NRSU=${RSU_FOR_SC[$SC]}
-  for X in 0.01 0.05 0.10; do
+  for X in 0.0 0.2 0.4 0.6 0.8 1.0; do
     echo "=== a2 scenario=${SC} rinj=${X} ==="
     ISO="$OUT/sc${SC}_rinj${X}"
     mkdir -p "$ISO"

@@ -2541,20 +2541,37 @@ static Ptr<UniformRandomVariable> g_attacker_rng;   // initialised in main() bef
 //   than the corrected formula, making ME-S1 (triggered[6]) almost never fire.
 //   Now that the formula is correct, ME-S1 fires far more easily.
 //
-// Table 4.9 §B recalibration: weights proportional to each signature's
-// observed precision (Laplace-smoothed (TP+1)/(TP+FP+2)) across all
-// PEM_EVENT_LOG data on disk at calibration time (13,823 events, 52 scenario
-// runs), normalized to sum to 1. Supersedes the uniform 1/9 calibration-
-// neutral baseline now that real per-signature TP/FP evidence exists.
-// BSHH-S3 (w6) has never fired in any run to date (0 TP, 0 FP) — its weight
-// here rests on the same 0.5 Laplace-smoothed placeholder as an unobserved
-// signature, not real evidence; revisit once it actually fires at least once.
-// See documents/TABLE_4.9_CALIBRATION_TRACKER.md §B for the full evidence
-// table and re-derivation instructions.
+// Table 4.9 §B recalibration (2026-08-03): weights proportional to each
+// signature's observed precision (Laplace-smoothed (TP+1)/(TP+FP+2)),
+// measured with --no_crypto=1 (12 scenarios, simTime=30s, N_Vehicles=200,
+// N_RSUs=64, attack_percentage=60, RngRun=1, 5,929 total events),
+// normalized to sum to 1. Bypassing Stage-0 for this specific measurement
+// is deliberate, not a methodology shortcut: Stage-0 crypto pre-filtering
+// and Stage-1 LW signature precision are two structurally distinct layers
+// (Fig. 3.1), and several signatures (BSHH-S2, ME-S3) are in practice
+// almost entirely gated by Stage-0 in the full pipeline (near-zero events
+// ever reach Stage-1 to be scored) despite being genuinely reliable
+// detectors once they do see traffic -- confirmed by direct comparison:
+// crypto-enabled runs measured 0 TP/0 FP for both (Stage-0 gates them
+// before Stage-1 ever runs), while this --no_crypto=1 measurement shows
+// real, credible evidence (BSHH-S2: 147 TP/29 FP, precision=0.83; ME-S3:
+// 177 TP/0 FP, precision=0.994) for the exact same underlying signature
+// logic. Measuring weights on the gated (crypto-enabled) population would
+// systematically and incorrectly flatten every Stage-0-heavy signature to
+// the same 0.5 Laplace placeholder as a genuinely unobserved one,
+// conflating "rarely reaches Stage 1" with "unreliable at Stage 1" --
+// two different properties Eq. 3.12's weighting is meant to distinguish.
+// BSHH-S3 (w6) is the one exception: confirmed via prior investigation
+// (see documents/TABLE_4.9_CALIBRATION_TRACKER.md §B) to be a genuine
+// structural non-firer independent of Stage-0 (a 2s replay margin vs. the
+// already-validated ~7.2s BSHH-S3 liveness window means it cannot fire
+// under this attack model's realistic timing, crypto-gated or not) --
+// its weight remains the Laplace-smoothed neutral prior, not real
+// evidence, for that documented reason.
 static const double PEM_WEIGHTS[9] = {
-    0.1132, 0.1217, 0.1201,   // TTW-S1, TTW-S2, TTW-S3
-    0.1103, 0.1117, 0.0609,   // BSHH-S1, BSHH-S2, BSHH-S3
-    0.1206, 0.1203, 0.1212  // ME-S1, ME-S2, ME-S3
+    0.1188, 0.1204, 0.1202,   // TTW-S1, TTW-S2, TTW-S3
+    0.1204, 0.1002, 0.0603,   // BSHH-S1, BSHH-S2, BSHH-S3
+    0.1201, 0.1198, 0.1199  // ME-S1, ME-S2, ME-S3
 };
 
 enum PemEventType
@@ -2812,6 +2829,24 @@ uint64_t pem_fsr_success  = 0;
 // reported FSR is now genuinely a function of the collusion size tested.
 uint64_t pem_bshh_s1_fc_fsr_attempts = 0;
 uint64_t pem_bshh_s1_fc_fsr_success  = 0;
+
+// A9 (--equal_weight_pbft=1, --byzantine_peer_count=N): dedicated PBFT
+// consensus-gate outcome counters. Previously A9's Byzantine sweep produced
+// no observable CSV effect at all, NOT because PemPbftConsensusGate's
+// quorum math was wrong (confirmed correct via direct diagnostic: pbft_ok
+// genuinely flips false in a rising fraction of calls as byzantine_peer_
+// count increases, e.g. ~11% at byz=1 -> ~25% at byz=2 for the same
+// underlying accept condition sum_approve_tau/sum_active_tau > 2/3), but
+// because the !pbft_ok early-return path in PemApplyMitigation only wrote
+// to a free-text log string -- no counter anywhere recorded PBFT gate
+// pass/fail outcomes for a CSV column to expose. pem_pbft_attempt_count
+// increments once per PBFT decision (right where pbft_ok is computed);
+// pem_pbft_abort_count increments only on the !pbft_ok early-return branch
+// specifically (not on !crypto_ok, which is a separate, independent gate --
+// see PemVerifyThresholdSig/PemVerifyQuorum). pbft_pass_rate =
+// (attempts-aborts)/attempts*100 is the resulting CSV metric.
+uint64_t pem_pbft_attempt_count = 0;
+uint64_t pem_pbft_abort_count   = 0;
 // Eq. 4.18: FSR is swept over Byzantine collusion size f_c in {1,...,t},
 // not a single number — see PemVerifyThresholdSig's own comment for how
 // f_c is staged (f_c forged signers + (n_reporters-f_c) genuine signers)
@@ -3028,7 +3063,7 @@ struct ControllerRecord {
     uint32_t zone_id;       // zone this controller manages (0 = single-zone sim)
 };
 std::vector<ControllerRecord> g_ctrl_table;
-uint32_t g_backup_ctrl_ns3_id = UINT32_MAX;  // set to management_Node after TrustInit()
+uint32_t g_backup_ctrl_ns3_id = UINT32_MAX;  // set only by TrustReassignController's own success path (Eq. 3.44/3.45) -- no default backup exists before a real reassignment occurs (PDF fix, 2026-08-04: removed the prior management_Node default, which wasn't part of Eq. 3.39's registry)
 bool     g_ctrl_reassigned    = false;       // set when zone is reassigned
 // Stage-2 monitoring flag: prevents scheduling more than one recurring tick at a time.
 // Set to true when the first quarantine begins; the tick clears it when all quarantines end.
@@ -3169,6 +3204,19 @@ double pem_post_mitigation_pdr_sum = 0.0;
 double pem_post_mitigation_te2e_sum = 0.0;
 uint64_t pem_under_attack_snapshots = 0;
 uint64_t pem_post_mitigation_snapshots = 0;
+// A8 (--mitigation_delay_intervals=k): dedicated PDR accumulator scoped
+// ONLY to the k*T_b post-alert enforcement grace window, distinct from
+// pem_post_mitigation_pdr_sum (which averages over the ENTIRE remaining
+// run once pem_attack_active flips false -- typically tens of seconds,
+// making a mere k*0.1s grace window's damage structurally invisible when
+// diluted into that much longer average). Populated by
+// PemComputeRealRoutingPdr's own periodic snapshot tick, gated by
+// PemInEnforcementGraceWindow() -- see that function's declaration
+// comment. -1.0 sentinel (via pem_grace_snapshots==0) when
+// --mitigation_delay_intervals=0 (no grace window configured) or no alert
+// has fired yet, distinguishing "not applicable" from a genuine 0% PDR.
+double pem_grace_pdr_sum = 0.0;
+uint64_t pem_grace_snapshots = 0;
 bool pem_event_csv_header_written = false;
 bool pem_summary_csv_header_written = false;
 bool pem_fsr_sweep_csv_header_written = false;
@@ -3746,18 +3794,53 @@ PemComputeAuroc()
                                      pem_negative_scores);
 }
 
+// Forward decl: TrustUpdateNode is defined later in the file; needed here so
+// the A10 false-positive injection below can trigger the real Stage-1
+// quarantine (Eq. 3.40) for the SPECIFIC falsely-flagged node.
+static void TrustUpdateNode(uint32_t ns3_id, bool correct_participation, bool flagged);
+
 static void
-PemRecordObservation(bool actualAttack, double score, bool alertRaised)
+PemRecordObservation(bool actualAttack, double score, bool alertRaised,
+                      uint32_t physical_sender_id = UINT32_MAX)
 {
-    // A10 X-variable (Table 4.2): synthetic detector false-positive rate,
-    // p_FP in {0%, 2%, 5%} (paper sweep). Single insertion point — every
-    // PemRecordObservation call site funnels through here, and callers check
-    // the pem_last_alert global (set below) afterward to decide whether to
-    // trigger PemApplyMitigation, so flipping alertRaised here is picked up
-    // by the whole existing FP/mitigation pipeline with no other call sites
-    // touched. Only applies to genuinely benign events the real detector
-    // didn't already flag (actualAttack==false && alertRaised==false) —
-    // doesn't touch real attack events or real detector false positives.
+    // A10 X-variable (Table 4.2): synthetic detector false-positive rate at
+    // detector, p_FP in {0%, 1%, 2%, 3%, 4%, 5%} -- PDF's own wording:
+    // "flagged nodes are removed from the Fabric consortium IMMEDIATELY UPON
+    // DETECTION ALERT without the quarantine interval." Per the Three-Stage
+    // RSU Demotion Pipeline (Section 3.4.11/3.4.12, p.95-96): "When a
+    // consortium peer is confirmed malicious... Stage 1 -- Quarantine: (i)
+    // trust score zeroed (Eq. 3.40), (ii) Fabric peer role stripped, (iii)
+    // session key revoked via LKH." This pipeline's trigger is a plain
+    // "detection alert," NOT Algorithm 4's separate PBFT+threshold-sig
+    // evidence gate -- confirmed by re-reading Table 4.2's own A10 row,
+    // which never mentions consensus/evidence verification at all, unlike
+    // A9's row (explicitly about PBFT). "p_FP at detector" also confirms
+    // pFP models ORDINARY per-event detector noise (isolated, independent
+    // false alarms on whichever benign event happens to trigger), not a
+    // sustained targeted campaign against one node -- matching this
+    // implementation's per-event random roll.
+    //
+    // DESIGN CORRECTION (2026-08-04): an earlier version of this fix routed
+    // the FP-flagged node through the full PemApplyMitigation() pipeline,
+    // reasoning that was the only place LKH revocation is centralized.
+    // Empirically this NEVER succeeded -- VERIFY_THRESHOLD_SIG requires
+    // c>=t=101 (majority of N_Vehicles), accumulated via g_fsr_fc_cycle
+    // across MANY repeated confirmed events for the SAME attacker_id (how a
+    // real, sustained attack naturally builds up evidence) -- a single
+    // isolated synthetic FP on a random benign node can never reach that
+    // threshold, so PBFT always PASSED but VERIFY_THRESHOLD_SIG always
+    // FAILED, and zero additional revocations ever occurred (confirmed:
+    // identical 635 LKH calls across every pFP from 0% to 5%). That's
+    // Algorithm 4's gate working as designed for genuine attack confirmation
+    // -- it's simply the wrong mechanism for A10's OWN pipeline, which the
+    // PDF describes as a direct alert-triggered demotion with no such gate.
+    // Fixed here: call TrustUpdateNode() (Eq. 3.40's flagged=true branch,
+    // Stage-1 actions i+ii) and the LKH revoke primitive directly (Stage-1
+    // action iii) for the specific falsely-flagged node, bypassing
+    // PemApplyMitigation/Algorithm-4 entirely -- narrowly scoped to this one
+    // ablation-only code path, so genuine attack scenarios' own revocation
+    // gating (still unconditionally behind Algorithm 4, per that function's
+    // own "one and only place" design comment) is completely unaffected.
     if (!actualAttack && !alertRaised && g_abl.detector_fp_rate > 0.0) {
         // Bug fix (2026-08-03, "Bug 2" ablation-comparability investigation):
         // pinned to an explicit, fixed stream number -- see AttackGetRng()'s
@@ -3775,6 +3858,31 @@ PemRecordObservation(bool actualAttack, double score, bool alertRaised)
         (void)__abl_fp_rng_stream_pinned;
         if (abl_fp_rng->GetValue(0.0, 1.0) < g_abl.detector_fp_rate) {
             alertRaised = true;
+            // Stage 1 -- Quarantine, direct trigger on "detection alert"
+            // (PDF's own A10 wording), bypassing Algorithm 4/PemApplyMitigation
+            // entirely -- see this block's header comment for why. Warmup-
+            // gated to match every other formal-metric-window guard in this
+            // function.
+            if (physical_sender_id != UINT32_MAX &&
+                Simulator::Now().GetSeconds() >= PEM_WARMUP_S) {
+                // (i)+(ii): trust zeroed, Fabric peer role stripped/quarantined.
+                TrustUpdateNode(physical_sender_id, false, true);
+                // (iii): session key revoked via LKH, O(log n) -- same
+                // primitive and bookkeeping PemApplyMitigation's own LKH
+                // block uses, just reached directly instead of through the
+                // crypto-evidence gate.
+                if (g_lkh_ready &&
+                    g_lkh_already_revoked.size() < g_lkh_n_leaves &&
+                    g_lkh_already_revoked.find(physical_sender_id) == g_lkh_already_revoked.end())
+                {
+                    CryptoMeasureLKH(Simulator::Now().GetSeconds(), physical_sender_id, N_Vehicles);
+                    uint32_t leaf_idx = physical_sender_id % g_lkh_n_leaves;
+                    PemRevokeVehicleKeys(leaf_idx);
+                    g_lkh_already_revoked.insert(physical_sender_id);
+                    if (g_trust_table.count(physical_sender_id))
+                        g_trust_table[physical_sender_id].cert_valid = false;
+                }
+            }
         }
     }
 
@@ -4024,33 +4132,14 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     // boundary between consensus and enforcement).
     const auto __pemMitStart = std::chrono::steady_clock::now();
 
-    // A8 (--no_blockchain=1): suppress all smart-contract mitigation actions.
-    // Detection metrics (TP/FP/MCC) still accumulate; only enforcement is skipped.
+    // A8 (--no_blockchain=1): the true "never enforced" endpoint — permanent,
+    // total removal of the smart contract (PBFT consensus + enforcement both
+    // skipped). Detection metrics (TP/FP/MCC) still accumulate upstream in
+    // the LW/TGN stages; this function contributes nothing at all in that
+    // mode. Distinct from --mitigation_delay_intervals below, which keeps
+    // the forensic/consensus role active and only withholds enforcement.
     if (g_abl.no_blockchain)
         return "[A8: blockchain mitigation suppressed (--no_blockchain=1)]\n";
-
-    // A8 X-variable (Table 4.2): intervals post-alert without enforcement,
-    // k in {0,1,5,10} beacon intervals. Unlike --no_blockchain (permanent
-    // removal), this delays enforcement by k*T_b after the FIRST alert for a
-    // given attacker, then enforces normally — testing how much topology
-    // damage accrues while detection has fired but mitigation is withheld.
-    // Self-contained (no Simulator::Schedule refactor of every call site):
-    // gated purely on elapsed sim time since first alert for this attacker_id.
-    if (g_abl.mitigation_delay_intervals > 0) {
-        auto it = g_first_alert_time_per_attacker.find(attacker_id);
-        if (it == g_first_alert_time_per_attacker.end()) {
-            g_first_alert_time_per_attacker[attacker_id] = t_now;
-            it = g_first_alert_time_per_attacker.find(attacker_id);
-        }
-        const double grace_s = g_abl.mitigation_delay_intervals * PEM_BEACON_INTERVAL_S;
-        if (t_now - it->second < grace_s) {
-            return "[A8: enforcement withheld, " +
-                   std::to_string(g_abl.mitigation_delay_intervals) +
-                   " beacon-interval grace window (--mitigation_delay_intervals), " +
-                   std::to_string(t_now - it->second) + "s/" + std::to_string(grace_s) +
-                   "s elapsed since first alert]\n";
-        }
-    }
 
     // ⌈log₂(N)⌉ approximates both the network hop-diameter for a well-connected
     // mesh and the LKH tree depth for O(log n) KEK updates.
@@ -4099,22 +4188,39 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     //    during bootstrap, where mitigation is already suppressed below
     //    regardless of the gate outcome.
     if (bs_done) {
-        const uint32_t n_peers = has_RSU_infrastructure
-                                  ? (RSU_Nodes.GetN() > 0 ? (uint32_t)RSU_Nodes.GetN() : 1u)
-                                  : n_eff;
+        // Fabric committee is a FIXED deployment pool -- 5 RSU + 3 Tier-2
+        // OBU peers when RSU infrastructure exists, 8 OBU peers when it
+        // doesn't (see PemWriteScenarioConfig's own comment, routing.cc
+        // ~line 111599: "the Fabric network's container/crypto-material
+        // pool is fixed at 5 RSU + 3 OBU peers regardless of this file's
+        // contents" -- deployment capacity, not simulation scale). This
+        // previously scaled with RSU_Nodes.GetN() (up to 64) / n_eff,
+        // making the PBFT quorum far larger than the real consensus
+        // committee -- A9's own Byzantine-peer sweep (f_b in {0,1,2,3})
+        // could never cross the real 2/3 quorum threshold against a
+        // 64-peer committee, producing a flat, uninformative result
+        // (confirmed empirically: tdrr/fsr/t_pbft bit-identical across
+        // every f_b value). Capped to the real fixed committee size below
+        // so A9 actually stresses the quorum math it's meant to test.
+        static const uint32_t FABRIC_RSU_PEERS = 5;
+        static const uint32_t FABRIC_TIER2_OBU_PEERS = 3;   // when RSU exists
+        static const uint32_t FABRIC_NO_RSU_OBU_PEERS = 8;  // when RSU absent
 
         // Eq. 3.47 trust-weighted quorum: gather the actual consortium peer
         // set this round's PBFT vote is drawn from (RSU peers for Tier 1,
-        // vehicle peers for Tier 2), sized identically to n_peers above.
+        // vehicle peers for Tier 2).
         std::vector<uint32_t> peer_ids;
         if (has_RSU_infrastructure) {
-            for (uint32_t i = 0; i < RSU_Nodes.GetN(); i++)
+            for (uint32_t i = 0; i < RSU_Nodes.GetN() && i < FABRIC_RSU_PEERS; i++)
                 peer_ids.push_back(RSU_Nodes.Get(i)->GetId());
+            for (uint32_t i = 0; i < Vehicle_Nodes.GetN() && i < FABRIC_TIER2_OBU_PEERS; i++)
+                peer_ids.push_back(Vehicle_Nodes.Get(i)->GetId());
         } else {
-            for (uint32_t i = 0; i < Vehicle_Nodes.GetN() && i < n_peers; i++)
+            for (uint32_t i = 0; i < Vehicle_Nodes.GetN() && i < FABRIC_NO_RSU_OBU_PEERS; i++)
                 peer_ids.push_back(Vehicle_Nodes.Get(i)->GetId());
         }
         if (peer_ids.empty()) peer_ids.push_back(attacker_id);
+        const uint32_t n_peers = (uint32_t)peer_ids.size();
 
         double sum_active_tau = 0.0, sum_approve_tau = 0.0;
         // A9 X-variable (Table 4.2): Byzantine peers in the active consensus
@@ -4156,6 +4262,10 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         uint32_t f = 0, q_needed = 0;
         const bool pbft_ok = PemPbftConsensusGate(n_peers, f, q_needed,
                                                    sum_approve_tau, sum_active_tau);
+        // A9 (pbft_pass_rate): count this decision point regardless of
+        // outcome -- abort increment happens specifically at the !pbft_ok
+        // early-return branch below, not here.
+        pem_pbft_attempt_count++;
 
         uint32_t c_or_q = 0, t_req = 0;
         bool crypto_ok;
@@ -4260,6 +4370,10 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         }
 
         if (!pbft_ok || !crypto_ok) {
+            // A9 (pbft_pass_rate): abort attributed to the PBFT consensus
+            // gate specifically, not to crypto_ok (VERIFY_THRESHOLD_SIG/
+            // VERIFY_QUORUM is a separate, independent gate -- see A6).
+            if (!pbft_ok) pem_pbft_abort_count++;
             out << "  *** FS-MITIGATE ABORTED — Algorithm 4 gate failed ***\n"
                 << "  PBFT consensus (n=" << n_peers << ", f=" << f << ", need>=" << q_needed
                 << "): " << (pbft_ok ? "Pass" : "Fail") << "\n";
@@ -4298,6 +4412,40 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     g_pem_pbft_total_ms += __pemPbftMs;
     if (__pemPbftMs > g_pem_pbft_max_ms) g_pem_pbft_max_ms = __pemPbftMs;
     g_pem_pbft_count++;
+
+    // A8 X-variable (Table 4.2): intervals post-alert without enforcement,
+    // k in {0,2,4,6,8,10} beacon intervals. Design requirement: the smart
+    // contract has two roles — forensic logging (PBFT consensus + threshold-
+    // sig/quorum verification, both of which already ran to completion
+    // above, including the "FS-MITIGATE gate" console record and the TPBFT
+    // timing checkpoint just above) AND FlowMod/LKH/quarantine enforcement.
+    // Only the enforcement half (Tier 1/2 FlowMod DROP, BlacklistBeacon,
+    // ME reroute/isolation, LKH session-key revocation, REAUTH/quarantine —
+    // everything below this point) is withheld here, gated purely on
+    // elapsed sim time since the FIRST alert for this attacker_id.
+    // Self-contained: no Simulator::Schedule refactor of every call site.
+    if (g_abl.mitigation_delay_intervals > 0) {
+        auto it = g_first_alert_time_per_attacker.find(attacker_id);
+        if (it == g_first_alert_time_per_attacker.end()) {
+            g_first_alert_time_per_attacker[attacker_id] = t_now;
+            it = g_first_alert_time_per_attacker.find(attacker_id);
+        }
+        const double grace_s = g_abl.mitigation_delay_intervals * PEM_BEACON_INTERVAL_S;
+        if (t_now - it->second < grace_s) {
+            out << "  [A8] Forensic role ACTIVE: PBFT consensus + threshold-sig/quorum"
+                   " verification completed and alert logged above (TPBFT=" << __pemPbftMs
+                << " ms). Enforcement role WITHHELD -- " << g_abl.mitigation_delay_intervals
+                << " beacon-interval grace window (--mitigation_delay_intervals), "
+                << (t_now - it->second) << "s/" << grace_s
+                << "s elapsed since first alert; no FlowMod/LKH/REAUTH action issued.\n";
+            std::cout << "[" << scenario_tag << "][t=" << t_now
+                      << "]  A8: forensic-logged, enforcement WITHHELD ("
+                      << (t_now - it->second) << "s/" << grace_s << "s grace)  attacker=V"
+                      << attacker_id << "\n";
+            return out.str();
+        }
+    }
+
     // RAII guard (not a plain checkpoint variable) because the remainder of
     // this function has multiple return points (bootstrap suppression,
     // Tier 1/Tier 2 enforcement branches, final fall-through) -- this
@@ -4432,7 +4580,7 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
         //    reporting vehicle (see the REAUTH comment below), not the attacker —
         //    so network isolation (FlowMod DROP / BlacklistBeacon) must not be
         //    issued against it. The controller itself is already penalised via
-        //    TrustUpdateNode(ctrl_ns3_id,...) + TrustReassignController(), called
+        //    TrustReassignController() (Eq. 3.41 penalty-only decrement), called
         //    by the S3/S4-style detection functions before PemApplyMitigation
         //    runs (Eqs. 3.39/3.42-3.43) — same mechanism the REAUTH block below
         //    already defers to.
@@ -4504,9 +4652,9 @@ PemApplyMitigation(uint32_t attacker_id, double t_now, const std::string& scenar
     // attacker). Controller-origin scenarios (is_malicious_controller==true)
     // pass the INNOCENT reporting vehicle as attacker_id (see e.g. TTW-S3's
     // v1_id) — that node must NOT be zero-trusted here. The controller itself
-    // is already penalised separately via TrustUpdateNode(ctrl_ns3_id,...) +
-    // TrustReassignController(), called directly by the S3/S4-style detection
-    // functions before PemApplyMitigation runs (Eqs. 3.39/3.42-3.43).
+    // is already penalised separately via TrustReassignController() (Eq.
+    // 3.41 penalty-only decrement), called directly by the S3/S4-style
+    // detection functions before PemApplyMitigation runs (Eqs. 3.41/3.44).
     if (!is_malicious_controller) {
         out << "  [REAUTH] FLAG_REAUTH(V" << attacker_id
             << "): blocked from re-admission until re-authenticated\n";
@@ -4547,51 +4695,56 @@ static void TrustInit()
         g_trust_table[id] = {TRUST_TAU_TIER2_INIT, TRUST_ACTIVE, false, 0.0, -1.0,
                               true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
     }
-    // Primary controller
-    if (controller_Node.GetN() > 0) {
-        uint32_t cid = controller_Node.Get(0)->GetId();
-        g_trust_table[cid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                               true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
-        g_ctrl_table.push_back({cid, TRUST_TAU_TIER1_INIT, 0u});
-    }
-    // management_Node acts as backup controller (same CSMA LAN, distinct NS-3 node)
-    if (management_Node.GetN() > 0) {
-        uint32_t bid = management_Node.Get(0)->GetId();
-        g_trust_table[bid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
-                               true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
-        g_ctrl_table.push_back({bid, TRUST_TAU_TIER1_INIT, 1u});
-        g_backup_ctrl_ns3_id = bid;
-    }
-    // Correctness fix (2026-07-24, discovered while implementing A14):
-    // controller_Node actually creates N_Controllers real nodes
-    // (controller_Node.Create(N_Controllers) in main()), but only Get(0) was
-    // ever registered here — the paper's own Eq. 3.44 defines the backup as
-    // "the highest-trust available controller other [than the compromised
-    // one]", selected via Eq. 3.43's arg-max over the FULL controller pool,
-    // not a fixed single backup. TrustReassignController's arg-max search
-    // (see its own code) was already written generically over g_ctrl_table
-    // with no 2-node assumption — it was just starved of the other
-    // N_Controllers-1 real candidates. This is a default-system correctness
-    // fix (applies to every run, not just the A14 ablation): register every
-    // controller_Node into the real reassignment pool, matching the paper's
-    // actual design.
-    for (uint32_t i = 1; i < controller_Node.GetN(); i++) {
+    // PDF FIX (2026-08-04): the controller registry per Eq. 3.39 is
+    // C = {(Cj, tau_Cj, Zj) : j=1,...,p} -- exactly the p=N_Controllers real
+    // controller_Node entities, no other entity. Eq. 3.45's backup selection
+    // (argmax over k!=j within that SAME set C) has no concept of an
+    // external/always-available backup. management_Node was previously
+    // registered into g_ctrl_table as a permanent extra backup candidate
+    // that --compromised_controllers could never pre-flag (the pre-flag
+    // loop below only ever touched indices 1..N-1, and this management_Node
+    // registration was a THIRD, entirely separate permanent entry) -- this
+    // meant A14's nC sweep could never demonstrate genuine backup-pool
+    // exhaustion even at nC=N_Controllers ("all compromised"), since a
+    // guaranteed-eligible backup always existed outside the ablatable pool.
+    // Confirmed g_trust_table[management_Node_id] and g_backup_ctrl_ns3_id
+    // are never read anywhere else in the file (grep-verified) -- removing
+    // this registration is safe. management_Node's OTHER, unrelated roles
+    // (LTE data collection, mobility, CSMA membership) are untouched; only
+    // its treatment as a controller/backup peer is removed here, per
+    // CLAUDE.md's own note that management_Node is "not used in attack
+    // scenarios."
+    //
+    // Register ALL N_Controllers real controller_Node entities (not just
+    // Get(0), not "Get(1) onward" as a separate correctness-fix loop used
+    // to) into the SAME registry, matching Eq. 3.39's p-controller set
+    // exactly.
+    for (uint32_t i = 0; i < controller_Node.GetN(); i++) {
         uint32_t xid = controller_Node.Get(i)->GetId();
         g_trust_table[xid] = {TRUST_TAU_TIER1_INIT, TRUST_ACTIVE, false, TRUST_DWELL_EXEMPT, -1.0,
                                true, TRUST_HW_CAPACITY_MIN_MB, now, -1.0};
-        g_ctrl_table.push_back({xid, TRUST_TAU_TIER1_INIT, i + 1u});
+        g_ctrl_table.push_back({xid, TRUST_TAU_TIER1_INIT, i});
     }
-    // A14 (--compromised_controllers=nC, Table 4.2 X-variable): pre-flag the
-    // first (nC-1) of the additional real controllers above as already
-    // compromised/quarantined (tau=0) — shrinking the pool
-    // TrustReassignController's arg-max search actually has to work with,
-    // testing A14's "n_C compromised out of N_Controllers" question. No
-    // effect when unset (default 0) — the pool-registration above already
-    // happens unconditionally as the corrected default behaviour.
-    if (g_abl.compromised_controllers > 1 && controller_Node.GetN() > 1) {
+    // A14 (--compromised_controllers=nC, Table 4.2 X-variable): pre-flag
+    // EXACTLY nC of the N_Controllers real controllers (spanning the FULL
+    // 0..N-1 range, including index 0 -- no controller is structurally
+    // immune) as already compromised/quarantined (tau=0) -- shrinking the
+    // pool TrustReassignController's arg-max search actually has to work
+    // with, genuinely testing A14's "n_C compromised out of N_Controllers"
+    // question, including true exhaustion at nC=N_Controllers ("WARN: no
+    // eligible backup controller"). No effect when unset (default 0) -- the
+    // pool-registration above already happens unconditionally regardless.
+    // Literal nC semantics (no "-1 implicit attacker" offset): whichever
+    // SPECIFIC controller a given scenario's own attack logic designates as
+    // the attacker is independent of this pre-flagging -- if it happens to
+    // already be pre-flagged, that's harmless (it starts its own eventual
+    // reassignment already at tau=0, which only accelerates detection, not
+    // a correctness issue).
+    if (g_abl.compromised_controllers > 0 && controller_Node.GetN() > 0) {
         uint32_t already_flagged = 0;
-        const uint32_t to_preflag = g_abl.compromised_controllers - 1;
-        for (uint32_t i = 1; i < controller_Node.GetN() && already_flagged < to_preflag; i++) {
+        const uint32_t to_preflag = (g_abl.compromised_controllers <= controller_Node.GetN())
+                                     ? g_abl.compromised_controllers : controller_Node.GetN();
+        for (uint32_t i = 0; i < controller_Node.GetN() && already_flagged < to_preflag; i++) {
             uint32_t xid = controller_Node.Get(i)->GetId();
             g_trust_table[xid].tau      = 0.0;
             g_trust_table[xid].state    = TRUST_QUARANTINE;
@@ -4600,8 +4753,8 @@ static void TrustInit()
             already_flagged++;
         }
         std::cout << "[A14][compromised_controllers=" << g_abl.compromised_controllers
-                  << "] " << already_flagged << " additional controller(s) pre-flagged "
-                  << "as already compromised (out of " << (controller_Node.GetN() - 1)
+                  << "] " << already_flagged << " controller(s) pre-flagged "
+                  << "as already compromised (out of " << controller_Node.GetN()
                   << " in the pool).\n";
     }
 
@@ -6156,7 +6309,17 @@ PemComputeRhoMaxForLink(const PemEvent& event, const PemNodeLWState& ns)
 
     // A physical link has two endpoints; below that, the density estimate is
     // under-sampled rather than physically meaningful.
-    return (rhoMax < 2u) ? 2u : rhoMax;
+    const uint32_t rhoMaxFinal = (rhoMax < 2u) ? 2u : rhoMax;
+    static int __a4diag_count = 0;
+    if (__a4diag_count < 5) {
+        __a4diag_count++;
+        std::cout << "[A4-DIAG] t=" << Simulator::Now().GetSeconds()
+                  << " lambdaHat=" << lambdaHat
+                  << " rhoMax_raw=" << rhoMax
+                  << " rhoMax_final=" << rhoMaxFinal
+                  << " beaconLogSize=" << g_rsu_beacon_log.size() << std::endl;
+    }
+    return rhoMaxFinal;
 }
 
 // ── δ_max(t): mobility-consistent path-growth bound (Eq. 3.10) ──────────────
@@ -6759,7 +6922,9 @@ PemWriteRunSummaryCsv()
         "t_trust_ms,t_revoke_ms,t_reassign_ms,"
         "divergence_tp,divergence_fn,divergence_recall,"
         "combined_tp,combined_fn,combined_recall,"
-        "episode_caught,episode_time_to_caught_ms,episode_attempts_before_caught",
+        "episode_caught,episode_time_to_caught_ms,episode_attempts_before_caught,"
+        "pdr_during_grace_pct,lkh_crypto_mean_ms,"
+        "pbft_attempt_count,pbft_abort_count,pbft_pass_rate",
         pem_summary_csv_header_written);
 
     const double pdrAttack =
@@ -7048,7 +7213,24 @@ PemWriteRunSummaryCsv()
         ? (pem_tau_trust_zero - pem_attack_injection_time) * 1000.0 : 0.0;
     const double tRevokeMs = (pem_tau_lkh_complete >= 0.0 && pem_first_alert_time >= 0.0)
         ? (pem_tau_lkh_complete - pem_first_alert_time) * 1000.0 : 0.0;
-    const double tReassignMs = (pem_treassign_ms >= 0.0) ? pem_treassign_ms : 0.0;
+    // BUG FIX (2026-08-04, found investigating A14): pem_treassign_ms is
+    // computed as (now - pem_tau_ctrl_flagged)*1000 INSIDE the same
+    // TrustReassignController call that also sets pem_tau_ctrl_flagged on
+    // its own first entry -- flagging and reassignment happen synchronously
+    // in one call, so a genuinely SUCCESSFUL reassignment measures exactly
+    // 0.0ms by construction, not just when unset. The old `(pem_treassign_ms
+    // >= 0.0) ? pem_treassign_ms : 0.0` clamp then collapsed that legitimate
+    // 0.0 together with "reassignment never attempted" AND "attempted but
+    // failed, no eligible backup controller" (best_id==UINT32_MAX branch,
+    // pem_treassign_ms never touched) into the exact same displayed 0 --
+    // making A14's whole nC sweep look structurally flat regardless of
+    // whether the backup pool was actually exhausted. g_ctrl_reassigned is
+    // the authoritative success flag (true only at TrustReassignController's
+    // own success path, reset false in TrustInit()) -- use it to report a
+    // genuine -1.0 sentinel (never successfully reassigned this run) instead
+    // of silently aliasing that to the same value as an instant 0.0ms
+    // success.
+    const double tReassignMs = g_ctrl_reassigned ? pem_treassign_ms : -1.0;
 
     // Divergence mechanism (Eq. 3.47-3.48): independent detection outcome,
     // tracked separately from the LW/TGN confusion matrix above (Step 1,
@@ -7106,7 +7288,36 @@ PemWriteRunSummaryCsv()
          << (pem_episode_caught ? 1 : 0) << ","
          << ((pem_episode_caught && pem_attack_injection_time >= 0.0)
                 ? (1000.0 * (pem_episode_caught_time_s - pem_attack_injection_time)) : -1.0) << ","
-         << pem_episode_attempts_before_caught << "\n";
+         << pem_episode_attempts_before_caught << ","
+         << ((pem_grace_snapshots > 0)
+                ? (100.0 * pem_grace_pdr_sum / static_cast<double>(pem_grace_snapshots))
+                : -1.0) << ","
+         // A11 (--no_lkh=1): mean real LKH-tree crypto operation cost
+         // (CryptoMeasureLKH/TimedLkhRevoke), genuinely O(log n) vs N -- see
+         // g_pem_lkh_crypto_stats's own declaration. Previously only printed
+         // to stdout (the "LKH mitigation crypto ... Avg wall-clock time"
+         // summary block), never exported to CSV -- A11's plot was reading
+         // t_revoke_ms instead, which is a DIFFERENT quantity entirely
+         // (detection-to-first-successful-revocation LATENCY, a scheduling
+         // artifact dependent on when the first alert happens to land, not
+         // a per-operation cost measurement) -- confirmed empirically: this
+         // column shows a clean, monotonically increasing 0.027->0.19ms
+         // trend across n=50..300, exactly the O(log n) scaling story A11
+         // is meant to demonstrate, unlike t_revoke_ms's non-monotonic
+         // 1990/1710/1185/1488/1691/1838ms sequence.
+         << ((g_pem_lkh_crypto_stats.count > 0)
+                ? (g_pem_lkh_crypto_stats.totalMs / static_cast<double>(g_pem_lkh_crypto_stats.count))
+                : -1.0) << ","
+         // A9 (--equal_weight_pbft=1, --byzantine_peer_count=N): direct
+         // measurement of the PBFT consensus gate's own pass/fail outcome --
+         // see pem_pbft_attempt_count/pem_pbft_abort_count's declaration
+         // comment for why tdrr_pct/fsr could never reflect this (no counter
+         // previously existed on the !pbft_ok early-return path at all).
+         << pem_pbft_attempt_count << "," << pem_pbft_abort_count << ","
+         << ((pem_pbft_attempt_count > 0)
+                ? (100.0 * (double)(pem_pbft_attempt_count - pem_pbft_abort_count)
+                          / (double)pem_pbft_attempt_count)
+                : -1.0) << "\n";
 
     if (pem_qrr_echo_attempts > 0) {
         std::cout << "[M11][QRR] echo_attempts=" << pem_qrr_echo_attempts
@@ -7834,10 +8045,26 @@ static Ptr<Node> GetVehicleByNs3Id(uint32_t ns3_id);
 // bookkeeping) that has nothing to do with the PEM attack-detection pipeline;
 // reactivating it wholesale would be high-risk for no benefit here.
 static const uint32_t PEM_ROUTING_SAMPLE_PAIRS = 20;
-static const double   PEM_ROUTING_EDGE_FRESHNESS_S = 2.0 * PEM_BEACON_INTERVAL_S; // matches
-    // PemComputeControllerDivergenceDelta's controllerEdges freshness filter,
-    // Eq. 3.16-style "still a live claim" bound -- a stale entry the
-    // controller hasn't refreshed isn't part of its ACTIVE routing table.
+// PEM_ROUTING_EDGE_FRESHNESS_S was previously a fixed 2*T_b=0.2s constant,
+// borrowed from Eq. 3.16's crypto-layer replay-freshness bound (a different
+// mechanism -- beacon message replay detection, not routing-table edge
+// staleness). The PDF does not specify a freshness bound for the M6/Eq. 4.8
+// PDR census anywhere. Confirmed empirically (A8 investigation) this fixed
+// 0.2s cutoff made the census see 0 qualifying entries on ~97.6% of ticks
+// for TTW-S1 (table stayed populated at 150+ entries throughout, but
+// individual pairs are refreshed on a multi-second cadence, not every
+// 100-200ms) -- and PemComputeControllerDivergenceDelta independently
+// diagnosed and removed the identical 0.2s filter for the same reason
+// years earlier in this codebase (its own comment: "previous 200ms
+// freshness filter here meant controllerEdges almost always contained
+// just the ONE pair currently being evaluated"). Now reads
+// ttw_link_lifetime_bound (L_link = 2*r_comm/v_max, PDF-grounded, already
+// the codebase's established notion of how long a topology observation
+// remains physically plausible -- used identically by Algorithm 1's
+// sliding-window cap and BSHH-S3's liveness window) instead of inventing
+// a new threshold. Runtime-calibrated in main() before Simulator::Run(),
+// so this is not a compile-time constant.
+#define PEM_ROUTING_EDGE_FRESHNESS_S ttw_link_lifetime_bound
 static const double   PEM_ROUTING_PER_HOP_DELAY_MS = 2.0; // single DSRC hop
     // transmission+propagation estimate; consistent with this file's other
     // per-hop DSRC latency figures (CryptoMeasureBeaconSign/Verify measure
@@ -8023,9 +8250,51 @@ PemBfsBelievedPath(const std::map<uint32_t, std::vector<uint32_t>>& adj,
     return path;
 }
 
+// A8 (--mitigation_delay_intervals=k): true iff `now` falls within the
+// k*T_b post-first-alert enforcement grace window. Uses the single global
+// pem_first_alert_time (first alert of the whole run), not the per-
+// attacker g_first_alert_time_per_attacker map PemApplyMitigation itself
+// uses -- this PDR sampler has no single attacker_id in scope (it censuses
+// the whole believed topology each tick), so it approximates "the window
+// during which enforcement was withheld for the run's primary
+// demonstrated attack," which is the case sweep_a8.sh's single-attacker
+// scenarios (S1/S5/S9) actually exercise.
+static bool PemInEnforcementGraceWindow(double now)
+{
+    if (pem_first_alert_time < 0.0) return false;
+    // A8 (--no_blockchain=1): enforcement is withheld PERMANENTLY (the true
+    // "never enforced" endpoint) -- there is no k-interval bound to check
+    // against, since g_abl.mitigation_delay_intervals is never set for this
+    // flag (it defaults to 0, which would otherwise make this function
+    // always return false for no_blockchain regardless of elapsed time).
+    // The grace window here is simply "from the first alert onward,
+    // unbounded."
+    if (g_abl.no_blockchain) return true;
+    if (g_abl.mitigation_delay_intervals == 0) return false;
+    const double grace_s = g_abl.mitigation_delay_intervals * PEM_BEACON_INTERVAL_S;
+    return (now - pem_first_alert_time) < grace_s;
+}
+
 static void PemComputeRealRoutingPdr()
 {
     const double now = Simulator::Now().GetSeconds();
+    // TEMPORARY DIAGNOSTIC (A8 grace-window investigation) -- remove after
+    // determining whether the bounded-k grace window ever sees a
+    // qualifying census tick.
+    const bool __a8DiagInGrace = PemInEnforcementGraceWindow(now);
+    // Always print table_size (not just during grace) so we get the
+    // before/during/after signature, not just in-window snapshots.
+    std::cout << "[A8-TTW-DIAG] t=" << now
+              << " table_size=" << ttw_controller_table.size()
+              << " first_alert=" << pem_first_alert_time
+              << " in_grace=" << (__a8DiagInGrace ? 1 : 0) << std::endl;
+    if (__a8DiagInGrace) {
+        std::cout << "[A8-GRACE-DIAG] now=" << now
+                  << " first_alert=" << pem_first_alert_time
+                  << " grace_elapsed=" << (now - pem_first_alert_time)
+                  << " outer_gate=" << ((pem_attack_active || pem_mitigation_active) ? 1 : 0)
+                  << " N_Vehicles=" << N_Vehicles << std::endl;
+    }
     if ((pem_attack_active || pem_mitigation_active) && N_Vehicles >= 2)
     {
         const std::map<uint32_t, std::vector<uint32_t>> believedAdj =
@@ -8052,11 +8321,23 @@ static void PemComputeRealRoutingPdr()
         // alternate route the topology data implies is exercised too.
         uint32_t attempted = 0, delivered = 0;
         double te2eSumMs = 0.0;
+        // TEMPORARY DIAGNOSTIC (A8/refresh-cadence investigation) -- track
+        // the actual age distribution of ttw_controller_table entries,
+        // independent of the freshness cutoff, to determine the real
+        // topology-update cadence for this scenario.
+        double __a8MinAge = -1.0, __a8MaxAge = -1.0, __a8SumAge = 0.0;
+        uint32_t __a8AgeCount = 0, __a8FreshCount = 0;
         std::set<std::pair<uint32_t,uint32_t>> testedPairs;
         for (std::map<std::string, TopologyPacket>::const_iterator it = ttw_controller_table.begin();
              it != ttw_controller_table.end(); ++it)
         {
             const TopologyPacket& tp = it->second;
+            const double __age = now - tp.timestamp;
+            if (__a8MinAge < 0.0 || __age < __a8MinAge) __a8MinAge = __age;
+            if (__age > __a8MaxAge) __a8MaxAge = __age;
+            __a8SumAge += __age;
+            __a8AgeCount++;
+            if (__age <= PEM_ROUTING_EDGE_FRESHNESS_S) __a8FreshCount++;
             if ((now - tp.timestamp) > PEM_ROUTING_EDGE_FRESHNESS_S) continue;
             uint32_t srcId = tp.src_id, dstId = tp.seen_id;
             if (srcId == dstId) continue;
@@ -8077,7 +8358,14 @@ static void PemComputeRealRoutingPdr()
                 Ptr<MobilityModel> mA = nA->GetObject<MobilityModel>();
                 Ptr<MobilityModel> mB = nB->GetObject<MobilityModel>();
                 if (!mA || !mB) { allHopsReal = false; break; }
-                if (PemDistance2d(mA->GetPosition(), mB->GetPosition()) > g_rcomm)
+                // Q48-fix precedent (2026-08-02, routing.cc:~7936-7953): ground
+                // truth here must use kEffectiveReceptionRadius (100m, the
+                // empirically measured effective reception range), not g_rcomm
+                // (300m, the nominal scenario-construction constant) -- the
+                // same pair-selection/replay-margin geometry that made the
+                // 300m check pass for the vast majority of already-rejected
+                // forged claims there applies identically to this M6 hop test.
+                if (PemDistance2d(mA->GetPosition(), mB->GetPosition()) > kEffectiveReceptionRadius)
                 {
                     allHopsReal = false;  // this believed hop is a phantom/stale
                                           // edge -- the physical link it claims
@@ -8092,6 +8380,56 @@ static void PemComputeRealRoutingPdr()
                 te2eSumMs += (double)(path.size() - 1) * PEM_ROUTING_PER_HOP_DELAY_MS;
             }
         }
+
+        // A8 BSHH census: bshh_controller_liveness_table has no route
+        // endpoints/positions of its own (HeartbeatPacket is
+        // claimed_sender_id/physical_sender_id/timestamp/is_replayed only,
+        // single-slot-per-vehicle-ID) -- it cannot be run through the TTW
+        // BFS-over-believed-adjacency path above. Instead, reuse the SAME
+        // delivery semantics already validated by the per-event heartbeat
+        // PDR path (the PEM_EVENT_HEARTBEAT branch earlier in this file,
+        // which is why sc5's pdr_under_attack_pct correctly reads 79.0011%
+        // while this grace-window census was still -1 for every BSHH run):
+        // a claim is "delivered" iff the physical sender's live position is
+        // within kEffectiveReceptionRadius of the claimed identity's live
+        // position -- i.e. a genuine, physically-consistent liveness claim,
+        // not a distant impersonation. Each currently-tracked liveness
+        // entry is one attempted flow, same freshness cutoff as the TTW
+        // census above (ttw_link_lifetime_bound via PEM_ROUTING_EDGE_FRESHNESS_S).
+        for (std::map<uint32_t, HeartbeatPacket>::const_iterator it = bshh_controller_liveness_table.begin();
+             it != bshh_controller_liveness_table.end(); ++it)
+        {
+            const HeartbeatPacket& hb = it->second;
+            if ((now - hb.timestamp) > PEM_ROUTING_EDGE_FRESHNESS_S) continue;
+
+            Ptr<Node> nClaimed = GetVehicleByNs3Id(hb.claimed_sender_id);
+            Ptr<Node> nPhysical = GetVehicleByNs3Id(hb.physical_sender_id);
+            if (!nClaimed || !nPhysical) continue;
+            Ptr<MobilityModel> mClaimed = nClaimed->GetObject<MobilityModel>();
+            Ptr<MobilityModel> mPhysical = nPhysical->GetObject<MobilityModel>();
+            if (!mClaimed || !mPhysical) continue;
+
+            attempted++;
+            if (PemDistance2d(mPhysical->GetPosition(), mClaimed->GetPosition()) <= kEffectiveReceptionRadius)
+            {
+                delivered++;
+                te2eSumMs += PEM_ROUTING_PER_HOP_DELAY_MS;
+            }
+        }
+
+        // TEMPORARY DIAGNOSTIC (A8 investigation) -- always print attempted,
+        // even when 0, to test whether PEM_ROUTING_EDGE_FRESHNESS_S=0.2s is
+        // simply too tight relative to the update cadence (attempted=0 at
+        // arbitrary ticks generally), vs specific to the post-alert window.
+        std::cout << "[A8-ATTEMPTED-DIAG] t=" << now
+                  << " table_size=" << ttw_controller_table.size()
+                  << " attempted=" << attempted
+                  << " delivered=" << delivered
+                  << " min_age=" << __a8MinAge
+                  << " max_age=" << __a8MaxAge
+                  << " mean_age=" << (__a8AgeCount > 0 ? __a8SumAge / __a8AgeCount : -1.0)
+                  << " fresh_count=" << __a8FreshCount
+                  << " age_count=" << __a8AgeCount << std::endl;
 
         if (attempted > 0)
         {
@@ -8111,6 +8449,33 @@ static void PemComputeRealRoutingPdr()
                 pem_post_mitigation_pdr_sum += pdrThisTick;
                 pem_post_mitigation_te2e_sum += te2eThisTickMs / 1000.0;
                 pem_post_mitigation_snapshots++;
+            }
+
+            // A8 (--mitigation_delay_intervals=k / --no_blockchain=1):
+            // INDEPENDENT measurement dimension, not a sub-case of the
+            // post-mitigation (!pem_attack_active) branch above. The
+            // question A8 asks is "what PDR does the network experience
+            // during [first_alert, first_alert+k*T_b)?" -- a condition on
+            // ELAPSED TIME SINCE FIRST ALERT alone. Nesting this inside
+            // "attack no longer active" made the metric logically
+            // impossible: pem_attack_active only flips false once the
+            // detection pipeline considers the event resolved, but that
+            // happens at the SAME moment pem_mitigation_active turns true
+            // (routing.cc ~line 3917-3919) -- deep-diving further showed
+            // this alone wasn't the blocker, but the bug was real: coupling
+            // the two conditions produced -1 at every k value including
+            // k=10 and no_blockchain. Hoisted out to run unconditionally,
+            // gated purely on PemInEnforcementGraceWindow(now), each tick
+            // (attempted>0) regardless of pem_attack_active's state.
+            if (PemInEnforcementGraceWindow(now))
+            {
+                // TEMPORARY DIAGNOSTIC (A8 grace-window investigation).
+                std::cout << "[A8-GRACE-DIAG] t=" << now
+                          << " attempted=" << attempted
+                          << " delivered=" << delivered
+                          << " pdr=" << pdrThisTick << std::endl;
+                pem_grace_pdr_sum += pdrThisTick;
+                pem_grace_snapshots++;
             }
         }
     }
@@ -8355,6 +8720,31 @@ PemEvaluateEvent(PemEvent& event)
 
     if (event.type == PEM_EVENT_HEARTBEAT)
     {
+        // FP fix (2026-08-03, evidence-driven, freshness-scoped): distinguishes
+        // a victim's own FRESH, genuine follow-up heartbeat (physical==claimed,
+        // sender_timestamp ~= reception_timestamp) from BSHH-S1's own "Step 5"
+        // attack case (victim forwards a STALE captured heartbeat back to the
+        // controller, ALSO physical==claimed, but with sender_timestamp far
+        // behind reception_timestamp -- see BSHH_S1_VictimForwardsOldHeartbeat-
+        // ToController's own PemEmitHeartbeatEvent(victim_id, victim_id,
+        // stored_time, true) call). A blanket physical!=claimed gate (tried
+        // and reverted earlier) cannot tell these apart and silently drops
+        // Step 5's only detection path when Stage-0 crypto is disabled (A2/A5
+        // ablations) -- confirmed regression: sc5 fn 0->124. This gate is
+        // narrower: it only excludes a physical==claimed event when it is ALSO
+        // fresh, which is exactly the property the 21 confirmed FPs share
+        // (max observed gap 0.156s across every one) and which BSHH-S1's own
+        // real Step-5 replay never has (min observed gap 2.078s across all 159
+        // risky A2/A5 events, itself matching TTW_S1_REPLAY_MARGIN_S's 2.0s
+        // design margin) -- the two populations do not overlap in this
+        // dataset, with roughly a 1.9s gap between the two clusters.
+        static const double kBshhS1FreshSelfReportGapS = 1.0; // comfortably between 0.156s and 2.078s
+        auto isFreshSelfReport = [&](const PemEvent& e) -> bool
+        {
+            return (e.physical_sender_id == e.claimed_sender_id) &&
+                   (std::fabs(e.reception_timestamp - e.sender_timestamp) < kBshhS1FreshSelfReportGapS);
+        };
+
         for (std::deque<PemEvent>::const_iterator it = ns.event_window.begin();
              it != ns.event_window.end();
              ++it)
@@ -8413,7 +8803,8 @@ PemEvaluateEvent(PemEvent& event)
             if (it->type == PEM_EVENT_HEARTBEAT &&
                 it->physical_sender_id != event.physical_sender_id &&
                 it->claimed_sender_id == event.claimed_sender_id &&
-                std::fabs(event.reception_timestamp - it->reception_timestamp) <= kBshhS1ProximityWindowS)
+                std::fabs(event.reception_timestamp - it->reception_timestamp) <= kBshhS1ProximityWindowS &&
+                !isFreshSelfReport(event))
             {
                 event.triggered[3] = true;
                 break;
@@ -8979,7 +9370,8 @@ PemEvaluateEvent(PemEvent& event)
         // function after this alert (matching the documented
         // "PemEmitEvent(...); if (pem_last_alert) { ... PemApplyMitigation(...); }"
         // pattern used at all ~14 call sites).
-        PemRecordObservation(event.attack_label, event.score, event.alert_raised);
+        PemRecordObservation(event.attack_label, event.score, event.alert_raised,
+                              event.physical_sender_id);
 
         // ── M9: per-family (alpha) confusion accumulation for macro-F1.
         // Ground-truth family from the event's resolved origin scenario
@@ -9421,8 +9813,14 @@ PemCheckRoutingDeliverability(uint32_t linkSrcId, uint32_t linkDstId,
     if (controllerClaimsDirectEdge)
     {
         // The controller's own belief IS a direct single-hop observation --
-        // test that exact claim against ground truth.
-        allHopsReal = (PemDistance2d(mSrc->GetPosition(), mDst->GetPosition()) <= g_rcomm);
+        // test that exact claim against ground truth. Q48-fix precedent
+        // (2026-08-02, routing.cc:~7936-7953): use kEffectiveReceptionRadius
+        // (100m, measured) not g_rcomm (300m, nominal) -- confirmed by direct
+        // test (A1: zero detection, fn=779/tp=0) that g_rcomm made this read
+        // 100% "delivered" unconditionally, regardless of ground-truth attack
+        // success, because the attacker-victim pair-selection/replay-margin
+        // geometry keeps real distance under 300m almost always.
+        allHopsReal = (PemDistance2d(mSrc->GetPosition(), mDst->GetPosition()) <= kEffectiveReceptionRadius);
         hopCount = 1;
     }
     else
@@ -9445,7 +9843,7 @@ PemCheckRoutingDeliverability(uint32_t linkSrcId, uint32_t linkDstId,
             Ptr<MobilityModel> mA = nA->GetObject<MobilityModel>();
             Ptr<MobilityModel> mB = nB->GetObject<MobilityModel>();
             if (!mA || !mB) { allHopsReal = false; break; }
-            if (PemDistance2d(mA->GetPosition(), mB->GetPosition()) > g_rcomm)
+            if (PemDistance2d(mA->GetPosition(), mB->GetPosition()) > kEffectiveReceptionRadius)
             {
                 allHopsReal = false;
                 break;
@@ -9504,9 +9902,6 @@ PemEmitEvent(PemEventType type,
         const uint32_t linkKeyHi = (linkSrcId < linkDstId) ? linkDstId : linkSrcId;
         const std::string linkKey =
             std::to_string(linkKeyLo) + "_" + std::to_string(linkKeyHi);
-
-        // M4 PIR: track distinct reporters ever seen for this link.
-        pem_link_reporters[linkKey].insert(reporterId);
 
         // Ground-truth physical edge existence from positions vs comm range.
         const bool realEdge = PemDistance2d(linkSrcPosition, linkDstPosition) <= g_rcomm;
@@ -9594,8 +9989,15 @@ PemEmitEvent(PemEventType type,
         {
             Ptr<MobilityModel> mClaimed = nClaimed->GetObject<MobilityModel>();
             Ptr<MobilityModel> mPhysical = nPhysical->GetObject<MobilityModel>();
+            // Q48-fix precedent (2026-08-02, routing.cc:~7936-7953) applied
+            // here too: kEffectiveReceptionRadius (100m, measured), not
+            // g_rcomm (300m, nominal) -- verified empirically (TTW A1 test:
+            // zero detection, fn=779/tp=0, still read pdr=100% under g_rcomm,
+            // i.e. not discriminating attack success at all in this
+            // deployment density). Same fix applied identically to
+            // PemCheckRoutingDeliverability above for TTW/ME.
             if (mClaimed && mPhysical &&
-                PemDistance2d(mPhysical->GetPosition(), mClaimed->GetPosition()) <= g_rcomm)
+                PemDistance2d(mPhysical->GetPosition(), mClaimed->GetPosition()) <= kEffectiveReceptionRadius)
             {
                 hbDelivered = true;
             }
@@ -9717,6 +10119,27 @@ PemEmitEvent(PemEventType type,
 
     // Stage 1 — Signature Detector (Algorithm 1, Eq. 3.12).
     PemEvaluateEvent(event);
+
+    // M4 PIR: track distinct reporters whose report SURVIVED into the
+    // controller's belief (|P_controller|, per the struct comment on
+    // pem_link_reporters) — i.e. reached here (passed Stage-0, or this
+    // function would already have returned above) and was not flagged by
+    // Stage-1 (event.alert_raised==false). Moved from an earlier,
+    // unconditional insert at the top of this function (before Stage-0/1
+    // ever ran), which counted every attempted report regardless of
+    // acceptance and therefore could never reflect detection-threshold
+    // changes (e.g. A4's --no_mobility_adapt freezing rho_max/delta_max) —
+    // confirmed via A4: adaptive and fixed arms produced bit-identical
+    // mean_pir because the metric was measuring the (threshold-independent)
+    // attack-injection schedule, not surviving phantom-path evidence.
+    if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && linkSrcId != linkDstId && !event.alert_raised)
+    {
+        const uint32_t linkKeyLo = (linkSrcId < linkDstId) ? linkSrcId : linkDstId;
+        const uint32_t linkKeyHi = (linkSrcId < linkDstId) ? linkDstId : linkSrcId;
+        const std::string linkKey =
+            std::to_string(linkKeyLo) + "_" + std::to_string(linkKeyHi);
+        pem_link_reporters[linkKey].insert(reporterId);
+    }
 
     // M3 T_stale correction half — tau_correct is the moment the controller's
     // belief actually changes, i.e. a REAL alert fires for this link (the
@@ -12727,12 +13150,26 @@ static void TTWS3_RunDetection(uint32_t v1_id, uint32_t v2_id)
                             ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_log;
         if (divergenceConfirmed && CtrlRegisterConfirmedDivergence(ctrl_ns3)) {
-            TrustUpdateNode(ctrl_ns3, false, true);
+            // PDF FIX (2026-08-04): Eq. 3.40's instant-zero "flagged by LW/FS
+            // detector" case is the NODE-trust rule (attacker vehicles/RSUs
+            // only). Controller trust follows the SEPARATE, penalty-only
+            // Eq. 3.41 (tau_Cj -= Delta_C per confirmed divergence, NO
+            // instant-zero case at all) -- reassignment only fires once Eq.
+            // 3.44's threshold is crossed via repeated decrements. Calling
+            // TrustUpdateNode(ctrl_ns3,...) here applied the wrong (node)
+            // rule to a controller entity, instantly quarantining it
+            // (CtrlIsRevoked() then blocks all further attack events) after
+            // just ONE confirmed divergence -- before TrustReassignController's
+            // own Eq. 3.41 pipeline (called below) could ever accumulate the
+            // ~4 decrements needed to cross tau_min^C=0.30 from tau=1.00.
+            // Removed: TrustReassignController's OWN success path already
+            // sets g_trust_table[...].flagged/state=QUARANTINE at the
+            // correct point (only once reassignment genuinely succeeds).
             if (!g_abl.no_reassign) {
                 trust_log = TrustReassignController(ctrl_ns3, now2);
             } else {
                 // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
-                trust_log = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                trust_log = "  [Trust] A14:no_reassign — TrustReassignController skipped (would decrement controller trust per Eq. 3.41 and check Eq. 3.44 for reassignment); controller remains ACTIVE.\n";
             }
         }
         trust_log = ctrl_div_log + trust_log;
@@ -12956,12 +13393,14 @@ static void TTWS4_RunDetection(uint32_t v1_id, uint32_t v2_id)
                                ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_log_s4;
         if (divergenceConfirmed_s4 && CtrlRegisterConfirmedDivergence(ctrl_ns3_s4)) {
-            TrustUpdateNode(ctrl_ns3_s4, false, true);
+            // PDF FIX (2026-08-04): see TTWS3_RunDetection's identical fix
+            // comment -- Eq. 3.41 (penalty-only, no instant-zero) governs
+            // controller trust, not Eq. 3.40's node-level instant-zero rule.
             if (!g_abl.no_reassign) {
                 trust_log_s4 = TrustReassignController(ctrl_ns3_s4, now2);
             } else {
                 // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
-                trust_log_s4 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                trust_log_s4 = "  [Trust] A14:no_reassign — TrustReassignController skipped (would decrement controller trust per Eq. 3.41 and check Eq. 3.44 for reassignment); controller remains ACTIVE.\n";
             }
         }
         trust_log_s4 = ctrl_div_log_s4 + trust_log_s4;
@@ -14176,12 +14615,12 @@ void BSHH_S3_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
                            ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_s7;
         if (divergenceConfirmed_s7 && CtrlRegisterConfirmedDivergence(ctrl_s7)) {
-            TrustUpdateNode(ctrl_s7, false, true);
+            // PDF FIX (2026-08-04): see TTWS3_RunDetection's identical fix comment.
             if (!g_abl.no_reassign) {
                 trust_s7 = TrustReassignController(ctrl_s7, now);
             } else {
                 // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
-                trust_s7 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                trust_s7 = "  [Trust] A14:no_reassign — TrustReassignController skipped (would decrement controller trust per Eq. 3.41 and check Eq. 3.44 for reassignment); controller remains ACTIVE.\n";
             }
         }
         trust_s7 = ctrl_div_log_s7 + trust_s7;
@@ -14441,12 +14880,12 @@ void BSHH_S4_InternalReplay(uint32_t v1_id, uint32_t v2_id, uint32_t ctrl_idx, d
                            ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_s8;
         if (divergenceConfirmed_s8 && CtrlRegisterConfirmedDivergence(ctrl_s8)) {
-            TrustUpdateNode(ctrl_s8, false, true);
+            // PDF FIX (2026-08-04): see TTWS3_RunDetection's identical fix comment.
             if (!g_abl.no_reassign) {
                 trust_s8 = TrustReassignController(ctrl_s8, now);
             } else {
                 // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
-                trust_s8 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                trust_s8 = "  [Trust] A14:no_reassign — TrustReassignController skipped (would decrement controller trust per Eq. 3.41 and check Eq. 3.44 for reassignment); controller remains ACTIVE.\n";
             }
         }
         trust_s8 = ctrl_div_log_s8 + trust_s8;
@@ -15399,12 +15838,12 @@ void ME_Single3_EchoAttack(uint32_t v1_id, uint32_t v2_id, uint32_t v3_id,
             uint32_t ctrl_single3 = (controller_Node.GetN() > 0)
                                      ? controller_Node.Get(0)->GetId() : 9999u;
             if (divergenceConfirmed_single3 && CtrlRegisterConfirmedDivergence(ctrl_single3)) {
-                TrustUpdateNode(ctrl_single3, false, true);
+                // PDF FIX (2026-08-04): see TTWS3_RunDetection's identical fix comment.
                 if (!g_abl.no_reassign) {
                     trust_single3 = TrustReassignController(ctrl_single3, now);
                 } else {
                     // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
-                    trust_single3 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                    trust_single3 = "  [Trust] A14:no_reassign — TrustReassignController skipped (would decrement controller trust per Eq. 3.41 and check Eq. 3.44 for reassignment); controller remains ACTIVE.\n";
                 }
             }
             trust_single3 = ctrl_div_log_single3 + trust_single3;
@@ -16262,12 +16701,21 @@ void ME_S3_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
         bool flaggedBeforeThisCall_s11 =
             g_trust_table.count(ctrl_s11) && g_trust_table.at(ctrl_s11).flagged;
         if (divergenceConfirmed_s11 && CtrlRegisterConfirmedDivergence(ctrl_s11)) {
-            TrustUpdateNode(ctrl_s11, false, true);
+            // PDF FIX (2026-08-04): see TTWS3_RunDetection's identical fix
+            // comment -- removing the premature TrustUpdateNode call also
+            // fixes THIS gate's own stated intent: flaggedBefore/After below
+            // previously always transitioned on the FIRST confirmed call
+            // (TrustUpdateNode's instant-zero side effect), defeating the
+            // "only trigger heavy mitigation once genuinely quarantined"
+            // logic this block describes. TrustReassignController's own
+            // success path still sets g_trust_table[...].flagged=true at the
+            // correct point (Eq. 3.44 threshold crossed), so the comparison
+            // below now genuinely fires only once, at the real transition.
             if (!g_abl.no_reassign) {
                 trust_s11 = TrustReassignController(ctrl_s11, now);
             } else {
                 // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
-                trust_s11 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                trust_s11 = "  [Trust] A14:no_reassign — TrustReassignController skipped (would decrement controller trust per Eq. 3.41 and check Eq. 3.44 for reassignment); controller remains ACTIVE.\n";
             }
         }
         trust_s11 = ctrl_div_log_s11 + trust_s11;
@@ -16660,12 +17108,12 @@ void ME_S4_InjectPhantomPaths(uint32_t v1_id, uint32_t v2_id,
                             ? controller_Node.Get(0)->GetId() : 9999u;
         std::string trust_s12;
         if (divergenceConfirmed_s12 && CtrlRegisterConfirmedDivergence(ctrl_s12)) {
-            TrustUpdateNode(ctrl_s12, false, true);
+            // PDF FIX (2026-08-04): see TTWS3_RunDetection's identical fix comment.
             if (!g_abl.no_reassign) {
                 trust_s12 = TrustReassignController(ctrl_s12, now);
             } else {
                 // A14 (--no_reassign=1): controller stays active despite confirmed divergence.
-                trust_s12 = "  [Trust] A14:no_reassign — controller flagged but TrustReassignController skipped; controller remains ACTIVE.\n";
+                trust_s12 = "  [Trust] A14:no_reassign — TrustReassignController skipped (would decrement controller trust per Eq. 3.41 and check Eq. 3.44 for reassignment); controller remains ACTIVE.\n";
             }
         }
         trust_s12 = ctrl_div_log_s12 + trust_s12;
@@ -156644,7 +157092,7 @@ static int RoutingMain(int argc, char *argv[])
     initialize_all_routing_tables();
   
   controller_Node.Create(N_Controllers);
-  management_Node.Create(1); 
+  management_Node.Create(1);
 // /  if (routing_test == false)
 //   {
 //   	  if(N_Vehicles > 0)
@@ -157123,17 +157571,35 @@ static int RoutingMain(int argc, char *argv[])
 	  		// PDF Experiment 2 vmax sweep — see case(10)'s comment. This is also
 	  		// routing.cc's own DEFAULT maxspeed value.
 	  		//
-	  		// A4 (Table 4.2) density sweep, lambda in {0.01,0.02,0.04} veh/m, also
-	  		// rides on this same case: routing.cc's own PemComputeDeltaThreshold
-	  		// calibration (kNetworkRoadLengthEstimateM=9674m, the map's perimeter)
+	  		// A4 (Table 4.2) density sweep, lambda in {0.01,0.02,0.03,0.04,0.05}
+	  		// veh/m (widened 2026-08-04 from the original 3-point
+	  		// {0.01,0.02,0.04}, for equal 0.01 steps), also rides on this same
+	  		// case: routing.cc's own PemComputeDeltaThreshold calibration
+	  		// (kNetworkRoadLengthEstimateM=9674m, the map's perimeter)
 	  		// establishes N=200 vehicles <-> lambda~=0.0207/m (the paper's own
-	  		// lambda=0.02 reference point) — so lambda in {0.01,0.02,0.04} maps to
-	  		// N_Vehicles in {~100,~200,~400}, each with its OWN genuinely-simulated
-	  		// SUMO traffic pattern (not the same 200-vehicle trace subsampled/
-	  		// reused at different N, which would carry the wrong local density).
-	  		// Generated 2026-07-24, same uniform-speed/no-randomisation recipe as
-	  		// the vmax sweep traces.
-	  		if (N_Vehicles >= 350)
+	  		// lambda=0.02 reference point) — so lambda in {0.01,0.02,0.03,0.04,
+	  		// 0.05} maps to N_Vehicles in {100,200,300,400,500} (clean round
+	  		// numbers per explicit instruction, not the raw lambda*9674
+	  		// fractional values), each with its OWN genuinely-simulated SUMO
+	  		// traffic pattern (not the same trace subsampled/reused at
+	  		// different N, which would carry the wrong local density). The two
+	  		// new density points (300, 500) use tight exact-match brackets
+	  		// below, checked BEFORE the original 100/200/400 threshold chain,
+	  		// so every other existing caller of this trace-selection block
+	  		// (any N_Vehicles value that isn't one of these two specific new
+	  		// sweep points) is completely unaffected — same trace_file result
+	  		// as before this change, byte-identical.
+	  		// Generated 2026-08-04 via randomTrips.py -> duarouter -> sumo ->
+	  		// traceExporter.py, same recipe (fringe-factor=10, min-distance=
+	  		// 200.0, period=1.0, cars end=round(0.595*N), other 4 vehicle
+	  		// types end=round(0.17*N)) reverse-engineered from the embedded
+	  		// randomTrips.py config comments in the existing 100/200/400 trip
+	  		// files, to stay consistent with the original 2026-07-24 recipe.
+	  		if (N_Vehicles >= 296 && N_Vehicles <= 304)
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60_300veh_density.tcl";
+	  		else if (N_Vehicles >= 496 && N_Vehicles <= 504)
+	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60_500veh_density.tcl";
+	  		else if (N_Vehicles >= 350)
 	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60_400veh_density.tcl";
 	  		else if (N_Vehicles >= 150)
 	  			trace_file = "/home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/mobility/mobility_urban_60_200veh.tcl";

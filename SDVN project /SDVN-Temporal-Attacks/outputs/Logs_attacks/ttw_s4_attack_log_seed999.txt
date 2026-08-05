@@ -1,0 +1,734 @@
+========================================================
+  TTW Attack S4 — Malicious Controller, With RSU       
+========================================================
+
+  t=10    ①  V1/V2 -> RSU -> Controller (legitimate aggregate)
+  t=10    ②  Controller stores copy <V1 sees V2, t=10> from RSU aggregate
+  t=15        Link breaks physically
+  t=20    ③  Controller forges timestamp t=10→t=20, reinserts into database
+  t=20    ④  Controller table poisoned (no external packet)
+
+========================================================
+
+[t=20.000]  STEP ①  V150/V104 -> RSU_205 -> Controller (legitimate aggregate)
+  <V150 sees V104, t=20.000>  ACCEPTED
+  <V104 sees V150, t=20.000>  ACCEPTED
+
+[t=20.000]  STEP ①  V9/V130 -> RSU_205 -> Controller (legitimate aggregate)
+  <V9 sees V130, t=20.000>  ACCEPTED
+  <V130 sees V9, t=20.000>  ACCEPTED
+
+[t=20.001]  STEP ①  V130/V160 -> RSU_205 -> Controller (legitimate aggregate)
+  <V130 sees V160, t=20.000>  ACCEPTED
+  <V160 sees V130, t=20.000>  ACCEPTED
+
+[t=20.002]  STEP ①  V139/V64 -> RSU_205 -> Controller (legitimate aggregate)
+  <V139 sees V64, t=20.000>  ACCEPTED
+  <V64 sees V139, t=20.000>  ACCEPTED
+
+[t=20.002]  STEP ①  V108/V90 -> RSU_205 -> Controller (legitimate aggregate)
+  <V108 sees V90, t=20.000>  ACCEPTED
+  <V90 sees V108, t=20.000>  ACCEPTED
+
+[t=20.003]  STEP ①  V157/V19 -> RSU_205 -> Controller (legitimate aggregate)
+  <V157 sees V19, t=20.000>  ACCEPTED
+  <V19 sees V157, t=20.000>  ACCEPTED
+
+[t=20.003]  STEP ①  V113/V172 -> RSU_205 -> Controller (legitimate aggregate)
+  <V113 sees V172, t=20.000>  ACCEPTED
+  <V172 sees V113, t=20.000>  ACCEPTED
+
+[t=20.003]  STEP ①  V153/V196 -> RSU_205 -> Controller (legitimate aggregate)
+  <V153 sees V196, t=20.000>  ACCEPTED
+  <V196 sees V153, t=20.000>  ACCEPTED
+
+[t=20.004]  STEP ①  V96/V57 -> RSU_205 -> Controller (legitimate aggregate)
+  <V96 sees V57, t=20.000>  ACCEPTED
+  <V57 sees V96, t=20.000>  ACCEPTED
+
+[t=20.005]  STEP ①  V196/V116 -> RSU_205 -> Controller (legitimate aggregate)
+  <V196 sees V116, t=20.000>  ACCEPTED
+  <V116 sees V196, t=20.000>  ACCEPTED
+
+[t=20.005]  STEP ①  V183/V66 -> RSU_205 -> Controller (legitimate aggregate)
+  <V183 sees V66, t=20.000>  ACCEPTED
+  <V66 sees V183, t=20.000>  ACCEPTED
+
+[t=20.006]  STEP ①  V149/V115 -> RSU_205 -> Controller (legitimate aggregate)
+  <V149 sees V115, t=20.000>  ACCEPTED
+  <V115 sees V149, t=20.000>  ACCEPTED
+
+[t=20.006]  STEP ①  V88/V11 -> RSU_205 -> Controller (legitimate aggregate)
+  <V88 sees V11, t=20.000>  ACCEPTED
+  <V11 sees V88, t=20.000>  ACCEPTED
+
+[t=20.006]  STEP ①  V86/V135 -> RSU_205 -> Controller (legitimate aggregate)
+  <V86 sees V135, t=20.000>  ACCEPTED
+  <V135 sees V86, t=20.000>  ACCEPTED
+
+[t=20.007]  STEP ①  V78/V86 -> RSU_205 -> Controller (legitimate aggregate)
+  <V78 sees V86, t=20.000>  ACCEPTED
+  <V86 sees V78, t=20.000>  ACCEPTED
+
+[t=20.008]  STEP ①  V122/V169 -> RSU_205 -> Controller (legitimate aggregate)
+  <V122 sees V169, t=20.000>  ACCEPTED
+  <V169 sees V122, t=20.000>  ACCEPTED
+
+[t=20.008]  STEP ①  V124/V77 -> RSU_205 -> Controller (legitimate aggregate)
+  <V124 sees V77, t=20.000>  ACCEPTED
+  <V77 sees V124, t=20.000>  ACCEPTED
+
+[t=20.009]  STEP ①  V87/V171 -> RSU_205 -> Controller (legitimate aggregate)
+  <V87 sees V171, t=20.000>  ACCEPTED
+  <V171 sees V87, t=20.000>  ACCEPTED
+
+[t=20.009]  STEP ①  V171/V87 -> RSU_205 -> Controller (legitimate aggregate)
+  <V171 sees V87, t=20.000>  ACCEPTED
+  <V87 sees V171, t=20.000>  ACCEPTED
+
+[t=20.009]  STEP ①  V64/V22 -> RSU_205 -> Controller (legitimate aggregate)
+  <V64 sees V22, t=20.000>  ACCEPTED
+  <V22 sees V64, t=20.000>  ACCEPTED
+
+[t=20.010]  STEP ①  V152/V54 -> RSU_205 -> Controller (legitimate aggregate)
+  <V152 sees V54, t=20.000>  ACCEPTED
+  <V54 sees V152, t=20.000>  ACCEPTED
+
+[t=20.011]  STEP ①  V77/V94 -> RSU_205 -> Controller (legitimate aggregate)
+  <V77 sees V94, t=20.000>  ACCEPTED
+  <V94 sees V77, t=20.000>  ACCEPTED
+
+[t=20.011]  STEP ①  V144/V98 -> RSU_205 -> Controller (legitimate aggregate)
+  <V144 sees V98, t=20.000>  ACCEPTED
+  <V98 sees V144, t=20.000>  ACCEPTED
+
+[t=20.012]  STEP ①  V39/V111 -> RSU_205 -> Controller (legitimate aggregate)
+  <V39 sees V111, t=20.000>  ACCEPTED
+  <V111 sees V39, t=20.000>  ACCEPTED
+
+[t=20.012]  STEP ①  V35/V88 -> RSU_205 -> Controller (legitimate aggregate)
+  <V35 sees V88, t=20.000>  ACCEPTED
+  <V88 sees V35, t=20.000>  ACCEPTED
+
+[t=20.012]  STEP ①  V12/V60 -> RSU_205 -> Controller (legitimate aggregate)
+  <V12 sees V60, t=20.000>  ACCEPTED
+  <V60 sees V12, t=20.000>  ACCEPTED
+
+[t=20.013]  STEP ①  V161/V142 -> RSU_205 -> Controller (legitimate aggregate)
+  <V161 sees V142, t=20.000>  ACCEPTED
+  <V142 sees V161, t=20.000>  ACCEPTED
+
+[t=20.014]  STEP ①  V95/V14 -> RSU_205 -> Controller (legitimate aggregate)
+  <V95 sees V14, t=20.000>  ACCEPTED
+  <V14 sees V95, t=20.000>  ACCEPTED
+
+[t=20.014]  STEP ①  V148/V157 -> RSU_205 -> Controller (legitimate aggregate)
+  <V148 sees V157, t=20.000>  ACCEPTED
+  <V157 sees V148, t=20.000>  ACCEPTED
+
+[t=20.015]  STEP ①  V23/V192 -> RSU_205 -> Controller (legitimate aggregate)
+  <V23 sees V192, t=20.000>  ACCEPTED
+  <V192 sees V23, t=20.000>  ACCEPTED
+
+[t=20.015]  STEP ①  V116/V138 -> RSU_205 -> Controller (legitimate aggregate)
+  <V116 sees V138, t=20.000>  ACCEPTED
+  <V138 sees V116, t=20.000>  ACCEPTED
+
+[t=20.100]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V150 sees V104, t=20.000>
+  Link physically breaks at t≈42.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=44.1
+
+[t=20.101]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V9 sees V130, t=20.000>
+  Link physically breaks at t≈23.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=25.7
+
+[t=20.101]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V130 sees V160, t=20.000>
+  Link physically breaks at t≈20.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=22.5
+
+[t=20.102]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V139 sees V64, t=20.000>
+  Link physically breaks at t≈23.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=25.5
+
+[t=20.102]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V108 sees V90, t=20.000>
+  Link physically breaks at t≈20.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=22.7
+
+[t=20.102]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V157 sees V19, t=20.000>
+  Link physically breaks at t≈20.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=22.5
+
+[t=20.103]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V113 sees V172, t=20.000>
+  Link physically breaks at t≈20.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=22.7
+
+[t=20.104]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V153 sees V196, t=20.000>
+  Link physically breaks at t≈49.3s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=51.3
+
+[t=20.104]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V96 sees V57, t=20.000>
+  Link physically breaks at t≈23.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=25.1
+
+[t=20.105]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V196 sees V116, t=20.000>
+  Link physically breaks at t≈42.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=44.1
+
+[t=20.105]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V183 sees V66, t=20.000>
+  Link physically breaks at t≈21.9s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=23.9
+
+[t=20.105]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V149 sees V115, t=20.000>
+  Link physically breaks at t≈25.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=27.7
+
+[t=20.106]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V88 sees V11, t=20.000>
+  Link physically breaks at t≈22.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=24.1
+
+[t=20.107]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V86 sees V135, t=20.000>
+  Link physically breaks at t≈21.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=23.1
+
+[t=20.107]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V78 sees V86, t=20.000>
+  Link physically breaks at t≈21.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=23.7
+
+[t=20.108]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V122 sees V169, t=20.000>
+  Link physically breaks at t≈33.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=35.5
+
+[t=20.108]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V124 sees V77, t=20.000>
+  Link physically breaks at t≈27.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=29.7
+
+[t=20.108]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V87 sees V171, t=20.000>
+  Link physically breaks at t≈43.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=45.7
+
+[t=20.109]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V171 sees V87, t=20.000>
+  Link physically breaks at t≈43.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=45.7
+
+[t=20.110]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V64 sees V22, t=20.000>
+  Link physically breaks at t≈23.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=25.1
+
+[t=20.110]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V152 sees V54, t=20.000>
+  Link physically breaks at t≈20.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=22.5
+
+[t=20.110]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V77 sees V94, t=20.000>
+  Link physically breaks at t≈25.9s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=27.9
+
+[t=20.111]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V144 sees V98, t=20.000>
+  Link physically breaks at t≈49.9s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=51.9
+
+[t=20.111]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V39 sees V111, t=20.000>
+  Link physically breaks at t≈25.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=27.7
+
+[t=20.112]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V35 sees V88, t=20.000>
+  Link physically breaks at t≈23.7s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=25.7
+
+[t=20.113]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V12 sees V60, t=20.000>
+  Link physically breaks at t≈22.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=24.5
+
+[t=20.113]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V161 sees V142, t=20.000>
+  Link physically breaks at t≈20.5s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=22.5
+
+[t=20.113]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V95 sees V14, t=20.000>
+  Link physically breaks at t≈21.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=23.1
+
+[t=20.114]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V148 sees V157, t=20.000>
+  Link physically breaks at t≈42.1s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=44.1
+
+[t=20.114]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V23 sees V192, t=20.000>
+  Link physically breaks at t≈21.9s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=23.9
+
+[t=20.115]  STEP ②  CONTROLLER STORES STALE COPY (from RSU aggregate)
+  Stored : <V116 sees V138, t=20.000>
+  Link physically breaks at t≈57.0s (dist > 300.0m, real SUMO trajectory)
+  Controller WILL NOT time out this entry — will replay at t=59.0
+
+[t=22.501]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V130 sees V160, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V130 sees V160, t=22.500>  timestamp changed 20.000 -> 22.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.501 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.501]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V130<->V160 was ACTIVE at t=22.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=22.501]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.242
+  Latency: 0.000 ms
+[A8: blockchain mitigation suppressed (--no_blockchain=1)]
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=30 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.800 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.800 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=22.503]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V157 sees V19, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V157 sees V19, t=22.500>  timestamp changed 20.000 -> 22.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.503 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.503]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V157<->V19 was ACTIVE at t=22.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=22.503]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.242
+  Latency: 0.000 ms
+[A8: blockchain mitigation suppressed (--no_blockchain=1)]
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=30 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.600 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.600 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=22.510]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V152 sees V54, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V152 sees V54, t=22.500>  timestamp changed 20.000 -> 22.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.510 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.510]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V152<->V54 was ACTIVE at t=22.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=22.510]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.242
+  Latency: 0.000 ms
+[A8: blockchain mitigation suppressed (--no_blockchain=1)]
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=30 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.400 after Eq.3.39 (Delta_C=0.200)
+  [Trust] tau=0.400 >= tau_min^C=0.300 — monitoring, no reassignment yet
+
+[t=22.513]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V161 sees V142, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V161 sees V142, t=22.500>  timestamp changed 20.000 -> 22.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.513 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.513]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V161<->V142 was ACTIVE at t=22.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=22.513]  DETECTION + MITIGATION
+  Internal replay (RSU variant) detected and removed
+  Score: 0.242
+  Latency: 0.000 ms
+[A8: blockchain mitigation suppressed (--no_blockchain=1)]
+  [Trust] Controller-divergence CONFIRMED (Eq. 3.47): delta_t=30 > delta_thresh=9 (Eq. 3.48)
+  [Trust] Controller C_0 tau=0.200 after Eq.3.39 (Delta_C=0.200)
+  [Trust] REASSIGN(Z_0 -> C_4)  tau_{C_j}=0.200 < tau_min^C=0.300
+  [Trust] C_0: active -> QUARANTINED  (Stage 1 demotion, T_quar=30.000s)
+  [Trust] C_4 takes over zone 0 (tau=1.000)
+
+[t=22.702]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V108 sees V90, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V108 sees V90, t=22.700>  timestamp changed 20.000 -> 22.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.702 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.702]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V108<->V90 was ACTIVE at t=22.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=22.702]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=22.703]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V113 sees V172, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V113 sees V172, t=22.700>  timestamp changed 20.000 -> 22.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=22.703 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=22.703]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V113<->V172 was ACTIVE at t=22.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=22.703]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=23.107]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V86 sees V135, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V86 sees V135, t=23.100>  timestamp changed 20.000 -> 23.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=23.107 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=23.107]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V86<->V135 was ACTIVE at t=23.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=23.107]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=23.113]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V95 sees V14, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V95 sees V14, t=23.100>  timestamp changed 20.000 -> 23.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=23.113 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=23.113]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V95<->V14 was ACTIVE at t=23.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=23.113]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=23.707]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V78 sees V86, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V78 sees V86, t=23.700>  timestamp changed 20.000 -> 23.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=23.707 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=23.707]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V78<->V86 was ACTIVE at t=23.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=23.707]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=23.905]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V183 sees V66, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V183 sees V66, t=23.900>  timestamp changed 20.000 -> 23.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=23.905 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=23.905]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V183<->V66 was ACTIVE at t=23.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=23.905]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=23.915]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V23 sees V192, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V23 sees V192, t=23.900>  timestamp changed 20.000 -> 23.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=23.915 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=23.915]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V23<->V192 was ACTIVE at t=23.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=23.915]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=24.106]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V88 sees V11, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V88 sees V11, t=24.100>  timestamp changed 20.000 -> 24.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=24.106 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=24.106]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V88<->V11 was ACTIVE at t=24.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=24.106]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=24.512]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V12 sees V60, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V12 sees V60, t=24.500>  timestamp changed 20.000 -> 24.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=24.512 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=24.512]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V12<->V60 was ACTIVE at t=24.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=24.512]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=25.104]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V96 sees V57, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V96 sees V57, t=25.100>  timestamp changed 20.000 -> 25.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=25.104 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=25.104]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V96<->V57 was ACTIVE at t=25.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=25.104]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=25.110]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V64 sees V22, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V64 sees V22, t=25.100>  timestamp changed 20.000 -> 25.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=25.110 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=25.110]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V64<->V22 was ACTIVE at t=25.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=25.110]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=25.502]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V139 sees V64, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V139 sees V64, t=25.500>  timestamp changed 20.000 -> 25.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=25.502 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=25.502]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V139<->V64 was ACTIVE at t=25.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=25.502]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=25.701]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V9 sees V130, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V9 sees V130, t=25.700>  timestamp changed 20.000 -> 25.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=25.701 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=25.701]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V9<->V130 was ACTIVE at t=25.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=25.701]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=25.712]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V35 sees V88, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V35 sees V88, t=25.700>  timestamp changed 20.000 -> 25.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=25.712 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=25.712]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V35<->V88 was ACTIVE at t=25.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=25.712]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=27.706]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V149 sees V115, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V149 sees V115, t=27.700>  timestamp changed 20.000 -> 27.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=27.706 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=27.706]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V149<->V115 was ACTIVE at t=27.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=27.706]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=27.712]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V39 sees V111, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V39 sees V111, t=27.700>  timestamp changed 20.000 -> 27.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=27.712 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=27.712]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V39<->V111 was ACTIVE at t=27.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=27.712]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=27.910]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V77 sees V94, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V77 sees V94, t=27.900>  timestamp changed 20.000 -> 27.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=27.910 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=27.910]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V77<->V94 was ACTIVE at t=27.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=27.910]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=29.708]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V124 sees V77, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V124 sees V77, t=29.700>  timestamp changed 20.000 -> 29.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=29.708 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=29.708]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V124<->V77 was ACTIVE at t=29.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=29.708]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=35.508]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V122 sees V169, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V122 sees V169, t=35.500>  timestamp changed 20.000 -> 35.500
+  Forge action  : controller changes timestamp to appear current, reinserts at t=35.508 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=35.508]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V122<->V169 was ACTIVE at t=35.500 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=35.508]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=44.100]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V150 sees V104, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V150 sees V104, t=44.100>  timestamp changed 20.000 -> 44.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=44.100 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=44.100]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V150<->V104 was ACTIVE at t=44.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=44.100]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=44.105]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V196 sees V116, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V196 sees V116, t=44.100>  timestamp changed 20.000 -> 44.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=44.105 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=44.105]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V196<->V116 was ACTIVE at t=44.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=44.105]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=44.114]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V148 sees V157, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V148 sees V157, t=44.100>  timestamp changed 20.000 -> 44.100
+  Forge action  : controller changes timestamp to appear current, reinserts at t=44.114 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=44.114]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V148<->V157 was ACTIVE at t=44.100 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=44.114]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=45.709]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V87 sees V171, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V87 sees V171, t=45.700>  timestamp changed 20.000 -> 45.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=45.709 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=45.709]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V87<->V171 was ACTIVE at t=45.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=45.709]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=45.709]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V171 sees V87, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V171 sees V87, t=45.700>  timestamp changed 20.000 -> 45.700
+  Forge action  : controller changes timestamp to appear current, reinserts at t=45.709 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=45.709]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V171<->V87 was ACTIVE at t=45.700 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=45.709]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=51.303]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V153 sees V196, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V153 sees V196, t=51.300>  timestamp changed 20.000 -> 51.300
+  Forge action  : controller changes timestamp to appear current, reinserts at t=51.303 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=51.303]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V153<->V196 was ACTIVE at t=51.300 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=51.303]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=51.911]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V144 sees V98, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V144 sees V98, t=51.900>  timestamp changed 20.000 -> 51.900
+  Forge action  : controller changes timestamp to appear current, reinserts at t=51.911 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=51.911]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V144<->V98 was ACTIVE at t=51.900 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+[t=51.911]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken
+[t=59.015]  STEP ③  CONTROLLER INTERNAL TIMESTAMP FORGE + REINSERTION (RSU path variant)
+  Stored entry  : <V116 sees V138, t=20.000>  (captured from RSU-aggregated update at t=20.000)
+  Forged packet : <V116 sees V138, t=59.000>  timestamp changed 20.000 -> 59.000
+  Forge action  : controller changes timestamp to appear current, reinserts at t=59.015 — no external packet required
+  RSU was in original data path (V→RSU→Controller)
+
+[t=59.015]  STEP ④  TABLE POISONED (internal — no external packet)
+  Controller believes V116<->V138 was ACTIVE at t=59.000 (forged — link has since broken)
+  Physical reality : link BROKEN
+  <- ATTACK SUCCESS
+
+  Topology Table (final state):
+  Src   Dst   Timestamp   Forged?
+  ──────────────────────────────────
+  V104  ->  V150    t=20.000    No
+  V111  ->  V39    t=20.000    No
+  V115  ->  V149    t=20.000    No
+  V116  ->  V138    t=59.000    YES <- FORGED
+  V116  ->  V196    t=20.000    No
+  V11  ->  V88    t=20.000    No
+  V130  ->  V9    t=20.000    No
+  V135  ->  V86    t=20.000    No
+  V138  ->  V116    t=20.000    No
+  V142  ->  V161    t=20.000    No
+  V14  ->  V95    t=20.000    No
+  V157  ->  V148    t=20.000    No
+  V160  ->  V130    t=20.000    No
+  V169  ->  V122    t=20.000    No
+  V172  ->  V113    t=20.000    No
+  V192  ->  V23    t=20.000    No
+  V196  ->  V153    t=20.000    No
+  V19  ->  V157    t=20.000    No
+  V22  ->  V64    t=20.000    No
+  V54  ->  V152    t=20.000    No
+  V57  ->  V96    t=20.000    No
+  V60  ->  V12    t=20.000    No
+  V64  ->  V139    t=20.000    No
+  V66  ->  V183    t=20.000    No
+  V77  ->  V124    t=20.000    No
+  V86  ->  V78    t=20.000    No
+  V88  ->  V35    t=20.000    No
+  V90  ->  V108    t=20.000    No
+  V94  ->  V77    t=20.000    No
+  V98  ->  V144    t=20.000    No
+
+========================================================
+  TTW ATTACK S4 COMPLETE
+========================================================
+[t=59.015]  Controller C_0 already revoked/quarantined — detection recorded, no new mitigation action taken

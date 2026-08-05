@@ -1,11 +1,12 @@
 #!/bin/bash
 # sweep_a13.sh
 # A13 (Table 4.2): Single KEM (ML-KEM-1024 Only, No HQC-5), via
-# --single_kem=1. X variable: KEM handshake rate rhs in {10,50,100,200}/s.
-# Applicable PEMs: M7 (Omega), M5 (Tpipeline, KEM sub-component). Per the
-# PDF's own text: "This does not test detection quality (unaffected) but
-# evaluates the latency and overhead cost" -- so scenario choice barely
-# matters for this ablation.
+# --single_kem=1. X variable: KEM handshake rate rhs in {10,55,100,145,190}/s
+# -- 5 equal 45/s steps (updated 2026-08-04, was 4 unequal points
+# {10,50,100,200}). Applicable PEMs: M7 (Omega), M5 (Tpipeline, KEM
+# sub-component). Per the PDF's own text: "This does not test detection
+# quality (unaffected) but evaluates the latency and overhead cost" -- so
+# scenario choice barely matters for this ablation.
 #
 # UPDATED (dropped combined mode): no longer uses attack_scenario=13 -- see
 # sweep_a1.sh's comment for the full rationale. Uses attack_scenario=2
@@ -20,7 +21,7 @@ OUT="$HOME/ablation_sweep/a13"
 mkdir -p "$OUT"
 cd "$NS3_DIR"
 
-for X in 10 50 100 200; do
+for X in 10 55 100 145 190; do
   echo "=== a13 x=${X} ==="
   ISO="$OUT/x${X}"
   mkdir -p "$ISO"

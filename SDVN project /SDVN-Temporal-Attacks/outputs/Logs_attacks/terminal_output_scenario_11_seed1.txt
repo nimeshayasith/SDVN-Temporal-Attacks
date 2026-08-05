@@ -1,17 +1,18 @@
 Solution at controller cleared
 [SUMO] Peak-activity alignment: trace_t0=58s -> 208 vehicles active in the 60s sim window (was ~few at raw t=0)
 [SUMO] Trace time offset: 58s -> waypoints shifted to NS-3 t=0
-[SUMO] Loaded 211 positions, scheduled 276645 exact position+velocity events
+[SUMO] Index remap active: 208 trace vehicle IDs mapped to NS-3 indices 0..207
+[SUMO] Loaded 211 positions, scheduled 281855 exact position+velocity events
 [NetAnim] Writing animation to: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/XML/11_ME_S3_Malicious_Controller_No_RSU.xml
 
 ========================================
 SCENARIO 11 - ME-S3 ATTACK CONFIGURED
   Total vehicles      : 200
   Total controllers   : 4
-  Attack percentage   : 100%
-  Malicious controllers: 4
-  Real link           : V5<->V35
-  Phantom reporters (100): V5 V6 V7 V8 V9 V10 V11 V12 V13 V14 V15 V16 V17 V18 V19 V20 V21 V22 V23 V24 V25 V26 V27 V28 V29 V30 V31 V32 V33 V34 V35 V36 V37 V38 V39 V40 V41 V42 V43 V44 V45 V46 V47 V48 V49 V50 V51 V52 V53 V54 V55 V56 V57 V58 V59 V60 V61 V62 V63 V64 V65 V66 V67 V68 V69 V70 V71 V72 V73 V74 V75 V76 V77 V78 V79 V80 V81 V82 V83 V84 V85 V86 V87 V88 V89 V90 V91 V92 V93 V94 V95 V96 V97 V98 V99 V100 V101 V102 V103 V104 
+  Attack percentage   : 60%
+  Malicious controllers: 2
+  Real link           : V5<->V34
+  Phantom reporters (60): V5 V6 V7 V8 V9 V10 V11 V12 V13 V14 V15 V16 V17 V18 V19 V20 V21 V22 V23 V24 V25 V26 V27 V28 V29 V30 V31 V32 V33 V34 V35 V36 V37 V38 V39 V40 V41 V42 V43 V44 V45 V46 V47 V48 V49 V50 V51 V52 V53 V54 V55 V56 V57 V58 V59 V60 V61 V62 V63 V64 
 ========================================
 
 [Channel] Cost231 ranges (m): Ch172=133 Ch174=133 Ch176=133 Ch178=282 Ch180=67 Ch182=67 Ch184=214  MAX=282m
@@ -31,700 +32,690 @@ SCENARIO 11 - ME-S3 ATTACK CONFIGURED
   All modules from .crypto_src/
 [CRYPTO][t=0] Keys initialised. KEM session measured.
 [KEM] Registered 200/200 vehicles with the RSU keystore (ML-KEM-1024 + HQC-5 hybrid, Eq. 3.15 K_{Vi,nk}). Real per-vehicle Dilithium5 SK_Vi identity keys captured (Eq. 3.29-3.30).
-[KEM][10ms budget] 199 handshakes timed: avg=42.8773 ms, max=124.238 ms, over_budget=199/199 (budget=10 ms)
-[TGN] TGN_Init() — online mode — L_link=43  γ_init=310.179  W_max=430
-[TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_dim192_final.bin'  (dim=192 layers=2)
-[KEM][SimLatency][t=0.0338249] Vehicle 124 session key simulated-ready (real handshake was 33.8249 ms)
-[KEM][SimLatency][t=0.0342462] Vehicle 125 session key simulated-ready (real handshake was 34.2462 ms)
-[KEM][SimLatency][t=0.034615] Vehicle 123 session key simulated-ready (real handshake was 34.615 ms)
-[KEM][SimLatency][t=0.0348262] Vehicle 126 session key simulated-ready (real handshake was 34.8262 ms)
-[KEM][SimLatency][t=0.0349466] Vehicle 142 session key simulated-ready (real handshake was 34.9466 ms)
-[KEM][SimLatency][t=0.0350254] Vehicle 127 session key simulated-ready (real handshake was 35.0254 ms)
-[KEM][SimLatency][t=0.0350441] Vehicle 161 session key simulated-ready (real handshake was 35.0441 ms)
-[KEM][SimLatency][t=0.0350569] Vehicle 146 session key simulated-ready (real handshake was 35.0569 ms)
-[KEM][SimLatency][t=0.0350749] Vehicle 162 session key simulated-ready (real handshake was 35.0749 ms)
-[KEM][SimLatency][t=0.0350798] Vehicle 148 session key simulated-ready (real handshake was 35.0798 ms)
-[KEM][SimLatency][t=0.0350802] Vehicle 145 session key simulated-ready (real handshake was 35.0802 ms)
-[KEM][SimLatency][t=0.0350835] Vehicle 129 session key simulated-ready (real handshake was 35.0835 ms)
-[KEM][SimLatency][t=0.0351107] Vehicle 139 session key simulated-ready (real handshake was 35.1107 ms)
-[KEM][SimLatency][t=0.0351236] Vehicle 147 session key simulated-ready (real handshake was 35.1236 ms)
-[KEM][SimLatency][t=0.0351548] Vehicle 140 session key simulated-ready (real handshake was 35.1548 ms)
-[KEM][SimLatency][t=0.0351635] Vehicle 163 session key simulated-ready (real handshake was 35.1635 ms)
-[KEM][SimLatency][t=0.0351884] Vehicle 174 session key simulated-ready (real handshake was 35.1884 ms)
-[KEM][SimLatency][t=0.0352203] Vehicle 158 session key simulated-ready (real handshake was 35.2203 ms)
-[KEM][SimLatency][t=0.0352222] Vehicle 128 session key simulated-ready (real handshake was 35.2222 ms)
-[KEM][SimLatency][t=0.0352302] Vehicle 141 session key simulated-ready (real handshake was 35.2302 ms)
-[KEM][SimLatency][t=0.035234] Vehicle 136 session key simulated-ready (real handshake was 35.234 ms)
-[KEM][SimLatency][t=0.0352408] Vehicle 144 session key simulated-ready (real handshake was 35.2408 ms)
-[KEM][SimLatency][t=0.035262] Vehicle 134 session key simulated-ready (real handshake was 35.262 ms)
-[KEM][SimLatency][t=0.0352682] Vehicle 160 session key simulated-ready (real handshake was 35.2682 ms)
-[KEM][SimLatency][t=0.0352685] Vehicle 130 session key simulated-ready (real handshake was 35.2685 ms)
-[KEM][SimLatency][t=0.0352816] Vehicle 131 session key simulated-ready (real handshake was 35.2816 ms)
-[KEM][SimLatency][t=0.0352844] Vehicle 159 session key simulated-ready (real handshake was 35.2844 ms)
-[KEM][SimLatency][t=0.0353084] Vehicle 133 session key simulated-ready (real handshake was 35.3084 ms)
-[KEM][SimLatency][t=0.0353296] Vehicle 157 session key simulated-ready (real handshake was 35.3296 ms)
-[KEM][SimLatency][t=0.035341] Vehicle 176 session key simulated-ready (real handshake was 35.341 ms)
-[KEM][SimLatency][t=0.0353474] Vehicle 164 session key simulated-ready (real handshake was 35.3474 ms)
-[KEM][SimLatency][t=0.0353766] Vehicle 177 session key simulated-ready (real handshake was 35.3766 ms)
-[KEM][SimLatency][t=0.0353785] Vehicle 150 session key simulated-ready (real handshake was 35.3785 ms)
-[KEM][SimLatency][t=0.0353858] Vehicle 135 session key simulated-ready (real handshake was 35.3858 ms)
-[KEM][SimLatency][t=0.035405] Vehicle 175 session key simulated-ready (real handshake was 35.405 ms)
-[KEM][SimLatency][t=0.0354171] Vehicle 186 session key simulated-ready (real handshake was 35.4171 ms)
-[KEM][SimLatency][t=0.0354216] Vehicle 138 session key simulated-ready (real handshake was 35.4216 ms)
-[KEM][SimLatency][t=0.0354301] Vehicle 169 session key simulated-ready (real handshake was 35.4301 ms)
-[KEM][SimLatency][t=0.0354446] Vehicle 75 session key simulated-ready (real handshake was 35.4446 ms)
-[KEM][SimLatency][t=0.0354456] Vehicle 166 session key simulated-ready (real handshake was 35.4456 ms)
-[KEM][SimLatency][t=0.0354531] Vehicle 155 session key simulated-ready (real handshake was 35.4531 ms)
-[KEM][SimLatency][t=0.0354571] Vehicle 156 session key simulated-ready (real handshake was 35.4571 ms)
-[KEM][SimLatency][t=0.0354578] Vehicle 74 session key simulated-ready (real handshake was 35.4578 ms)
-[KEM][SimLatency][t=0.0354595] Vehicle 86 session key simulated-ready (real handshake was 35.4595 ms)
-[KEM][SimLatency][t=0.0354656] Vehicle 171 session key simulated-ready (real handshake was 35.4656 ms)
-[KEM][SimLatency][t=0.0354687] Vehicle 168 session key simulated-ready (real handshake was 35.4687 ms)
-[KEM][SimLatency][t=0.0354771] Vehicle 173 session key simulated-ready (real handshake was 35.4771 ms)
-[KEM][SimLatency][t=0.0354859] Vehicle 154 session key simulated-ready (real handshake was 35.4859 ms)
-[KEM][SimLatency][t=0.0354876] Vehicle 183 session key simulated-ready (real handshake was 35.4876 ms)
-[KEM][SimLatency][t=0.0354916] Vehicle 191 session key simulated-ready (real handshake was 35.4916 ms)
-[KEM][SimLatency][t=0.0354962] Vehicle 67 session key simulated-ready (real handshake was 35.4962 ms)
-[KEM][SimLatency][t=0.0355029] Vehicle 172 session key simulated-ready (real handshake was 35.5029 ms)
-[KEM][SimLatency][t=0.0355088] Vehicle 180 session key simulated-ready (real handshake was 35.5088 ms)
-[KEM][SimLatency][t=0.035509] Vehicle 193 session key simulated-ready (real handshake was 35.509 ms)
-[KEM][SimLatency][t=0.0355156] Vehicle 167 session key simulated-ready (real handshake was 35.5156 ms)
-[KEM][SimLatency][t=0.0355173] Vehicle 185 session key simulated-ready (real handshake was 35.5173 ms)
-[KEM][SimLatency][t=0.0355287] Vehicle 190 session key simulated-ready (real handshake was 35.5287 ms)
-[KEM][SimLatency][t=0.0355404] Vehicle 97 session key simulated-ready (real handshake was 35.5404 ms)
-[KEM][SimLatency][t=0.0355421] Vehicle 194 session key simulated-ready (real handshake was 35.5421 ms)
-[KEM][SimLatency][t=0.0355448] Vehicle 192 session key simulated-ready (real handshake was 35.5448 ms)
-[KEM][SimLatency][t=0.0355476] Vehicle 165 session key simulated-ready (real handshake was 35.5476 ms)
-[KEM][SimLatency][t=0.0355477] Vehicle 153 session key simulated-ready (real handshake was 35.5477 ms)
-[KEM][SimLatency][t=0.0355481] Vehicle 189 session key simulated-ready (real handshake was 35.5481 ms)
-[KEM][SimLatency][t=0.0355564] Vehicle 152 session key simulated-ready (real handshake was 35.5564 ms)
-[KEM][SimLatency][t=0.0355657] Vehicle 66 session key simulated-ready (real handshake was 35.5657 ms)
-[KEM][SimLatency][t=0.0355716] Vehicle 76 session key simulated-ready (real handshake was 35.5716 ms)
-[KEM][SimLatency][t=0.0355728] Vehicle 179 session key simulated-ready (real handshake was 35.5728 ms)
-[KEM][SimLatency][t=0.0355775] Vehicle 198 session key simulated-ready (real handshake was 35.5775 ms)
-[KEM][SimLatency][t=0.0355796] Vehicle 137 session key simulated-ready (real handshake was 35.5796 ms)
-[KEM][SimLatency][t=0.035587] Vehicle 71 session key simulated-ready (real handshake was 35.587 ms)
-[KEM][SimLatency][t=0.0355909] Vehicle 96 session key simulated-ready (real handshake was 35.5909 ms)
-[KEM][SimLatency][t=0.0356019] Vehicle 181 session key simulated-ready (real handshake was 35.6019 ms)
-[KEM][SimLatency][t=0.0356124] Vehicle 55 session key simulated-ready (real handshake was 35.6124 ms)
-[KEM][SimLatency][t=0.0356127] Vehicle 78 session key simulated-ready (real handshake was 35.6127 ms)
-[KEM][SimLatency][t=0.03562] Vehicle 182 session key simulated-ready (real handshake was 35.62 ms)
-[KEM][SimLatency][t=0.0356218] Vehicle 70 session key simulated-ready (real handshake was 35.6218 ms)
-[KEM][SimLatency][t=0.0356244] Vehicle 77 session key simulated-ready (real handshake was 35.6244 ms)
-[KEM][SimLatency][t=0.0356268] Vehicle 132 session key simulated-ready (real handshake was 35.6268 ms)
-[KEM][SimLatency][t=0.0356408] Vehicle 73 session key simulated-ready (real handshake was 35.6408 ms)
-[KEM][SimLatency][t=0.0356445] Vehicle 195 session key simulated-ready (real handshake was 35.6445 ms)
-[KEM][SimLatency][t=0.035653] Vehicle 178 session key simulated-ready (real handshake was 35.653 ms)
-[KEM][SimLatency][t=0.0356682] Vehicle 188 session key simulated-ready (real handshake was 35.6682 ms)
-[KEM][SimLatency][t=0.0356731] Vehicle 64 session key simulated-ready (real handshake was 35.6731 ms)
-[KEM][SimLatency][t=0.0356734] Vehicle 92 session key simulated-ready (real handshake was 35.6734 ms)
-[KEM][SimLatency][t=0.03569] Vehicle 85 session key simulated-ready (real handshake was 35.69 ms)
-[KEM][SimLatency][t=0.0357035] Vehicle 89 session key simulated-ready (real handshake was 35.7035 ms)
-[KEM][SimLatency][t=0.0357088] Vehicle 184 session key simulated-ready (real handshake was 35.7088 ms)
-[KEM][SimLatency][t=0.0357169] Vehicle 65 session key simulated-ready (real handshake was 35.7169 ms)
-[KEM][SimLatency][t=0.035718] Vehicle 69 session key simulated-ready (real handshake was 35.718 ms)
-[KEM][SimLatency][t=0.0357262] Vehicle 199 session key simulated-ready (real handshake was 35.7262 ms)
-[KEM][SimLatency][t=0.0357432] Vehicle 88 session key simulated-ready (real handshake was 35.7432 ms)
-[KEM][SimLatency][t=0.0357434] Vehicle 91 session key simulated-ready (real handshake was 35.7434 ms)
-[KEM][SimLatency][t=0.0357463] Vehicle 90 session key simulated-ready (real handshake was 35.7463 ms)
-[KEM][SimLatency][t=0.0357567] Vehicle 82 session key simulated-ready (real handshake was 35.7567 ms)
-[KEM][SimLatency][t=0.0357621] Vehicle 93 session key simulated-ready (real handshake was 35.7621 ms)
-[KEM][SimLatency][t=0.035776] Vehicle 68 session key simulated-ready (real handshake was 35.776 ms)
-[KEM][SimLatency][t=0.0357842] Vehicle 95 session key simulated-ready (real handshake was 35.7841 ms)
-[KEM][SimLatency][t=0.0357897] Vehicle 151 session key simulated-ready (real handshake was 35.7897 ms)
-[KEM][SimLatency][t=0.0358085] Vehicle 98 session key simulated-ready (real handshake was 35.8085 ms)
-[KEM][SimLatency][t=0.0358122] Vehicle 149 session key simulated-ready (real handshake was 35.8122 ms)
-[KEM][SimLatency][t=0.0358166] Vehicle 187 session key simulated-ready (real handshake was 35.8166 ms)
-[KEM][SimLatency][t=0.0358394] Vehicle 56 session key simulated-ready (real handshake was 35.8394 ms)
-[KEM][SimLatency][t=0.0358427] Vehicle 197 session key simulated-ready (real handshake was 35.8427 ms)
-[KEM][SimLatency][t=0.0358448] Vehicle 84 session key simulated-ready (real handshake was 35.8448 ms)
-[KEM][SimLatency][t=0.0358465] Vehicle 87 session key simulated-ready (real handshake was 35.8465 ms)
-[KEM][SimLatency][t=0.0358488] Vehicle 196 session key simulated-ready (real handshake was 35.8488 ms)
-[KEM][SimLatency][t=0.0358596] Vehicle 79 session key simulated-ready (real handshake was 35.8596 ms)
-[KEM][SimLatency][t=0.0358802] Vehicle 53 session key simulated-ready (real handshake was 35.8802 ms)
-[KEM][SimLatency][t=0.0359417] Vehicle 170 session key simulated-ready (real handshake was 35.9417 ms)
-[KEM][SimLatency][t=0.0359459] Vehicle 94 session key simulated-ready (real handshake was 35.9459 ms)
-[KEM][SimLatency][t=0.0359961] Vehicle 54 session key simulated-ready (real handshake was 35.9961 ms)
-[KEM][SimLatency][t=0.0360729] Vehicle 80 session key simulated-ready (real handshake was 36.0729 ms)
-[KEM][SimLatency][t=0.0361512] Vehicle 63 session key simulated-ready (real handshake was 36.1512 ms)
-[KEM][SimLatency][t=0.0362727] Vehicle 72 session key simulated-ready (real handshake was 36.2727 ms)
-[KEM][SimLatency][t=0.0364817] Vehicle 81 session key simulated-ready (real handshake was 36.4817 ms)
-[KEM][SimLatency][t=0.0365961] Vehicle 62 session key simulated-ready (real handshake was 36.5961 ms)
-[KEM][SimLatency][t=0.0367084] Vehicle 83 session key simulated-ready (real handshake was 36.7084 ms)
-[KEM][SimLatency][t=0.0375516] Vehicle 20 session key simulated-ready (real handshake was 37.5516 ms)
-[KEM][SimLatency][t=0.0397593] Vehicle 143 session key simulated-ready (real handshake was 39.7593 ms)
-[KEM][SimLatency][t=0.0424903] Vehicle 99 session key simulated-ready (real handshake was 42.4903 ms)
-[KEM][SimLatency][t=0.0425669] Vehicle 107 session key simulated-ready (real handshake was 42.5669 ms)
-[KEM][SimLatency][t=0.0427618] Vehicle 106 session key simulated-ready (real handshake was 42.7618 ms)
-[KEM][SimLatency][t=0.0428391] Vehicle 108 session key simulated-ready (real handshake was 42.8391 ms)
-[KEM][SimLatency][t=0.0428905] Vehicle 112 session key simulated-ready (real handshake was 42.8905 ms)
-[KEM][SimLatency][t=0.042904] Vehicle 111 session key simulated-ready (real handshake was 42.904 ms)
-[KEM][SimLatency][t=0.0429769] Vehicle 1 session key simulated-ready (real handshake was 42.9769 ms)
-[KEM][SimLatency][t=0.0430152] Vehicle 104 session key simulated-ready (real handshake was 43.0152 ms)
-[KEM][SimLatency][t=0.0430693] Vehicle 102 session key simulated-ready (real handshake was 43.0693 ms)
-[KEM][SimLatency][t=0.0430698] Vehicle 120 session key simulated-ready (real handshake was 43.0698 ms)
-[KEM][SimLatency][t=0.0430796] Vehicle 119 session key simulated-ready (real handshake was 43.0796 ms)
-[KEM][SimLatency][t=0.0430932] Vehicle 105 session key simulated-ready (real handshake was 43.0932 ms)
-[KEM][SimLatency][t=0.0432537] Vehicle 113 session key simulated-ready (real handshake was 43.2537 ms)
-[KEM][SimLatency][t=0.0432587] Vehicle 110 session key simulated-ready (real handshake was 43.2587 ms)
-[KEM][SimLatency][t=0.0433383] Vehicle 2 session key simulated-ready (real handshake was 43.3383 ms)
-[KEM][SimLatency][t=0.043392] Vehicle 103 session key simulated-ready (real handshake was 43.392 ms)
-[KEM][SimLatency][t=0.0434245] Vehicle 12 session key simulated-ready (real handshake was 43.4245 ms)
-[KEM][SimLatency][t=0.0435159] Vehicle 118 session key simulated-ready (real handshake was 43.5159 ms)
-[KEM][SimLatency][t=0.0435888] Vehicle 117 session key simulated-ready (real handshake was 43.5888 ms)
-[KEM][SimLatency][t=0.0436075] Vehicle 3 session key simulated-ready (real handshake was 43.6075 ms)
-[KEM][SimLatency][t=0.0436167] Vehicle 11 session key simulated-ready (real handshake was 43.6167 ms)
-[KEM][SimLatency][t=0.0436793] Vehicle 61 session key simulated-ready (real handshake was 43.6793 ms)
-[KEM][SimLatency][t=0.0437154] Vehicle 10 session key simulated-ready (real handshake was 43.7154 ms)
-[KEM][SimLatency][t=0.0438158] Vehicle 9 session key simulated-ready (real handshake was 43.8158 ms)
-[KEM][SimLatency][t=0.043848] Vehicle 115 session key simulated-ready (real handshake was 43.848 ms)
-[KEM][SimLatency][t=0.0438817] Vehicle 114 session key simulated-ready (real handshake was 43.8817 ms)
-[KEM][SimLatency][t=0.0439403] Vehicle 101 session key simulated-ready (real handshake was 43.9403 ms)
-[KEM][SimLatency][t=0.0439778] Vehicle 8 session key simulated-ready (real handshake was 43.9778 ms)
-[KEM][SimLatency][t=0.0440592] Vehicle 116 session key simulated-ready (real handshake was 44.0592 ms)
-[KEM][SimLatency][t=0.0441678] Vehicle 5 session key simulated-ready (real handshake was 44.1678 ms)
-[KEM][SimLatency][t=0.0441757] Vehicle 7 session key simulated-ready (real handshake was 44.1757 ms)
-[KEM][SimLatency][t=0.0442247] Vehicle 4 session key simulated-ready (real handshake was 44.2247 ms)
-[KEM][SimLatency][t=0.0443556] Vehicle 109 session key simulated-ready (real handshake was 44.3556 ms)
-[KEM][SimLatency][t=0.0444812] Vehicle 6 session key simulated-ready (real handshake was 44.4812 ms)
-[KEM][SimLatency][t=0.0451953] Vehicle 52 session key simulated-ready (real handshake was 45.1953 ms)
-[KEM][SimLatency][t=0.0452533] Vehicle 57 session key simulated-ready (real handshake was 45.2533 ms)
-[KEM][SimLatency][t=0.0453461] Vehicle 100 session key simulated-ready (real handshake was 45.3461 ms)
-[KEM][SimLatency][t=0.0579081] Vehicle 21 session key simulated-ready (real handshake was 57.9081 ms)
-[KEM][SimLatency][t=0.0579885] Vehicle 22 session key simulated-ready (real handshake was 57.9885 ms)
-[KEM][SimLatency][t=0.0584548] Vehicle 23 session key simulated-ready (real handshake was 58.4548 ms)
-[KEM][SimLatency][t=0.0586183] Vehicle 58 session key simulated-ready (real handshake was 58.6183 ms)
-[KEM][SimLatency][t=0.0586353] Vehicle 60 session key simulated-ready (real handshake was 58.6353 ms)
-[KEM][SimLatency][t=0.0586603] Vehicle 59 session key simulated-ready (real handshake was 58.6603 ms)
-[KEM][SimLatency][t=0.058908] Vehicle 29 session key simulated-ready (real handshake was 58.908 ms)
-[KEM][SimLatency][t=0.0589119] Vehicle 30 session key simulated-ready (real handshake was 58.9119 ms)
-[KEM][SimLatency][t=0.0589858] Vehicle 24 session key simulated-ready (real handshake was 58.9858 ms)
-[KEM][SimLatency][t=0.0590035] Vehicle 34 session key simulated-ready (real handshake was 59.0035 ms)
-[KEM][SimLatency][t=0.0591007] Vehicle 31 session key simulated-ready (real handshake was 59.1007 ms)
-[KEM][SimLatency][t=0.0591307] Vehicle 51 session key simulated-ready (real handshake was 59.1307 ms)
-[KEM][SimLatency][t=0.0591809] Vehicle 25 session key simulated-ready (real handshake was 59.1809 ms)
-[KEM][SimLatency][t=0.0591862] Vehicle 41 session key simulated-ready (real handshake was 59.1862 ms)
-[KEM][SimLatency][t=0.0592308] Vehicle 35 session key simulated-ready (real handshake was 59.2308 ms)
-[KEM][SimLatency][t=0.0592442] Vehicle 32 session key simulated-ready (real handshake was 59.2442 ms)
-[KEM][SimLatency][t=0.0592599] Vehicle 28 session key simulated-ready (real handshake was 59.2599 ms)
-[KEM][SimLatency][t=0.059292] Vehicle 40 session key simulated-ready (real handshake was 59.292 ms)
-[KEM][SimLatency][t=0.0593038] Vehicle 122 session key simulated-ready (real handshake was 59.3038 ms)
-[KEM][SimLatency][t=0.0593496] Vehicle 37 session key simulated-ready (real handshake was 59.3496 ms)
-[KEM][SimLatency][t=0.0593549] Vehicle 39 session key simulated-ready (real handshake was 59.3549 ms)
-[KEM][SimLatency][t=0.0593659] Vehicle 26 session key simulated-ready (real handshake was 59.3659 ms)
-[KEM][SimLatency][t=0.0593898] Vehicle 27 session key simulated-ready (real handshake was 59.3898 ms)
-[KEM][SimLatency][t=0.0593948] Vehicle 36 session key simulated-ready (real handshake was 59.3948 ms)
-[KEM][SimLatency][t=0.0594022] Vehicle 43 session key simulated-ready (real handshake was 59.4022 ms)
-[KEM][SimLatency][t=0.0594117] Vehicle 38 session key simulated-ready (real handshake was 59.4117 ms)
-[KEM][SimLatency][t=0.0594121] Vehicle 45 session key simulated-ready (real handshake was 59.4121 ms)
-[KEM][SimLatency][t=0.0594366] Vehicle 33 session key simulated-ready (real handshake was 59.4366 ms)
-[KEM][SimLatency][t=0.05945] Vehicle 48 session key simulated-ready (real handshake was 59.45 ms)
-[KEM][SimLatency][t=0.05946] Vehicle 44 session key simulated-ready (real handshake was 59.46 ms)
-[KEM][SimLatency][t=0.0594883] Vehicle 50 session key simulated-ready (real handshake was 59.4883 ms)
-[KEM][SimLatency][t=0.0594987] Vehicle 49 session key simulated-ready (real handshake was 59.4987 ms)
-[KEM][SimLatency][t=0.0595212] Vehicle 46 session key simulated-ready (real handshake was 59.5212 ms)
-[KEM][SimLatency][t=0.0595804] Vehicle 42 session key simulated-ready (real handshake was 59.5804 ms)
-[KEM][SimLatency][t=0.059602] Vehicle 47 session key simulated-ready (real handshake was 59.602 ms)
-[KEM][SimLatency][t=0.0601851] Vehicle 13 session key simulated-ready (real handshake was 60.1851 ms)
-[KEM][SimLatency][t=0.0659627] Vehicle 17 session key simulated-ready (real handshake was 65.9627 ms)
-[KEM][SimLatency][t=0.0666007] Vehicle 14 session key simulated-ready (real handshake was 66.6007 ms)
-[KEM][SimLatency][t=0.0668349] Vehicle 15 session key simulated-ready (real handshake was 66.8349 ms)
-[KEM][SimLatency][t=0.0669941] Vehicle 18 session key simulated-ready (real handshake was 66.9941 ms)
-[KEM][SimLatency][t=0.0674025] Vehicle 16 session key simulated-ready (real handshake was 67.4025 ms)
-[KEM][SimLatency][t=0.097516] Vehicle 121 session key simulated-ready (real handshake was 97.516 ms)
-[KEM][SimLatency][t=0.124238] Vehicle 19 session key simulated-ready (real handshake was 124.238 ms)
-[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=2219255592843288841 (interval=3s)
-[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=2219255592843288841 (interval=3s)
-[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=2219255592843288841 (interval=3s)
-[ME-S3][t=10.000]  V0 --topo--> Controller  <V0 sees V30>  ACCEPTED (real link)
-[ME-S3][t=10.000]  V30 --topo--> Controller  <V30 sees V0>  ACCEPTED (real link)
-[ME-S3][t=10.100]  STEP③  Controller FORGES: <V5 sees V35> via V5 and V6
-[ME-S3][t=10.100]  STEP④  Phantom: V5->V5->V35, V5->V6->V35  *** ATTACK COMPLETE (no external packet) ***
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[Trust][Anchor][t=10.100] Peer synced from checkpoint seq=2 (published t=9.000, sync latency=1.100s)
-[ME-S3][t=10.100]  FS-MITIGATE gate: delta_t=4 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S3][t=10.102]  STEP③  Controller FORGES: <V5 sees V35> via V7 and V8
-[ME-S3][t=10.102]  STEP④  Phantom: V5->V7->V35, V5->V8->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.102]  FS-MITIGATE gate: delta_t=9 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S3][t=10.104]  STEP③  Controller FORGES: <V5 sees V35> via V9 and V10
-[ME-S3][t=10.104]  STEP④  Phantom: V5->V9->V35, V5->V10->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.104]  FS-MITIGATE gate: delta_t=13 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
-[ME-S3][t=10.106]  STEP③  Controller FORGES: <V5 sees V35> via V11 and V12
-[ME-S3][t=10.106]  STEP④  Phantom: V5->V11->V35, V5->V12->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.106]  FS-MITIGATE gate: delta_t=17 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.108]  STEP③  Controller FORGES: <V5 sees V35> via V13 and V14
-[ME-S3][t=10.108]  STEP④  Phantom: V5->V13->V35, V5->V14->V35  *** ATTACK COMPLETE (no external packet) ***
-[WARN][t=10.108] Detect stage (crypto+LW+TGN, PemEmitEvent) took 106.172 ms, exceeding 100.000 ms beacon-interval budget (T_b)
-[ME-S3][t=10.108]  FS-MITIGATE gate: delta_t=22 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.110]  STEP③  Controller FORGES: <V5 sees V35> via V15 and V16
-[ME-S3][t=10.110]  STEP④  Phantom: V5->V15->V35, V5->V16->V35  *** ATTACK COMPLETE (no external packet) ***
-[WARN][t=10.110] Detect stage (crypto+LW+TGN, PemEmitEvent) took 1445.310 ms, exceeding 100.000 ms beacon-interval budget (T_b)
-[ME-S3][t=10.110]  FS-MITIGATE gate: delta_t=26 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.112]  STEP③  Controller FORGES: <V5 sees V35> via V17 and V18
-[ME-S3][t=10.112]  STEP④  Phantom: V5->V17->V35, V5->V18->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.112]  FS-MITIGATE gate: delta_t=30 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.114]  STEP③  Controller FORGES: <V5 sees V35> via V19 and V20
-[ME-S3][t=10.114]  STEP④  Phantom: V5->V19->V35, V5->V20->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.114]  FS-MITIGATE gate: delta_t=34 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][t=10.114]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
-[Trust][t=10.114]  Node 0: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
-[Trust][t=10.114]  C_0 tau=0.800 >= tau_min^C — monitoring
-[ME-S3][t=10.114]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM SKIPPED (Algorithm 4 v=controller branch — controller-origin ME never reaches the alpha=ME witness-quorum check)
-[ME-S3][t=10.114]  MITIGATION: controller-origin — network isolation of V14 SUPPRESSED (innocent reporting vehicle)
-[ME-S3][t=10.116]  STEP③  Controller FORGES: <V5 sees V35> via V21 and V22
-[ME-S3][t=10.116]  STEP④  Phantom: V5->V21->V35, V5->V22->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.116]  FS-MITIGATE gate: delta_t=38 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.118]  STEP③  Controller FORGES: <V5 sees V35> via V23 and V24
-[ME-S3][t=10.118]  STEP④  Phantom: V5->V23->V35, V5->V24->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.118]  FS-MITIGATE gate: delta_t=42 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.120]  STEP③  Controller FORGES: <V5 sees V35> via V25 and V26
-[ME-S3][t=10.120]  STEP④  Phantom: V5->V25->V35, V5->V26->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.120]  FS-MITIGATE gate: delta_t=47 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.122]  STEP③  Controller FORGES: <V5 sees V35> via V27 and V28
-[ME-S3][t=10.122]  STEP④  Phantom: V5->V27->V35, V5->V28->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.122]  FS-MITIGATE gate: delta_t=51 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.124]  STEP③  Controller FORGES: <V5 sees V35> via V29 and V30
-[ME-S3][t=10.124]  STEP④  Phantom: V5->V29->V35, V5->V30->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.124]  FS-MITIGATE gate: delta_t=55 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.126]  STEP③  Controller FORGES: <V5 sees V35> via V31 and V32
-[ME-S3][t=10.126]  STEP④  Phantom: V5->V31->V35, V5->V32->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.126]  FS-MITIGATE gate: delta_t=59 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.128]  STEP③  Controller FORGES: <V5 sees V35> via V33 and V34
-[ME-S3][t=10.128]  STEP④  Phantom: V5->V33->V35, V5->V34->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.128]  FS-MITIGATE gate: delta_t=63 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.130]  STEP③  Controller FORGES: <V5 sees V35> via V35 and V36
-[ME-S3][t=10.130]  STEP④  Phantom: V5->V35->V35, V5->V36->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.130]  FS-MITIGATE gate: delta_t=66 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.132]  STEP③  Controller FORGES: <V5 sees V35> via V37 and V38
-[ME-S3][t=10.132]  STEP④  Phantom: V5->V37->V35, V5->V38->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.132]  FS-MITIGATE gate: delta_t=70 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.134]  STEP③  Controller FORGES: <V5 sees V35> via V39 and V40
-[ME-S3][t=10.134]  STEP④  Phantom: V5->V39->V35, V5->V40->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.134]  FS-MITIGATE gate: delta_t=74 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.136]  STEP③  Controller FORGES: <V5 sees V35> via V41 and V42
-[ME-S3][t=10.136]  STEP④  Phantom: V5->V41->V35, V5->V42->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.136]  FS-MITIGATE gate: delta_t=78 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.138]  STEP③  Controller FORGES: <V5 sees V35> via V43 and V44
-[ME-S3][t=10.138]  STEP④  Phantom: V5->V43->V35, V5->V44->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.138]  FS-MITIGATE gate: delta_t=82 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.140]  STEP③  Controller FORGES: <V5 sees V35> via V45 and V46
-[ME-S3][t=10.140]  STEP④  Phantom: V5->V45->V35, V5->V46->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.140]  FS-MITIGATE gate: delta_t=86 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.142]  STEP③  Controller FORGES: <V5 sees V35> via V47 and V48
-[ME-S3][t=10.142]  STEP④  Phantom: V5->V47->V35, V5->V48->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.142]  FS-MITIGATE gate: delta_t=90 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.144]  STEP③  Controller FORGES: <V5 sees V35> via V49 and V50
-[ME-S3][t=10.144]  STEP④  Phantom: V5->V49->V35, V5->V50->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.144]  FS-MITIGATE gate: delta_t=94 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.146]  STEP③  Controller FORGES: <V5 sees V35> via V51 and V52
-[ME-S3][t=10.146]  STEP④  Phantom: V5->V51->V35, V5->V52->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.146]  FS-MITIGATE gate: delta_t=99 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.148]  STEP③  Controller FORGES: <V5 sees V35> via V53 and V54
-[ME-S3][t=10.148]  STEP④  Phantom: V5->V53->V35, V5->V54->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.148]  FS-MITIGATE gate: delta_t=103 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.150]  STEP③  Controller FORGES: <V5 sees V35> via V55 and V56
-[ME-S3][t=10.150]  STEP④  Phantom: V5->V55->V35, V5->V56->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.150]  FS-MITIGATE gate: delta_t=107 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.152]  STEP③  Controller FORGES: <V5 sees V35> via V57 and V58
-[ME-S3][t=10.152]  STEP④  Phantom: V5->V57->V35, V5->V58->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.152]  FS-MITIGATE gate: delta_t=111 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.154]  STEP③  Controller FORGES: <V5 sees V35> via V59 and V60
-[ME-S3][t=10.154]  STEP④  Phantom: V5->V59->V35, V5->V60->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.154]  FS-MITIGATE gate: delta_t=115 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.156]  STEP③  Controller FORGES: <V5 sees V35> via V61 and V62
-[ME-S3][t=10.156]  STEP④  Phantom: V5->V61->V35, V5->V62->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.156]  FS-MITIGATE gate: delta_t=119 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.158]  STEP③  Controller FORGES: <V5 sees V35> via V63 and V64
-[ME-S3][t=10.158]  STEP④  Phantom: V5->V63->V35, V5->V64->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.158]  FS-MITIGATE gate: delta_t=123 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.160]  STEP③  Controller FORGES: <V5 sees V35> via V65 and V66
-[ME-S3][t=10.160]  STEP④  Phantom: V5->V65->V35, V5->V66->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.160]  FS-MITIGATE gate: delta_t=127 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.162]  STEP③  Controller FORGES: <V5 sees V35> via V67 and V68
-[ME-S3][t=10.162]  STEP④  Phantom: V5->V67->V35, V5->V68->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.162]  FS-MITIGATE gate: delta_t=131 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.164]  STEP③  Controller FORGES: <V5 sees V35> via V69 and V70
-[ME-S3][t=10.164]  STEP④  Phantom: V5->V69->V35, V5->V70->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.164]  FS-MITIGATE gate: delta_t=135 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.166]  STEP③  Controller FORGES: <V5 sees V35> via V71 and V72
-[ME-S3][t=10.166]  STEP④  Phantom: V5->V71->V35, V5->V72->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.166]  FS-MITIGATE gate: delta_t=139 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.168]  STEP③  Controller FORGES: <V5 sees V35> via V73 and V74
-[ME-S3][t=10.168]  STEP④  Phantom: V5->V73->V35, V5->V74->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.168]  FS-MITIGATE gate: delta_t=144 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.170]  STEP③  Controller FORGES: <V5 sees V35> via V75 and V76
-[ME-S3][t=10.170]  STEP④  Phantom: V5->V75->V35, V5->V76->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.170]  FS-MITIGATE gate: delta_t=148 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.172]  STEP③  Controller FORGES: <V5 sees V35> via V77 and V78
-[ME-S3][t=10.172]  STEP④  Phantom: V5->V77->V35, V5->V78->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.172]  FS-MITIGATE gate: delta_t=152 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.174]  STEP③  Controller FORGES: <V5 sees V35> via V79 and V80
-[ME-S3][t=10.174]  STEP④  Phantom: V5->V79->V35, V5->V80->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.174]  FS-MITIGATE gate: delta_t=156 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.176]  STEP③  Controller FORGES: <V5 sees V35> via V81 and V82
-[ME-S3][t=10.176]  STEP④  Phantom: V5->V81->V35, V5->V82->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.176]  FS-MITIGATE gate: delta_t=160 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.178]  STEP③  Controller FORGES: <V5 sees V35> via V83 and V84
-[ME-S3][t=10.178]  STEP④  Phantom: V5->V83->V35, V5->V84->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.178]  FS-MITIGATE gate: delta_t=164 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.180]  STEP③  Controller FORGES: <V5 sees V35> via V85 and V86
-[ME-S3][t=10.180]  STEP④  Phantom: V5->V85->V35, V5->V86->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.180]  FS-MITIGATE gate: delta_t=168 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.182]  STEP③  Controller FORGES: <V5 sees V35> via V87 and V88
-[ME-S3][t=10.182]  STEP④  Phantom: V5->V87->V35, V5->V88->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.182]  FS-MITIGATE gate: delta_t=172 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.184]  STEP③  Controller FORGES: <V5 sees V35> via V89 and V90
-[ME-S3][t=10.184]  STEP④  Phantom: V5->V89->V35, V5->V90->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.184]  FS-MITIGATE gate: delta_t=176 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.186]  STEP③  Controller FORGES: <V5 sees V35> via V91 and V92
-[ME-S3][t=10.186]  STEP④  Phantom: V5->V91->V35, V5->V92->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.186]  FS-MITIGATE gate: delta_t=180 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.188]  STEP③  Controller FORGES: <V5 sees V35> via V93 and V94
-[ME-S3][t=10.188]  STEP④  Phantom: V5->V93->V35, V5->V94->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.188]  FS-MITIGATE gate: delta_t=184 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.190]  STEP③  Controller FORGES: <V5 sees V35> via V95 and V96
-[ME-S3][t=10.190]  STEP④  Phantom: V5->V95->V35, V5->V96->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.190]  FS-MITIGATE gate: delta_t=188 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.192]  STEP③  Controller FORGES: <V5 sees V35> via V97 and V98
-[ME-S3][t=10.192]  STEP④  Phantom: V5->V97->V35, V5->V98->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.192]  FS-MITIGATE gate: delta_t=192 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.194]  STEP③  Controller FORGES: <V5 sees V35> via V99 and V100
-[ME-S3][t=10.194]  STEP④  Phantom: V5->V99->V35, V5->V100->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.194]  FS-MITIGATE gate: delta_t=196 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.196]  STEP③  Controller FORGES: <V5 sees V35> via V101 and V102
-[ME-S3][t=10.196]  STEP④  Phantom: V5->V101->V35, V5->V102->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.196]  FS-MITIGATE gate: delta_t=200 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[ME-S3][t=10.198]  STEP③  Controller FORGES: <V5 sees V35> via V103 and V104
-[ME-S3][t=10.198]  STEP④  Phantom: V5->V103->V35, V5->V104->V35  *** ATTACK COMPLETE (no external packet) ***
-[ME-S3][t=10.198]  FS-MITIGATE gate: delta_t=204 (Eq.3.45)  delta_thresh=13 (Eq.3.46)  -> CONFIRMED DIVERGENCE
-[Trust][Anchor][t=12.000] Published checkpoint seq=3 block_height=90 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=15.000] Published checkpoint seq=4 block_height=120 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=18.000] Published checkpoint seq=5 block_height=150 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=30.000] Published checkpoint seq=9 block_height=270 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=33.000] Published checkpoint seq=10 block_height=300 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=36.000] Published checkpoint seq=11 block_height=330 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=39.000] Published checkpoint seq=12 block_height=360 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=42.000] Published checkpoint seq=13 block_height=390 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=45.000] Published checkpoint seq=14 block_height=420 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=48.000] Published checkpoint seq=15 block_height=450 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=51.000] Published checkpoint seq=16 block_height=480 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=54.000] Published checkpoint seq=17 block_height=510 digest=7375188105051666566 (interval=3.000s)
-[Trust][Anchor][t=57.000] Published checkpoint seq=18 block_height=540 digest=7375188105051666566 (interval=3.000s)
+[KEM][10ms budget] 199 handshakes timed: avg=36.599 ms, max=112.025 ms, over_budget=199/199 (budget=10 ms)
+[TGN] TGN_Init() — online mode — L_link=20.4  γ_init=147.155  W_max=204
+[TGN] Weights loaded from '/home/sdvn_echo_topology/tgn_weights_sc1_12_capped_RETRAIN.bin'  (dim=192 layers=2)
+[KEM][SimLatency][t=0.0346596] Vehicle 93 session key simulated-ready (real handshake was 34.6596 ms)
+[KEM][SimLatency][t=0.0347139] Vehicle 107 session key simulated-ready (real handshake was 34.7139 ms)
+[KEM][SimLatency][t=0.0347196] Vehicle 4 session key simulated-ready (real handshake was 34.7196 ms)
+[KEM][SimLatency][t=0.0347243] Vehicle 40 session key simulated-ready (real handshake was 34.7243 ms)
+[KEM][SimLatency][t=0.0347315] Vehicle 151 session key simulated-ready (real handshake was 34.7315 ms)
+[KEM][SimLatency][t=0.0347367] Vehicle 101 session key simulated-ready (real handshake was 34.7367 ms)
+[KEM][SimLatency][t=0.0347538] Vehicle 102 session key simulated-ready (real handshake was 34.7538 ms)
+[KEM][SimLatency][t=0.034774] Vehicle 54 session key simulated-ready (real handshake was 34.774 ms)
+[KEM][SimLatency][t=0.0347763] Vehicle 150 session key simulated-ready (real handshake was 34.7763 ms)
+[KEM][SimLatency][t=0.0347803] Vehicle 94 session key simulated-ready (real handshake was 34.7803 ms)
+[KEM][SimLatency][t=0.0347959] Vehicle 100 session key simulated-ready (real handshake was 34.7959 ms)
+[KEM][SimLatency][t=0.0348091] Vehicle 39 session key simulated-ready (real handshake was 34.8091 ms)
+[KEM][SimLatency][t=0.0348102] Vehicle 96 session key simulated-ready (real handshake was 34.8102 ms)
+[KEM][SimLatency][t=0.0348159] Vehicle 55 session key simulated-ready (real handshake was 34.8159 ms)
+[KEM][SimLatency][t=0.0348363] Vehicle 106 session key simulated-ready (real handshake was 34.8363 ms)
+[KEM][SimLatency][t=0.0348436] Vehicle 63 session key simulated-ready (real handshake was 34.8436 ms)
+[KEM][SimLatency][t=0.0348612] Vehicle 99 session key simulated-ready (real handshake was 34.8612 ms)
+[KEM][SimLatency][t=0.034862] Vehicle 97 session key simulated-ready (real handshake was 34.862 ms)
+[KEM][SimLatency][t=0.0348626] Vehicle 42 session key simulated-ready (real handshake was 34.8626 ms)
+[KEM][SimLatency][t=0.0348683] Vehicle 174 session key simulated-ready (real handshake was 34.8683 ms)
+[KEM][SimLatency][t=0.0348712] Vehicle 34 session key simulated-ready (real handshake was 34.8712 ms)
+[KEM][SimLatency][t=0.0348752] Vehicle 103 session key simulated-ready (real handshake was 34.8752 ms)
+[KEM][SimLatency][t=0.0348799] Vehicle 5 session key simulated-ready (real handshake was 34.8799 ms)
+[KEM][SimLatency][t=0.0348803] Vehicle 53 session key simulated-ready (real handshake was 34.8803 ms)
+[KEM][SimLatency][t=0.0348834] Vehicle 149 session key simulated-ready (real handshake was 34.8834 ms)
+[KEM][SimLatency][t=0.0348843] Vehicle 41 session key simulated-ready (real handshake was 34.8843 ms)
+[KEM][SimLatency][t=0.0348844] Vehicle 16 session key simulated-ready (real handshake was 34.8844 ms)
+[KEM][SimLatency][t=0.0348855] Vehicle 12 session key simulated-ready (real handshake was 34.8855 ms)
+[KEM][SimLatency][t=0.0348915] Vehicle 43 session key simulated-ready (real handshake was 34.8915 ms)
+[KEM][SimLatency][t=0.0348926] Vehicle 35 session key simulated-ready (real handshake was 34.8926 ms)
+[KEM][SimLatency][t=0.0348983] Vehicle 29 session key simulated-ready (real handshake was 34.8983 ms)
+[KEM][SimLatency][t=0.0349009] Vehicle 135 session key simulated-ready (real handshake was 34.9009 ms)
+[KEM][SimLatency][t=0.0349058] Vehicle 58 session key simulated-ready (real handshake was 34.9058 ms)
+[KEM][SimLatency][t=0.0349083] Vehicle 109 session key simulated-ready (real handshake was 34.9083 ms)
+[KEM][SimLatency][t=0.0349089] Vehicle 182 session key simulated-ready (real handshake was 34.9089 ms)
+[KEM][SimLatency][t=0.034927] Vehicle 62 session key simulated-ready (real handshake was 34.927 ms)
+[KEM][SimLatency][t=0.0349292] Vehicle 173 session key simulated-ready (real handshake was 34.9292 ms)
+[KEM][SimLatency][t=0.0349354] Vehicle 48 session key simulated-ready (real handshake was 34.9354 ms)
+[KEM][SimLatency][t=0.0349382] Vehicle 15 session key simulated-ready (real handshake was 34.9382 ms)
+[KEM][SimLatency][t=0.0349416] Vehicle 199 session key simulated-ready (real handshake was 34.9416 ms)
+[KEM][SimLatency][t=0.0349432] Vehicle 52 session key simulated-ready (real handshake was 34.9432 ms)
+[KEM][SimLatency][t=0.0349504] Vehicle 176 session key simulated-ready (real handshake was 34.9504 ms)
+[KEM][SimLatency][t=0.0349618] Vehicle 110 session key simulated-ready (real handshake was 34.9618 ms)
+[KEM][SimLatency][t=0.0349685] Vehicle 66 session key simulated-ready (real handshake was 34.9685 ms)
+[KEM][SimLatency][t=0.0349747] Vehicle 8 session key simulated-ready (real handshake was 34.9747 ms)
+[KEM][SimLatency][t=0.0349753] Vehicle 17 session key simulated-ready (real handshake was 34.9753 ms)
+[KEM][SimLatency][t=0.034978] Vehicle 168 session key simulated-ready (real handshake was 34.978 ms)
+[KEM][SimLatency][t=0.0349812] Vehicle 172 session key simulated-ready (real handshake was 34.9812 ms)
+[KEM][SimLatency][t=0.0350015] Vehicle 11 session key simulated-ready (real handshake was 35.0015 ms)
+[KEM][SimLatency][t=0.0350109] Vehicle 179 session key simulated-ready (real handshake was 35.0109 ms)
+[KEM][SimLatency][t=0.0350116] Vehicle 139 session key simulated-ready (real handshake was 35.0116 ms)
+[KEM][SimLatency][t=0.0350122] Vehicle 65 session key simulated-ready (real handshake was 35.0122 ms)
+[KEM][SimLatency][t=0.0350134] Vehicle 122 session key simulated-ready (real handshake was 35.0134 ms)
+[KEM][SimLatency][t=0.035016] Vehicle 148 session key simulated-ready (real handshake was 35.016 ms)
+[KEM][SimLatency][t=0.0350193] Vehicle 108 session key simulated-ready (real handshake was 35.0193 ms)
+[KEM][SimLatency][t=0.0350232] Vehicle 123 session key simulated-ready (real handshake was 35.0232 ms)
+[KEM][SimLatency][t=0.0350236] Vehicle 2 session key simulated-ready (real handshake was 35.0236 ms)
+[KEM][SimLatency][t=0.0350252] Vehicle 59 session key simulated-ready (real handshake was 35.0252 ms)
+[KEM][SimLatency][t=0.0350261] Vehicle 181 session key simulated-ready (real handshake was 35.0261 ms)
+[KEM][SimLatency][t=0.0350299] Vehicle 44 session key simulated-ready (real handshake was 35.0299 ms)
+[KEM][SimLatency][t=0.035037] Vehicle 33 session key simulated-ready (real handshake was 35.037 ms)
+[KEM][SimLatency][t=0.0350376] Vehicle 158 session key simulated-ready (real handshake was 35.0376 ms)
+[KEM][SimLatency][t=0.0350554] Vehicle 171 session key simulated-ready (real handshake was 35.0554 ms)
+[KEM][SimLatency][t=0.0350571] Vehicle 175 session key simulated-ready (real handshake was 35.0571 ms)
+[KEM][SimLatency][t=0.0350589] Vehicle 125 session key simulated-ready (real handshake was 35.0589 ms)
+[KEM][SimLatency][t=0.0350618] Vehicle 64 session key simulated-ready (real handshake was 35.0618 ms)
+[KEM][SimLatency][t=0.0350623] Vehicle 178 session key simulated-ready (real handshake was 35.0623 ms)
+[KEM][SimLatency][t=0.0350623] Vehicle 121 session key simulated-ready (real handshake was 35.0623 ms)
+[KEM][SimLatency][t=0.0350659] Vehicle 32 session key simulated-ready (real handshake was 35.0659 ms)
+[KEM][SimLatency][t=0.035066] Vehicle 20 session key simulated-ready (real handshake was 35.066 ms)
+[KEM][SimLatency][t=0.035066] Vehicle 140 session key simulated-ready (real handshake was 35.066 ms)
+[KEM][SimLatency][t=0.0350735] Vehicle 118 session key simulated-ready (real handshake was 35.0735 ms)
+[KEM][SimLatency][t=0.0350755] Vehicle 9 session key simulated-ready (real handshake was 35.0755 ms)
+[KEM][SimLatency][t=0.0350762] Vehicle 198 session key simulated-ready (real handshake was 35.0762 ms)
+[KEM][SimLatency][t=0.0350762] Vehicle 128 session key simulated-ready (real handshake was 35.0762 ms)
+[KEM][SimLatency][t=0.0350766] Vehicle 26 session key simulated-ready (real handshake was 35.0766 ms)
+[KEM][SimLatency][t=0.0350797] Vehicle 112 session key simulated-ready (real handshake was 35.0797 ms)
+[KEM][SimLatency][t=0.0350811] Vehicle 120 session key simulated-ready (real handshake was 35.0811 ms)
+[KEM][SimLatency][t=0.0350848] Vehicle 111 session key simulated-ready (real handshake was 35.0848 ms)
+[KEM][SimLatency][t=0.0350891] Vehicle 30 session key simulated-ready (real handshake was 35.0891 ms)
+[KEM][SimLatency][t=0.0350925] Vehicle 38 session key simulated-ready (real handshake was 35.0925 ms)
+[KEM][SimLatency][t=0.0350953] Vehicle 192 session key simulated-ready (real handshake was 35.0953 ms)
+[KEM][SimLatency][t=0.0350984] Vehicle 129 session key simulated-ready (real handshake was 35.0984 ms)
+[KEM][SimLatency][t=0.0351001] Vehicle 28 session key simulated-ready (real handshake was 35.1001 ms)
+[KEM][SimLatency][t=0.035104] Vehicle 152 session key simulated-ready (real handshake was 35.104 ms)
+[KEM][SimLatency][t=0.0351043] Vehicle 119 session key simulated-ready (real handshake was 35.1043 ms)
+[KEM][SimLatency][t=0.0351054] Vehicle 116 session key simulated-ready (real handshake was 35.1054 ms)
+[KEM][SimLatency][t=0.0351072] Vehicle 14 session key simulated-ready (real handshake was 35.1072 ms)
+[KEM][SimLatency][t=0.0351138] Vehicle 131 session key simulated-ready (real handshake was 35.1138 ms)
+[KEM][SimLatency][t=0.0351152] Vehicle 98 session key simulated-ready (real handshake was 35.1152 ms)
+[KEM][SimLatency][t=0.0351165] Vehicle 1 session key simulated-ready (real handshake was 35.1165 ms)
+[KEM][SimLatency][t=0.0351189] Vehicle 117 session key simulated-ready (real handshake was 35.1189 ms)
+[KEM][SimLatency][t=0.0351192] Vehicle 190 session key simulated-ready (real handshake was 35.1192 ms)
+[KEM][SimLatency][t=0.0351273] Vehicle 3 session key simulated-ready (real handshake was 35.1273 ms)
+[KEM][SimLatency][t=0.0351285] Vehicle 138 session key simulated-ready (real handshake was 35.1285 ms)
+[KEM][SimLatency][t=0.0351321] Vehicle 169 session key simulated-ready (real handshake was 35.1321 ms)
+[KEM][SimLatency][t=0.0351453] Vehicle 167 session key simulated-ready (real handshake was 35.1453 ms)
+[KEM][SimLatency][t=0.0351481] Vehicle 10 session key simulated-ready (real handshake was 35.1481 ms)
+[KEM][SimLatency][t=0.0351569] Vehicle 195 session key simulated-ready (real handshake was 35.1569 ms)
+[KEM][SimLatency][t=0.0351573] Vehicle 154 session key simulated-ready (real handshake was 35.1573 ms)
+[KEM][SimLatency][t=0.0351581] Vehicle 95 session key simulated-ready (real handshake was 35.1581 ms)
+[KEM][SimLatency][t=0.0351585] Vehicle 45 session key simulated-ready (real handshake was 35.1585 ms)
+[KEM][SimLatency][t=0.0351626] Vehicle 185 session key simulated-ready (real handshake was 35.1626 ms)
+[KEM][SimLatency][t=0.0351626] Vehicle 18 session key simulated-ready (real handshake was 35.1626 ms)
+[KEM][SimLatency][t=0.035165] Vehicle 130 session key simulated-ready (real handshake was 35.165 ms)
+[KEM][SimLatency][t=0.0351697] Vehicle 163 session key simulated-ready (real handshake was 35.1697 ms)
+[KEM][SimLatency][t=0.035172] Vehicle 145 session key simulated-ready (real handshake was 35.172 ms)
+[KEM][SimLatency][t=0.0351728] Vehicle 19 session key simulated-ready (real handshake was 35.1728 ms)
+[KEM][SimLatency][t=0.0351738] Vehicle 13 session key simulated-ready (real handshake was 35.1738 ms)
+[KEM][SimLatency][t=0.0351746] Vehicle 191 session key simulated-ready (real handshake was 35.1746 ms)
+[KEM][SimLatency][t=0.0351769] Vehicle 134 session key simulated-ready (real handshake was 35.1769 ms)
+[KEM][SimLatency][t=0.0351771] Vehicle 126 session key simulated-ready (real handshake was 35.1771 ms)
+[KEM][SimLatency][t=0.0351774] Vehicle 160 session key simulated-ready (real handshake was 35.1774 ms)
+[KEM][SimLatency][t=0.0351848] Vehicle 105 session key simulated-ready (real handshake was 35.1848 ms)
+[KEM][SimLatency][t=0.0352031] Vehicle 6 session key simulated-ready (real handshake was 35.2031 ms)
+[KEM][SimLatency][t=0.0352041] Vehicle 132 session key simulated-ready (real handshake was 35.2041 ms)
+[KEM][SimLatency][t=0.0352055] Vehicle 161 session key simulated-ready (real handshake was 35.2055 ms)
+[KEM][SimLatency][t=0.0352056] Vehicle 115 session key simulated-ready (real handshake was 35.2056 ms)
+[KEM][SimLatency][t=0.0352092] Vehicle 177 session key simulated-ready (real handshake was 35.2092 ms)
+[KEM][SimLatency][t=0.0352104] Vehicle 46 session key simulated-ready (real handshake was 35.2104 ms)
+[KEM][SimLatency][t=0.0352172] Vehicle 57 session key simulated-ready (real handshake was 35.2172 ms)
+[KEM][SimLatency][t=0.0352204] Vehicle 170 session key simulated-ready (real handshake was 35.2204 ms)
+[KEM][SimLatency][t=0.0352223] Vehicle 56 session key simulated-ready (real handshake was 35.2223 ms)
+[KEM][SimLatency][t=0.0352232] Vehicle 142 session key simulated-ready (real handshake was 35.2232 ms)
+[KEM][SimLatency][t=0.0352243] Vehicle 25 session key simulated-ready (real handshake was 35.2243 ms)
+[KEM][SimLatency][t=0.0352255] Vehicle 147 session key simulated-ready (real handshake was 35.2255 ms)
+[KEM][SimLatency][t=0.0352294] Vehicle 159 session key simulated-ready (real handshake was 35.2294 ms)
+[KEM][SimLatency][t=0.0352308] Vehicle 193 session key simulated-ready (real handshake was 35.2308 ms)
+[KEM][SimLatency][t=0.0352337] Vehicle 133 session key simulated-ready (real handshake was 35.2337 ms)
+[KEM][SimLatency][t=0.0352356] Vehicle 157 session key simulated-ready (real handshake was 35.2356 ms)
+[KEM][SimLatency][t=0.0352509] Vehicle 183 session key simulated-ready (real handshake was 35.2509 ms)
+[KEM][SimLatency][t=0.035257] Vehicle 136 session key simulated-ready (real handshake was 35.257 ms)
+[KEM][SimLatency][t=0.0352603] Vehicle 164 session key simulated-ready (real handshake was 35.2603 ms)
+[KEM][SimLatency][t=0.0352675] Vehicle 47 session key simulated-ready (real handshake was 35.2675 ms)
+[KEM][SimLatency][t=0.035273] Vehicle 137 session key simulated-ready (real handshake was 35.273 ms)
+[KEM][SimLatency][t=0.0352803] Vehicle 180 session key simulated-ready (real handshake was 35.2803 ms)
+[KEM][SimLatency][t=0.0352843] Vehicle 50 session key simulated-ready (real handshake was 35.2843 ms)
+[KEM][SimLatency][t=0.0352887] Vehicle 184 session key simulated-ready (real handshake was 35.2887 ms)
+[KEM][SimLatency][t=0.0352944] Vehicle 36 session key simulated-ready (real handshake was 35.2944 ms)
+[KEM][SimLatency][t=0.0352944] Vehicle 194 session key simulated-ready (real handshake was 35.2944 ms)
+[KEM][SimLatency][t=0.0352965] Vehicle 143 session key simulated-ready (real handshake was 35.2965 ms)
+[KEM][SimLatency][t=0.0353011] Vehicle 144 session key simulated-ready (real handshake was 35.3011 ms)
+[KEM][SimLatency][t=0.0353033] Vehicle 146 session key simulated-ready (real handshake was 35.3033 ms)
+[KEM][SimLatency][t=0.0353038] Vehicle 7 session key simulated-ready (real handshake was 35.3038 ms)
+[KEM][SimLatency][t=0.0353063] Vehicle 114 session key simulated-ready (real handshake was 35.3063 ms)
+[KEM][SimLatency][t=0.0353359] Vehicle 162 session key simulated-ready (real handshake was 35.3359 ms)
+[KEM][SimLatency][t=0.0353441] Vehicle 186 session key simulated-ready (real handshake was 35.3441 ms)
+[KEM][SimLatency][t=0.0353489] Vehicle 187 session key simulated-ready (real handshake was 35.3489 ms)
+[KEM][SimLatency][t=0.0353642] Vehicle 60 session key simulated-ready (real handshake was 35.3642 ms)
+[KEM][SimLatency][t=0.0353718] Vehicle 31 session key simulated-ready (real handshake was 35.3718 ms)
+[KEM][SimLatency][t=0.0353812] Vehicle 189 session key simulated-ready (real handshake was 35.3812 ms)
+[KEM][SimLatency][t=0.035393] Vehicle 21 session key simulated-ready (real handshake was 35.393 ms)
+[KEM][SimLatency][t=0.0354026] Vehicle 127 session key simulated-ready (real handshake was 35.4026 ms)
+[KEM][SimLatency][t=0.0354402] Vehicle 153 session key simulated-ready (real handshake was 35.4402 ms)
+[KEM][SimLatency][t=0.0354414] Vehicle 61 session key simulated-ready (real handshake was 35.4414 ms)
+[KEM][SimLatency][t=0.0355036] Vehicle 188 session key simulated-ready (real handshake was 35.5036 ms)
+[KEM][SimLatency][t=0.0355073] Vehicle 22 session key simulated-ready (real handshake was 35.5073 ms)
+[KEM][SimLatency][t=0.0355252] Vehicle 166 session key simulated-ready (real handshake was 35.5252 ms)
+[KEM][SimLatency][t=0.0355483] Vehicle 165 session key simulated-ready (real handshake was 35.5483 ms)
+[KEM][SimLatency][t=0.0355611] Vehicle 27 session key simulated-ready (real handshake was 35.5611 ms)
+[KEM][SimLatency][t=0.0355648] Vehicle 156 session key simulated-ready (real handshake was 35.5648 ms)
+[KEM][SimLatency][t=0.0355846] Vehicle 51 session key simulated-ready (real handshake was 35.5846 ms)
+[KEM][SimLatency][t=0.0356726] Vehicle 124 session key simulated-ready (real handshake was 35.6726 ms)
+[KEM][SimLatency][t=0.0356885] Vehicle 155 session key simulated-ready (real handshake was 35.6885 ms)
+[KEM][SimLatency][t=0.0358133] Vehicle 141 session key simulated-ready (real handshake was 35.8133 ms)
+[KEM][SimLatency][t=0.0358779] Vehicle 92 session key simulated-ready (real handshake was 35.8779 ms)
+[KEM][SimLatency][t=0.0359005] Vehicle 49 session key simulated-ready (real handshake was 35.9005 ms)
+[KEM][SimLatency][t=0.0359191] Vehicle 113 session key simulated-ready (real handshake was 35.9191 ms)
+[KEM][SimLatency][t=0.0359655] Vehicle 104 session key simulated-ready (real handshake was 35.9655 ms)
+[KEM][SimLatency][t=0.0360065] Vehicle 37 session key simulated-ready (real handshake was 36.0065 ms)
+[KEM][SimLatency][t=0.0365935] Vehicle 196 session key simulated-ready (real handshake was 36.5935 ms)
+[KEM][SimLatency][t=0.0369972] Vehicle 24 session key simulated-ready (real handshake was 36.9972 ms)
+[KEM][SimLatency][t=0.0386909] Vehicle 23 session key simulated-ready (real handshake was 38.6909 ms)
+[KEM][SimLatency][t=0.0387101] Vehicle 67 session key simulated-ready (real handshake was 38.7101 ms)
+[KEM][SimLatency][t=0.0411448] Vehicle 197 session key simulated-ready (real handshake was 41.1448 ms)
+[KEM][SimLatency][t=0.0428862] Vehicle 87 session key simulated-ready (real handshake was 42.8862 ms)
+[KEM][SimLatency][t=0.0429197] Vehicle 86 session key simulated-ready (real handshake was 42.9197 ms)
+[KEM][SimLatency][t=0.043056] Vehicle 83 session key simulated-ready (real handshake was 43.056 ms)
+[KEM][SimLatency][t=0.0432426] Vehicle 84 session key simulated-ready (real handshake was 43.2426 ms)
+[KEM][SimLatency][t=0.0433694] Vehicle 88 session key simulated-ready (real handshake was 43.3694 ms)
+[KEM][SimLatency][t=0.0434145] Vehicle 82 session key simulated-ready (real handshake was 43.4145 ms)
+[KEM][SimLatency][t=0.0434335] Vehicle 78 session key simulated-ready (real handshake was 43.4335 ms)
+[KEM][SimLatency][t=0.0435801] Vehicle 89 session key simulated-ready (real handshake was 43.5801 ms)
+[KEM][SimLatency][t=0.0436004] Vehicle 85 session key simulated-ready (real handshake was 43.6004 ms)
+[KEM][SimLatency][t=0.0436913] Vehicle 72 session key simulated-ready (real handshake was 43.6913 ms)
+[KEM][SimLatency][t=0.0437235] Vehicle 70 session key simulated-ready (real handshake was 43.7235 ms)
+[KEM][SimLatency][t=0.0437442] Vehicle 80 session key simulated-ready (real handshake was 43.7442 ms)
+[KEM][SimLatency][t=0.0437575] Vehicle 69 session key simulated-ready (real handshake was 43.7575 ms)
+[KEM][SimLatency][t=0.0437626] Vehicle 81 session key simulated-ready (real handshake was 43.7626 ms)
+[KEM][SimLatency][t=0.0438131] Vehicle 75 session key simulated-ready (real handshake was 43.8131 ms)
+[KEM][SimLatency][t=0.0438896] Vehicle 74 session key simulated-ready (real handshake was 43.8896 ms)
+[KEM][SimLatency][t=0.0439066] Vehicle 77 session key simulated-ready (real handshake was 43.9066 ms)
+[KEM][SimLatency][t=0.0439171] Vehicle 79 session key simulated-ready (real handshake was 43.9171 ms)
+[KEM][SimLatency][t=0.0441685] Vehicle 73 session key simulated-ready (real handshake was 44.1685 ms)
+[KEM][SimLatency][t=0.0442631] Vehicle 68 session key simulated-ready (real handshake was 44.2631 ms)
+[KEM][SimLatency][t=0.0443481] Vehicle 76 session key simulated-ready (real handshake was 44.3481 ms)
+[KEM][SimLatency][t=0.0444805] Vehicle 71 session key simulated-ready (real handshake was 44.4805 ms)
+[KEM][SimLatency][t=0.0460211] Vehicle 91 session key simulated-ready (real handshake was 46.0211 ms)
+[KEM][SimLatency][t=0.112025] Vehicle 90 session key simulated-ready (real handshake was 112.025 ms)
+[Trust][Anchor][t=3] Published checkpoint seq=0 block_height=0 digest=4062398318427662857 (interval=3s)
+[Trust][Anchor][t=6] Published checkpoint seq=1 block_height=30 digest=4062398318427662857 (interval=3s)
+[Trust][Anchor][t=9] Published checkpoint seq=2 block_height=60 digest=4062398318427662857 (interval=3s)
+[Q48DBG3] t=10 tick=1 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.1 tick=2 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.2 tick=3 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.3 tick=4 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.4 tick=5 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.5 tick=6 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.6 tick=7 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.7 tick=8 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.8 tick=9 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=10.9 tick=10 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11 tick=11 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.1 tick=12 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.2 tick=13 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.3 tick=14 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.4 tick=15 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.5 tick=16 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.6 tick=17 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.7 tick=18 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.8 tick=19 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Q48DBG3] t=11.9 tick=20 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=12] Published checkpoint seq=3 block_height=90 digest=4062398318427662857 (interval=3s)
+[Q48DBG3] t=14.9 tick=50 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[Trust][Anchor][t=15] Published checkpoint seq=4 block_height=120 digest=4062398318427662857 (interval=3s)
+[Trust][Anchor][t=18] Published checkpoint seq=5 block_height=150 digest=4062398318427662857 (interval=3s)
+[Q48DBG3] t=19.9 tick=100 everKnown.size()=0 believedLinks.size()=0 ttw_controller_table.size()=0 ghost=0 missed=0 match=0
+[ME-S3][t=20.000]  V0 --topo--> Controller  <V0 sees V29>  ACCEPTED (real link)
+[ME-S3][t=20.000]  V29 --topo--> Controller  <V29 sees V0>  ACCEPTED (real link)
+[Q34] subgraph size tally: size2(self-report)=1  size3(third-party)=0  violations=0
+[Q34] subgraph size tally: size2(self-report)=2  size3(third-party)=0  violations=0
+[ME-S3][t=20.100]  STEP③  Controller FORGES: <V5 sees V34> via V5 and V6
+[ME-S3][t=20.100]  STEP④  Phantom: V5->V5->V34, V5->V6->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=0  violations=0
+[Q_TDET] first attack event reaches TGN (inline): t=20.100 reporter=9999 tgn_alert=0 score=0.025
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=1  violations=0
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[Trust][Anchor][t=20.100] Peer synced from checkpoint seq=5 (published t=18.000, sync latency=2.100s)
+[ME-S3][t=20.100]  FS-MITIGATE gate: delta_t=4 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[ME-S3][t=20.102]  STEP③  Controller FORGES: <V5 sees V34> via V7 and V8
+[ME-S3][t=20.102]  STEP④  Phantom: V5->V7->V34, V5->V8->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=2  violations=0
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=3  violations=0
+[ME-S3][t=20.102]  FS-MITIGATE gate: delta_t=8 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> WITHIN PROPAGATION NOISE
+[ME-S3][t=20.104]  STEP③  Controller FORGES: <V5 sees V34> via V9 and V10
+[ME-S3][t=20.104]  STEP④  Phantom: V5->V9->V34, V5->V10->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=4  violations=0
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=5  violations=0
+[ME-S3][t=20.104]  FS-MITIGATE gate: delta_t=12 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][t=20.104]  Stage-2 monitor armed (T_b=0.100s, T_quar=30.000s)
+[Trust][t=20.104]  Node 0: ACTIVE -> QUARANTINED  (Stage-1 demotion, tau=0.0)
+[Trust][t=20.104]  C_0 tau=0.800 >= tau_min^C — monitoring
+[ME-S3][t=20.104]  FS-MITIGATE gate: PBFT n=200 f=66 q_needed=133 -> PASS  |  VERIFY_QUORUM SKIPPED (Algorithm 4 v=controller branch — controller-origin ME never reaches the alpha=ME witness-quorum check)
+[ME-S3][t=20.104]  MITIGATION: controller-origin — network isolation of V4 SUPPRESSED (innocent reporting vehicle)
+[ME-S3][t=20.106]  STEP③  Controller FORGES: <V5 sees V34> via V11 and V12
+[ME-S3][t=20.106]  STEP④  Phantom: V5->V11->V34, V5->V12->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=6  violations=0
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=7  violations=0
+[ME-S3][t=20.106]  FS-MITIGATE gate: delta_t=16 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.108]  STEP③  Controller FORGES: <V5 sees V34> via V13 and V14
+[ME-S3][t=20.108]  STEP④  Phantom: V5->V13->V34, V5->V14->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=8  violations=0
+[Q_TDET] first TGN alert fires (inline): t=20.108 reporter=9999 score=0.402
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=9  violations=0
+[ME-S3][t=20.108]  FS-MITIGATE gate: delta_t=21 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.110]  STEP③  Controller FORGES: <V5 sees V34> via V15 and V16
+[ME-S3][t=20.110]  STEP④  Phantom: V5->V15->V34, V5->V16->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=10  violations=0
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=11  violations=0
+[ME-S3][t=20.110]  FS-MITIGATE gate: delta_t=25 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.112]  STEP③  Controller FORGES: <V5 sees V34> via V17 and V18
+[ME-S3][t=20.112]  STEP④  Phantom: V5->V17->V34, V5->V18->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=12  violations=0
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=13  violations=0
+[ME-S3][t=20.112]  FS-MITIGATE gate: delta_t=29 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.114]  STEP③  Controller FORGES: <V5 sees V34> via V19 and V20
+[ME-S3][t=20.114]  STEP④  Phantom: V5->V19->V34, V5->V20->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=14  violations=0
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=15  violations=0
+[ME-S3][t=20.114]  FS-MITIGATE gate: delta_t=33 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.116]  STEP③  Controller FORGES: <V5 sees V34> via V21 and V22
+[ME-S3][t=20.116]  STEP④  Phantom: V5->V21->V34, V5->V22->V34  *** ATTACK COMPLETE (no external packet) ***
+[Q34] subgraph size tally: size2(self-report)=3  size3(third-party)=16  violations=0
+[ME-S3][t=20.116]  FS-MITIGATE gate: delta_t=37 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.118]  STEP③  Controller FORGES: <V5 sees V34> via V23 and V24
+[ME-S3][t=20.118]  STEP④  Phantom: V5->V23->V34, V5->V24->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.118]  FS-MITIGATE gate: delta_t=41 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.120]  STEP③  Controller FORGES: <V5 sees V34> via V25 and V26
+[ME-S3][t=20.120]  STEP④  Phantom: V5->V25->V34, V5->V26->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.120]  FS-MITIGATE gate: delta_t=45 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.122]  STEP③  Controller FORGES: <V5 sees V34> via V27 and V28
+[ME-S3][t=20.122]  STEP④  Phantom: V5->V27->V34, V5->V28->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.122]  FS-MITIGATE gate: delta_t=49 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.124]  STEP③  Controller FORGES: <V5 sees V34> via V29 and V30
+[ME-S3][t=20.124]  STEP④  Phantom: V5->V29->V34, V5->V30->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.124]  FS-MITIGATE gate: delta_t=53 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.126]  STEP③  Controller FORGES: <V5 sees V34> via V31 and V32
+[ME-S3][t=20.126]  STEP④  Phantom: V5->V31->V34, V5->V32->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.126]  FS-MITIGATE gate: delta_t=57 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.128]  STEP③  Controller FORGES: <V5 sees V34> via V33 and V34
+[ME-S3][t=20.128]  STEP④  Phantom: V5->V33->V34, V5->V34->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.128]  FS-MITIGATE gate: delta_t=60 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.130]  STEP③  Controller FORGES: <V5 sees V34> via V35 and V36
+[ME-S3][t=20.130]  STEP④  Phantom: V5->V35->V34, V5->V36->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.130]  FS-MITIGATE gate: delta_t=64 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.132]  STEP③  Controller FORGES: <V5 sees V34> via V37 and V38
+[ME-S3][t=20.132]  STEP④  Phantom: V5->V37->V34, V5->V38->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.132]  FS-MITIGATE gate: delta_t=68 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.134]  STEP③  Controller FORGES: <V5 sees V34> via V39 and V40
+[ME-S3][t=20.134]  STEP④  Phantom: V5->V39->V34, V5->V40->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.134]  FS-MITIGATE gate: delta_t=72 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.136]  STEP③  Controller FORGES: <V5 sees V34> via V41 and V42
+[ME-S3][t=20.136]  STEP④  Phantom: V5->V41->V34, V5->V42->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.136]  FS-MITIGATE gate: delta_t=76 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.138]  STEP③  Controller FORGES: <V5 sees V34> via V43 and V44
+[ME-S3][t=20.138]  STEP④  Phantom: V5->V43->V34, V5->V44->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.138]  FS-MITIGATE gate: delta_t=80 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.140]  STEP③  Controller FORGES: <V5 sees V34> via V45 and V46
+[ME-S3][t=20.140]  STEP④  Phantom: V5->V45->V34, V5->V46->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.140]  FS-MITIGATE gate: delta_t=84 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.142]  STEP③  Controller FORGES: <V5 sees V34> via V47 and V48
+[ME-S3][t=20.142]  STEP④  Phantom: V5->V47->V34, V5->V48->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.142]  FS-MITIGATE gate: delta_t=88 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.144]  STEP③  Controller FORGES: <V5 sees V34> via V49 and V50
+[ME-S3][t=20.144]  STEP④  Phantom: V5->V49->V34, V5->V50->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.144]  FS-MITIGATE gate: delta_t=92 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.146]  STEP③  Controller FORGES: <V5 sees V34> via V51 and V52
+[ME-S3][t=20.146]  STEP④  Phantom: V5->V51->V34, V5->V52->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.146]  FS-MITIGATE gate: delta_t=96 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.148]  STEP③  Controller FORGES: <V5 sees V34> via V53 and V54
+[ME-S3][t=20.148]  STEP④  Phantom: V5->V53->V34, V5->V54->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.148]  FS-MITIGATE gate: delta_t=100 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.150]  STEP③  Controller FORGES: <V5 sees V34> via V55 and V56
+[ME-S3][t=20.150]  STEP④  Phantom: V5->V55->V34, V5->V56->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.150]  FS-MITIGATE gate: delta_t=104 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.152]  STEP③  Controller FORGES: <V5 sees V34> via V57 and V58
+[ME-S3][t=20.152]  STEP④  Phantom: V5->V57->V34, V5->V58->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.152]  FS-MITIGATE gate: delta_t=108 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.154]  STEP③  Controller FORGES: <V5 sees V34> via V59 and V60
+[ME-S3][t=20.154]  STEP④  Phantom: V5->V59->V34, V5->V60->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.154]  FS-MITIGATE gate: delta_t=112 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.156]  STEP③  Controller FORGES: <V5 sees V34> via V61 and V62
+[ME-S3][t=20.156]  STEP④  Phantom: V5->V61->V34, V5->V62->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.156]  FS-MITIGATE gate: delta_t=116 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[ME-S3][t=20.158]  STEP③  Controller FORGES: <V5 sees V34> via V63 and V64
+[ME-S3][t=20.158]  STEP④  Phantom: V5->V63->V34, V5->V64->V34  *** ATTACK COMPLETE (no external packet) ***
+[ME-S3][t=20.158]  FS-MITIGATE gate: delta_t=120 (Eq.3.45)  delta_thresh=9 (Eq.3.46)  -> CONFIRMED DIVERGENCE
+[Trust][Anchor][t=21.000] Published checkpoint seq=6 block_height=180 digest=8209500190780962438 (interval=3.000s)
+[Trust][Anchor][t=24.000] Published checkpoint seq=7 block_height=210 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=24.900 tick=150 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
+[Trust][Anchor][t=27.000] Published checkpoint seq=8 block_height=240 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=29.900 tick=200 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
+[Trust][Anchor][t=30.000] Published checkpoint seq=9 block_height=270 digest=8209500190780962438 (interval=3.000s)
+[Trust][Anchor][t=33.000] Published checkpoint seq=10 block_height=300 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=34.900 tick=250 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
+[Trust][Anchor][t=36.000] Published checkpoint seq=11 block_height=330 digest=8209500190780962438 (interval=3.000s)
+[Trust][Anchor][t=39.000] Published checkpoint seq=12 block_height=360 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=39.900 tick=300 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
+[Trust][Anchor][t=42.000] Published checkpoint seq=13 block_height=390 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=44.900 tick=350 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
+[Trust][Anchor][t=45.000] Published checkpoint seq=14 block_height=420 digest=8209500190780962438 (interval=3.000s)
+[Trust][Anchor][t=48.000] Published checkpoint seq=15 block_height=450 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=49.900 tick=400 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
+[Trust][Anchor][t=51.000] Published checkpoint seq=16 block_height=480 digest=8209500190780962438 (interval=3.000s)
+[Trust][Anchor][t=54.000] Published checkpoint seq=17 block_height=510 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=54.900 tick=450 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
+[Trust][Anchor][t=57.000] Published checkpoint seq=18 block_height=540 digest=8209500190780962438 (interval=3.000s)
+[Q48DBG3] t=59.900 tick=500 everKnown.size()=5 believedLinks.size()=5 ttw_controller_table.size()=7 ghost=1 missed=0 match=0
 [PEM] /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/scratch/SDVN project /SDVN-Temporal-Attacks/outputs/SCENARIO_VALIDITY/11_ME_S3_Malicious_Controller_No_RSU_seed1.csv written: 0 event(s) excluded (invalid RSU neighborhood, not detector error); 0 benign event(s) flagged no_real_reception_at_reporter (diagnostic only, STILL COUNTED in confusion matrix — confirmed real channel-contention loss, not a scenario artifact)
-[M2][TDRR] mean_topology_divergence=0.980  (samples=102)  unprotected=1.000 (n=100)  mitigated=0.000 (n=0)  TDRR=100.000%
+[M2][TDRR] mean_topology_divergence=0.968  (samples=62)  unprotected=1.000 (n=60)  mitigated=0.000 (n=0)  TDRR=100.000%
 [M3][T_stale] mean=0.000 ms (samples=0)
-[M4][PIR] mean=100.000 (links tracked=1)
-[M5][T_pipeline] mean=2.961 ms  max=2.961 ms  over_budget=0/1
-[M5][T_pbft] mean=0.019 ms  max=0.019 ms (n=1)
+[M4][PIR] mean=60.000 (links tracked=1)
+[M5][T_LW_pipeline] mean=6.940 ms  max<=9.335 ms  over_budget<=0/62  (Eq. 4.7/4.9; T_LW_det only, checked against 100ms budget; max/over_budget are conservative upper bounds from the combined crypto+LW+TGN timer, true T_LW_det is <= this)
+[M5][T_FS_pipeline] mean=0.351 ms  max<=0.789 ms  (Eq. 4.8: T_FS_det+TPBFT+T_Fabric_exec+TFlowMod, no 100ms constraint -- max is sum of per-component maxima, a conservative upper bound not a true joint max)
+[M5][T_FS_det] mean=0.332 ms  max=0.770 ms (n=62)
+[M5][T_pbft] mean=0.018 ms  max=0.018 ms (n=1)
 [M5][T_exec_flowmod] mean=0.001 ms  max=0.001 ms (n=1)
 [M7][Omega] omega_lw=5.941%  omega_fs=572.649%
-[M9][F1] TTW=1.000 BSHH=1.000 ME=0.990 macro=0.997
+[M9][F1] TTW=1.000 BSHH=1.000 ME=0.983 macro=0.994
 [M10][FRA/FRR] FRA=0.000 FRR=0.000
 [M11][FSR] attempts=0 success=0 FSR=0.000
-[M12][Trust] t_trust=14.000 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
+[M12][Trust] t_trust=4.000 ms  t_revoke=0.000 ms  t_reassign=0.000 ms
 
 [CRYPTO] crypto_latency_sumo.csv written    (206 events)
 [CRYPTO] crypto_latency_summary.csv written  (8 distinct operations)
 [CRYPTO] Beacon TX signed: 0   RX verified: 0
-[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=4  reject=8
-[TGN] Online mode — 102 events already processed inline. Running secondary crypto audit...
-[TGN] Tier2: admitted 2/2 OBU peer(s)  tau_min_gt=0.50  bootstrap=DONE
-[TGN] Trusted nodes (Tier 2 OBU): 0 30 ctrl 
-[TGN] |E_t^trusted|=2 (Tier 2: 2 events from OBU peers with tau_k >= 0.50)
-[CryptoFilter] 102 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
-[TGN] tgn_alerts.json written: 97 alert(s) → tgn_alerts.json
-[TGN] individual_sig_evidence.json written: 45 record(s) → individual_sig_evidence.json
+[CRYPTO] Real beacon verify (Algorithm 3, live wire path): accept=3  reject=6
+[TGN] Online mode — 62 events already processed inline. Running secondary crypto audit...
+[TGN] |E_t^trusted|=0 (Tier 1: all RSU-reported events, tau_k=1)
+[CryptoFilter] 62 events — passthrough (already verified by the primary HMAC/freshness/nonce gate; see crypto_filter_log.txt)
+[TGN] tgn_alerts.json written: 52 alert(s) → tgn_alerts.json
+[TGN] individual_sig_evidence.json written: 20 record(s) → individual_sig_evidence.json
 [TGN] beacon_evidence.csv written: 0 observation(s)
-[TGN] ctrl_topo.json written: 9 link(s)
-[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 2  (dispatch output: /home/sdvn_echo_topology/dataset_gen/sc11/pct100/submitToFabric_dispatch.log)
+[TGN] ctrl_topo.json written: 7 link(s)
+[TGN] SUBMITTOFABRIC dispatched (Algorithm 2 §3.4.3, Alg2 line 23) — Tier 1  (dispatch output: /home/sdvn_echo_topology/ns-allinone-3.35/ns-3.35/submitToFabric_dispatch.log)
 
 ========== TGN DETECTION SUMMARY (Eq 3.25/3.26) ==========
   Scenario  : 11 — ME-S3: Malicious Controller, No RSU
-  RSU mode  : NO RSU
-  TP/TN/FP/FN : 97 / 2 / 0 / 3
-  [ctrl] TP/TN/FP/FN : 97 / 0 / 0 / 3
+  RSU mode  : WITH RSU
+  TP/TN/FP/FN : 52 / 2 / 0 / 8
+  [ctrl] TP/TN/FP/FN : 52 / 0 / 0 / 8
   [beh]  TP/TN/FP/FN : 0 / 2 / 0 / 0
-  MCC         : 0.623
-  [comb] TP/TN/FP/FN : 98 / 2 / 0 / 2   MCC=0.700  [LW-signature OR TGN-score — overall pipeline detection]
-  AUROC       : 0.995
-  ACR         : 97.059 %
-  Tdet        : 2.000 ms
-  θ_FS        : 0.920  [calibrated]
-  θ_MCC_opt   : 0.405  [MCC-maximising on this run's scores — §3.4.3 criterion]
-  γ_init      : 120.217  [Eq. 3.22 init; validation-tuned hyperparameter]
-  W_max       : 166  [§3.4.3 window = N_beacon (Eq. 3.32)]
-  Events      : 102
+  MCC         : 0.416
+  [comb] TP/TN/FP/FN : 52 / 2 / 0 / 8   MCC=0.416  [LW-signature OR TGN-score — overall pipeline detection]
+  AUROC       : 1.000
+  ACR         : 87.097 %
+  Tdet        : 8.000 ms  [TGN-only, i.e. tgn_alert first-fire]
+  Comb Tdet   : 8.000 ms  [dual-mode, first of LW-or-TGN to fire — Eq. 4.7]
+  θ_FS        : 0.300  [calibrated]
+  θ_MCC_opt   : 0.001  [MCC-maximising on this run's scores — §3.4.3 criterion]
+  γ_init      : 68.123  [Eq. 3.22 init; validation-tuned hyperparameter]
+  W_max       : 95  [§3.4.3 window = N_beacon (Eq. 3.32)]
+  Events      : 62
   Stage-0 blocked (attacks): 0
   Stage-0 blocked (revoked, TEMP DEBUG): 0
-  |E_t^trusted|  : 2
+  |E_t^trusted|  : 0  [BLIND WINDOW — E_t^trusted=∅ throughout]
   Divergence-only detections: 0  [controller-origin attacks TGN itself missed but the blockchain divergence audit caught — NOT counted in TGN TP/MCC above]
 ============================================================
 
-Full Pipeline Real-Time Budget Check (wall-clock, T_b=1e+02 ms)
+Full Pipeline Real-Time Budget Check (wall-clock, T_b=100.000 ms)
 ----------------------------------------------------------
 Detect stage (crypto+LW+TGN, PemEmitEvent):
-  Events processed: 102
-  Avg wall-clock time: 21 ms
-  Max wall-clock time: 1.4e+03 ms
-  Events exceeding budget: 2 / 102
+  Events processed: 62
+  Avg wall-clock time: 7.272 ms
+  Max wall-clock time: 9.335 ms
+  Events exceeding budget: 0 / 62
 Mitigate stage (blockchain: PBFT/threshold-sig/LKH/BlacklistBeacon, PemApplyMitigation):
   Mitigations applied: 1
-  Avg wall-clock time: 0.02 ms
-  Max wall-clock time: 0.02 ms
+  Avg wall-clock time: 0.019 ms
+  Max wall-clock time: 0.019 ms
 Full pipeline (detect+mitigate combined, when mitigation fired):
   Triggered events: 1
-  Avg wall-clock time: 3 ms
-  Max wall-clock time: 3 ms
-  Events exceeding 1e+02 ms budget: 0 / 1  -- full pipeline stays within the T_b budget on this hardware
+  Avg wall-clock time: 7.834 ms
+  Max wall-clock time: 7.834 ms
+  Events exceeding 100.000 ms budget: 0 / 1  -- full pipeline stays within the T_b budget on this hardware
 
 Beacon-send (DSRC 802.11p + HMAC sign, AttackSendDSRCBeacon):
   Calls: 2
-  Avg wall-clock time: 0.054 ms
-  Max wall-clock time: 0.081 ms
+  Avg wall-clock time: 0.060 ms
+  Max wall-clock time: 0.088 ms
   Calls exceeding budget: 0 / 2
 
 RSU-forward (CSMA dispatch, AttackSendRSUToController):
   Calls: 0
-  Avg wall-clock time: 0 ms
-  Max wall-clock time: 0 ms
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
   Calls exceeding budget: 0 / 0
 
 Beacon sign/verify crypto (HMAC+Dilithium, CryptoMeasureBeaconSign/Verify):
   Calls: 0
-  Avg wall-clock time: 0 ms
-  Max wall-clock time: 0 ms
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
   Calls exceeding budget: 0 / 0
 
 Detection crypto (Dilithium verify+threshold-sig, CryptoMeasureDetection):
   Calls: 0
-  Avg wall-clock time: 0 ms
-  Max wall-clock time: 0 ms
+  Avg wall-clock time: 0.000 ms
+  Max wall-clock time: 0.000 ms
   Calls exceeding budget: 0 / 0
 
 LKH mitigation crypto (LKH revoke+rekey, CryptoMeasureLKH):
   Calls: 1
-  Avg wall-clock time: 0.26 ms
-  Max wall-clock time: 0.26 ms
+  Avg wall-clock time: 0.277 ms
+  Max wall-clock time: 0.277 ms
   Calls exceeding budget: 0 / 1
 
 Approximate End-to-End Estimate (sum of stage averages, NOT a per-event trace):
-  beacon-send(0.054) + beacon-crypto(0) + rsu-forward(0) + detect(21) + detection-crypto(0) + mitigate(0.02) + lkh-crypto(0.26) = 21 ms
-  -- approximate combined estimate stays within the 1e+02 ms beacon-interval budget (T_b)
+  beacon-send(0.060) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(7.272) + detection-crypto(0.000) + mitigate(0.019) + lkh-crypto(0.277) = 7.628 ms
+  -- approximate combined estimate stays within the 100.000 ms beacon-interval budget (T_b)
 
 Continuous Neighborhood Statistics
 ---------------------------------
 Candidate pairs checked: 19900000
-Successful neighbor observations: 454568
-Average neighbors/vehicle: 4.5
-Maximum neighbors observed at once: 16
+Successful neighbor observations: 433608
+Average neighbors/vehicle: 4.336
+Maximum neighbors observed at once: 15
 
-Real-time (wall-clock) budget check — T_b=1e+02 ms:
+Real-time (wall-clock) budget check — T_b=100.000 ms:
   Ticks executed: 500
-  Avg tick wall-clock time: 2.6 ms
-  Max tick wall-clock time: 15 ms
-  Ticks exceeding 1e+02 ms budget: 0 / 500  -- pipeline stays within the T_b budget on this hardware
+  Avg tick wall-clock time: 2.656 ms
+  Max tick wall-clock time: 6.718 ms
+  Ticks exceeding 100.000 ms budget: 0 / 500  -- pipeline stays within the T_b budget on this hardware
 
 Grand Total Per-Interval Estimate (neighborhood-discovery + beacon-send + beacon-crypto + rsu-forward + detect + detection-crypto + mitigate + lkh-crypto):
-  neighborhood(2.6) + beacon-send(0.054) + beacon-crypto(0) + rsu-forward(0) + detect(21) + detection-crypto(0) + mitigate(0.02) + lkh-crypto(0.26) = 24 ms
-  -- grand total stays within the 1e+02 ms beacon-interval budget (T_b) on this hardware
+  neighborhood(2.656) + beacon-send(0.060) + beacon-crypto(0.000) + rsu-forward(0.000) + detect(7.272) + detection-crypto(0.000) + mitigate(0.019) + lkh-crypto(0.277) = 10.284 ms
+  -- grand total stays within the 100.000 ms beacon-interval budget (T_b) on this hardware

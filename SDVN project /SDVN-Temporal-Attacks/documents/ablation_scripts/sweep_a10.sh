@@ -2,8 +2,9 @@
 # sweep_a10.sh
 # A10 (Table 4.2): Immediate Removal (No Quarantine Pipeline), via
 # --no_quarantine=1. X variable: false-positive detection rate pFP in
-# {0%, 2%, 5%}. Applicable PEMs: M2, M12 -- general, no single-family
-# restriction.
+# {0%, 1%, 2%, 3%, 4%, 5%} -- 6 equal 1% steps (updated 2026-08-04, was 3
+# unequal points {0,2,5}). Applicable PEMs: M2, M12 -- general, no
+# single-family restriction.
 #
 # UPDATED (dropped combined mode): no longer uses attack_scenario=13 -- see
 # sweep_a1.sh's comment for the full rationale. Uses the RSU-present
@@ -20,7 +21,7 @@ mkdir -p "$OUT"
 cd "$NS3_DIR"
 
 for SC in 2 6 10; do
-  for X in 0.0 0.02 0.05; do
+  for X in 0.0 0.01 0.02 0.03 0.04 0.05; do
     echo "=== a10 scenario=${SC} x=${X} ==="
     ISO="$OUT/sc${SC}_x${X}"
     mkdir -p "$ISO"

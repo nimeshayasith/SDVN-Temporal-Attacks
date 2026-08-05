@@ -1,8 +1,10 @@
 #!/bin/bash
 # sweep_a1.sh
 # A1 (Table 4.2): LW Detection Stage Only (--no_tgn=1). X variable: attack
-# injection rate rinj in {1%, 5%, 10%}. Applicable PEMs span M3 (TTW/BSHH)
-# AND M4 (ME) -- the PDF does not restrict this to a single attack family.
+# injection rate rinj in {0%,20%,40%,60%,80%,100%} -- 6 equal steps across
+# the full injection range (updated 2026-08-04, was 3 unequal points
+# {1%,5%,10%}). Applicable PEMs span M3 (TTW/BSHH) AND M4 (ME) -- the PDF
+# does not restrict this to a single attack family.
 #
 # UPDATED (dropped combined mode): no longer uses attack_scenario=13. The
 # PDF's own methodology (Experiment 5, Table 4.6) evaluates "each of the 12
@@ -26,7 +28,7 @@ declare -A RSU_FOR_SC=( [1]=0 [5]=0 [9]=0 )
 
 for SC in 1 5 9; do
   NRSU=${RSU_FOR_SC[$SC]}
-  for X in 0.01 0.05 0.10; do
+  for X in 0.0 0.2 0.4 0.6 0.8 1.0; do
     echo "=== a1 scenario=${SC} rinj=${X} ==="
     ISO="$OUT/sc${SC}_rinj${X}"
     mkdir -p "$ISO"

@@ -2,13 +2,15 @@
 # sweep_a12.sh
 # A12 (Table 4.2): No Topology Divergence Detector (Controller-Origin Blind),
 # via --no_divergence_detector=1. X variable: controller-origin injection
-# rate rinj in {1%, 5%, 10%} -- "controller scenarios only" per the PDF, and
-# applicable PEMs explicitly span TTW-MC/BSHH-MC/ME-MC together. Now covers
-# all 6 controller-origin scenarios (3=TTW-S3, 4=TTW-S4, 7=BSHH-S3,
-# 8=BSHH-S4, 11=ME-S3, 12=ME-S4), matching A6's all-4-BSHH-variant pattern,
-# instead of TTW-S3 only. --no_divergence_detector gates PemController
-# DivergenceGate, a function shared by all 6 of these scenarios already --
-# no new code needed, just wider scenario coverage.
+# rate rinj in {0%,20%,40%,60%,80%,100%} -- 6 equal steps across the full
+# injection range (updated 2026-08-04, was 3 unequal points {1%,5%,10%},
+# matching A1/A2's rinj-range fix), "controller scenarios only" per the
+# PDF, and applicable PEMs explicitly span TTW-MC/BSHH-MC/ME-MC together.
+# Now covers all 6 controller-origin scenarios (3=TTW-S3, 4=TTW-S4,
+# 7=BSHH-S3, 8=BSHH-S4, 11=ME-S3, 12=ME-S4), matching A6's all-4-BSHH-variant
+# pattern, instead of TTW-S3 only. --no_divergence_detector gates
+# PemControllerDivergenceGate, a function shared by all 6 of these scenarios
+# already -- no new code needed, just wider scenario coverage.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
 BIN="$NS3_DIR/build/scratch/routing"
@@ -23,7 +25,7 @@ declare -A RSU_FOR_SC=( [3]=0 [4]=64 [7]=0 [8]=64 [11]=0 [12]=64 )
 for SC in 3 4 7 8 11 12; do
   NRSU=${RSU_FOR_SC[$SC]}
   # FIX (audit 2026-07-26): X must be rinj, not attack_percentage -- see sweep_a1.sh.
-  for X in 0.01 0.05 0.10; do
+  for X in 0.0 0.2 0.4 0.6 0.8 1.0; do
     echo "=== a12 scenario=${SC} rinj=${X} ==="
     ISO="$OUT/sc${SC}_rinj${X}"
     mkdir -p "$ISO"
