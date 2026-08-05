@@ -31,12 +31,20 @@
 # Elsevier per-scenario methodology, unlike T1/T2 which are deliberately
 # concurrent/joint).
 #
+# TGN CHECKPOINT FIX (2026-08-05): switched from tgn_weights_WBPTT50.bin to
+# tgn_weights_sc1_12_capped_RETRAIN.bin -- both are sc1-12 models (WBPTT50
+# confirmed trained on the same training_data_sc1_12_capped_170m.csv from
+# its own training log, so the ablations that already used WBPTT50 were not
+# mismatched), but this script uses the newer, explicitly-designated
+# checkpoint for Paper 3's own experiments per project decision, distinct
+# from the Elsevier ablations which already used WBPTT50 correctly.
+#
 # NOT YET RUN -- ablation sweeps (A1-A14) are using the machine.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
 BIN="$NS3_DIR/build/scratch/routing"
 export LD_LIBRARY_PATH="$NS3_DIR/build/lib"
-TGN="$HOME/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin"
+TGN="$HOME/tgn_weights_sc1_12_capped_RETRAIN.bin"
 OUT="$HOME/ablation_sweep/t3"
 SIMTIME="${SIMTIME:-310}"
 mkdir -p "$OUT"

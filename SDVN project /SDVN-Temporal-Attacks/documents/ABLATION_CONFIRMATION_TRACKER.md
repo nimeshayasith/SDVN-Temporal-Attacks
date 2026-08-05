@@ -298,12 +298,28 @@ combined_recall: ~1.0 at every point across all 6 scenarios (sc11 shows tiny rea
 
 **What to know:** confirmed at 60s across all 6 controller-origin scenarios and the full 6-point range, reading `divergence_recall`/`divergence_fn`, not the combined `tp`/`mcc`. Full 310s production sweep not yet launched — held pending explicit go-ahead. (One infrastructure note, not an ablation issue: several runs in this validation batch were initially lost to `/tmp` filling up from accumulated earlier-session scratch data — cleaned up and reruns completed successfully.)
 
+### A14 — No Controller Reassignment Mechanism, `--no_reassign=1`, `--compromised_controllers=nC`
+
+**IV:** compromised controllers out of `N_Controllers=4`, `nC ∈ {0,1,2,3,4}` — 5 equal steps, extended from the PDF's raw `{1,2,3}` (same "clean endpoints" treatment applied elsewhere). Scenarios: all 6 controller-origin variants (sc3/4/7/8/11/12), matching A12. **Applicable PEMs per PDF: M1 (controller-origin), M2, M3 (TTW-MC/BSHH-MC only), M4 (ME-MC only), M12 (T_reassign)†** — note the PDF itself restricts M3 to TTW/BSHH and M4 to ME (confirmed via PDF text, line 6234: *"M3... is specific to the temporal attack class (TTW and BSHH)"*; line 7110: *"M4 (PIR) reported for ME rows only"*).
+
+**Real bug found and fixed (already present, not new this session):** `management_Node` was previously registered as a permanent, un-ablatable extra backup-controller candidate outside the `nC`-shrinkable pool, meaning `nC=N_Controllers` ("all compromised") could never demonstrate genuine backup-pool exhaustion. Fixed by removing that registration.
+
+**Investigation: is the observed flatness across `nC` a bug?** Full 5-point sweep (sc3, sc11) at 60s showed `mcc`/`mean_topology_divergence`/`mean_pir`/`tp`/`fn` completely identical at every `nC` from 0 to 4 — not just at the endpoints. Traced at the code level rather than assumed:
+- `CtrlIsRevoked()` (routing.cc:5469) — the function whose declaration comment claims "a revoked controller physically cannot act" — is **dead code**, never actually called anywhere. The real guard is a set of per-scenario local variables (`ctrlAlreadyRevoked3/4/7/8/_s11/12`), each checking `g_trust_table.at(controller_Node.Get(0)->GetId()).flagged`.
+- Pre-flagging (`--compromised_controllers=nC`) starts at index `i=0`, so `controller_Node.Get(0)` — the same controller every scenario's attack always uses — is flagged first whenever `nC≥1`. **Confirmed no ID mismatch**: the guard is checking the exact right controller.
+- But the guard was **deliberately** changed (per its own call-site comments, e.g. at sc11: *"Previously this entire function early-returned here... which meant a controller revoked after its first few confirmed divergences silently erased the evidence trail... This was FIXED"*) to only skip the **mitigation** actions (LKH revoke, `TrustReassignController`, FlowMod) once a controller is revoked — attack evidence/`PemEmitEvent`/`tp` recording proceeds regardless. This is intentional, documented, corrected behavior, not a guard bypass.
+- Since `--no_reassign=1` is already active in every A14 run regardless of `nC`, and pre-flagging's only remaining effect (skip mitigation once revoked) is moot when mitigation is globally off anyway, **flat M1-M4 across the entire `nC` range is the architecturally correct result** of combining these two flags — not evidence of a broken sweep.
+- The stale, misleading `CtrlIsRevoked()` comment ("physically cannot act") was corrected in-place to describe the actual implemented semantics, so this doesn't get rediscovered as a false alarm later.
+
+**M3's `mean_t_stale_ms=0` investigated separately** (only relevant for TTW/BSHH per the PDF's own scope): a temporary diagnostic confirmed `pem_link_break_time` was never populated during the 60s sc3 run (`breakFound=0` for all 53 correction-check events) — i.e. **no break→correct pair was ever observed**, not "observed but always zero duration." This was a genuine ambiguity in the old code (both cases silently produced `mean_t_stale_ms=0.0`) — fixed by changing the no-observation case to a `-1.0` sentinel, matching the same pattern already used by `t_reassign_ms` (`g_ctrl_reassigned ? pem_treassign_ms : -1.0`). Whether TTW-S3 ever produces a genuine break→correct transition at all is a separate question that requires the real 310s duration to answer (60s may simply be too short for the involved vehicles to physically separate) — not yet determined either way.
+
+**What to know:** A14's `nC`-flatness is confirmed correct and explained at the code level, not a bug. `t_reassign_ms=-1` was already correct. `mean_t_stale_ms` now correctly reports `-1.0` for "no observation" (was ambiguously `0.0`) — this metric fix does not require rerunning the sweep, since the underlying detection/mitigation logic is unchanged; it only clarifies what's reported. Full production 310s sweep is the right venue to determine actual M3 stale-duration behavior for TTW/BSHH — not yet run. Temporary `[A14-M3-DIAG]` diagnostic removed after use.
+
 ---
 
 ## 🔴 STALE — SCRIPT/DESIGN CORRECTED, RERUN PENDING REVIEW
 
-A14 — stale canonical output (pre-dating the corrected IV ranges/flags found earlier in this investigation) and/or genuine design issues found and fixed (A3/A4/A5/A6/A7/A8/A9/A10/A12 moved to CONFIRMED above; see those entries for what changed):
-- **A14**: restored `--no_reassign=1` (was incorrectly removed) and confirmed `nC∈{0,1,2,3,4}` range; plot metric switched from `t_reassign_ms` (structurally flat under `--no_reassign=1` by construction) to `mean_topology_divergence`/`mcc`/`pdr_post_mitigation_pct` (M1-M4 style, matching the PDF's actual applicable-PEMs list for this ablation).
+(none remaining — all 14 ablations now confirmed at 60s validation scale; see CONFIRMED section above)
 
 ---
 

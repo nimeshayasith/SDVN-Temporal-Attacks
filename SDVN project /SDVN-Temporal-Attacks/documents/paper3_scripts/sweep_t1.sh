@@ -30,11 +30,30 @@
 # NOT YET RUN -- ablation sweeps (A1-A14) are using the machine. Run only
 # after they complete, or pass SIMTIME=60 for a quick correctness check on
 # an idle core.
+# TGN CHECKPOINT FIX (2026-08-05): every run in this script uses
+# attack_scenario=13 (joint multi-family) unconditionally -- was previously
+# pointed at tgn_weights_WBPTT50.bin, which is an sc1-12 model (confirmed
+# from its own training log: trained on
+# dataset_gen_170m/combined/training_data_sc1_12_capped_170m.csv, never
+# scenario 13's combined event stream) -- wrong checkpoint for this script's
+# actual data distribution. Switched to tgn_weights_sc13_only_3seed_pooled.bin,
+# trained specifically on pooled scenario-13 data (3 seeds), same
+# architecture (dim=192/layers=2, confirmed from its own load-log) as the
+# sc1-12 checkpoints. That checkpoint's training used
+# --pos_weight_override=0.3191, independently recomputed here from the real
+# train-split class ratio in the sc13-only training CSV (4064 benign /
+# 12735 attack in the deterministic 70% stratified-temporal train split,
+# via tgn_train.py's own dynamic-ratio formula: n_benign_train /
+# n_attack_train) -- confirms the checkpoint was trained correctly, but
+# pos_weight_override is a TRAINING-time-only loss-function parameter
+# (tgn_train.py's BCEWithLogitsLoss), never a routing.cc runtime flag
+# (grep-verified: no cmd.AddValue for it anywhere) -- already baked into
+# the .bin weights, nothing to pass at inference time here.
 set -e
 NS3_DIR="$HOME/ns-allinone-3.35/ns-3.35"
 BIN="$NS3_DIR/build/scratch/routing"
 export LD_LIBRARY_PATH="$NS3_DIR/build/lib"
-TGN="$HOME/tgn_l_wbptt_sweep/tgn_weights_WBPTT50.bin"
+TGN="$HOME/tgn_weights_sc13_only_3seed_pooled.bin"
 OUT="$HOME/ablation_sweep/t1"
 SIMTIME="${SIMTIME:-310}"
 mkdir -p "$OUT"

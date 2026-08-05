@@ -14,9 +14,3 @@
 === a8 scenario=5 no_blockchain (Detection Only, true endpoint) ===
 === a8 scenario=9 x=0 ===
 === a8 scenario=9 x=2 ===
-=== a8 scenario=9 x=4 ===
-=== a8 scenario=9 x=6 ===
-=== a8 scenario=9 x=8 ===
-=== a8 scenario=9 x=10 ===
-=== a8 scenario=9 no_blockchain (Detection Only, true endpoint) ===
-=== a8 sweep complete ===

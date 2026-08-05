@@ -1,0 +1,11 @@
+=== a3 scenario=1 Tobs=60 -- static (--static_gcn=1) ===
+=== a3 scenario=1 Tobs=60 -- baseline (full temporal GRU) ===
+=== a3 scenario=1 Tobs=120 -- static (--static_gcn=1) ===
+=== a3 scenario=1 Tobs=120 -- baseline (full temporal GRU) ===
+=== a3 scenario=1 Tobs=180 -- static (--static_gcn=1) ===
+=== a3 scenario=1 Tobs=180 -- baseline (full temporal GRU) ===
+=== a3 scenario=1 Tobs=240 -- static (--static_gcn=1) ===
+=== a3 scenario=1 Tobs=240 -- baseline (full temporal GRU) ===
+=== a3 scenario=1 Tobs=300 -- static (--static_gcn=1) ===
+=== a3 scenario=1 Tobs=300 -- baseline (full temporal GRU) ===
+=== a3 sweep complete ===

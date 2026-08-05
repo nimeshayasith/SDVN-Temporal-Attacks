@@ -7,3 +7,5 @@
 === a4 N_Vehicles=400 (lambda proxy) -- adaptive (baseline) ===
 === a4 N_Vehicles=400 (lambda proxy) -- fixed (--no_mobility_adapt=1) ===
 === a4 N_Vehicles=500 (lambda proxy) -- adaptive (baseline) ===
+=== a4 N_Vehicles=500 (lambda proxy) -- fixed (--no_mobility_adapt=1) ===
+=== a4 sweep complete ===

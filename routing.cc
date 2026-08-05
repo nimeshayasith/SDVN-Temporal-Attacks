@@ -2924,8 +2924,38 @@ uint64_t pem_topo_divergence_postdetection_count = 0;
 // (ground-truth edge goes false) and the controller correcting its
 // belief (an alert fires for that link, or the belief flips to false).
 // Keyed by "src_dst" link string.
-std::map<std::string, double> pem_link_break_time;     // tau_break, if pending
-std::map<std::string, bool>   pem_link_prev_real_state; // last known ground-truth state
+//
+// STALE, NO LONGER READ (2026-08-05, found investigating the M3=0.000
+// bug): pem_link_break_time/pem_link_prev_real_state were populated
+// event-driven, inside PemEmitEvent, using the same topology_update event
+// stream that also drives detection -- for TTW-S1 specifically, the ONLY
+// topology_update event for a link after it physically breaks is
+// frequently the attacker's own forged replay, so tau_break ended up
+// recorded at the SAME Simulator::Now() as tau_correct (the alert on that
+// same event), producing dur=0.000 on every single sample (confirmed via
+// live diagnostic: 23/23 breaks matched, 23/23 dur=0.000, not a missing-
+// observation case). Per Eq. 4.3, tau_break must be "the wall-clock time
+// at which link eij physically fails" -- a ground-truth quantity that must
+// be sampled independently of the event/detection stream, the same
+// principle already applied to A8's PDR census fix. Superseded by
+// pem_link_break_time_gt/pem_link_prev_real_state_gt below, populated by
+// PemDivergenceSnapshotTick() (an existing, unconditional, already-
+// running-every-run periodic tick), decoupled from PemEmitEvent entirely.
+// Kept declared (unused) rather than deleted, to avoid touching any other
+// code that might reference the symbol name during this investigation.
+std::map<std::string, double> pem_link_break_time;     // STALE, unused -- see above
+std::map<std::string, bool>   pem_link_prev_real_state; // STALE, unused -- see above
+
+// ── M3 ground-truth break tracker (corrected architecture, 2026-08-05):
+// populated ONLY by PemDivergenceSnapshotTick()'s independent periodic
+// sample, using kEffectiveReceptionRadius (100m, the calibrated real
+// reception range), NOT g_rcomm (300m, nominal/uncalibrated -- the other
+// half of the same bug). tau_correct remains detection-driven per Eq. 4.3
+// ("the time at which the controller's topology is updated to remove it")
+// -- only tau_break moves to ground truth; PemEmitEvent's correction half
+// now reads from this map instead of populating pem_link_break_time itself.
+std::map<std::string, double> pem_link_break_time_gt;      // tau_break, ground-truth, pending
+std::map<std::string, bool>   pem_link_prev_real_state_gt; // last sampled ground-truth state
 double   pem_stale_duration_sum   = 0.0;
 uint64_t pem_stale_duration_count = 0;
 
@@ -4726,26 +4756,53 @@ static void TrustInit()
         g_ctrl_table.push_back({xid, TRUST_TAU_TIER1_INIT, i});
     }
     // A14 (--compromised_controllers=nC, Table 4.2 X-variable): pre-flag
-    // EXACTLY nC of the N_Controllers real controllers (spanning the FULL
-    // 0..N-1 range, including index 0 -- no controller is structurally
-    // immune) as already compromised/quarantined (tau=0) -- shrinking the
-    // pool TrustReassignController's arg-max search actually has to work
-    // with, genuinely testing A14's "n_C compromised out of N_Controllers"
-    // question, including true exhaustion at nC=N_Controllers ("WARN: no
-    // eligible backup controller"). No effect when unset (default 0) -- the
+    // nC of the N_Controllers real controllers as already compromised/
+    // quarantined (tau=0) -- shrinking the pool TrustReassignController's
+    // arg-max search actually has to work with, genuinely testing A14's
+    // "n_C compromised out of N_Controllers" question, including true
+    // exhaustion at nC=N_Controllers-1 ("WARN: no eligible backup
+    // controller"). No effect when unset (default 0) -- the
     // pool-registration above already happens unconditionally regardless.
-    // Literal nC semantics (no "-1 implicit attacker" offset): whichever
-    // SPECIFIC controller a given scenario's own attack logic designates as
-    // the attacker is independent of this pre-flagging -- if it happens to
-    // already be pre-flagged, that's harmless (it starts its own eventual
-    // reassignment already at tau=0, which only accelerates detection, not
-    // a correctness issue).
+    //
+    // CORRECTED (2026-08-06, found investigating T2's t_reassign_ms staying
+    // -1 despite 51 real confirmed-divergence events in a 150s smoke test):
+    // the previous version pre-flagged starting from index 0 unconditionally,
+    // which is ALWAYS the same controller every controller-origin scenario
+    // (TTW-S3/S4, BSHH-S3/S4, ME-S3/S4) designates as its own active
+    // attacker (confirmed via each scenario's own trust-tracking call site,
+    // e.g. TTWS4_RunDetection's ctrl_ns3_s4 = controller_Node.Get(0)->
+    // GetId()). Per Eq. 3.40's initialization text ("correctly-behaving
+    // controllers are initialised with trust 1" -- no special-cased
+    // initial-knowledge exception for a compromised one either), that
+    // controller's trust must start at 1.0 and decay ONLY through the real
+    // Eq. 3.41 mechanism (penalty per confirmed divergence detection),
+    // never via a static pre-set. Pre-flagging it at t=0 was NOT harmless
+    // as the old comment claimed -- it permanently short-circuits the
+    // ctrlAlreadyRevoked gate at every one of that scenario's detection
+    // call sites, so TrustReassignController() (the function with the
+    // actual Eq. 3.41->3.44->3.45 decay/threshold/backup-selection logic)
+    // never runs even once, for any nC>=1, regardless of simTime. Fixed by
+    // excluding the scenario's own genuine attacking controller from the
+    // pre-flag pool -- nC now represents controllers compromised IN
+    // ADDITION TO the one under active attack, letting the real
+    // trust-decay-then-reassign pipeline actually execute and be measured
+    // on the genuine attacker, while nC still shrinks Eq. 3.45's backup
+    // candidate pool exactly as A14's own stated purpose requires.
     if (g_abl.compromised_controllers > 0 && controller_Node.GetN() > 0) {
+        // The active scenario attacker is always controller_Node.Get(0)
+        // across all 6 controller-origin scenarios today (TTW-S3/S4,
+        // BSHH-S3/S4, ME-S3/S4) -- expressed by ID rather than a literal
+        // "skip index 0" so the semantics reads as "skip whichever
+        // controller is the real attacker," not an index-based coincidence.
+        const uint32_t activeAttackerCtrlId = controller_Node.Get(0)->GetId();
         uint32_t already_flagged = 0;
-        const uint32_t to_preflag = (g_abl.compromised_controllers <= controller_Node.GetN())
-                                     ? g_abl.compromised_controllers : controller_Node.GetN();
+        const uint32_t eligiblePoolSize =
+            (controller_Node.GetN() > 0) ? (controller_Node.GetN() - 1) : 0;
+        const uint32_t to_preflag = (g_abl.compromised_controllers <= eligiblePoolSize)
+                                     ? g_abl.compromised_controllers : eligiblePoolSize;
         for (uint32_t i = 0; i < controller_Node.GetN() && already_flagged < to_preflag; i++) {
             uint32_t xid = controller_Node.Get(i)->GetId();
+            if (xid == activeAttackerCtrlId) continue;   // skip the genuine attacker
             g_trust_table[xid].tau      = 0.0;
             g_trust_table[xid].state    = TRUST_QUARANTINE;
             g_trust_table[xid].flagged  = true;
@@ -4755,7 +4812,8 @@ static void TrustInit()
         std::cout << "[A14][compromised_controllers=" << g_abl.compromised_controllers
                   << "] " << already_flagged << " controller(s) pre-flagged "
                   << "as already compromised (out of " << controller_Node.GetN()
-                  << " in the pool).\n";
+                  << " in the pool, excluding active attacker C_" << activeAttackerCtrlId
+                  << ").\n";
     }
 
     // §3.4.10: kick off the real, periodic Tier-1 anchor-checkpoint producer.
@@ -5460,12 +5518,24 @@ uint32_t g_ctrl_revoke_confirm_count = 1u;
 // for it, so the streak never needs to be reused for that id again).
 static std::map<uint32_t, uint32_t> g_ctrl_divergence_streak;
 
-// Once a controller has been flagged/quarantined by TrustUpdateNode, it is
-// revoked — no further attack events can originate from it. Every
-// controller-origin attack helper (TTW-S3/S4, BSHH-S3/S4, ME-S3/S4, and the
-// shared ME single3 path) must check this FIRST and bail out before doing
-// anything (no forged packet, no PemEmitEvent, no log line) — a revoked
-// controller physically cannot act.
+// STALE COMMENT, CORRECTED (2026-08-05, found investigating A14's nC-sweep
+// flatness): this function is dead code (no call sites outside its own
+// declaration/a stale reference in a comment at ~line 13161). The
+// description below no longer matches the actual implemented architecture,
+// which uses a set of local, per-scenario `ctrlAlreadyRevokedN` variables
+// instead (defined at each of TTW-S3/S4, BSHH-S3/S4, ME-S3/S4/single3's own
+// call sites). Those variables were DELIBERATELY changed to a weaker
+// semantics than described here: a revoked/quarantined controller's attack
+// evidence still gets recorded (PemEmitEvent still fires, tp/fn still
+// accumulate) — only the MITIGATION response (LKH revoke, trust
+// reassignment, FlowMod) is skipped once already revoked. The old
+// "physically cannot act, no PemEmitEvent" behavior this comment describes
+// was found to silently erase the evidence trail for every later phantom
+// reporter once a controller was revoked early, and was fixed away — see
+// each `ctrlAlreadyRevokedN` call site's own comment for the corrected
+// rationale. Kept here only as a historical note; do not treat this
+// function's behavior as authoritative for what actually gates attack
+// emission.
 static bool CtrlIsRevoked(uint32_t ctrl_ns3_id)
 {
     auto it = g_trust_table.find(ctrl_ns3_id);
@@ -7060,12 +7130,16 @@ PemWriteRunSummaryCsv()
         : 0.0;
 
     // M3: mean T_stale (ms) between a link's physical break and the
-    // controller correcting its belief. 0.0 when no TTW/BSHH break->correct
-    // pair was observed this run (e.g. ME scenarios, or a run too short for
-    // any link to both break and be corrected).
+    // controller correcting its belief. -1.0 sentinel (2026-08-05, found
+    // investigating A14's mean_t_stale_ms=0 ambiguity) when no TTW/BSHH
+    // break->correct pair was observed this run (e.g. ME scenarios, or a
+    // run too short for any link to both break and be corrected) --
+    // distinguishes "no qualifying observation" from a genuine, measured
+    // zero-duration correction, matching the same sentinel pattern already
+    // used by t_reassign_ms (g_ctrl_reassigned ? pem_treassign_ms : -1.0).
     const double meanTStaleMs = (pem_stale_duration_count > 0)
         ? (1000.0 * pem_stale_duration_sum / (double)pem_stale_duration_count)
-        : 0.0;
+        : -1.0;
 
     // M4: PIR — mean distinct-reporter count per link (>=1 always; 1.0 is the
     // correct/no-attack value, i.e. only the link's own two endpoints ever
@@ -8186,6 +8260,21 @@ static void PemDivergenceSnapshotTick()
             if (believesEdge && !realEdge) ghostThisTick++;
             else if (!believesEdge && realEdge) missedThisTick++;
             else matchThisTick++;
+
+            // M3 ground-truth break tracker (2026-08-05 fix): reuses this
+            // tick's own realEdge/linkKey (already computed above with the
+            // correct kEffectiveReceptionRadius=100m) to detect a genuine
+            // TRUE->FALSE physical transition, independent of PemEmitEvent's
+            // detection/attack event stream -- see pem_link_break_time_gt's
+            // declaration comment for the full rationale. tau_correct stays
+            // detection-driven (Eq. 4.3): only tau_break moves here.
+            auto prevGtIt = pem_link_prev_real_state_gt.find(linkKey);
+            const bool hadPrevGt = (prevGtIt != pem_link_prev_real_state_gt.end());
+            if (hadPrevGt && prevGtIt->second && !realEdge)
+            {
+                pem_link_break_time_gt[linkKey] = now;
+            }
+            pem_link_prev_real_state_gt[linkKey] = realEdge;
         }
         // Q48DBG3: same breakdown as Q48DBG2, now scoped to
         // g_pem_ever_known_links instead of all N^2 pairs.
@@ -9938,25 +10027,21 @@ PemEmitEvent(PemEventType type,
         PemCheckRoutingDeliverability(linkSrcId, linkDstId,
                                        Simulator::Now().GetSeconds(), attackLabel);
 
-        // M3 T_stale: detect a break transition on the ground-truth edge.
-        // This half only records WHEN the link actually broke (ground truth,
-        // independent of detection) -- the correction half is deliberately
-        // NOT here. See the fix below, applied after PemEvaluateEvent(event)
-        // runs, for why: attackLabel is ground truth about the packet, not
-        // the controller's belief state, so using it as the "corrected"
-        // signal made tau_correct collapse to the exact same timestamp as
-        // tau_break whenever the first evidence of a real ground-truth break
-        // was itself an attack-labeled event (the common case for TTW-style
-        // replays) -- producing a systematic dur=0.0 for every sample
-        // instead of a real detection-latency-driven duration.
-        auto prevIt = pem_link_prev_real_state.find(linkKey);
-        const bool hadPrev = (prevIt != pem_link_prev_real_state.end());
-        if (hadPrev && prevIt->second && !realEdge)
-        {
-            // Link just broke physically.
-            pem_link_break_time[linkKey] = Simulator::Now().GetSeconds();
-        }
-        pem_link_prev_real_state[linkKey] = realEdge;
+        // M3 T_stale break-tracking REMOVED from here (2026-08-05 fix): this
+        // event-driven half used to record tau_break at the moment a broken
+        // ground-truth edge was OBSERVED via a topology_update event -- but
+        // for TTW-S1, the only topology_update event for a link after it
+        // physically breaks is frequently the attacker's own forged replay
+        // itself, so tau_break collapsed to the exact same Simulator::Now()
+        // as tau_correct (the alert on that same event), producing
+        // dur=0.000 on every sample (confirmed via live diagnostic: 23/23
+        // breaks matched, 23/23 dur=0.000). Per Eq. 4.3, tau_break must be
+        // the ground-truth physical failure time, sampled independently of
+        // the detection/event stream -- now populated by
+        // PemDivergenceSnapshotTick() into pem_link_break_time_gt instead;
+        // see that map's declaration comment. The correction half below
+        // (post-PemEvaluateEvent, gated on event.alert_raised) now reads
+        // from pem_link_break_time_gt.
     }
 
     // M6 (Eq. 4.8/4.9) event-driven companion for BSHH: mirrors the
@@ -10145,20 +10230,20 @@ PemEmitEvent(PemEventType type,
     // belief actually changes, i.e. a REAL alert fires for this link (the
     // same signal that gates ttw_controller_table.erase()/PemApplyMitigation
     // at every scenario's own call site), not merely "this packet's ground-
-    // truth attackLabel is true". Using the real alert_raised outcome (now
-    // available post-PemEvaluateEvent) instead of attackLabel fixes the
-    // previous dur=0.0-every-time bug: the break-detection half above runs
-    // BEFORE Stage-0/1/2, at the same timestamp as this correction check only
-    // when detection is instantaneous; in general tau_correct now reflects
-    // real detection+mitigation latency.
+    // truth attackLabel is true". Per Eq. 4.3, tau_correct is explicitly a
+    // detection-side quantity ("the time at which the controller's topology
+    // is updated to remove it") -- this half is intentionally unchanged by
+    // the 2026-08-05 fix. Only tau_break moved to ground truth (see
+    // pem_link_break_time_gt's declaration comment); this now looks up that
+    // independently-populated map instead of a self-populated one.
     if (event.type == PEM_EVENT_TOPOLOGY_UPDATE && linkSrcId != linkDstId && event.alert_raised)
     {
         const uint32_t linkKeyLo = (linkSrcId < linkDstId) ? linkSrcId : linkDstId;
         const uint32_t linkKeyHi = (linkSrcId < linkDstId) ? linkDstId : linkSrcId;
         const std::string linkKey =
             std::to_string(linkKeyLo) + "_" + std::to_string(linkKeyHi);
-        auto breakIt = pem_link_break_time.find(linkKey);
-        if (breakIt != pem_link_break_time.end())
+        auto breakIt = pem_link_break_time_gt.find(linkKey);
+        if (breakIt != pem_link_break_time_gt.end())
         {
             const double dur = Simulator::Now().GetSeconds() - breakIt->second;
             if (dur >= 0.0)
@@ -10166,7 +10251,7 @@ PemEmitEvent(PemEventType type,
                 pem_stale_duration_sum += dur;
                 pem_stale_duration_count++;
             }
-            pem_link_break_time.erase(breakIt);
+            pem_link_break_time_gt.erase(breakIt);
         }
     }
 }
